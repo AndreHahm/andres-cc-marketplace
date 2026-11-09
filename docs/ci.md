@@ -21,7 +21,7 @@ not hand-typed):
 | `Plugin component-file prefix permanence (R33)` | `prefix-permanence` | Runs `check-prefixes` then `check-prefix-permanence --base-sha`, both from a base-SHA-restored, trusted copy of `scripts/` (same principle `compute-scope`/`codex-review`/`publish` already apply to their own decision code — this is the one trusted evaluation point for both checks; `marketplace-parity`'s own `check-all` also runs `check-prefixes`, but from the untrusted PR checkout, same as its pre-existing mirror/export constituents). `check-prefixes` verifies every file under a registered, prefixed plugin's in-scope directories carries that plugin's own `<prefix>-` basename, validates every registered prefix's own format and marketplace-wide uniqueness, cross-checks `marketplace-inventory.json`'s `source` field against the authoritative `marketplace.json` entry, treats a manifest-listed plugin as checked regardless of its curated `status` (a plugin genuinely absent from the manifest is the only kind exempted), and refuses to trust any single source for a name `marketplace.json` lists more than once. `check-prefix-permanence` compares `marketplace-inventory.json`'s `plugins[].id`-keyed records between the PR's base and head; fails if any record that had a registered prefix at base now has a different or missing prefix, its `name` changed (a rename un-joins a still-live plugin from `marketplace.json`'s authoritative entry, since `check-prefixes` looks it up by name), or the record itself disappeared — the layer that catches a hand-edited inventory file or a delete-and-rebootstrap, not just the `marketplace-inventory` CLI's own `update` path (`reconcile.apply_update`'s write-once guard covers only that path). |
 | `Fork PR (unsupported — explicit terminal result)` | `fork-unsupported` | Only runs (`if:`) when the PR head is a fork; fails explicitly rather than leaving Codex review silently pending. **Reports `skipped` on a same-repo PR** — a `skipped` conclusion satisfies a required check in GitHub's branch protection, so this doesn't block ordinary same-repo PRs. |
 | `Compute Codex review scope` | `compute-scope` | Cheap, Node/Codex-CLI-free job that computes whether the diff is eligible for the automatic reviewer-scope bypass (see below) and, on a `synchronize` event, whether this push rebased onto a newer base. Checks out the PR's own head SHA directly (never the async `refs/pull/<n>/merge` ref `codex-review` uses) so its scope decision can't disagree with what `codex-review` actually reviews — then restores `scripts/marketplace_ci/` itself from the **trusted base SHA** before scoring, so the decision logic isn't evaluated by a version of itself the PR could have edited (same principle `prepare_reviewer_instruction` already applies to reviewer instructions). Not a required check itself, but `publish` now depends on it having actually **succeeded** — a failure, cancellation, or timeout (5 min) here fails `publish` closed, it does not silently read as "not eligible, run `codex-review` normally." |
-| `Codex delta review` | `codex-review` | Dispatches the reviewer set from `derive_review_scope` via `codex-review-bridge` — including `full`-mode escalation's own defined, bounded reviewer set (see "Full-mode escalation" below). Skipped when `compute-scope` reports the diff bypass-eligible, in addition to the existing fork-PR skip. Fails only on a finding that blocks under "Diff-scoped blocking" below, not on any Critical/Major anywhere in a touched file. |
+| `Codex delta review` | `codex-review` | Dispatches the reviewer set from `derive_review_scope` via `codex-review-bridge` — including `full`-mode escalation's own defined, bounded reviewer set (see "Full-mode escalation" below). Skipped when `compute-scope` reports the diff bypass-eligible, in addition to the existing fork-PR skip. Fails only on a finding that blocks under "Diff-scoped blocking" below, not on any Critical/Major anywhere in a touched file. Reviews only the CI review delta (see "CI review delta" below). |
 | `Publish Codex policy result` | `publish` | The single check branch protection should actually require for Codex policy: first requires `prefix-permanence` to have **succeeded on its own**, checked before anything else in this job — including before the SHA-bound bypass attestation below, since it's a deterministic, mechanical gate, not the Codex review the attestation exists to skip. Then passes if `compute-scope` succeeded AND (`codex-review` succeeded, OR was skipped **with `compute-scope`'s own `bypass_eligible` output confirming why**), OR if a valid SHA-bound bypass attestation + `s: codex review bypassed` label is present for the current head SHA. Now runs unconditionally for every same-repo PR (only a fork PR skips it) rather than only when `codex-review` itself ran. Keys the "was this skip legitimate?" check off `compute-scope`'s explicit output rather than `codex-review`'s bare result — `codex-review` also depends on `hygiene`/`python-quality`/`marketplace-parity`/`prefix-permanence`, any of which failing independently also produces a `skipped` `codex-review`, which the bare-result check alone would have accepted as a clean pass. The direct `prefix-permanence` check closes exactly that residual gap for `prefix-permanence` itself: without it, an inventory-only PR that is legitimately `bypass_eligible=true` (unrelated to prefix-permanence) but ALSO fails `prefix-permanence` would have had its `codex-review` skip read as a clean pass, since `bypass_eligible=true` alone doesn't distinguish "skipped because of a legitimate scope bypass" from "skipped because a sibling dependency happened to fail." |
 
 Every job in the workflow sets its own `timeout-minutes`, a generous multiple of its measured run time, so a
@@ -96,6 +96,50 @@ reviewer fails, the file is still written, with a `dispatch_failed` list (review
 output) writes `{"status": "could_not_run", "blocking": true, "error": ..., "provenance": ...}` the same way,
 which also overwrites a stale `codex-review-result.json` a PR might have committed, so the artifact always
 reflects this run.
+
+## CI review delta (issue #639)
+
+The local parity review (`plugins/git-kit/scripts/git-codex-parity-review.py`) is the
+full or delta review and the quality gate before a PR is created; it is unchanged. CI's `Codex delta
+review` is the gate after the PR exists and reviews only the delta, to cut OpenAI API cost and run time.
+`compute-scope` and `codex-review` both pass `--ci-delta --anchor-sha <anchor>` to `check-scope-bypass` and
+`run-codex-review`:
+
+- **Exclusions.** Left out of the reviewers' scope: tests and fixtures (a `tests`, `test`, `__tests__`,
+  `fixtures` or `evals` directory anywhere, `smoke_test.*`, `test_*.py`, `*_test.py`, `*.test.{js,mjs,cjs,ts}`),
+  `issues/`, `evals/`, `reviewer-eval/`, and generated agent mirrors: a `.agents/skills/` or `.claude/` path
+  whose blob and mode at the head equal those of its source (`.claude/skills/` for the former, a mirrored
+  plugin's file for the latter, never a declared divergence exception); an extra file with no identical
+  source stays. Smoke tests and fixtures are excluded anywhere, including inside a plugin's component
+  folders where they can be run, by the maintainer's decision: the local parity review covers them. A path in
+  `FULL_ESCALATION_PATHS` or under `BYPASS_INELIGIBLE_PREFIXES` (`scripts/`, `.github/`, `.codex/agents/`,
+  `.claude/rules/` and the rest) is never excluded, and repo-only `.claude/` files stay.
+- **Anchor.** The `Find the last reviewed head` step reads this PR's earlier Marketplace CI runs from the
+  GitHub API and takes the PR head of the newest one whose `Codex delta review` job finished, `success` or
+  `failure`, and whose `codex-review-result` artifact reports `findings` or `clean`. A cancelled or skipped
+  run, or one that stopped before its reviewers ran (`could_not_run`), reviewed nothing and does not count, so a push that cancels a running
+  review leaves its commits for the next run. An `opened` event, or no such run, means no anchor: the whole PR
+  (minus the exclusions) is reviewed. That is the first run's review.
+- **Narrowing.** With an anchor, only files whose PR-side patch (`base...head`, line numbers and blob ids
+  dropped) differs from the one at the anchor are reviewed. A rebase that only moves the PR's changes, and an
+  event with no new commits (`edited`, `labeled`, `reopened`), review nothing and the job is skipped as
+  bypass-eligible. An anchor that cannot be fetched (force-pushed away) also reviews nothing, by decision:
+  a force-push review would be the most expensive one. `codex-review` fetches the anchor again and fails
+  closed when it cannot, so it never narrows differently from `compute-scope`.
+- **Gate-critical paths are never narrowed away.** A changed path in `FULL_ESCALATION_PATHS` or under
+  `BYPASS_INELIGIBLE_PREFIXES` stays in scope on every run, so it keeps forcing a real review and the Tier-1
+  refusal. An anchor whose own PR changes touch such a path is not trusted, because that run's code and
+  workflow came from the PR: the whole delta is reviewed instead. The same holds for an anchor whose changes
+  touch a file Codex may load as instructions or config (`AGENTS*.md` at any depth, `.codex/`, the root
+  `REVIEW.md`), since such a run could have been told to report nothing and the change reverted later. A re-run of a failed job replays the same anchor,
+  so the same delta is reviewed again.
+- **What still sees the whole PR delta.** The script verifiers, the structural checks and the diff-scoped
+  blocking gate. Only the reviewer dispatch is narrowed.
+
+**Accepted trade-off.** The previous run's result does not matter. After a failed review, the next push is
+reviewed on its own changes, and a push or PR edit that does not touch the flagged file turns `Publish Codex
+policy result` green again. A blocking finding then stays visible in the failed run and in the local parity
+review, but CI no longer blocks on it.
 
 ## The reviewed delta and the result status
 
@@ -866,6 +910,11 @@ present, which a security review found was a one-push bypass of the whole carve-
 `synchronize` event correctly detects it and runs `codex-review`), then edit the PR title (an `edited`
 event, with no `before`/`after` at all, silently skipped the rebase check and reported eligible again).
 Requiring both present unconditionally closes that gap.
+
+**Superseded in CI by the review delta (#639).** CI now passes `--ci-delta`, which drops this before/after
+rebase check: by the maintainer's decision, commits a rebase absorbs from the base are out of scope, and
+the narrowed delta (see "CI review delta" above) already compares the PR's own changes, not the base's.
+The check remains for a `check-scope-bypass` call without `--ci-delta`.
 
 Unlike the manual bypass below, this one is never presented as an override — `codex-review` simply never
 had anything to review, so `publish` reports the normal `skipped` conclusion, not a bypass annotation.

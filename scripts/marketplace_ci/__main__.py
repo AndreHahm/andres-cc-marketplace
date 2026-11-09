@@ -823,6 +823,22 @@ def _handle_resolve_attested_actor(args: argparse.Namespace) -> int:
     return 0
 
 
+def _ci_review_delta(args: argparse.Namespace, repo: Path, changed, base_sha: str):
+    """The part of the PR delta CI sends to the Codex reviewers (issue #639): without
+    --ci-delta, all of it (the local parity review). With it, the delta minus the
+    CI-excluded paths, narrowed to what changed since --anchor-sha when one is given; no
+    anchor means no earlier run reviewed this PR, so the whole (excluded) delta is used."""
+    if not getattr(args, "ci_delta", False):
+        return changed
+    from scripts.marketplace_ci.review import exclude_from_ci_review, narrow_to_unreviewed
+
+    changed = exclude_from_ci_review(repo, changed, base_sha)
+    anchor = getattr(args, "anchor_sha", "")
+    if anchor:
+        changed = narrow_to_unreviewed(repo, changed, base_sha, anchor)
+    return changed
+
+
 def _handle_check_scope_bypass(args: argparse.Namespace) -> int:
     """Automatic, scope-derived counterpart to check-bypass's manual
     SHA-bound attestation: computes whether the diff since --base-sha has
@@ -838,7 +854,12 @@ def _handle_check_scope_bypass(args: argparse.Namespace) -> int:
     push re-ran this check with no before/after and reported eligible=True
     again, defeating the rebase carve-out entirely. Exits 0 on a computed
     decision (bypass_eligible in the JSON payload either way), 2 only on an
-    infrastructure failure the caller must treat as not-eligible."""
+    infrastructure failure the caller must treat as not-eligible.
+
+    With --ci-delta (CI, issue #639) the scope is the CI-narrowed delta and the
+    before/after rebase check is dropped: by the maintainer's decision, commits a
+    rebase absorbs from the base are out of scope, and narrow_to_unreviewed already
+    compares the PR's own changes, not the base's."""
     from scripts.marketplace_ci.review import (
         PrDeltaError,
         compute_pr_delta,
@@ -863,11 +884,11 @@ def _handle_check_scope_bypass(args: argparse.Namespace) -> int:
         print(f"check-scope-bypass: {exc}", file=sys.stderr)
         return 2
 
-    scope = derive_review_scope(changed, {})
+    scope = derive_review_scope(_ci_review_delta(args, repo, changed, base_sha), {})
     eligible = is_bypass_eligible(scope)
     reason = f"mode={scope.mode}, validate={len(scope.validate)}, audit={len(scope.audit)}"
 
-    if eligible:
+    if eligible and not args.ci_delta:
         if not (args.before and args.after):
             eligible = False
             reason = (
@@ -1246,7 +1267,9 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
     except PrDeltaError as exc:
         return _fail_run_codex_review(args, str(exc))
 
-    scope = derive_review_scope(changed, {})
+    # The reviewers get only the CI-narrowed delta (issue #639); the script verifiers and the
+    # diff-scoped gate below still use the whole PR delta.
+    scope = derive_review_scope(_ci_review_delta(args, repo, changed, base_sha), {})
 
     if scope.mode == "full" and not scope.validate and not scope.audit:
         # derive_review_scope populates a real reviewer set for both known
@@ -1671,6 +1694,18 @@ def build_parser() -> argparse.ArgumentParser:
         "--after", default="", metavar="SHA", help="post-push head SHA (synchronize event only)"
     )
     check_scope_bypass.add_argument("--json-output", metavar="PATH")
+    check_scope_bypass.add_argument(
+        "--ci-delta",
+        action="store_true",
+        help="CI only (issue #639): leave tests, fixtures, issues/, evals/, reviewer-eval/ and "
+        "generated agent mirrors out of the reviewed scope",
+    )
+    check_scope_bypass.add_argument(
+        "--anchor-sha",
+        default="",
+        metavar="SHA",
+        help="with --ci-delta: review only what the PR changed since this already-reviewed head",
+    )
     check_scope_bypass.set_defaults(handler=_handle_check_scope_bypass)
 
     run_codex_review = subparsers.add_parser(
@@ -1679,6 +1714,18 @@ def build_parser() -> argparse.ArgumentParser:
     )
     run_codex_review.add_argument("--base-sha", required=True, metavar="SHA")
     run_codex_review.add_argument("--output", metavar="PATH")
+    run_codex_review.add_argument(
+        "--ci-delta",
+        action="store_true",
+        help="CI only (issue #639): leave tests, fixtures, issues/, evals/, reviewer-eval/ and "
+        "generated agent mirrors out of the reviewed scope",
+    )
+    run_codex_review.add_argument(
+        "--anchor-sha",
+        default="",
+        metavar="SHA",
+        help="with --ci-delta: review only what the PR changed since this already-reviewed head",
+    )
     run_codex_review.add_argument(
         "--instructions-dir",
         metavar="PATH",

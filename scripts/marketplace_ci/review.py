@@ -1064,6 +1064,202 @@ def collapse_identical_mirrors(
     return tuple(cp for cp in changed if cp.new_path not in identical)
 
 
+# CI-only narrowing of what the Codex reviewers are sent (issue #639). CI's delta review
+# runs after the local parity review already covered the PR, so by the maintainer's
+# decision it skips paths a model review adds little to: tests and fixtures, smoke tests,
+# issue drafts and eval data, and generated agent mirrors (marketplace-parity proves each
+# matches its source, which is reviewed). A gate-critical path is never excluded or
+# narrowed away. The local parity review never passes the flags that turn this on.
+_CI_EXCLUDED_ROOT_PREFIXES = ("issues/", "evals/", "reviewer-eval/")
+_CI_EXCLUDED_DIR_SEGMENTS = frozenset({"tests", "test", "__tests__", "fixtures", "evals"})
+_CI_EXCLUDED_TEST_FILE = re.compile(
+    r"smoke_test\.[A-Za-z0-9]+|test_[^/]*\.py|[^/]*_test\.py|[^/]*\.test\.(?:js|mjs|cjs|ts)"
+)
+
+
+def is_gate_critical(path: str) -> bool:
+    return path in FULL_ESCALATION_PATHS or path.startswith(BYPASS_INELIGIBLE_PREFIXES)
+
+
+def _mirror_source(path: str, mirror_map) -> list[str]:
+    """The paths `path` is generated from: `.agents/skills/<rest>` from `.claude/skills/<rest>`,
+    and `.claude/<component>/<rest>` from a mirrored plugin's `plugins/<plugin>/<component>/<rest>`
+    (never a declared divergence exception). Empty for anything else."""
+    if path.startswith(".agents/skills/"):
+        return [".claude/skills/" + path[len(".agents/skills/") :]]
+    if mirror_map is None or not path.startswith(".claude/"):
+        return []
+    plugin_mirrors, scripts_mirrors, exceptions = mirror_map
+    if path in exceptions:
+        return []
+    component, _, rest = path[len(".claude/") :].partition("/")
+    if not rest:
+        return []
+    if component == "scripts":
+        plugins = scripts_mirrors
+    elif component in _MIRROR_COMPONENTS:
+        plugins = plugin_mirrors
+    else:
+        return []
+    return [f"plugins/{plugin}/{component}/{rest}" for plugin in plugins]
+
+
+def is_ci_review_excluded(path: str, generated: frozenset[str] = frozenset()) -> bool:
+    """`generated` holds the mirror paths exclude_from_ci_review proved are copies."""
+    if is_gate_critical(path):
+        return False
+    if path.startswith(_CI_EXCLUDED_ROOT_PREFIXES):
+        return True
+    *dirs, name = path.split("/")
+    if any(d in _CI_EXCLUDED_DIR_SEGMENTS for d in dirs):
+        return True
+    if _CI_EXCLUDED_TEST_FILE.fullmatch(name):
+        return True
+    return path in generated
+
+
+def _generated_copies(repo: Path, changed: Sequence[ChangedPath], mirror_map) -> frozenset[str]:
+    """Changed mirror paths that are copies of their source: at HEAD, a regular file with the
+    same mode and blob as one of its sources (an extra file with no identical source, such as
+    an unregistered `.agents/skills/` directory, stays); deleted, when a source is deleted in
+    the same delta."""
+    deleted = {cp.old_path for cp in changed if cp.status == "D" and cp.old_path}
+    present: dict[str, list[str]] = {}
+    generated: set[str] = set()
+    for cp in changed:
+        for path in (cp.old_path, cp.new_path):
+            if path is None:
+                continue
+            sources = _mirror_source(path, mirror_map)
+            if not sources:
+                continue
+            if cp.status == "D" or path != cp.new_path:
+                if any(s in deleted for s in sources):
+                    generated.add(path)
+            else:
+                present[path] = sources
+    prints = _blob_fingerprints(repo, sorted({*present, *(s for v in present.values() for s in v)}))
+    regular = ("100644", "100755")
+    for path, sources in present.items():
+        if path in prints and prints[path][0] in regular:
+            if any(prints.get(s) == prints[path] for s in sources):
+                generated.add(path)
+    return frozenset(generated)
+
+
+def exclude_from_ci_review(
+    repo: Path, changed: Sequence[ChangedPath], base_sha: str
+) -> tuple[ChangedPath, ...]:
+    """`changed` without the entries whose every path is_ci_review_excluded."""
+    generated = _generated_copies(repo, changed, _mirror_map(repo, base_sha))
+    return tuple(
+        cp
+        for cp in changed
+        if not all(
+            is_ci_review_excluded(p, generated) for p in (cp.old_path, cp.new_path) if p is not None
+        )
+    )
+
+
+_PATCH_HUNK_HEADER = re.compile(rb"@@ -\d+(?:,\d+)? \+\d+(?:,\d+)? @@.*")
+
+
+def _pr_side_patch(repo: Path, base_sha: str, tip: str, paths: Sequence[str]) -> bytes | None:
+    """What the PR does to `paths` at `tip`, against its merge base with `base_sha`: the
+    diff with three context lines, which pin where each change sits, and with only the
+    line numbers and blob ids dropped, so a rebase that just shifts the change compares
+    equal and a change moved elsewhere in the file does not."""
+    try:
+        raw = _run_git(
+            repo,
+            "-c",
+            "core.quotepath=false",
+            "diff",
+            "-U3",
+            "--text",
+            "--no-color",
+            "--no-ext-diff",
+            "--no-textconv",
+            "--find-renames",
+            f"{base_sha}...{tip}",
+            "--",
+            *paths,
+        )
+    except RuntimeError:
+        return None
+    return b"\n".join(
+        b"@@" if _PATCH_HUNK_HEADER.fullmatch(line) else line
+        for line in raw.split(b"\n")
+        if not line.startswith(b"index ")
+    )
+
+
+def _steers_reviewers(path: str) -> bool:
+    """Project files Codex may load as instructions or config from its working directory
+    (`AGENTS*.md` at any depth, `.codex/`, the root `REVIEW.md`). A run whose PR changed one
+    could have been told to report nothing, so its verdict does not make it an anchor."""
+    name = path.rsplit("/", 1)[-1]
+    return (
+        (name.startswith("AGENTS") and name.endswith(".md"))
+        or path.startswith(".codex/")
+        or path == "REVIEW.md"
+    )
+
+
+def _anchor_touches_gate(repo: Path, base_sha: str, anchor_sha: str) -> bool:
+    """True when the anchor head's own PR changes include a gate-critical path (or that
+    cannot be told). Such a run was reviewed by code and a workflow the PR itself edited,
+    so its result does not prove anything was reviewed."""
+    try:
+        raw = _run_git(
+            repo, "diff", "-z", "--name-only", "--no-renames", f"{base_sha}...{anchor_sha}"
+        )
+    except RuntimeError:
+        return True
+    return any(
+        is_gate_critical(p) or _steers_reviewers(p)
+        for p in raw.decode("utf-8", errors="surrogateescape").split("\0")
+        if p
+    )
+
+
+def narrow_to_unreviewed(
+    repo: Path, changed: Sequence[ChangedPath], base_sha: str, anchor_sha: str
+) -> tuple[ChangedPath, ...]:
+    """The entries of `changed` (the PR delta at HEAD) whose PR-side patch differs from the
+    one at `anchor_sha`, the head an earlier CI run reviewed. A path the PR changes the same
+    way at both heads was reviewed then, including when a rebase only shifted it; a commit
+    absorbed from the base is not the PR's change at all. A gate-critical entry is always
+    kept, and an anchor whose own changes touch a gate-critical path is not trusted (the
+    whole delta is kept). An anchor this checkout cannot resolve (force-pushed away) keeps
+    only the gate-critical entries: by the maintainer's decision the rest of the review is
+    skipped then, not widened to the whole PR. A patch git cannot compute is kept."""
+
+    def critical(cp: ChangedPath) -> bool:
+        return any(is_gate_critical(p) for p in (cp.old_path, cp.new_path) if p is not None)
+
+    resolved = subprocess.run(
+        ["git", "rev-parse", "--verify", "--quiet", f"{anchor_sha}^{{commit}}"],
+        cwd=repo,
+        capture_output=True,
+    )
+    if resolved.returncode != 0:
+        return tuple(cp for cp in changed if critical(cp))
+    if _anchor_touches_gate(repo, base_sha, anchor_sha):
+        return tuple(changed)
+    kept = []
+    for cp in changed:
+        if critical(cp):
+            kept.append(cp)
+            continue
+        paths = [p for p in (cp.old_path, cp.new_path) if p is not None]
+        now = _pr_side_patch(repo, base_sha, "HEAD", paths)
+        then = _pr_side_patch(repo, base_sha, anchor_sha, paths)
+        if now is None or then is None or now != then:
+            kept.append(cp)
+    return tuple(kept)
+
+
 # Off Linux the filesystem (and so the bridge's existence check) may match a path
 # whatever its case or Unicode normalisation form, but git reports the stored
 # spelling. Fold both sides there; on Linux a different spelling is a different file.
