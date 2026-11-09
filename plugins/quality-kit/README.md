@@ -31,8 +31,9 @@ handled three different ways across this repository.
   so every `codacy` and `codacy-analysis` command raises a normal permission prompt showing its text, unless your
   own settings or permission mode already allow it. Approve
   each one once. Never choose "don't ask again" or add a `codacy` or `codacy-analysis` allow rule: that would
-  pre-approve the write flags too. For `sonar`, only the read forms `sonar list issues` and `sonar quality-gate status` are
-  pre-approved: `sonar api post` shares a prefix with the `sonar api get` reads, so `sonar api` always prompts.
+  pre-approve the write flags too. For `sonar`, no command is pre-approved directly: the read skills grant only `scripts/sonar_read.py`, a wrapper
+  that runs fixed reads from the home directory and drops identity fields. `sonar api post` shares a
+  prefix with `sonar api get`, so a direct `sonar api` command always prompts.
 - **Repository-specific policy** (which findings this repository accepts, and where) lives in the repository's
   own `CLAUDE.md`, `AGENTS.md` and `docs/ci.md`, not here.
 

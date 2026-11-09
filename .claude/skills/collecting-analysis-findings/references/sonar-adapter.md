@@ -5,16 +5,34 @@ not covered. Re-check the shapes below before trusting them after a CLI update.
 
 ## Read commands (the only forms this skill runs)
 
-Pipe each command into `scripts/collect_sonar.py --input -`. The raw responses hold `author`, `assignee`,
-`contributors`, comment logins and commit messages, so they are never written to a file. `2>/dev/null` drops
-the CLI's banner. If `sonar` is not on `PATH`, the default install is `~/.local/share/sonarqube-cli/bin/sonar`.
+Every read is `python3 -I ${CLAUDE_PLUGIN_ROOT}/skills/collecting-analysis-findings/scripts/sonar_read.py <form> ...`,
+piped into `scripts/collect_sonar.py --input -`. The wrapper runs `sonar` with a fixed argument list from the home
+directory (a repository's own configuration file cannot pick the server), validates every value, and prints only
+the fields the adapter reads: the raw responses hold `author`, `assignee`, `contributors`, comment logins and commit
+messages, which it drops. `sonar` must be on `PATH`; the default install is `~/.local/share/sonarqube-cli/bin`.
 
-| Source | Command | `--kind` |
+| Source | `sonar_read.py` form | `--kind` |
 |---|---|---|
-| A PR's analysis state, first | `sonar api get "/api/project_pull_requests/list?project=<key>" 2>/dev/null` | `pr-status` |
-| A PR's open issues | `sonar list issues -p <key> --pull-request <n> --format json 2>/dev/null` | `pr` |
-| Default-branch issue list | `sonar list issues -p <key> --format json 2>/dev/null` (`--branch <b>` for another branch, and the same `--branch <b>` to `collect_sonar.py` so the record names it) | `repo` |
-| Issues already accepted or marked false positive | `sonar api get "/api/issues/search?projects=<key>&issueStatuses=ACCEPTED,FALSE_POSITIVE&additionalFields=comments&ps=500" 2>/dev/null` | `ignored` |
+| A PR's analysis state, first | `pr-list --project <key> --pull-request <n>` | `pr-status` |
+| A PR's open issues | `issues --project <key> --pull-request <n>` | `pr` |
+| Default-branch issue list | `issues --project <key>` (`--branch <b>` for another branch, and the same `--branch <b>` to `collect_sonar.py` so the record names it; `--file <f>` narrows) | `repo` |
+| Issues already accepted or marked false positive | `ignored --project <key>` (the comment text only, no login) | `ignored` |
+
+What each form runs: `pr-list` is `sonar api get /api/project_pull_requests/list`; `issues` is `sonar list issues`
+with `--format json --page-size 500 --page <n>`; `ignored` is `sonar api get /api/issues/search` with
+`issueStatuses=ACCEPTED,FALSE_POSITIVE`, `additionalFields=comments`, `ps=500` and `p=<n>`. A fifth form,
+`issue-state --issue <id>`, reads one issue's `issueStatus` and comment count (never the text) for
+`resolving-analysis-findings` and `using-sonarqube-cloud`, and `gate-status --project <key>` with exactly one of
+`--branch` or `--pull-request` runs `sonar quality-gate status` for `using-sonarqube-cloud`.
+
+The `ignored` form keeps only the last comment's text, the one the record stores as `ignore_comment`. That text
+can still name a person: see `findings-record.md` before sharing a record.
+
+**Known residuals.** The wrapper passes its own environment to `sonar` unchanged, so a variable the CLI reads
+(which ones it honors was not checked) applies to the granted reads too, as it did to the former direct grant. It
+refuses a `sonar` found through a relative `PATH` entry. It was not run on Windows: there, `python3` may be absent
+(the grants call `python3 -I`, like every quality-kit script grant), and a `.cmd` install of the CLI would run
+through `cmd.exe`, which the validated values (no `& | < > ^ % "`) are meant to keep harmless but which is unverified.
 
 **A PR takes three pipes.** `--kind pr-status --pull-request <n> --output "<scratchpad>/sonar-status.json"` keeps
 only that PR's SHA, analysis date and gate status. `--kind pr --status "<scratchpad>/sonar-status.json"` then
@@ -23,11 +41,11 @@ commit, so the `--status` file is not bound to them: the head comparison in `SKI
 the issues with `--confirm "<scratchpad>/findings-record.json" --output "<scratchpad>/findings-record.json"`: it
 compares the SHA, analysis date and gate with the record's and sets `source.snapshot_consistent`.
 
-**Several pages.** Exit 3 means the response has more pages, and its message gives the count. Run all pages in
-one command, `{ sonar list issues ... --page 1; sonar list issues ... --page 2; } 2>/dev/null | python3 -I ...`
-(the `ignored` form takes `&p=<n>`). The script reads the concatenated JSON and refuses missing, repeated or
-overlapping pages. `--page-size` defaults to and caps at 500. The API refuses to go past 10,000 results (`400`,
-checked 2026-11-07), so a larger total exits 2: narrow the query with `--file`. A `--file` or `--branch` value comes
+**Several pages.** `sonar_read.py` fetches every page itself (500 per page) and prints one JSON document per page;
+`collect_sonar.py` reads them and refuses missing, repeated or overlapping pages. The API refuses to go past 10,000
+results (`400`, checked 2026-11-07), so the wrapper stops at 20 pages with exit 3, printing nothing: narrow the read
+with `--file`. `collect_sonar.py`'s own exit 3 (more pages exist) applies only to input that did not come from the
+wrapper. A `--file` or `--branch` value comes
 from the user, never from a response, and must match the patterns in `SKILL.md`.
 
 The `ignored` form's filters were run and gave 0 results where `OPEN` gave 192, so they are honored. Its
@@ -78,5 +96,6 @@ statuses above. Anything else exits 2.
 | 3 | Valid so far, but more pages exist | Message on stderr with the page count, nothing on stdout, no output file |
 
 The script shares its input and output guards with `collect_codacy.py` by importing them, so a guard fixed
-there applies here. Only `sonar list issues` is pre-approved. A `sonar api get` raises its own permission prompt
-showing the whole pipeline. If the CLI fails, the adapter gets empty or invalid input and exits 2.
+there applies here. The only Sonar grant is `sonar_read.py`. If the CLI fails, the wrapper exits 1 (2 for a
+response that is not JSON) and prints nothing; with `set -o pipefail` the pipe fails, and without it the adapter
+gets empty input and exits 2.
