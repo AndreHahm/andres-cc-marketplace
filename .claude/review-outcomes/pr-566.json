@@ -1,0 +1,58 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4308698335",
+      "note": "CodeRabbit minor: picking a skill option now ends the add flow in step 5; fixed in the PR's review-fix commit, CodeRabbit confirmed, thread resolved",
+      "path": "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md",
+      "pr": 566,
+      "recorded_at": "2026-11-10T11:26:16+00:00",
+      "rule": "functional-correctness"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "codex-parity-r2-issue-draft-623-stale",
+      "note": "parity review round 2 Major: draft of closed issue 623 flagged as stale; issue drafts are historical read-only records, never stale; reviewer exclusion tracked in issue 653",
+      "path": "issues/2026-10-18-git-review-api-body-file-needs-posix.md",
+      "pr": 566,
+      "recorded_at": "2026-11-10T11:26:18+00:00",
+      "rule": "stale-issue-draft"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-parity-r2-overliteral-smoke-check",
+      "note": "parity review round 2 minor: triage check hardcoded one option label; now normalizes whitespace, matches by prefix and asserts exactly one Recommended marker",
+      "path": "plugins/promptlibrary-kit/skills/prompt-library/scripts/smoke_test.py",
+      "pr": 566,
+      "recorded_at": "2026-11-10T11:26:17+00:00",
+      "rule": "smoke-check-brittleness"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-parity-r2-redundant-askuserquestion-grant",
+      "note": "parity review round 2 minor: AskUserQuestion in allowed-tools was a no-op; grant removed",
+      "path": "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md",
+      "pr": 566,
+      "recorded_at": "2026-11-10T11:26:17+00:00",
+      "rule": "R5"
+    },
+    {
+      "disposition": "declined",
+      "finding": "codex-parity-r2-skill-md-length",
+      "note": "parity review round 2 minor: SKILL.md is 217 lines; non-blocking advisory, left as is",
+      "path": "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md",
+      "pr": 566,
+      "recorded_at": "2026-11-10T11:26:17+00:00",
+      "rule": "R13"
+    },
+    {
+      "disposition": "declined",
+      "finding": "cross-model-r1-stale-last-run-date",
+      "note": "cross-model-review round 1, low-confidence minor about a stale last-run date; the Codex challenger refuted it and the owner chose to leave it as is",
+      "path": "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md",
+      "pr": 566,
+      "recorded_at": "2026-11-10T11:26:16+00:00",
+      "rule": "stale-run-date"
+    }
+  ]
+}
