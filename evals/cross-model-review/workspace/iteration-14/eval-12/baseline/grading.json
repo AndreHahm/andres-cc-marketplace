@@ -1,0 +1,13 @@
+{
+  "eval_id": 12,
+  "configuration": "baseline",
+  "contaminated": false,
+  "assertions_evaluated": [
+    {"text": "Response computes the batch limit as 2 * floor(250000 / 80000) + 1 = 7 from the manifest's budget_bytes and max_slice_bytes", "passed": false, "evidence": "Computes 'floor(250000 / 80000) = 3 batches per round' and offers a ceiling reading of 4; never reaches 7. Not contaminated: the answer read no skill file and quotes none, but it says it used this branch's commit subjects ('count only Codex-eligible batches ...', 'report batch-limit omissions ...') as hints."},
+    {"text": "Response says that with 9 batches (over the limit) nothing is dispatched yet and the user is asked via AskUserQuestion before the First-Send Confirmation, naming the batch count, the dispatch count and the limit", "passed": false, "evidence": "Says it 'asks one AskUserQuestion before Codex runs' naming the batch count against the limit, but never mentions the First-Send Confirmation or a dispatch count."},
+    {"text": "Response offers review all batches, review only the first 7 in planner order, or stop, and says the skill never goes past the limit without that answer", "passed": false, "evidence": "Offers 'Review within the limit (cap)', 'Review all batches (override)', 'Cancel / narrow scope', but the cap is the first 3 (its own limit), not the first 7."},
+    {"text": "Response says slices in batches not reviewed are noted from the manifest's slices (not dropped_slices), listed in the Phase 3 report as must be read directly, and are never passed as --completed-slice in a later round", "passed": false, "evidence": "Says omitted slices are listed in the scope report and 'treated as not reviewed' in later rounds; no mention of manifest slices vs dropped_slices, 'must be read directly', or --completed-slice."},
+    {"text": "Response says the dispatch count is two per batch that has a Codex-eligible path (a batch with none skips Codex), so 18 is an upper bound, and that if no batch has a Codex-eligible path the question is skipped and the run is single-model", "passed": false, "evidence": "Claims 'Only Codex-eligible batches count against the limit'; gives no per-batch dispatch count, no 18 upper bound, and no single-model skip."}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 0, "pass_rate": 0.0}
+}
