@@ -1059,6 +1059,30 @@ def check_monitor_without_usage_record_does_not_warn(tmp_path):
     )
 
 
+def check_monitor_does_not_publish_tool_count_estimate(tmp_path):
+    # Review finding (PR #694): the tool-call-count fallback is not real context usage, so
+    # the percentage it yields must not open the gate the shell hooks read. With a limit of
+    # 2 calls the first call estimates exactly the shipped gate (50%).
+    import hashlib
+
+    transcript = tmp_path / "nousage_pub.jsonl"
+    transcript.write_text(json.dumps({"type": "attachment", "blob": "x"}) + "\n", encoding="utf-8")
+    run_monitor(
+        tmp_path, "fallbackpub", transcript, env_extra={"CLAUDE_CONTEXT_MAX_TOOL_CALLS": "2"}
+    )
+    digest = hashlib.md5(b"fallbackpub\n", usedforsecurity=False).hexdigest()[:8]
+    pct_file = tmp_path / "home_fallbackpub" / ".claude" / "strategic-compact" / f"pct-{digest}"
+    if not pct_file.exists():
+        return False, "the monitor did not publish a gate file at all"
+    published = pct_file.read_text(encoding="utf-8")
+    if published != "0 50":
+        return (
+            False,
+            f"expected the closed gate '0 50' for an unmeasured estimate, got {published!r}",
+        )
+    return True, "a tool-call-count estimate is published as 0%, so the gate stays closed"
+
+
 def _track_paths(home, session_id):
     import hashlib
 
@@ -1226,6 +1250,41 @@ def check_milestone_uses_a_single_channel(tmp_path):
     if "[StrategicCompact]" in result.stderr:
         return False, f"milestone was also echoed to stderr: {result.stderr!r}"
     return True, "a milestone is delivered once, as a user-facing systemMessage only"
+
+
+def check_milestone_spawns_no_desktop_notification(tmp_path):
+    # Review finding (PR #694): a milestone also fired osascript/notify-send, a second
+    # channel beside the systemMessage. Shim both on PATH and require neither is called.
+    home = make_home_with_tracking_file(tmp_path, "milenotify")
+    shim_dir = tmp_path / "shims"
+    shim_dir.mkdir()
+    marker = tmp_path / "notify-called"
+    for name in ("notify-send", "osascript"):
+        shim = shim_dir / name
+        shim.write_text(f'#!/bin/bash\necho called > "{marker.as_posix()}"\n', encoding="utf-8")
+        shim.chmod(0o755)
+    payload = json.dumps(
+        {
+            "session_id": "milenotify",
+            "tool_name": "Bash",
+            "tool_input": {"command": "git commit -m x"},
+        }
+    )
+    env = {**os.environ, "HOME": str(home), "PATH": str(shim_dir) + os.pathsep + os.environ["PATH"]}
+    result = subprocess.run(
+        ["bash", str(MILESTONE_SCRIPT)],
+        input=payload,
+        capture_output=True,
+        text=True,
+        timeout=15,
+        env=env,
+    )
+    time.sleep(0.5)  # the notification call was backgrounded
+    if "Code committed" not in result.stdout:
+        return False, f"the milestone did not fire, so this check proves nothing: {result.stdout!r}"
+    if marker.exists():
+        return False, "the milestone also spawned a desktop notification (osascript/notify-send)"
+    return True, "a milestone spawns no desktop-notification process"
 
 
 def check_milestone_cooldown_is_thirty_minutes(tmp_path):
@@ -1503,6 +1562,8 @@ CHECKS = [
     check_tool_call_thresholds_ignore_hostile_settings_values,
     check_milestone_silent_while_context_below_gate,
     check_milestone_uses_a_single_channel,
+    check_milestone_spawns_no_desktop_notification,
+    check_monitor_does_not_publish_tool_count_estimate,
     check_milestone_cooldown_is_thirty_minutes,
     check_count_alert_silent_while_context_below_gate,
     check_count_alert_fires_when_context_reaches_gate,
