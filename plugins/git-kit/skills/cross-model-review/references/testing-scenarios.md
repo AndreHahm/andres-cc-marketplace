@@ -283,7 +283,9 @@ Moved here from SKILL.md's Testing & Validation section, which keeps only the la
   security review after that run found `git diff` has no pathspec-file option, so per-batch diffs come
   from planner-written files (`--diff-dir`), and the planner is skipped with a question when the diff
   changes it; fixtures and planner tests cover both.
-- **`iteration-12`:** adds eval 12 (batch limit), same shape: 4/4.
+- **`iteration-12`:** adds eval 12 (batch limit), same shape: 4/4. Eval 12 covers the batch-limit quality
+  gate, not a numbered scenario above, so `evals.json`'s `testing_validation_coverage` stays at 10 of 10
+  (it counts the numbered scenarios the evals cover; eval 11 is a variant of scenario 37's case).
 - **`iteration-13`:** re-runs eval 12 after the Codex-eligible count fix, same shape: 5/5.
 - **2026-11-10, `iteration-14`:** eval 12 after the rebase onto main, Full Pipeline with a baseline arm:
   `with_skill` 5/5, baseline 0/5 (the baseline guessed a batch limit of 3 instead of 7);

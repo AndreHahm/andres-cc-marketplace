@@ -1,0 +1,25 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4527578713",
+      "note": "Fixed in eab08cd4; claims checked against scoped-review.md sections 3 and 7",
+      "pr": 567,
+      "recorded_at": "2026-11-10T18:48:55+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4527578726",
+      "note": "Fixed in eab08cd4; claims checked against scoped-review.md sections 3 and 7",
+      "pr": 567,
+      "recorded_at": "2026-11-10T18:48:55+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4527578738",
+      "note": "Fixed in eab08cd4; claims checked against scoped-review.md sections 3 and 7",
+      "pr": 567,
+      "recorded_at": "2026-11-10T18:48:55+00:00"
+    }
+  ]
+}
