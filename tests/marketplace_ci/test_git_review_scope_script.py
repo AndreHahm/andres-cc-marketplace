@@ -1725,7 +1725,7 @@ def test_the_intent_add_index_override_is_what_protects_the_real_index(repo, tmp
     (repo / "new.txt").write_text("brand new\n")
     real_index = repo / ".git" / "index"
     result = subprocess.run(
-        ["bash", str(mutant), str(run_dir)], cwd=repo, capture_output=True, text=True, check=False
+        [BASH, str(mutant), str(run_dir)], cwd=repo, capture_output=True, text=True, check=False
     )
     assert result.returncode == 0, result.stderr
     assert "new.txt" in _listed(repo, real_index)  # the mutant leaks: the test above can tell
