@@ -30,6 +30,7 @@ import os
 import re
 import subprocess  # nosec B404  # runs sonar with a list argument and validated values, never a shell
 import sys
+import tempfile
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlencode
@@ -72,20 +73,24 @@ def _checked(value: str | None, pattern: re.Pattern[str], name: str) -> str | No
 
 
 def _execute(sonar: str, arguments: list[str]) -> tuple[int, bytes]:
-    # Home, not the checkout: the CLI reads project configuration from its working directory, and a
+    # A fresh empty directory outside every checkout, not the caller's directory or home (which can
+    # itself be a checkout): the CLI reads project configuration from its working directory, and a
     # repository-controlled file there must not choose the server the token is sent to.
-    try:
-        done = subprocess.run(  # nosec B603  # nosemgrep  # list argv, absolute sonar, no shell
-            [sonar, *arguments],
-            cwd=Path.home(),
-            env=_child_env(),
-            stdin=subprocess.DEVNULL,
-            capture_output=True,
-            timeout=TIMEOUT_SECONDS,
-            check=False,
-        )
-    except subprocess.TimeoutExpired as error:
-        raise ReadError(f"sonar timed out after {TIMEOUT_SECONDS}s", EXIT_SONAR) from error
+    with tempfile.TemporaryDirectory(prefix="qlty-sonar-", ignore_cleanup_errors=True) as workdir:
+        if _repo_roots(Path(workdir).resolve()):
+            raise ReadError("the temporary directory is inside a git checkout", EXIT_INVALID)
+        try:
+            done = subprocess.run(  # nosec B603  # nosemgrep  # list argv, absolute sonar, no shell
+                [sonar, *arguments],
+                cwd=workdir,
+                env=_child_env(),
+                stdin=subprocess.DEVNULL,
+                capture_output=True,
+                timeout=TIMEOUT_SECONDS,
+                check=False,
+            )
+        except subprocess.TimeoutExpired as error:
+            raise ReadError(f"sonar timed out after {TIMEOUT_SECONDS}s", EXIT_SONAR) from error
     return done.returncode, done.stdout
 
 
@@ -351,6 +356,14 @@ STRIPPED_ENV = frozenset(
         "SONARQUBE_CLI_SONARCLOUD_US_URL",
         "SONARQUBE_CLI_SONARCLOUD_US_API_URL",
         "SONARQUBE_CLI_SONARCLOUD_SCA_SCANNER_CDN_URL",
+        # The CLI runs `git rev-parse --show-toplevel` to bound its configuration search; an
+        # inherited repository location would let that search climb past the empty working
+        # directory.
+        "GIT_DIR",
+        "GIT_WORK_TREE",
+        "GIT_COMMON_DIR",
+        "GIT_INDEX_FILE",
+        "GIT_CEILING_DIRECTORIES",
     }
 )
 

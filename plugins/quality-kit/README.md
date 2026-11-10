@@ -32,7 +32,7 @@ handled three different ways across this repository.
   own settings or permission mode already allow it. Approve
   each one once. Never choose "don't ask again" or add a `codacy` or `codacy-analysis` allow rule: that would
   pre-approve the write flags too. For `sonar`, no command is pre-approved directly: the read skills grant only `scripts/qlty-sonar-read.py` (plugin root), a wrapper
-  that runs fixed reads from the home directory and drops identity fields. `sonar api post` shares a
+  that runs fixed reads from a fresh, empty temporary directory and drops identity fields. `sonar api post` shares a
   prefix with `sonar api get`, so a direct `sonar api` command always prompts.
 - **Repository-specific policy** (which findings this repository accepts, and where) lives in the repository's
   own `CLAUDE.md`, `AGENTS.md` and `docs/ci.md`, not here.
@@ -48,7 +48,8 @@ period is undocumented, so it asks first.
 ## Language
 
 **Python.** The plugin's scripts are Python, standard library only. The adapters run no subprocess: each reads
-the JSON a provider's CLI already printed. Only a smoke test starts one, to exercise an adapter. New scripts added to this plugin stay in Python.
+the JSON a provider's CLI already printed. The one production subprocess is `scripts/qlty-sonar-read.py`, which runs
+the `sonar` CLI; the smoke tests also start the adapters and a stub `sonar`. New scripts added to this plugin stay in Python.
 
 ## Install
 
