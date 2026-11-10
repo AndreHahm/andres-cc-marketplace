@@ -326,7 +326,7 @@ field, not something the schema itself enumerates).
 **Claude's native pass:** review as yourself, following `$RUN/review.md` (`Grep`/`Glob` the repo to
 trace call sites when checking semantic correctness — not just the diff hunks). Read the diff batch by
 batch, `Read`ing the batch's `.diff` files in `$RUN/diffs-1/` (`references/scoped-review.md` section 3):
-Preflight step 1 deliberately did not put the diff text in context. Review every manifest `files` entry. Hold the findings in that envelope shape; write them with the write helper (stdin) to `$RUN/claude_fresh_eyes.json`
+Preflight step 1 deliberately did not put the diff text in context. Review every manifest `files` entry in the batches this run dispatches; a run limited at the batch limit skips the later batches' files (`references/scoped-review.md` section 3). Hold the findings in that envelope shape; write them with the write helper (stdin) to `$RUN/claude_fresh_eyes.json`
 (`dispatch.reviewer: "claude-fresh-eyes"`, `dispatch.backend: "claude"`, and every other field —
 nothing fills `dispatch`/`provenance`/`contract_version` automatically the way Codex's dispatch does
 — set explicitly per `references/self-authored-envelope-fields.md`).

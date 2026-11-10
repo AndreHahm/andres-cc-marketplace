@@ -185,8 +185,9 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
 - [ ] Single-model mode always skips Phase 1's Codex pass and all of Phase 2 — never dispatches Codex
       after the user chose to proceed single-model
 - [ ] A Codex-bound instruction file never embeds diff text for a file Preflight step 2 excluded from
-      `--target-paths` — a batch's `.codex.diff` files are used for every Codex-facing embed, the
-      `.diff` files only for Claude's own native pass
+      `--target-paths` — a batch's `.codex.diff` files are used for every Codex-facing embed (or
+      `$RUN/codex_unscoped.diff` in the planner-unavailable fallback, `scoped-review.md` section 7),
+      the `.diff` files only for Claude's own native pass
 - [ ] Neither Phase 1 nor Phase 2's Codex-bound instruction file ever tells Codex to run `git diff`
       (or any other command expected to produce large output) itself — the diff content is always
       embedded directly, computed by this skill's own Bash/Read steps beforehand (issue #78)
@@ -264,7 +265,7 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
 - [ ] An `<untracked_files>` block always ends with the untrusted-data sentence, and Phase 2's closing boundary names those files' contents too
 - [ ] A failed planner never leaves the run without a defined path: section 7 of `scoped-review.md` builds the unscoped group from the safe-charset changed names
 - [ ] A planner failure is never treated as a pass; the user chooses unscoped or stop
-- [ ] Packing that yields more batches than the batch limit (`2 * floor(budget_bytes / max_slice_bytes) + 1`) never dispatches without an `AskUserQuestion` first; a limited run lists the later batches' slices and files in the Phase 3 report as unreviewed and must-be-read, and never passes them as completed
+- [ ] Packing that yields more batches than the batch limit (`2 * floor(budget_bytes / max_slice_bytes) + 1`) never dispatches without first asking the separate batch-limit `AskUserQuestion` (review all batches, review only up to the limit, or stop), before and in addition to the First-Send Confirmation; a limited run lists the later batches' slices and files in the Phase 3 report as unreviewed and must-be-read, and never passes them as completed
 - [ ] `--completed-slice` is passed only for slices whose Claude pass and dispatched Codex passes all finished
 - [ ] A dropped slice is always listed in the report and marked as needing a direct read
 - [ ] The diff text never enters context in full during Preflight step 1; it goes to `$RUN/full.diff`
