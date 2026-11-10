@@ -5,7 +5,7 @@ Checked 2026-11-07 against `sonar` CLI 1.11.0 and SonarQube Cloud.
 ## Read forms
 
 Run each form exactly as written. `<read>` stands for
-`python3 -I ${CLAUDE_PLUGIN_ROOT}/skills/collecting-analysis-findings/scripts/sonar_read.py`, the pre-approved wrapper
+`python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/qlty-sonar-read.py`, the pre-approved wrapper
 that runs a fixed `sonar` read and prints only the fields shown. A non-zero exit means the lookup failed (1: `sonar`
 failed, for example a missing project, checked 2026-11-08; 2: a refused value, `sonar` off `PATH`, or a reply that is
 not JSON; 3: more than 10,000 issues): report that, never "nothing found". The gate form exits 0 with the verdict
@@ -66,13 +66,13 @@ The API refuses to go past 10,000 results with a `400`, so the wrapper stops the
 
 ## Gotchas
 
-- **`sonar` may be off `PATH`.** The default install is `~/.local/share/sonarqube-cli/bin/sonar`; `sonar_read.py`
+- **`sonar` may be off `PATH`.** The default install is `~/.local/share/sonarqube-cli/bin/sonar`; `qlty-sonar-read.py`
   finds it only on `PATH`, outside every checkout that encloses the working directory (`sonar.exe` on Windows), and
   exits 2 otherwise. A home directory that is itself a git checkout (a dotfiles repository) therefore always hides
   the default install, from inside a project too: install `sonar` in a `PATH` folder outside it.
 - **The banner goes to stderr.** Add `2>/dev/null` when reading JSON.
 - **Responses carry identity fields.** `author`, `assignee`, `contributors`, comment logins and commit messages. Use
-  the `sonar_read.py` forms: a bare `sonar api get` or `sonar list issues` prints them all into the session.
+  the `qlty-sonar-read.py` forms: a bare `sonar api get` or `sonar list issues` prints them all into the session.
 - **`--severities` names differ from response names** in MQR mode, and `MINOR` exits 2 with empty stdout.
 - **`.sonarcloud.properties` is read from the default branch only**, so a change takes effect after merge.
 - **No coverage under Automatic Analysis.** A missing coverage figure is expected, not a fault.

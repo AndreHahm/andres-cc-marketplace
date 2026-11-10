@@ -334,13 +334,17 @@ def _read(args: argparse.Namespace, sonar: str) -> list[Any]:
 
 
 IS_WINDOWS = os.name == "nt"
-# Variables the sonar CLI reads to choose the server or binaries it talks to (its own bundle, read
-# 2026-11-09). Inherited, any of them would send the token elsewhere, so they are dropped, like
-# codex-kit's gitEnv drops GIT_DIR and its siblings. Authentication variables are kept.
+# Variables the sonar CLI reads to choose the server, binaries or update script it uses (its own
+# bundle, read 2026-11-09 and 2026-11-10). Inherited, any of them would send the token elsewhere,
+# so they are dropped, like codex-kit's gitEnv drops GIT_DIR and its siblings. Authentication
+# variables are kept. Variables still passed through are listed under "Known residuals" in
+# collecting-analysis-findings' references/sonar-adapter.md.
 STRIPPED_ENV = frozenset(
     {
         "SONARQUBE_URL",
         "SONAR_HOST_URL",
+        "SONARQUBE_CLI_SERVER",
+        "SONARQUBE_CLI_UPDATE_SCRIPT_BASE_URL",
         "SONARQUBE_CLI_BINARIES_URL",
         "SONARQUBE_CLI_SONARCLOUD_URL",
         "SONARQUBE_CLI_SONARCLOUD_API_URL",
@@ -434,7 +438,7 @@ def main(argv: list[str] | None = None) -> int:
         sonar = _find_sonar()
         documents = _read(args, sonar)
     except ReadError as error:
-        print(f"sonar_read: {error}", file=sys.stderr)
+        print(f"qlty-sonar-read: {error}", file=sys.stderr)
         return error.code
     try:
         for document in documents:
