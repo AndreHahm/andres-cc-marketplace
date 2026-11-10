@@ -443,6 +443,9 @@ Deliberately not in `allowed-tools`, so each prompts: `git diff` and `git show` 
 `--output=<file>`, a write to any path), the `export GIT_INDEX_FILE` / `export CODEX_KIT_REVIEW_*` lines
 (a grant cannot pin the value they set) and the `guarded-dispatch.mjs` fallback (a grant would
 pre-approve a full-access dispatch). `git add -N` runs only through `scripts/git-review-intent-add.sh`.
+These prompt unless your own settings or permission mode already allow them. For `git diff` and `git show`
+the reason is a shared prefix: any prefix rule for them also admits `--output`. Approve each run once and
+do not add a persistent allow rule for them.
 
 ## Deliberately NOT done
 
@@ -454,7 +457,7 @@ See `references/deliberately-not-done.md` (extracted per plugin-rulebook's R13 l
 |---|---|
 | `references/scoped-review.md` | Planner run, folder pick, dispatch batches, timeouts, completed slices, round two |
 | `references/codex-pass-assembly.md` | Per-batch Codex eligibility, Phase 1 and Phase 2 instruction files |
-| `references/testing-scenarios.md` | The 37 scenarios and the quality-gate checklist |
+| `references/testing-scenarios.md` | The 37 scenarios, the quality-gate checklist and the run history |
 | `references/resolver-failure-handling.md`, `references/dispatcher-trust-pattern.md` | Partial failure; why the dispatcher-touched check is built the way it is (planner trust is in `references/scoped-review.md`) |
 | `references/diff-mechanics-rationale.md`, `references/index-seeding-rationale.md`, `references/embed-diff-not-run-rationale.md`, `references/symlink-exclusion-rationale.md`, `references/self-authored-envelope-fields.md`, `references/deliberately-not-done.md` | Why the Inputs and Preflight steps are built the way they are |
 | `scripts/smoke_test.py`, `scripts/preflight_fixtures_test.py` | Structural self-check; Preflight chain run against scratch repositories |
@@ -479,12 +482,6 @@ identity, closing-tag neutralization, partial-failure preservation, scoped revie
 `scripts/preflight_fixtures_test.py` runs the Preflight chain, planner step included, against scratch
 repositories.
 
-**Last dated run record:** `2026-10-13, evals/cross-model-review/workspace/iteration-10/` — evals 7-9
-(scoped review: one batch for a small diff, a batch timeout, round two with an unfinished slice), Quick
-Workflow, `with_skill` only, no baseline: 12/12 assertions. `iteration-12` adds eval 12 (batch limit):
-4/4; `iteration-13` re-runs it after the Codex-eligible count fix: 5/5, same shape. All are dry runs, not
-live dispatches, and include no live run of the scoped flow (one ran 2026-10-14 for PR #567, see the #568
-report). Eval 8 showed `references/scoped-review.md` section 4 did not say what follows a successful retry;
-that sentence was added after the run and has not been re-run. A security review after that run found
-`git diff` has no pathspec-file option, so per-batch diffs come from planner-written files (`--diff-dir`),
-and the planner is skipped with a question when the diff changes it; fixtures and planner tests cover both.
+**Last dated run record:** `2026-11-10, evals/cross-model-review/workspace/iteration-14/` — eval 12
+(batch limit), Full Pipeline: `with_skill` 5/5, baseline 0/5. A dry run of the committed text, not a live
+dispatch. Earlier runs and their open items are under "Run history" in `references/testing-scenarios.md`.

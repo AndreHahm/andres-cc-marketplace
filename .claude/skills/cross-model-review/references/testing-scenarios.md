@@ -270,3 +270,23 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
 - [ ] The diff text never enters context in full during Preflight step 1; it goes to `$RUN/full.diff`
 - [ ] Every diff command uses `--no-renames --text --no-ext-diff --no-textconv --ignore-submodules=none`
 - [ ] A path from the manifest is never typed into a command; slice diffs come from files the planner wrote
+
+## Run history
+
+Moved here from SKILL.md's Testing & Validation section, which keeps only the latest run.
+
+- **2026-10-13, `evals/cross-model-review/workspace/iteration-10/`:** evals 7-9 (scoped review: one batch
+  for a small diff, a batch timeout, round two with an unfinished slice), Quick Workflow, `with_skill`
+  only, no baseline: 12/12 assertions. Eval 8 showed `references/scoped-review.md` section 4 did not say
+  what follows a successful retry; that sentence was added after the run and has not been re-run. A
+  security review after that run found `git diff` has no pathspec-file option, so per-batch diffs come
+  from planner-written files (`--diff-dir`), and the planner is skipped with a question when the diff
+  changes it; fixtures and planner tests cover both.
+- **`iteration-12`:** adds eval 12 (batch limit), same shape: 4/4.
+- **`iteration-13`:** re-runs eval 12 after the Codex-eligible count fix, same shape: 5/5.
+- **2026-11-10, `iteration-14`:** eval 12 after the rebase onto main, Full Pipeline with a baseline arm:
+  `with_skill` 5/5, baseline 0/5 (the baseline guessed a batch limit of 3 instead of 7);
+  `benchmark.json` is in that folder.
+
+All of these are dry runs of the committed text, not live dispatches, and include no live run of the
+scoped flow (one ran 2026-10-14 for PR #567, see the #568 report).
