@@ -153,7 +153,7 @@ if [ "$SOURCE" = "startup" ] || [ "$SOURCE" = "clear" ] || [ "$SOURCE" = "compac
             echo "PHASE_TRANSITION_SUGGESTED=0"
             echo "MILESTONE_SUGGESTED=0"
             echo "START_TIME=$START_TIME"
-            echo "LAST_MILESTONE_TIME=$START_TIME"
+            echo "LAST_MILESTONE_TIME=0"
             echo "T1=$T1"
             echo "T2=$T2"
             echo "T3=$T3"

@@ -493,7 +493,8 @@ def estimate_context_percentage(hook_input: dict, session_id: str = "") -> float
         # The small tail almost always holds the latest usage record. When a huge tool
         # result pushed it out, reuse the last value seen in this session instead of
         # re-reading the large tail on every call; only a session with no value yet
-        # pays for the large scan.
+        # pays for the large scan. The reused value can lag by one assistant turn (the
+        # call whose record a >512 KB result pushed out); the next call sees a fresh record.
         used = _latest_usage_tokens(transcript_path, USAGE_TAIL_BYTES[:1])
         cache = read_cache(session_id)
         cached = cache.get("last_usage_tokens")
