@@ -560,11 +560,38 @@ def check_nested_claude_gets_no_secrets_and_few_tools():
     if not seen.endswith("|keep-me") or "leak-me" in seen:
         return False, f"the shim saw an unfiltered environment: {seen!r}"
     run_eval_source = (SKILL_DIR / "scripts" / "run_eval.py").read_text(encoding="utf-8")
-    restricted = '"--tools",\n            "Skill,Read"' in run_eval_source
+    restricted = '"--tools",\n            "Skill",\n' in run_eval_source
     if not restricted or "child_env()" not in run_eval_source:
-        return False, "run_eval.py does not restrict tools to Skill,Read or use child_env()"
+        return False, "run_eval.py does not restrict tools to Skill or use child_env()"
+    if '"Read"' in run_eval_source:
+        return False, "run_eval.py still grants or detects the Read tool"
     if '"--strict-mcp-config"' not in run_eval_source:
         return False, "run_eval.py lets MCP servers into the child"
+    improve_source = (SKILL_DIR / "scripts" / "improve_description.py").read_text(encoding="utf-8")
+    if "Everything inside <scores_summary>" not in improve_source:
+        return False, "improve_description.py has no data-only boundary for <scores_summary>"
+    saved_switch = os.environ.get("CLAUDE_CODE_USE_BEDROCK")
+    os.environ["CLAUDE_CODE_USE_BEDROCK"] = "1"
+    try:
+        try:
+            child_env()
+            refused = False
+        except RuntimeError:
+            refused = True
+        try:
+            run_eval.run_eval(
+                [{"query": "q", "should_trigger": True}], "ok", "d", 1, 1, pathlib.Path(".")
+            )
+            run_refused = False
+        except RuntimeError:
+            run_refused = True
+    finally:
+        if saved_switch is None:
+            os.environ.pop("CLAUDE_CODE_USE_BEDROCK", None)
+        else:
+            os.environ["CLAUDE_CODE_USE_BEDROCK"] = saved_switch
+    if not refused or not run_refused:
+        return False, "a cloud-provider switch starts a child that cannot authenticate"
     return True, "nested claude -p gets no unrelated credentials and only the tools it needs"
 
 

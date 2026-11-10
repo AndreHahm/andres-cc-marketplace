@@ -39,12 +39,8 @@ _CHILD_ENV_NAMES = frozenset(
         "ANTHROPIC_CUSTOM_HEADERS",
         "ANTHROPIC_PROFILE",
         "CLAUDE_CODE_OAUTH_TOKEN",
-        # Endpoint and provider. The switches stay so that a child of a cloud-provider setup
-        # fails on its missing keys instead of silently billing another account.
+        # Endpoint
         "ANTHROPIC_BASE_URL",
-        "CLAUDE_CODE_USE_BEDROCK",
-        "CLAUDE_CODE_USE_FOUNDRY",
-        "CLAUDE_CODE_USE_VERTEX",
         # Config directory, which holds the login, and model selection
         "CLAUDE_CONFIG_DIR",
         "ANTHROPIC_MODEL",
@@ -56,6 +52,13 @@ _CHILD_ENV_NAMES = frozenset(
     }
 )
 _CHILD_ENV_PREFIXES = ("LC_", "XDG_")
+# Cloud-provider modes authenticate through provider credentials the allowlist withholds,
+# so child_env() refuses them instead of starting a child that cannot authenticate.
+_PROVIDER_SWITCHES = (
+    "CLAUDE_CODE_USE_BEDROCK",
+    "CLAUDE_CODE_USE_FOUNDRY",
+    "CLAUDE_CODE_USE_VERTEX",
+)
 
 
 def child_env() -> dict[str, str]:
@@ -65,7 +68,17 @@ def child_env() -> dict[str, str]:
     variable outside the allowlist above. A setup that authenticates through other
     variables (for example cloud-provider keys or workload identity federation) must add
     them here deliberately.
+
+    Raises RuntimeError when a cloud-provider switch is set, since its credentials are not
+    forwarded.
     """
+    active = [name for name in _PROVIDER_SWITCHES if os.environ.get(name)]
+    if active:
+        raise RuntimeError(
+            f"{', '.join(active)} is set, but the nested claude -p does not receive "
+            "cloud-provider credentials. Unset it to use Anthropic authentication, or add "
+            "the provider's credential variables to _CHILD_ENV_NAMES in scripts/utils.py."
+        )
     return {
         k: v
         for k, v in os.environ.items()
