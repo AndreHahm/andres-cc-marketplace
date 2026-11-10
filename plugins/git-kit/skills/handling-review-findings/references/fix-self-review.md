@@ -40,7 +40,7 @@ own `Bash` call; never combine them, and never put a command substitution inside
    vouch for itself, and the driver's `ungraded` list only covers edits inside the current fix's own diff.
    An installed plugin skips this step: its launcher is the install directory's, not this tree's.
 4. ```bash
-   python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/git-run-trusted-fix-diff.py --upstream <owner>/<repo> --target-branch '<base>' --base <head> --worktree
+   python3 -I "${CLAUDE_PLUGIN_ROOT}"/scripts/git-run-trusted-fix-diff.py --upstream <owner>/<repo> --target-branch '<base>' --base <head> --worktree
    ```
    With `CLAUDE_PLUGIN_ROOT` empty (this repository's own sessions) the variable would expand to
    `/scripts/...`: substitute the mirror root as `.claude/rules/resolve-plugin-root-to-claude-mirror.md`
@@ -123,7 +123,7 @@ made by anything other than your own edits, so say in the reply's verification l
 your own edits. There is no `git diff` grant, because `git diff` reads the index and the working tree, where
 repository configuration can run commands, and `git diff --output=<path>` writes any path (#582).
 
-**A fix that is already committed**: get its diff with `python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-fix-diff.py
+**A fix that is already committed**: get its diff with `python3 -I "${CLAUDE_PLUGIN_ROOT}"/scripts/git-review-fix-diff.py
 --base <the full id of the commit before the fix>`. It compares that commit's tree with `HEAD`'s and takes no
 other argument. Exit 2 means the diff could not be shown (not in a repository, an unknown commit or one that
 is not a commit, an empty diff because the base is wrong, git not found, a timeout, or over 1,000,000 bytes):
