@@ -1073,8 +1073,8 @@ def check_skills() -> None:
         collecting,
     )
     check(
-        "collecting pre-approves no direct sonar command, only the sonar_read.py wrapper",
-        not re.search(r"Bash\(sonar", collecting) and "scripts/sonar_read.py:*)" in collecting,
+        "collecting pre-approves no direct sonar command, only the qlty-sonar-read.py wrapper",
+        not re.search(r"Bash\(sonar", collecting) and "scripts/qlty-sonar-read.py:*)" in collecting,
         collecting,
     )
     sonar_ref = (SKILL_DIR / "references" / "sonar-adapter.md").read_text(encoding="utf-8")
@@ -1110,7 +1110,7 @@ import json, os, sys
 from urllib.parse import parse_qs, urlsplit
 args, mode = sys.argv[1:], os.environ.get("STUB_MODE", "ok")
 with open(os.environ["STUB_LOG"], "a", encoding="utf-8") as log:
-    seen = {k: os.environ.get(k) for k in ("SONAR_TOKEN", "SONARQUBE_CLI_SONARCLOUD_URL", "PATH")}
+    seen = {k: v for k, v in os.environ.items() if k.startswith("SONAR") or k == "PATH"}
     log.write(json.dumps({"cwd": os.getcwd(), "argv": args, "env": seen}) + "\n")
 if mode == "fail":
     sys.exit(5)
@@ -1159,7 +1159,7 @@ else:
 
 
 def check_sonar_read() -> None:
-    """sonar_read.py against a stub `sonar` on PATH: projection, paging, cwd, refusals."""
+    """qlty-sonar-read.py against a stub `sonar` on PATH: projection, paging, cwd, refusals."""
     with tempfile.TemporaryDirectory() as tmp:
         bin_dir, log = Path(tmp) / "bin", Path(tmp) / "log.jsonl"
         bin_dir.mkdir()
@@ -1178,7 +1178,13 @@ def check_sonar_read() -> None:
                 SONAR_TOKEN="placeholder-token",  # never a real token in the stub's log
             )
             return subprocess.run(
-                [sys.executable, "-I", "-B", str(HERE / "sonar_read.py"), *argv],
+                [
+                    sys.executable,
+                    "-I",
+                    "-B",
+                    str(HERE.parents[2] / "scripts" / "qlty-sonar-read.py"),
+                    *argv,
+                ],
                 capture_output=True,
                 text=True,
                 encoding="utf-8",
@@ -1480,16 +1486,27 @@ def check_sonar_read() -> None:
             f"{done.returncode} {child_path}",
         )
         log.write_text("", encoding="utf-8")
-        os.environ["SONARQUBE_CLI_SONARCLOUD_URL"] = "https://attacker.example"
+        wrapper = (HERE.parents[2] / "scripts" / "qlty-sonar-read.py").read_text(encoding="utf-8")
+        overrides = next(
+            tuple(sorted(ast.literal_eval(node.value.args[0])))
+            for node in ast.parse(wrapper).body
+            if isinstance(node, ast.Assign)
+            and isinstance(node.value, ast.Call)
+            and any(isinstance(t, ast.Name) and t.id == "STRIPPED_ENV" for t in node.targets)
+        )
+        for name in overrides:
+            os.environ[name] = "https://attacker.example"
         try:
             run("pr-list", "--project", "p")  # run() supplies the placeholder SONAR_TOKEN
         finally:
-            del os.environ["SONARQUBE_CLI_SONARCLOUD_URL"]
+            for name in overrides:
+                del os.environ[name]
         seen = json.loads(log.read_text(encoding="utf-8").splitlines()[0])["env"]
         check(
-            "sonar_read drops an endpoint override and keeps the auth token",
-            {k: seen[k] for k in ("SONAR_TOKEN", "SONARQUBE_CLI_SONARCLOUD_URL")}
-            == {"SONAR_TOKEN": "placeholder-token", "SONARQUBE_CLI_SONARCLOUD_URL": None},
+            f"sonar_read drops all {len(overrides)} STRIPPED_ENV overrides, keeps the token",
+            len(overrides) >= 10
+            and {k: seen.get(k) for k in ("SONAR_TOKEN", *overrides)}
+            == {"SONAR_TOKEN": "placeholder-token", **dict.fromkeys(overrides)},
             str(seen),
         )
         log.write_text("", encoding="utf-8")

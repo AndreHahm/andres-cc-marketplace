@@ -108,8 +108,7 @@ def check_grants(fm: dict[str, str], body: str) -> None:
         == [
             "Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/skills/resolving-analysis-findings"
             "/scripts/read_pr_head.py:*)",
-            "Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/skills/collecting-analysis-findings"
-            "/scripts/sonar_read.py issue-state:*)",
+            "Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/qlty-sonar-read.py issue-state:*)",
         ],
     )
     check(
@@ -301,7 +300,12 @@ def check_sonar(body: str) -> None:
     )
     check(
         "the Sonar project key comes from the record and is validated",
-        "`source.repository`" in body and "^[A-Za-z0-9][A-Za-z0-9._:-]{0,399}$" in body,
+        "`source.repository`" in body
+        and "Sonar project-key pattern in that same paragraph" in body
+        and "^[A-Za-z0-9][A-Za-z0-9._:-]{0,399}$"
+        in (SKILL_DIR.parent / "collecting-analysis-findings" / "SKILL.md").read_text(
+            encoding="utf-8"
+        ),
     )
     check(
         ".sonar-config.json is denied, .codacy.yml stays at rung 4, .sonarcloud.properties never",

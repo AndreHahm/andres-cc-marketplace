@@ -5,14 +5,14 @@ not covered. Re-check the shapes below before trusting them after a CLI update.
 
 ## Read commands (the only forms this skill runs)
 
-Every read is `python3 -I ${CLAUDE_PLUGIN_ROOT}/skills/collecting-analysis-findings/scripts/sonar_read.py <form> ...`,
+Every read is `python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/qlty-sonar-read.py <form> ...`,
 piped into `scripts/collect_sonar.py --input -`. The wrapper runs `sonar` with a fixed argument list from the home
 directory (a repository's own configuration file cannot pick the server), validates every value, and prints only
 the fields the adapter reads: the raw responses hold `author`, `assignee`, `contributors`, comment logins and commit
 messages, which it drops. `sonar` must be on `PATH` (`sonar.exe` on Windows) in a folder outside the repository; the
 default install is `~/.local/share/sonarqube-cli/bin`.
 
-| Source | `sonar_read.py` form | `--kind` |
+| Source | `qlty-sonar-read.py` form | `--kind` |
 |---|---|---|
 | A PR's analysis state, first | `pr-list --project <key> --pull-request <n>` | `pr-status` |
 | A PR's open issues | `issues --project <key> --pull-request <n>` | `pr` |
@@ -21,14 +21,15 @@ default install is `~/.local/share/sonarqube-cli/bin`.
 
 What each form runs: `pr-list` is `sonar api get /api/project_pull_requests/list`; `issues` is `sonar list issues`
 with `--format json --page-size 500 --page <n>`; `ignored` is `sonar api get /api/issues/search` with
-`issueStatuses=ACCEPTED,FALSE_POSITIVE`, `additionalFields=comments`, `ps=500` and `p=<n>`. A fifth form,
+`issueStatuses=ACCEPTED,FALSE_POSITIVE`, `additionalFields=comments`, `ps=500` and `p=<n>`. A fourth form,
 `issue-state --issue <id>`, reads one issue's `issueStatus` and comment count (never the text; exit 2 unless Sonar
 returns exactly that issue with a status) for
 `resolving-analysis-findings` and `using-sonarqube-cloud`, and `gate-status --project <key>` with exactly one of
 `--branch` or `--pull-request` runs `sonar quality-gate status` for `using-sonarqube-cloud`.
 
 The `ignored` form keeps only the last comment's text, the one the record stores as `ignore_comment`. That text
-can still name a person: see `findings-record.md` before sharing a record.
+can still name a person or hold contact details: keep the record in the scratchpad, and quote an `ignore_comment`
+in a report or a shared file only when asked.
 
 **Which `sonar` runs, and with what environment.** The wrapper uses codex-kit's `gitExecutable` pattern (`cdx-lintignore-base.mjs`):
 it searches `PATH` itself and skips an empty, relative or quoted-empty entry and any folder inside a checkout that
@@ -37,13 +38,19 @@ in its superproject excludes the outer tree too), compared by spelling and by fi
 `.venv` or `node_modules/.bin` there can carry a `sonar` a branch committed. A `sonar` link that resolves into such a
 folder is refused, and `sonar` itself gets the same filtered `PATH`. It accepts only `sonar.exe` on Windows, so a
 `.cmd` shim never runs through `cmd.exe`. Like codex-kit's `gitEnv`, it drops the variables the CLI reads to choose
-its server (`SONARQUBE_URL`, `SONAR_HOST_URL` and the `SONARQUBE_CLI_*_URL` overrides, read from the CLI's own bundle
-2026-11-09) and keeps the authentication ones. A security review checked this lookup on 2026-11-09.
+its server or fetch code (`SONARQUBE_URL`, `SONAR_HOST_URL`, `SONARQUBE_CLI_SERVER`, the `SONARQUBE_CLI_*_URL`
+overrides and `SONARQUBE_CLI_UPDATE_SCRIPT_BASE_URL`, read from the CLI's own bundle 2026-11-09 and 2026-11-10) and keeps the authentication ones. A security review checked this lookup on 2026-11-09.
 
 **Known residuals.** A `sonar` in a `PATH` folder outside every enclosing checkout is trusted, as the former direct
 grant trusted it, and the skip only knows the checkouts around the working directory: run from outside a checkout, an
-in-repository `PATH` folder is accepted. Other variables the CLI reads still pass through, among them
-`SONAR_USER_HOME` (whether it can hold server settings was not checked) and the standard proxy variables. On a filesystem without file ids (`st_ino` 0, for example
+in-repository `PATH` folder is accepted. Other variables the CLI reads still pass through: the proxy variables
+(`SONAR_HTTPS_PROXY_URL`, `SONAR_HTTP_PROXY_URL`, `HTTPS_PROXY`, `HTTP_PROXY`), the CA and TLS variables
+(`SONAR_CA_CERT`, `NODE_EXTRA_CA_CERTS`, `SSL_CERT_FILE`, `NODE_TLS_REJECT_UNAUTHORIZED`), `SONARQUBE_CLI_KEYCHAIN_FILE`
+and `SONAR_USER_HOME`, whose `sonarqube-cli/state.json` holds the active server URL (a 2026-11-10 security review read
+this from the bundle; stored proxy and CA settings are likely but unverified). A proxy combined with a trusted CA
+could intercept the token; proxies are kept so a corporate proxy still works. Because `SONARQUBE_CLI_SERVER` is
+dropped, environment-variable authentication through the wrapper works only for SonarQube Cloud's default region:
+SonarQube Server and US-region users authenticate with `sonar auth login` instead. On a filesystem without file ids (`st_ino` 0, for example
 FAT or some network shares) only the spelling comparison applies, so a junction or 8.3 alias there is not caught. It was not
 run on Windows: there, `python3` may be
 absent (the grants call `python3 -I`, like every quality-kit script grant), and that the Windows CLI is a `sonar.exe`
@@ -56,7 +63,7 @@ commit, so the `--status` file is not bound to them: the head comparison in `SKI
 the issues with `--confirm "<scratchpad>/findings-record.json" --output "<scratchpad>/findings-record.json"`: it
 compares the SHA, analysis date and gate with the record's and sets `source.snapshot_consistent`.
 
-**Several pages.** `sonar_read.py` fetches every page itself (500 per page) and prints one JSON document per page;
+**Several pages.** `qlty-sonar-read.py` fetches every page itself (500 per page) and prints one JSON document per page;
 `collect_sonar.py` reads them and refuses missing, repeated or overlapping pages. The API refuses to go past 10,000
 results (`400`, checked 2026-11-07), so the wrapper stops at 20 pages with exit 3, printing nothing: narrow the read
 with `--file`. `collect_sonar.py`'s own exit 3 (more pages exist) applies only to input that did not come from the
@@ -107,11 +114,11 @@ statuses above. Anything else exits 2.
 |---|---|---|
 | 0 | Result written | On stdout, or with `--output` a one-line summary on stdout and the result in the file |
 | 1 | Stdout could not be written, because the reader left early or the write failed: treat the output as incomplete. With `--output`, the file is written and only the summary line was lost |
-| 2 | Every exit 2 of `collect_codacy.py` (see `codacy-adapter.md`), and: a `component` outside `<project key>:`, an unlisted PR, a `--status` file that is malformed, for another project or for another PR, a status or kind mismatch, pages missing, repeated or overlapping, more than 10,000 results, or an invalid `--project` | Message on stderr, nothing on stdout, no output file created or changed |
+| 2 | The input is unreadable, outside a scratchpad directory you own, not a regular file, larger than 32 MiB, not valid JSON or nested too deeply; the command line is invalid; `--output` is refused (outside a directory named `scratchpad`, on POSIX one you do not own or that others can write to, inside a folder containing `.git`, a symlink leaving the scratchpad, a directory, or a missing directory); or: a `component` outside `<project key>:`, an unlisted PR, a `--status` file that is malformed, for another project or for another PR, a status or kind mismatch, pages missing, repeated or overlapping, more than 10,000 results, or an invalid `--project` | Message on stderr, nothing on stdout, no output file created or changed |
 | 3 | Valid so far, but more pages exist | Message on stderr with the page count, nothing on stdout, no output file |
 
 The script shares its input and output guards with `collect_codacy.py` by importing them, so a guard fixed
-there applies here. The only Sonar grant is `sonar_read.py`. If the CLI fails, the wrapper exits 1 (2 for a
-response that is not JSON; `gate-status` instead prints a failing or uncomputed gate's verdict, see
-`using-sonarqube-cloud`'s `cli-commands.md`) and prints nothing; with `set -o pipefail` the pipe fails, and without it the adapter
+there applies here. The only Sonar grant is `qlty-sonar-read.py`. If the CLI fails, the wrapper exits 1 (2 for a
+response that is not JSON; `gate-status` instead prints the verdict and exits 0 when the CLI reports a failing
+gate with exit 51, or exit 1 with an uncomputed gate) and prints nothing; with `set -o pipefail` the pipe fails, and without it the adapter
 gets empty input and exits 2.

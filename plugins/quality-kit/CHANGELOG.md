@@ -5,7 +5,7 @@ All notable changes to this plugin are documented here.
 ## [Unreleased]
 
 ### Changed
-- Sonar reads go through `collecting-analysis-findings/scripts/sonar_read.py`, which runs fixed reads with validated
+- Sonar reads go through `scripts/qlty-sonar-read.py` (plugin root), which runs fixed reads with validated
   values, fetches every page, and drops identity fields. It replaces the `sonar list issues` grant, which also
   admitted a bare run printing `author` and `assignee`, the prompting `sonar api get | jq` reads, and
   `using-sonarqube-cloud`'s direct `sonar quality-gate status` grant, which ran from the checkout.
