@@ -478,13 +478,13 @@ def _maybe_reset_after_compaction(session_id: str = "") -> None:
             pass
 
 
-def estimate_context_percentage(hook_input: dict, session_id: str = "") -> float:
+def estimate_context_percentage(hook_input: dict, session_id: str = "") -> tuple[float, bool]:
     """
-    Estimate context usage as a percentage (0-100) from the latest real token
-    usage in the transcript (see _latest_usage_tokens) against the configured
+    Estimate context usage as `(percentage 0-100, measured)` from the latest real
+    token usage in the transcript (see _latest_usage_tokens) against the configured
     window (see _context_window_tokens). Fallback when the transcript has no
     usage record yet: a tool-call counter (CLAUDE_CONTEXT_MAX_TOOL_CALLS), which
-    is very rough.
+    is very rough and returns `measured=False`.
     """
     _maybe_reset_after_compaction(session_id)
 
@@ -507,7 +507,7 @@ def estimate_context_percentage(hook_input: dict, session_id: str = "") -> float
             if cached != used:
                 cache["last_usage_tokens"] = used
                 save_cache(cache, session_id)
-            return min(used / _context_window_tokens() * 100, 100)
+            return min(used / _context_window_tokens() * 100, 100), True
 
     # Fallback: tool-call counter (very rough)
     cache = read_cache(session_id)
@@ -515,7 +515,7 @@ def estimate_context_percentage(hook_input: dict, session_id: str = "") -> float
     cache["tool_calls"] = tool_calls
     save_cache(cache, session_id)
     max_calls = _env_int("CLAUDE_CONTEXT_MAX_TOOL_CALLS", DEFAULT_MAX_TOOL_CALLS)
-    return min((tool_calls / max_calls) * 100, 100)
+    return min((tool_calls / max_calls) * 100, 100), False
 
 
 def is_throttled(percentage: float, session_id: str = "") -> bool:
@@ -599,14 +599,16 @@ def run_context_monitor() -> int:
 
     try:
         # Estimate current context usage (coarse proxy)
-        percentage = estimate_context_percentage(hook_input, session_id)
+        percentage, measured = estimate_context_percentage(hook_input, session_id)
 
         # Persist the latest estimate so the status line can surface it (best-effort).
         try:
             (session_dir / "context-pct.txt").write_text(f"{percentage:.0f}", encoding="utf-8")
         except Exception:
             pass
-        _publish_for_hooks(session_id, percentage)
+        # The shell hooks gate their alerts on *real* context usage. A tool-call-count
+        # estimate is not that, so publish 0 (a closed gate whenever the minimum is positive).
+        _publish_for_hooks(session_id, percentage if measured else 0.0)
 
         # Check throttling
         if is_throttled(percentage, session_id):

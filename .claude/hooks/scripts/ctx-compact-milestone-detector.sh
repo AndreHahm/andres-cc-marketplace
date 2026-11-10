@@ -277,16 +277,10 @@ fi
 
 # Output JSON with suggestion if any
 if [ -n "$SUGGESTION" ]; then
-    # Send system notification (macOS or Linux)
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        osascript -e "display notification \"$SUGGESTION\" with title \"Strategic Compact\"" 2>/dev/null &
-    elif command -v notify-send &>/dev/null; then
-        notify-send "Strategic Compact" "$SUGGESTION" 2>/dev/null &
-    fi
-
-    # One channel only (issue #690): a user-facing systemMessage. It used to be sent three
-    # ways -- also as model-visible additionalContext (which the model then repeated to
-    # the user) and echoed to stderr -- so every milestone arrived two or three times.
+    # One channel only (issue #690): a user-facing systemMessage. It used to be sent
+    # several ways -- also as model-visible additionalContext (which the model then
+    # repeated to the user), echoed to stderr, and as a desktop notification -- so every
+    # milestone arrived two or three times.
     cat << EOF
 {
   "systemMessage": "$SUGGESTION"

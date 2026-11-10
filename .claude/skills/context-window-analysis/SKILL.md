@@ -66,7 +66,7 @@ produced contradictory advice for the same real percentage (found by consistency
 | Usage | Status | Action |
 |-------|--------|--------|
 | < 40% | HEALTHY | No action needed |
-| 40-<80% | MONITOR | One awareness nudge at 65%; consider /compact soon |
+| 40-<80% | MONITOR | Awareness nudges at 65% (one nudge only); consider /compact soon |
 | 80-<90% | WARNING | Run /compact or /clear |
 | >= 90% | CRITICAL | Immediate action required |
 
@@ -159,7 +159,7 @@ itself) are named in `evals.json`'s own `uncovered` list, not yet exercised. The
 this section documents (the examples-reference link, Option 4's real session-kit reference, no
 oversized blocks) are separately covered by the persisted `scripts/smoke_test.py`.
 
-**Last dated run record:** `scripts/smoke_test.py` — 6/6 checks passing as of 2026-09-17.
+**Last dated run record:** `scripts/smoke_test.py` — 6/6 checks passing as of 2026-11-10 (also 6/6 on 2026-09-17; the MONITOR-row wording was changed in PR #694 and the check re-run).
 
 **Verify this skill activates on:**
 - "how full is my context"
