@@ -89,10 +89,10 @@ def run_single_query(
             "stream-json",
             "--verbose",
             "--include-partial-messages",
-            # Triggering is detected from Skill/Read tool calls only; the skill under
-            # test is untrusted text, so the child gets no shell, edit or network tools.
+            # Triggering is detected from the Skill tool call only; the skill under test
+            # is untrusted text, so the child gets no file, shell, edit or network tools.
             "--tools",
-            "Skill,Read",
+            "Skill",
             # --tools names built-in tools only; this also keeps MCP servers (user,
             # project or IDE) out of the child.
             "--strict-mcp-config",
@@ -115,6 +115,7 @@ def run_single_query(
         )
         # The query goes over stdin, never as an argv element: a query starting with `-` would
         # be parsed by the claude CLI as an option (`claude -p "--version"` prints the version).
+        assert process.stdin is not None  # set by stdin=subprocess.PIPE
         try:
             process.stdin.write(query.encode("utf-8"))
             process.stdin.close()
@@ -165,7 +166,7 @@ def run_single_query(
                             cb = se.get("content_block", {})
                             if cb.get("type") == "tool_use":
                                 tool_name = cb.get("name", "")
-                                if tool_name in ("Skill", "Read"):
+                                if tool_name == "Skill":
                                     pending_tool_name = tool_name
                                     accumulated_json = ""
                                 else:
@@ -193,10 +194,6 @@ def run_single_query(
                             tool_name = content_item.get("name", "")
                             tool_input = content_item.get("input", {})
                             if tool_name == "Skill" and clean_name in tool_input.get("skill", ""):
-                                triggered = True
-                            elif tool_name == "Read" and clean_name in tool_input.get(
-                                "file_path", ""
-                            ):
                                 triggered = True
                             return triggered
 
@@ -230,6 +227,8 @@ def run_eval(
     # failing here keeps run_single_query's swallowed-exception path from hiding it.
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]*", skill_name):
         raise ValueError(f"unsafe skill name {skill_name!r}: use letters, digits, '-' and '_'")
+    # Same reason: an unsupported provider setup must stop the run, not become a failed query.
+    child_env()
     results = []
 
     with ProcessPoolExecutor(max_workers=num_workers) as executor:
