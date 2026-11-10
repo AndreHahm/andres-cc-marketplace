@@ -28,7 +28,7 @@ main-chain assistant turn in the transcript (input + cache-read + cache-creation
 tokens), against the configured window. The window is resolved in this order:
 the CLAUDE_CONTEXT_WINDOW_TOKENS env var, then `context_window_tokens` in
 `.claude/context-kit.local.json` (gitignored, per project), then the same key in
-the shipped `assets/context-kit.settings.json`, then 1,000,000. Only
+the shipped `assets/context-kit.settings.json`, then 200,000. Only
 when no usage record exists yet do we fall back to a tool-call counter
 (CLAUDE_CONTEXT_MAX_TOOL_CALLS, default 400). The transcript FILE SIZE is
 deliberately not used: it counts records that never reach the model (instructions
@@ -56,7 +56,7 @@ THROTTLE_INTERVAL = 60
 # Last-resort fallback; keep equal to `context_window_tokens` in context-kit.settings.json.
 # It is the effective value in the .claude/ mirror copies of this script, which sit
 # next to no settings file.
-DEFAULT_CONTEXT_WINDOW_TOKENS = 1_000_000
+DEFAULT_CONTEXT_WINDOW_TOKENS = 200_000
 DEFAULT_ALERT_MIN_PERCENT = 50  # likewise equal to alert_min_context_percent in the settings file
 DEFAULT_MAX_TOOL_CALLS = 400  # fallback proxy when no usage record exists yet
 SETTINGS_FILE_NAME = "context-kit.settings.json"
@@ -144,17 +144,20 @@ def _publish_for_hooks(session_id: str, percentage: float) -> None:
         pass
 
 
-def _latest_usage_tokens(transcript_path: str) -> int | None:
+def _latest_usage_tokens(
+    transcript_path: str, tails: tuple[int, ...] = USAGE_TAIL_BYTES
+) -> int | None:
     """Total input-side tokens (input + cache read + cache creation) the API
     reported for the latest main-chain assistant turn, or None if the
-    transcript has no such record. Reads only the file's tail, newest first.
+    transcript has no such record within the given tail sizes (tried in order).
+    Reads only the file's tail, newest first.
 
     Sidechain (subagent) records are skipped: their usage describes a separate,
     smaller context, not this session's."""
     try:
         size = os.path.getsize(transcript_path)
         with open(transcript_path, "rb") as fh:
-            for tail in USAGE_TAIL_BYTES:
+            for tail in tails:
                 start = max(size - tail, 0)
                 fh.seek(start)
                 lines = fh.read().splitlines()
@@ -467,6 +470,7 @@ def _maybe_reset_after_compaction(session_id: str = "") -> None:
     cache["shown_warn_80"] = False
     cache["shown_warn_90"] = False
     cache["tool_calls"] = 0
+    cache.pop("last_usage_tokens", None)  # pre-compaction usage is stale now
     if save_cache(cache, session_id):
         try:
             marker.unlink()
@@ -486,8 +490,22 @@ def estimate_context_percentage(hook_input: dict, session_id: str = "") -> float
 
     transcript_path = hook_input.get("transcript_path", "")
     if transcript_path:
-        used = _latest_usage_tokens(transcript_path)
+        # The small tail almost always holds the latest usage record. When a huge tool
+        # result pushed it out, reuse the last value seen in this session instead of
+        # re-reading the large tail on every call; only a session with no value yet
+        # pays for the large scan.
+        used = _latest_usage_tokens(transcript_path, USAGE_TAIL_BYTES[:1])
+        cache = read_cache(session_id)
+        cached = cache.get("last_usage_tokens")
+        if used is None:
+            if isinstance(cached, int) and not isinstance(cached, bool) and cached > 0:
+                used = cached
+            else:
+                used = _latest_usage_tokens(transcript_path, USAGE_TAIL_BYTES[1:])
         if used is not None:
+            if cached != used:
+                cache["last_usage_tokens"] = used
+                save_cache(cache, session_id)
             return min(used / _context_window_tokens() * 100, 100)
 
     # Fallback: tool-call counter (very rough)

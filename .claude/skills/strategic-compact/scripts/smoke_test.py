@@ -928,8 +928,8 @@ def write_transcript(path, usage_tokens, *, filler_bytes=0, sidechain_tokens=Non
 def run_monitor(tmp_path, name, transcript, env_extra=None, project_files=None):
     home = tmp_path / f"home_{name}"
     project = tmp_path / f"project_{name}"
-    home.mkdir()
-    project.mkdir()
+    home.mkdir(exist_ok=True)
+    project.mkdir(exist_ok=True)
     for rel, text in (project_files or {}).items():
         (project / rel).parent.mkdir(parents=True, exist_ok=True)
         (project / rel).write_text(text, encoding="utf-8")
@@ -971,15 +971,15 @@ def check_monitor_ignores_transcript_file_size(tmp_path):
 
 def check_monitor_warns_at_real_high_usage(tmp_path):
     transcript = tmp_path / "high.jsonl"
-    write_transcript(transcript, 920_000)
+    write_transcript(transcript, 184_000)
     result = run_monitor(tmp_path, "high", transcript)
     message = monitor_message(result)
     if "~92%" not in message:
         return (
             False,
-            f"expected a ~92% warning for 920k of the 1M default window, got {result.stdout!r}",
+            f"expected a ~92% warning for 184k of the 200k default window, got {result.stdout!r}",
         )
-    return True, "920k real tokens against the 1M default window warns at ~92%"
+    return True, "184k real tokens against the 200k default window warns at ~92%"
 
 
 def check_monitor_skips_sidechain_usage(tmp_path):
@@ -1009,13 +1009,13 @@ def check_monitor_window_env_overrides_files(tmp_path):
 
 def check_monitor_window_local_override_file(tmp_path):
     transcript = tmp_path / "local.jsonl"
-    write_transcript(transcript, 190_000)
-    local = json.dumps({"context_window_tokens": 200_000})
+    write_transcript(transcript, 380_000)
+    local = json.dumps({"context_window_tokens": 400_000})
     result = run_monitor(
         tmp_path, "localwin", transcript, project_files={".claude/context-kit.local.json": local}
     )
     if "~95%" not in monitor_message(result):
-        return False, f"expected the local 200k window to give ~95%, got {result.stdout!r}"
+        return False, f"expected the local 400k window to give ~95%, got {result.stdout!r}"
     return True, ".claude/context-kit.local.json overrides the shipped window size"
 
 
@@ -1033,10 +1033,10 @@ def check_monitor_window_bad_local_file_falls_back(tmp_path):
             transcript,
             project_files={".claude/context-kit.local.json": text},
         )
-        if result.returncode != 0 or result.stdout.strip():
+        if result.returncode != 0 or "~95%" not in monitor_message(result):
             return (
                 False,
-                f"{name} local file did not fall back to the shipped window: "
+                f"{name} local file did not fall back to the shipped 200k window (190k -> ~95%): "
                 f"{result.stdout!r} {result.stderr!r}",
             )
     return True, "a malformed, negative or boolean window value falls back to the shipped default"
@@ -1160,7 +1160,7 @@ def check_monitor_publishes_percentage_for_shell_hooks(tmp_path):
     import hashlib
 
     transcript = tmp_path / "pub.jsonl"
-    write_transcript(transcript, 600_000)
+    write_transcript(transcript, 120_000)
     result = run_monitor(tmp_path, "pubdefault", transcript)
     home = tmp_path / "home_pubdefault"
     digest = hashlib.md5(b"pubdefault\n", usedforsecurity=False).hexdigest()[:8]
@@ -1240,6 +1240,56 @@ def check_milestone_cooldown_is_thirty_minutes(tmp_path):
     if "Code committed" not in later.stdout:
         return False, f"a milestone 31 minutes after the last one did not fire: {later.stdout!r}"
     return True, "milestone alerts are limited to one per 30 minutes"
+
+
+def check_phase_transition_while_gated_fires_after_gate_opens(tmp_path):
+    # A transition is seen on exactly one call (LAST_PHASE moves on right after), so one that
+    # happens while real context is below the gate must be kept pending, not lost.
+    home = make_home_with_tracking_file(tmp_path, "phasegate")
+    track_file, pct_file = _track_paths(home, "phasegate")
+    _set_tracking_value(track_file, "EXPLORATION", 10)
+    _set_tracking_value(track_file, "LAST_PHASE", "exploration")
+    pct_file.write_text("20 50", encoding="utf-8", newline="")
+    edit = json.dumps({"session_id": "phasegate", "tool_name": "Edit"})
+    first = run(TRACK_SCRIPT, edit, home)
+    if first.stdout.strip():
+        return False, f"a phase alert fired while the gate was closed: {first.stdout!r}"
+    if _tracking_value(track_file, "PHASE_TRANSITION_SUGGESTED") != "2":
+        return False, "a gated phase transition was not kept pending"
+    pct_file.write_text("55 50", encoding="utf-8", newline="")
+    second = run(TRACK_SCRIPT, edit, home)
+    if "Phase transition detected" not in second.stdout:
+        return (
+            False,
+            f"the pending phase alert did not fire once the gate opened: {second.stdout!r}",
+        )
+    if _tracking_value(track_file, "PHASE_TRANSITION_SUGGESTED") != "1":
+        return False, "the phase alert was not marked as shown after firing"
+    third = run(TRACK_SCRIPT, edit, home)
+    if "Phase transition detected" in third.stdout:
+        return False, "the phase alert fired a second time"
+    return True, "a phase transition seen while gated fires once after the gate opens"
+
+
+def check_monitor_reuses_last_usage_when_tail_has_none(tmp_path):
+    # A record-free tail longer than the large scan (9 MB > 8 MB) must not drop the session
+    # to the tool-call counter, nor re-read the large tail on every call: the last usage
+    # seen in this session is reused.
+    import hashlib
+
+    transcript = tmp_path / "reuse.jsonl"
+    write_transcript(transcript, 100_000)
+    run_monitor(tmp_path, "reuse", transcript)
+    with open(transcript, "a", encoding="utf-8") as fh:
+        fh.write(json.dumps({"type": "attachment", "blob": "x" * 9_000_000}) + "\n")
+    result = run_monitor(tmp_path, "reuse", transcript)
+    digest = hashlib.md5(b"reuse\n", usedforsecurity=False).hexdigest()[:8]
+    pct_file = tmp_path / "home_reuse" / ".claude" / "strategic-compact" / f"pct-{digest}"
+    if result.returncode != 0 or not pct_file.exists():
+        return False, f"monitor failed: {result.stderr!r}"
+    if pct_file.read_text(encoding="utf-8") != "50 50":
+        return False, f"expected the cached 100k usage (50%), got {pct_file.read_text()!r}"
+    return True, "a usage record pushed out of the scanned tail is reused, not rescanned"
 
 
 def _initial_thresholds(tmp_path, name, plugin_root=None, project_dir=None, env_extra=None):
@@ -1439,6 +1489,8 @@ CHECKS = [
     check_count_alert_fires_when_context_reaches_gate,
     check_count_alert_silent_without_valid_published_percentage,
     check_alert_due_while_gated_fires_after_gate_opens,
+    check_phase_transition_while_gated_fires_after_gate_opens,
+    check_monitor_reuses_last_usage_when_tail_has_none,
     check_monitor_publishes_percentage_for_shell_hooks,
     check_tracking_file_is_not_executed_as_shell,
     check_real_test_command_triggers_milestone,

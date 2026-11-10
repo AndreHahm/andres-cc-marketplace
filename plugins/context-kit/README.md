@@ -76,18 +76,21 @@ context-window size, the alert gate and the tool-call thresholds also have a con
 
 | Key | Default | Meaning |
 |---|---|---|
-| `context_window_tokens` | `1000000` | Context-window size used to turn real token usage into a percentage |
+| `context_window_tokens` | `200000` | Context-window size used to turn real token usage into a percentage |
 | `alert_min_context_percent` | `50` | Real context percentage (0-100, `0` = no gate) below which the call-count, time, phase and milestone alerts stay silent |
 | `display_startup_banner` | `true` | Show the "Context management active" message at every session start; `false` hides it (the tracking state is still set up) |
 | `tool_call_threshold_1` / `_2` / `_3` | `50` / `100` / `150` | Tool-call counts at which `strategic-compact` suggests compacting (once the gate is open) |
 
 Precedence, per key: the environment variable where one exists (`CLAUDE_CONTEXT_WINDOW_TOKENS`,
 `STRATEGIC_COMPACT_T1`/`_T2`/`_T3`), then the local file, then the shipped file, then the built-in default
-(equal to the shipped value). The environment variables are listed below:
+(equal to the shipped value). The shipped window is 200,000 tokens, the standard tier; if your plan
+has a 1,000,000-token window, set `context_window_tokens` to `1000000` in `.claude/context-kit.local.json`
+(or export `CLAUDE_CONTEXT_WINDOW_TOKENS`), or the percentage reads about five times too high.
+The environment variables are listed below:
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `CLAUDE_CONTEXT_WINDOW_TOKENS` | unset (see above; effective default `1000000`) | Context-window size used to turn the transcript's real token usage into a percentage in `context-monitor.py`; overrides both config files |
+| `CLAUDE_CONTEXT_WINDOW_TOKENS` | unset (see above; effective default `200000`) | Context-window size used to turn the transcript's real token usage into a percentage in `context-monitor.py`; overrides both config files |
 | `CLAUDE_CONTEXT_MAX_TOOL_CALLS` | `400` | Fallback tool-call-count proxy when the transcript has no token-usage record yet |
 | `STRATEGIC_COMPACT_T1` / `_T2` / `_T3` | unset (see above; effective defaults `50` / `100` / `150`) | Tool-call-count thresholds for `strategic-compact`'s suggestions (only fire once real context reaches `alert_min_context_percent`) |
 | `STRATEGIC_COMPACT_TIME` | `1800` (30 min) | Time-based suggestion threshold, in seconds (like the call-count thresholds, only fires once real context reaches `alert_min_context_percent`) |
