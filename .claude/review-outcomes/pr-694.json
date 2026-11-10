@@ -1,0 +1,64 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4522249030",
+      "line": 69,
+      "note": "fixed in the PR review-fix commit; the suggested capital-N Nudges would still fail the case-sensitive check",
+      "path": "plugins/context-kit/skills/context-window-analysis/SKILL.md",
+      "pr": 694,
+      "recorded_at": "2026-11-10T08:47:19+00:00",
+      "rule": "smoke-test-wording"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-delta-context-monitor-609",
+      "line": 609,
+      "note": "tool-count fallback estimate now published as 0 so it cannot open the shell hooks gate; regression check added",
+      "path": "plugins/context-kit/scripts/context-monitor.py",
+      "pr": 694,
+      "recorded_at": "2026-11-10T08:47:19+00:00",
+      "rule": "runtime-correctness"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-delta-milestone-detector-287",
+      "line": 287,
+      "note": "desktop notification removed so systemMessage is the only channel; regression check added",
+      "path": "plugins/context-kit/hooks/scripts/ctx-compact-milestone-detector.sh",
+      "pr": 694,
+      "recorded_at": "2026-11-10T08:47:20+00:00",
+      "rule": "notification-delivery"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "codex-delta-r28-context-window-analysis-69",
+      "line": 69,
+      "note": "advisory eval-count below 3, deferred to issue 695",
+      "path": "plugins/context-kit/skills/context-window-analysis/SKILL.md",
+      "pr": 694,
+      "recorded_at": "2026-11-10T08:47:20+00:00",
+      "rule": "R28"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "codex-delta-r28-strategic-compact-350",
+      "line": 350,
+      "note": "advisory eval-count below 3, deferred to issue 695",
+      "path": "plugins/context-kit/skills/strategic-compact/SKILL.md",
+      "pr": 694,
+      "recorded_at": "2026-11-10T08:47:20+00:00",
+      "rule": "R28"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "sonar-AaHEW4KOykQVzaq-3IEQ",
+      "line": 158,
+      "note": "not exploitable: path is Claude Code hook stdin; inline NOSONAR added, whether Sonar honors it is unverified",
+      "path": "plugins/context-kit/scripts/context-monitor.py",
+      "pr": 694,
+      "recorded_at": "2026-11-10T08:47:20+00:00",
+      "rule": "pythonsecurity:S6549"
+    }
+  ]
+}
