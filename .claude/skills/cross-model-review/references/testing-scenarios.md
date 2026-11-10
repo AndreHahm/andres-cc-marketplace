@@ -276,7 +276,7 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
 
 Moved here from SKILL.md's Testing & Validation section, which keeps only the latest run.
 
-- **2026-10-13, `evals/cross-model-review/workspace/iteration-10/`:** evals 7-9 (scoped review: one batch
+- **2026-10-13, iteration 10 of this skill's evals:** evals 7-9 (scoped review: one batch
   for a small diff, a batch timeout, round two with an unfinished slice), Quick Workflow, `with_skill`
   only, no baseline: 12/12 assertions. Eval 8 showed `references/scoped-review.md` section 4 did not say
   what follows a successful retry; that sentence was added after the run and has not been re-run. A
