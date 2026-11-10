@@ -344,6 +344,198 @@
       "pr": 673,
       "recorded_at": "2026-11-09T09:40:02+00:00",
       "rule": "security-reviewer:credential-pii-leakage"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-run42595557589-f0",
+      "note": "points at collecting's step 5 and key pattern instead of restating them (5b7c7e38)",
+      "path": "plugins/quality-kit/skills/resolving-analysis-findings/SKILL.md",
+      "pr": 673,
+      "recorded_at": "2026-11-10T07:38:16+00:00",
+      "rule": "codex:duplicated-guidance"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "codex-run42595557589-f1",
+      "note": "overlap already resolved bidirectionally per resolve-activation-overlap-bidirectionally.md",
+      "path": "plugins/quality-kit/skills/resolving-analysis-findings/SKILL.md",
+      "pr": 673,
+      "recorded_at": "2026-11-10T07:38:16+00:00",
+      "rule": "codex:activation-overlap"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-run42595557589-f2",
+      "note": "wrapper moved to plugin-root scripts/, enabled by the scripts_mirrors opt-in (#693, 5b7c7e38)",
+      "path": "plugins/quality-kit/scripts/qlty-sonar-read.py",
+      "pr": 673,
+      "recorded_at": "2026-11-10T07:38:16+00:00",
+      "rule": "codex:R34"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-run42595557589-f3",
+      "note": "same move as f2; grants repointed (5b7c7e38)",
+      "path": "plugins/quality-kit/scripts/qlty-sonar-read.py",
+      "pr": 673,
+      "recorded_at": "2026-11-10T07:38:16+00:00",
+      "rule": "codex:R34"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-run42595557589-f4",
+      "note": "SONARQUBE_CLI_SERVER and SONARQUBE_CLI_UPDATE_SCRIPT_BASE_URL stripped; smoke test asserts all STRIPPED_ENV (5b7c7e38)",
+      "path": "plugins/quality-kit/scripts/qlty-sonar-read.py",
+      "pr": 673,
+      "recorded_at": "2026-11-10T07:38:16+00:00",
+      "rule": "codex:env-override"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-run42595557589-f5",
+      "line": 31,
+      "note": "redaction note stated inline (5b7c7e38)",
+      "path": "plugins/quality-kit/skills/collecting-analysis-findings/references/sonar-adapter.md",
+      "pr": 673,
+      "recorded_at": "2026-11-10T07:38:16+00:00",
+      "rule": "codex:R34"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-run42595557589-f6",
+      "note": "exit-2 meanings and gate-status behavior stated inline (5b7c7e38)",
+      "path": "plugins/quality-kit/skills/collecting-analysis-findings/references/sonar-adapter.md",
+      "pr": 673,
+      "recorded_at": "2026-11-10T07:38:16+00:00",
+      "rule": "codex:R34"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "codex-run42595557589-f7",
+      "note": "231-line weak warning, disclosed; no change",
+      "path": "plugins/quality-kit/skills/collecting-analysis-findings/SKILL.md",
+      "pr": 673,
+      "recorded_at": "2026-11-10T07:38:16+00:00",
+      "rule": "codex:R13"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-run42776437388-f0",
+      "line": 50,
+      "note": "README names the wrapper as the one production subprocess (5fdd46cf)",
+      "path": "plugins/quality-kit/README.md",
+      "pr": 673,
+      "recorded_at": "2026-11-10T08:10:50+00:00",
+      "rule": "codex:data-consistency"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-run42776437388-f1",
+      "line": 80,
+      "note": "sonar runs from an empty temp dir; exit 2 if it is inside a checkout (5fdd46cf)",
+      "path": "plugins/quality-kit/scripts/qlty-sonar-read.py",
+      "pr": 673,
+      "recorded_at": "2026-11-10T08:10:50+00:00",
+      "rule": "codex:security"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "codex-run42776437388-f2",
+      "note": "weak warning, disclosed",
+      "path": "plugins/quality-kit/skills/collecting-analysis-findings/SKILL.md",
+      "pr": 673,
+      "recorded_at": "2026-11-10T08:10:50+00:00",
+      "rule": "codex:R13"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "codex-run42776437388-f3",
+      "note": "soft warning, disclosed",
+      "path": "plugins/quality-kit/skills/resolving-analysis-findings/SKILL.md",
+      "pr": 673,
+      "recorded_at": "2026-11-10T08:10:50+00:00",
+      "rule": "codex:R13"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "codex-run42776437388-f4",
+      "note": "weak warning, disclosed",
+      "path": "plugins/quality-kit/skills/using-sonarqube-cloud/SKILL.md",
+      "pr": 673,
+      "recorded_at": "2026-11-10T08:10:50+00:00",
+      "rule": "codex:R13"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "security-review-20261110-m1",
+      "note": "proxy, CA/TLS, keychain and SONAR_USER_HOME pass-through listed (5b7c7e38)",
+      "path": "plugins/quality-kit/skills/collecting-analysis-findings/references/sonar-adapter.md",
+      "pr": 673,
+      "recorded_at": "2026-11-10T07:38:16+00:00",
+      "rule": "security-reviewer:residual-disclosure"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "security-review-20261110-m2",
+      "note": "env-auth region limit documented in Known residuals (5b7c7e38)",
+      "path": "plugins/quality-kit/skills/collecting-analysis-findings/references/sonar-adapter.md",
+      "pr": 673,
+      "recorded_at": "2026-11-10T07:38:16+00:00",
+      "rule": "security-reviewer:regression-disclosure"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "security-review-20261110-m3",
+      "note": "pre-existing empty-root mirror grant; fails safe to a prompt",
+      "path": ".claude/skills/resolving-analysis-findings/SKILL.md",
+      "pr": 673,
+      "recorded_at": "2026-11-10T07:38:16+00:00",
+      "rule": "security-reviewer:mirror-grant"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "security-review-20261110-m4",
+      "note": "every STRIPPED_ENV entry asserted (5b7c7e38)",
+      "path": "plugins/quality-kit/skills/collecting-analysis-findings/scripts/smoke_test.py",
+      "pr": 673,
+      "recorded_at": "2026-11-10T07:38:16+00:00",
+      "rule": "security-reviewer:test-coverage"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "security-review-20261110-m5",
+      "note": "STRIPPED_ENV comment points at Known residuals (5b7c7e38)",
+      "path": "plugins/quality-kit/scripts/qlty-sonar-read.py",
+      "pr": 673,
+      "recorded_at": "2026-11-10T07:38:16+00:00",
+      "rule": "security-reviewer:comment-scope"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "security-review-20261110b-m1",
+      "note": "GIT_* location variables stripped (5fdd46cf)",
+      "path": "plugins/quality-kit/scripts/qlty-sonar-read.py",
+      "pr": 673,
+      "recorded_at": "2026-11-10T08:10:50+00:00",
+      "rule": "security-reviewer:env-inheritance"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "security-review-20261110b-m2",
+      "note": "TMPDIR parent-rename residual documented (5fdd46cf)",
+      "path": "plugins/quality-kit/skills/collecting-analysis-findings/references/sonar-adapter.md",
+      "pr": 673,
+      "recorded_at": "2026-11-10T08:10:50+00:00",
+      "rule": "security-reviewer:residual-disclosure"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "security-review-20261110b-m3",
+      "note": "ignore_cleanup_errors on the temp dir (5fdd46cf)",
+      "path": "plugins/quality-kit/scripts/qlty-sonar-read.py",
+      "pr": 673,
+      "recorded_at": "2026-11-10T08:10:50+00:00",
+      "rule": "security-reviewer:robustness"
     }
   ]
 }
