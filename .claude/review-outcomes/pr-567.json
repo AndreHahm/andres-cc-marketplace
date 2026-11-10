@@ -20,6 +20,16 @@
       "note": "Fixed in eab08cd4; claims checked against scoped-review.md sections 3 and 7",
       "pr": 567,
       "recorded_at": "2026-11-10T18:48:55+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-run-42890886504-r34",
+      "line": 279,
+      "note": "Reworded in 7f9a0303 to a plain run label; R34 does not cover bare backticked evals paths, so likely a false positive",
+      "path": "plugins/git-kit/skills/cross-model-review/references/testing-scenarios.md",
+      "pr": 567,
+      "recorded_at": "2026-11-10T20:16:02+00:00",
+      "rule": "reference-integrity"
     }
   ]
 }
