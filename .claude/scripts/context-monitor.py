@@ -155,7 +155,10 @@ def _latest_usage_tokens(
     Sidechain (subagent) records are skipped: their usage describes a separate,
     smaller context, not this session's."""
     try:
-        size = os.path.getsize(transcript_path)
+        # Accepted (not exploitable): transcript_path is the hook's own stdin from Claude Code,
+        # not network input. Only the file size and a "usage" integer are read, and nothing
+        # about the file is returned to a caller, so there is no filesystem oracle.
+        size = os.path.getsize(transcript_path)  # NOSONAR pythonsecurity:S6549 - see above
         with open(transcript_path, "rb") as fh:
             for tail in tails:
                 start = max(size - tail, 0)
