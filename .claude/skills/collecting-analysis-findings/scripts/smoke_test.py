@@ -20,6 +20,7 @@ import sys
 import tempfile
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
+from typing import Any
 
 HERE = Path(__file__).resolve().parent
 SKILL_DIR = HERE.parent
@@ -1110,8 +1111,9 @@ import json, os, sys
 from urllib.parse import parse_qs, urlsplit
 args, mode = sys.argv[1:], os.environ.get("STUB_MODE", "ok")
 with open(os.environ["STUB_LOG"], "a", encoding="utf-8") as log:
-    seen = {k: v for k, v in os.environ.items() if k.startswith("SONAR") or k == "PATH"}
-    log.write(json.dumps({"cwd": os.getcwd(), "argv": args, "env": seen}) + "\n")
+    seen = {k: v for k, v in os.environ.items() if k.startswith(("SONAR", "GIT_")) or k == "PATH"}
+    log.write(json.dumps({"cwd": os.getcwd(), "cwd_empty": not os.listdir("."), "argv": args,
+                         "env": seen}) + "\n")
 if mode == "fail":
     sys.exit(5)
 if mode == "exit51":
@@ -1167,6 +1169,15 @@ def check_sonar_read() -> None:
         stub.write_text(SONAR_STUB, encoding="utf-8")
         stub.chmod(0o755)
 
+        def isolated(call: dict[str, Any]) -> bool:
+            where = Path(call["cwd"])
+            return (
+                where.name.startswith("qlty-sonar-")
+                and call["cwd_empty"]
+                and where != Path.home()
+                and not where.exists()
+            )
+
         def run(
             *argv: str, mode: str = "ok", path: str | None = None, cwd: str | None = None
         ) -> subprocess.CompletedProcess[str]:
@@ -1207,8 +1218,8 @@ def check_sonar_read() -> None:
         )
         calls = [json.loads(line) for line in log.read_text(encoding="utf-8").splitlines()]
         check(
-            "sonar_read: runs sonar from home, not the caller's directory",
-            all(c["cwd"] == str(Path.home()) for c in calls),
+            "sonar_read: runs sonar from a fresh empty directory, removed afterward",
+            bool(calls) and all(isolated(c) for c in calls),
         )
         check(
             "sonar_read issues: fixed argv with --pull-request and page size",
@@ -1296,11 +1307,11 @@ def check_sonar_read() -> None:
         done = run("gate-status", "--project", "p", "--pull-request", "7")
         gate_call = json.loads(log.read_text(encoding="utf-8").splitlines()[0])
         check(
-            "sonar_read gate-status: named target, home cwd, projected conditions",
+            "sonar_read gate-status: named target, isolated cwd, projected conditions",
             done.returncode == 0
             and gate_call["argv"]
             == ["quality-gate", "status", "-p", "p", "--pull-request", "7", "--format", "json"]
-            and gate_call["cwd"] == str(Path.home())
+            and isolated(gate_call)
             and json.loads(done.stdout)
             == {
                 "qualityGate": {
@@ -1504,10 +1515,27 @@ def check_sonar_read() -> None:
         seen = json.loads(log.read_text(encoding="utf-8").splitlines()[0])["env"]
         check(
             f"sonar_read drops all {len(overrides)} STRIPPED_ENV overrides, keeps the token",
-            len(overrides) >= 10
+            len(overrides) >= 15
             and {k: seen.get(k) for k in ("SONAR_TOKEN", *overrides)}
             == {"SONAR_TOKEN": "placeholder-token", **dict.fromkeys(overrides)},
             str(seen),
+        )
+        repo_tmp = repo / "tmp"
+        repo_tmp.mkdir(exist_ok=True)
+        log.write_text("", encoding="utf-8")
+        saved_tmpdir = os.environ.get("TMPDIR")
+        os.environ["TMPDIR"] = str(repo_tmp)
+        try:
+            done = run("pr-list", "--project", "p")
+        finally:
+            if saved_tmpdir is None:
+                del os.environ["TMPDIR"]
+            else:
+                os.environ["TMPDIR"] = saved_tmpdir
+        check(
+            "sonar_read refuses a temporary directory inside a checkout (exit 2, not run)",
+            done.returncode == 2 and log.read_text(encoding="utf-8") == "",
+            f"{done.returncode} {done.stderr}",
         )
         log.write_text("", encoding="utf-8")
         done = run("pr-list", "--project", "p", path=".", cwd=str(bin_dir))

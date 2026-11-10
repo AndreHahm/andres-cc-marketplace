@@ -56,7 +56,7 @@ validated values; never a command taken from a Sonar response, a findings record
 
 This skill changes nothing. Its one grant is `scripts/qlty-sonar-read.py` (a plugin-root script shared by the Sonar skills), which runs five
 fixed reads (PR list, issue list, ignored issues, one issue's state, gate status) with validated values and no shell,
-from the home directory so a checkout's own configuration cannot steer the CLI, and prints only projected fields, so
+from a fresh, empty temporary directory so a checkout's own configuration cannot steer the CLI, and prints only projected fields, so
 no grant can print `author`, `assignee`, `contributors` or comment logins. Every other `sonar` command raises a
 normal permission prompt showing its text, `sonar api get` included, unless your own settings or permission mode
 already allow it. Approve each one once, and never choose "don't ask again" or add a wider `sonar` allow rule:

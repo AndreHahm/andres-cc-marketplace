@@ -6,8 +6,9 @@ not covered. Re-check the shapes below before trusting them after a CLI update.
 ## Read commands (the only forms this skill runs)
 
 Every read is `python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/qlty-sonar-read.py <form> ...`,
-piped into `scripts/collect_sonar.py --input -`. The wrapper runs `sonar` with a fixed argument list from the home
-directory (a repository's own configuration file cannot pick the server), validates every value, and prints only
+piped into `scripts/collect_sonar.py --input -`. The wrapper runs `sonar` with a fixed argument list from a fresh, empty
+temporary directory outside every checkout (exit 2 if it is inside one), so a repository's own configuration file
+cannot pick the server, validates every value, and prints only
 the fields the adapter reads: the raw responses hold `author`, `assignee`, `contributors`, comment logins and commit
 messages, which it drops. `sonar` must be on `PATH` (`sonar.exe` on Windows) in a folder outside the repository; the
 default install is `~/.local/share/sonarqube-cli/bin`.
@@ -50,7 +51,10 @@ and `SONAR_USER_HOME`, whose `sonarqube-cli/state.json` holds the active server 
 this from the bundle; stored proxy and CA settings are likely but unverified). A proxy combined with a trusted CA
 could intercept the token; proxies are kept so a corporate proxy still works. Because `SONARQUBE_CLI_SERVER` is
 dropped, environment-variable authentication through the wrapper works only for SonarQube Cloud's default region:
-SonarQube Server and US-region users authenticate with `sonar auth login` instead. On a filesystem without file ids (`st_ino` 0, for example
+SonarQube Server and US-region users authenticate with `sonar auth login` instead. Git's repository-location
+variables (`GIT_DIR`, `GIT_WORK_TREE` and siblings) are dropped too, so the CLI's own configuration search stays in the
+wrapper's empty working directory. Another user who owns a parent of `TMPDIR` could rename it between the wrapper's
+checkout check and the run; under the default sticky `/tmp` that is not possible. On a filesystem without file ids (`st_ino` 0, for example
 FAT or some network shares) only the spelling comparison applies, so a junction or 8.3 alias there is not caught. It was not
 run on Windows: there, `python3` may be
 absent (the grants call `python3 -I`, like every quality-kit script grant), and that the Windows CLI is a `sonar.exe`

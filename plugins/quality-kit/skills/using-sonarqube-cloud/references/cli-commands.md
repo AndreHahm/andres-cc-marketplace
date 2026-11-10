@@ -14,7 +14,7 @@ computed, after printing it (the CLI's `verdict.ts`, read 2026-11-09; no failing
 the wrapper turns both into the printed verdict. Report `qualityGate.status` `ERROR` as a failed gate and `NONE` as
 not computed, never as a failed lookup.
 
-A gate status. The wrapper requires exactly one target and runs from the home directory, because a bare
+A gate status. The wrapper requires exactly one target and runs from a fresh, empty temporary directory, because a bare
 `sonar quality-gate status` run inside a checkout reports that checkout's branch or PR, not the default branch
 (checked 2026-11-08: inside a PR branch's worktree it returned that PR's gate):
 
