@@ -319,7 +319,9 @@ def request_allowed(host: str | None, origin: str | None, port: int) -> bool:
     allowed_hosts = {f"localhost:{port}", f"127.0.0.1:{port}"}
     if host not in allowed_hosts:
         return False
-    return origin is None or origin in {f"http://{h}" for h in allowed_hosts}
+    # The viewer serves plain HTTP on loopback; these strings are compared, never requested.
+    origins = {f"http://{h}" for h in allowed_hosts}  # NOSONAR(S5332)  # Origin match only
+    return origin is None or origin in origins
 
 
 class ReviewHandler(BaseHTTPRequestHandler):
