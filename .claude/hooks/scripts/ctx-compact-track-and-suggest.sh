@@ -174,7 +174,7 @@ if [ ! -f "$TRACK_FILE" ]; then
         echo "PHASE_TRANSITION_SUGGESTED=0"
         echo "MILESTONE_SUGGESTED=0"
         echo "START_TIME=$START_TIME"
-        echo "LAST_MILESTONE_TIME=$START_TIME"
+        echo "LAST_MILESTONE_TIME=0"
         echo "T1=$(_validate_int "${STRATEGIC_COMPACT_T1:-$(_setting_int tool_call_threshold_1 50)}" 50)"
         echo "T2=$(_validate_int "${STRATEGIC_COMPACT_T2:-$(_setting_int tool_call_threshold_2 100)}" 100)"
         echo "T3=$(_validate_int "${STRATEGIC_COMPACT_T3:-$(_setting_int tool_call_threshold_3 150)}" 150)"

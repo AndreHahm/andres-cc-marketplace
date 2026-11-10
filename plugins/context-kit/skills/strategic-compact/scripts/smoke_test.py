@@ -1442,6 +1442,24 @@ def _run_session_init(tmp_path, name, plugin_root=None, project_dir=None):
     return result, track_file
 
 
+def check_first_milestone_is_not_held_back_by_session_start(tmp_path):
+    # Session init must not seed LAST_MILESTONE_TIME with the start time: the 30-minute
+    # cooldown is "since the last milestone suggestion", and none has been shown yet.
+    _, track_file = _run_session_init(tmp_path, "firstmile")
+    home = tmp_path / "home_firstmile"
+    _, pct_file = _track_paths(home, "firstmile")
+    if _tracking_value(track_file, "LAST_MILESTONE_TIME") != "0":
+        return False, "session init seeded LAST_MILESTONE_TIME with something other than 0"
+    pct_file.write_text("99 50", encoding="utf-8", newline="")
+    result = _run_commit_milestone(home, "firstmile")
+    if "Code committed" not in result.stdout:
+        return (
+            False,
+            f"the first commit milestone of a new session was held back: {result.stdout!r}",
+        )
+    return True, "the first milestone of a fresh session is not suppressed by the cooldown"
+
+
 def check_startup_banner_shown_by_default(tmp_path):
     builtin, _ = _run_session_init(tmp_path, "bannerbuiltin")
     shipped, _ = _run_session_init(tmp_path, "bannershipped", plugin_root=PLUGIN_ROOT)
@@ -1476,6 +1494,7 @@ def check_startup_banner_can_be_hidden_by_settings(tmp_path):
 
 CHECKS = [
     check_get_session_dir_implementations_agree,
+    check_first_milestone_is_not_held_back_by_session_start,
     check_startup_banner_shown_by_default,
     check_startup_banner_can_be_hidden_by_settings,
     check_session_init_reads_tool_call_thresholds_from_settings,
