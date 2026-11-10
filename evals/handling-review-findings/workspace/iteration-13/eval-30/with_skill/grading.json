@@ -1,0 +1,26 @@
+{
+  "eval_id": "eval-30",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Compares the added claim against the quoted text of the cited section 3",
+      "passed": true,
+      "evidence": "Quotes section 3: question asked 'before the First-Send Confirmation'"
+    },
+    {
+      "text": "Identifies that 'after the First-Send Confirmation' contradicts the source's 'before'",
+      "passed": true,
+      "evidence": "'The fix states the reverse of the source's ordering'"
+    },
+    {
+      "text": "Treats the mismatch as a blocking defect: no push, reply or resolve until the claim is corrected",
+      "passed": true,
+      "evidence": "'Do not push, reply or resolve yet... That is a blocking defect'; iteration 2 per 4d"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

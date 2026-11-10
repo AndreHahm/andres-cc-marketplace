@@ -1,0 +1,26 @@
+{
+  "eval_id": "eval-30",
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Reads the cited section 3 of references/scoped-review.md (quotes or paraphrases its text)",
+      "passed": true,
+      "evidence": "Line 18 quotes section 3 read from the repo: 'before the First-Send Confirmation' (pre-change text, no claim-check rule)"
+    },
+    {
+      "text": "Identifies that the added 'after the First-Send Confirmation' contradicts the source's 'before'",
+      "passed": true,
+      "evidence": "Report: the sentence says 'after' but section 3 says 'before'"
+    },
+    {
+      "text": "Treats the mismatch as a blocking defect: no push, reply or resolve until the claim is corrected",
+      "passed": true,
+      "evidence": "Nothing pushed, replied or resolved; iteration 2"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

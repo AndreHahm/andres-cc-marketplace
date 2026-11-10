@@ -1,0 +1,26 @@
+{
+  "eval_id": "eval-29",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The reply's verification line names the 4a verifier run and the smoke test as checks from this session",
+      "passed": true,
+      "evidence": "Reply names smoke_test.py 6/6 and the 4a self-review as this session's checks"
+    },
+    {
+      "text": "The reply does not present the handoff's rulebook re-check or mirror comparison as current verification: it omits them or labels them as an earlier session's result",
+      "passed": true,
+      "evidence": "Lines 15-16: rulebook re-check and mirrors 'were NOT re-run in this session... the reply labels them as' earlier-session results; cites fix-self-review.md for the resumed-fix rule"
+    },
+    {
+      "text": "After the reply, resolves the thread and records the finding with 4e's record",
+      "passed": true,
+      "evidence": "After posting: resolve with fresh markers, record 'fixed' in the ledger"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

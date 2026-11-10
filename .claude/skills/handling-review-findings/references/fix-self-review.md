@@ -7,6 +7,10 @@ claim was raised three rounds running (#568 Phase 3, issue #578).
 
 A reply and a resolve never happen while 4a exits non-zero (1 or 2), or 4b/4c show a defect in the fix.
 
+The reply's verification line names only checks run in the current session against the fix being pushed.
+A result carried over from an earlier session (a handoff, a resumed fix committed before) is re-run first,
+or the reply labels it as an earlier session's result. A resumed fix still gets 4a-4d and 4e's `record`.
+
 ## 4a. Re-run the verifiers on the fix's own diff
 
 **Ask first, once per run.** Before the first 4a of a run, ask via `AskUserQuestion`: run the verifier
@@ -114,6 +118,10 @@ identical instance a few lines away is part of the same fix.
 Read the fix's own diff, not the whole PR, as a reviewer would: does the change introduce a new
 edge case next to the one it closes (the PR #577 pattern: nested agent files, then same-name agents, then
 duplicate pairs)? A new defect in a file the fix touched is blocking.
+
+**A prose fix is checked by its claims, not only its edge cases.** For skill, reference or rule text,
+compare every statement the fix adds about another file, section, command or behavior with that source
+(`Read` the cited section). A claim the source does not support is a defect in the fix, like a code bug.
 
 **An uncommitted fix** (the usual case at this point): review it from the edits you just made, which give you
 the old and new text, and `Read` each changed file. List new files with

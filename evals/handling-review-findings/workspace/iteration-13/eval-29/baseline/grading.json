@@ -1,0 +1,26 @@
+{
+  "eval_id": "eval-29",
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Runs 4a-4d on the resumed fix before pushing (does not skip the self-review because the fix was committed earlier)",
+      "passed": true,
+      "evidence": "Lists 4b and 4c as not yet run and required, 4c via git-review-fix-diff.py for the committed fix, then 4d"
+    },
+    {
+      "text": "Records the finding with 4e's record (or states it will once settled)",
+      "passed": true,
+      "evidence": "4e: record after the fix is settled, promotion deferred to step 8"
+    },
+    {
+      "text": "The drafted verification line names only checks run in this session, or explicitly labels the handoff's smoke-test/rulebook/mirror results as from an earlier session",
+      "passed": true,
+      "evidence": "Drafted line claims only the 4a run; caveat: 'Do not cite the handoff's smoke_test 6/6 or rulebook re-check'. The scenario's 're-ran only 4a' framing made this answerable without the new rule"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}
