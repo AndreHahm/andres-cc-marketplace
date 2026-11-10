@@ -1,5 +1,5 @@
 {
-  "eval_id": 10,
+  "eval_id": 12,
   "configuration": "with_skill",
   "assertions_evaluated": [
     {"text": "Response computes the batch limit as 2 * floor(250000 / 80000) + 1 = 7 from the manifest's budget_bytes and max_slice_bytes", "passed": true, "evidence": "'Here: `2 * floor(250000 / 80000) + 1 = 2 * 3 + 1 = 7`' and 'computed from the manifest's own two values'."},

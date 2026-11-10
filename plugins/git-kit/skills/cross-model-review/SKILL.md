@@ -481,9 +481,9 @@ repositories.
 
 **Last dated run record:** `2026-10-13, evals/cross-model-review/workspace/iteration-10/` — evals 7-9
 (scoped review: one batch for a small diff, a batch timeout, round two with an unfinished slice), Quick
-Workflow, `with_skill` only, no baseline: 12/12 assertions. `iteration-11` adds eval 10 (batch limit):
-4/4, same shape. These are reasoning-based dry runs of the committed text, not live dispatches, and this
-record includes no live run of the scoped flow (one was done on 2026-10-14 for PR #567; see the #568 field
+Workflow, `with_skill` only, no baseline: 12/12 assertions. `iteration-12` adds eval 12 (batch limit):
+4/4; `iteration-13` re-runs it after the Codex-eligible count fix: 5/5, same shape. All are dry runs, not
+live dispatches, and include no live run of the scoped flow (one ran 2026-10-14 for PR #567, see the #568
 report). Eval 8 showed `references/scoped-review.md` section 4 did not say what follows a successful retry;
 that sentence was added after the run and has not been re-run. A security review after that run found
 `git diff` has no pathspec-file option, so per-batch diffs come from planner-written files (`--diff-dir`),

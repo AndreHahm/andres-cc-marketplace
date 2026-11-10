@@ -1,5 +1,5 @@
 {
-  "eval_id": 10,
+  "eval_id": 12,
   "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
   "assertions": [
     {"text": "Response computes the batch limit as 2 * floor(250000 / 80000) + 1 = 7 from the manifest's budget_bytes and max_slice_bytes", "type": "functionality", "target": "scoped-review.md section 3"},
