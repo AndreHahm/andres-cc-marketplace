@@ -247,11 +247,12 @@ case "$TOOL_NAME" in
         ;;
 esac
 
-# Detect phase transition: exploration → implementation
-TRANSITION_DETECTED=0
+# Detect phase transition: exploration → implementation. A transition is seen on exactly
+# one call (LAST_PHASE moves on right after), so it is recorded as pending
+# (PHASE_TRANSITION_SUGGESTED=2) and only shown, then set to 1, once the gate below is open.
 if [ "$LAST_PHASE" = "exploration" ] && [ "$CURRENT_PHASE" = "implementation" ]; then
     if [ "$EXPLORATION" -ge 10 ] && [ "$PHASE_TRANSITION_SUGGESTED" -eq 0 ]; then
-        TRANSITION_DETECTED=1
+        PHASE_TRANSITION_SUGGESTED=2
     fi
 fi
 
@@ -281,8 +282,8 @@ if [ "$GATE_OPEN" -eq 1 ]; then
     # gate was closed still fires on the first call after it opens. Several can
     # become due at once; the last assignment wins, so one message is emitted.
 
-    # Phase transition
-    if [ "$TRANSITION_DETECTED" -eq 1 ]; then
+    # Phase transition (pending, 2, until shown)
+    if [ "$PHASE_TRANSITION_SUGGESTED" -eq 2 ]; then
         PHASE_TRANSITION_SUGGESTED=1
         SUGGESTION="[StrategicCompact] Phase transition detected (exploration -> implementation after ${EXPLORATION} reads). Consider /compact now to free context before coding."
     fi
