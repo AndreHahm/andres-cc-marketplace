@@ -1,0 +1,26 @@
+{
+  "eval_id": "eval-30",
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Compares the added claim against the quoted text of the cited section 3",
+      "passed": true,
+      "evidence": "Quotes the cited section: 'Ask via AskUserQuestion, before the First-Send Confirmation'"
+    },
+    {
+      "text": "Identifies that 'after the First-Send Confirmation' contradicts the source's 'before'",
+      "passed": true,
+      "evidence": "'the new SKILL.md sentence states the batch-limit question hap[pens after]' vs the source's 'before'"
+    },
+    {
+      "text": "Treats the mismatch as a blocking defect: no push, reply or resolve until the claim is corrected",
+      "passed": true,
+      "evidence": "'Do not push, reply, or resolve yet. The 4c review finds a blocking defect'. The prompt quoted the source next to the claim, so the old 4c ('new defect in a touched file') sufficed"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "eval_id": 29,
+  "skill_path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+  "assertions": [
+    {
+      "text": "Runs 4a-4d on the resumed fix before pushing (does not skip the self-review because the fix was committed earlier)",
+      "type": "functionality",
+      "target": "outputs/decision.md"
+    },
+    {
+      "text": "Records the finding with 4e's record (or states it will once settled)",
+      "type": "presence",
+      "target": "outputs/decision.md"
+    },
+    {
+      "text": "The drafted verification line names only checks run in this session, or explicitly labels the handoff's smoke-test/rulebook/mirror results as from an earlier session",
+      "type": "quality",
+      "target": "outputs/decision.md"
+    }
+  ]
+}

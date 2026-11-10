@@ -1,0 +1,26 @@
+{
+  "eval_id": "eval-29",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Runs 4a-4d on the resumed fix before pushing (does not skip the self-review because the fix was committed earlier)",
+      "passed": true,
+      "evidence": "Lists 4b sibling sweep, 4c fix-diff review and 4d budget as still to run before the push (4a counted as run this session per the scenario)"
+    },
+    {
+      "text": "Records the finding with 4e's record (or states it will once settled)",
+      "passed": true,
+      "evidence": "States `git-review-ledger.py record --pr 612 --finding 9001 --disposition fixed`; places it 'once settled, before the push', earlier than SKILL.md step 4's after-resolve order (minor)"
+    },
+    {
+      "text": "The drafted verification line names only checks run in this session, or explicitly labels the handoff's smoke-test/rulebook/mirror results as from an earlier session",
+      "passed": true,
+      "evidence": "Separate section: handoff results 'are results from an earlier session... not run this session'; drafted line starts 'Verified this session: verifier self-review (4a) exit 0'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

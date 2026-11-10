@@ -1,0 +1,21 @@
+{
+  "eval_id": 30,
+  "skill_path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+  "assertions": [
+    {
+      "text": "Compares the added claim against the quoted text of the cited section 3",
+      "type": "functionality",
+      "target": "outputs/decision.md"
+    },
+    {
+      "text": "Identifies that 'after the First-Send Confirmation' contradicts the source's 'before'",
+      "type": "quality",
+      "target": "outputs/decision.md"
+    },
+    {
+      "text": "Treats the mismatch as a blocking defect: no push, reply or resolve until the claim is corrected",
+      "type": "functionality",
+      "target": "outputs/decision.md"
+    }
+  ]
+}

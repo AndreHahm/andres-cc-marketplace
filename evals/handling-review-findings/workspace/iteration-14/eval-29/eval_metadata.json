@@ -1,0 +1,21 @@
+{
+  "eval_id": 29,
+  "skill_path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+  "assertions": [
+    {
+      "text": "The reply's verification line names the 4a verifier run and the smoke test as checks from this session",
+      "type": "quality",
+      "target": "outputs/decision.md"
+    },
+    {
+      "text": "The reply does not present the handoff's rulebook re-check or mirror comparison as current verification: it omits them or labels them as an earlier session's result",
+      "type": "quality",
+      "target": "outputs/decision.md"
+    },
+    {
+      "text": "After the reply, resolves the thread and records the finding with 4e's record",
+      "type": "functionality",
+      "target": "outputs/decision.md"
+    }
+  ]
+}
