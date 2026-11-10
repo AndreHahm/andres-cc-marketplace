@@ -1718,6 +1718,9 @@ def test_the_intent_add_index_override_is_what_protects_the_real_index(repo, tmp
     assert source.count(override) == 1
     mutant = tmp_path / "git-review-intent-add-mutant.sh"
     mutant.write_text(source.replace(override, ""))
+    # the helper sources git-review-run-dir.sh from its own directory, so the mutant needs a copy
+    run_dir_helper = INTENT_ADD.with_name("git-review-run-dir.sh")
+    (tmp_path / run_dir_helper.name).write_text(run_dir_helper.read_text())
     run_dir = mktemp_dirs()
     (repo / "new.txt").write_text("brand new\n")
     real_index = repo / ".git" / "index"
