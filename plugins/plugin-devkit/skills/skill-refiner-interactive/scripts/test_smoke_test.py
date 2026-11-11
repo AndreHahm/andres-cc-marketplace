@@ -200,6 +200,12 @@ MUTATIONS = {
         set(),
         lambda d: append(refs(d, "common-scenarios.md"), "\n````\n```\na\nb\nc\n```\n````\n"),
     ),
+    "shared-ref-missing": (
+        # A plugin-root references/ folder without pdk-ask-user-question-patterns.md: the
+        # real-tree layout with the shared file deleted or renamed.
+        {"check_askuserquestion_headers"},
+        lambda d: (d.parent.parent / "references").mkdir(),
+    ),
     "fenced-directive-ok": (
         set(),
         lambda d: append(
@@ -219,7 +225,9 @@ def main():
         print(stderr)
     with tempfile.TemporaryDirectory() as tmp:
         for name, (expected, mutate) in MUTATIONS.items():
-            copy = pathlib.Path(tmp) / name / SKILL.name
+            # <tmp>/<case>/skills/<skill>: each case gets its own plugin-root folder
+            # (copy.parent.parent), so one case's root-level files never leak into another.
+            copy = pathlib.Path(tmp) / name / "skills" / SKILL.name
             shutil.copytree(SKILL, copy, ignore=shutil.ignore_patterns("__pycache__"))
             mutate(copy)
             code, fails, stderr = run(copy)

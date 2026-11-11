@@ -297,9 +297,14 @@ def check_askuserquestion_headers():
     # not reject a longer one, so this enforces a documented convention, not a rejection.
     # Dry-run evals cannot call the tool, so this is checked statically.
     problems = []
-    # The AskUserQuestion examples live in the plugin-root reference this skill cites; a
-    # copy of the skill directory (as the fixture test makes) has no such sibling.
-    shared = SKILL_DIR.parent.parent / "references" / "pdk-ask-user-question-patterns.md"
+    # The AskUserQuestion examples live in the plugin-root reference this skill cites. In a
+    # real plugin (or .claude mirror) tree that references/ folder exists, so a missing file
+    # there is a failure; a bare copy of the skill directory (as the fixture test makes) has
+    # no such folder and skips it.
+    shared_dir = SKILL_DIR.parent.parent / "references"
+    shared = shared_dir / "pdk-ask-user-question-patterns.md"
+    if shared_dir.is_dir() and not shared.is_file():
+        return False, f"shared reference missing: {shared.relative_to(SKILL_DIR.parent.parent)}"
     for path in [SKILL_MD, *sorted(REFS_DIR.glob("*.md")), *([shared] if shared.is_file() else [])]:
         for number, line in enumerate(read(path).splitlines(), 1):
             match = re.search(r"[\"']?header[\"']?:\s*[\"']([^\"']+)[\"']", line)
