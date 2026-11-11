@@ -372,7 +372,7 @@ jobs:
           prompt: ${{ steps.prompts.outputs.general }}
           claude_args: >-
             --model ${{ needs.claude-scope.outputs.model }}
-            --max-turns 25
+            --max-turns 50
             --max-budget-usd 1.00
             --tools "Read,Grep,Glob"
             --allowedTools "Read,Grep,Glob"

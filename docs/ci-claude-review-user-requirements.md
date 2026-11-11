@@ -132,9 +132,10 @@ Status: approved
 
 - The monthly limit of $200 is enforced by a spend limit on the Anthropic Console workspace that holds
   the API key. When it is reached, reviews fail as could-not-run (R7).
-- Each pass has its own cap: an estimated cost of $1.00 and 25 turns. A pull request with a security
-  pass can therefore cost up to about $2.00 per run. The caps are starting values to tune from the
-  recorded costs.
+- Each pass has its own cap: an estimated cost of $1.00, and 50 turns for the general pass or 25 for
+  the security pass. A pull request with a security pass can therefore cost up to about $2.00 per run.
+  The caps are starting values to tune from the recorded costs; the general pass's turn cap was raised
+  from 25 after PR #703's first funded run stopped at it (26 turns, $0.07).
 - Every run records its cost per pass, so the model choice and the caps can be tuned from real numbers.
 
 Status: approved

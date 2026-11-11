@@ -139,7 +139,8 @@ are not carried to later runs.
 | `CLAUDE_KIT_REVIEW_TIMEOUT_MS` | `1200000` (20 min) | a positive whole number of milliseconds; each pass step gets that many minutes, rounded up. Two passes plus 10 minutes of setup must fit the review job's 50-minute limit (`REVIEW_JOB_TIMEOUT_MINUTES`), so at most `1200000` |
 
 Each pass is capped at an estimated $1.00 (`--max-budget-usd`, Claude Code's client-side estimate, which can
-overshoot) and 25 turns; reaching either fails the pass as could-not-run. The monthly $200 limit is a spend
+overshoot) and a turn cap: 50 for the general pass, which reads the whole delta, and 25 for the security
+pass; reaching either cap fails the pass as could-not-run. The monthly $200 limit is a spend
 limit on the Anthropic Console workspace that holds the key, set outside this repository.
 
 **Bootstrapping.** The PR that adds this workflow cannot review itself: `claude-scope` and `claude-publish`

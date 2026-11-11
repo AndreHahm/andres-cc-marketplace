@@ -153,8 +153,9 @@ def test_claude_gets_read_only_tools_and_no_repository_hooks():
         # security review M1: no read outside the checkout (/proc/*/environ holds the key)
         assert settings["permissions"]["blockReadsOutsideWorkingDirectories"] is True
         assert {"Read(//proc/**)", "Read(.git/**)"} <= set(settings["permissions"]["deny"])
-        # R9: per-pass caps
-        assert (pairs["--max-turns"], pairs["--max-budget-usd"]) == ("25", "1.00")
+        # R9: per-pass caps; the general pass reads the whole delta, so it gets more turns
+        turns = {"general": "50", "security": "25"}[step["id"]]
+        assert (pairs["--max-turns"], pairs["--max-budget-usd"]) == (turns, "1.00")
         assert pairs["--model"] == "MODEL"
         assert step["with"]["github_token"] == "${{ github.token }}"
         assert step["continue-on-error"] is True
