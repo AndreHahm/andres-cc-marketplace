@@ -233,10 +233,13 @@ def main():
     # The skill name is joined onto the skills directory, so reject path separators and
     # "..". The hyphen-case rule is deliberately not enforced here: a repair tool must
     # still be able to target an existing, badly named skill directory.
-    name_arg = sys.argv[2] if command == "--diagnose" and len(sys.argv) > 2 else command
+    # The --diagnose target is checked even when it starts with "-": it is always joined onto
+    # the skills directory. A bare dash-prefixed command is rejected below as an unknown option.
+    diagnose = command == "--diagnose" and len(sys.argv) > 2
+    name_arg = sys.argv[2] if diagnose else command
     if (
         command != "--list-issues"
-        and not name_arg.startswith("-")
+        and (diagnose or not name_arg.startswith("-"))
         and (re.search(r"[\\/]", name_arg) or name_arg in {".", ".."})
     ):
         print(f"Error: invalid skill name {name_arg!r}")

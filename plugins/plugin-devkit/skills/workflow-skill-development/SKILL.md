@@ -3,15 +3,16 @@ name: workflow-skill-development
 description: >-
   Guides the design, structuring, and implementation of workflow-based Claude Code skills
   with multi-step phases, sub-agent orchestration, decision trees, and progressive disclosure.
+  For a scored quality review use skill-reviewer, for operator-approved polish
+  skill-refiner-interactive. Not for single-file slash commands (command-development) or simple
+  single-purpose skills (guidance, reference content, or a short checklist for one task, with no
+  phased workflow) — use skill-development directly for those; this skill covers
+  workflow/orchestration architecture only, not domain content authoring.
+when_to_use: >-
   Use when creating or implementing skills that involve sequential pipelines, routing patterns,
-  safety gates, task tracking, phased execution, parallel sub-agent orchestration, or any
-  multi-step workflow skill. Also applies when redesigning the phase or routing structure of an
-  existing workflow skill; for a
-  scored quality review use skill-reviewer, for operator-approved polish skill-refiner-interactive.
-  Not for single-file slash commands (command-development) or simple single-purpose skills with no
-  sub-agents, confirmation gates, routing or workflows/ task files — use skill-development
-  directly for those; this skill covers workflow/orchestration architecture only, not domain
-  content authoring.
+  safety gates, task tracking, phased execution, linear numbered-phase procedures, parallel
+  sub-agent orchestration, or any multi-step workflow skill. Also applies when redesigning the
+  phase or routing structure of an existing workflow skill.
 allowed-tools: Read Glob Grep Write Skill
 ---
 
@@ -115,7 +116,7 @@ plugins/<plugin-name>/
 
 ## When NOT to Use
 
-- Simple single-purpose skills with no workflow (just guidance) — use `skill-development`, which covers creating, converting, repairing and consolidating them; this skill covers only multi-step workflow/orchestration architecture. Test: a skill needs this one only if it has sub-agent dispatch, a confirmation/safety gate, routing between independent tasks, or `workflows/` task files; a linear instruction list, however long, stays in `skill-development`
+- Simple single-purpose skills with no workflow (just guidance) — use `skill-development`, which covers creating, converting, repairing and consolidating them; this skill covers only multi-step workflow/orchestration architecture. Test: a skill needs this one when its body is a workflow — numbered phases with entry/exit criteria, steps where one step's output feeds the next (any of the five patterns below), sub-agent dispatch, a confirmation/safety gate, routing between independent tasks, or `workflows/` task files; guidance, reference content, or a short checklist for one task stays in `skill-development` (a checklist counts as a workflow only if its items carry per-step exit criteria or one item's output feeds the next)
 - Repairing, consolidating or converting an existing skill, including a workflow skill — use `skill-development`; this skill takes over only to redesign that skill's phase or routing architecture
 - Writing the actual domain content of a skill (this teaches structure, not domain expertise)
 - Writing a slash command (a `commands/*.md` file the user runs by typing `/name`), even a multi-step one whose steps all sit in that one file — use `command-development`; this skill designs SKILL.md workflows that Claude activates from context, plus the orchestrator command that only launches a workflow and hands its phases to task files and sub-agents
