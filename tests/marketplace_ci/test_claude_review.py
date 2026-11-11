@@ -169,7 +169,7 @@ def test_a_blocking_finding_in_either_pass_fails(severity):
         "passes": [_record("general"), _record("security", [_finding(severity, "scripts/x.py")])]
     }
     got = _decide(_scope(_PLAIN, _CRITICAL), raw)
-    assert (got["status"], got["verdict"], got["security_pass"]) == (
+    assert (got["status"], got["verdict"], got["security_review"]) == (
         "findings", "Changes Requested", True,
     )  # fmt: skip
 
