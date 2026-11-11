@@ -206,12 +206,12 @@ jobs:
           # predate --python-quality-skip-output. Then it runs without the flag
           # and the skip is false (fail closed). Removable once every open PR's
           # base has the flag.
-          help_text=$(uv run python -m scripts.marketplace_ci check-pr --help)
+          help_text=$(uv run --no-sync --no-build python -m scripts.marketplace_ci check-pr --help)
           if [[ "$help_text" == *--python-quality-skip-output* ]]; then
-            uv run python -m scripts.marketplace_ci check-pr --event /tmp/pr-event.json --python-quality-skip-output "$GITHUB_OUTPUT"
+            uv run --no-sync --no-build python -m scripts.marketplace_ci check-pr --event /tmp/pr-event.json --python-quality-skip-output "$GITHUB_OUTPUT"
           else
             echo "skip_python_quality=false" >> "$GITHUB_OUTPUT"
-            uv run python -m scripts.marketplace_ci check-pr --event /tmp/pr-event.json
+            uv run --no-sync --no-build python -m scripts.marketplace_ci check-pr --event /tmp/pr-event.json
           fi
 
   python-quality:
