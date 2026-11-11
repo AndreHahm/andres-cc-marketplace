@@ -358,8 +358,8 @@ jobs:
             --allowedTools "Read,Grep,Glob"
             --disallowedTools "mcp__*"
             --setting-sources user
-            --settings '{"disableAllHooks":true}'
-            --json-schema '{"type":"object","required":["verdict","findings"],"additionalProperties":false,"properties":{"verdict":{"type":"string","enum":["LGTM","Changes Requested"]},"findings":{"type":"array","maxItems":50,"items":{"type":"object","required":["severity","path","line","title","body"],"additionalProperties":false,"properties":{"severity":{"type":"string","enum":["Critical","Major","Minor","Informational"]},"path":{"type":"string"},"line":{"type":"integer","minimum":1},"title":{"type":"string","maxLength":200},"body":{"type":"string","maxLength":4000}}}}}}'
+            --settings '{"disableAllHooks":true,"permissions":{"blockReadsOutsideWorkingDirectories":true,"deny":["Read(//proc/**)","Read(//sys/**)","Read(.git/**)"]}}'
+            --json-schema '{"type":"object","required":["verdict","findings"],"additionalProperties":false,"properties":{"verdict":{"type":"string","enum":["LGTM","Changes Requested"]},"findings":{"type":"array","maxItems":30,"items":{"type":"object","required":["severity","path","line","title","body"],"additionalProperties":false,"properties":{"severity":{"type":"string","enum":["Critical","Major","Minor","Informational"]},"path":{"type":"string","maxLength":300,"pattern":"^[^`<>\\x00-\\x1f]+$"},"line":{"type":"integer","minimum":1},"title":{"type":"string","maxLength":200},"body":{"type":"string","maxLength":2000}}}}}}'
 
       # The execution file is the whole transcript: only the result entry is kept, and the file
       # is removed so the next pass cannot mix it up and nothing uploads it.
@@ -367,6 +367,7 @@ jobs:
         if: always() && steps.live_general.outputs.state != ''
         env:
           PASS: general
+          API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OUTCOME: ${{ steps.general.outcome }}
           STRUCTURED: ${{ steps.general.outputs.structured_output }}
         run: |
@@ -380,9 +381,12 @@ jobs:
               "$exec_file" 2>/dev/null || echo null)
             rm -f "$exec_file"
           fi
-          jq -n --arg pass "$PASS" --arg outcome "$OUTCOME" --arg so "$STRUCTURED" \
-            --argjson result "$result" \
-            '{pass: $pass, outcome: $outcome, structured_output: $so, result: $result}' \
+          # Output that holds the API key itself is dropped here, before any file or artifact
+          # has it; the key and the output reach jq through its environment, never argv.
+          jq -n --argjson result "$result" '
+            ($ENV.API_KEY != "" and ($ENV.STRUCTURED | contains($ENV.API_KEY))) as $leak
+            | {pass: $ENV.PASS, outcome: $ENV.OUTCOME, result: $result, secret_found: $leak,
+               structured_output: (if $leak then "" else $ENV.STRUCTURED end)}' \
             > "$RUNNER_TEMP/claude-raw/$PASS.json"
           jq -c '{pass, outcome, result}' "$RUNNER_TEMP/claude-raw/$PASS.json"
 
@@ -421,13 +425,14 @@ jobs:
             --allowedTools "Read,Grep,Glob"
             --disallowedTools "mcp__*"
             --setting-sources user
-            --settings '{"disableAllHooks":true}'
-            --json-schema '{"type":"object","required":["verdict","findings"],"additionalProperties":false,"properties":{"verdict":{"type":"string","enum":["LGTM","Changes Requested"]},"findings":{"type":"array","maxItems":50,"items":{"type":"object","required":["severity","path","line","title","body"],"additionalProperties":false,"properties":{"severity":{"type":"string","enum":["Critical","Major","Minor","Informational"]},"path":{"type":"string"},"line":{"type":"integer","minimum":1},"title":{"type":"string","maxLength":200},"body":{"type":"string","maxLength":4000}}}}}}'
+            --settings '{"disableAllHooks":true,"permissions":{"blockReadsOutsideWorkingDirectories":true,"deny":["Read(//proc/**)","Read(//sys/**)","Read(.git/**)"]}}'
+            --json-schema '{"type":"object","required":["verdict","findings"],"additionalProperties":false,"properties":{"verdict":{"type":"string","enum":["LGTM","Changes Requested"]},"findings":{"type":"array","maxItems":30,"items":{"type":"object","required":["severity","path","line","title","body"],"additionalProperties":false,"properties":{"severity":{"type":"string","enum":["Critical","Major","Minor","Informational"]},"path":{"type":"string","maxLength":300,"pattern":"^[^`<>\\x00-\\x1f]+$"},"line":{"type":"integer","minimum":1},"title":{"type":"string","maxLength":200},"body":{"type":"string","maxLength":2000}}}}}}'
 
       - name: Record the security pass
         if: always() && steps.live_security.outputs.state != ''
         env:
           PASS: security
+          API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OUTCOME: ${{ steps.security.outcome }}
           STRUCTURED: ${{ steps.security.outputs.structured_output }}
         run: |
@@ -441,9 +446,12 @@ jobs:
               "$exec_file" 2>/dev/null || echo null)
             rm -f "$exec_file"
           fi
-          jq -n --arg pass "$PASS" --arg outcome "$OUTCOME" --arg so "$STRUCTURED" \
-            --argjson result "$result" \
-            '{pass: $pass, outcome: $outcome, structured_output: $so, result: $result}' \
+          # Output that holds the API key itself is dropped here, before any file or artifact
+          # has it; the key and the output reach jq through its environment, never argv.
+          jq -n --argjson result "$result" '
+            ($ENV.API_KEY != "" and ($ENV.STRUCTURED | contains($ENV.API_KEY))) as $leak
+            | {pass: $ENV.PASS, outcome: $ENV.OUTCOME, result: $result, secret_found: $leak,
+               structured_output: (if $leak then "" else $ENV.STRUCTURED end)}' \
             > "$RUNNER_TEMP/claude-raw/$PASS.json"
           jq -c '{pass, outcome, result}' "$RUNNER_TEMP/claude-raw/$PASS.json"
 
@@ -480,7 +488,8 @@ jobs:
     # name and its claude-review-result artifact.
     name: Claude delta review
     needs: [claude-scope, claude-review]
-    if: always() && needs.claude-scope.result != 'skipped'
+    # Not on a cancelled run: a newer push supersedes it, and its summary would be noise.
+    if: ${{ !cancelled() && needs.claude-scope.result != 'skipped' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

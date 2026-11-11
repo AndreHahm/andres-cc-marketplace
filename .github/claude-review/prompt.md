@@ -49,9 +49,9 @@ section is empty.
 Return the structured output with:
 
 - `verdict`: `LGTM` or `Changes Requested`, as REVIEW.md defines them.
-- `findings`: at most 50, each with `severity` (`Critical`, `Major`, `Minor` or
+- `findings`: at most 30, each with `severity` (`Critical`, `Major`, `Minor` or
   `Informational`, as REVIEW.md defines them), `path` (one of the paths above), `line` (a line
   number in that file at the head, on a changed line where you can), `title` (one sentence)
-  and `body` (what is wrong, why it matters, and how to fix it).
+  and `body` (at most 2000 characters: what is wrong, why it matters, and how to fix it).
 
 Return an empty `findings` list when you find nothing.
