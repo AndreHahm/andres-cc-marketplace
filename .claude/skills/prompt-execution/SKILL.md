@@ -133,7 +133,9 @@ last run 2026-10-03, 6 of 6 checks passed, and it failed on a copy with a weaken
 date a subagent followed this SKILL.md by hand against a valid and a tampered throwaway catalog: a
 metacharacter slug was refused with no command run, a valid prompt was previewed and the flow stopped at
 the approval question without running anything, and the tampered catalog was reported unavailable. That
-run was not persisted and the approval question could not be asked, so the skill has had no live run yet.
+run was not persisted and the approval question could not be asked. A later live interactive run on
+2026-10-14 (plugin loaded with `--plugin-dir`) answered Cancel, which ran nothing, and then approved one
+prompt, which was rechecked and ran once.
 
 **Evals:** `evals/prompt-execution/` holds with-skill versus baseline scenarios run by dry-run agents that
 follow this SKILL.md by hand against throwaway projects (the approval question scripted). Its `evals.json`

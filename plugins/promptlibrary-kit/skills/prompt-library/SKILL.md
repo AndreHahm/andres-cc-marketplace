@@ -208,8 +208,10 @@ directly; last run 2026-10-14, 7 of 7 checks passed, and it failed on a copy wit
 (`scripts/plib_test_catalog_validate.py`). On the same date a subagent followed steps 1 to 6 by hand
 against an empty throwaway catalog with a web-origin candidate carrying a fake key: the screen reported
 it without echoing it, and `draft` refused it with nothing filed. That run was not persisted, the user
-questions were simulated, and the review, verify and status steps were not exercised, so the skill has
-had no live run yet.
+questions were simulated, and the review, verify and status steps were not exercised. A later live
+interactive run on 2026-10-14 (plugin loaded with `--plugin-dir`) ran add, near-duplicate, revise, finalize
+and deactivate, each status change behind its own approval; it found that step 5's triage was skipped,
+which was fixed in PR #566.
 
 **Evals:** `evals/prompt-library/` holds with-skill versus baseline scenarios run by dry-run agents that
 follow this SKILL.md by hand against throwaway projects (approval questions scripted, the reviewer step done
