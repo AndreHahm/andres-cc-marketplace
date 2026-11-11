@@ -112,6 +112,20 @@ def test_every_action_is_pinned_by_commit_sha():
     assert "# ratchet:anthropics/claude-code-action@v1.0.271" in TEXT
 
 
+def test_uv_is_pinned_and_runs_no_package_setup_code():
+    """Sonar S8541/S8544: no unpinned `pip install uv`, and no package's setup code runs."""
+    for job in ("claude-scope", "claude-publish"):
+        steps = _steps(job)
+        runs = [s.get("run", "") for s in steps]
+        assert not any("pip install" in r for r in runs), job
+        setup = [s for s in steps if str(s.get("uses", "")).startswith("astral-sh/setup-uv@")]
+        assert len(setup) == 1 and setup[0]["with"]["version"] == "0.12.21", job
+        syncs = [r for r in runs if r.startswith("uv sync")]
+        assert len(syncs) == 1 and "--no-build" in syncs[0] and "--locked" in syncs[0], job
+        uv_runs = [line for r in runs for line in r.splitlines() if "uv run" in line]
+        assert uv_runs and all("uv run --no-sync" in line for line in uv_runs), job
+
+
 _MODEL_EXPR = "${{ needs.claude-scope.outputs.model }}"
 
 
