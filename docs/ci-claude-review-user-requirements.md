@@ -1,9 +1,9 @@
 # CI Claude Delta Review: User Requirements
 
-The maintainer's requirements for the planned `Claude delta review` CI workflow
-(`.github/workflows/claude-review-ci.yml`, not built yet). It reviews the changes of a pull request since
-the head it last reviewed, using the Anthropic API. Once the workflow exists, its implementation will be
-described in [`docs/ci.md`](ci.md). Where the two disagree, this document states the intent and
+The maintainer's requirements for the `Claude delta review` CI workflow
+(`.github/workflows/claude-review-ci.yml`). It reviews the changes of a pull request since the head it
+last reviewed, using the Anthropic API. Its implementation is described in [`docs/ci.md`](ci.md),
+section "Claude delta review (advisory)". Where the two disagree, this document states the intent and
 `docs/ci.md` must be corrected.
 
 The Codex delta review in `.github/workflows/marketplace-ci.yml` stays as it is. Its requirements are in
