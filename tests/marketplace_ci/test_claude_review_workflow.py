@@ -305,5 +305,5 @@ def test_the_record_step_drops_output_that_holds_the_key(tmp_path, structured, l
     assert record["secret_found"] is leak
     assert record["structured_output"] == ("" if leak else structured)
     assert record["result"] == {"subtype": "success", "is_error": False, "num_turns": 3,
-                                "total_cost_usd": 0.2}  # fmt: skip
+                                "total_cost_usd": 0.2, "api_error_status": None}  # fmt: skip
     assert not (tmp_path / "claude-execution-output.json").exists()
