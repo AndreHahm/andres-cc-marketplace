@@ -919,85 +919,23 @@ jobs:
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
           EVENT_ACTION: ${{ github.event.action }}
           IS_DRAFT: ${{ github.event.pull_request.draft }}
+        # The lookup is the shared find-review-anchor subcommand (Claude review R3), run from the
+        # base-restored code above. If it cannot run (for example on the pull request that
+        # introduces it, whose base lacks it), the anchor is empty: the whole PR is reviewed.
         run: |
-          anchor=""
-          # job <name> <field>: that field of the job's latest execution in this candidate run.
-          job() {
-            jq -r --arg n "$1" --arg f "$2" '[.[] | select(.name == $n)][0][$f] // ""' <<< "$jobs" 2>/dev/null || true
-          }
-          # same_execution <job name> <file>: the file names the candidate's head and the attempt
-          # whose execution of that job is still the latest one. A re-run of only the failed jobs
-          # reuses a passed job (same completion time) under a new attempt number, and an artifact
-          # download is not tied to an attempt, so this pairs a file with the verdict of the very
-          # execution that wrote it. A file without both fields is not an anchor.
-          same_execution() {
-            local attempt done_at
-            attempt=$(jq -r --arg sha "$head_sha" 'if .head_sha == $sha then (.run_attempt // "") else "" end' "$2" 2>/dev/null || true)
-            printf '%s' "$attempt" | grep -Eq '^[1-9][0-9]{0,3}$' || return 1
-            done_at=$(gh api -X GET "repos/$REPO/actions/runs/$run_id/attempts/$attempt/jobs" -F per_page=100 \
-              --jq "[.jobs[] | select(.name == \"$1\") | .completed_at][0] // \"\"") || return 1
-            [ -n "$done_at" ] && [ "$done_at" = "$(job "$1" completed_at)" ]
-          }
-          # opened and ready_for_review review the whole PR (R4, R14); a draft is not reviewed.
-          if [ "$IS_DRAFT" != "true" ] && [ "$EVENT_ACTION" != "opened" ] \
-            && [ "$EVENT_ACTION" != "ready_for_review" ]; then
-            # R11: only runs already complete when this run was created. created_at does not change
-            # across attempts; a candidate's updated_at is at or after its completion, so an earlier
-            # updated_at proves it was complete then. Unreadable: no anchor, never a newer one.
-            created=$(gh api "repos/$REPO/actions/runs/$RUN_ID" --jq '.created_at | fromdateiso8601') || created=""
-            runs=""
-            if printf '%s' "$created" | grep -Eq '^[0-9]+$'; then
-              runs=$(gh api -X GET "repos/$REPO/actions/workflows/marketplace-ci.yml/runs" \
-                -f event=pull_request -f branch="$HEAD_REF" -f status=completed -F per_page=30 \
-                --jq ".workflow_runs[] | select(.id != $RUN_ID)
-                      | select(.head_repository.full_name == \"$REPO\")
-                      | select(any(.pull_requests[]; .number == $PR_NUMBER))
-                      | select((.updated_at | fromdateiso8601) < $created)
-                      | \"\(.id) \(.head_sha)\"" ) || runs=""
-            else
-              echo "::warning::cannot read this run's creation time; no anchor, the whole PR is reviewed"
-            fi
-            while read -r run_id head_sha; do
-              [ -n "$run_id" ] || continue
-              jobs=$(gh api -X GET "repos/$REPO/actions/runs/$run_id/jobs" -F per_page=100 \
-                --jq '[.jobs[] | {name, conclusion, completed_at}]') || jobs="[]"
-              # R12: a run whose publish job passed on a valid bypass attestation recorded its head
-              # as reviewed with no findings.
-              bdir="$RUNNER_TEMP/bypass-$run_id"
-              if [ "$(job "Publish Codex policy result" conclusion)" = "success" ] \
-                && gh run download "$run_id" -R "$REPO" -n codex-review-bypass -D "$bdir" >/dev/null 2>&1 \
-                && jq -e '.status == "bypassed" and .findings == []' "$bdir/codex-review-bypass.json" >/dev/null 2>&1 \
-                && same_execution "Publish Codex policy result" "$bdir/codex-review-bypass.json"; then
-                anchor="$head_sha"
-                cp "$bdir/codex-review-bypass.json" "$RUNNER_TEMP/anchor-result.json"
-                break
-              fi
-              # A job that failed before its reviewers ran (could_not_run: the delta-base
-              # derivation, the Tier-1 refusal, the sandbox probe) reviewed nothing either. A
-              # skipped review counts only through compute-scope's own record (R7).
-              case "$(job "Codex delta review" conclusion)" in
-                success|failure) name="codex-review-result"; producer="Codex delta review" ;;
-                skipped) name="codex-review-skip"; producer="Compute Codex review scope" ;;
-                *) continue ;;
-              esac
-              if [ "$name" = "codex-review-skip" ] && [ "$(job "$producer" conclusion)" != "success" ]; then
-                continue
-              fi
-              dir="$RUNNER_TEMP/anchor-$run_id"
-              if gh run download "$run_id" -R "$REPO" -n "$name" -D "$dir" >/dev/null 2>&1 \
-                && jq -e '(.status == "findings" or .status == "clean") and (.findings | type == "array")' \
-                  "$dir/$name.json" >/dev/null 2>&1 \
-                && same_execution "$producer" "$dir/$name.json"; then
-                anchor="$head_sha"
-                cp "$dir/$name.json" "$RUNNER_TEMP/anchor-result.json"
-                break
-              fi
-            done <<< "$runs"
+          if ! uv run python -m scripts.marketplace_ci find-review-anchor --profile codex \
+              --repo "$REPO" --run-id "$RUN_ID" --pr-number "$PR_NUMBER" --head-ref "$HEAD_REF" \
+              --event-action "$EVENT_ACTION" --is-draft "$IS_DRAFT" --temp-dir "$RUNNER_TEMP/anchor" \
+              --github-output "$RUNNER_TEMP/anchor-output" --result-out "$RUNNER_TEMP/anchor-result.json"; then
+            echo "::warning::the anchor lookup could not run; no anchor, the whole PR is reviewed"
+            rm -f "$RUNNER_TEMP/anchor-result.json"
+            : > "$RUNNER_TEMP/anchor-output"
           fi
+          anchor=$(sed -n 's/^sha=//p' "$RUNNER_TEMP/anchor-output" | tail -n 1)
           if ! printf '%s' "$anchor" | grep -Eq '^[0-9a-f]{40}$'; then
             anchor=""
+            rm -f "$RUNNER_TEMP/anchor-result.json"
           fi
-          echo "anchor: ${anchor:-none (whole PR is reviewed)}"
           echo "sha=$anchor" >> "$GITHUB_OUTPUT"
 
       # An anchor that cannot be fetched skips the review (R9), so this head is then not recorded as

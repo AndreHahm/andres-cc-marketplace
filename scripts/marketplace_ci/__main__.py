@@ -833,7 +833,8 @@ def _ci_review_delta(args: argparse.Namespace, repo: Path, changed, base_sha: st
         return changed
     from scripts.marketplace_ci.review import exclude_from_ci_review, narrow_to_unreviewed
 
-    changed = exclude_from_ci_review(repo, changed, base_sha)
+    keep_tests = getattr(args, "review_exclusions", "codex") == "claude"
+    changed = exclude_from_ci_review(repo, changed, base_sha, keep_tests=keep_tests)
     anchor = getattr(args, "anchor_sha", "")
     if anchor:
         changed = narrow_to_unreviewed(repo, changed, base_sha, anchor)
@@ -1000,7 +1001,10 @@ def _handle_check_scope_bypass(args: argparse.Namespace) -> int:
         print(f"check-scope-bypass: {exc}", file=sys.stderr)
         return 2
 
-    scope = derive_review_scope(_ci_review_delta(args, repo, changed, base_sha), {})
+    review_delta = _ci_review_delta(args, repo, changed, base_sha)
+    if args.emit_review_paths:
+        _emit_review_paths(args, repo, base_sha, review_delta)
+    scope = derive_review_scope(review_delta, {})
     eligible = is_bypass_eligible(scope)
     reason = f"mode={scope.mode}, validate={len(scope.validate)}, audit={len(scope.audit)}"
 
@@ -1041,6 +1045,55 @@ def _handle_check_scope_bypass(args: argparse.Namespace) -> int:
     if args.json_output:
         Path(args.json_output).write_text(output_text + "\n", encoding="utf-8")
     print(output_text)
+    return 0
+
+
+def _emit_review_paths(args: argparse.Namespace, repo: Path, base_sha: str, review_delta) -> None:
+    """The reviewed delta as JSON for the Claude review (its R3, R4): each entry's status and
+    path (plus old_path for a rename), and how the anchor was treated: "none", "trusted"
+    (narrowed), "untrusted" (the whole delta) or "unresolved" (only gate-critical paths)."""
+    from scripts.marketplace_ci.review import anchor_trust
+
+    anchor = args.anchor_sha if args.ci_delta else ""
+    entries = []
+    for cp in review_delta:
+        entry = {"status": cp.status, "path": cp.new_path or cp.old_path}
+        if cp.status == "R":
+            entry["old_path"] = cp.old_path
+        entries.append(entry)
+    payload = {
+        "anchor_sha": anchor,
+        "anchor_status": anchor_trust(repo, base_sha, anchor) if anchor else "none",
+        "paths": sorted(entries, key=lambda e: e["path"]),
+    }
+    Path(args.emit_review_paths).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+
+def _handle_find_review_anchor(args: argparse.Namespace) -> int:
+    """The last reviewed head of a pull request for one review workflow (issue #639, Codex R5
+    and R11; Claude review R3). Appends `sha=<anchor>` (empty for none) to --github-output and
+    copies the anchor's result file to --result-out. Exits 0 whenever it decided, anchor or not."""
+    import shutil
+
+    from scripts.marketplace_ci.review import ANCHOR_PROFILES, find_review_anchor
+
+    temp_dir = Path(args.temp_dir)
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    anchor, result = find_review_anchor(
+        ANCHOR_PROFILES[args.profile],
+        repo=args.repo,
+        run_id=args.run_id,
+        pr_number=args.pr_number,
+        head_ref=args.head_ref,
+        event_action=args.event_action,
+        is_draft=args.is_draft == "true",
+        temp_dir=temp_dir,
+    )
+    if anchor and result is not None and args.result_out:
+        shutil.copyfile(result, args.result_out)
+    print(f"anchor: {anchor or 'none (whole PR is reviewed)'}")
+    with open(args.github_output, "a", encoding="utf-8") as out:
+        out.write(f"sha={anchor}\n")
     return 0
 
 
@@ -1867,7 +1920,35 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="SHA",
         help="with --ci-delta: review only what the PR changed since this already-reviewed head",
     )
+    check_scope_bypass.add_argument(
+        "--review-exclusions",
+        choices=("codex", "claude"),
+        default="codex",
+        help="with --ci-delta: claude keeps tests, fixtures and nested evals in scope (its R4)",
+    )
+    check_scope_bypass.add_argument(
+        "--emit-review-paths",
+        default="",
+        metavar="PATH",
+        help="also write the reviewed paths and the anchor's treatment as JSON",
+    )
     check_scope_bypass.set_defaults(handler=_handle_check_scope_bypass)
+
+    find_anchor = subparsers.add_parser(
+        "find-review-anchor",
+        help="find the head an earlier run of a review workflow last reviewed (issue #639)",
+    )
+    find_anchor.add_argument("--profile", required=True, choices=("codex", "claude"))
+    find_anchor.add_argument("--repo", required=True, metavar="OWNER/REPO")
+    find_anchor.add_argument("--run-id", required=True, type=int)
+    find_anchor.add_argument("--pr-number", required=True, type=int)
+    find_anchor.add_argument("--head-ref", required=True)
+    find_anchor.add_argument("--event-action", required=True)
+    find_anchor.add_argument("--is-draft", required=True, choices=("true", "false"))
+    find_anchor.add_argument("--temp-dir", required=True, metavar="DIR")
+    find_anchor.add_argument("--github-output", required=True, metavar="PATH")
+    find_anchor.add_argument("--result-out", default="", metavar="PATH")
+    find_anchor.set_defaults(handler=_handle_find_review_anchor)
 
     carry_findings = subparsers.add_parser(
         "carry-findings",
