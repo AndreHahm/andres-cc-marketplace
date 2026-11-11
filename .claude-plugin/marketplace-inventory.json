@@ -477,10 +477,11 @@
         "claude-code": {
           "evidence": [
             "claude plugin validate plugins/promptlibrary-kit passes",
-            "H1 live run 2026-10-14, headless claude -p with --plugin-dir: the plugin loads; prompt-retrieval and prompt-reviewer ran live; prompt-execution previewed and stopped at the approval question, so no approved live run yet (run record kept locally, gitignored)"
+            "H1 headless run 2026-10-14 (claude -p with --plugin-dir): the plugin loads; prompt-retrieval and prompt-reviewer ran live; prompt-execution refused at the approval question, which a headless session cannot ask",
+            "H1 interactive user-run pass 2026-10-14: prompt-execution Cancel ran nothing and an approved run rechecked the hash and ran once; prompt-library add, duplicate, revise, finalize and deactivate ran live (run record kept locally, gitignored)"
           ],
           "level": "native",
-          "notes": "Wave 0 runs as a Claude Code plugin; prompt execution is Claude-only and has not completed an approved live run.",
+          "notes": "Wave 0 runs as a Claude Code plugin with --plugin-dir; prompt execution is Claude-only. Not yet run from a marketplace install.",
           "verified_on": "2026-10-14"
         },
         "codex": {
