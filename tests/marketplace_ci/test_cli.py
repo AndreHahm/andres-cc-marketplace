@@ -426,6 +426,37 @@ def test_check_pr_bot_manifest_only_depends_on_commit_verification(
     assert calls == [("andre/repo", 5, head_sha, 1)]
 
 
+@pytest.mark.parametrize(
+    ("user", "path", "verified", "rc", "skip"),
+    [
+        ("dependabot[bot]", "pnpm-lock.yaml", True, 0, "true"),
+        ("dependabot[bot]", "uv.lock", True, 0, "false"),
+        # unverified bot commits fail merge-privilege, so check-pr fails and
+        # the output is false as well
+        ("dependabot[bot]", "pnpm-lock.yaml", False, 1, "false"),
+        ("andre", "pnpm-lock.yaml", True, 0, "false"),
+    ],
+)
+def test_check_pr_python_quality_skip_output(
+    monkeypatch, git_repo, tmp_path, user, path, verified, rc, skip
+):
+    base_sha = _commit_and_sha(git_repo, "README.md", "hello", "init")
+    head_sha = _commit_and_sha(git_repo, path, "lock", "bump")
+    event_path = _check_pr_event(
+        git_repo, tmp_path, user=user, base_sha=base_sha, head_sha=head_sha
+    )
+    monkeypatch.setattr(
+        "scripts.marketplace_ci.pr_policy.commits_verified_from_trusted_bot",
+        lambda *args: verified,
+    )
+    monkeypatch.chdir(git_repo.root)
+    out = tmp_path / "github_output"
+    out.write_text("earlier=1\n", encoding="utf-8")
+    args = ["check-pr", "--event", str(event_path), "--python-quality-skip-output", str(out)]
+    assert main(args) == rc
+    assert out.read_text(encoding="utf-8") == f"earlier=1\nskip_python_quality={skip}\n"
+
+
 def test_check_pr_does_not_query_commits_for_non_bot_opener(monkeypatch, git_repo, tmp_path):
     base_sha = _commit_and_sha(git_repo, "README.md", "hello", "init")
     head_sha = _commit_and_sha(git_repo, "uv.lock", "lock", "bump")

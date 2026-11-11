@@ -559,6 +559,7 @@ def _handle_check_pr(args: argparse.Namespace) -> int:
         RealGitHubApi,
         commits_verified_from_trusted_bot,
         evaluate_pr_policy,
+        python_quality_skip_allowed,
     )
 
     repo = Path.cwd()
@@ -626,6 +627,17 @@ def _handle_check_pr(args: argparse.Namespace) -> int:
         status = "PASS" if rights.allowed else "FAIL"
         suffix = f" - {rights.reason}" if rights.reason else ""
         print(f"check-pr [{label}]: {status}{suffix}")
+
+    if args.python_quality_skip_output:
+        # Written only on a passing policy result, so a failed Hygiene job never
+        # carries a "skip" value; the workflow also trusts it only when Hygiene
+        # succeeded.
+        skip = result.passed and python_quality_skip_allowed(
+            user, changed_paths, bot_commits_verified=bot_commits_verified
+        )
+        print(f"check-pr [python-quality-skip]: {'YES' if skip else 'NO'}")
+        with open(args.python_quality_skip_output, "a", encoding="utf-8") as out:
+            out.write(f"skip_python_quality={'true' if skip else 'false'}\n")
 
     return 0 if result.passed else 1
 
@@ -1952,6 +1964,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     check_pr = subparsers.add_parser("check-pr", help="validate a PR event against policy")
     check_pr.add_argument("--event", required=True, metavar="PATH", help="PR event JSON path")
+    check_pr.add_argument(
+        "--python-quality-skip-output",
+        metavar="PATH",
+        help="append skip_python_quality=true|false (GITHUB_OUTPUT format) to PATH",
+    )
     check_pr.set_defaults(handler=_handle_check_pr)
 
     subparsers.add_parser(
