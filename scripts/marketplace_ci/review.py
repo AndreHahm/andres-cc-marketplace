@@ -1104,12 +1104,18 @@ def _mirror_source(path: str, mirror_map) -> list[str]:
     return [f"plugins/{plugin}/{component}/{rest}" for plugin in plugins]
 
 
-def is_ci_review_excluded(path: str, generated: frozenset[str] = frozenset()) -> bool:
-    """`generated` holds the mirror paths exclude_from_ci_review proved are copies."""
+def is_ci_review_excluded(
+    path: str, generated: frozenset[str] = frozenset(), *, keep_tests: bool = False
+) -> bool:
+    """`generated` holds the mirror paths exclude_from_ci_review proved are copies.
+    `keep_tests` is the Claude review's narrower set (its R4): tests, fixtures, test files
+    and nested `evals` directories are reviewed there."""
     if is_gate_critical(path):
         return False
     if path.startswith(_CI_EXCLUDED_ROOT_PREFIXES):
         return True
+    if keep_tests:
+        return path in generated
     *dirs, name = path.split("/")
     if any(d in _CI_EXCLUDED_DIR_SEGMENTS for d in dirs):
         return True
@@ -1148,7 +1154,7 @@ def _generated_copies(repo: Path, changed: Sequence[ChangedPath], mirror_map) ->
 
 
 def exclude_from_ci_review(
-    repo: Path, changed: Sequence[ChangedPath], base_sha: str
+    repo: Path, changed: Sequence[ChangedPath], base_sha: str, *, keep_tests: bool = False
 ) -> tuple[ChangedPath, ...]:
     """`changed` without the entries whose every path is_ci_review_excluded."""
     generated = _generated_copies(repo, changed, _mirror_map(repo, base_sha))
@@ -1156,7 +1162,9 @@ def exclude_from_ci_review(
         cp
         for cp in changed
         if not all(
-            is_ci_review_excluded(p, generated) for p in (cp.old_path, cp.new_path) if p is not None
+            is_ci_review_excluded(p, generated, keep_tests=keep_tests)
+            for p in (cp.old_path, cp.new_path)
+            if p is not None
         )
     )
 
@@ -1270,6 +1278,22 @@ def _anchor_touches_gate(repo: Path, base_sha: str, anchor_sha: str) -> bool:
     )
 
 
+def anchor_trust(repo: Path, base_sha: str, anchor_sha: str) -> str:
+    """How narrow_to_unreviewed treats `anchor_sha`: "unresolved" when this checkout cannot
+    resolve it (force-pushed away), "untrusted" when its own changes touch a gate-critical or
+    reviewer-steering path, else "trusted"."""
+    resolved = subprocess.run(
+        ["git", "rev-parse", "--verify", "--quiet", f"{anchor_sha}^{{commit}}"],
+        cwd=repo,
+        capture_output=True,
+    )
+    if resolved.returncode != 0:
+        return "unresolved"
+    if _anchor_touches_gate(repo, base_sha, anchor_sha):
+        return "untrusted"
+    return "trusted"
+
+
 def narrow_to_unreviewed(
     repo: Path, changed: Sequence[ChangedPath], base_sha: str, anchor_sha: str
 ) -> tuple[ChangedPath, ...]:
@@ -1285,14 +1309,10 @@ def narrow_to_unreviewed(
     def critical(cp: ChangedPath) -> bool:
         return any(is_gate_critical(p) for p in (cp.old_path, cp.new_path) if p is not None)
 
-    resolved = subprocess.run(
-        ["git", "rev-parse", "--verify", "--quiet", f"{anchor_sha}^{{commit}}"],
-        cwd=repo,
-        capture_output=True,
-    )
-    if resolved.returncode != 0:
+    trust = anchor_trust(repo, base_sha, anchor_sha)
+    if trust == "unresolved":
         return tuple(cp for cp in changed if critical(cp))
-    if _anchor_touches_gate(repo, base_sha, anchor_sha):
+    if trust == "untrusted":
         return tuple(changed)
     kept = []
     for cp in changed:
@@ -3562,3 +3582,214 @@ def attestation_candidates(comments_with_login: Sequence[dict], head_sha: str) -
         and marker["sha"] == head_sha
         and marker["actor"] == comment.get("login")
     ]
+
+
+# The last reviewed head of a pull request (issue #639: Codex R5, R11, R12; Claude review R3).
+# Both review workflows find their anchor with this one lookup, each through its own profile:
+# the newest other run of the workflow for the pull request that was already complete when
+# this run was created, and whose job named the reviewed head and attempt in a result
+# artifact. Read from the GitHub API, never from the pull request. A failed read leaves the
+# anchor empty, so the review widens to the whole pull request rather than skipping anything.
+
+
+@dataclass(frozen=True)
+class AnchorProfile:
+    workflow_file: str
+    review_job: str
+    result_artifact: str
+    # (job, artifact): a passed publish job's bypass record (Codex R12).
+    bypass: tuple[str, str] | None = None
+    # (job, artifact): the scope job's record of a skipped review (Codex R7).
+    skip: tuple[str, str] | None = None
+
+
+ANCHOR_PROFILES = {
+    "codex": AnchorProfile(
+        workflow_file="marketplace-ci.yml",
+        review_job="Codex delta review",
+        result_artifact="codex-review-result",
+        bypass=("Publish Codex policy result", "codex-review-bypass"),
+        skip=("Compute Codex review scope", "codex-review-skip"),
+    ),
+    "claude": AnchorProfile(
+        workflow_file="claude-review-ci.yml",
+        review_job="Claude delta review",
+        result_artifact="claude-review-result",
+    ),
+}
+
+_ANCHOR_ATTEMPT = re.compile(r"[1-9][0-9]{0,3}")
+_ANCHOR_SHA = re.compile(r"[0-9a-f]{40}")
+
+
+def _gh_get_json(path: str, *fields: str):
+    """`gh api -X GET path` parsed as JSON, or None when the call or the parse fails."""
+    result = subprocess.run(
+        ["gh", "api", "-X", "GET", path, *fields, "--jq", "."], capture_output=True, text=True
+    )
+    if result.returncode != 0:
+        return None
+    try:
+        return json.loads(result.stdout)
+    except ValueError:
+        return None
+
+
+def _epoch(stamp) -> float:
+    from datetime import datetime
+
+    if not isinstance(stamp, str):
+        raise ValueError(stamp)
+    return datetime.fromisoformat(stamp.replace("Z", "+00:00")).timestamp()
+
+
+def find_review_anchor(
+    profile: AnchorProfile,
+    *,
+    repo: str,
+    run_id: int,
+    pr_number: int,
+    head_ref: str,
+    event_action: str,
+    is_draft: bool,
+    temp_dir: Path,
+) -> tuple[str, Path | None]:
+    """The anchor SHA ("" for none) and the result file it was taken from."""
+    # opened and ready_for_review review the whole PR (Codex R4, R14); a draft is not reviewed.
+    if is_draft or event_action in ("opened", "ready_for_review"):
+        return "", None
+    # Only runs already complete when this run was created (Codex R11). created_at does not
+    # change across attempts; a candidate's updated_at is at or after its completion, so an
+    # earlier updated_at proves it was complete then. Unreadable: no anchor, never a newer one.
+    run = _gh_get_json(f"repos/{repo}/actions/runs/{run_id}")
+    try:
+        created = _epoch(run["created_at"])  # type: ignore[index]
+    except (TypeError, KeyError, ValueError):
+        print(
+            "::warning::cannot read this run's creation time; no anchor, the whole PR is reviewed"
+        )
+        return "", None
+    listing = _gh_get_json(
+        f"repos/{repo}/actions/workflows/{profile.workflow_file}/runs",
+        "-f", "event=pull_request", "-f", f"branch={head_ref}",
+        "-f", "status=completed", "-F", "per_page=30",
+    )  # fmt: skip
+    try:
+        candidates = [
+            (r["id"], r["head_sha"])
+            for r in listing["workflow_runs"]  # type: ignore[index]
+            if r["id"] != run_id
+            and (r.get("head_repository") or {}).get("full_name") == repo
+            and any(pr.get("number") == pr_number for pr in r.get("pull_requests") or [])
+            and _epoch(r["updated_at"]) < created
+        ]
+    except (TypeError, KeyError, ValueError, AttributeError):
+        candidates = []
+
+    for cand_id, head_sha in candidates:
+        jobs = _gh_get_json(f"repos/{repo}/actions/runs/{cand_id}/jobs", "-F", "per_page=100")
+        jobs = jobs.get("jobs") if isinstance(jobs, dict) else None
+        if not isinstance(jobs, list):
+            jobs = []
+
+        def job(name: str, field: str, jobs=jobs) -> str:
+            for j in jobs:
+                if isinstance(j, dict) and j.get("name") == name:
+                    value = j.get(field)
+                    return value if isinstance(value, str) else ""
+            return ""
+
+        def download(artifact: str, cand_id=cand_id):
+            dest = Path(tempfile.mkdtemp(prefix=f"anchor-{cand_id}-", dir=temp_dir))
+            got = subprocess.run(
+                [
+                    "gh",
+                    "run",
+                    "download",
+                    str(cand_id),
+                    "-R",
+                    repo,
+                    "-n",
+                    artifact,
+                    "-D",
+                    str(dest),
+                ],
+                capture_output=True,
+            )
+            path = dest / f"{artifact}.json"
+            if got.returncode != 0 or not path.is_file():
+                return None, path
+            try:
+                return json.loads(path.read_text(encoding="utf-8")), path
+            except ValueError:
+                return None, path
+
+        def same_execution(producer: str, record, cand_id=cand_id, head_sha=head_sha, job=job):
+            # The file names the candidate's head and the attempt whose execution of that job
+            # is still the latest one. A re-run of only the failed jobs reuses a passed job
+            # (same completion time) under a new attempt number, and an artifact download is
+            # not tied to an attempt, so this pairs a file with the verdict of the very
+            # execution that wrote it. A file without both fields is not an anchor.
+            if not isinstance(record, dict) or record.get("head_sha") != head_sha:
+                return False
+            attempt = record.get("run_attempt")
+            if isinstance(attempt, bool) or not isinstance(attempt, (int, str)):
+                return False
+            attempt = str(attempt)
+            if not _ANCHOR_ATTEMPT.fullmatch(attempt):
+                return False
+            listed = _gh_get_json(
+                f"repos/{repo}/actions/runs/{cand_id}/attempts/{attempt}/jobs", "-F", "per_page=100"
+            )
+            try:
+                done_at = next(
+                    (j.get("completed_at") for j in listed["jobs"] if j.get("name") == producer),  # type: ignore[index]
+                    None,
+                )
+            except (TypeError, KeyError, AttributeError):
+                return False
+            return (
+                isinstance(done_at, str)
+                and done_at != ""
+                and done_at == job(producer, "completed_at")
+            )
+
+        # Codex R12: a run whose publish job passed on a valid bypass attestation recorded its
+        # head as reviewed with no findings.
+        if profile.bypass is not None:
+            publish, artifact = profile.bypass
+            if job(publish, "conclusion") == "success":
+                record, path = download(artifact)
+                if (
+                    isinstance(record, dict)
+                    and record.get("status") == "bypassed"
+                    and record.get("findings") == []
+                    and same_execution(publish, record)
+                ):
+                    return _checked_anchor(head_sha, path)
+        # A job that failed before its reviewers ran reviewed nothing; a cancelled run reviewed
+        # nothing either. A skipped review counts only through the scope job's own record.
+        conclusion = job(profile.review_job, "conclusion")
+        if conclusion in ("success", "failure"):
+            artifact, producer = profile.result_artifact, profile.review_job
+        elif conclusion == "skipped" and profile.skip is not None:
+            producer, artifact = profile.skip
+            if job(producer, "conclusion") != "success":
+                continue
+        else:
+            continue
+        record, path = download(artifact)
+        if (
+            isinstance(record, dict)
+            and record.get("status") in ("findings", "clean")
+            and isinstance(record.get("findings"), list)
+            and same_execution(producer, record)
+        ):
+            return _checked_anchor(head_sha, path)
+    return "", None
+
+
+def _checked_anchor(head_sha, path: Path) -> tuple[str, Path | None]:
+    if isinstance(head_sha, str) and _ANCHOR_SHA.fullmatch(head_sha):
+        return head_sha, path
+    return "", None

@@ -23,6 +23,7 @@ from scripts.marketplace_ci import review as review_module
 from scripts.marketplace_ci.__main__ import _ci_review_delta, main
 from scripts.marketplace_ci.git_state import ChangedPath
 from scripts.marketplace_ci.review import (
+    ANCHOR_PROFILES,
     CarryError,
     _generated_copies,
     carry_blocking_findings,
@@ -523,7 +524,8 @@ def test_carry_findings_cli(monkeypatch, git_repo, tmp_path):
 
 # The publish job's decision script, run for the R7, R8, R12 and R14 cases.
 
-_WORKFLOW = Path(__file__).resolve().parents[2] / ".github" / "workflows" / "marketplace-ci.yml"
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_WORKFLOW = _REPO_ROOT / ".github" / "workflows" / "marketplace-ci.yml"
 
 
 def _publish_script() -> str:
@@ -1005,6 +1007,13 @@ def test_a_bypass_record_carries_nothing(git_repo):
     assert carry_blocking_findings(git_repo.root, base, anchor, record, "", _never_open) == []
 
 
+def _fake_uv(bin_dir, body=None):
+    """A `uv` that runs `uv run python ...` as this interpreter (or `body`, a shell script)."""
+    uv = bin_dir / "uv"
+    uv.write_text(body or f'#!/bin/sh\nshift 2\nexec "{sys.executable}" "$@"\n', encoding="utf-8")
+    uv.chmod(0o755)
+
+
 _FAKE_GH = r"""#!/usr/bin/env python3
 import json, os, shutil, subprocess, sys
 fixtures = os.environ["FAKE_GH_FIXTURES"]
@@ -1044,12 +1053,13 @@ def _write(path, data):
     path.write_text(json.dumps(data), encoding="utf-8")
 
 
-def _run_lookup(tmp_path, candidates, created="2026-01-01T01:00:00Z"):
-    """Run compute-scope's anchor lookup for run 3 (created at `created`) over `candidates`,
-    newest first. Each is a dict: id, sha, jobs ([{name, conclusion}] of the latest attempt),
-    and optionally attempt (latest attempt number, default 1), reused (job names a re-run of
-    only the failed jobs reused from attempt 1), updated (the run's updated_at) and artifacts
-    ({name: content}). Returns the anchor and its result (None when there is no anchor)."""
+def _run_lookup(tmp_path, candidates, created="2026-01-01T01:00:00Z", profile="codex"):
+    """Run the shared anchor lookup (find-review-anchor, `profile`; for codex through
+    compute-scope's own step) for run 3 (created at `created`) over `candidates`, newest first.
+    Each is a dict: id, sha, jobs ([{name, conclusion}] of the latest attempt), and optionally
+    attempt (latest attempt number, default 1), reused (job names a re-run of only the failed
+    jobs reused from attempt 1), updated (the run's updated_at) and artifacts ({name: content}).
+    Returns the anchor and its result (None when there is no anchor)."""
     fixtures = tmp_path / "fixtures"
     fixtures.mkdir()
     runs = []
@@ -1076,7 +1086,8 @@ def _run_lookup(tmp_path, candidates, created="2026-01-01T01:00:00Z"):
         for name, content in c.get("artifacts", {}).items():
             _write(fixtures / f"artifact-{rid}-{name}.json", content)
     _write(
-        fixtures / "repos_o_r_actions_workflows_marketplace-ci.yml_runs.json",
+        fixtures
+        / f"repos_o_r_actions_workflows_{ANCHOR_PROFILES[profile].workflow_file}_runs.json",
         {"workflow_runs": runs},
     )
     if created is not None:
@@ -1086,26 +1097,40 @@ def _run_lookup(tmp_path, candidates, created="2026-01-01T01:00:00Z"):
     gh = bin_dir / "gh"
     gh.write_text(_FAKE_GH, encoding="utf-8")
     gh.chmod(0o755)
-    script = tmp_path / "lookup.sh"
-    script.write_text(
-        _step("compute-scope", "Find the last reviewed head")["run"], encoding="utf-8"
-    )
     out = tmp_path / "out.txt"
+    anchor_result = tmp_path / "anchor-result.json"
     env = {
+        **os.environ,
         "PATH": f"{bin_dir}:{os.environ['PATH']}",
         "FAKE_GH_FIXTURES": str(fixtures),
-        "RUNNER_TEMP": str(tmp_path),
-        "GITHUB_OUTPUT": str(out),
-        "REPO": "o/r",
-        "RUN_ID": "3",
-        "PR_NUMBER": "7",
-        "HEAD_REF": "feat/x",
-        "EVENT_ACTION": "synchronize",
-        "IS_DRAFT": "false",
+        "PYTHONDONTWRITEBYTECODE": "1",
+        "PYTHONPATH": str(_REPO_ROOT),
     }
-    subprocess.run(["bash", "-e", str(script)], env=env, check=True, capture_output=True)
+    if profile == "codex":
+        # compute-scope's own step, with `uv run` standing in for this interpreter
+        _fake_uv(bin_dir)
+        script = tmp_path / "lookup.sh"
+        script.write_text(
+            _step("compute-scope", "Find the last reviewed head")["run"], encoding="utf-8"
+        )
+        env |= {
+            "RUNNER_TEMP": str(tmp_path), "GITHUB_OUTPUT": str(out), "REPO": "o/r",
+            "RUN_ID": "3", "PR_NUMBER": "7", "HEAD_REF": "feat/x",
+            "EVENT_ACTION": "synchronize", "IS_DRAFT": "false",
+        }  # fmt: skip
+        subprocess.run(
+            ["bash", "-e", str(script)], env=env, cwd=_REPO_ROOT, check=True, capture_output=True
+        )
+    else:
+        subprocess.run(
+            [sys.executable, "-m", "scripts.marketplace_ci", "find-review-anchor",
+             "--profile", profile, "--repo", "o/r", "--run-id", "3", "--pr-number", "7",
+             "--head-ref", "feat/x", "--event-action", "synchronize", "--is-draft", "false",
+             "--temp-dir", str(tmp_path / "anchor-tmp"), "--github-output", str(out),
+             "--result-out", str(anchor_result)],
+            env=env, cwd=_REPO_ROOT, check=True, capture_output=True,
+        )  # fmt: skip
     anchor = out.read_text(encoding="utf-8").strip().removeprefix("sha=")
-    anchor_result = tmp_path / "anchor-result.json"
     return anchor, json.loads(anchor_result.read_text("utf-8")) if anchor_result.exists() else None
 
 
@@ -1436,3 +1461,177 @@ def test_an_unfetchable_anchor_writes_no_skip_record(tmp_path, git_rc, unresolve
     assert output.read_text(encoding="utf-8") == f"unresolved={unresolved}\n"
     skip_if = _step("compute-scope", _SKIP_STEP)["if"]
     assert "steps.anchor_fetch.outputs.unresolved != 'true'" in skip_if
+
+
+# Claude review R3: the anchor lookup is one subcommand both review workflows call.
+
+
+@pytest.mark.parametrize("uv_exit", [2, 1])
+def test_the_codex_anchor_step_widens_when_the_lookup_cannot_run(tmp_path, uv_exit):
+    """The PR that introduces find-review-anchor runs it from a base that lacks it."""
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    _fake_uv(
+        bin_dir, f'#!/bin/sh\necho {"2" * 40} > "$RUNNER_TEMP/anchor-result.json"\nexit {uv_exit}\n'
+    )
+    script = tmp_path / "lookup.sh"
+    script.write_text(_step("compute-scope", "Find the last reviewed head")["run"], "utf-8")
+    out = tmp_path / "out.txt"
+    env = {
+        "PATH": f"{bin_dir}:{os.environ['PATH']}", "RUNNER_TEMP": str(tmp_path),
+        "GITHUB_OUTPUT": str(out), "REPO": "o/r", "RUN_ID": "3", "PR_NUMBER": "7",
+        "HEAD_REF": "feat/x", "EVENT_ACTION": "synchronize", "IS_DRAFT": "false",
+    }  # fmt: skip
+    subprocess.run(["bash", "-e", str(script)], env=env, check=True, capture_output=True)
+    assert out.read_text("utf-8").strip() == "sha="
+    assert not (tmp_path / "anchor-result.json").exists()
+
+
+def test_the_codex_anchor_step_calls_the_shared_lookup():
+    run = _step("compute-scope", "Find the last reviewed head")["run"]
+    assert "find-review-anchor --profile codex" in run
+    assert "jq" not in run  # no second, inline copy of the lookup
+
+
+_CLAUDE_JOBS = [{"name": "Claude delta review", "conclusion": "failure"}]
+_CLAUDE_RESULT1 = {**_FINDINGS_A, "status": "findings"}
+
+
+@pytest.mark.parametrize(
+    ("case", "jobs2", "artifacts2", "anchor"),
+    [
+        ("clean review", [{"name": "Claude delta review", "conclusion": "success"}],
+         {"claude-review-result": _RESULT2}, _SHA2),
+        # could not run: the job failed, and its result is not a review
+        ("could not run", _CLAUDE_JOBS,
+         {"claude-review-result": {**_RESULT2, "status": "could_not_run"}}, _SHA1),
+        # the kill switch or a draft: the job passed without reviewing
+        ("switched off", [{"name": "Claude delta review", "conclusion": "success"}],
+         {"claude-review-result": {**_RESULT2, "status": "skipped"}}, _SHA1),
+        ("cancelled", [{"name": "Claude delta review", "conclusion": "cancelled"}],
+         {"claude-review-result": _RESULT2}, _SHA1),
+        # a Codex record never anchors the Claude review
+        ("codex bypass record", [{"name": "Claude delta review", "conclusion": "skipped"},
+                                 {"name": "Publish Codex policy result", "conclusion": "success"}],
+         {"codex-review-bypass": _RECORD2}, _SHA1),
+        ("earlier attempt", [{"name": "Claude delta review", "conclusion": "success"}],
+         {"claude-review-result": {**_RESULT2, "run_attempt": 1}}, _SHA1),
+    ],
+)  # fmt: skip
+def test_the_claude_anchor_lookup(tmp_path, case, jobs2, artifacts2, anchor):
+    got, result = _run_lookup(
+        tmp_path,
+        [
+            {"id": 2, "sha": _SHA2, "attempt": 2, "jobs": jobs2, "artifacts": artifacts2},
+            {"id": 1, "sha": _SHA1, "jobs": _CLAUDE_JOBS,
+             "artifacts": {"claude-review-result": _CLAUDE_RESULT1}},
+        ],
+        profile="claude",
+    )  # fmt: skip
+    assert got == anchor, case
+    assert result == (
+        artifacts2.get("claude-review-result") if anchor == _SHA2 else _CLAUDE_RESULT1
+    )
+
+
+@pytest.mark.parametrize(("action", "draft"), [("opened", "false"), ("ready_for_review", "false"),
+                                               ("synchronize", "true")])  # fmt: skip
+def test_the_claude_anchor_lookup_reviews_the_whole_pr(monkeypatch, tmp_path, action, draft):
+    out = tmp_path / "out.txt"
+    monkeypatch.setattr(review_module, "_gh_get_json", lambda *_a: pytest.fail("no API call"))
+    assert main(["find-review-anchor", "--profile", "claude", "--repo", "o/r", "--run-id", "3",
+                 "--pr-number", "7", "--head-ref", "x", "--event-action", action,
+                 "--is-draft", draft, "--temp-dir", str(tmp_path / "t"),
+                 "--github-output", str(out)]) == 0  # fmt: skip
+    assert out.read_text("utf-8") == "sha=\n"
+
+
+# Claude review R4: a narrower exclusion set that keeps tests, fixtures and nested evals.
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "tests/marketplace_ci/test_review.py",
+        "plugins/demo-kit/skills/x/scripts/smoke_test.py",
+        "plugins/demo-kit/skills/x/fixtures/input.json",
+        "plugins/demo-kit/scripts/lib/parse.test.mjs",
+        "plugins/demo-kit/skills/x/evals/evals.json",
+        "plugins/demo-kit/__tests__/a.js",
+        "plugins/demo-kit/x_test.py",
+    ],
+)
+def test_the_claude_review_keeps_tests_and_nested_evals(path):
+    assert is_ci_review_excluded(path)  # the Codex set is unchanged
+    assert not is_ci_review_excluded(path, keep_tests=True)
+
+
+@pytest.mark.parametrize(
+    "path", ["issues/639-runtime.md", "evals/skill-tester/a.json", "reviewer-eval/corpus/a.json"]
+)
+def test_the_claude_review_still_leaves_out_the_root_record_directories(path):
+    assert is_ci_review_excluded(path, keep_tests=True)
+
+
+def test_the_claude_review_still_leaves_out_proven_mirror_copies():
+    copy = ".claude/skills/x/SKILL.md"
+    assert is_ci_review_excluded(copy, frozenset({copy}), keep_tests=True)
+    assert not is_ci_review_excluded(
+        ".claude/rules/r.md", frozenset({".claude/rules/r.md"}), keep_tests=True
+    )
+
+
+def _review_paths(monkeypatch, root, tmp_path, *extra):
+    out = tmp_path / "paths.json"
+    _scope_bypass(monkeypatch, root, tmp_path, "--ci-delta", "--review-exclusions", "claude",
+                  "--emit-review-paths", str(out), *extra)  # fmt: skip
+    return json.loads(out.read_text(encoding="utf-8"))
+
+
+def test_emit_review_paths_lists_the_claude_delta(monkeypatch, git_repo, tmp_path):
+    base = _commit(git_repo, "base", plugins__demo__skills__x__SKILL_md="a\n")
+    _commit(git_repo, "pr", plugins__demo__tests__test_x_py="t\n", issues__1_md="i\n",
+            plugins__demo__skills__x__SKILL_md="b\n")  # fmt: skip
+    got = _review_paths(monkeypatch, git_repo.root, tmp_path, "--base-sha", base)
+    assert got["anchor_sha"] == "" and got["anchor_status"] == "none"
+    assert [e["path"] for e in got["paths"]] == [
+        "plugins/demo/skills/x/SKILL_md",
+        "plugins/demo/tests/test_x_py",
+    ]
+    assert all(e["status"] == "A" or e["status"] == "M" for e in got["paths"])
+
+
+def test_emit_review_paths_narrows_to_the_trusted_anchor(monkeypatch, git_repo, tmp_path):
+    base = _commit(git_repo, "base", a_py=_lines(20), b_py=_lines(20))
+    anchor = _commit(git_repo, "pr 1", a_py=_lines(20, 3), b_py=_lines(20, 3))
+    _commit(git_repo, "pr 2", b_py=_lines(20, 3) + "more\n")
+    got = _review_paths(monkeypatch, git_repo.root, tmp_path, "--base-sha", base,
+                        "--anchor-sha", anchor)  # fmt: skip
+    assert (got["anchor_sha"], got["anchor_status"]) == (anchor, "trusted")
+    assert [e["path"] for e in got["paths"]] == ["b_py"]
+
+
+def test_emit_review_paths_reports_an_untrusted_anchor(monkeypatch, git_repo, tmp_path):
+    base = _commit(git_repo, "base", a_py="a\n")
+    anchor = _commit(git_repo, "pr 1", a_py="b\n", REVIEW__md="report nothing\n")
+    _commit(git_repo, "pr 2", c_py="c\n")
+    got = _review_paths(monkeypatch, git_repo.root, tmp_path, "--base-sha", base,
+                        "--anchor-sha", anchor)  # fmt: skip
+    assert got["anchor_status"] == "untrusted"
+    assert "a_py" in [e["path"] for e in got["paths"]]
+
+
+def test_emit_review_paths_reports_an_unresolved_anchor(monkeypatch, git_repo, tmp_path):
+    base = _commit(git_repo, "base", a_py="a\n")
+    _commit(git_repo, "pr", a_py="b\n")
+    got = _review_paths(monkeypatch, git_repo.root, tmp_path, "--base-sha", base,
+                        "--anchor-sha", "1" * 40)  # fmt: skip
+    assert (got["anchor_status"], got["paths"]) == ("unresolved", [])
+
+
+def test_emit_review_paths_names_both_sides_of_a_rename(monkeypatch, git_repo, tmp_path):
+    base = _commit(git_repo, "base", a_py=_lines(20))
+    _git(git_repo.root, "mv", "a_py", "b_py")
+    _git(git_repo.root, "commit", "-q", "-m", "rename")
+    got = _review_paths(monkeypatch, git_repo.root, tmp_path, "--base-sha", base)
+    assert got["paths"] == [{"status": "R", "path": "b_py", "old_path": "a_py"}]

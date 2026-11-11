@@ -77,6 +77,8 @@ CRITICAL_HANDLERS = (
     "_handle_run_codex_review",
     "_handle_check_bypass",
     "_handle_resolve_attested_actor",
+    # the shared anchor lookup both review workflows run from base-restored code
+    "_handle_find_review_anchor",
 )
 
 # The workflow's own hard-refuse gate pathspec -- a superset of TIER1_MODULES'
