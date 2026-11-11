@@ -655,6 +655,23 @@ def test_python_quality_skip_is_wired_fail_closed():
     assert "hygiene" in jobs["publish"]["needs"]
 
 
+def test_codex_review_never_runs_for_dependabot():
+    """Dependabot runs get no secrets; the review is skipped, not left to fail."""
+    jobs = yaml.safe_load(_WORKFLOW.read_text(encoding="utf-8"))["jobs"]
+    condition = " ".join(jobs["codex-review"]["if"].split())
+    assert "&& github.actor != 'dependabot[bot]' &&" in condition
+    assert "&& github.event.pull_request.user.login != 'dependabot[bot]' &&" in condition
+
+
+@pytest.mark.parametrize("bypassed", ["false", "true"])
+def test_publish_on_a_dependabot_skipped_codex_review_needs_the_attestation(tmp_path, bypassed):
+    script = tmp_path / "decide.sh"
+    script.write_text(_publish_script(), encoding="utf-8")
+    env = {"PATH": _fake_gh(tmp_path, ""), **_GATES, **_SKIPPED, "BYPASSED": bypassed}
+    result = subprocess.run(["bash", "-e", str(script)], env=env, capture_output=True, text=True)
+    assert (result.returncode == 0) is (bypassed == "true"), (result.stdout, result.stderr)
+
+
 def _fake_gh(tmp_path, live: str) -> str:
     """A PATH whose `gh` prints `live` as the PR's '<draft> <head sha>'."""
     bin_dir = tmp_path / "bin"
