@@ -398,7 +398,7 @@ jobs:
           result='null'
           if [ -f "$exec_file" ]; then
             result=$(jq -c '[.[] | select(.type == "result")] | last
-              | if . == null then null else {subtype, is_error, num_turns, total_cost_usd} end' \
+              | if . == null then null else {subtype, is_error, num_turns, total_cost_usd, api_error_status} end' \
               "$exec_file" 2>/dev/null || echo null)
             rm -f "$exec_file"
           fi
@@ -464,7 +464,7 @@ jobs:
           result='null'
           if [ -f "$exec_file" ]; then
             result=$(jq -c '[.[] | select(.type == "result")] | last
-              | if . == null then null else {subtype, is_error, num_turns, total_cost_usd} end' \
+              | if . == null then null else {subtype, is_error, num_turns, total_cost_usd, api_error_status} end' \
               "$exec_file" 2>/dev/null || echo null)
             rm -f "$exec_file"
           fi

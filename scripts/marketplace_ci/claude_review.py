@@ -181,17 +181,29 @@ def _redact_secrets(text: str) -> str:
     return _redact_tokens(text)
 
 
+def _api_status(result: object) -> str:
+    """The suffix ", API status <n>" when the result entry recorded an HTTP status for a failed
+    request. Only an integer is shown, so no text from the API response reaches the summary."""
+    status = result.get("api_error_status") if isinstance(result, dict) else None
+    if isinstance(status, int) and not isinstance(status, bool):
+        return f", API status {status}"
+    return ""
+
+
 def parse_pass(record: Mapping, reviewed: frozenset[str]) -> tuple[str, list[dict]]:
     """One pass's verdict and findings from its recorded structured output. Raises InvalidReview
     when the pass did not complete, hit a cap, or returned something other than the schema."""
+    result = record.get("result")
     if record.get("outcome") != "success":
         raise InvalidReview(
-            f"the {record.get('pass')} pass did not complete ({record.get('outcome')})"
+            f"the {record.get('pass')} pass did not complete"
+            f" ({record.get('outcome')}{_api_status(result)})"
         )
-    result = record.get("result")
     if not isinstance(result, dict) or result.get("subtype") != "success" or result.get("is_error"):
         subtype = result.get("subtype") if isinstance(result, dict) else None
-        raise InvalidReview(f"the {record.get('pass')} pass stopped early ({subtype})")
+        raise InvalidReview(
+            f"the {record.get('pass')} pass stopped early ({subtype}{_api_status(result)})"
+        )
     if record.get("secret_found"):
         raise InvalidReview(f"the {record.get('pass')} pass returned the API key; nothing posted")
     try:

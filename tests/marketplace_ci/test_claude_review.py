@@ -132,13 +132,21 @@ def test_the_template_names_only_known_values():
 # R6, R7: decide.
 
 
-def _record(name, findings=(), verdict="LGTM", outcome="success", subtype="success", cost=0.12):
+def _record(
+    name,
+    findings=(),
+    verdict="LGTM",
+    outcome="success",
+    subtype="success",
+    cost=0.12,
+    api_error_status=None,
+):
     return {
         "pass": name,
         "outcome": outcome,
         "structured_output": json.dumps({"verdict": verdict, "findings": list(findings)}),
         "result": {"subtype": subtype, "is_error": subtype != "success", "num_turns": 4,
-                   "total_cost_usd": cost},
+                   "total_cost_usd": cost, "api_error_status": api_error_status},
     }  # fmt: skip
 
 
@@ -180,6 +188,26 @@ def test_a_blocking_finding_in_either_pass_fails(severity):
         (None, "failure", "did not complete"),
         (None, "cancelled", "did not complete"),
         ({"passes": [_record("general", outcome="failure")]}, "success", "did not complete"),
+        # the HTTP status of a rejected request is shown; only an integer, never API text
+        (
+            {"passes": [_record("general", outcome="failure", api_error_status=401)]},
+            "success",
+            "(failure, API status 401)",
+        ),
+        (
+            {"passes": [_record("general", outcome="failure", api_error_status="key sk-ant-x")]},
+            "success",
+            "did not complete (failure)",
+        ),
+        (
+            {
+                "passes": [
+                    _record("general", subtype="error_during_execution", api_error_status=400)
+                ]
+            },
+            "success",
+            "stopped early (error_during_execution, API status 400)",
+        ),
         # R9: a per-pass cap reached
         ({"passes": [_record("general", subtype="error_max_turns")]}, "success", "stopped early"),
         ({"passes": [_record("general", subtype="error_max_budget_usd")]}, "success", "early"),
