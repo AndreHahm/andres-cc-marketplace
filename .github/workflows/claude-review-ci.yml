@@ -1,0 +1,554 @@
+name: Claude Delta Review
+
+# Advisory Claude review of what a pull request changed since the head this workflow last
+# reviewed (docs/ci-claude-review-user-requirements.md, "R<n>" below; implementation in
+# docs/ci.md). Not a required check (R1). The API key reaches only claude-review, which runs no
+# repository code: Claude reads the PR checkout with Read/Grep/Glob only, and the jobs around it
+# run code restored from the base SHA.
+on:
+  pull_request:
+    # R2: only events that bring new commits, plus ready_for_review (the whole PR).
+    types: [opened, synchronize, reopened, ready_for_review]
+
+# R2: a newer push cancels a review still running for the same PR.
+concurrency:
+  group: claude-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  claude-scope:
+    name: Compute Claude review scope
+    # R2: same-repository PRs only (a fork has no secret: skipped, not failed), no Dependabot
+    # PRs, no drafts.
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.actor != 'dependabot[bot]' &&
+      github.event.pull_request.user.login != 'dependabot[bot]' &&
+      github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      # The anchor lookup reads this workflow's earlier runs and their artifacts (R3).
+      actions: read
+    outputs:
+      switched_off: ${{ steps.settings.outputs.switched_off }}
+      model: ${{ steps.settings.outputs.model }}
+      pass_minutes: ${{ steps.settings.outputs.pass_minutes }}
+      has_paths: ${{ steps.scope.outputs.has_paths }}
+      security: ${{ steps.prompts.outputs.security }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            .github/actions/workflow-killswitch
+            .github/actions/track-rerun
+      - name: Restore kill-switch enforcement from the trusted base SHA (trust boundary)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          # A pull_request (not pull_request_target) trigger checks out the
+          # PR's own content -- including this action's own code and the
+          # tracked marker file -- so neither can be evaluated as-is: a
+          # same-repo PR's own copy is untrusted input here, the same
+          # principle compute-scope's own restore step already applies to
+          # scripts/pyproject.toml/uv.lock. Restore each path directly from
+          # the trusted base SHA via the Contents API (no git history or
+          # fetch-depth needed) before the action below ever runs. This
+          # closes the "PR's own copy is stale/tampered" gap; it does not
+          # (and structurally cannot, at this level) defend against a PR
+          # that removes this very step from its own copy of this workflow
+          # file -- the same limitation compute-scope's own restore already
+          # accepts for the job structure around it.
+          restore_from_base() {
+            local path="$1" on_absent="$2"
+            mkdir -p "$(dirname "$path")"
+            stderr_file=$(mktemp)
+            if content=$(gh api --method GET "repos/$REPO/contents/$path" -f ref="$BASE_SHA" --jq '.content' 2>"$stderr_file"); then
+              echo "$content" | base64 -d > "$path"
+            elif grep -q "HTTP 404" "$stderr_file"; then
+              if [ "$on_absent" = "remove" ]; then
+                # Genuinely absent at the trusted base -- remove any
+                # PR-supplied copy so the check treats it as missing,
+                # never trusts PR-controlled content.
+                rm -f "$path"
+              fi
+              # else "keep": this is the bootstrapping PR introducing
+              # $path for the first time -- no trusted base copy exists
+              # yet to restore, so the PR's own checkout content stays.
+              # Only applies to this initiative's own rollout; every
+              # later PR's base SHA has a real trusted copy to restore.
+            else
+              echo "::error::could not verify trusted base-SHA content of $path ($(cat "$stderr_file")) -- refusing to trust the PR's own copy"
+              rm -f "$stderr_file"
+              exit 1
+            fi
+            rm -f "$stderr_file"
+          }
+          # The two action files themselves have no safe "missing"
+          # fallback -- GitHub Actions can't resolve `uses: ./path` at all
+          # if the file is absent, unlike the marker file below, whose
+          # absence is already handled gracefully by the action's own
+          # logic (defaults to ENABLED).
+          restore_from_base .github/actions/workflow-killswitch/action.yml keep
+          restore_from_base .github/actions/track-rerun/action.yml keep
+          restore_from_base .github/WORKFLOW_KILLSWITCH remove
+
+      - name: Check Workflow Kill Switch
+        uses: ./.github/actions/workflow-killswitch
+        with:
+          killswitch-var: ${{ vars.WORKFLOW_KILLSWITCH }}
+
+      # The PR's own head commit, never the merge ref (the same reason as compute-scope in
+      # marketplace-ci.yml). claude-review checks out this same commit.
+      - name: Check out the PR's own head commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Verify the trusted base SHA actually resolves in this checkout
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: git rev-parse --verify "$BASE_SHA^{commit}"
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # ratchet:actions/setup-python@v7.0.0
+        with:
+          python-version: "3.13"
+      - run: pip install uv
+
+      # R3: the scope is computed by the same trusted code as the Codex review, restored from
+      # the base SHA. Kept identical to compute-scope's copy of this block by
+      # tests/marketplace_ci/test_claude_review_workflow.py.
+      - name: Restore the base SHA's copy of the scope-decision code and its dependency spec (trust boundary)
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          # Same restore as the hygiene job's (see its comment): no-overlay
+          # restore deletes PR-added files under scripts/, uv.toml, .python-version
+          # and .python-versions are restored or deleted, and an importable
+          # top-level shadow (module, package, .venv, symlink) is refused.
+          set -euo pipefail
+          git restore --source="$BASE_SHA" --staged --worktree -- scripts pyproject.toml uv.lock \
+            || { echo "::error::could not restore scope-decision code from $BASE_SHA -- refusing to score using the PR's own copy of it"; exit 1; }
+          for p in uv.toml .python-version .python-versions; do
+            if git cat-file -e "$BASE_SHA:$p" 2>/dev/null; then
+              git restore --source="$BASE_SHA" --staged --worktree -- "$p"
+            else
+              git rm -q -f --ignore-unmatch -- "$p"
+              rm -f -- "$p"
+            fi
+          done
+          # Importable-name shadowing: a PR-added top-level module (.py/.pyc/.so/...), a
+          # top-level package marker (<dir>/__init__.*), or .venv content, and a
+          # top-level symlink (which can be named like a module and matches no name
+          # pattern). A restore cannot remove what base never had, so these are refused.
+          # The checked-out tree must BE the event's PR head (HEAD itself, or the second parent of a
+          # merge checkout): a newer push landing after this run started would otherwise put files on
+          # disk that the diff below never examines.
+          if [ "$(git rev-parse HEAD)" != "$PR_HEAD_SHA" ] && [ "$(git rev-parse --verify -q HEAD^2 || true)" != "$PR_HEAD_SHA" ]; then
+            echo "::error::the checked-out tree is not the event's PR head (a newer push landed after this run started) -- re-run this job"
+            exit 1
+          fi
+          PR_BASE=$(git merge-base "$BASE_SHA" "$PR_HEAD_SHA")
+          git diff -z --no-renames --name-only --diff-filter=AT "$PR_BASE" "$PR_HEAD_SHA" > "$RUNNER_TEMP/pr-added-files.z"
+          rc=0
+          grep -zqE '^[^/]+\.(py|pyc|pyw|pyd|so)$|^[^/]+/__init__\.[^/]+$|^\.venv(/|$)' "$RUNNER_TEMP/pr-added-files.z" || rc=$?
+          if [ "$rc" -ne 1 ]; then
+            echo "::error::this PR adds an importable top-level Python module, a top-level package, or .venv content (or the check could not run, grep exit $rc) -- refusing to score using the PR's own copy of the code. A maintainer must change this check in the PR itself, or admin-merge"
+            exit 1
+          fi
+          git ls-tree -z "$PR_BASE" > "$RUNNER_TEMP/base-top.z"
+          git ls-tree -z "$PR_HEAD_SHA" > "$RUNNER_TEMP/head-top.z"
+          rc=0
+          grep -zE '^120000 ' "$RUNNER_TEMP/base-top.z" > "$RUNNER_TEMP/base-links.z" || rc=$?
+          if [ "$rc" -gt 1 ]; then echo "::error::could not list top-level symlinks at base (grep exit $rc)"; exit 1; fi
+          rc=0
+          grep -zE '^120000 ' "$RUNNER_TEMP/head-top.z" > "$RUNNER_TEMP/head-links.z" || rc=$?
+          if [ "$rc" -gt 1 ]; then echo "::error::could not list top-level symlinks in the PR (grep exit $rc)"; exit 1; fi
+          LC_ALL=C sort -z "$RUNNER_TEMP/base-links.z" > "$RUNNER_TEMP/base-links.sorted.z"
+          LC_ALL=C sort -z "$RUNNER_TEMP/head-links.z" > "$RUNNER_TEMP/head-links.sorted.z"
+          LC_ALL=C comm -z -13 "$RUNNER_TEMP/base-links.sorted.z" "$RUNNER_TEMP/head-links.sorted.z" > "$RUNNER_TEMP/new-links.z"
+          if [ -s "$RUNNER_TEMP/new-links.z" ]; then
+            echo "::error::this PR adds or changes a top-level symlink -- refusing to score using the PR's own copy of the code. A maintainer must change this check in the PR itself, or admin-merge"
+            exit 1
+          fi
+          echo "restored scripts/, pyproject.toml, uv.lock and uv config from $BASE_SHA"
+
+      - run: uv sync --locked --no-config --group dev
+
+      # R8, R10: the kill switch, the model and the per-pass timeout. An invalid value fails
+      # this job, and the publish job then reports the review as could-not-run.
+      - name: Check the Claude review settings
+        id: settings
+        env:
+          CLAUDE_CI_REVIEW_BYPASS: ${{ vars.CLAUDE_CI_REVIEW_BYPASS }}
+          CLAUDE_KIT_REVIEW_MODEL: ${{ vars.CLAUDE_KIT_REVIEW_MODEL }}
+          CLAUDE_KIT_REVIEW_TIMEOUT_MS: ${{ vars.CLAUDE_KIT_REVIEW_TIMEOUT_MS }}
+        run: uv run python -m scripts.marketplace_ci claude-review-settings --github-output "$GITHUB_OUTPUT"
+
+      # R3: the PR head the newest earlier run of this workflow reviewed, through the lookup the
+      # Codex review shares (find-review-anchor), never from anything the PR author can edit.
+      # A lookup that cannot run leaves no anchor: the whole PR is reviewed.
+      - name: Find the last reviewed head
+        id: anchor
+        if: steps.settings.outputs.switched_off == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          EVENT_ACTION: ${{ github.event.action }}
+          IS_DRAFT: ${{ github.event.pull_request.draft }}
+        run: |
+          if ! uv run python -m scripts.marketplace_ci find-review-anchor --profile claude \
+              --repo "$REPO" --run-id "$RUN_ID" --pr-number "$PR_NUMBER" --head-ref "$HEAD_REF" \
+              --event-action "$EVENT_ACTION" --is-draft "$IS_DRAFT" --temp-dir "$RUNNER_TEMP/anchor" \
+              --github-output "$RUNNER_TEMP/anchor-output"; then
+            echo "::warning::the anchor lookup could not run; no anchor, the whole PR is reviewed"
+            : > "$RUNNER_TEMP/anchor-output"
+          fi
+          anchor=$(sed -n 's/^sha=//p' "$RUNNER_TEMP/anchor-output" | tail -n 1)
+          if ! printf '%s' "$anchor" | grep -Eq '^[0-9a-f]{40}$'; then
+            anchor=""
+          fi
+          # An anchor this checkout cannot get (force-pushed away) is no anchor: R3 reviews the
+          # whole PR then, rather than skipping what changed since.
+          if [ -n "$anchor" ] && ! git cat-file -e "$anchor^{commit}" 2>/dev/null \
+              && ! git fetch --no-tags --quiet "https://github.com/$REPO" "$anchor"; then
+            echo "::notice::last reviewed head $anchor cannot be fetched; the whole PR is reviewed"
+            anchor=""
+          fi
+          echo "anchor: ${anchor:-none (whole PR is reviewed)}"
+          echo "sha=$anchor" >> "$GITHUB_OUTPUT"
+
+      # R3, R4: the reviewed paths, narrowed to what changed since the anchor, with the Claude
+      # exclusion set (tests, fixtures and nested evals are reviewed).
+      - name: Compute the reviewed paths
+        id: scope
+        if: steps.settings.outputs.switched_off == 'false'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          ANCHOR_SHA: ${{ steps.anchor.outputs.sha }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/claude-scope"
+          uv run python -m scripts.marketplace_ci check-scope-bypass --base-sha "$BASE_SHA" \
+            --ci-delta --review-exclusions claude --anchor-sha "$ANCHOR_SHA" \
+            --emit-review-paths "$RUNNER_TEMP/claude-scope/scope.json" > /dev/null
+          count=$(jq '.paths | length' "$RUNNER_TEMP/claude-scope/scope.json")
+          echo "reviewed paths: $count"
+          echo "has_paths=$([ "$count" -gt 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      # R5: the prompt template, REVIEW.md and the security-reviewer instructions come from the
+      # base SHA, never from the PR.
+      - name: Build the reviewer prompts from the base SHA
+        id: prompts
+        if: steps.scope.outputs.has_paths == 'true'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          trusted="$RUNNER_TEMP/claude-trusted"
+          mkdir -p "$trusted"
+          git show "$BASE_SHA:.github/claude-review/prompt.md" > "$trusted/prompt.md" \
+            || { echo "::error::the base SHA has no .github/claude-review/prompt.md"; exit 1; }
+          git show "$BASE_SHA:REVIEW.md" > "$trusted/REVIEW.md" \
+            || { echo "::error::the base SHA has no REVIEW.md"; exit 1; }
+          git show "$BASE_SHA:.claude/agents/security-reviewer.md" > "$trusted/security-reviewer.md" \
+            || { echo "::error::the base SHA has no .claude/agents/security-reviewer.md"; exit 1; }
+          uv run python -m scripts.marketplace_ci claude-review-prompts \
+            --scope "$RUNNER_TEMP/claude-scope/scope.json" --template "$trusted/prompt.md" \
+            --review-md "$trusted/REVIEW.md" --security-md "$trusted/security-reviewer.md" \
+            --base-sha "$BASE_SHA" --head-sha "$HEAD_SHA" \
+            --out-dir "$RUNNER_TEMP/claude-scope/prompts" --github-output "$GITHUB_OUTPUT"
+
+      - name: Upload the review scope
+        if: steps.scope.outcome == 'success'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # ratchet:actions/upload-artifact@v7.0.1
+        with:
+          name: claude-review-scope
+          path: ${{ runner.temp }}/claude-scope/
+          if-no-files-found: error
+          retention-days: 30
+
+  claude-review:
+    name: Run Claude review passes
+    needs: claude-scope
+    # R3: nothing left to review means no API call.
+    if: needs.claude-scope.outputs.switched_off == 'false' && needs.claude-scope.outputs.has_paths == 'true'
+    runs-on: ubuntu-latest
+    # Both passes at the full per-pass timeout plus setup (R8). claude_review.py's
+    # REVIEW_JOB_TIMEOUT_MINUTES must match; the settings check refuses a timeout that does not fit.
+    timeout-minutes: 50
+    permissions:
+      contents: read
+      # The live draft and head re-check; the action's own setup reads the PR.
+      pull-requests: read
+    steps:
+      - name: Download the review scope
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # ratchet:actions/download-artifact@v8.0.2
+        with:
+          name: claude-review-scope
+          path: ${{ runner.temp }}/claude-scope
+
+      - name: Check out the PR's own head commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      # The prompts go to the action as step outputs; a random delimiter keeps a PR-chosen file
+      # name inside a prompt from ending the value early.
+      - name: Read the reviewer prompts
+        id: prompts
+        run: |
+          set -euo pipefail
+          for pass in general security; do
+            file="$RUNNER_TEMP/claude-scope/prompts/$pass.md"
+            [ -f "$file" ] || continue
+            delim="EOF_$(openssl rand -hex 16)"
+            { echo "$pass<<$delim"; cat "$file"; echo; echo "$delim"; } >> "$GITHUB_OUTPUT"
+          done
+
+      # Right before each API call: the PR must still be ready, at the head this run reviews.
+      # /usr/bin/gh by absolute path, so nothing in the PR checkout can stand in for it.
+      - name: Re-check the pull request before the general pass
+        id: live_general
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          read -r draft head < <(/usr/bin/gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '"\(.draft) \(.head.sha)"')
+          if [ "$draft" = "true" ]; then state=draft
+          elif [ "$head" != "$HEAD_SHA" ]; then state=head_moved
+          else state=ok; fi
+          echo "pull request state: $state"
+          echo "state=$state" >> "$GITHUB_OUTPUT"
+
+      # R5: read-only tools, no MCP tools, no project settings or hooks (the repository's
+      # .claude/settings.json registers hooks that run repository scripts). R9: per-pass caps.
+      - name: General pass
+        id: general
+        if: steps.live_general.outputs.state == 'ok'
+        continue-on-error: true
+        timeout-minutes: ${{ fromJSON(needs.claude-scope.outputs.pass_minutes) }}
+        uses: anthropics/claude-code-action@4fa93a88de49bbef68b10eb15aabedf28ca0e1ed # ratchet:anthropics/claude-code-action@v1.0.271
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ github.token }}
+          prompt: ${{ steps.prompts.outputs.general }}
+          claude_args: >-
+            --model ${{ needs.claude-scope.outputs.model }}
+            --max-turns 25
+            --max-budget-usd 1.00
+            --tools "Read,Grep,Glob"
+            --allowedTools "Read,Grep,Glob"
+            --disallowedTools "mcp__*"
+            --setting-sources user
+            --settings '{"disableAllHooks":true}'
+            --json-schema '{"type":"object","required":["verdict","findings"],"additionalProperties":false,"properties":{"verdict":{"type":"string","enum":["LGTM","Changes Requested"]},"findings":{"type":"array","maxItems":50,"items":{"type":"object","required":["severity","path","line","title","body"],"additionalProperties":false,"properties":{"severity":{"type":"string","enum":["Critical","Major","Minor","Informational"]},"path":{"type":"string"},"line":{"type":"integer","minimum":1},"title":{"type":"string","maxLength":200},"body":{"type":"string","maxLength":4000}}}}}}'
+
+      # The execution file is the whole transcript: only the result entry is kept, and the file
+      # is removed so the next pass cannot mix it up and nothing uploads it.
+      - name: Record the general pass
+        if: always() && steps.live_general.outputs.state != ''
+        env:
+          PASS: general
+          OUTCOME: ${{ steps.general.outcome }}
+          STRUCTURED: ${{ steps.general.outputs.structured_output }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/claude-raw"
+          exec_file="$RUNNER_TEMP/claude-execution-output.json"
+          result='null'
+          if [ -f "$exec_file" ]; then
+            result=$(jq -c '[.[] | select(.type == "result")] | last
+              | if . == null then null else {subtype, is_error, num_turns, total_cost_usd} end' \
+              "$exec_file" 2>/dev/null || echo null)
+            rm -f "$exec_file"
+          fi
+          jq -n --arg pass "$PASS" --arg outcome "$OUTCOME" --arg so "$STRUCTURED" \
+            --argjson result "$result" \
+            '{pass: $pass, outcome: $outcome, structured_output: $so, result: $result}' \
+            > "$RUNNER_TEMP/claude-raw/$PASS.json"
+          jq -c '{pass, outcome, result}' "$RUNNER_TEMP/claude-raw/$PASS.json"
+
+      - name: Re-check the pull request before the security pass
+        id: live_security
+        if: needs.claude-scope.outputs.security == 'true' && steps.live_general.outputs.state == 'ok'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          read -r draft head < <(/usr/bin/gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '"\(.draft) \(.head.sha)"')
+          if [ "$draft" = "true" ]; then state=draft
+          elif [ "$head" != "$HEAD_SHA" ]; then state=head_moved
+          else state=ok; fi
+          echo "pull request state: $state"
+          echo "state=$state" >> "$GITHUB_OUTPUT"
+
+      # R5: a second pass, with its own caps (R9), when the delta has a gate-critical path.
+      - name: Security pass
+        id: security
+        if: steps.live_security.outputs.state == 'ok'
+        continue-on-error: true
+        timeout-minutes: ${{ fromJSON(needs.claude-scope.outputs.pass_minutes) }}
+        uses: anthropics/claude-code-action@4fa93a88de49bbef68b10eb15aabedf28ca0e1ed # ratchet:anthropics/claude-code-action@v1.0.271
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ github.token }}
+          prompt: ${{ steps.prompts.outputs.security }}
+          claude_args: >-
+            --model ${{ needs.claude-scope.outputs.model }}
+            --max-turns 25
+            --max-budget-usd 1.00
+            --tools "Read,Grep,Glob"
+            --allowedTools "Read,Grep,Glob"
+            --disallowedTools "mcp__*"
+            --setting-sources user
+            --settings '{"disableAllHooks":true}'
+            --json-schema '{"type":"object","required":["verdict","findings"],"additionalProperties":false,"properties":{"verdict":{"type":"string","enum":["LGTM","Changes Requested"]},"findings":{"type":"array","maxItems":50,"items":{"type":"object","required":["severity","path","line","title","body"],"additionalProperties":false,"properties":{"severity":{"type":"string","enum":["Critical","Major","Minor","Informational"]},"path":{"type":"string"},"line":{"type":"integer","minimum":1},"title":{"type":"string","maxLength":200},"body":{"type":"string","maxLength":4000}}}}}}'
+
+      - name: Record the security pass
+        if: always() && steps.live_security.outputs.state != ''
+        env:
+          PASS: security
+          OUTCOME: ${{ steps.security.outcome }}
+          STRUCTURED: ${{ steps.security.outputs.structured_output }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/claude-raw"
+          exec_file="$RUNNER_TEMP/claude-execution-output.json"
+          result='null'
+          if [ -f "$exec_file" ]; then
+            result=$(jq -c '[.[] | select(.type == "result")] | last
+              | if . == null then null else {subtype, is_error, num_turns, total_cost_usd} end' \
+              "$exec_file" 2>/dev/null || echo null)
+            rm -f "$exec_file"
+          fi
+          jq -n --arg pass "$PASS" --arg outcome "$OUTCOME" --arg so "$STRUCTURED" \
+            --argjson result "$result" \
+            '{pass: $pass, outcome: $outcome, structured_output: $so, result: $result}' \
+            > "$RUNNER_TEMP/claude-raw/$PASS.json"
+          jq -c '{pass, outcome, result}' "$RUNNER_TEMP/claude-raw/$PASS.json"
+
+      - name: Collect the passes
+        if: always()
+        env:
+          LIVE_GENERAL: ${{ steps.live_general.outputs.state }}
+          LIVE_SECURITY: ${{ steps.live_security.outputs.state }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/claude-raw"
+          skipped=""
+          for state in "$LIVE_GENERAL" "$LIVE_SECURITY"; do
+            case "$state" in draft|head_moved) skipped="$state" ;; esac
+          done
+          jq -n --arg skipped "$skipped" \
+            '{skipped: (if $skipped == "" then null else $skipped end),
+              passes: [inputs]}' "$RUNNER_TEMP"/claude-raw/*.json \
+            > "$RUNNER_TEMP/claude-review-raw.json" 2>/dev/null \
+            || jq -n --arg skipped "$skipped" '{skipped: (if $skipped == "" then null else $skipped end), passes: []}' \
+              > "$RUNNER_TEMP/claude-review-raw.json"
+
+      - name: Upload the recorded passes
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # ratchet:actions/upload-artifact@v7.0.1
+        with:
+          name: claude-review-raw
+          path: ${{ runner.temp }}/claude-review-raw.json
+          if-no-files-found: error
+          retention-days: 30
+
+  claude-publish:
+    # The check this workflow reports (R7). find-review-anchor's claude profile reads this job's
+    # name and its claude-review-result artifact.
+    name: Claude delta review
+    needs: [claude-scope, claude-review]
+    if: always() && needs.claude-scope.result != 'skipped'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      # R6: inline review comments and the one summary comment.
+      pull-requests: write
+    steps:
+      # Trusted code only: this job needs nothing from the PR, so it checks out the base SHA.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.base.sha }}
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # ratchet:actions/setup-python@v7.0.0
+        with:
+          python-version: "3.13"
+      - run: pip install uv
+      - run: uv sync --locked --no-config --group dev
+
+      - name: Download the review scope
+        if: needs.claude-scope.outputs.switched_off == 'false'
+        continue-on-error: true
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # ratchet:actions/download-artifact@v8.0.2
+        with:
+          name: claude-review-scope
+          path: ${{ runner.temp }}/claude-scope
+      - name: Download the recorded passes
+        if: needs.claude-review.result == 'success' || needs.claude-review.result == 'failure'
+        continue-on-error: true
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # ratchet:actions/download-artifact@v8.0.2
+        with:
+          name: claude-review-raw
+          path: ${{ runner.temp }}/claude-raw
+
+      # R6, R7: post the findings and decide the check; the result file names this run's head
+      # and attempt, so the next run's anchor lookup can tie it to this execution (R3).
+      - name: Publish the review
+        id: publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          SWITCHED_OFF: ${{ needs.claude-scope.outputs.switched_off }}
+          MODEL: ${{ needs.claude-scope.outputs.model }}
+          REVIEW_JOB: ${{ needs.claude-review.result }}
+        run: |
+          rc=0
+          uv run python -m scripts.marketplace_ci publish-claude-review \
+            --switched-off "${SWITCHED_OFF:-false}" \
+            --scope "$RUNNER_TEMP/claude-scope/scope.json" \
+            --raw "$RUNNER_TEMP/claude-raw/claude-review-raw.json" \
+            --review-job "$REVIEW_JOB" --model "${MODEL:-unknown}" \
+            --head-sha "$HEAD_SHA" --run-attempt "$RUN_ATTEMPT" \
+            --repo "$REPO" --pr-number "$PR_NUMBER" \
+            --result-out "$RUNNER_TEMP/claude-review-result.json" || rc=$?
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+
+      - name: Upload the review result
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # ratchet:actions/upload-artifact@v7.0.1
+        with:
+          name: claude-review-result
+          path: ${{ runner.temp }}/claude-review-result.json
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Report the check result
+        env:
+          RC: ${{ steps.publish.outputs.rc }}
+        run: exit "${RC:-1}"

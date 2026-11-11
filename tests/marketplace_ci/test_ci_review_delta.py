@@ -1634,4 +1634,16 @@ def test_emit_review_paths_names_both_sides_of_a_rename(monkeypatch, git_repo, t
     _git(git_repo.root, "mv", "a_py", "b_py")
     _git(git_repo.root, "commit", "-q", "-m", "rename")
     got = _review_paths(monkeypatch, git_repo.root, tmp_path, "--base-sha", base)
-    assert got["paths"] == [{"status": "R", "path": "b_py", "old_path": "a_py"}]
+    assert got["paths"] == [
+        {"status": "R", "path": "b_py", "gate_critical": False, "old_path": "a_py"}
+    ]
+
+
+def test_emit_review_paths_marks_gate_critical_paths(monkeypatch, git_repo, tmp_path):
+    base = _commit(git_repo, "base", a_py="a\n")
+    _commit(git_repo, "pr", a_py="b\n", scripts__marketplace_ci__x_py="x\n")
+    got = _review_paths(monkeypatch, git_repo.root, tmp_path, "--base-sha", base)
+    assert {e["path"]: e["gate_critical"] for e in got["paths"]} == {
+        "a_py": False,
+        "scripts/marketplace_ci/x_py": True,
+    }

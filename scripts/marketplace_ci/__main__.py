@@ -1049,15 +1049,21 @@ def _handle_check_scope_bypass(args: argparse.Namespace) -> int:
 
 
 def _emit_review_paths(args: argparse.Namespace, repo: Path, base_sha: str, review_delta) -> None:
-    """The reviewed delta as JSON for the Claude review (its R3, R4): each entry's status and
-    path (plus old_path for a rename), and how the anchor was treated: "none", "trusted"
-    (narrowed), "untrusted" (the whole delta) or "unresolved" (only gate-critical paths)."""
-    from scripts.marketplace_ci.review import anchor_trust
+    """The reviewed delta as JSON for the Claude review (its R3, R4, R5): each entry's status,
+    path and whether it is gate-critical (plus old_path for a rename), and how the anchor was
+    treated: "none", "trusted" (narrowed), "untrusted" (the whole delta) or "unresolved" (only
+    gate-critical paths)."""
+    from scripts.marketplace_ci.review import anchor_trust, is_gate_critical
 
     anchor = args.anchor_sha if args.ci_delta else ""
     entries = []
     for cp in review_delta:
-        entry = {"status": cp.status, "path": cp.new_path or cp.old_path}
+        sides = [p for p in (cp.old_path, cp.new_path) if p is not None]
+        entry = {
+            "status": cp.status,
+            "path": cp.new_path or cp.old_path,
+            "gate_critical": any(is_gate_critical(p) for p in sides),
+        }
         if cp.status == "R":
             entry["old_path"] = cp.old_path
         entries.append(entry)
@@ -1067,6 +1073,96 @@ def _emit_review_paths(args: argparse.Namespace, repo: Path, base_sha: str, revi
         "paths": sorted(entries, key=lambda e: e["path"]),
     }
     Path(args.emit_review_paths).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+
+def _handle_claude_review_settings(args: argparse.Namespace) -> int:
+    """Claude review R8 and R10, from the repository variables in the environment. Appends
+    switched_off, model and pass_minutes to --github-output; exits 2 on an invalid value."""
+    from scripts.marketplace_ci.claude_review import SettingsError, review_settings
+
+    try:
+        settings = review_settings(
+            os.environ.get("CLAUDE_CI_REVIEW_BYPASS", ""),
+            os.environ.get("CLAUDE_KIT_REVIEW_MODEL", ""),
+            os.environ.get("CLAUDE_KIT_REVIEW_TIMEOUT_MS", ""),
+        )
+    except SettingsError as exc:
+        print(f"::error::{exc}")
+        return 2
+    if settings.switched_off:
+        print("::notice::the Claude delta review is switched off (CLAUDE_CI_REVIEW_BYPASS=1)")
+    with open(args.github_output, "a", encoding="utf-8") as out:
+        out.write(f"switched_off={'true' if settings.switched_off else 'false'}\n")
+        out.write(f"model={settings.model}\n")
+        out.write(f"pass_minutes={settings.pass_minutes}\n")
+    return 0
+
+
+def _handle_claude_review_prompts(args: argparse.Namespace) -> int:
+    """Claude review R5: the general prompt, and the security prompt when the reviewed delta
+    has a gate-critical path, from the base SHA's template, REVIEW.md and security-reviewer
+    instructions. Appends security=true|false to --github-output."""
+    from scripts.marketplace_ci.claude_review import (
+        build_prompt,
+        needs_security_pass,
+        prompt_values,
+    )
+
+    scope = json.loads(Path(args.scope).read_text(encoding="utf-8"))
+    template = Path(args.template).read_text(encoding="utf-8")
+    review_md = Path(args.review_md).read_text(encoding="utf-8")
+    security_md = Path(args.security_md).read_text(encoding="utf-8")
+    out_dir = Path(args.out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    security = needs_security_pass(scope)
+    for name in ("general", "security") if security else ("general",):
+        values = prompt_values(scope, review_md, security_md, name, args.base_sha, args.head_sha)
+        (out_dir / f"{name}.md").write_text(build_prompt(template, values), encoding="utf-8")
+    with open(args.github_output, "a", encoding="utf-8") as out:
+        out.write(f"security={'true' if security else 'false'}\n")
+    return 0
+
+
+def _handle_publish_claude_review(args: argparse.Namespace) -> int:
+    """Claude review R6 and R7: decides the run's result from the scope and the review job's
+    recorded passes, posts it (inline Critical/Major findings, one updated summary comment),
+    and writes the result file. Exits 1 when the check fails: a Critical or Major finding, or
+    a review that could not run."""
+    from scripts.marketplace_ci.claude_review import decide, publish
+
+    def load(path: str):
+        if not path or not Path(path).is_file():
+            return None
+        try:
+            data = json.loads(Path(path).read_text(encoding="utf-8"))
+        except ValueError:
+            return None
+        return data if isinstance(data, dict) else None
+
+    scope = load(args.scope)
+    if scope is not None and not isinstance(scope.get("paths"), list):
+        scope = None
+    result = decide(
+        switched_off=args.switched_off == "true",
+        scope=scope,
+        raw=load(args.raw),
+        review_job=args.review_job,
+        model=args.model,
+        head_sha=args.head_sha,
+        run_attempt=args.run_attempt,
+    )
+    if result["status"] != "skipped":
+        for warning in publish(result, repo=args.repo, pr_number=args.pr_number):
+            print(f"::warning::{warning}")
+    Path(args.result_out).write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+    print(f"status={result['status']} verdict={result['verdict']} {result['reason']}".rstrip())
+    if result["status"] == "could_not_run":
+        print(f"::error::the Claude review could not run: {result['reason']}")
+        return 1
+    if result["status"] == "findings":
+        print("::error::the Claude review found a Critical or Major issue (advisory)")
+        return 1
+    return 0
 
 
 def _handle_find_review_anchor(args: argparse.Namespace) -> int:
@@ -1949,6 +2045,37 @@ def build_parser() -> argparse.ArgumentParser:
     find_anchor.add_argument("--github-output", required=True, metavar="PATH")
     find_anchor.add_argument("--result-out", default="", metavar="PATH")
     find_anchor.set_defaults(handler=_handle_find_review_anchor)
+
+    claude_settings = subparsers.add_parser(
+        "claude-review-settings", help="validate the Claude review's repository variables"
+    )
+    claude_settings.add_argument("--github-output", required=True, metavar="PATH")
+    claude_settings.set_defaults(handler=_handle_claude_review_settings)
+
+    claude_prompts = subparsers.add_parser(
+        "claude-review-prompts", help="build the Claude review's reviewer prompts"
+    )
+    for flag in ("--scope", "--template", "--review-md", "--security-md", "--out-dir"):
+        claude_prompts.add_argument(flag, required=True, metavar="PATH")
+    claude_prompts.add_argument("--base-sha", required=True, metavar="SHA")
+    claude_prompts.add_argument("--head-sha", required=True, metavar="SHA")
+    claude_prompts.add_argument("--github-output", required=True, metavar="PATH")
+    claude_prompts.set_defaults(handler=_handle_claude_review_prompts)
+
+    claude_publish = subparsers.add_parser(
+        "publish-claude-review", help="post the Claude review's findings and decide its check"
+    )
+    claude_publish.add_argument("--switched-off", default="false", choices=("true", "false"))
+    claude_publish.add_argument("--scope", default="", metavar="PATH")
+    claude_publish.add_argument("--raw", default="", metavar="PATH")
+    claude_publish.add_argument("--review-job", required=True)
+    claude_publish.add_argument("--model", required=True)
+    claude_publish.add_argument("--head-sha", required=True, metavar="SHA")
+    claude_publish.add_argument("--run-attempt", required=True)
+    claude_publish.add_argument("--repo", required=True, metavar="OWNER/REPO")
+    claude_publish.add_argument("--pr-number", required=True, type=int)
+    claude_publish.add_argument("--result-out", required=True, metavar="PATH")
+    claude_publish.set_defaults(handler=_handle_publish_claude_review)
 
     carry_findings = subparsers.add_parser(
         "carry-findings",
