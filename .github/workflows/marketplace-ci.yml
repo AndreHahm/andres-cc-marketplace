@@ -21,6 +21,12 @@ jobs:
     name: Hygiene (PR contract)
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    outputs:
+      # true only for a verified dependabot PR that changes nothing but the
+      # root package.json/pnpm-lock.yaml (pr_policy.PYTHON_QUALITY_SKIP_PATHS),
+      # decided by the base SHA's check-pr below. python-quality and publish
+      # trust it only when this job succeeded.
+      skip_python_quality: ${{ steps.check_pr.outputs.skip_python_quality }}
     permissions:
       contents: read
       # check-pr's gh api calls (collaborator permission, PR commit list).
@@ -192,12 +198,33 @@ jobs:
           PR_EVENT_JSON: ${{ toJson(github.event) }}
         run: echo "$PR_EVENT_JSON" > /tmp/pr-event.json
       - name: Validate PR title, template, and author privilege
+        id: check_pr
         env:
           GH_TOKEN: ${{ github.token }}
-        run: uv run python -m scripts.marketplace_ci check-pr --event /tmp/pr-event.json
+        run: |
+          # Bootstrap: check-pr runs from the base SHA's scripts/, which may
+          # predate --python-quality-skip-output. Then it runs without the flag
+          # and the skip is false (fail closed). Removable once every open PR's
+          # base has the flag.
+          help_text=$(uv run python -m scripts.marketplace_ci check-pr --help)
+          if [[ "$help_text" == *--python-quality-skip-output* ]]; then
+            uv run python -m scripts.marketplace_ci check-pr --event /tmp/pr-event.json --python-quality-skip-output "$GITHUB_OUTPUT"
+          else
+            echo "skip_python_quality=false" >> "$GITHUB_OUTPUT"
+            uv run python -m scripts.marketplace_ci check-pr --event /tmp/pr-event.json
+          fi
 
   python-quality:
     name: Python quality (ruff, ty, pytest)
+    # Skipped only when hygiene SUCCEEDED and reported skip_python_quality=true
+    # (a verified dependabot PR changing only package.json/pnpm-lock.yaml).
+    # A failed, cancelled or skipped hygiene still runs this job (fail closed);
+    # publish accepts the skip only under the same condition.
+    needs: hygiene
+    if: >-
+      !cancelled()
+      && !(needs.hygiene.result == 'success'
+      && needs.hygiene.outputs.skip_python_quality == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -2026,6 +2053,7 @@ jobs:
           PREFIX_PERMANENCE_RESULT: ${{ needs.prefix-permanence.result }}
           HYGIENE_RESULT: ${{ needs.hygiene.result }}
           PYTHON_QUALITY_RESULT: ${{ needs.python-quality.result }}
+          SKIP_PYTHON_QUALITY: ${{ needs.hygiene.outputs.skip_python_quality }}
           MARKETPLACE_PARITY_RESULT: ${{ needs.marketplace-parity.result }}
         run: |
           # hygiene, python-quality and marketplace-parity are the other
@@ -2034,6 +2062,22 @@ jobs:
           # bypass_eligible check further down would otherwise accept; they
           # are checked directly here, before the BYPASSED short-circuit,
           # for the same reason prefix-permanence is.
+          # The one exception: python-quality 'skipped' counts as passed only
+          # when hygiene succeeded and reported skip_python_quality=true (a
+          # verified dependabot PR changing only package.json/pnpm-lock.yaml).
+          # Any other python-quality result than success still fails closed.
+          # codex-review is then skipped too, and a bypass_eligible scope must
+          # not turn that into a pass with no human step: this exception
+          # requires the SHA-bound Codex bypass attestation (BYPASSED=true),
+          # checked again below. Dependabot runs get no secrets anyway.
+          if [ "$PYTHON_QUALITY_RESULT" = "skipped" ] && [ "$HYGIENE_RESULT" = "success" ] && [ "$SKIP_PYTHON_QUALITY" = "true" ]; then
+            if [ "$BYPASSED" != "true" ]; then
+              echo "python-quality was skipped for a dependabot npm-only PR, which needs the Codex bypass attestation -- failing closed."
+              exit 1
+            fi
+            echo "python-quality skipped: verified dependabot PR changing only package.json/pnpm-lock.yaml"
+            PYTHON_QUALITY_RESULT="success"
+          fi
           for gate in "hygiene:$HYGIENE_RESULT" "python-quality:$PYTHON_QUALITY_RESULT" "marketplace-parity:$MARKETPLACE_PARITY_RESULT"; do
             if [ "${gate#*:}" != "success" ]; then
               echo "${gate%%:*} did not succeed (result: ${gate#*:}) -- failing closed."

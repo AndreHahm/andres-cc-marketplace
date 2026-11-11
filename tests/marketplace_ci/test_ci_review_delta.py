@@ -540,6 +540,7 @@ def _publish_script() -> str:
 _GATES = {
     "HYGIENE_RESULT": "success",
     "PYTHON_QUALITY_RESULT": "success",
+    "SKIP_PYTHON_QUALITY": "false",
     "MARKETPLACE_PARITY_RESULT": "success",
     "PREFIX_PERMANENCE_RESULT": "success",
     "SCOPE_RESULT": "success",
@@ -558,6 +559,15 @@ _SKIPPED = {"CODEX_RESULT": "skipped"}
 _ELIGIBLE = {"BYPASS_ELIGIBLE": "true", **_SKIPPED}
 _LABEL = {"BYPASS_LABEL_RUN": "true", **_SKIPPED}
 _FAILED = {"CODEX_RESULT": "failure", "REVIEW_STATUS": "findings"}
+# A verified npm-only dependabot PR: hygiene succeeded and set the skip flag,
+# python-quality and (as a result) codex-review were skipped, and the Codex
+# review was bypassed by attestation.
+_PQ_SKIP_BYPASSED = {
+    "PYTHON_QUALITY_RESULT": "skipped",
+    "SKIP_PYTHON_QUALITY": "true",
+    "BYPASSED": "true",
+    **_SKIPPED,
+}
 
 
 @pytest.mark.parametrize(
@@ -577,6 +587,42 @@ _FAILED = {"CODEX_RESULT": "failure", "REVIEW_STATUS": "findings"}
         ("R8 no new commits, nothing carried", _ELIGIBLE, True),
         ("R8 no new commits, findings carried", {**_ELIGIBLE, "CARRIED_BLOCKING": "1"}, False),
         ("a draft flag does not clear a failed review", {"IS_DRAFT": "true", **_FAILED}, False),
+        ("python-quality skipped for npm-only dependabot, bypassed", _PQ_SKIP_BYPASSED, True),
+        (
+            "python-quality skipped without the hygiene skip flag",
+            {**_PQ_SKIP_BYPASSED, "SKIP_PYTHON_QUALITY": "false"},
+            False,
+        ),
+        (
+            "python-quality skipped with the flag missing",
+            {**_PQ_SKIP_BYPASSED, "SKIP_PYTHON_QUALITY": ""},
+            False,
+        ),
+        (
+            "python-quality skipped, flag set, but hygiene failed",
+            {**_PQ_SKIP_BYPASSED, "HYGIENE_RESULT": "failure"},
+            False,
+        ),
+        (
+            "the skip flag does not clear a failed python-quality",
+            {**_PQ_SKIP_BYPASSED, "PYTHON_QUALITY_RESULT": "failure"},
+            False,
+        ),
+        (
+            "the skip flag does not clear a cancelled python-quality",
+            {**_PQ_SKIP_BYPASSED, "PYTHON_QUALITY_RESULT": "cancelled"},
+            False,
+        ),
+        (
+            "python-quality skipped, flag set, no Codex bypass",
+            {**_PQ_SKIP_BYPASSED, "BYPASSED": "false"},
+            False,
+        ),
+        (
+            "python-quality skipped, scope bypass-eligible, no attestation",
+            {**_PQ_SKIP_BYPASSED, "BYPASSED": "false", "BYPASS_ELIGIBLE": "true"},
+            False,
+        ),
     ],
 )
 def test_publish_decision(case, overrides, passes, tmp_path):
@@ -585,6 +631,28 @@ def test_publish_decision(case, overrides, passes, tmp_path):
     env = {"PATH": _fake_gh(tmp_path, "true " + "a" * 40), **_GATES, **overrides}
     result = subprocess.run(["bash", "-e", str(script)], env=env, capture_output=True, text=True)
     assert (result.returncode == 0) is passes, (case, result.stdout, result.stderr)
+
+
+def test_python_quality_skip_is_wired_fail_closed():
+    """python-quality may be skipped only on hygiene's own success plus its flag,
+    and the flag comes from the check-pr step that runs the base SHA's code."""
+    jobs = yaml.safe_load(_WORKFLOW.read_text(encoding="utf-8"))["jobs"]
+    pq = jobs["python-quality"]
+    assert pq["needs"] == "hygiene"
+    condition = " ".join(pq["if"].split())
+    assert condition == (
+        "!cancelled() && !(needs.hygiene.result == 'success' "
+        "&& needs.hygiene.outputs.skip_python_quality == 'true')"
+    )
+    hygiene = jobs["hygiene"]
+    assert hygiene["outputs"]["skip_python_quality"] == (
+        "${{ steps.check_pr.outputs.skip_python_quality }}"
+    )
+    (step,) = [s for s in hygiene["steps"] if s.get("id") == "check_pr"]
+    assert '--python-quality-skip-output "$GITHUB_OUTPUT"' in step["run"]
+    # the bootstrap branch for a base check-pr without the flag fails closed
+    assert 'echo "skip_python_quality=false" >> "$GITHUB_OUTPUT"' in step["run"]
+    assert "hygiene" in jobs["publish"]["needs"]
 
 
 def _fake_gh(tmp_path, live: str) -> str:

@@ -37,6 +37,13 @@ TRUSTED_BOT_PATHS = frozenset({"uv.lock", "pyproject.toml", "package.json", "pnp
 # web-flow, signature verified. A forged author email alone fails the committer
 # and signature checks, and a collaborator's web-UI edit is authored by them.
 TRUSTED_BOT_COMMITTER = "web-flow"
+# A verified dependabot PR that changes only the root npm manifest and lockfile
+# changes nothing ruff, ty and pytest check (scripts/ and tests/), so the
+# `python-quality` job may be skipped for it; the one check lost is its
+# end-of-file-fixer over those two files. Narrower than
+# TRUSTED_BOT_PATHS on purpose: uv.lock and pyproject.toml change the Python
+# toolchain those checks run with.
+PYTHON_QUALITY_SKIP_PATHS = frozenset({"package.json", "pnpm-lock.yaml"})
 
 _EMOJI_PATTERN = re.compile("[\U0001f300-\U0001faff\U00002600-\U000027bf\U0001f1e6-\U0001f1ff]")
 # GitHub-flavored markdown renders `:sparkles:`-style shortcodes as emoji too;
@@ -134,6 +141,20 @@ def check_pr_rights(api: GitHubApi) -> RightsResult:
         return RightsResult(allowed=True, reason=f"collaborator permission: {permission}")
     return RightsResult(
         allowed=False, reason=f"insufficient collaborator permission: {permission!r}"
+    )
+
+
+def python_quality_skip_allowed(
+    user: str, changed_paths: list[str], *, bot_commits_verified: bool
+) -> bool:
+    """True only for a trusted bot's PR whose commits were verified and whose
+    every changed path is in PYTHON_QUALITY_SKIP_PATHS. An empty path list is
+    never "npm only" (fail closed, the same guard check_merge_rights uses)."""
+    return (
+        user.lower() in TRUSTED_BOT_LOGINS
+        and bot_commits_verified
+        and bool(changed_paths)
+        and all(path in PYTHON_QUALITY_SKIP_PATHS for path in changed_paths)
     )
 
 

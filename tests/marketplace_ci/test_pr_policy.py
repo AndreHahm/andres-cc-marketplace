@@ -10,6 +10,7 @@ from scripts.marketplace_ci.pr_policy import (
     check_template,
     commits_verified_from_trusted_bot,
     evaluate_pr_policy,
+    python_quality_skip_allowed,
 )
 
 PRIMARY_TEMPLATE = """## Summary
@@ -264,6 +265,47 @@ def test_trusted_bot_denied_without_verified_bot_commits():
     result = check_merge_rights(api, ["uv.lock"])
     assert result.allowed is False
     assert result.reason is not None and "CODEOWNERS" in result.reason
+
+
+@pytest.mark.parametrize(
+    "paths", [["package.json", "pnpm-lock.yaml"], ["pnpm-lock.yaml"], ["package.json"]]
+)
+@pytest.mark.parametrize("login", ["dependabot[bot]", "Dependabot[bot]"])
+def test_python_quality_skip_allowed_for_verified_bot_npm_only(login, paths):
+    assert python_quality_skip_allowed(login, paths, bot_commits_verified=True) is True
+
+
+@pytest.mark.parametrize(
+    "paths",
+    [
+        ["uv.lock"],
+        ["pyproject.toml"],
+        ["package.json", "uv.lock"],
+        ["pnpm-lock.yaml", "scripts/marketplace_ci/pr_policy.py"],
+        [".github/workflows/x.yml"],
+        ["sub/package.json"],
+        [".github/security-tools/package.json"],
+        ["package-lock.json"],
+        ["PNPM-LOCK.yaml"],
+        [],
+    ],
+)
+def test_python_quality_skip_denied_for_any_other_path_set(paths):
+    assert python_quality_skip_allowed("dependabot[bot]", paths, bot_commits_verified=True) is False
+
+
+@pytest.mark.parametrize(
+    ("login", "verified"),
+    [
+        ("dependabot[bot]", False),
+        ("andre", True),
+        ("dependabot", True),
+        ("evil-dependabot[bot]", True),
+    ],
+)
+def test_python_quality_skip_needs_trusted_bot_and_verified_commits(login, verified):
+    paths = ["package.json", "pnpm-lock.yaml"]
+    assert python_quality_skip_allowed(login, paths, bot_commits_verified=verified) is False
 
 
 def _fake_gh(monkeypatch, stdout="", returncode=0):
