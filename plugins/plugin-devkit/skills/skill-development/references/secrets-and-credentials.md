@@ -330,7 +330,7 @@ In the Prerequisites section, tell Claude where to get each secret:
 ## Prerequisites
 
 - Environment variables (required):
-  - `GITHUB_TOKEN`: Personal access token from https://github.com/settings/tokens (create with 'repo' scope)
+  - `GITHUB_TOKEN`: Personal access token from [GitHub token settings](https://github.com/settings/tokens) (create with 'repo' scope)
   - `DATABASE_URL`: Connection string from your database provider
   - `API_KEY`: From https://dashboard.service.com/api-keys
 

@@ -21,7 +21,8 @@ description: >-
   skill-refiner-interactive (operator-approved refinement) or
   skill-improver-loop (automated fix-review cycles); to redesign a workflow
   skill's phase or routing structure, use workflow-skill-development. This
-  agent only assesses and scores, it never edits.
+  agent only assesses and scores, it never edits. These pointers are routing
+  for the caller; this agent never dispatches them.
 model: sonnet
 color: cyan
 tools: ["Read", "Grep", "Glob"]

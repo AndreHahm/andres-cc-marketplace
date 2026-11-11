@@ -3,7 +3,7 @@ name: agent-identifier
 description: Use this agent when [condition]. Typical triggers include [scenario 1] and [scenario 2].
 model: inherit
 color: blue
-tools: ["Read", "Write", "Grep"]
+tools: ["Read", "Grep"]
 ---
 
 You are [agent role description]...
