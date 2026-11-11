@@ -476,19 +476,19 @@
       "compatibility": {
         "claude-code": {
           "evidence": [
-            ".claude/output/promptlibrary-kit/live-run-20261014.md (H1 live run, gitignored)",
-            "claude plugin validate passes"
+            "claude plugin validate plugins/promptlibrary-kit passes",
+            "H1 live run 2026-10-14, headless claude -p with --plugin-dir: the plugin loads; prompt-retrieval and prompt-reviewer ran live; prompt-execution previewed and stopped at the approval question, so no approved live run yet (run record kept locally, gitignored)"
           ],
           "level": "native",
-          "notes": "Wave 0 runs as a Claude Code plugin; prompt execution is Claude-only.",
+          "notes": "Wave 0 runs as a Claude Code plugin; prompt execution is Claude-only and has not completed an approved live run.",
           "verified_on": "2026-10-14"
         },
         "codex": {
           "evidence": [
-            "plugins/promptlibrary-kit/README.md (out-of-scope list: Codex execution)"
+            "plugins/promptlibrary-kit/README.md, section 'Not included (planned later)': Codex execution"
           ],
           "level": "incompatible",
-          "notes": "Codex execution of prompts is out of scope for Wave 0.",
+          "notes": "Codex execution of prompts is not included in Wave 0; planned for a later wave.",
           "verified_on": "2026-11-11"
         }
       },
