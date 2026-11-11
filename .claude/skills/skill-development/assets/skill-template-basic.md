@@ -3,7 +3,7 @@ name: "{skill-name}"
 description: >-
   {What it does — start with action verbs}. Use when {primary trigger conditions}:
   {keywords}, {trigger phrases}, {file patterns}. {Optional: explicit scope or constraints}.
-allowed-tools: Read Edit Write Glob
+allowed-tools: Read Glob
 ---
 
 # {Skill Name}
