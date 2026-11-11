@@ -1,0 +1,22 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4542390235",
+      "line": 39,
+      "note": "Approval now binds baseRefName with the head SHA, re-read before merge-pr; retarget during merge-pr disclosed as not covered. Fixed in 953a66e4.",
+      "path": "plugins/git-kit/skills/triaging-dependabot-prs/references/codex-bypass.md",
+      "pr": 703,
+      "recorded_at": "2026-11-11T20:19:04+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4542390252",
+      "line": 157,
+      "note": "Added CLI cases for an empty and a mixed path list; unit tests already covered both. Fixed in 953a66e4.",
+      "path": "scripts/marketplace_ci/pr_policy.py",
+      "pr": 703,
+      "recorded_at": "2026-11-11T20:19:04+00:00"
+    }
+  ]
+}
