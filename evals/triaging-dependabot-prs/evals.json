@@ -149,7 +149,7 @@
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 68,
+    "declared_scenarios_total": 69,
     "declared_scenarios_covered": 26,
     "uncovered": [
       "Scenario 1: No dependabot PRs open",
@@ -193,7 +193,8 @@
       "Scenario 53: Reads go through the read script",
       "Scenario 54: Real write is a separate permission",
       "Scenario 39c: Scoped npm package",
-      "Scenario 39d: Path B uv sources check fails"
+      "Scenario 39d: Path B uv sources check fails",
+      "Scenario 36a: Base retargeted after approval"
     ],
     "note": "Scenarios are conversational-procedure checks. The deterministic lockfile classifier is covered separately by scripts/test_check_uv_lock_bump.py, and the live dry run by phase7-dry-run-2026-10-08.md."
   }
