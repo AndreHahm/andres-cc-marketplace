@@ -90,7 +90,11 @@ v1.0.271, read from its source) loads the user, project and local settings sourc
 run PR-supplied code next to the key. The same `--settings` sets `permissions.blockReadsOutsideWorkingDirectories`
 (Claude Code 2.1.257 or later; the pinned action bundles 2.1.322) and denies `Read(//proc/**)`,
 `Read(//sys/**)` and `Read(.git/**)`: a bare Read or Grep grant would otherwise reach `/proc/*/environ`,
-which holds the key, and the git config the action writes the job token into. Claude returns findings as
+which holds the key, and the git config the action writes the job token into. `--strict-mcp-config` keeps a
+PR-supplied `.mcp.json` server from starting: the action writes `enableAllProjectMcpServers: true` into the
+user settings this run loads. A deleted path's old content is not in the checkout, so the prompt asks only for
+remaining files that still refer to it; such a finding cannot go inline and lands in the summary comment.
+Claude returns findings as
 `--json-schema` structured output; it posts nothing. The step that records a pass drops its output when it
 contains the key itself (the key reaches `jq` through its environment, not its arguments), and the
 publisher then refuses the pass (could-not-run, nothing posted). Any other text shaped like a credential

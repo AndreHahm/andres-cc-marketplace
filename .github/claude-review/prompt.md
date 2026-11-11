@@ -23,7 +23,9 @@ The pull request head is {{HEAD_SHA}}. The last head this review already covered
 {{PATHS}}
 ```
 
-These paths are deleted at the head; judge whether deleting them breaks something:
+These paths are deleted at the head, and their old content is not in the checkout. Report a
+finding only when a file that remains still refers to one of them (search for it with Grep): cite
+the deleted path with line 1, and name the remaining file and line in the body:
 
 ```json
 {{DELETED_PATHS}}
