@@ -10,15 +10,16 @@ description: >-
   'which of these should fire for X'. Trigger proactively after creating or
   modifying multiple skills or agents together whose domains plausibly touch —
   for a full quality review of a single skill (structure, size, scoring), use
-  skill-reviewer instead, which only runs a term-level overlap check on that
-  one skill; this agent compares trigger conditions across a set of skills or
+  skill-reviewer instead, whose own overlap check is term-level and limited
+  to that one skill; this agent compares trigger conditions across a set of skills or
   agents; for a broader check of data, governance, functionality, and capability
   drift between the same components, use consistency-reviewer instead; the
   two may legitimately run back-to-back on the same trigger event, each
   covering a different axis. To write or rewrite a description, use
   skill-development or agent-development (this agent only reviews, it never
   edits); for a description's size and format (R8, R21) rather than whether
-  it selects the right component, use plugin-rulebook.
+  it selects the right component, use plugin-rulebook. These pointers are
+  routing for the caller; this agent never dispatches them.
 model: sonnet
 color: pink
 tools: ["Read", "Grep", "Glob"]

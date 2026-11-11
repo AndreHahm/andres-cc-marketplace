@@ -6,7 +6,7 @@
 ## Prerequisites
 - Required software/libraries: Python 3.8+, requests library
 - Environment variables (required):
-  - `GITHUB_TOKEN`: Personal access token from https://github.com/settings/tokens
+  - `GITHUB_TOKEN`: Personal access token from [GitHub token settings](https://github.com/settings/tokens)
   - `API_ENDPOINT`: Your API endpoint URL
 - Validation: Run `bash scripts/validate-env.sh` to verify setup
 
