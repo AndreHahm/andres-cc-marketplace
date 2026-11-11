@@ -1139,8 +1139,14 @@ jobs:
   codex-review:
     name: Codex delta review
     needs: [hygiene, python-quality, marketplace-parity, prefix-permanence, compute-scope]
+    # Not for Dependabot (the same two checks as claude-review-ci.yml): its runs
+    # get no secrets, so the review could only end could_not_run. publish then
+    # sees a skip that is not bypass_eligible and fails closed, so such a PR
+    # still needs the SHA-bound bypass attestation, exactly as before.
     if: >-
       github.event.pull_request.head.repo.fork == false
+      && github.actor != 'dependabot[bot]'
+      && github.event.pull_request.user.login != 'dependabot[bot]'
       && needs.compute-scope.outputs.bypass_eligible != 'true'
       && needs.compute-scope.outputs.bypass_label_run != 'true'
     runs-on: ubuntu-latest
