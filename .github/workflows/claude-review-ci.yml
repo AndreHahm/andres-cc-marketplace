@@ -398,18 +398,28 @@ jobs:
           result='null'
           if [ -f "$exec_file" ]; then
             result=$(jq -c '[.[] | select(.type == "result")] | last
-              | if . == null then null else {subtype, is_error, num_turns, total_cost_usd, api_error_status} end' \
+              | if . == null then null else {subtype, is_error, num_turns, total_cost_usd, api_error_status,
+                  error_message: (if .is_error == true then (.result // "" | tostring | .[0:500])
+                                  else null end)} end' \
               "$exec_file" 2>/dev/null || echo null)
             rm -f "$exec_file"
           fi
           # Output that holds the API key itself is dropped here, before any file or artifact
-          # has it; the key and the output reach jq through its environment, never argv.
+          # has it; the key and the output reach jq through its environment, never argv. The
+          # error message of a failed request is kept with key-shaped text redacted, and only
+          # in the artifact: the log line below leaves it out.
           jq -n --argjson result "$result" '
-            ($ENV.API_KEY != "" and ($ENV.STRUCTURED | contains($ENV.API_KEY))) as $leak
+            ($result | if type == "object" and (.error_message | type) == "string" then
+                .error_message |= (if $ENV.API_KEY != "" and contains($ENV.API_KEY)
+                                   then "[dropped: held the API key]"
+                                   else gsub("sk-ant-[A-Za-z0-9_-]+"; "[REDACTED]") end)
+              else . end) as $result
+            | ($ENV.API_KEY != "" and ($ENV.STRUCTURED | contains($ENV.API_KEY))) as $leak
             | {pass: $ENV.PASS, outcome: $ENV.OUTCOME, result: $result, secret_found: $leak,
                structured_output: (if $leak then "" else $ENV.STRUCTURED end)}' \
             > "$RUNNER_TEMP/claude-raw/$PASS.json"
-          jq -c '{pass, outcome, result}' "$RUNNER_TEMP/claude-raw/$PASS.json"
+          jq -c '{pass, outcome, result: (.result | if type == "object" then del(.error_message)
+                                              else . end)}' "$RUNNER_TEMP/claude-raw/$PASS.json"
 
       - name: Re-check the pull request before the security pass
         id: live_security
@@ -464,18 +474,28 @@ jobs:
           result='null'
           if [ -f "$exec_file" ]; then
             result=$(jq -c '[.[] | select(.type == "result")] | last
-              | if . == null then null else {subtype, is_error, num_turns, total_cost_usd, api_error_status} end' \
+              | if . == null then null else {subtype, is_error, num_turns, total_cost_usd, api_error_status,
+                  error_message: (if .is_error == true then (.result // "" | tostring | .[0:500])
+                                  else null end)} end' \
               "$exec_file" 2>/dev/null || echo null)
             rm -f "$exec_file"
           fi
           # Output that holds the API key itself is dropped here, before any file or artifact
-          # has it; the key and the output reach jq through its environment, never argv.
+          # has it; the key and the output reach jq through its environment, never argv. The
+          # error message of a failed request is kept with key-shaped text redacted, and only
+          # in the artifact: the log line below leaves it out.
           jq -n --argjson result "$result" '
-            ($ENV.API_KEY != "" and ($ENV.STRUCTURED | contains($ENV.API_KEY))) as $leak
+            ($result | if type == "object" and (.error_message | type) == "string" then
+                .error_message |= (if $ENV.API_KEY != "" and contains($ENV.API_KEY)
+                                   then "[dropped: held the API key]"
+                                   else gsub("sk-ant-[A-Za-z0-9_-]+"; "[REDACTED]") end)
+              else . end) as $result
+            | ($ENV.API_KEY != "" and ($ENV.STRUCTURED | contains($ENV.API_KEY))) as $leak
             | {pass: $ENV.PASS, outcome: $ENV.OUTCOME, result: $result, secret_found: $leak,
                structured_output: (if $leak then "" else $ENV.STRUCTURED end)}' \
             > "$RUNNER_TEMP/claude-raw/$PASS.json"
-          jq -c '{pass, outcome, result}' "$RUNNER_TEMP/claude-raw/$PASS.json"
+          jq -c '{pass, outcome, result: (.result | if type == "object" then del(.error_message)
+                                              else . end)}' "$RUNNER_TEMP/claude-raw/$PASS.json"
 
       - name: Collect the passes
         if: always()
