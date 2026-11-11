@@ -572,5 +572,142 @@ class UnusableInputTests(Base):
         self.assertEqual((abbrev.returncode, abbrev.stdout), (2, ""))
 
 
+def run_sources(base, head, *extra):
+    with tempfile.TemporaryDirectory() as tmp:
+        base_path, head_path = pathlib.Path(tmp, "base.lock"), pathlib.Path(tmp, "head.lock")
+        base_path.write_text(base, encoding="utf-8")
+        head_path.write_text(head, encoding="utf-8")
+        proc = subprocess.run(
+            [sys.executable, "-I", str(SCRIPT), "--sources-only", "--base", str(base_path)]
+            + ["--head", str(head_path), *extra],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+    return proc.returncode, json.loads(proc.stdout)
+
+
+ROOT = '[[package]]\nname = "proj"\nversion = "0.1.0"\nsource = { virtual = "." }\n'
+
+
+@unittest.skipIf(sys.version_info < (3, 11), "check_uv_lock_bump.py needs tomllib (Python 3.11+)")
+class SourcesOnlyTests(unittest.TestCase):
+    def assert_ok(self, base, head):
+        code, res = run_sources(base, head)
+        self.assertEqual((code, res["ok"], res["reasons"]), (0, True, []), res)
+        return res
+
+    def assert_rejected(self, base, head, fragment):
+        code, res = run_sources(base, head)
+        self.assertEqual((code, res["ok"]), (1, False), res)
+        self.assertTrue(any(fragment in r for r in res["reasons"]), res["reasons"])
+
+    def test_several_registry_bumps_and_a_new_package_pass(self):
+        res = self.assert_ok(
+            lock(ROOT, package("ty", "1.0.0"), OTHER),
+            lock(
+                ROOT.replace('"0.1.0"', '"0.1.0"\ndependencies = [{ name = "new-dep" }]'),
+                package("ty", "2.0.0"),
+                package("requests", "3.0.0"),
+                package("new-dep", "1.0.0"),
+                requires_python=">=3.12",
+            ),
+        )
+        self.assertEqual(res["changed_entries"], 4)
+        self.assertEqual(res["files_checked"], 6)
+
+    def test_unchanged_lock_passes(self):
+        res = self.assert_ok(lock(ROOT, OTHER), lock(ROOT, OTHER))
+        self.assertEqual(res["changed_entries"], 0)
+
+    def test_non_registry_sources_rejected(self):
+        for source in (
+            '{ git = "https://example.com/x.git?rev=1#abc" }',
+            '{ url = "https://example.com/x.tar.gz" }',
+            '{ registry = "https://evil.example/simple" }',
+            '{ path = "../x" }',
+        ):
+            with self.subTest(source=source):
+                self.assert_rejected(
+                    lock(ROOT, OTHER),
+                    lock(ROOT, OTHER, package("evil", "1.0.0", source=source)),
+                    "source is not the default PyPI registry",
+                )
+
+    def test_new_local_path_source_rejected(self):
+        local = '[[package]]\nname = "local"\nversion = "1.0.0"\nsource = { editable = "." }\n'
+        self.assert_rejected(lock(ROOT, OTHER), lock(ROOT, OTHER, local), "local-path source")
+
+    def test_off_host_url_and_wrong_filename_rejected(self):
+        bad_host = package(
+            "ty",
+            "2.0.0",
+            sdist=entry_text(url("ty-2.0.0.tar.gz", host="evil.example")),
+            wheels=None,
+        )
+        self.assert_rejected(
+            lock(ROOT, OTHER), lock(ROOT, OTHER, bad_host), "files.pythonhosted.org"
+        )
+        wrong_name = package("ty", "2.0.0", file_name="other", wheels=None)
+        self.assert_rejected(lock(ROOT, OTHER), lock(ROOT, OTHER, wrong_name), "is not ty 2.0.0")
+
+    def test_entry_without_files_rejected(self):
+        self.assert_rejected(
+            lock(ROOT, OTHER),
+            lock(ROOT, OTHER, package("ty", "2.0.0", sdist=None, wheels=None)),
+            "lists no files",
+        )
+
+    def test_root_entry_changes_rejected(self):
+        editable = ROOT.replace('virtual = "."', 'editable = "."')
+        self.assert_rejected(lock(ROOT, OTHER), lock(editable, OTHER), "local-path source")
+        renamed = ROOT.replace('"proj"', '"other-proj"')
+        self.assert_rejected(lock(ROOT, OTHER), lock(renamed, OTHER), "local-path source")
+        with_files = ROOT + f"sdist = {entry_text(url('proj-0.2.0.tar.gz'))}\n"
+        self.assert_rejected(lock(ROOT, OTHER), lock(with_files, OTHER), "lists files")
+
+    def test_malformed_registry_entries_rejected(self):
+        cases = (
+            (package("ty", "bad version!"), "invalid version"),
+            (package("ty", "2.0.0", wheels='wheels = "x"'), "wheels is not a list"),
+            (
+                package(
+                    "ty", "2.0.0", sdist=f'{{ url = "{url("ty-2.0.0.tar.gz")}" }}', wheels=None
+                ),
+                "missing hash",
+            ),
+        )
+        for entry, fragment in cases:
+            with self.subTest(fragment=fragment):
+                self.assert_rejected(lock(ROOT, OTHER), lock(ROOT, OTHER, entry), fragment)
+
+    def test_unusable_input_exits_2(self):
+        for head in (
+            "not = [toml",
+            lock(ROOT) + '\n[[package]]\nname = "x"\nversion = "1"\nwhen = 1979-05-27T07:32:00Z\n',
+            'version = 1\npackage = "not a list"\n',
+        ):
+            with self.subTest(head=head[:30]):
+                code, res = run_sources(lock(ROOT), head)
+                self.assertEqual((code, res["ok"]), (2, False), res)
+
+    def test_bump_arguments_with_sources_only_are_unusable(self):
+        code, res = run_sources(lock(ROOT), lock(ROOT), "--package=ty")
+        self.assertEqual((code, res["ok"]), (2, False))
+
+    def test_bump_mode_still_needs_its_arguments(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = pathlib.Path(tmp, "a.lock")
+            path.write_text(lock(ROOT), encoding="utf-8")
+            proc = subprocess.run(
+                [sys.executable, "-I", str(SCRIPT), "--base", str(path), "--head", str(path)],
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+        self.assertEqual(proc.returncode, 2)
+        self.assertFalse(json.loads(proc.stdout)["ok"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=1)

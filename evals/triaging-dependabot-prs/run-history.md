@@ -100,3 +100,27 @@ epoch releases) were dropped from the release list, so an older version could be
 may outrank the PR's version now makes the newest compatible version unknown. Full PEP 440 ordering is not implemented. Seven
 new or updated tests fail against the previous script and pass now; scenario 64 and eval 15 added (iteration 16, 5 of 5,
 author-graded, one simulated answer, no baseline).
+
+2026-11-11, iteration 17. The CI change on branch `ci/skip-slow-jobs-for-dependabot` stops `Codex delta review` from
+running for any Dependabot PR (their runs get no Actions secrets), so `Publish Codex policy result` now fails on every
+Dependabot PR until attested. `references/codex-bypass.md` gained path B (maintainer review) for `uv` and `npm_and_yarn`
+PRs that are not `uv.lock`-only; path A is unchanged, and a path A failure never falls back to path B. The branch check
+(both paths, and the `ignore` `<dep>` rule) now compares only the package and requires a version-shaped suffix, because
+Dependabot keeps the branch name when it moves a PR to a newer release (#629, #631, #634 on that date). Eval 3 updated,
+eval 16 added; iteration 17 passed 4 of 4 and 5 of 5 (author-graded, one simulated answer each, no baseline). The
+suffix pattern was checked against the open PRs' real branch names.
+
+2026-11-11, iteration 18. A `security-reviewer` pass on path B raised two Major findings: path B checked nothing inside
+the files (GitHub also collapses lockfile diffs), and the public reason claimed a verified dependency-only bump. Fixed:
+`check_uv_lock_bump.py --sources-only` (every new or changed head package from the default PyPI registry with
+`files.pythonhosted.org` files named for itself, or the root project with its base source; 8 new tests, each new check
+shown to fail its test when removed, and a pass on a real pyproject-plus-uv.lock commit, adab7941) as path B condition 5
+for uv; a compare link pinned to the approved SHA and lockfile review guidance; a reason that marks the title values as
+not machine-verified and names the Python quality skip for npm. npm content has no machine check by the maintainer's
+decision (a disclosed gap). Evals 3 and 16 re-run, 4 of 4 and 5 of 5 (author-graded, one simulated answer each, no
+baseline).
+A second `security-reviewer` pass (delta) confirmed the earlier fixes and raised one more Major: path B's review
+guidance named only npm items, not `pyproject.toml` (`[build-system]` requirements are not locked). Added to condition 6
+and to "What path B does and does not prove", with two stale cross-references fixed. Hardening: a changed root entry
+must keep its exact name and source and list no files. Three more tests (61 in total); each new check fails its test
+when removed. Evals 3 and 16 were not re-run for this wording-only addition to the guidance list.

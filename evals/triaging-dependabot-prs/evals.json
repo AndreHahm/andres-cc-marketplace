@@ -23,9 +23,9 @@
     },
     {
       "id": 3,
-      "name": "Bypass refused when the manifest also changed or the classifier fails",
-      "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT run any `gh`/`git`/shell command, post any comment, run any script or invoke any other skill -- describe exactly what you would do instead, and write your answer to outputs/answer.md.\n\nYou are following the `triaging-dependabot-prs` skill (plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md and its references). Two dependabot uv PRs both have `Publish Codex policy result` as the only failing required check. PR #103 changes both `pyproject.toml` and `uv.lock`. PR #104 changes only `uv.lock`, but `check_uv_lock_bump.py` exited 1 with the reason `entry key 'dependencies' changed` (a new dependency edge). The branch of #104 is current with its base. For each PR say whether a Codex bypass is offered and what you do instead.",
-      "expected_output": "Offers no bypass for either PR. #103: the file condition fails because pyproject.toml is among the changed files (a manifest change needs a human reviewer); reports and skips. #104: the classifier did not pass; because the reason is a changed dependency edge (not the 'exactly one entry replaced' or top-level symptoms that suggest a stale branch), it reports the PR for manual review and skips it. Does not invoke merge-pr with the bypass flag for either, and does not weaken a condition or ask the user to override it.",
+      "name": "uv bypass paths: manifest change goes to path B, classifier failure is reported",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT run any `gh`/`git`/shell command, post any comment, run any script or invoke any other skill -- describe exactly what you would do instead, and write your answer to outputs/answer.md.\n\nYou are following the `triaging-dependabot-prs` skill (plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md and its references). Two dependabot uv PRs both have `Publish Codex policy result` as the only failing required check. PR #103 changes both `pyproject.toml` and `uv.lock`. PR #104 changes only `uv.lock`, but `check_uv_lock_bump.py` exited 1 with the reason `entry key 'dependencies' changed` (a new dependency edge). The branch of #104 is current with its base. Both have branch `dependabot/uv/<package>-<version>` matching their title's package, and every commit is verified, author `dependabot[bot]`, committer `web-flow`, the last one at the head SHA. For #103, `check_uv_lock_bump.py --sources-only` on base and head `uv.lock` printed `\"ok\": true` with exit code 0. For each PR say whether a Codex bypass is offered, through which path, and what you do instead.",
+      "expected_output": "#103: path A does not apply (more than `uv.lock` changed); both files are in the uv expected paths, the --sources-only check passed, so path B (maintainer review) is offered: the AskUserQuestion approval names path B, the changed files, a compare link pinned to the approved head SHA, the warning that GitHub collapses lockfile diffs, offers 'I read the diff at this SHA; attest the bypass' as its own option and uses the path B reason template with 'from title, not machine-verified' and the uv sources-checked clause; only that answer leads to Skill(merge-pr) with the bypass flag and --expected-head-sha. #104: uv.lock is the only file, so only path A applies; the classifier did not pass, and because the reason is a changed dependency edge (not the 'exactly one entry replaced' or top-level symptoms that suggest a stale branch), it reports the PR for manual review and skips it, without falling back to path B. Does not weaken a condition or ask the user to override it.",
       "files": [
         "outputs/answer.md"
       ]
@@ -137,11 +137,20 @@
       "files": [
         "outputs/answer.md"
       ]
+    },
+    {
+      "id": 16,
+      "name": "Path B for an npm PR whose branch version lags the title",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT run any `gh`/`git`/shell command, post any comment, run any script or invoke any other skill -- describe exactly what you would do instead, and write your answer to outputs/answer.md.\n\nYou are following the `triaging-dependabot-prs` skill (plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md and its references, especially references/codex-bypass.md). Facts for dependabot PR #110 in AndreHahm/andres-cc-marketplace, all freshly read: title `chore(deps-dev): bump markdownlint-cli2 from 0.22.1 to 0.24.1`; branch `dependabot/npm_and_yarn/markdownlint-cli2-0.24.0`; head SHA `89abcdef0123456789abcdef0123456789abcdef`; in `pr-checks 110` the only failing required check is `Publish Codex policy result`, `Python quality` is `skipping`, nothing is pending; the files API shows exactly `package.json` and `pnpm-lock.yaml`, both `modified`, no `previous_filename`, not truncated, the same set as the step 6.1 read; the commits API shows every commit verified, author `dependabot[bot]`, committer `web-flow`, the last one at the head SHA. Describe whether a bypass is offered, through which path, what the user is shown and asked, and how the merge is then handled.",
+      "expected_output": "Path B (maintainer review) applies: not a uv.lock-only PR, ecosystem npm_and_yarn, files within package.json and pnpm-lock.yaml. The branch condition passes even though the branch says 0.24.0 and the title says 0.24.1: only the package segment is compared and the suffix 0.24.0 is version-shaped; it does not treat the mismatch as a refusal. `Python quality` skipping counts as passing. Asks via AskUserQuestion showing path B, PR #110, the head SHA, markdownlint-cli2 0.22.1 to 0.24.1, the changed files, a compare link pinned to the approved SHA (https://github.com/AndreHahm/andres-cc-marketplace/compare/<baseRefName>...89abcdef0123456789abcdef0123456789abcdef), the warning that GitHub collapses lockfile diffs with what to look for (tarball or off-registry URLs, missing integrity, new scripts/overrides), and the full path B reason text with 'from title, not machine-verified', 'content not machine-checked' and 'Python quality skipped for this npm-only change'; says the attestation comment is public and permanent, posted before merge-pr's confirmation, not undone by declining it, and that the `s: codex review bypassed` label must exist; offers 'I read the diff at this SHA; attest the bypass' as its own option. Only on that answer re-reads the head SHA and invokes Skill(merge-pr) with --bypass-codex-review and --expected-head-sha; asks no merge question of its own and does not post the comment itself. Does not run check_uv_lock_bump.py.",
+      "files": [
+        "outputs/answer.md"
+      ]
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 64,
-    "declared_scenarios_covered": 24,
+    "declared_scenarios_total": 68,
+    "declared_scenarios_covered": 26,
     "uncovered": [
       "Scenario 1: No dependabot PRs open",
       "Scenario 2: List truncation",
@@ -170,7 +179,7 @@
       "Scenario 34: Commit conditions",
       "Scenario 35: Reason values",
       "Scenario 38: Missing bypass label",
-      "Scenario 39: Non-uv PR failing Codex policy",
+      "Scenario 39: `github_actions` PR failing Codex policy",
       "Scenario 40: Wrap-up",
       "Scenario 42: Ignore chosen in the close path",
       "Scenario 43: Unignore",
@@ -182,7 +191,9 @@
       "Scenario 49: Ignore scope",
       "Scenario 51: Moved head after approval",
       "Scenario 53: Reads go through the read script",
-      "Scenario 54: Real write is a separate permission"
+      "Scenario 54: Real write is a separate permission",
+      "Scenario 39c: Scoped npm package",
+      "Scenario 39d: Path B uv sources check fails"
     ],
     "note": "Scenarios are conversational-procedure checks. The deterministic lockfile classifier is covered separately by scripts/test_check_uv_lock_bump.py, and the live dry run by phase7-dry-run-2026-10-08.md."
   }

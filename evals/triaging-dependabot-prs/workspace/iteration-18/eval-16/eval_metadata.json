@@ -1,0 +1,31 @@
+{
+  "eval_id": 16,
+  "skill_path": "plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md",
+  "assertions": [
+    {
+      "text": "Path B applies to the npm PR; check_uv_lock_bump.py is not run",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Branch version 0.24.0 vs title 0.24.1 is not a refusal; only the package and a version-shaped suffix are checked",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Python quality skipping counts as passing",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Approval shows path B, PR, SHA, versions, files, a pinned compare link, the collapsed-lockfile guidance with what to look for, the path B reason with 'not machine-verified', 'content not machine-checked' and the Python quality skip clause, the public-comment disclosures, and 'I read the diff at this SHA' as its own option",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Only on that answer: re-read head, Skill(merge-pr) with --bypass-codex-review and --expected-head-sha; no own merge question or comment",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    }
+  ]
+}

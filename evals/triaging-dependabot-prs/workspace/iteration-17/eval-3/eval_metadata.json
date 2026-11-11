@@ -1,0 +1,10 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md",
+  "assertions": [
+    {"text": "#103 (pyproject.toml and uv.lock): path A does not apply, path B (maintainer review) is offered", "type": "functionality", "target": "outputs/answer.md"},
+    {"text": "#103 approval names path B, files, files-page link, head SHA, offers 'I read the diff at this SHA' as its own option and uses the path B reason", "type": "functionality", "target": "outputs/answer.md"},
+    {"text": "#104: classifier failure (dependency edge, branch current) is reported for manual review, no rebase", "type": "functionality", "target": "outputs/answer.md"},
+    {"text": "#104 is not moved to path B", "type": "functionality", "target": "outputs/answer.md"}
+  ]
+}
