@@ -272,6 +272,11 @@ jobs:
             --review-md "$trusted/REVIEW.md" --security-md "$trusted/security-reviewer.md" \
             --base-sha "$BASE_SHA" --head-sha "$HEAD_SHA" \
             --out-dir "$RUNNER_TEMP/claude-scope/prompts" --github-output "$GITHUB_OUTPUT"
+          # R5: the pull request's own patch for the reviewed paths (the review job cannot read .git).
+          uv run python -m scripts.marketplace_ci claude-review-patch \
+            --scope "$RUNNER_TEMP/claude-scope/scope.json" \
+            --base-sha "$BASE_SHA" --head-sha "$HEAD_SHA" \
+            --out "$RUNNER_TEMP/claude-scope/prompts/delta.diff"
 
       - name: Upload the review scope
         if: steps.scope.outcome == 'success'
@@ -307,6 +312,15 @@ jobs:
         with:
           persist-credentials: false
           ref: ${{ github.event.pull_request.head.sha }}
+
+      # R5: the patch goes inside the checkout (Claude may read nothing outside it), placed after the
+      # checkout so no pull request file can stand in for it. prompt.md names this path.
+      - name: Place the reviewed patch in the checkout
+        run: |
+          set -euo pipefail
+          rm -rf -- .claude-review-input
+          mkdir -- .claude-review-input
+          cp -- "$RUNNER_TEMP/claude-scope/prompts/delta.diff" .claude-review-input/delta.diff
 
       # The prompts go to the action as step outputs; a random delimiter keeps a PR-chosen file
       # name inside a prompt from ending the value early.

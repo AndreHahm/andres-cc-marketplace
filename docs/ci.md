@@ -65,8 +65,8 @@ Dependabot PR skip the whole workflow without failing. A newer push cancels a ru
 
 | Job | Check name | Secret | What it does |
 |---|---|---|---|
-| `claude-scope` | `Compute Claude review scope` | none | Kill-switch restore, PR-head checkout, the same base-SHA restore of `scripts/`, `pyproject.toml` and `uv.lock` as `compute-scope` (a test keeps the two blocks identical), then `claude-review-settings`, `find-review-anchor --profile claude`, `check-scope-bypass --ci-delta --review-exclusions claude --emit-review-paths`, and `claude-review-prompts`. Uploads `claude-review-scope` (the reviewed paths and the prompts). |
-| `claude-review` | `Run Claude review passes` | `ANTHROPIC_API_KEY` | Runs no repository code. Checks out the PR head, re-checks with `/usr/bin/gh` right before each pass that the PR is still ready and at the same head, and runs `anthropics/claude-code-action` (pinned by SHA) once for the general pass and once more for the security pass. Records each pass's outcome, structured output and the `result` entry of the execution file, deletes that file (it is the whole transcript), and uploads `claude-review-raw`. |
+| `claude-scope` | `Compute Claude review scope` | none | Kill-switch restore, PR-head checkout, the same base-SHA restore of `scripts/`, `pyproject.toml` and `uv.lock` as `compute-scope` (a test keeps the two blocks identical), then `claude-review-settings`, `find-review-anchor --profile claude`, `check-scope-bypass --ci-delta --review-exclusions claude --emit-review-paths` (which, for the Claude set, only writes the paths and skips the Codex bypass decision), `claude-review-prompts` and `claude-review-patch`. Uploads `claude-review-scope` (the reviewed paths, the prompts and the patch). |
+| `claude-review` | `Run Claude review passes` | `ANTHROPIC_API_KEY` | Runs no repository code. Checks out the PR head, copies the patch into the checkout at `.claude-review-input/delta.diff` (after the checkout, so no PR file can stand in for it), re-checks with `/usr/bin/gh` right before each pass that the PR is still ready and at the same head, and runs `anthropics/claude-code-action` (pinned by SHA) once for the general pass and once more for the security pass. Records each pass's outcome, structured output and the `result` entry of the execution file, deletes that file (it is the whole transcript), and uploads `claude-review-raw`. |
 | `claude-publish` | `Claude delta review` | none | Checks out the **base SHA** (it needs nothing from the PR), runs `publish-claude-review`, uploads `claude-review-result` and fails the check when the result says so. |
 
 **Scope (R3, R4).** The anchor is the head of the newest earlier run of this workflow whose `Claude delta
@@ -92,9 +92,12 @@ run PR-supplied code next to the key. The same `--settings` sets `permissions.bl
 `Read(//sys/**)` and `Read(.git/**)`: a bare Read or Grep grant would otherwise reach `/proc/*/environ`,
 which holds the key, and the git config the action writes the job token into. `--strict-mcp-config` keeps a
 PR-supplied `.mcp.json` server from starting: the action writes `enableAllProjectMcpServers: true` into the
-user settings this run loads. A deleted path's old content is not in the checkout, so the prompt asks only for
-remaining files that still refer to it; such a finding cannot go inline and lands in the summary comment.
-Claude returns findings as
+user settings this run loads. Claude cannot read `.git`, so `claude-review-patch` gives it the PR's own change
+to the reviewed paths: `git diff` from the merge base to the head with `--no-ext-diff --no-textconv` (a
+PR-supplied `.gitattributes` cannot change what is shown) and literal pathspecs, cut at 1,000,000 bytes
+with a note saying how many bytes were left out; it includes the removed content of deleted paths. A git
+failure while building it fails `claude-scope`, so the review could not run. A finding on a deleted path cannot go
+inline and lands in the summary comment. Claude returns findings as
 `--json-schema` structured output; it posts nothing. The step that records a pass drops its output when it
 contains the key itself (the key reaches `jq` through its environment, not its arguments), and the
 publisher then refuses the pass (could-not-run, nothing posted). Any other text shaped like a credential

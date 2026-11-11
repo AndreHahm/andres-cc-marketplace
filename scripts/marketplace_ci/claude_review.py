@@ -115,6 +115,38 @@ def prompt_values(
     }
 
 
+# R5: the review job places the patch here, inside the checkout (Claude may read nothing outside
+# it), after the checkout, so no pull request file can stand in for it. prompt.md names this path.
+PATCH_PATH = ".claude-review-input/delta.diff"
+# A bound on what one pass may be asked to read; the rest is named, not silently dropped.
+MAX_PATCH_BYTES = 1_000_000
+
+
+def review_patch(repo: Path, scope: Mapping, base_sha: str, head_sha: str) -> str:
+    """The pull request's own change to the reviewed paths (R5): from the merge base with the base
+    commit to the head, both sides of a rename, deleted content included. External diff drivers and
+    textconv are off, so a pull-request `.gitattributes` cannot change what is shown. Raises
+    subprocess.CalledProcessError when git fails."""
+    paths = sorted({p for e in scope["paths"] for p in (e["path"], e.get("old_path")) if p})
+    if not paths:
+        return ""
+    merge_base = subprocess.run(
+        ["git", "merge-base", base_sha, head_sha],
+        cwd=repo, capture_output=True, text=True, check=True,
+    ).stdout.strip()  # fmt: skip
+    raw = subprocess.run(
+        ["git", "diff", "--no-renames", "--text", "--no-ext-diff", "--no-textconv", "--no-color",
+         merge_base, head_sha, "--", *(f":(literal){p}" for p in paths)],
+        cwd=repo, capture_output=True, check=True,
+    ).stdout  # fmt: skip
+    if len(raw) <= MAX_PATCH_BYTES:
+        return raw.decode("utf-8", errors="replace")
+    kept = raw[:MAX_PATCH_BYTES].decode("utf-8", errors="ignore")
+    return kept + (
+        f"\n[patch truncated: {len(raw) - MAX_PATCH_BYTES} more bytes; read the files themselves]\n"
+    )
+
+
 def needs_security_pass(scope: Mapping) -> bool:
     """R5: a second pass when the reviewed delta contains a gate-critical path."""
     return any(e.get("gate_critical") for e in scope["paths"])
