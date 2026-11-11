@@ -457,6 +457,40 @@ def test_check_pr_python_quality_skip_output(
     assert out.read_text(encoding="utf-8") == f"earlier=1\nskip_python_quality={skip}\n"
 
 
+@pytest.mark.parametrize(
+    ("paths", "rc"),
+    [
+        # An empty diff already fails merge-privilege (fail closed), so the skip
+        # is false through the policy result too; the empty-list guard inside
+        # python_quality_skip_allowed is covered by test_pr_policy.py.
+        ([], 1),
+        # Passes the policy (all manifest paths), so only the skip rule's
+        # npm-only check keeps the output false.
+        (["package.json", "uv.lock"], 0),
+    ],
+)
+def test_check_pr_python_quality_skip_output_empty_or_mixed_diff(
+    monkeypatch, git_repo, tmp_path, paths, rc
+):
+    base_sha = _commit_and_sha(git_repo, "README.md", "hello", "init")
+    head_sha = base_sha
+    for path in paths[:-1]:
+        git_repo.stage(path, "lock")
+    if paths:
+        head_sha = _commit_and_sha(git_repo, paths[-1], "lock", "bump")
+    event_path = _check_pr_event(
+        git_repo, tmp_path, user="dependabot[bot]", base_sha=base_sha, head_sha=head_sha
+    )
+    monkeypatch.setattr(
+        "scripts.marketplace_ci.pr_policy.commits_verified_from_trusted_bot", lambda *args: True
+    )
+    monkeypatch.chdir(git_repo.root)
+    out = tmp_path / "github_output"
+    args = ["check-pr", "--event", str(event_path), "--python-quality-skip-output", str(out)]
+    assert main(args) == rc
+    assert out.read_text(encoding="utf-8") == "skip_python_quality=false\n"
+
+
 def test_check_pr_does_not_query_commits_for_non_bot_opener(monkeypatch, git_repo, tmp_path):
     base_sha = _commit_and_sha(git_repo, "README.md", "hello", "init")
     head_sha = _commit_and_sha(git_repo, "uv.lock", "lock", "bump")
