@@ -176,7 +176,9 @@ allowed-tools: Read,Write,Bash(python ${CLAUDE_SKILL_DIR}/scripts/extract.py *)
 name: git-helper
 allowed-tools: Bash(git:*)
 ---
+```
 
+```yaml
 # Example 3: Read-only analysis (inspect code, no execution)
 ---
 name: code-analyzer
