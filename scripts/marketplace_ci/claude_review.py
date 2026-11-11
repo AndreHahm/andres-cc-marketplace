@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 import math
 import re
-import subprocess
+import subprocess  # nosec B404  # list-form git and gh calls only, no shell (docs/ci.md)
 import tempfile
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
@@ -99,19 +99,19 @@ def build_prompt(template: str, values: Mapping[str, str]) -> str:
 
 
 def prompt_values(
-    scope: Mapping, review_md: str, security_md: str, pass_name: str, base_sha: str, head_sha: str
+    scope: Mapping, review_md: str, security_md: str, review_name: str, base_sha: str, head_sha: str
 ) -> dict[str, str]:
     paths = [e["path"] for e in scope["paths"] if e.get("status") != "D"]
     deleted = [e["path"] for e in scope["paths"] if e.get("status") == "D"]
     return {
-        "PASS": pass_name,
+        "PASS": review_name,
         "BASE_SHA": base_sha,
         "HEAD_SHA": head_sha,
         "ANCHOR_SHA": scope.get("anchor_sha") or "none",
         "PATHS": json.dumps(paths, indent=2),
         "DELETED_PATHS": json.dumps(deleted, indent=2),
         "REVIEW_MD": review_md,
-        "SECURITY_REVIEWER_MD": security_md if pass_name == "security" else "",
+        "SECURITY_REVIEWER_MD": security_md if review_name == "security" else "",
     }
 
 
@@ -130,11 +130,11 @@ def review_patch(repo: Path, scope: Mapping, base_sha: str, head_sha: str) -> st
     paths = sorted({p for e in scope["paths"] for p in (e["path"], e.get("old_path")) if p})
     if not paths:
         return ""
-    merge_base = subprocess.run(
+    merge_base = subprocess.run(  # nosec B603 B607  # literal git subcommand, no shell
         ["git", "merge-base", base_sha, head_sha],
         cwd=repo, capture_output=True, text=True, check=True,
     ).stdout.strip()  # fmt: skip
-    raw = subprocess.run(
+    raw = subprocess.run(  # nosec B603 B607  # literal git subcommand, no shell
         ["git", "diff", "--no-renames", "--text", "--no-ext-diff", "--no-textconv", "--no-color",
          merge_base, head_sha, "--", *(f":(literal){p}" for p in paths)],
         cwd=repo, capture_output=True, check=True,
@@ -274,7 +274,7 @@ def decide(
         "anchor_status": (scope or {}).get("anchor_status", ""),
         "reviewed_paths": [e["path"] for e in (scope or {}).get("paths", [])],
         "model": model,
-        "security_pass": False,
+        "security_review": False,
         "passes": {},
         "findings": [],
         "reason": "",
@@ -299,7 +299,7 @@ def decide(
         return result
     reviewed = frozenset(result["reviewed_paths"])
     expected = ["general", *(["security"] if needs_security_pass(scope) else [])]
-    result["security_pass"] = "security" in expected
+    result["security_review"] = "security" in expected
     records = {r.get("pass"): r for r in raw.get("passes", []) if isinstance(r, dict)}
     verdicts = []
     for name in expected:
@@ -337,7 +337,7 @@ def summary_body(result: Mapping, unplaced: Sequence[Mapping]) -> str:
         f"- **Anchor:** {result['anchor_sha'] or 'none (whole PR)'}"
         + (f" ({result['anchor_status']})" if result["anchor_sha"] else ""),
         f"- **Model:** {result['model']}",
-        f"- **Security pass:** {'ran' if result['security_pass'] else 'not needed'}",
+        f"- **Security pass:** {'ran' if result['security_review'] else 'not needed'}",
         f"- **Cost:** {costs}",
     ]
     footer = [
@@ -374,12 +374,16 @@ Gh = Callable[[Sequence[str], dict | None], subprocess.CompletedProcess]
 def _gh(args: Sequence[str], payload: dict | None = None) -> subprocess.CompletedProcess:
     """`gh api` with an optional JSON body passed through a file, never through the command."""
     if payload is None:
-        return subprocess.run(["gh", "api", *args], capture_output=True, text=True)
+        return subprocess.run(  # nosec B603 B607  # literal gh subcommand, no shell
+            ["gh", "api", *args], capture_output=True, text=True
+        )
     with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False, encoding="utf-8") as f:
         json.dump(payload, f)
         body = f.name
     try:
-        return subprocess.run(["gh", "api", *args, "--input", body], capture_output=True, text=True)
+        return subprocess.run(  # nosec B603 B607  # literal gh subcommand, body via a file
+            ["gh", "api", *args, "--input", body], capture_output=True, text=True
+        )
     finally:
         Path(body).unlink(missing_ok=True)
 
