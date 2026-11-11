@@ -125,6 +125,10 @@ def test_claude_gets_read_only_tools_and_no_repository_hooks():
     assert len(_action_steps()) == 2
     for step in _action_steps():
         args = _claude_args(step)
+        # no project .mcp.json server starts: the action sets enableAllProjectMcpServers in the
+        # user settings this run loads
+        assert args.count("--strict-mcp-config") == 1
+        args.remove("--strict-mcp-config")
         pairs = dict(zip(args[::2], args[1::2], strict=True))
         assert pairs["--tools"] == "Read,Grep,Glob"
         assert pairs["--allowedTools"] == "Read,Grep,Glob"
