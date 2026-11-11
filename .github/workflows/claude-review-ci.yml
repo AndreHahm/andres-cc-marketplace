@@ -123,7 +123,10 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # ratchet:actions/setup-python@v7.0.0
         with:
           python-version: "3.13"
-      - run: pip install uv
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # ratchet:astral-sh/setup-uv@v10.3.3
+        with:
+          version: "0.12.21"
+          enable-cache: "false"
 
       # R3: the scope is computed by the same trusted code as the Codex review, restored from
       # the base SHA. Kept identical to compute-scope's copy of this block by
@@ -184,7 +187,10 @@ jobs:
           fi
           echo "restored scripts/, pyproject.toml, uv.lock and uv config from $BASE_SHA"
 
-      - run: uv sync --locked --no-config --group dev
+      # --no-build runs no package's setup code (as marketplace-ci.yml's review-helpers job).
+      # csscompressor and jsmin ship only as source and come in through mkdocs-minify-plugin,
+      # which these steps never use; uv run below takes --no-sync so it builds nothing either.
+      - run: uv sync --locked --no-config --no-install-project --group dev --no-build --no-install-package csscompressor --no-install-package jsmin
 
       # R8, R10: the kill switch, the model and the per-pass timeout. An invalid value fails
       # this job, and the publish job then reports the review as could-not-run.
@@ -194,7 +200,7 @@ jobs:
           CLAUDE_CI_REVIEW_BYPASS: ${{ vars.CLAUDE_CI_REVIEW_BYPASS }}
           CLAUDE_KIT_REVIEW_MODEL: ${{ vars.CLAUDE_KIT_REVIEW_MODEL }}
           CLAUDE_KIT_REVIEW_TIMEOUT_MS: ${{ vars.CLAUDE_KIT_REVIEW_TIMEOUT_MS }}
-        run: uv run python -m scripts.marketplace_ci claude-review-settings --github-output "$GITHUB_OUTPUT"
+        run: uv run --no-sync python -m scripts.marketplace_ci claude-review-settings --github-output "$GITHUB_OUTPUT"
 
       # R3: the PR head the newest earlier run of this workflow reviewed, through the lookup the
       # Codex review shares (find-review-anchor), never from anything the PR author can edit.
@@ -211,7 +217,7 @@ jobs:
           EVENT_ACTION: ${{ github.event.action }}
           IS_DRAFT: ${{ github.event.pull_request.draft }}
         run: |
-          if ! uv run python -m scripts.marketplace_ci find-review-anchor --profile claude \
+          if ! uv run --no-sync python -m scripts.marketplace_ci find-review-anchor --profile claude \
               --repo "$REPO" --run-id "$RUN_ID" --pr-number "$PR_NUMBER" --head-ref "$HEAD_REF" \
               --event-action "$EVENT_ACTION" --is-draft "$IS_DRAFT" --temp-dir "$RUNNER_TEMP/anchor" \
               --github-output "$RUNNER_TEMP/anchor-output"; then
@@ -242,7 +248,7 @@ jobs:
           ANCHOR_SHA: ${{ steps.anchor.outputs.sha }}
         run: |
           mkdir -p "$RUNNER_TEMP/claude-scope"
-          uv run python -m scripts.marketplace_ci check-scope-bypass --base-sha "$BASE_SHA" \
+          uv run --no-sync python -m scripts.marketplace_ci check-scope-bypass --base-sha "$BASE_SHA" \
             --ci-delta --review-exclusions claude --anchor-sha "$ANCHOR_SHA" \
             --emit-review-paths "$RUNNER_TEMP/claude-scope/scope.json" > /dev/null
           count=$(jq '.paths | length' "$RUNNER_TEMP/claude-scope/scope.json")
@@ -267,13 +273,13 @@ jobs:
             || { echo "::error::the base SHA has no REVIEW.md"; exit 1; }
           git show "$BASE_SHA:.claude/agents/security-reviewer.md" > "$trusted/security-reviewer.md" \
             || { echo "::error::the base SHA has no .claude/agents/security-reviewer.md"; exit 1; }
-          uv run python -m scripts.marketplace_ci claude-review-prompts \
+          uv run --no-sync python -m scripts.marketplace_ci claude-review-prompts \
             --scope "$RUNNER_TEMP/claude-scope/scope.json" --template "$trusted/prompt.md" \
             --review-md "$trusted/REVIEW.md" --security-md "$trusted/security-reviewer.md" \
             --base-sha "$BASE_SHA" --head-sha "$HEAD_SHA" \
             --out-dir "$RUNNER_TEMP/claude-scope/prompts" --github-output "$GITHUB_OUTPUT"
           # R5: the pull request's own patch for the reviewed paths (the review job cannot read .git).
-          uv run python -m scripts.marketplace_ci claude-review-patch \
+          uv run --no-sync python -m scripts.marketplace_ci claude-review-patch \
             --scope "$RUNNER_TEMP/claude-scope/scope.json" \
             --base-sha "$BASE_SHA" --head-sha "$HEAD_SHA" \
             --out "$RUNNER_TEMP/claude-scope/prompts/delta.diff"
@@ -521,8 +527,14 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # ratchet:actions/setup-python@v7.0.0
         with:
           python-version: "3.13"
-      - run: pip install uv
-      - run: uv sync --locked --no-config --group dev
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # ratchet:astral-sh/setup-uv@v10.3.3
+        with:
+          version: "0.12.21"
+          enable-cache: "false"
+      # --no-build runs no package's setup code (as marketplace-ci.yml's review-helpers job).
+      # csscompressor and jsmin ship only as source and come in through mkdocs-minify-plugin,
+      # which these steps never use; uv run below takes --no-sync so it builds nothing either.
+      - run: uv sync --locked --no-config --no-install-project --group dev --no-build --no-install-package csscompressor --no-install-package jsmin
 
       - name: Download the review scope
         if: needs.claude-scope.outputs.switched_off == 'false'
@@ -554,7 +566,7 @@ jobs:
           REVIEW_JOB: ${{ needs.claude-review.result }}
         run: |
           rc=0
-          uv run python -m scripts.marketplace_ci publish-claude-review \
+          uv run --no-sync python -m scripts.marketplace_ci publish-claude-review \
             --switched-off "${SWITCHED_OFF:-false}" \
             --scope "$RUNNER_TEMP/claude-scope/scope.json" \
             --raw "$RUNNER_TEMP/claude-raw/claude-review-raw.json" \

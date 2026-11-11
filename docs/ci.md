@@ -109,10 +109,12 @@ GitHub App's token and the job needs no `id-token: write`.
 
 Accepted residuals (from the R11 security review): anyone who can push a branch here can edit this workflow
 in their own PR and read the key, as with every `pull_request` workflow that holds a secret, so the key
-should be a dedicated one in its own Console workspace (R9) that is cheap to rotate; `pip install uv` is
-unpinned in the jobs without the key, as in `marketplace-ci.yml`; and whether a nested `CLAUDE.md` in a
-PR-supplied directory loads under `--setting-sources user` has not been tested live (the prompt names it
-untrusted either way).
+should be a dedicated one in its own Console workspace (R9) that is cheap to rotate; and whether a nested
+`CLAUDE.md` in a PR-supplied directory loads under `--setting-sources user` has not been tested live (the
+prompt names it untrusted either way). The jobs without the key install uv with `astral-sh/setup-uv` (pinned
+by SHA, uv `0.12.21`), not `pip install uv`, and sync with `--no-build` (the two source-only packages
+`csscompressor` and `jsmin`, which these steps never use, are left out) and run `uv run --no-sync`, so no
+package's setup code runs, as in `marketplace-ci.yml`'s review-helpers job.
 
 **Findings and the check (R6, R7).** `publish-claude-review` (in `scripts/marketplace_ci/claude_review.py`)
 validates each pass's output against the schema, removes `@`-mentions, HTML entities, HTML comments and
