@@ -1,0 +1,38 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4539139965",
+      "line": 23,
+      "note": "Fixed in e0e27469: the scope job writes the PR patch and the review job places it in the checkout for the reviewer",
+      "path": ".github/claude-review/prompt.md",
+      "pr": 701,
+      "recorded_at": "2026-11-11T15:35:05+00:00"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "4539396896",
+      "line": 937,
+      "note": "Only the bootstrap PR lacks the subcommand; Codex refuses it on the trust-boundary gate anyway, and every later base has it",
+      "path": ".github/workflows/marketplace-ci.yml",
+      "pr": 701,
+      "recorded_at": "2026-11-11T15:35:06+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "cr-2e0eee89644f0d08c02452b6",
+      "note": "Review-body nitpick; e0e27469 adds the skipped-job-with-result anchor test",
+      "path": "tests/marketplace_ci/test_ci_review_delta.py",
+      "pr": 701,
+      "recorded_at": "2026-11-11T15:35:06+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "cr-7e953b2c0e8bf59b03be8da7",
+      "note": "Review-body nitpick; e0e27469 returns after writing the paths for the Claude exclusion set",
+      "path": "scripts/marketplace_ci/__main__.py",
+      "pr": 701,
+      "recorded_at": "2026-11-11T15:35:06+00:00"
+    }
+  ]
+}
