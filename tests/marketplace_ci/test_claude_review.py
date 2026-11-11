@@ -188,7 +188,7 @@ def test_a_blocking_finding_in_either_pass_fails(severity):
         ({"passes": [_record("general", [_finding(line=0)])]}, "success", "malformed"),
         ({"passes": [_record("general", [_finding(line=True)])]}, "success", "malformed"),
         ({"passes": [_record("general", [_finding(severity="High")])]}, "success", "malformed"),
-        ({"passes": [_record("general", [_finding("Minor")] * 51)]}, "success", "findings list"),
+        ({"passes": [_record("general", [_finding("Minor")] * 31)]}, "success", "findings list"),
         ({"skipped": "head_moved", "passes": []}, "success", "newer push"),
     ],
 )
@@ -230,10 +230,68 @@ def test_model_text_cannot_mention_anyone_or_forge_the_marker():
     assert cr.SUMMARY_MARKER not in f["body"]
 
 
-def test_a_finding_outside_the_reviewed_paths_is_not_placed_inline():
-    raw = {"passes": [_record("general", [_finding("Major", path="elsewhere.py")])]}
+def test_a_finding_outside_the_reviewed_paths_is_not_placed_inline_or_echoed():
+    raw = {"passes": [_record("general", [_finding("Major", path="x` @bot <!-- y")])]}
     got = _decide(_scope(_PLAIN), raw)
-    assert got["status"] == "findings" and got["findings"][0]["in_scope"] is False
+    f = got["findings"][0]
+    assert got["status"] == "findings" and f["in_scope"] is False
+    assert f["path"] == "" and f["display_path"] == "(outside the reviewed paths)"
+
+
+# Security review M1 and n1: credential-shaped text is redacted, never posted; the exact key
+# refuses the whole pass.
+
+
+@pytest.mark.parametrize("field", ["title", "body"])
+@pytest.mark.parametrize(
+    "secret", ["sk-ant-api03-" + "A" * 40, "ghs_" + "a" * 36, "github_pat_" + "b" * 30]
+)
+def test_a_secret_shaped_finding_is_redacted(field, secret):
+    raw = {"passes": [_record("general", [_finding("Minor", **{field: f"see {secret} here"})])]}
+    got = _decide(_scope(_PLAIN), raw)
+    assert got["status"] == "clean"
+    f = got["findings"][0]
+    assert secret not in f[field] and "[REDACTED]" in f[field]
+    assert secret not in cr.summary_body(got, [])
+
+
+def test_a_pass_whose_output_held_the_key_is_refused():
+    record = {**_record("general"), "secret_found": True, "structured_output": ""}
+    got = _decide(_scope(_PLAIN), {"passes": [record]})
+    assert got["status"] == "could_not_run" and "API key" in got["reason"]
+
+
+# Security review M2 and its minors: nothing model-written breaks out of the summary.
+
+
+def test_a_reviewed_path_cannot_break_out_of_its_code_span():
+    odd = {"status": "M", "path": "a`b\n@x.py", "gate_critical": False}
+    raw = {"passes": [_record("general", [_finding("Minor", path=odd["path"])])]}
+    f = _decide(_scope(odd), raw)["findings"][0]
+    assert f["path"] == odd["path"]  # the inline comment API gets the real path
+    assert "`" not in f["display_path"] and "\n" not in f["display_path"]
+    assert "@x" not in f["display_path"]
+
+
+def test_entities_and_line_breaks_cannot_forge_mentions_or_lines():
+    title = "a\n- **Status:** clean &#64;bot"
+    raw = {"passes": [_record("general", [_finding("Major", title=title, path="nope.py")])]}
+    result = _decide(_scope(_PLAIN), raw)
+    f = result["findings"][0]
+    assert "\n" not in f["title"] and "&#64;" not in f["title"]
+    body = cr.summary_body(result, [f])
+    assert "\n- **Status:** clean" not in body
+
+
+def test_the_summary_stays_under_githubs_limit():
+    many = [_finding("Minor", title="t" * 190, body="b") for _ in range(cr.MAX_FINDINGS)]
+    raw = {"passes": [_record("general", many), _record("security", many)]}
+    result = _decide(_scope(_PLAIN, _CRITICAL), raw)
+    result["findings"] = result["findings"] * 20  # far more rows than fit
+    body = cr.summary_body(result, [])
+    assert len(body) <= cr.MAX_SUMMARY
+    assert "more entries are in the result artifact" in body
+    assert body.rstrip().endswith("Findings are not carried to later runs.")
 
 
 # R6: publish.

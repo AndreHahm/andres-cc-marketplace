@@ -29,9 +29,14 @@ _TIMEOUT = re.compile(r"[1-9][0-9]{0,8}")
 SEVERITIES = ("Critical", "Major", "Minor", "Informational")
 BLOCKING = frozenset({"Critical", "Major"})
 VERDICTS = ("LGTM", "Changes Requested")
-MAX_FINDINGS = 50
+# 30 findings of at most 2000 + 300 + 200 characters keep a pass's structured output well under
+# Linux's 128 KiB limit on one environment string (the record step reads it from one).
+MAX_FINDINGS = 30
 MAX_TITLE = 200
-MAX_BODY = 4000
+MAX_BODY = 2000
+MAX_PATH = 300
+# GitHub refuses a comment body over 65536 characters; the summary stays well under it.
+MAX_SUMMARY = 60_000
 SUMMARY_MARKER = "<!-- claude-delta-review:summary -->"
 SUMMARY_AUTHOR = "github-actions[bot]"
 
@@ -120,10 +125,28 @@ class InvalidReview(ValueError):
 
 
 def _clean_text(text: str, limit: int) -> str:
-    """Model-written text the publisher posts: bounded, no hidden HTML comment (which could
-    forge the summary marker), and no @-mention (which could summon a bot or a person)."""
-    text = text[:limit].replace("<!--", "&lt;!--")
+    """Model-written text the publisher posts: bounded, no HTML entity (which could spell a
+    mention or a comment), no hidden HTML comment (which could forge the summary marker or hide
+    the rest of the summary), and no @-mention (which could summon a bot or a person)."""
+    text = text[:limit].replace("&", "&amp;").replace("<!--", "&lt;!--")
     return text.replace("@", "@\N{ZERO WIDTH SPACE}")
+
+
+def _display_path(path: str) -> str:
+    """A path as the summary shows it inside a code span: no backtick (which would end the
+    span), no control character or line break, bounded."""
+    text = "".join(c if c.isprintable() else " " for c in path[:MAX_PATH]).replace("`", "'")
+    return _clean_text(text, MAX_PATH)
+
+
+def _redact_secrets(text: str) -> str:
+    """Text with anything shaped like a credential (the shared token shapes, `sk-ant-` keys
+    included) replaced by [REDACTED]. Redacted rather than refused: a reviewed test fixture
+    holds such shapes, and refusing would let a PR switch the advisory review off. The exact
+    API key is refused instead, by the record step and parse_pass."""
+    from scripts.marketplace_ci.review import _redact_tokens
+
+    return _redact_tokens(text)
 
 
 def parse_pass(record: Mapping, reviewed: frozenset[str]) -> tuple[str, list[dict]]:
@@ -137,6 +160,8 @@ def parse_pass(record: Mapping, reviewed: frozenset[str]) -> tuple[str, list[dic
     if not isinstance(result, dict) or result.get("subtype") != "success" or result.get("is_error"):
         subtype = result.get("subtype") if isinstance(result, dict) else None
         raise InvalidReview(f"the {record.get('pass')} pass stopped early ({subtype})")
+    if record.get("secret_found"):
+        raise InvalidReview(f"the {record.get('pass')} pass returned the API key; nothing posted")
     try:
         output = json.loads(record.get("structured_output") or "")
     except ValueError as exc:
@@ -159,16 +184,24 @@ def parse_pass(record: Mapping, reviewed: frozenset[str]) -> tuple[str, list[dic
             and isinstance(f.get("body"), str)
         ):
             raise InvalidReview(f"the {record.get('pass')} pass returned a malformed finding")
+        in_scope = f["path"] in reviewed
         findings.append(
             {
                 "pass": record.get("pass"),
                 "severity": f["severity"],
-                "path": f["path"],
+                # the real path only for a reviewed one, which the inline comment API needs; a
+                # path the model made up is never echoed back
+                "path": f["path"] if in_scope else "",
+                "display_path": (
+                    _display_path(_redact_secrets(f["path"]))
+                    if in_scope
+                    else "(outside the reviewed paths)"
+                ),
                 "line": f["line"],
-                "title": _clean_text(f["title"], MAX_TITLE),
-                "body": _clean_text(f["body"], MAX_BODY),
+                "title": _clean_text(_redact_secrets(" ".join(f["title"].split())), MAX_TITLE),
+                "body": _clean_text(_redact_secrets(f["body"]), MAX_BODY),
                 # a finding outside the reviewed paths is reported, never posted inline
-                "in_scope": f["path"] in reviewed,
+                "in_scope": in_scope,
             }
         )
     return output["verdict"], findings
@@ -275,19 +308,32 @@ def summary_body(result: Mapping, unplaced: Sequence[Mapping]) -> str:
         f"- **Security pass:** {'ran' if result['security_pass'] else 'not needed'}",
         f"- **Cost:** {costs}",
     ]
-    if result["findings"]:
-        lines += ["", "| Severity | Pass | Location | Finding |", "|---|---|---|---|"]
-        for f in result["findings"]:
-            title = f["title"].replace("|", "\\|").replace("\n", " ")
-            lines.append(f"| {f['severity']} | {f['pass']} | `{f['path']}:{f['line']}` | {title} |")
-    if unplaced:
-        lines += ["", "Critical and Major findings not on a changed line (no inline comment):"]
-        lines += [f"- `{f['path']}:{f['line']}` {f['title']}" for f in unplaced]
-    lines += [
+    footer = [
         "",
         "Advisory only: this check never blocks a merge. Findings are not carried to later runs.",
     ]
-    return "\n".join(lines) + "\n"
+    rows = [
+        f"| {f['severity']} | {f['pass']} | `{f['display_path']}:{f['line']}` | "
+        + f["title"].replace("|", "\\|")
+        + " |"
+        for f in result["findings"]
+    ]
+    extra = [f"- `{f['display_path']}:{f['line']}` {f['title']}" for f in unplaced]
+    # Bounded (MAX_SUMMARY): rows are dropped from the end until the body fits, with a note.
+    dropped = 0
+    while True:
+        table = ["", "| Severity | Pass | Location | Finding |", "|---|---|---|---|", *rows]
+        unplaced_part = (
+            ["", "Critical and Major findings not on a changed line (no inline comment):", *extra]
+            if extra
+            else []
+        )
+        note = ["", f"{dropped} more entries are in the result artifact."] if dropped else []
+        body = "\n".join(lines + (table if rows else []) + unplaced_part + note + footer) + "\n"
+        if len(body) <= MAX_SUMMARY or not (rows or extra):
+            return body[:MAX_SUMMARY]
+        (rows if rows else extra).pop()
+        dropped += 1
 
 
 Gh = Callable[[Sequence[str], dict | None], subprocess.CompletedProcess]

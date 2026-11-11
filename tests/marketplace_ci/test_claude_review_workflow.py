@@ -6,10 +6,14 @@ repository code, and Claude Code gets read-only tools with the repository's hook
 from __future__ import annotations
 
 import json
+import os
 import re
 import shlex
+import shutil
+import subprocess
 from pathlib import Path
 
+import pytest
 import yaml
 
 from scripts.marketplace_ci import claude_review as cr
@@ -54,15 +58,30 @@ def test_forks_dependabot_and_drafts_are_skipped():
     assert "pull_request.draft == false" in cond
 
 
-def test_the_api_key_reaches_only_the_review_passes():
-    assert TEXT.count("secrets.") == 2
+def test_the_api_key_reaches_only_the_review_passes_and_their_leak_checks():
+    allowed = {
+        "General pass",
+        "Security pass",
+        "Record the general pass",
+        "Record the security pass",
+    }
+    assert TEXT.count("secrets.") == len(allowed)
     for job, spec in JOBS.items():
         for step in spec["steps"]:
             mentions = "secrets." in json.dumps(step)
-            assert mentions == (job == "claude-review" and step in _action_steps()), step.get(
+            assert mentions == (job == "claude-review" and step.get("name") in allowed), step.get(
                 "name"
             )
     assert "secrets" not in json.dumps(WF.get("env", {}))
+
+
+def test_output_holding_the_api_key_is_dropped_before_any_file_has_it():
+    """Security review M1: the key reaches jq through its environment, never argv."""
+    for name in ("Record the general pass", "Record the security pass"):
+        step = _step("claude-review", name)
+        assert step["env"]["API_KEY"] == "${{ secrets.ANTHROPIC_API_KEY }}"
+        assert "contains($ENV.API_KEY)" in step["run"]
+        assert '"$API_KEY"' not in step["run"] and "$STRUCTURED" not in step["run"]
 
 
 def test_the_job_with_the_key_runs_no_repository_code():
@@ -111,7 +130,11 @@ def test_claude_gets_read_only_tools_and_no_repository_hooks():
         assert pairs["--allowedTools"] == "Read,Grep,Glob"
         assert pairs["--disallowedTools"] == "mcp__*"
         assert pairs["--setting-sources"] == "user"
-        assert json.loads(pairs["--settings"]) == {"disableAllHooks": True}
+        settings = json.loads(pairs["--settings"])
+        assert settings["disableAllHooks"] is True
+        # security review M1: no read outside the checkout (/proc/*/environ holds the key)
+        assert settings["permissions"]["blockReadsOutsideWorkingDirectories"] is True
+        assert {"Read(//proc/**)", "Read(.git/**)"} <= set(settings["permissions"]["deny"])
         # R9: per-pass caps
         assert (pairs["--max-turns"], pairs["--max-budget-usd"]) == ("25", "1.00")
         assert pairs["--model"] == "MODEL"
@@ -130,6 +153,9 @@ def test_the_output_schema_matches_the_publisher():
         assert tuple(item["properties"]["severity"]["enum"]) == cr.SEVERITIES
         assert tuple(schema["properties"]["verdict"]["enum"]) == cr.VERDICTS
         assert schema["properties"]["findings"]["maxItems"] == cr.MAX_FINDINGS
+        path = item["properties"]["path"]
+        assert path["maxLength"] == cr.MAX_PATH
+        assert re.fullmatch(r"\^\[\^`<>.*\]\+\$", path["pattern"])
 
 
 def test_the_pull_request_is_rechecked_right_before_each_pass():
@@ -198,6 +224,11 @@ def test_the_scope_uses_the_shared_anchor_lookup_and_the_claude_exclusions():
     assert "--ci-delta --review-exclusions claude" in run and "--emit-review-paths" in run
 
 
+def test_a_cancelled_run_publishes_nothing():
+    cond = JOBS["claude-publish"]["if"]
+    assert "!cancelled()" in cond and "always()" not in cond
+
+
 def test_the_publish_job_is_the_anchor_profiles_producer():
     profile = ANCHOR_PROFILES["claude"]
     assert JOBS["claude-publish"]["name"] == profile.review_job
@@ -212,3 +243,32 @@ def test_the_publish_job_is_the_anchor_profiles_producer():
 def test_nothing_to_review_makes_no_api_call():
     cond = JOBS["claude-review"]["if"]
     assert "has_paths == 'true'" in cond and "switched_off == 'false'" in cond
+
+
+@pytest.mark.skipif(shutil.which("jq") is None, reason="the record step uses jq")
+@pytest.mark.parametrize(
+    ("structured", "leak"),
+    [('{"verdict":"LGTM","findings":[]}', False), ('{"x":"key=sk-ant-DUMMY-KEY-123"}', True)],
+)
+def test_the_record_step_drops_output_that_holds_the_key(tmp_path, structured, leak):
+    run = _step("claude-review", "Record the general pass")["run"]
+    (tmp_path / "claude-execution-output.json").write_text(
+        json.dumps([{"type": "system"}, {"type": "result", "subtype": "success", "is_error": False,
+                    "num_turns": 3, "total_cost_usd": 0.2, "result": "transcript text"}]),
+        "utf-8",
+    )  # fmt: skip
+    env = {
+        "PATH": os.environ["PATH"],
+        "RUNNER_TEMP": str(tmp_path),
+        "PASS": "general",
+        "OUTCOME": "success",
+        "STRUCTURED": structured,
+        "API_KEY": "sk-ant-DUMMY-KEY-123",
+    }
+    subprocess.run(["bash", "-c", run], env=env, check=True, capture_output=True)
+    record = json.loads((tmp_path / "claude-raw" / "general.json").read_text("utf-8"))
+    assert record["secret_found"] is leak
+    assert record["structured_output"] == ("" if leak else structured)
+    assert record["result"] == {"subtype": "success", "is_error": False, "num_turns": 3,
+                                "total_cost_usd": 0.2}  # fmt: skip
+    assert not (tmp_path / "claude-execution-output.json").exists()
