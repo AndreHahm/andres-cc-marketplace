@@ -219,6 +219,23 @@ def test_reviewer_instructions_come_from_the_base_sha():
         assert f'git show "$BASE_SHA:{path}"' in run
 
 
+def test_the_reviewer_gets_the_patch_inside_the_checkout():
+    """R5: Claude cannot read .git, so the scope job writes the PR's patch and the review job
+    places it in the checkout after the checkout, where prompt.md tells Claude to read it."""
+    build = _step("claude-scope", "Build the reviewer prompts from the base SHA")["run"]
+    assert "claude-review-patch" in build
+    assert '--out "$RUNNER_TEMP/claude-scope/prompts/delta.diff"' in build
+    place = _step("claude-review", "Place the reviewed patch in the checkout")
+    names = [s.get("name") for s in _steps("claude-review")]
+    checkout = names.index("Check out the PR's own head commit")
+    first_pass = min(names.index(s.get("name")) for s in _action_steps())
+    assert checkout < names.index(place["name"]) < first_pass
+    assert f'cp -- "$RUNNER_TEMP/claude-scope/prompts/delta.diff" {cr.PATCH_PATH}' in place["run"]
+    assert "rm -rf -- .claude-review-input" in place["run"]
+    template = (ROOT / ".github/claude-review/prompt.md").read_text("utf-8")
+    assert f"`{cr.PATCH_PATH}`" in template
+
+
 def test_the_scope_uses_the_shared_anchor_lookup_and_the_claude_exclusions():
     assert (
         "find-review-anchor --profile claude"

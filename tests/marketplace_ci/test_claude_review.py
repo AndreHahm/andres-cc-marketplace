@@ -358,3 +358,82 @@ def test_the_publish_cli_fails_the_check_on_findings(monkeypatch, tmp_path):
     assert main(args) == 0
     assert main([*args, "--switched-off", "true"]) == 0
     assert json.loads(out.read_text("utf-8"))["status"] == "skipped"
+
+
+# R5: the pull request's own patch, which the review job places in the checkout.
+
+
+def _git(root, *args):
+    return subprocess.run(
+        ["git", "-c", "user.name=t", "-c", "user.email=t@t", *args],
+        cwd=root, check=True, capture_output=True, text=True,
+    ).stdout.strip()  # fmt: skip
+
+
+def _patch_repo(tmp_path):
+    root = tmp_path / "repo"
+    root.mkdir()
+    _git(root, "init", "-q", "-b", "main")
+    for name, text in {"a.py": "a = 1\n", "b.py": "b = 1\n", "gone.py": "removed = 1\n",
+                       "old.py": "x = 1\n" * 20, "base_only.py": "1\n"}.items():  # fmt: skip
+        (root / name).write_text(text, "utf-8")
+    _git(root, "add", "-A")
+    _git(root, "commit", "-q", "-m", "base")
+    fork = _git(root, "rev-parse", "HEAD")
+    _git(root, "switch", "-q", "-c", "pr")
+    (root / "a.py").write_text("a = 2\n", "utf-8")
+    (root / "b.py").write_text("b = 2\n", "utf-8")
+    (root / "gone.py").unlink()
+    _git(root, "mv", "old.py", "new.py")
+    _git(root, "commit", "-q", "-am", "pr")
+    head = _git(root, "rev-parse", "HEAD")
+    # the base moves on after the fork: its own change is not the pull request's
+    _git(root, "switch", "-q", "main")
+    (root / "base_only.py").write_text("2\n", "utf-8")
+    _git(root, "commit", "-q", "-am", "base moves")
+    base = _git(root, "rev-parse", "HEAD")
+    _git(root, "switch", "-q", "pr")
+    assert fork != base
+    return root, base, head
+
+
+_PATCH_SCOPE = _scope(
+    {"status": "M", "path": "a.py", "gate_critical": False},
+    {"status": "D", "path": "gone.py", "gate_critical": False},
+    {"status": "R", "path": "new.py", "old_path": "old.py", "gate_critical": False},
+)
+
+
+def test_the_patch_is_the_pull_requests_own_change_to_the_reviewed_paths(tmp_path):
+    root, base, head = _patch_repo(tmp_path)
+    patch = cr.review_patch(root, _PATCH_SCOPE, base, head)
+    assert "-a = 1\n+a = 2\n" in patch
+    assert "-removed = 1\n" in patch  # a deleted path's removed content
+    assert "diff --git a/old.py b/old.py" in patch and "diff --git a/new.py b/new.py" in patch
+    assert "b.py" not in patch  # changed, but not a reviewed path
+    assert "base_only.py" not in patch  # the base's own change after the fork
+
+
+def test_the_patch_is_bounded(monkeypatch, tmp_path):
+    root, base, head = _patch_repo(tmp_path)
+    monkeypatch.setattr(cr, "MAX_PATCH_BYTES", 40)
+    patch = cr.review_patch(root, _PATCH_SCOPE, base, head)
+    assert patch.endswith("read the files themselves]\n") and "[patch truncated: " in patch
+    assert len(patch.split("\n[patch truncated")[0].encode()) <= 40
+
+
+def test_no_reviewed_path_is_an_empty_patch(tmp_path):
+    assert cr.review_patch(tmp_path, _scope(), "b" * 40, HEAD) == ""
+
+
+def test_the_patch_cli_writes_the_patch_and_fails_closed(monkeypatch, tmp_path):
+    root, base, head = _patch_repo(tmp_path)
+    scope, out = tmp_path / "scope.json", tmp_path / "delta.diff"
+    scope.write_text(json.dumps(_PATCH_SCOPE), "utf-8")
+    monkeypatch.chdir(root)
+    args = ["claude-review-patch", "--scope", str(scope), "--head-sha", head, "--out", str(out)]
+    assert main([*args, "--base-sha", base]) == 0
+    assert "+a = 2" in out.read_text("utf-8")
+    out.unlink()
+    assert main([*args, "--base-sha", "1" * 40]) == 2  # git cannot build it: no patch, no pass
+    assert not out.exists()

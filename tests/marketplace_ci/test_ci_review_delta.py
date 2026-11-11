@@ -1510,6 +1510,10 @@ _CLAUDE_RESULT1 = {**_FINDINGS_A, "status": "findings"}
          {"claude-review-result": {**_RESULT2, "status": "skipped"}}, _SHA1),
         ("cancelled", [{"name": "Claude delta review", "conclusion": "cancelled"}],
          {"claude-review-result": _RESULT2}, _SHA1),
+        # a skipped job reviewed nothing, even with a valid result artifact present (the Claude
+        # profile has no skip record)
+        ("skipped with result", [{"name": "Claude delta review", "conclusion": "skipped"}],
+         {"claude-review-result": _RESULT2}, _SHA1),
         # a Codex record never anchors the Claude review
         ("codex bypass record", [{"name": "Claude delta review", "conclusion": "skipped"},
                                  {"name": "Publish Codex policy result", "conclusion": "success"}],
@@ -1583,9 +1587,25 @@ def test_the_claude_review_still_leaves_out_proven_mirror_copies():
 
 def _review_paths(monkeypatch, root, tmp_path, *extra):
     out = tmp_path / "paths.json"
-    _scope_bypass(monkeypatch, root, tmp_path, "--ci-delta", "--review-exclusions", "claude",
-                  "--emit-review-paths", str(out), *extra)  # fmt: skip
+    monkeypatch.chdir(root)
+    assert main(["check-scope-bypass", "--ci-delta", "--review-exclusions", "claude",
+                 "--emit-review-paths", str(out), *extra]) == 0  # fmt: skip
     return json.loads(out.read_text(encoding="utf-8"))
+
+
+def test_the_claude_scope_skips_the_bypass_decision(monkeypatch, git_repo, tmp_path):
+    # an eligible delta (tests only) would run the deterministic checks for Codex; not for Claude
+    base = _commit(git_repo, "base", plugins__demo__skills__x__SKILL_md="a\n")
+    anchor = _commit(git_repo, "pr 1", plugins__demo__skills__x__SKILL_md="b\n")
+    _commit(git_repo, "pr 2", plugins__demo__tests__test_x_py="t\n")
+    monkeypatch.setattr(
+        main_module, "_deterministic_checks_block", lambda *_a: pytest.fail("bypass decided")
+    )
+    json_out = tmp_path / "scope.json"
+    got = _review_paths(monkeypatch, git_repo.root, tmp_path, "--base-sha", base,
+                        "--anchor-sha", anchor, "--json-output", str(json_out))  # fmt: skip
+    assert [e["path"] for e in got["paths"]] == ["plugins/demo/tests/test_x_py"]
+    assert not json_out.exists()
 
 
 def test_emit_review_paths_lists_the_claude_delta(monkeypatch, git_repo, tmp_path):

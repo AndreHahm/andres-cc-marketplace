@@ -1004,6 +1004,10 @@ def _handle_check_scope_bypass(args: argparse.Namespace) -> int:
     review_delta = _ci_review_delta(args, repo, changed, base_sha)
     if args.emit_review_paths:
         _emit_review_paths(args, repo, base_sha, review_delta)
+    if args.review_exclusions == "claude":
+        # The Claude review needs only the paths: bypass eligibility (and the deterministic checks
+        # it can run over the whole PR delta) is a Codex decision, so it is not computed here.
+        return 0
     scope = derive_review_scope(review_delta, {})
     eligible = is_bypass_eligible(scope)
     reason = f"mode={scope.mode}, validate={len(scope.validate)}, audit={len(scope.audit)}"
@@ -1120,6 +1124,21 @@ def _handle_claude_review_prompts(args: argparse.Namespace) -> int:
         (out_dir / f"{name}.md").write_text(build_prompt(template, values), encoding="utf-8")
     with open(args.github_output, "a", encoding="utf-8") as out:
         out.write(f"security={'true' if security else 'false'}\n")
+    return 0
+
+
+def _handle_claude_review_patch(args: argparse.Namespace) -> int:
+    """Claude review R5: the pull request's own patch for the reviewed paths, which the review job
+    places in the checkout for Claude to read. Exits 2 when git cannot build it."""
+    from scripts.marketplace_ci.claude_review import review_patch
+
+    scope = json.loads(Path(args.scope).read_text(encoding="utf-8"))
+    try:
+        patch = review_patch(Path.cwd(), scope, args.base_sha, args.head_sha)
+    except (subprocess.CalledProcessError, OSError) as exc:
+        print(f"::error::could not build the review patch: {exc}")
+        return 2
+    Path(args.out).write_text(patch, encoding="utf-8")
     return 0
 
 
@@ -2020,7 +2039,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--review-exclusions",
         choices=("codex", "claude"),
         default="codex",
-        help="with --ci-delta: claude keeps tests, fixtures and nested evals in scope (its R4)",
+        help="with --ci-delta: claude keeps tests, fixtures and nested evals in scope (its R4) "
+        "and only emits the paths, without the bypass decision",
     )
     check_scope_bypass.add_argument(
         "--emit-review-paths",
@@ -2061,6 +2081,15 @@ def build_parser() -> argparse.ArgumentParser:
     claude_prompts.add_argument("--head-sha", required=True, metavar="SHA")
     claude_prompts.add_argument("--github-output", required=True, metavar="PATH")
     claude_prompts.set_defaults(handler=_handle_claude_review_prompts)
+
+    claude_patch = subparsers.add_parser(
+        "claude-review-patch", help="write the pull request's patch for the Claude review"
+    )
+    claude_patch.add_argument("--scope", required=True, metavar="PATH")
+    claude_patch.add_argument("--base-sha", required=True, metavar="SHA")
+    claude_patch.add_argument("--head-sha", required=True, metavar="SHA")
+    claude_patch.add_argument("--out", required=True, metavar="PATH")
+    claude_patch.set_defaults(handler=_handle_claude_review_patch)
 
     claude_publish = subparsers.add_parser(
         "publish-claude-review", help="post the Claude review's findings and decide its check"
