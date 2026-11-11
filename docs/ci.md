@@ -47,6 +47,97 @@ externally-connected `chatgpt-codex-connector[bot]` account. It is currently vis
 a required status check. See [`docs/await-codex-review.md`](await-codex-review.md) for the full
 contract, result semantics, and adoption-mode details.
 
+## Claude delta review (advisory)
+
+`.github/workflows/claude-review-ci.yml` runs a second, independent model vendor over each pull request in
+CI, as the local `cross-model-review` skill does before a PR exists. The maintainer's requirements are in
+[`docs/ci-claude-review-user-requirements.md`](ci-claude-review-user-requirements.md) ("R<n>" below); where
+the two differ, that document states the intent. Its check, `Claude delta review`, is advisory: it is not a
+required status check and nothing in `publish` depends on it (R1). It ignores the external connector and the
+Codex review entirely.
+
+**Events (R2).** Same-repository, non-draft PRs on `opened`, `synchronize`, `reopened` and
+`ready_for_review`; never `pull_request_target`, no `workflow_dispatch`, no comment command. A fork PR and a
+Dependabot PR skip the whole workflow without failing. A newer push cancels a running review
+(`concurrency`, keyed on the PR number).
+
+**Jobs.**
+
+| Job | Check name | Secret | What it does |
+|---|---|---|---|
+| `claude-scope` | `Compute Claude review scope` | none | Kill-switch restore, PR-head checkout, the same base-SHA restore of `scripts/`, `pyproject.toml` and `uv.lock` as `compute-scope` (a test keeps the two blocks identical), then `claude-review-settings`, `find-review-anchor --profile claude`, `check-scope-bypass --ci-delta --review-exclusions claude --emit-review-paths`, and `claude-review-prompts`. Uploads `claude-review-scope` (the reviewed paths and the prompts). |
+| `claude-review` | `Run Claude review passes` | `ANTHROPIC_API_KEY` | Runs no repository code. Checks out the PR head, re-checks with `/usr/bin/gh` right before each pass that the PR is still ready and at the same head, and runs `anthropics/claude-code-action` (pinned by SHA) once for the general pass and once more for the security pass. Records each pass's outcome, structured output and the `result` entry of the execution file, deletes that file (it is the whole transcript), and uploads `claude-review-raw`. |
+| `claude-publish` | `Claude delta review` | none | Checks out the **base SHA** (it needs nothing from the PR), runs `publish-claude-review`, uploads `claude-review-result` and fails the check when the result says so. |
+
+**Scope (R3, R4).** The anchor is the head of the newest earlier run of this workflow whose `Claude delta
+review` job finished `success` or `failure` and left a `claude-review-result` of `findings` or `clean` naming
+that head and the latest attempt; the same rules as the Codex anchor (Codex R11's creation time, Codex R5's
+same-execution pairing). An anchor that cannot be fetched (force-pushed away) is dropped and the whole PR is reviewed,
+unlike the Codex review, which skips then. `narrow_to_unreviewed`'s distrust of an anchor whose changes touch
+a gate-critical or reviewer-steering path applies unchanged. `--review-exclusions claude` keeps test
+directories, fixtures, test files and nested `evals/` in scope and leaves out only root `issues/`, `evals/`,
+`reviewer-eval/` and proven mirror copies. Nothing left to review means no API call: `claude-review` is
+skipped and the result is `clean` ("nothing new to review"), which is an anchor.
+
+**What Claude may do (R5).** The prompts are built in `claude-scope` from the base SHA's
+`.github/claude-review/prompt.md`, `REVIEW.md` and `.claude/agents/security-reviewer.md`. The security pass
+runs only when a reviewed path is gate-critical. Each pass gets `--tools "Read,Grep,Glob"`, `--allowedTools`
+with the same three, `--disallowedTools "mcp__*"` (the action's own GitHub MCP servers included), and
+`--setting-sources user` plus `--settings` with `disableAllHooks`: by default the action (as of the pinned
+v1.0.271, read from its source) loads the user, project and local settings sources, and this repository's
+`.claude/settings.json` registers hooks that run its own scripts. The action restores `.claude/` and
+`CLAUDE.md` from the base branch for a PR, but leaves every other file at the PR head, so those hooks would
+run PR-supplied code next to the key. The same `--settings` sets `permissions.blockReadsOutsideWorkingDirectories`
+(Claude Code 2.1.257 or later; the pinned action bundles 2.1.322) and denies `Read(//proc/**)`,
+`Read(//sys/**)` and `Read(.git/**)`: a bare Read or Grep grant would otherwise reach `/proc/*/environ`,
+which holds the key, and the git config the action writes the job token into. Claude returns findings as
+`--json-schema` structured output; it posts nothing. The step that records a pass drops its output when it
+contains the key itself (the key reaches `jq` through its environment, not its arguments), and the
+publisher then refuses the pass (could-not-run, nothing posted). Any other text shaped like a credential
+(the shared `token_shapes.json` shapes) is redacted rather than refused: a reviewed test fixture holds such
+shapes, and refusing would let a PR switch the review off. The schema caps a pass at 30 findings of at
+most 2000 characters, so its output fits the one environment variable the record step reads. The action gets `github_token:
+${{ github.token }}` (contents and pull-requests read), so it never exchanges an OIDC token for the Claude
+GitHub App's token and the job needs no `id-token: write`.
+
+Accepted residuals (from the R11 security review): anyone who can push a branch here can edit this workflow
+in their own PR and read the key, as with every `pull_request` workflow that holds a secret, so the key
+should be a dedicated one in its own Console workspace (R9) that is cheap to rotate; `pip install uv` is
+unpinned in the jobs without the key, as in `marketplace-ci.yml`; and whether a nested `CLAUDE.md` in a
+PR-supplied directory loads under `--setting-sources user` has not been tested live (the prompt names it
+untrusted either way).
+
+**Findings and the check (R6, R7).** `publish-claude-review` (in `scripts/marketplace_ci/claude_review.py`)
+validates each pass's output against the schema, removes `@`-mentions, HTML entities, HTML comments and
+line breaks in titles from model-written text, shows a path only when it is a reviewed one (with backticks
+and control characters removed), posts each Critical and Major finding on a reviewed path as an inline comment on the reviewed head
+(one GitHub cannot place goes into the summary instead), and creates or updates one summary comment marked
+`<!-- claude-delta-review:summary -->`, posted by `github-actions[bot]` and kept under 60,000 characters
+(rows that do not fit are counted, and the result artifact has them all). A cancelled run (a newer push)
+publishes nothing. The result file holds `status`
+(`clean`, `findings`, `could_not_run` or `skipped`), the verdict, `head_sha`, `run_attempt`, the anchor, the
+reviewed paths, the model, whether the security pass ran, cost and turns per pass, and the findings. The
+check fails on a Critical or Major finding in either pass, and on a review that could not run (an invalid
+setting, a failed scope job, an API error, a cap reached, a timeout, a newer push before the call). Findings
+are not carried to later runs.
+
+**Settings (R8, R9, R10).** Repository variables, validated by `claude-review-settings`:
+
+| Variable | Unset | Valid values |
+|---|---|---|
+| `CLAUDE_CI_REVIEW_BYPASS` | review runs | `1` switches the review off (no API call, the check passes with a notice), `0` runs it; anything else fails the check |
+| `CLAUDE_KIT_REVIEW_MODEL` | `claude-sonnet-5-5` | `^[A-Za-z0-9._-]{1,64}$`, used for both passes |
+| `CLAUDE_KIT_REVIEW_TIMEOUT_MS` | `1200000` (20 min) | a positive whole number of milliseconds; each pass step gets that many minutes, rounded up. Two passes plus 10 minutes of setup must fit the review job's 50-minute limit (`REVIEW_JOB_TIMEOUT_MINUTES`), so at most `1200000` |
+
+Each pass is capped at an estimated $1.00 (`--max-budget-usd`, Claude Code's client-side estimate, which can
+overshoot) and 25 turns; reaching either fails the pass as could-not-run. The monthly $200 limit is a spend
+limit on the Anthropic Console workspace that holds the key, set outside this repository.
+
+**Bootstrapping.** The PR that adds this workflow cannot review itself: `claude-scope` and `claude-publish`
+both run the base SHA's `scripts/marketplace_ci/`, which lacks the new subcommands, so both fail with an
+unknown-subcommand error, no review runs, and no `claude-review-result` is written. The check is advisory,
+so this blocks nothing; the first real review runs on the next PR.
+
 ## Configuring the review model
 
 `codex-review-bridge` never passes `--model` to `codex exec` by default — every dispatch falls through
@@ -119,7 +210,10 @@ review` is the gate after the PR exists and reviews only the delta, to cut OpenA
   folders where they can be run, by the maintainer's decision: the local parity review covers them. A path in
   `FULL_ESCALATION_PATHS` or under `BYPASS_INELIGIBLE_PREFIXES` (`scripts/`, `.github/`, `.codex/agents/`,
   `.claude/rules/` and the rest) is never excluded, and repo-only `.claude/` files stay.
-- **Anchor.** The `Find the last reviewed head` step reads this run's `created_at` (unchanged across
+- **Anchor.** The `Find the last reviewed head` step runs the shared `find-review-anchor --profile codex`
+  subcommand (`scripts/marketplace_ci/review.py`, from the base-restored code; "Claude delta review (advisory)" above
+  uses the same lookup with its own profile). If the subcommand cannot run, for example on the PR that
+  introduced it, there is no anchor and the whole PR is reviewed. The lookup reads this run's `created_at` (unchanged across
   attempts) and this PR's earlier Marketplace CI runs from the GitHub API, keeps only runs whose `updated_at`
   is earlier (an `updated_at` is at or after the run's completion, so those runs were complete when this run
   was created; R11), and takes the PR head of the newest one that left: a `codex-review-result` of `findings`

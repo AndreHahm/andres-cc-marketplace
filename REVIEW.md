@@ -14,7 +14,7 @@ CI gates `Hygiene (PR contract)`, `Python quality (ruff, ty, pytest)`, `Marketpl
 | **External `chatgpt-codex-connector[bot]`** | Automatic on non-draft open / ready-for-review; `@codex review` / `@codex full review` | A separate GitHub App reviewer. Visibility-only via `Await Codex review` (not a required check). Does **not** read this file — it discovers rules from `AGENTS.md`'s own `## Code Review Rules` section instead (see that section's own note). See [`docs/await-codex-review.md`](docs/await-codex-review.md). |
 | **Devin review** | `/devin review` | Reads this `REVIEW.md` by default. |
 | **CodeRabbit** | `@coderabbitai review` / `@coderabbitai full review` | |
-| **Claude review** | `@claude` mention (per repo config) | |
+| **Claude delta review (CI, advisory)** | Automatic on same-repository, non-draft PR open, synchronize, reopen and ready-for-review (`claude-review-ci.yml`); no on-demand trigger | Reviews what changed since its last review against this file, read from the base SHA, plus a security pass when a gate-critical path changed. Posts Critical/Major findings inline and one summary comment; its `Claude delta review` check is not required. See [`docs/ci.md`](docs/ci.md), "Claude delta review (advisory)". |
 | **Human reviewers** | GitHub review UI | The final authority. A bot's LGTM is never a substitute for a human's when branch protection requires one. |
 
 A bullet appearing near-verbatim in both this file and `AGENTS.md`'s `## Code Review Rules` section is
