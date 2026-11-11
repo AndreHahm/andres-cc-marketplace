@@ -473,11 +473,34 @@
       ]
     },
     {
-      "compatibility": {},
+      "compatibility": {
+        "claude-code": {
+          "evidence": [
+            ".claude/output/promptlibrary-kit/live-run-20261014.md (H1 live run, gitignored)",
+            "claude plugin validate passes"
+          ],
+          "level": "native",
+          "notes": "Wave 0 runs as a Claude Code plugin; prompt execution is Claude-only.",
+          "verified_on": "2026-10-14"
+        },
+        "codex": {
+          "evidence": [
+            "plugins/promptlibrary-kit/README.md (out-of-scope list: Codex execution)"
+          ],
+          "level": "incompatible",
+          "notes": "Codex execution of prompts is out of scope for Wave 0.",
+          "verified_on": "2026-11-11"
+        }
+      },
       "created_on": null,
       "domain_prefix": "prompt",
-      "domains": [],
-      "functional_role": null,
+      "domains": [
+        "prompt-catalog",
+        "prompt-authoring",
+        "prompt-execution",
+        "safety-gates"
+      ],
+      "functional_role": "workflow",
       "id": "plugin_a7f39ddc",
       "name": "promptlibrary-kit",
       "naming_history": [
@@ -629,5 +652,5 @@
     }
   ],
   "schema_version": "1.0.0",
-  "updated_on": "2026-11-05"
+  "updated_on": "2026-11-11"
 }
