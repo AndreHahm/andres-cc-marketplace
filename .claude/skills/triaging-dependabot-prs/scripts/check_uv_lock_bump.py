@@ -20,6 +20,16 @@ different project -- fails closed. It does not check that the version went up.
 
 Usage: check_uv_lock_bump.py --base BASE.lock --head HEAD.lock
                              --package NAME --old VER --new VER
+       check_uv_lock_bump.py --sources-only --base BASE.lock --head HEAD.lock
+
+--sources-only (the bypass's path B, where the manifest changed too and a
+maintainer reads the diff) checks only where every new or changed head
+[[package]] entry comes from: the default PyPI registry with
+files.pythonhosted.org files named for that entry's own name and version, or
+the root project ("editable" or "virtual" ".") with the same name and source it
+has in base and no files. It allows any number of changed entries and top-level
+changes, so it does not prove a single-package bump.
+
 Prints one JSON object with an "ok" field; callers must read "ok", not only the
 exit code. Exit 0 = ok, 1 = not ok, 2 = unusable input or any unexpected
 failure. A usage error caught by argparse also exits 2 but prints no JSON.
@@ -159,6 +169,56 @@ def classify(base, head, package, old, new):
     return reasons, summary
 
 
+ROOT_SOURCES = ({"editable": "."}, {"virtual": "."})
+
+
+def classify_sources(base, head):
+    """Reasons why a new or changed head entry does not come from PyPI or the root project."""
+    reasons = []
+    base_entries = package_list(base, "base")
+    unchanged = {canon(p) for p in base_entries}
+    base_root = {
+        (norm(str(p.get("name", ""))), canon(p.get("source")))
+        for p in base_entries
+        if p.get("source") in ROOT_SOURCES
+    }
+    summary = {"changed_entries": 0, "files_checked": 0}
+    for entry in package_list(head, "head"):
+        if canon(entry) in unchanged:
+            continue
+        summary["changed_entries"] += 1
+        name, version = norm(str(entry.get("name", ""))), entry.get("version")
+        label = f"entry {name!r}"
+        source = entry.get("source")
+        if source in ROOT_SOURCES:
+            if (name, canon(source)) not in base_root:
+                reasons.append(f"{label} is a local-path source not present at base")
+            if "sdist" in entry or "wheels" in entry:
+                reasons.append(f"{label} is a local-path source that lists files")
+            continue
+        if source != REGISTRY:
+            reasons.append(f"{label} source is not the default PyPI registry")
+            continue
+        if not (isinstance(version, str) and VER_RE.match(version)):
+            reasons.append(f"{label} has an invalid version")
+            continue
+        wheels = entry.get("wheels", [])
+        if not isinstance(wheels, list):
+            reasons.append(f"{label} wheels is not a list")
+            wheels = []
+        files = [("wheel", wheel) for wheel in wheels]
+        if "sdist" in entry:
+            files.append(("sdist", entry["sdist"]))
+        if not files:
+            reasons.append(f"{label} lists no files")
+        for kind, item in files:
+            entry_reasons = []
+            check_file_entry(item, kind, name, version, entry_reasons)
+            reasons.extend(f"{label}: {reason}" for reason in entry_reasons)
+            summary["files_checked"] += 1
+    return reasons, summary
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(
         description="Check that a uv.lock change is only one package's version bump",
@@ -167,12 +227,29 @@ def main(argv=None):
     )
     parser.add_argument("--base", required=True)
     parser.add_argument("--head", required=True)
-    parser.add_argument("--package", required=True)
-    parser.add_argument("--old", required=True)
-    parser.add_argument("--new", required=True)
+    parser.add_argument("--sources-only", action="store_true")
+    parser.add_argument("--package")
+    parser.add_argument("--old")
+    parser.add_argument("--new")
     args = parser.parse_args(argv)
+    bump_args = (args.package, args.old, args.new)
+    if args.sources_only:
+        result = {"ok": False, "mode": "sources-only", "reasons": []}
+        try:
+            if any(value is not None for value in bump_args):
+                raise ValueError("--sources-only takes no --package, --old or --new")
+            if tomllib is None:
+                raise ValueError("Python 3.11 or newer is required (tomllib is missing)")
+            reasons, summary = classify_sources(load(args.base), load(args.head))
+        except Exception as exc:  # fail closed, as below
+            result["reasons"] = [f"unusable input: {type(exc).__name__}: {str(exc)[:200]}"]
+            print(json.dumps(result))
+            return 2
+        return emit(result, summary, reasons)
     result = {"ok": False, "package": args.package, "old": args.old, "new": args.new, "reasons": []}
     try:
+        if any(value is None for value in bump_args):
+            raise ValueError("--package, --old and --new are required without --sources-only")
         if tomllib is None:
             raise ValueError("Python 3.11 or newer is required (tomllib is missing)")
         if not PKG_RE.match(args.package):
@@ -189,6 +266,10 @@ def main(argv=None):
         result["reasons"] = [f"unusable input: {type(exc).__name__}: {str(exc)[:200]}"]
         print(json.dumps(result))
         return 2
+    return emit(result, summary, reasons)
+
+
+def emit(result, summary, reasons):
     result.update(summary)
     result["reasons"] = reasons
     result["ok"] = not reasons

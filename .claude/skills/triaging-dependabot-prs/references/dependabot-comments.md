@@ -54,7 +54,11 @@ and `<condition>` come from, which is the model's job and is stated here.
 - `<dep>` matches `^[A-Za-z0-9][A-Za-z0-9._/-]{0,99}$`. Where it comes from:
   - Title matches the `bump <package> from <old> to <new>` pattern (`codex-bypass.md` condition 0):
     `<dep>` is that `<package>`, and the branch after `dependabot/<ecosystem>/` (and any directory
-    segment) must end with `<package>-<new>`, compared lowercase with `_` read as `-`.
+    segment) must end with `<package>-<suffix>`, compared lowercase with `_` read as `-`, with
+    `<suffix>` checked as in `codex-bypass.md` condition 2 (Dependabot keeps the branch name when it
+    moves a PR to a newer release, so the suffix is not compared with `<new>`). Allowing a directory
+    segment here is deliberate and looser than the bypass's branch condition, which requires exactly
+    `dependabot/<ecosystem>/<package>-<suffix>`; do not loosen the bypass to match.
   - Title does not match (a grouped update, whose branch names the group, not a package): the user types
     `<dep>` in the approval question. Never take it from the PR body, a changed-file list or a reply.
   - A name containing `@` (a scoped npm package) is refused: `@scope` inside a comment would notify an
