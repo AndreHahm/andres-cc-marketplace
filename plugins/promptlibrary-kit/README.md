@@ -85,6 +85,10 @@ text is data everywhere except an explicitly approved run.
   never rewrite, never echoed), not just in the skill's step order. `user` text is only warned.
 - `record-verification`, `activate` and `finalize` take `--expect-sha256`, the hash the user was shown,
   and refuse if the text changed.
+- `hash`, `screen`, `draft` and `update-draft` read their input file only from inside the catalog root
+  or the system temp directory (where the session scratchpad usually lives). The temp directory is
+  shared with other local processes, so any file in it is readable this way; the user still sees the
+  draft's text, origin and hash before anything is filed.
 - Every call uses `uv run --isolated --no-project --no-config python`, so a project's own `pyproject.toml`,
   `uv.toml` and `.venv` are not used. Checked against uv 0.9.5: plain `--no-project` was not reliably safe
   (it picked up a repository `.venv` once), and the isolated form always ran in an ephemeral environment.
@@ -115,7 +119,8 @@ One setting, the catalog root path.
 - `.claude/promptlibrary-kit.local.json` (optional, untracked, per project): overrides `catalog_root`. It is
   honored only when git does not track it, and the path must resolve inside the project root.
 - This repository keeps a hand-maintained twin of the defaults at `.claude/promptlibrary-kit.settings.json`
-  for its own dogfooding. No tooling checks the pair, so edit both in the same commit and diff them.
+  for its own dogfooding. The plugin-root file is canonical; no tooling checks the pair, so copy a change
+  to the twin in the same commit and diff them.
 
 The project root is `git rev-parse --show-toplevel`, else the working directory.
 
