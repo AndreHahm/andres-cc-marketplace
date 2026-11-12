@@ -25,6 +25,14 @@ dev = [
   "pymdown-extensions>=10.16.1",
   "markdown-it-py>=4.2,<5",
 ]
+# Only the test headless Claude review job installs these
+# (.github/workflows/test-headless-claude-review-ci.yml); pinned exactly, at least two weeks old.
+headless-review = [
+  "anthropic==2.3.0",
+  "claude-agent-sdk==0.2.174",
+  # claude_review's credential redaction imports review.py, which needs it.
+  "PyYAML>=6.0",
+]
 
 [tool.ruff]
 line-length = 100

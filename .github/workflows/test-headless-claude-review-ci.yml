@@ -1,0 +1,565 @@
+name: Test Headless Claude Review
+
+# A test beside Claude Delta Review (claude-review-ci.yml), not a replacement: the same reviewer
+# prompts run headless through two routes, the Claude Agent SDK and the Messages API, so a real
+# run shows which Anthropic credit pool pays for each (docs/ci.md). Advisory and never required;
+# it posts nothing to the pull request, only a comparison table in the job summary. The API key
+# reaches only headless-review, which runs Python restored from the base SHA (on the PR that
+# introduces this workflow, the PR's own copy, since the base has none yet).
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+concurrency:
+  group: headless-claude-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  headless-scope:
+    name: Compute the headless review scope
+    # R2: same-repository PRs only (a fork has no secret: skipped, not failed), no Dependabot
+    # PRs, no drafts.
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.actor != 'dependabot[bot]' &&
+      github.event.pull_request.user.login != 'dependabot[bot]' &&
+      github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      switched_off: ${{ steps.settings.outputs.switched_off }}
+      model: ${{ steps.settings.outputs.model }}
+      pass_minutes: ${{ steps.settings.outputs.pass_minutes }}
+      has_paths: ${{ steps.scope.outputs.has_paths }}
+      security: ${{ steps.prompts.outputs.security }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            .github/actions/workflow-killswitch
+            .github/actions/track-rerun
+      - name: Restore kill-switch enforcement from the trusted base SHA (trust boundary)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          # A pull_request (not pull_request_target) trigger checks out the
+          # PR's own content -- including this action's own code and the
+          # tracked marker file -- so neither can be evaluated as-is: a
+          # same-repo PR's own copy is untrusted input here, the same
+          # principle compute-scope's own restore step already applies to
+          # scripts/pyproject.toml/uv.lock. Restore each path directly from
+          # the trusted base SHA via the Contents API (no git history or
+          # fetch-depth needed) before the action below ever runs. This
+          # closes the "PR's own copy is stale/tampered" gap; it does not
+          # (and structurally cannot, at this level) defend against a PR
+          # that removes this very step from its own copy of this workflow
+          # file -- the same limitation compute-scope's own restore already
+          # accepts for the job structure around it.
+          restore_from_base() {
+            local path="$1" on_absent="$2"
+            mkdir -p "$(dirname "$path")"
+            stderr_file=$(mktemp)
+            if content=$(gh api --method GET "repos/$REPO/contents/$path" -f ref="$BASE_SHA" --jq '.content' 2>"$stderr_file"); then
+              echo "$content" | base64 -d > "$path"
+            elif grep -q "HTTP 404" "$stderr_file"; then
+              if [ "$on_absent" = "remove" ]; then
+                # Genuinely absent at the trusted base -- remove any
+                # PR-supplied copy so the check treats it as missing,
+                # never trusts PR-controlled content.
+                rm -f "$path"
+              fi
+              # else "keep": this is the bootstrapping PR introducing
+              # $path for the first time -- no trusted base copy exists
+              # yet to restore, so the PR's own checkout content stays.
+              # Only applies to this initiative's own rollout; every
+              # later PR's base SHA has a real trusted copy to restore.
+            else
+              echo "::error::could not verify trusted base-SHA content of $path ($(cat "$stderr_file")) -- refusing to trust the PR's own copy"
+              rm -f "$stderr_file"
+              exit 1
+            fi
+            rm -f "$stderr_file"
+          }
+          # The two action files themselves have no safe "missing"
+          # fallback -- GitHub Actions can't resolve `uses: ./path` at all
+          # if the file is absent, unlike the marker file below, whose
+          # absence is already handled gracefully by the action's own
+          # logic (defaults to ENABLED).
+          restore_from_base .github/actions/workflow-killswitch/action.yml keep
+          restore_from_base .github/actions/track-rerun/action.yml keep
+          restore_from_base .github/WORKFLOW_KILLSWITCH remove
+
+      - name: Check Workflow Kill Switch
+        uses: ./.github/actions/workflow-killswitch
+        with:
+          killswitch-var: ${{ vars.WORKFLOW_KILLSWITCH }}
+
+      # The PR's own head commit, never the merge ref (the same reason as compute-scope in
+      # marketplace-ci.yml). claude-review checks out this same commit.
+      - name: Check out the PR's own head commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Verify the trusted base SHA actually resolves in this checkout
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: git rev-parse --verify "$BASE_SHA^{commit}"
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # ratchet:actions/setup-python@v7.0.0
+        with:
+          python-version: "3.13"
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # ratchet:astral-sh/setup-uv@v10.3.3
+        with:
+          version: "0.12.21"
+          enable-cache: "false"
+
+      # R3: the scope is computed by the same trusted code as the Codex review, restored from
+      # the base SHA. Kept identical to compute-scope's copy of this block by
+      # tests/marketplace_ci/test_claude_review_workflow.py.
+      - name: Restore the base SHA's copy of the scope-decision code and its dependency spec (trust boundary)
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          # Same restore as the hygiene job's (see its comment): no-overlay
+          # restore deletes PR-added files under scripts/, uv.toml, .python-version
+          # and .python-versions are restored or deleted, and an importable
+          # top-level shadow (module, package, .venv, symlink) is refused.
+          set -euo pipefail
+          git restore --source="$BASE_SHA" --staged --worktree -- scripts pyproject.toml uv.lock \
+            || { echo "::error::could not restore scope-decision code from $BASE_SHA -- refusing to score using the PR's own copy of it"; exit 1; }
+          for p in uv.toml .python-version .python-versions; do
+            if git cat-file -e "$BASE_SHA:$p" 2>/dev/null; then
+              git restore --source="$BASE_SHA" --staged --worktree -- "$p"
+            else
+              git rm -q -f --ignore-unmatch -- "$p"
+              rm -f -- "$p"
+            fi
+          done
+          # Importable-name shadowing: a PR-added top-level module (.py/.pyc/.so/...), a
+          # top-level package marker (<dir>/__init__.*), or .venv content, and a
+          # top-level symlink (which can be named like a module and matches no name
+          # pattern). A restore cannot remove what base never had, so these are refused.
+          # The checked-out tree must BE the event's PR head (HEAD itself, or the second parent of a
+          # merge checkout): a newer push landing after this run started would otherwise put files on
+          # disk that the diff below never examines.
+          if [ "$(git rev-parse HEAD)" != "$PR_HEAD_SHA" ] && [ "$(git rev-parse --verify -q HEAD^2 || true)" != "$PR_HEAD_SHA" ]; then
+            echo "::error::the checked-out tree is not the event's PR head (a newer push landed after this run started) -- re-run this job"
+            exit 1
+          fi
+          PR_BASE=$(git merge-base "$BASE_SHA" "$PR_HEAD_SHA")
+          git diff -z --no-renames --name-only --diff-filter=AT "$PR_BASE" "$PR_HEAD_SHA" > "$RUNNER_TEMP/pr-added-files.z"
+          rc=0
+          grep -zqE '^[^/]+\.(py|pyc|pyw|pyd|so)$|^[^/]+/__init__\.[^/]+$|^\.venv(/|$)' "$RUNNER_TEMP/pr-added-files.z" || rc=$?
+          if [ "$rc" -ne 1 ]; then
+            echo "::error::this PR adds an importable top-level Python module, a top-level package, or .venv content (or the check could not run, grep exit $rc) -- refusing to score using the PR's own copy of the code. A maintainer must change this check in the PR itself, or admin-merge"
+            exit 1
+          fi
+          git ls-tree -z "$PR_BASE" > "$RUNNER_TEMP/base-top.z"
+          git ls-tree -z "$PR_HEAD_SHA" > "$RUNNER_TEMP/head-top.z"
+          rc=0
+          grep -zE '^120000 ' "$RUNNER_TEMP/base-top.z" > "$RUNNER_TEMP/base-links.z" || rc=$?
+          if [ "$rc" -gt 1 ]; then echo "::error::could not list top-level symlinks at base (grep exit $rc)"; exit 1; fi
+          rc=0
+          grep -zE '^120000 ' "$RUNNER_TEMP/head-top.z" > "$RUNNER_TEMP/head-links.z" || rc=$?
+          if [ "$rc" -gt 1 ]; then echo "::error::could not list top-level symlinks in the PR (grep exit $rc)"; exit 1; fi
+          LC_ALL=C sort -z "$RUNNER_TEMP/base-links.z" > "$RUNNER_TEMP/base-links.sorted.z"
+          LC_ALL=C sort -z "$RUNNER_TEMP/head-links.z" > "$RUNNER_TEMP/head-links.sorted.z"
+          LC_ALL=C comm -z -13 "$RUNNER_TEMP/base-links.sorted.z" "$RUNNER_TEMP/head-links.sorted.z" > "$RUNNER_TEMP/new-links.z"
+          if [ -s "$RUNNER_TEMP/new-links.z" ]; then
+            echo "::error::this PR adds or changes a top-level symlink -- refusing to score using the PR's own copy of the code. A maintainer must change this check in the PR itself, or admin-merge"
+            exit 1
+          fi
+          echo "restored scripts/, pyproject.toml, uv.lock and uv config from $BASE_SHA"
+
+      # --no-build runs no package's setup code (as marketplace-ci.yml's review-helpers job).
+      # csscompressor and jsmin ship only as source and come in through mkdocs-minify-plugin,
+      # which these steps never use; uv run below takes --no-sync so it builds nothing either.
+      - run: uv sync --locked --no-config --no-install-project --group dev --no-build --no-install-package csscompressor --no-install-package jsmin
+
+      # R8, R10: the kill switch, the model and the per-pass timeout. An invalid value fails
+      # this job, and the comparison job then shows that no route ran.
+      - name: Check the Claude review settings
+        id: settings
+        env:
+          CLAUDE_CI_REVIEW_BYPASS: ${{ vars.CLAUDE_CI_REVIEW_BYPASS }}
+          CLAUDE_KIT_REVIEW_MODEL: ${{ vars.CLAUDE_KIT_REVIEW_MODEL }}
+          CLAUDE_KIT_REVIEW_TIMEOUT_MS: ${{ vars.CLAUDE_KIT_REVIEW_TIMEOUT_MS }}
+        run: uv run --no-sync python -m scripts.marketplace_ci claude-review-settings --github-output "$GITHUB_OUTPUT"
+
+      # The anchor is the head before this push (synchronize), so each run reviews what the push
+      # changed; on any other event, or when that commit cannot be fetched, the whole PR. This
+      # test workflow keeps no review history of its own, so it does not use find-review-anchor.
+      - name: Find the previous head
+        id: anchor
+        if: steps.settings.outputs.switched_off == 'false'
+        env:
+          REPO: ${{ github.repository }}
+          EVENT_ACTION: ${{ github.event.action }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          anchor=""
+          if [ "$EVENT_ACTION" = "synchronize" ] && printf '%s' "$BEFORE" | grep -Eq '^[0-9a-f]{40}$'; then
+            anchor="$BEFORE"
+          fi
+          if [ -n "$anchor" ] && ! git cat-file -e "$anchor^{commit}" 2>/dev/null \
+              && ! git fetch --no-tags --quiet "https://github.com/$REPO" "$anchor"; then
+            echo "::notice::previous head $anchor cannot be fetched; the whole PR is reviewed"
+            anchor=""
+          fi
+          echo "anchor: ${anchor:-none (whole PR is reviewed)}"
+          echo "sha=$anchor" >> "$GITHUB_OUTPUT"
+
+      - name: Compute the reviewed paths
+        id: scope
+        if: steps.settings.outputs.switched_off == 'false'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          ANCHOR_SHA: ${{ steps.anchor.outputs.sha }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/claude-scope"
+          uv run --no-sync python -m scripts.marketplace_ci check-scope-bypass --base-sha "$BASE_SHA" \
+            --ci-delta --review-exclusions claude --anchor-sha "$ANCHOR_SHA" \
+            --emit-review-paths "$RUNNER_TEMP/claude-scope/scope.json" > /dev/null
+          count=$(jq '.paths | length' "$RUNNER_TEMP/claude-scope/scope.json")
+          echo "reviewed paths: $count"
+          echo "has_paths=$([ "$count" -gt 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      # R5: the prompt template, REVIEW.md and the security-reviewer instructions come from the
+      # base SHA, never from the PR.
+      - name: Build the reviewer prompts from the base SHA
+        id: prompts
+        if: steps.scope.outputs.has_paths == 'true'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          trusted="$RUNNER_TEMP/claude-trusted"
+          mkdir -p "$trusted"
+          git show "$BASE_SHA:.github/claude-review/prompt.md" > "$trusted/prompt.md" \
+            || { echo "::error::the base SHA has no .github/claude-review/prompt.md"; exit 1; }
+          git show "$BASE_SHA:REVIEW.md" > "$trusted/REVIEW.md" \
+            || { echo "::error::the base SHA has no REVIEW.md"; exit 1; }
+          git show "$BASE_SHA:.claude/agents/security-reviewer.md" > "$trusted/security-reviewer.md" \
+            || { echo "::error::the base SHA has no .claude/agents/security-reviewer.md"; exit 1; }
+          uv run --no-sync python -m scripts.marketplace_ci claude-review-prompts \
+            --scope "$RUNNER_TEMP/claude-scope/scope.json" --template "$trusted/prompt.md" \
+            --review-md "$trusted/REVIEW.md" --security-md "$trusted/security-reviewer.md" \
+            --base-sha "$BASE_SHA" --head-sha "$HEAD_SHA" \
+            --out-dir "$RUNNER_TEMP/claude-scope/prompts" --github-output "$GITHUB_OUTPUT"
+          # R5: the pull request's own patch for the reviewed paths (the review job cannot read .git).
+          uv run --no-sync python -m scripts.marketplace_ci claude-review-patch \
+            --scope "$RUNNER_TEMP/claude-scope/scope.json" \
+            --base-sha "$BASE_SHA" --head-sha "$HEAD_SHA" \
+            --out "$RUNNER_TEMP/claude-scope/prompts/delta.diff"
+
+      - name: Upload the review scope
+        if: steps.scope.outcome == 'success'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # ratchet:actions/upload-artifact@v7.0.1
+        with:
+          name: headless-review-scope
+          path: ${{ runner.temp }}/claude-scope/
+          if-no-files-found: error
+          retention-days: 30
+
+  headless-review:
+    name: Run the ${{ matrix.route }} route
+    needs: headless-scope
+    if: needs.headless-scope.outputs.switched_off == 'false' && needs.headless-scope.outputs.has_paths == 'true'
+    runs-on: ubuntu-latest
+    # One route at a time, so the Console's usage timeline tells the two apart. Both passes at
+    # the full per-pass timeout plus setup, as claude-review-ci.yml's review job.
+    strategy:
+      max-parallel: 1
+      fail-fast: false
+      matrix:
+        route: [sdk, api]
+    timeout-minutes: 50
+    permissions:
+      contents: read
+      # The live draft and head re-check.
+      pull-requests: read
+    steps:
+      - name: Download the review scope
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # ratchet:actions/download-artifact@v8.0.2
+        with:
+          name: headless-review-scope
+          path: ${{ runner.temp }}/claude-scope
+
+      # The reviewed tree. Claude reads only inside it (the sdk route's settings, the api
+      # route's CheckoutFiles), and no code from it runs.
+      - name: Check out the PR's own head commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: pr
+
+      # A PR symlink (to /proc/self/environ, to trusted/, ...) is removed before any pass: the api
+      # route's tools refuse one anyway, and this way the sdk route never depends on how Claude
+      # Code resolves a link for blockReadsOutsideWorkingDirectories.
+      - name: Remove symlinks from the reviewed tree
+        run: |
+          set -euo pipefail
+          find pr -type l -print -delete | sed 's/^/removed symlink: /'
+          if [ -n "$(find pr -type l -print)" ]; then
+            echo "::error::a symlink is left in the reviewed tree"; exit 1
+          fi
+
+      # The code that holds the key, from the base SHA, beside (never inside) the reviewed tree.
+      - name: Check out the trusted code from the base SHA
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: trusted
+
+      # Bootstrapping only: the PR that introduces this workflow has no base copy of the runner.
+      # Every later PR into the default branch has one, and this step then changes nothing; a PR
+      # into another branch that lacks it is refused rather than run on its own copy.
+      - name: Use the PR's own runner when the base SHA has none yet
+        id: bootstrap
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          if [ -f trusted/scripts/marketplace_ci/headless_review.py ]; then
+            echo "use_head=false" >> "$GITHUB_OUTPUT"
+          elif [ "$BASE_REF" != "$DEFAULT_BRANCH" ]; then
+            echo "::error::the base SHA has no headless_review.py and the PR does not target $DEFAULT_BRANCH; not running the PR's own copy"
+            exit 1
+          else
+            echo "::warning::the base SHA has no headless_review.py; this bootstrapping run uses the PR's own copy"
+            echo "use_head=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Check out the PR's runner (bootstrapping only)
+        if: steps.bootstrap.outputs.use_head == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: trusted
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # ratchet:actions/setup-python@v7.0.0
+        with:
+          python-version: "3.13"
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # ratchet:astral-sh/setup-uv@v10.3.3
+        with:
+          version: "0.12.21"
+          enable-cache: "false"
+      # Only the pinned headless-review group; --no-build runs no package's setup code.
+      - name: Install the headless review dependencies
+        working-directory: trusted
+        run: uv sync --locked --no-config --no-install-project --only-group headless-review --no-build
+
+      # The patch goes inside the reviewed tree (Claude may read nothing outside it), placed after
+      # the checkout so no pull request file can stand in for it. prompt.md names this path.
+      - name: Place the reviewed patch in the checkout
+        run: |
+          set -euo pipefail
+          rm -rf -- pr/.claude-review-input
+          mkdir -- pr/.claude-review-input
+          cp -- "$RUNNER_TEMP/claude-scope/prompts/delta.diff" pr/.claude-review-input/delta.diff
+
+      - name: Re-check the pull request before the general pass
+        id: live_general
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          read -r draft head < <(/usr/bin/gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '"\(.draft) \(.head.sha)"')
+          if [ "$draft" = "true" ]; then state=draft
+          elif [ "$head" != "$HEAD_SHA" ]; then state=head_moved
+          else state=ok; fi
+          echo "pull request state: $state"
+          echo "state=$state" >> "$GITHUB_OUTPUT"
+
+      - name: General pass
+        id: general
+        if: steps.live_general.outputs.state == 'ok'
+        continue-on-error: true
+        timeout-minutes: ${{ fromJSON(needs.headless-scope.outputs.pass_minutes) }}
+        working-directory: trusted
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ROUTE: ${{ matrix.route }}
+          MODEL: ${{ needs.headless-scope.outputs.model }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/headless-raw"
+          uv run --no-sync python -m scripts.marketplace_ci headless-review-pass \
+            --route "$ROUTE" --pass general --model "$MODEL" \
+            --prompt "$RUNNER_TEMP/claude-scope/prompts/general.md" \
+            --checkout "$GITHUB_WORKSPACE/pr" --out "$RUNNER_TEMP/headless-raw/general.json"
+
+      - name: Re-check the pull request before the security pass
+        id: live_security
+        if: needs.headless-scope.outputs.security == 'true' && steps.live_general.outputs.state == 'ok'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          read -r draft head < <(/usr/bin/gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '"\(.draft) \(.head.sha)"')
+          if [ "$draft" = "true" ]; then state=draft
+          elif [ "$head" != "$HEAD_SHA" ]; then state=head_moved
+          else state=ok; fi
+          echo "pull request state: $state"
+          echo "state=$state" >> "$GITHUB_OUTPUT"
+
+      - name: Security pass
+        id: security
+        if: steps.live_security.outputs.state == 'ok'
+        continue-on-error: true
+        timeout-minutes: ${{ fromJSON(needs.headless-scope.outputs.pass_minutes) }}
+        working-directory: trusted
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ROUTE: ${{ matrix.route }}
+          MODEL: ${{ needs.headless-scope.outputs.model }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/headless-raw"
+          uv run --no-sync python -m scripts.marketplace_ci headless-review-pass \
+            --route "$ROUTE" --pass security --model "$MODEL" \
+            --prompt "$RUNNER_TEMP/claude-scope/prompts/security.md" \
+            --checkout "$GITHUB_WORKSPACE/pr" --out "$RUNNER_TEMP/headless-raw/security.json"
+
+      # A pass whose step ended without a record (a timeout, a crash) is recorded as failed.
+      - name: Collect the passes
+        if: always()
+        env:
+          ROUTE: ${{ matrix.route }}
+          LIVE_GENERAL: ${{ steps.live_general.outputs.state }}
+          LIVE_SECURITY: ${{ steps.live_security.outputs.state }}
+        run: |
+          set -euo pipefail
+          raw="$RUNNER_TEMP/headless-raw"
+          mkdir -p "$raw"
+          for pair in "general:$LIVE_GENERAL" "security:$LIVE_SECURITY"; do
+            pass="${pair%%:*}"; state="${pair#*:}"
+            if [ "$state" = "ok" ] && [ ! -s "$raw/$pass.json" ]; then
+              jq -n --arg route "$ROUTE" --arg pass "$pass" \
+                '{route: $route, pass: $pass, outcome: "failure", result: null, secret_found: false, structured_output: ""}' \
+                > "$raw/$pass.json"
+            fi
+          done
+          skipped=""
+          for state in "$LIVE_GENERAL" "$LIVE_SECURITY"; do
+            case "$state" in draft|head_moved) skipped="$state" ;; esac
+          done
+          mkdir -p "$RUNNER_TEMP/headless-out"
+          set -- "$raw"/general.json "$raw"/security.json
+          files=()
+          for f in "$@"; do [ -s "$f" ] && files+=("$f"); done
+          if [ "${#files[@]}" -gt 0 ]; then
+            jq -n --arg skipped "$skipped" \
+              '{skipped: (if $skipped == "" then null else $skipped end), passes: [inputs]}' "${files[@]}" \
+              > "$RUNNER_TEMP/headless-out/headless-review-raw.json"
+          else
+            jq -n --arg skipped "$skipped" \
+              '{skipped: (if $skipped == "" then null else $skipped end), passes: []}' \
+              > "$RUNNER_TEMP/headless-out/headless-review-raw.json"
+          fi
+          jq -c '.passes[] | {route, pass, outcome, result}' "$RUNNER_TEMP/headless-out/headless-review-raw.json"
+
+      - name: Upload the recorded passes
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # ratchet:actions/upload-artifact@v7.0.1
+        with:
+          name: headless-review-raw-${{ matrix.route }}
+          path: ${{ runner.temp }}/headless-out/headless-review-raw.json
+          if-no-files-found: error
+          retention-days: 30
+
+  headless-compare:
+    name: Headless Claude review comparison
+    needs: [headless-scope, headless-review]
+    if: ${{ !cancelled() && needs.headless-scope.result != 'skipped' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.base.sha }}
+      # Bootstrapping only, as in headless-review.
+      - name: Use the PR's own summary code when the base SHA has none yet
+        id: bootstrap
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          if [ -f scripts/marketplace_ci/headless_review.py ]; then
+            echo "use_head=false" >> "$GITHUB_OUTPUT"
+          elif [ "$BASE_REF" != "$DEFAULT_BRANCH" ]; then
+            echo "::error::the base SHA has no headless_review.py and the PR does not target $DEFAULT_BRANCH; not running the PR's own copy"
+            exit 1
+          else
+            echo "::warning::the base SHA has no headless_review.py; this bootstrapping run uses the PR's own copy"
+            echo "use_head=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Check out the PR's summary code (bootstrapping only)
+        if: steps.bootstrap.outputs.use_head == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # ratchet:actions/setup-python@v7.0.0
+        with:
+          python-version: "3.13"
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # ratchet:astral-sh/setup-uv@v10.3.3
+        with:
+          version: "0.12.21"
+          enable-cache: "false"
+      # As claude-review-ci.yml's publish job (the summary reuses claude_review.parse_pass).
+      - run: uv sync --locked --no-config --no-install-project --group dev --no-build --no-install-package csscompressor --no-install-package jsmin
+
+      - name: Download the review scope
+        if: needs.headless-scope.outputs.switched_off == 'false'
+        continue-on-error: true
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # ratchet:actions/download-artifact@v8.0.2
+        with:
+          name: headless-review-scope
+          path: ${{ runner.temp }}/claude-scope
+      - name: Download the recorded passes
+        if: needs.headless-review.result == 'success' || needs.headless-review.result == 'failure'
+        continue-on-error: true
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # ratchet:actions/download-artifact@v8.0.2
+        with:
+          pattern: headless-review-raw-*
+          path: ${{ runner.temp }}/headless-raw
+
+      - name: Write the comparison
+        env:
+          MODEL: ${{ needs.headless-scope.outputs.model }}
+          SWITCHED_OFF: ${{ needs.headless-scope.outputs.switched_off }}
+          HAS_PATHS: ${{ needs.headless-scope.outputs.has_paths }}
+        run: |
+          if [ "$SWITCHED_OFF" = "true" ]; then
+            echo "The headless review is switched off (CLAUDE_CI_REVIEW_BYPASS=1)." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if [ "$HAS_PATHS" = "false" ]; then
+            echo "Nothing to review in this push." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          uv run --no-sync python -m scripts.marketplace_ci headless-review-summary \
+            --raw-dir "$RUNNER_TEMP/headless-raw" --scope "$RUNNER_TEMP/claude-scope/scope.json" \
+            --model "${MODEL:-unknown}" --out "$GITHUB_STEP_SUMMARY"

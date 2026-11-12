@@ -1196,6 +1196,46 @@ def _handle_publish_claude_review(args: argparse.Namespace) -> int:
     return 0
 
 
+def _handle_headless_review_pass(args: argparse.Namespace) -> int:
+    """The test headless review: one pass of one route (sdk or api) over the PR checkout,
+    written to --out as its record. Always exits 0 once the record is written; a failed pass
+    is a record, not an exit code."""
+    from scripts.marketplace_ci.headless_review import run_pass
+
+    prompt = Path(args.prompt).read_text(encoding="utf-8")
+    record = run_pass(
+        args.route, args.review_pass, prompt=prompt, model=args.model, checkout=Path(args.checkout)
+    )
+    Path(args.out).write_text(json.dumps(record) + "\n", encoding="utf-8")
+    status = (record.get("result") or {}).get("api_error_status")
+    print(f"{args.route} {args.review_pass}: outcome={record['outcome']} api_error_status={status}")
+    return 0
+
+
+def _handle_headless_review_summary(args: argparse.Namespace) -> int:
+    """The test headless review's comparison table, from each route's collected records, for
+    the job summary. Posts nothing."""
+    from scripts.marketplace_ci.headless_review import ROUTES, summarize
+
+    raws = {}
+    for route in ROUTES:
+        path = Path(args.raw_dir) / f"headless-review-raw-{route}" / "headless-review-raw.json"
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if isinstance(data, dict):
+            raws[route] = data
+    try:
+        scope = json.loads(Path(args.scope).read_text(encoding="utf-8"))
+        reviewed = frozenset(e["path"] for e in scope["paths"])
+    except (OSError, ValueError, KeyError, TypeError):
+        reviewed = frozenset()
+    with open(args.out, "a", encoding="utf-8") as out:
+        out.write(summarize(raws, reviewed, args.model))
+    return 0
+
+
 def _handle_find_review_anchor(args: argparse.Namespace) -> int:
     """The last reviewed head of a pull request for one review workflow (issue #639, Codex R5
     and R11; Claude review R3). Appends `sha=<anchor>` (empty for none) to --github-output and
@@ -2122,6 +2162,28 @@ def build_parser() -> argparse.ArgumentParser:
     claude_publish.add_argument("--pr-number", required=True, type=int)
     claude_publish.add_argument("--result-out", required=True, metavar="PATH")
     claude_publish.set_defaults(handler=_handle_publish_claude_review)
+
+    headless_pass = subparsers.add_parser(
+        "headless-review-pass", help="run one pass of the test headless Claude review"
+    )
+    headless_pass.add_argument("--route", required=True, choices=("sdk", "api"))
+    headless_pass.add_argument(
+        "--pass", dest="review_pass", required=True, choices=("general", "security")
+    )
+    headless_pass.add_argument("--prompt", required=True, metavar="PATH")
+    headless_pass.add_argument("--model", required=True)
+    headless_pass.add_argument("--checkout", required=True, metavar="DIR")
+    headless_pass.add_argument("--out", required=True, metavar="PATH")
+    headless_pass.set_defaults(handler=_handle_headless_review_pass)
+
+    headless_summary = subparsers.add_parser(
+        "headless-review-summary", help="compare the test headless Claude review's routes"
+    )
+    headless_summary.add_argument("--raw-dir", required=True, metavar="DIR")
+    headless_summary.add_argument("--scope", default="", metavar="PATH")
+    headless_summary.add_argument("--model", required=True)
+    headless_summary.add_argument("--out", required=True, metavar="PATH")
+    headless_summary.set_defaults(handler=_handle_headless_review_summary)
 
     carry_findings = subparsers.add_parser(
         "carry-findings",
