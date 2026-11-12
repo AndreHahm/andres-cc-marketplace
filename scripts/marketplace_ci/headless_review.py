@@ -91,14 +91,18 @@ REVIEW_SCHEMA: dict = {
 _UNSUPPORTED = frozenset({"maxItems", "maxLength", "minimum", "pattern"})
 
 
-def api_schema(schema: object = REVIEW_SCHEMA) -> object:
-    """`schema` without the constraints the Messages API's structured outputs refuse
+def api_schema() -> object:
+    """REVIEW_SCHEMA without the constraints the Messages API's structured outputs refuse
     (maxItems, maxLength, minimum, pattern); parse_pass checks the count and the line."""
-    if isinstance(schema, dict):
-        return {k: api_schema(v) for k, v in schema.items() if k not in _UNSUPPORTED}
-    if isinstance(schema, list):
-        return [api_schema(v) for v in schema]
-    return schema
+    return _without_unsupported(REVIEW_SCHEMA)
+
+
+def _without_unsupported(node: object) -> object:
+    if isinstance(node, dict):
+        return {k: _without_unsupported(v) for k, v in node.items() if k not in _UNSUPPORTED}
+    if isinstance(node, list):
+        return [_without_unsupported(v) for v in node]
+    return node
 
 
 # The settings claude-review-ci.yml gives claude-code-action: hooks off, reads confined to the
