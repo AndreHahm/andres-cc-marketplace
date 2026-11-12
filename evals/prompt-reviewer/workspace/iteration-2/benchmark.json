@@ -1,0 +1,13 @@
+{
+  "iteration": 2,
+  "run_date": "2026-11-12",
+  "configurations": [
+    "with_skill"
+  ],
+  "scope": "evals 1 and 2 re-run after the diff rule; evals 3 and 4 unchanged from iteration 1",
+  "with_skill": {
+    "passed": 8,
+    "total": 8,
+    "pass_rate": 1.0
+  }
+}
