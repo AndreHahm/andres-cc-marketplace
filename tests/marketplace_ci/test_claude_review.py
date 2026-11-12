@@ -218,6 +218,7 @@ def test_a_blocking_finding_in_either_pass_fails(severity):
         ({"passes": [_record("general", [_finding(severity="High")])]}, "success", "malformed"),
         ({"passes": [_record("general", [_finding("Minor")] * 31)]}, "success", "findings list"),
         ({"skipped": "head_moved", "passes": []}, "success", "newer push"),
+        ({"skipped": "lookup_failed", "passes": []}, "success", "could not be re-checked"),
     ],
 )
 def test_a_review_that_could_not_run_fails_and_is_not_an_anchor(raw, review_job, reason):

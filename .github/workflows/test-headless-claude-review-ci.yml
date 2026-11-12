@@ -2,7 +2,8 @@ name: Test Headless Claude Review
 
 # A test beside Claude Delta Review (claude-review-ci.yml), not a replacement: the same reviewer
 # prompts run through three routes, the Claude Agent SDK and the Messages API headless, and the
-# official claude-code-action as the Claude delta review runs it, so a real run shows which
+# official claude-code-action as the Claude delta review ran it before it moved to the sdk route,
+# so a real run shows which
 # Anthropic credit pool pays for each (docs/ci.md). Opt-in (repository variable
 # ACTIVATE_CLAUDE_REVIEW_TEST=1), advisory and never required;
 # it posts nothing to the pull request, only a comparison table in the job summary. The API keys
@@ -394,8 +395,12 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          read -r draft head < <(/usr/bin/gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '"\(.draft) \(.head.sha)"')
+          draft="" head=""
+          if info=$(/usr/bin/gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '"\(.draft) \(.head.sha)"'); then
+            read -r draft head <<< "$info" || true
+          fi
           if [ "$draft" = "true" ]; then state=draft
+          elif [ "$draft" != "false" ] || ! printf '%s' "$head" | grep -Eq '^[0-9a-f]{40}$'; then state=lookup_failed
           elif [ "$head" != "$HEAD_SHA" ]; then state=head_moved
           else state=ok; fi
           echo "pull request state: $state"
@@ -432,8 +437,12 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          read -r draft head < <(/usr/bin/gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '"\(.draft) \(.head.sha)"')
+          draft="" head=""
+          if info=$(/usr/bin/gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '"\(.draft) \(.head.sha)"'); then
+            read -r draft head <<< "$info" || true
+          fi
           if [ "$draft" = "true" ]; then state=draft
+          elif [ "$draft" != "false" ] || ! printf '%s' "$head" | grep -Eq '^[0-9a-f]{40}$'; then state=lookup_failed
           elif [ "$head" != "$HEAD_SHA" ]; then state=head_moved
           else state=ok; fi
           echo "pull request state: $state"
@@ -482,7 +491,7 @@ jobs:
           done
           skipped=""
           for state in "$LIVE_GENERAL" "$LIVE_SECURITY"; do
-            case "$state" in draft|head_moved) skipped="$state" ;; esac
+            case "$state" in draft|head_moved|lookup_failed) skipped="$state" ;; esac
           done
           mkdir -p "$RUNNER_TEMP/headless-out"
           set -- "$raw"/general.json "$raw"/security.json
@@ -508,10 +517,10 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-  # The third route: the official claude-code-action with the Claude delta review's own pin,
-  # flags and record steps, on a key of its own. It runs after the matrix, so the Console's
-  # usage timeline still shows one route at a time. The PR head is checked out at the
-  # workspace root, as in claude-review-ci.yml, and no repository code runs in this job.
+  # The third route: the official claude-code-action with the flags and record steps the Claude
+  # delta review used before it moved to the sdk route, on a key of its own. It runs after the
+  # matrix, so the Console's usage timeline still shows one route at a time. The PR head is
+  # checked out at the workspace root, and no repository code runs in this job.
   headless-review-action:
     name: Run the action route
     needs: [headless-scope, headless-review]
@@ -550,7 +559,7 @@ jobs:
           persist-credentials: false
           ref: ${{ github.event.pull_request.head.sha }}
 
-      # As claude-review-ci.yml: inside the checkout, placed after it.
+      # Inside the checkout, placed after it, so no pull request file can stand in for it.
       - name: Place the reviewed patch in the checkout
         run: |
           set -euo pipefail
@@ -578,16 +587,20 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          read -r draft head < <(/usr/bin/gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '"\(.draft) \(.head.sha)"')
+          draft="" head=""
+          if info=$(/usr/bin/gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '"\(.draft) \(.head.sha)"'); then
+            read -r draft head <<< "$info" || true
+          fi
           if [ "$draft" = "true" ]; then state=draft
+          elif [ "$draft" != "false" ] || ! printf '%s' "$head" | grep -Eq '^[0-9a-f]{40}$'; then state=lookup_failed
           elif [ "$head" != "$HEAD_SHA" ]; then state=head_moved
           else state=ok; fi
           echo "pull request state: $state"
           echo "state=$state" >> "$GITHUB_OUTPUT"
           echo "started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
 
-      # claude-review-ci.yml's general pass, with only the key changed
-      # (tests/marketplace_ci/test_headless_review.py keeps the two identical).
+      # The sdk route's tools, settings, caps and schema as action flags
+      # (tests/marketplace_ci/test_headless_review.py keeps them equal to headless_review's).
       - name: General pass
         id: general
         if: steps.live_general.outputs.state == 'ok'
@@ -610,8 +623,8 @@ jobs:
             --settings '{"disableAllHooks":true,"permissions":{"blockReadsOutsideWorkingDirectories":true,"deny":["Read(//proc/**)","Read(//sys/**)","Read(.git/**)"]}}'
             --json-schema '{"type":"object","required":["verdict","findings"],"additionalProperties":false,"properties":{"verdict":{"type":"string","enum":["LGTM","Changes Requested"]},"findings":{"type":"array","maxItems":30,"items":{"type":"object","required":["severity","path","line","title","body"],"additionalProperties":false,"properties":{"severity":{"type":"string","enum":["Critical","Major","Minor","Informational"]},"path":{"type":"string","maxLength":300,"pattern":"^[^`<>\\x00-\\x1f]+$"},"line":{"type":"integer","minimum":1},"title":{"type":"string","maxLength":200},"body":{"type":"string","maxLength":2000}}}}}}'
 
-      # claude-review-ci.yml's record step, plus the route, the token totals and the times the
-      # comparison table shows. The execution file is removed, as there.
+      # The record headless_review.pass_record writes: only the result entry of the execution
+      # file (the whole transcript), which is then removed.
       - name: Record the general pass
         if: always() && steps.live_general.outputs.state != ''
         env:
@@ -655,8 +668,12 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          read -r draft head < <(/usr/bin/gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '"\(.draft) \(.head.sha)"')
+          draft="" head=""
+          if info=$(/usr/bin/gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '"\(.draft) \(.head.sha)"'); then
+            read -r draft head <<< "$info" || true
+          fi
           if [ "$draft" = "true" ]; then state=draft
+          elif [ "$draft" != "false" ] || ! printf '%s' "$head" | grep -Eq '^[0-9a-f]{40}$'; then state=lookup_failed
           elif [ "$head" != "$HEAD_SHA" ]; then state=head_moved
           else state=ok; fi
           echo "pull request state: $state"
@@ -729,7 +746,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/headless-raw" "$RUNNER_TEMP/headless-out"
           skipped=""
           for state in "$LIVE_GENERAL" "$LIVE_SECURITY"; do
-            case "$state" in draft|head_moved) skipped="$state" ;; esac
+            case "$state" in draft|head_moved|lookup_failed) skipped="$state" ;; esac
           done
           files=()
           for f in "$RUNNER_TEMP"/headless-raw/general.json "$RUNNER_TEMP"/headless-raw/security.json; do

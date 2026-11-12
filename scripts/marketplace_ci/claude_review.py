@@ -3,7 +3,8 @@
 Three steps of `.github/workflows/claude-review-ci.yml`, each run from code restored from the base
 SHA in a job that holds no API key: the settings check (R8, R10), the reviewer prompts (R5), and
 the publisher that posts the findings and decides the check (R6, R7). The job that holds the key
-runs none of this; it only passes the prompts to claude-code-action and records what came back.
+runs none of this; it runs each pass through `headless_review.run_pass` (the Claude Agent SDK
+route), also restored from the base SHA, and records what came back.
 """
 
 from __future__ import annotations
@@ -20,7 +21,7 @@ from pathlib import Path
 DEFAULT_MODEL = "claude-sonnet-5-5"
 DEFAULT_TIMEOUT_MS = 1_200_000
 # The review job's own timeout-minutes (a job limit cannot read a step output): both passes at
-# the full per-pass value plus the checkout, the action's setup and the artifact upload.
+# the full per-pass value plus the checkouts, the dependency install and the artifact upload.
 REVIEW_JOB_TIMEOUT_MINUTES = 50
 REVIEW_JOB_OVERHEAD_MINUTES = 10
 _MODEL = re.compile(r"[A-Za-z0-9._-]{1,64}")
@@ -308,6 +309,9 @@ def decide(
         return result
     if raw.get("skipped") == "head_moved":
         result["reason"] = "a newer push landed before the review started"
+        return result
+    if raw.get("skipped") == "lookup_failed":
+        result["reason"] = "the pull request could not be re-checked before a pass"
         return result
     reviewed = frozenset(result["reviewed_paths"])
     expected = ["general", *(["security"] if needs_security_pass(scope) else [])]
