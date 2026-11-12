@@ -1,0 +1,534 @@
+"""The test headless Claude review (scripts/marketplace_ci/headless_review.py and
+.github/workflows/test-headless-claude-review-ci.yml). Fakes stand in for both SDKs: nothing here
+calls the API. The security-relevant shape is pinned: the api route's tools read nothing outside
+the checkout or under .git, the sdk route loads no settings, MCP servers or write tools, the API key
+reaches only the two pass steps, and nothing is posted to the pull request."""
+
+from __future__ import annotations
+
+import asyncio
+import json
+import os
+import subprocess
+from dataclasses import dataclass
+from pathlib import Path
+from types import SimpleNamespace
+
+import pytest
+import yaml
+
+from scripts.marketplace_ci import headless_review as hr
+from scripts.marketplace_ci.__main__ import main
+from scripts.marketplace_ci.claude_review import parse_pass
+
+ROOT = Path(__file__).resolve().parents[2]
+WF_PATH = ROOT / ".github/workflows/test-headless-claude-review-ci.yml"
+TEXT = WF_PATH.read_text(encoding="utf-8")
+WF = yaml.safe_load(TEXT)
+JOBS = WF["jobs"]
+CLAUDE_WF = yaml.safe_load((ROOT / ".github/workflows/claude-review-ci.yml").read_text("utf-8"))
+
+VERDICT = {
+    "verdict": "Changes Requested",
+    "findings": [
+        {"severity": "Major", "path": "a.py", "line": 2, "title": "t", "body": "b"},
+    ],
+}
+
+
+# --- the api route's file tools -------------------------------------------------------------
+
+
+@pytest.fixture
+def checkout(tmp_path: Path) -> Path:
+    root = tmp_path / "pr"
+    (root / "pkg").mkdir(parents=True)
+    (root / "a.py").write_text("one\ntwo secret_word\nthree\n", encoding="utf-8")
+    (root / "pkg" / "b.py").write_text("secret_word here\n", encoding="utf-8")
+    (root / ".git").mkdir()
+    (root / ".git" / "config").write_text("secret_word in git\n", encoding="utf-8")
+    outside = tmp_path / "outside.txt"
+    outside.write_text("secret_word outside\n", encoding="utf-8")
+    (tmp_path / "outdir").mkdir()
+    (tmp_path / "outdir" / "c.py").write_text("secret_word in outdir\n", encoding="utf-8")
+    os.symlink(outside, root / "link.txt")
+    os.symlink(tmp_path / "outdir", root / "linkdir")
+    os.symlink(root / "a.py", root / "inner_link.py")
+    return root
+
+
+def test_read_numbers_lines_and_pages(checkout: Path):
+    files = hr.CheckoutFiles(checkout)
+    assert files.read("a.py") == "     1\tone\n     2\ttwo secret_word\n     3\tthree"
+    assert files.read("a.py", offset=2, limit=1) == "     2\ttwo secret_word\n... 1 more lines"
+    assert files.read(str(checkout / "pkg" / "b.py")).endswith("secret_word here")
+
+
+@pytest.mark.parametrize(
+    "path", ["../outside.txt", "link.txt", "linkdir/c.py", ".git/config", "/etc/passwd",
+             "/proc/self/environ", "pkg/../../outside.txt", ""],
+)  # fmt: skip
+def test_read_refuses_anything_outside_the_checkout_or_under_git(checkout: Path, path: str):
+    text, is_error = hr.run_tool(hr.CheckoutFiles(checkout), "Read", {"file_path": path})
+    assert is_error
+    assert "secret_word" not in text
+
+
+def test_a_symlink_that_stays_inside_is_read(checkout: Path):
+    text, is_error = hr.run_tool(hr.CheckoutFiles(checkout), "Read", {"file_path": "inner_link.py"})
+    assert not is_error and "two secret_word" in text
+
+
+def test_grep_and_glob_never_reach_outside_or_into_git(checkout: Path):
+    files = hr.CheckoutFiles(checkout)
+    grep = files.grep("secret_word")
+    assert grep.splitlines() == [
+        "a.py:2:two secret_word",
+        "inner_link.py:2:two secret_word",
+        "pkg/b.py:1:secret_word here",
+    ]
+    glob = files.glob("*.py").splitlines()
+    assert glob == ["a.py", "inner_link.py", "pkg/b.py"]
+    assert files.grep("secret_word", path="pkg", glob="*.py") == "pkg/b.py:1:secret_word here"
+    for tool, args in (
+        ("Grep", {"pattern": "x", "path": ".."}),
+        ("Glob", {"pattern": "*", "path": ".git"}),
+    ):
+        _, is_error = hr.run_tool(files, tool, args)
+        assert is_error
+
+
+def test_bad_tool_calls_are_error_results(checkout: Path):
+    files = hr.CheckoutFiles(checkout)
+    assert hr.run_tool(files, "Bash", {"command": "id"})[1]
+    assert hr.run_tool(files, "Grep", {"pattern": "("})[1]
+    assert hr.run_tool(files, "Read", "a.py")[1]
+
+
+def test_api_schema_drops_only_the_constraints_the_api_refuses():
+    schema = hr.api_schema()
+    assert isinstance(schema, dict)
+    text = json.dumps(schema)
+    for key in ("maxItems", "maxLength", "minimum", "pattern"):
+        assert f'"{key}"' not in text
+    item = schema["properties"]["findings"]["items"]
+    assert item["additionalProperties"] is False
+    assert item["required"] == ["severity", "path", "line", "title", "body"]
+    assert "maxItems" in json.dumps(hr.REVIEW_SCHEMA)  # the original is left alone
+
+
+# --- the api route's loop -------------------------------------------------------------------
+
+
+class StatusError(Exception):
+    def __init__(self, status_code: int) -> None:
+        super().__init__("Credit balance is too low sk-ant-should-never-be-kept")
+        self.status_code = status_code
+
+
+class ApiError(Exception):
+    pass
+
+
+def _usage(inp=1000, out=100, write=0, read=0):
+    return SimpleNamespace(
+        input_tokens=inp, output_tokens=out,
+        cache_creation_input_tokens=write, cache_read_input_tokens=read,
+    )  # fmt: skip
+
+
+def _tool_turn(name="Read", args=None):
+    block = SimpleNamespace(
+        type="tool_use", id="tu_1", name=name, input=args or {"file_path": "a.py"}
+    )
+    return SimpleNamespace(stop_reason="tool_use", content=[block], usage=_usage())
+
+
+def _final_turn(payload=VERDICT):
+    return SimpleNamespace(
+        stop_reason="end_turn",
+        content=[
+            SimpleNamespace(type="thinking"),
+            SimpleNamespace(type="text", text=json.dumps(payload)),
+        ],
+        usage=_usage(),
+    )
+
+
+class FakeCreate:
+    def __init__(self, responses):
+        self.responses = list(responses)
+        self.calls: list[dict] = []
+
+    def __call__(self, **kwargs):
+        self.calls.append(kwargs)
+        item = self.responses.pop(0)
+        if isinstance(item, Exception):
+            raise item
+        return item
+
+
+def _run(create, checkout, **kw):
+    kw.setdefault("max_turns", 50)
+    return hr.run_api_pass(
+        create, hr.CheckoutFiles(checkout), status_error=StatusError, api_error=ApiError,
+        prompt="review", model="claude-sonnet-5-5", **kw,
+    )  # fmt: skip
+
+
+def test_api_pass_runs_tools_and_returns_the_structured_output(checkout: Path):
+    create = FakeCreate([_tool_turn(), _final_turn()])
+    result = _run(create, checkout)
+    assert result.result() == {
+        "subtype": "success", "is_error": False, "num_turns": 2,
+        "total_cost_usd": round(2 * (1000 * 2.0 + 100 * 10.0) / 1e6, 6), "api_error_status": None,
+    }  # fmt: skip
+    assert json.loads(result.structured_output) == VERDICT
+    assert result.usage["input_tokens"] == 2000
+    second = create.calls[1]["messages"]
+    assert second[-1]["content"][0]["tool_use_id"] == "tu_1"
+    assert "two secret_word" in second[-1]["content"][0]["content"]
+    assert create.calls[0]["tools"] == hr.API_TOOLS
+    assert create.calls[0]["output_config"]["format"]["schema"] == hr.api_schema()
+    record = hr.pass_record("api", "general", "success", result, "sk-ant-key", "t0", "t1")
+    verdict, findings = parse_pass(record, frozenset({"a.py"}))
+    assert verdict == "Changes Requested" and findings[0]["severity"] == "Major"
+
+
+def test_api_pass_stops_at_the_turn_cap(checkout: Path):
+    result = _run(FakeCreate([_tool_turn(), _tool_turn()]), checkout, max_turns=2)
+    assert (result.subtype, result.is_error, result.num_turns) == ("error_max_turns", True, 2)
+
+
+def test_api_pass_stops_at_the_budget_and_the_token_cap(checkout: Path):
+    result = _run(FakeCreate([_tool_turn()]), checkout, max_budget_usd=0.001)
+    assert result.subtype == "error_max_budget_usd"
+    result = _run(FakeCreate([_tool_turn()]), checkout, max_total_tokens=1000)
+    assert result.subtype == "error_max_budget_usd"
+
+
+def test_api_pass_keeps_only_the_status_of_an_api_error(checkout: Path):
+    result = _run(FakeCreate([StatusError(400)]), checkout)
+    record = hr.pass_record("api", "general", "success", result, "", "t0", "t1")
+    assert record["result"]["api_error_status"] == 400
+    assert record["result"]["subtype"] == "error_during_execution"
+    assert "Credit balance" not in json.dumps(record)
+    assert _run(FakeCreate([ApiError("x")]), checkout).api_error_status is None
+
+
+def test_api_pass_treats_a_refusal_or_truncation_as_an_error(checkout: Path):
+    for stop in ("refusal", "max_tokens", "pause_turn"):
+        turn = _final_turn()
+        turn.stop_reason = stop
+        assert _run(FakeCreate([turn]), checkout).subtype == "error_during_execution"
+
+
+def test_api_pass_refuses_a_model_it_cannot_price(checkout: Path):
+    with pytest.raises(ValueError, match="cannot cap its cost"):
+        hr.run_api_pass(
+            FakeCreate([]), hr.CheckoutFiles(checkout), status_error=StatusError,
+            api_error=ApiError, prompt="p", model="claude-unknown", max_turns=1,
+        )  # fmt: skip
+
+
+# --- the sdk route --------------------------------------------------------------------------
+
+
+@dataclass
+class FakeResult:
+    subtype: str = "success"
+    is_error: bool = False
+    num_turns: int = 7
+    total_cost_usd: float | None = 0.12
+    api_error_status: int | None = None
+    structured_output: object = None
+    usage: object = None
+
+
+def test_sdk_pass_options_and_result(tmp_path: Path):
+    seen = {}
+
+    def options_type(**kw):
+        seen.update(kw)
+        return kw
+
+    async def query(*, prompt, options):
+        seen["prompt"] = prompt
+        yield "assistant message"
+        yield FakeResult(structured_output=VERDICT, usage={"input_tokens": 5, "output_tokens": 6})
+
+    result = asyncio.run(
+        hr.run_sdk_pass(query, options_type, FakeResult, prompt="p", model="m", max_turns=25,
+                        checkout=tmp_path)
+    )  # fmt: skip
+    assert seen["tools"] == seen["allowed_tools"] == ["Read", "Grep", "Glob"]
+    assert seen["disallowed_tools"] == ["mcp__*"]
+    assert seen["setting_sources"] == [] and seen["mcp_servers"] == {}
+    assert seen["strict_mcp_config"] is True
+    settings = json.loads(seen["settings"])
+    assert settings["disableAllHooks"] is True
+    assert settings["permissions"]["blockReadsOutsideWorkingDirectories"] is True
+    assert "Read(.git/**)" in settings["permissions"]["deny"]
+    assert (seen["max_turns"], seen["max_budget_usd"], seen["cwd"]) == (25, 1.0, str(tmp_path))
+    assert seen["output_format"] == {"type": "json_schema", "schema": hr.REVIEW_SCHEMA}
+    assert result.result()["num_turns"] == 7 and result.total_cost_usd == 0.12
+    assert json.loads(result.structured_output) == VERDICT
+    assert result.usage["output_tokens"] == 6
+
+
+def test_sdk_pass_without_a_result_message_is_an_error(tmp_path: Path):
+    async def query(*, prompt, options):
+        yield "nothing else"
+
+    result = asyncio.run(
+        hr.run_sdk_pass(
+            query, dict, FakeResult, prompt="p", model="m", max_turns=1, checkout=tmp_path
+        )
+    )
+    assert result.subtype == "error_during_execution" and result.is_error
+
+
+def test_a_record_holding_the_key_drops_the_output():
+    result = hr.PassResult("success", False, 1, 0.1, structured_output='{"x": "sk-ant-key"}')
+    record = hr.pass_record("sdk", "general", "success", result, "sk-ant-key", "t0", "t1")
+    assert record["secret_found"] is True and record["structured_output"] == ""
+
+
+def test_run_pass_records_only_the_exception_type(monkeypatch, tmp_path: Path, capsys):
+    def boom(*args, **kwargs):
+        raise RuntimeError("detail that must not be kept")
+
+    monkeypatch.setattr(hr, "run_api_pass", boom)
+    monkeypatch.setitem(__import__("sys").modules, "anthropic", SimpleNamespace(
+        Anthropic=lambda **kw: SimpleNamespace(messages=SimpleNamespace(create=None)),
+        APIStatusError=StatusError, APIError=ApiError,
+    ))  # fmt: skip
+    record = hr.run_pass("api", "general", prompt="p", model="claude-sonnet-5-5", checkout=tmp_path)
+    assert record["outcome"] == "failure" and record["result"] is None
+    assert "detail" not in json.dumps(record) and "detail" not in capsys.readouterr().out
+
+
+# --- the comparison -------------------------------------------------------------------------
+
+
+def test_summary_compares_the_routes(tmp_path: Path):
+    ok = hr.pass_record(
+        "sdk", "general", "success",
+        hr.PassResult("success", False, 3, 0.05, structured_output=json.dumps(VERDICT),
+                      usage={"input_tokens": 10}),
+        "", "2026-11-12T08:00:00Z", "2026-11-12T08:02:00Z",
+    )  # fmt: skip
+    failed = hr.pass_record(
+        "api", "general", "success", hr.PassResult("error_during_execution", True, 0, 0.0, 400),
+        "", "t0", "t1",
+    )  # fmt: skip
+    for route, record in (("sdk", ok), ("api", failed)):
+        d = tmp_path / "raw" / f"headless-review-raw-{route}"
+        d.mkdir(parents=True)
+        (d / "headless-review-raw.json").write_text(
+            json.dumps({"skipped": None, "passes": [record]}), encoding="utf-8"
+        )
+    scope = tmp_path / "scope.json"
+    scope.write_text(json.dumps({"paths": [{"path": "a.py", "status": "M"}]}), encoding="utf-8")
+    out = tmp_path / "summary.md"
+    assert main(["headless-review-summary", "--raw-dir", str(tmp_path / "raw"), "--scope",
+                 str(scope), "--model", "claude-sonnet-5-5", "--out", str(out)]) == 0  # fmt: skip
+    text = out.read_text(encoding="utf-8")
+    sdk_row = next(line for line in text.splitlines() if line.startswith("| sdk | general"))
+    assert "| ok | Changes Requested | 0 Critical, 1 Major" in sdk_row and "0.0500" in sdk_row
+    assert "2026-11-12T08:00:00Z to 2026-11-12T08:02:00Z" in sdk_row
+    api_row = next(line for line in text.splitlines() if line.startswith("| api | general"))
+    assert "invalid: the general pass stopped early" in api_row and "400" in api_row
+
+
+def test_summary_names_a_route_that_did_not_run():
+    text = hr.summarize({}, frozenset(), "m")
+    assert "| sdk | - | did not run |" in text and "| api | - | did not run |" in text
+
+
+# --- the workflow ---------------------------------------------------------------------------
+
+
+def _steps(job):
+    return JOBS[job]["steps"]
+
+
+def test_triggers_skips_and_concurrency_match_the_claude_review():
+    on = WF.get("on", WF.get(True))
+    assert set(on) == {"pull_request"}
+    assert on == CLAUDE_WF.get("on", CLAUDE_WF.get(True))
+    assert WF["concurrency"]["cancel-in-progress"] is True
+    assert JOBS["headless-scope"]["if"] == CLAUDE_WF["jobs"]["claude-scope"]["if"]
+
+
+def test_the_scope_job_restores_exactly_what_the_claude_review_restores():
+    ours = {s.get("name"): s for s in _steps("headless-scope")}
+    theirs = {s.get("name"): s for s in CLAUDE_WF["jobs"]["claude-scope"]["steps"]}
+    for name in (
+        "Restore kill-switch enforcement from the trusted base SHA (trust boundary)",
+        "Restore the base SHA's copy of the scope-decision code and its dependency spec "
+        "(trust boundary)",
+        "Check the Claude review settings",
+        "Build the reviewer prompts from the base SHA",
+        "Compute the reviewed paths",
+    ):
+        assert ours[name] == theirs[name], name
+
+
+def test_the_api_key_reaches_only_the_two_pass_steps():
+    holders = [
+        (job, step.get("name"))
+        for job in JOBS
+        for step in _steps(job)
+        if "secrets." in json.dumps(step)
+    ]
+    assert holders == [("headless-review", "General pass"), ("headless-review", "Security pass")]
+    assert TEXT.count("secrets.") == 2
+    for step in _steps("headless-review"):
+        if "secrets." in json.dumps(step):
+            assert step["working-directory"] == "trusted"
+            assert step["env"]["ANTHROPIC_API_KEY"] == "${{ secrets.ANTHROPIC_API_KEY }}"
+            assert "headless-review-pass" in step["run"]
+            assert '--checkout "$GITHUB_WORKSPACE/pr"' in step["run"]
+
+
+def test_nothing_is_posted_and_routes_run_one_at_a_time():
+    for job in JOBS.values():
+        assert "write" not in json.dumps(job.get("permissions", {}))
+    assert WF["permissions"] == {"contents": "read"}
+    strategy = JOBS["headless-review"]["strategy"]
+    assert strategy["max-parallel"] == 1 and strategy["matrix"]["route"] == ["sdk", "api"]
+    assert "claude-code-action" not in TEXT
+
+
+def test_the_key_holding_job_runs_base_code_beside_the_reviewed_tree():
+    checkouts = [s for s in _steps("headless-review") if "actions/checkout@" in str(s.get("uses"))]
+    paths = [(s["with"]["ref"], s["with"]["path"], s.get("if")) for s in checkouts]
+    assert paths == [
+        ("${{ github.event.pull_request.head.sha }}", "pr", None),
+        ("${{ github.event.pull_request.base.sha }}", "trusted", None),
+        ("${{ github.event.pull_request.head.sha }}", "trusted",
+         "steps.bootstrap.outputs.use_head == 'true'"),
+    ]  # fmt: skip
+    install = next(
+        s
+        for s in _steps("headless-review")
+        if s.get("name") == "Install the headless review dependencies"
+    )
+    assert "--only-group headless-review" in install["run"] and "--locked" in install["run"]
+
+
+def test_every_action_is_pinned_by_sha():
+    for job in JOBS.values():
+        for step in job["steps"]:
+            uses = step.get("uses")
+            if uses and not uses.startswith("./"):
+                ref = uses.split("@", 1)[1]
+                assert len(ref) == 40 and all(c in "0123456789abcdef" for c in ref), uses
+
+
+# --- fixes from the security review ---------------------------------------------------------
+
+
+def test_one_turn_cannot_send_more_than_the_turn_result_cap(checkout: Path, monkeypatch):
+    big = "x" * 150_000
+    monkeypatch.setattr(hr, "run_tool", lambda files, name, args: (big, False))
+    blocks = [
+        SimpleNamespace(type="tool_use", id=f"tu_{i}", name="Read", input={"file_path": "a.py"})
+        for i in range(5)
+    ]
+    turn = SimpleNamespace(stop_reason="tool_use", content=blocks, usage=_usage())
+    create = FakeCreate([turn, _final_turn()])
+    _run(create, checkout)
+    results = create.calls[1]["messages"][-1]["content"]
+    assert sum(len(r["content"]) for r in results) <= hr.MAX_TURN_RESULT_CHARS + 200
+    assert len(results) == 5 and results[-1]["is_error"] is True
+
+
+def test_grep_searches_only_the_shown_part_of_a_line(checkout: Path):
+    (checkout / "long.txt").write_text("a" * 5000 + "TAIL\n", encoding="utf-8")
+    files = hr.CheckoutFiles(checkout)
+    assert files.grep("TAIL") == "(no matches)"
+    assert files.grep("a+", path="long.txt") == "long.txt:1:" + "a" * hr.MAX_LINE_CHARS
+
+
+def test_an_overflowing_tool_argument_is_an_error_result(checkout: Path):
+    _, is_error = hr.run_tool(hr.CheckoutFiles(checkout), "Read",
+                              {"file_path": "a.py", "offset": float("inf")})  # fmt: skip
+    assert is_error
+
+
+def test_a_credential_shaped_string_is_redacted_in_the_record():
+    token = "ghp_" + "A" * 36
+    result = hr.PassResult("success", False, 1, 0.1, structured_output=json.dumps({"x": token}))
+    record = hr.pass_record("api", "general", "success", result, "sk-ant-other", "t0", "t1")
+    assert token not in record["structured_output"]
+    assert json.loads(record["structured_output"])["x"] != token
+
+
+def test_sdk_pass_silences_stderr_and_never_prompts(tmp_path: Path):
+    seen = {}
+
+    def options_type(**kw):
+        seen.update(kw)
+        return kw
+
+    async def query(*, prompt, options):
+        yield FakeResult(structured_output=VERDICT)
+
+    asyncio.run(hr.run_sdk_pass(query, options_type, FakeResult, prompt="p", model="m",
+                                max_turns=1, checkout=tmp_path))  # fmt: skip
+    assert seen["permission_mode"] == "dontAsk"
+    assert seen["stderr"]("API Error: 400 Credit balance is too low") is None
+
+
+def _run_block(job: str, name: str) -> str:
+    return next(s for s in _steps(job) if s.get("name") == name)["run"]
+
+
+def test_the_symlink_step_removes_every_link(tmp_path: Path):
+    pr = tmp_path / "pr"
+    (pr / ".git").mkdir(parents=True)
+    (pr / "d").mkdir()
+    (pr / "a").write_text("x", encoding="utf-8")
+    os.symlink("/proc/self/environ", pr / "d" / "x")
+    os.symlink("../..", pr / "up")
+    os.symlink("a", pr / ".git" / "keep")
+    script = _run_block("headless-review", "Remove symlinks from the reviewed tree")
+    done = subprocess.run(["bash", "-c", script], cwd=tmp_path, capture_output=True, text=True)
+    assert done.returncode == 0, done.stderr
+    assert not (pr / "d" / "x").is_symlink() and not (pr / "up").is_symlink()
+    assert (pr / "a").exists()
+    assert "removed symlink: pr/up" in done.stdout
+
+
+@pytest.mark.parametrize("job", ["headless-review", "headless-compare"])
+@pytest.mark.parametrize(
+    ("has_file", "base_ref", "rc", "use_head"),
+    [(True, "other", 0, "false"), (False, "main", 0, "true"), (False, "other", 1, None)],
+)
+def test_the_bootstrap_fallback_runs_only_into_the_default_branch(
+    tmp_path: Path, job, has_file, base_ref, rc, use_head
+):
+    step = next(s for s in _steps(job) if s.get("id") == "bootstrap")
+    prefix = "trusted/" if job == "headless-review" else ""
+    target = tmp_path / prefix / "scripts/marketplace_ci/headless_review.py"
+    if has_file:
+        target.parent.mkdir(parents=True)
+        target.write_text("", encoding="utf-8")
+    out = tmp_path / "out"
+    env = {**os.environ, "BASE_REF": base_ref, "DEFAULT_BRANCH": "main", "GITHUB_OUTPUT": str(out)}
+    done = subprocess.run(["bash", "-c", step["run"]], cwd=tmp_path, env=env, capture_output=True)
+    assert done.returncode == rc
+    if use_head is not None:
+        assert out.read_text(encoding="utf-8") == f"use_head={use_head}\n"
+
+
+def test_each_job_installs_what_its_code_imports():
+    import tomllib
+
+    groups = tomllib.loads((ROOT / "pyproject.toml").read_text("utf-8"))["dependency-groups"]
+    # pass_record redacts through claude_review -> review.py, which imports yaml.
+    assert any(dep.startswith("PyYAML") for dep in groups["headless-review"])
+    sync = [s["run"] for s in _steps("headless-compare") if "uv sync" in str(s.get("run"))]
+    assert sync and "--group dev" in sync[0]

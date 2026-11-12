@@ -143,10 +143,64 @@ overshoot) and a turn cap: 50 for the general pass, which reads the whole delta,
 pass; reaching either cap fails the pass as could-not-run. The monthly $200 limit is a spend
 limit on the Anthropic Console workspace that holds the key, set outside this repository.
 
+**Credits.** The monthly API credits that come with a Claude subscription do not cover Claude Code
+([API credits for subscribers](https://platform.claude.com/docs/en/about-claude/api-credits-for-subscribers)),
+and `claude-code-action` runs Claude Code. With only those credits in the organization, every pass fails
+with HTTP 400 ("Credit balance is too low"), recorded as `api_error_status` 400; the review runs on purchased
+credit. Whether a headless route draws the subscriber credits is what the test workflow below measures.
+
 **Bootstrapping.** The PR that adds this workflow cannot review itself: `claude-scope` and `claude-publish`
 both run the base SHA's `scripts/marketplace_ci/`, which lacks the new subcommands, so both fail with an
 unknown-subcommand error, no review runs, and no `claude-review-result` is written. The check is advisory,
 so this blocks nothing; the first real review runs on the next PR.
+
+## Test: headless Claude review (advisory)
+
+`.github/workflows/test-headless-claude-review-ci.yml` is a test beside the Claude delta review, not a
+replacement. It runs the same reviewer prompts through two headless routes, so that a real run shows which
+Anthropic credit pool pays for each: the subscriber credits page lists the Claude Agent SDK as covered and
+Claude Code as not, but the Agent SDK runs a bundled Claude Code binary, and the docs do not say how such
+requests are billed. Its check, `Headless Claude review comparison`, is advisory, never required, and posts
+nothing to the pull request: the comparison goes to the job summary only.
+
+| Job | Check name | Secret | What it does |
+|---|---|---|---|
+| `headless-scope` | `Compute the headless review scope` | none | The same steps as `claude-scope` (a test keeps the restore, settings, scope and prompt steps identical), except the anchor: the head before this push on `synchronize`, else none (the whole PR). Uploads `headless-review-scope`. |
+| `headless-review` | `Run the sdk route` / `Run the api route` | `ANTHROPIC_API_KEY` | A matrix over the two routes, one at a time (`max-parallel: 1`), so the Console's usage timeline tells them apart. Checks out the PR head into `pr/` and the base SHA into `trusted/`, removes every symlink from `pr/` (so neither route depends on how a link is resolved), installs only the `headless-review` dependency group (`anthropic` and `claude-agent-sdk` pinned exactly, plus PyYAML for the shared redaction), places the patch, re-checks the PR before each pass, and runs `headless-review-pass` from `trusted/` for the general pass and, when the delta has a gate-critical path, the security pass. Uploads `headless-review-raw-<route>`. |
+| `headless-compare` | `Headless Claude review comparison` | none | Checks out the base SHA, runs `headless-review-summary` and writes a table per route and pass (status, verdict, findings by severity, turns, reported cost, tokens, start and end time in UTC) to the job summary. |
+
+**The two routes** (`scripts/marketplace_ci/headless_review.py`):
+
+- `sdk`: `claude_agent_sdk.query` with `tools`, `allowed_tools` = Read, Grep, Glob; `disallowed_tools`
+  `mcp__*`, no MCP servers and `strict_mcp_config`; `setting_sources=[]` (no user, project or local settings,
+  so no repository hooks or `CLAUDE.md`); the same inline settings as `claude-review` (hooks off, reads outside
+  the working directory blocked, `.git`, `/proc` and `/sys` denied); `permission_mode` `dontAsk`; Claude Code's
+  stderr discarded (it would carry API error text into the job log); `cwd` the PR checkout; the same turn caps,
+  `max_budget_usd` 1.00 and JSON schema.
+- `api`: the Messages API in a loop the module drives, with its own Read, Grep and Glob tools (`CheckoutFiles`):
+  every path is resolved, symlinks included, and refused outside the PR checkout or under `.git`; reads,
+  matches and results are size-capped, Grep searches only the first 2,000 characters of a line, and one turn's
+  results together are cut at 200,000 characters (the budget is checked between responses, so this bounds
+  what one request can add). The same turn caps; the pass also stops at 2,000,000 tokens or at
+  $1.00 computed from each response's usage and a price table in the module (a model missing from it is
+  refused). Structured outputs do not accept `maxItems`, `maxLength`, `minimum` or `pattern`, so this route
+  sends the schema without them, and `parse_pass` checks the count and the line as for the action.
+
+Both write the record shape `claude-review-raw` uses, plus the route, token totals and times, so
+`claude_review.parse_pass` reads them. An API error keeps only its HTTP status, a crash only the exception's
+type, output that holds the key is dropped, and other credential-shaped text in the output is redacted
+before the artifact is written. Events, the fork, Dependabot and draft skips, the kill switch
+and the model and timeout variables are the Claude delta review's.
+
+**Reading the result.** Both routes use the same key, and every key in a linked organization draws from one
+balance, so the run itself cannot say which pool paid. Compare the times in the job summary with the Console's
+usage by hour and the promotional-credit balance on the Billing page before and after a run.
+
+**Bootstrapping.** On the PR that adds this workflow the base SHA has no `headless_review.py`, so
+`headless-review` and `headless-compare` check out the PR's own copy instead, with a warning, but only for a
+PR into the default branch; a PR into another branch whose base lacks it fails those jobs instead. Every later
+PR into the default branch has a base copy. As with any `pull_request` workflow holding a secret, a
+same-repository PR can edit this workflow and read the key.
 
 ## Configuring the review model
 
