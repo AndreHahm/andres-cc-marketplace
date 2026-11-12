@@ -517,10 +517,35 @@
       ],
       "prefix": "plib",
       "provenance": {},
-      "score": null,
-      "scoring_history": [],
-      "security_score": null,
-      "security_scoring_history": [],
+      "score": 8.3,
+      "scoring_history": [
+        {
+          "gates_applied": [],
+          "graded_at": "2026-11-12T11:09:09Z",
+          "grader_schema_version": "1.1.0",
+          "imported_on": "2026-11-12",
+          "report_path": ".claude/output/plugin-grader/promptlibrary-kit-2026-11-12T11-09-09Z.json",
+          "report_sha256": "1585baf7e5e3c721d3614f5a228877c25efcaa56099948655d9c6e2fc3a960db",
+          "score": 8.3,
+          "target": "promptlibrary-kit",
+          "target_type": "plugin"
+        }
+      ],
+      "security_score": 6.5,
+      "security_scoring_history": [
+        {
+          "graded_at": "2026-11-12T11:09:09Z",
+          "grader_schema_version": "1.1.0",
+          "imported_on": "2026-11-12",
+          "is_na": null,
+          "report_path": ".claude/output/plugin-grader/promptlibrary-kit-2026-11-12T11-09-09Z.json",
+          "report_sha256": "1585baf7e5e3c721d3614f5a228877c25efcaa56099948655d9c6e2fc3a960db",
+          "security_score": 6.5,
+          "source_field": "plugin_security_score",
+          "target": "promptlibrary-kit",
+          "target_type": "plugin"
+        }
+      ],
       "source": "./plugins/promptlibrary-kit",
       "status": "active",
       "status_history": [
@@ -653,5 +678,5 @@
     }
   ],
   "schema_version": "1.0.0",
-  "updated_on": "2026-11-11"
+  "updated_on": "2026-11-12"
 }
