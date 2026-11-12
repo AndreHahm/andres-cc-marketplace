@@ -1014,9 +1014,11 @@ def _check_expected(meta: dict, expected: str) -> None:
 def cmd_screen(args) -> dict:
     try:
         if args.file == "-":
-            text = sys.stdin.read(MAX_INPUT_BYTES + 1).removeprefix(chr(0xFEFF))
-            if len(text) > MAX_INPUT_BYTES:
+            # read() counts characters; the cap is in UTF-8 bytes, so measure the encoded size too.
+            text = sys.stdin.read(MAX_INPUT_BYTES + 1)
+            if len(text.encode("utf-8", "surrogatepass")) > MAX_INPUT_BYTES:
                 raise CatalogError("the input is too large")
+            text = text.removeprefix(chr(0xFEFF))
         else:
             info = resolve_root(getattr(args, "root", None))
             path = _readable_candidate(args.file, Path(info["catalog_root"]))

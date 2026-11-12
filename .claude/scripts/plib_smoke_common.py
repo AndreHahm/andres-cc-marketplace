@@ -25,7 +25,14 @@ if _SPEC is None or _SPEC.loader is None:
     raise SystemExit(f"cannot load the validator at {VALIDATOR}")
 V = importlib.util.module_from_spec(_SPEC)
 sys.modules["plib_catalog_validate"] = V
-_SPEC.loader.exec_module(V)
+try:
+    _SPEC.loader.exec_module(V)
+except (OSError, SyntaxError, ImportError) as exc:
+    sys.modules.pop("plib_catalog_validate", None)
+    raise SystemExit(
+        f"cannot load the validator at {VALIDATOR} ({type(exc).__name__}: {exc}); "
+        "every smoke check needs it, so none were run"
+    ) from exc
 
 BODY = "Review the diff for missing tests.\nList each gap with a file and line."
 SLUG = "review__missing-tests"
