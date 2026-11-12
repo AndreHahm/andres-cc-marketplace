@@ -312,8 +312,9 @@ def decide(
     }
     if raw.get("skipped") in skips:
         # A pass that finished before the skip (the general pass, when only the security
-        # re-check stopped the run) keeps its findings, so a Critical one is still shown; the
-        # run is still not a full review, so it is never clean, findings or an anchor.
+        # re-check stopped the run) keeps its findings: posted for head_moved and lookup_failed
+        # (could_not_run), only recorded in the result for a draft (a skipped run posts nothing).
+        # The run is still not a full review, so it is never clean, findings or an anchor.
         result["reason"] = skips[raw["skipped"]]
         if raw["skipped"] == "draft":
             result["status"] = "skipped"
