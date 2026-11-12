@@ -158,7 +158,8 @@ so this blocks nothing; the first real review runs on the next PR.
 
 `.github/workflows/test-headless-claude-review-ci.yml` is a test beside the Claude delta review, not a
 replacement, and opt-in: it runs only while the repository variable `ACTIVATE_CLAUDE_REVIEW_TEST` is exactly
-`1`; any other value, or none, skips all three jobs. It runs the same reviewer prompts through two headless routes, so that a real run shows which
+`1`; any other value, or none, skips all four jobs. It runs the same reviewer prompts through three routes, two headless
+ones and the official `claude-code-action` exactly as the Claude delta review runs it, so that a real run shows which
 Anthropic credit pool pays for each: the subscriber credits page lists the Claude Agent SDK as covered and
 Claude Code as not, but the Agent SDK runs a bundled Claude Code binary, and the docs do not say how such
 requests are billed. Its check, `Headless Claude review comparison`, is advisory, never required, and posts
@@ -168,9 +169,10 @@ nothing to the pull request: the comparison goes to the job summary only.
 |---|---|---|---|
 | `headless-scope` | `Compute the headless review scope` | none | The same steps as `claude-scope` (a test keeps the restore, settings, scope and prompt steps identical), except the anchor: the head before this push on `synchronize`, else none (the whole PR). Uploads `headless-review-scope`. |
 | `headless-review` | `Run the sdk route` / `Run the api route` | `ANTHROPIC_API_KEY_SDK` (sdk route), `ANTHROPIC_API_KEY` (api route) | A matrix over the two routes, one at a time (`max-parallel: 1`), so the Console's usage timeline tells them apart. Checks out the PR head into `pr/` and the base SHA into `trusted/`, removes every symlink from `pr/` (so neither route depends on how a link is resolved), installs only the `headless-review` dependency group (`anthropic` and `claude-agent-sdk` pinned exactly, plus PyYAML for the shared redaction), places the patch, re-checks the PR before each pass, and runs `headless-review-pass` from `trusted/` for the general pass and, when the delta has a gate-critical path, the security pass. Uploads `headless-review-raw-<route>`. |
+| `headless-review-action` | `Run the action route` | `ANTHROPIC_API_KEY_CODE` | After the matrix (so the usage timeline still shows one route at a time), even when a matrix route failed. Fails first when `ANTHROPIC_API_KEY_CODE` is unset or empty (that step sees only whether it is set). Then `claude-review`'s own steps: the PR head checked out at the workspace root, the patch placed, the PR re-checked before each pass, and both `claude-code-action` passes with the same pin, flags, caps and JSON schema, only the key changed (a test keeps the two identical). Its record steps write `claude-review`'s record plus the route, the token totals from the transcript's result entry and the start and end time. Runs no repository code. Uploads `headless-review-raw-action`. |
 | `headless-compare` | `Headless Claude review comparison` | none | Checks out the base SHA, runs `headless-review-summary` and writes a table per route and pass (status, verdict, findings by severity, turns, reported cost, tokens, start and end time in UTC) to the job summary. |
 
-**The two routes** (`scripts/marketplace_ci/headless_review.py`):
+**The two headless routes** (`scripts/marketplace_ci/headless_review.py`; the third, `action`, is the workflow's own steps):
 
 - `sdk`: `claude_agent_sdk.query` with `tools`, `allowed_tools` = Read, Grep, Glob; `disallowed_tools`
   `mcp__*`, no MCP servers and `strict_mcp_config`; `setting_sources=[]` (no user, project or local settings,
@@ -194,23 +196,28 @@ nothing to the pull request: the comparison goes to the job summary only.
   the comparison table marks such a stop "(conservative api-route guard)". Structured outputs do not accept `maxItems`, `maxLength`, `minimum` or `pattern`, so this route
   sends the schema without them, and `parse_pass` checks the count and the line as for the action.
 
-Both write the record shape `claude-review-raw` uses, plus the route, token totals and times, so
+All three write the record shape `claude-review-raw` uses, plus the route, token totals and times, so
 `claude_review.parse_pass` reads them. An API error keeps only its HTTP status, a crash only the exception's
-type, output that holds the key is dropped, and other credential-shaped text in the output is redacted
-before the artifact is written. Events, the fork, Dependabot and draft skips, the kill switch
+type, output that holds the key is dropped, and in the sdk and api routes other credential-shaped text in
+the output is redacted before the artifact is written. The action route, like `claude-review`, only drops
+output that holds the key, since its job runs no repository code; the comparison table is redacted for all
+three, because `parse_pass` redacts each finding. Events, the fork, Dependabot and draft skips, the kill switch
 (`CLAUDE_CI_REVIEW_BYPASS`) and the model and timeout variables are the Claude delta review's; the opt-in
 variable is this workflow's own.
 
 **Reading the result.** The sdk route uses its own secret, `ANTHROPIC_API_KEY_SDK`, so the Console shows its
-usage on a key of its own; the api route uses `ANTHROPIC_API_KEY`, shared with the Claude delta review. There
-is no fallback: with `ANTHROPIC_API_KEY_SDK` unset or empty, the sdk passes fail with an error naming it. Every
+usage on a key of its own, and the action route uses `ANTHROPIC_API_KEY_CODE` for the same reason; the api route
+uses `ANTHROPIC_API_KEY`, shared with the Claude delta review. There is no fallback: with `ANTHROPIC_API_KEY_SDK`
+or `ANTHROPIC_API_KEY_CODE` unset or empty, that route fails with an error naming it. Every
 key in a linked organization still draws from one balance, so the run itself cannot say which pool paid. Compare the times in the job summary with the Console's
 usage by hour and the promotional-credit balance on the Billing page before and after a run.
 
 **Bootstrapping.** On the PR that adds this workflow the base SHA has no `headless_review.py`, so
 `headless-review` and `headless-compare` check out the PR's own copy instead, with a warning, but only for a
 PR into the default branch; a PR into another branch whose base lacks it fails those jobs instead. Every later
-PR into the default branch has a base copy. As with any `pull_request` workflow holding a secret, a
+PR into the default branch has a base copy. The comparison table comes from the base SHA's code, so the
+`action` row appears only once the change adding it has merged; until then its records are in the
+`headless-review-raw-action` artifact. As with any `pull_request` workflow holding a secret, a
 same-repository PR can edit this workflow and read the key.
 
 ## Configuring the review model
