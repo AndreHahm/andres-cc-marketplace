@@ -21,7 +21,7 @@ Required fields:
 Optional fields (inherited from `config.toml`'s `[agents]` section unless overridden per file):
 
 - `model` / `model_reasoning_effort`
-- `sandbox_mode`
+- `sandbox_mode` — accepted, but has no effect in a custom agent file (see below)
 - `mcp_servers`
 - `skills.config`
 
@@ -44,9 +44,24 @@ it into the TOML, since Codex's schema has no equivalent field. Earlier it copie
 verbatim as `tools = [...]`, which is invalid Codex-side and silently broke every agent that declared
 `tools:` in its Claude frontmatter — fixed 2026-09-02.
 
+### No sandbox in the exports (issue #700)
+
+A Codex subagent always inherits the parent turn's sandbox and approval settings, so `sandbox_mode` in
+a custom agent file is ignored. `convert_agent()` therefore emits no `sandbox_mode`. Instead it prepends
+a generated note to every export's `developer_instructions`: the agent's stated tool and edit
+restrictions are instructions, not limits Codex enforces, and a real read-only boundary comes only from
+running the parent session read-only. The repo's `.codex/config.toml` sets the parent to
+`workspace-write`.
+
+`features.shell_tool = false` was considered as a substitute and rejected. A live test on `codex-cli`
+0.166.0 (2026-11-12) gave an agent with that key only the `collaboration.*` tools. Codex has no separate
+file-read tool, since reading and searching go through its shell, so such a reviewer cannot read the
+files it reviews. A control agent without the key had `functions.exec` and ran commands normally.
+
 ## Common mistakes (per the source doc)
 
 1. Omitting a required field (`name`, `description`, `developer_instructions`).
 2. Assuming a spawned agent inherits reasoning effort when only `model` is set.
-3. Not setting `sandbox_mode` for a read-only exploration agent.
+3. Relying on a custom agent file's `sandbox_mode` to keep it read-only: the subagent inherits the
+   parent session's sandbox (see "No sandbox in the exports" above).
 4. Building an overly broad agent instead of a narrow, opinionated one.

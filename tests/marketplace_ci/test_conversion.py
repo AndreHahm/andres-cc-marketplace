@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 from scripts.marketplace_ci.conversion import (
+    _CODEX_BOUNDARY_NOTE,
     ConversionError,
     convert_agent,
     find_legacy_command_exports,
@@ -45,17 +46,23 @@ Match a pattern like `word\\ ` and a literal quote: "value".
 """
     rendered = convert_agent(markdown, "demo")
     parsed = tomllib.loads(rendered)
-    assert parsed["developer_instructions"] == (
+    assert parsed["developer_instructions"] == _CODEX_BOUNDARY_NOTE + (
         'Match a pattern like `word\\ ` and a literal quote: "value".'
     )
 
 
-def test_convert_agent_always_emits_read_only_sandbox_mode():
-    # Every exported agent needs its own sandbox_mode -- otherwise it silently
-    # inherits the parent session's (e.g. a root config.toml's workspace-write)
-    # instead of staying read-only. See conversion.py's own comment for why.
-    rendered = convert_agent(AGENT_MARKDOWN, "demo")
-    assert 'sandbox_mode = "read-only"' in rendered
+@pytest.mark.parametrize("agent_name", ["demo", "smoke-tester"])
+def test_convert_agent_emits_no_sandbox_mode_and_prepends_boundary_note(agent_name):
+    # Issue #700: Codex ignores sandbox_mode in a custom agent file (the
+    # subagent inherits the parent session's sandbox), so no export may claim
+    # one -- smoke-tester included -- and every export carries the note that
+    # its stated restrictions are instruction-only on the Codex side.
+    markdown = AGENT_MARKDOWN.replace("name: demo", f"name: {agent_name}")
+    parsed = tomllib.loads(convert_agent(markdown, agent_name))
+    assert "sandbox_mode" not in parsed
+    assert "features" not in parsed
+    assert parsed["developer_instructions"].startswith(_CODEX_BOUNDARY_NOTE)
+    assert parsed["developer_instructions"].endswith("Review the target carefully.")
 
 
 def test_convert_agent_translates_model_to_codex_tier():
@@ -65,9 +72,9 @@ def test_convert_agent_translates_model_to_codex_tier():
 
 def test_convert_agent_rejects_name_registry_key_mismatch():
     # frontmatter 'name' must match the registry key the caller loaded this
-    # source under -- otherwise _WORKSPACE_WRITE_AGENTS membership (and the
-    # emitted `name` line itself) would be keyed off untrusted, self-reported
-    # frontmatter instead of the actual registered agent identity.
+    # source under -- otherwise the emitted `name` line would be keyed off
+    # untrusted, self-reported frontmatter instead of the actual registered
+    # agent identity.
     with pytest.raises(ConversionError, match="does not match its registry key"):
         convert_agent(AGENT_MARKDOWN, "not-demo")
 
@@ -134,30 +141,6 @@ Body.
 """
     rendered = convert_agent(markdown, "demo")
     assert "model" not in rendered
-
-
-def test_convert_agent_gives_smoke_tester_workspace_write():
-    markdown = """---
-name: smoke-tester
-description: Runs smoke tests.
----
-
-Body.
-"""
-    rendered = convert_agent(markdown, "smoke-tester")
-    assert 'sandbox_mode = "workspace-write"' in rendered
-
-
-def test_convert_agent_other_agents_stay_read_only():
-    markdown = """---
-name: some-other-reviewer
-description: Reviews things.
----
-
-Body.
-"""
-    rendered = convert_agent(markdown, "some-other-reviewer")
-    assert 'sandbox_mode = "read-only"' in rendered
 
 
 def test_legacy_source_command_is_blocking(repo):
