@@ -138,7 +138,7 @@ Status: approved
   from 25 after PR #703's first funded run stopped at it (26 turns, $0.07).
 - Every run records its cost per pass, so the model choice and the caps can be tuned from real numbers.
 
-Status: approved
+Status: approved (the general pass's 50-turn cap approved by the owner on 2026-11-11, PR #703)
 
 ## R10. Kill switch (`CLAUDE_CI_REVIEW_BYPASS`)
 

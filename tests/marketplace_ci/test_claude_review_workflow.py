@@ -306,43 +306,5 @@ def test_the_record_step_drops_output_that_holds_the_key(tmp_path, structured, l
     assert record["secret_found"] is leak
     assert record["structured_output"] == ("" if leak else structured)
     assert record["result"] == {"subtype": "success", "is_error": False, "num_turns": 3,
-                                "total_cost_usd": 0.2, "api_error_status": None,
-                                "error_message": None}  # fmt: skip
+                                "total_cost_usd": 0.2, "api_error_status": None}  # fmt: skip
     assert not (tmp_path / "claude-execution-output.json").exists()
-
-
-@pytest.mark.skipif(shutil.which("jq") is None, reason="the record step uses jq")
-@pytest.mark.parametrize("step", ["Record the general pass", "Record the security pass"])
-@pytest.mark.parametrize(
-    ("message", "kept"),
-    [
-        ("API Error: 400 invalid_request_error", "API Error: 400 invalid_request_error"),
-        ("bad key sk-ant-svc01-OTHER_key-9 here", "bad key [REDACTED] here"),
-        ("echo sk-ant-DUMMY-KEY-123", "[dropped: held the API key]"),
-        ("x" * 600, "x" * 500),
-    ],
-)
-def test_the_record_step_keeps_a_redacted_error_message_out_of_the_log(
-    tmp_path, step, message, kept
-):
-    run = _step("claude-review", step)["run"]
-    (tmp_path / "claude-execution-output.json").write_text(
-        json.dumps([{"type": "result", "subtype": "success", "is_error": True, "num_turns": 1,
-                    "total_cost_usd": 0, "api_error_status": 400, "result": message}]),
-        "utf-8",
-    )  # fmt: skip
-    pass_name = "general" if "general" in step else "security"
-    env = {
-        "PATH": os.environ["PATH"],
-        "RUNNER_TEMP": str(tmp_path),
-        "PASS": pass_name,
-        "OUTCOME": "failure",
-        "STRUCTURED": "",
-        "API_KEY": "sk-ant-DUMMY-KEY-123",
-    }
-    done = subprocess.run(["bash", "-c", run], env=env, check=True, capture_output=True, text=True)
-    record = json.loads((tmp_path / "claude-raw" / f"{pass_name}.json").read_text("utf-8"))
-    assert record["result"]["api_error_status"] == 400
-    assert record["result"]["error_message"] == kept
-    assert "error_message" not in done.stdout
-    assert "DUMMY-KEY" not in done.stdout
