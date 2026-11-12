@@ -187,7 +187,10 @@ nothing to the pull request: the comparison goes to the job summary only.
   again. The same turn caps; the pass also stops at 2,000,000 tokens or at $1.00, computed from each
   response's usage and a price table in the module (a model missing from it is refused). Before each
   request the module prices its worst case (all input as cache writes, with new text at two characters
-  per token, plus the full output) and stops instead of sending a request that could pass the budget. Structured outputs do not accept `maxItems`, `maxLength`, `minimum` or `pattern`, so this route
+  per token, plus the full output) and stops instead of sending a request that could pass the budget. A
+  response whose real usage passes either cap ends the pass as `error_max_budget_usd`, a final answer too.
+  Because that guard prices nothing as cached, it can stop a long review well before $1 is really spent;
+  the comparison table marks such a stop "(conservative api-route guard)". Structured outputs do not accept `maxItems`, `maxLength`, `minimum` or `pattern`, so this route
   sends the schema without them, and `parse_pass` checks the count and the line as for the action.
 
 Both write the record shape `claude-review-raw` uses, plus the route, token totals and times, so

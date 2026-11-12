@@ -580,3 +580,34 @@ def test_the_grep_child_gets_no_environment(checkout: Path, monkeypatch):
     monkeypatch.setattr(hr.subprocess, "run", spy)
     assert hr.CheckoutFiles(checkout).grep("here", path="pkg") == "pkg/b.py:1:secret_word here"
     assert seen["env"] == {}
+
+
+# --- fixes from the cross-model re-review ---------------------------------------------------
+
+
+def test_a_final_answer_past_the_budget_is_not_a_success(checkout: Path):
+    final = _final_turn()
+    final.usage = _usage(inp=100_000)  # $0.20 at Sonnet 5.5 input prices
+    result = _run(FakeCreate([final]), checkout, max_budget_usd=0.19)
+    # The pre-request bound for the first request (overhead + prompt + full output) is below
+    # $0.19, so the request is sent; its real usage then passes the budget.
+    assert result.subtype == "error_max_budget_usd" and result.structured_output == ""
+    final = _final_turn()
+    final.usage = _usage(inp=2000)
+    assert _run(FakeCreate([final]), checkout, max_total_tokens=1000).subtype == (
+        "error_max_budget_usd"
+    )
+
+
+def test_summary_marks_an_api_budget_stop_as_the_conservative_guard():
+    stopped = hr.PassResult("error_max_budget_usd", True, 9, 0.4)
+    raws = {
+        route: {"skipped": None, "passes": [hr.pass_record(route, "general", "success", stopped,
+                                                           "", "t0", "t1")]}
+        for route in ("api", "sdk")
+    }  # fmt: skip
+    rows = {
+        line.split(" | ")[0]: line for line in hr.summarize(raws, frozenset(), "m").splitlines()
+    }
+    assert "(conservative api-route guard)" in rows["| api"]
+    assert "conservative" not in rows["| sdk"]

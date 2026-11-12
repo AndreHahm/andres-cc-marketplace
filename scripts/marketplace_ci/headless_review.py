@@ -451,6 +451,9 @@ def run_api_pass(
         for key in USAGE_KEYS:
             totals[key] += _usage_value(usage, key)
         spent += cost_usd(model, usage)
+        # Before the stop reason: a final answer that passed a cap is not a success.
+        if spent > max_budget_usd or sum(totals.values()) > max_total_tokens:
+            return done("error_max_budget_usd")
         stop = getattr(response, "stop_reason", None)
         content = list(getattr(response, "content", []) or [])
         if stop != "tool_use":
@@ -458,10 +461,6 @@ def run_api_pass(
                 return done("error_during_execution")
             text = "".join(b.text for b in content if getattr(b, "type", "") == "text")
             return done("success", text)
-        if spent >= max_budget_usd:
-            return done("error_max_budget_usd")
-        if sum(totals.values()) >= max_total_tokens:
-            return done("error_max_budget_usd")
         if turns >= max_turns:
             return done("error_max_turns")
         results = []
@@ -640,6 +639,10 @@ def summarize(raws: Mapping[str, Mapping], reviewed: frozenset[str], model: str)
                 )
             except InvalidReview as exc:
                 verdict, counts, status = "", "", f"invalid: {exc}"
+                if route == "api" and result.get("subtype") == "error_max_budget_usd":
+                    # The api route's guard prices every request as if nothing were cached, so it
+                    # can stop well before $1 is really spent: not a like-for-like budget stop.
+                    status += " (conservative api-route guard)"
             cost = result.get("total_cost_usd")
             ran = f"{_cell(record.get('started_at', ''))} to {_cell(record.get('finished_at', ''))}"
             usage = record.get("usage") or {}
