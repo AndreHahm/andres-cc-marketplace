@@ -66,7 +66,7 @@ Dependabot PR skip the whole workflow without failing. A newer push cancels a ru
 | Job | Check name | Secret | What it does |
 |---|---|---|---|
 | `claude-scope` | `Compute Claude review scope` | none | Kill-switch restore, PR-head checkout, the same base-SHA restore of `scripts/`, `pyproject.toml` and `uv.lock` as `compute-scope` (a test keeps the two blocks identical), then `claude-review-settings`, `find-review-anchor --profile claude`, `check-scope-bypass --ci-delta --review-exclusions claude --emit-review-paths` (which, for the Claude set, only writes the paths and skips the Codex bypass decision), `claude-review-prompts` and `claude-review-patch`. Uploads `claude-review-scope` (the reviewed paths, the prompts and the patch). |
-| `claude-review` | `Run Claude review passes` | `ANTHROPIC_API_KEY` | Runs no repository code. Checks out the PR head, copies the patch into the checkout at `.claude-review-input/delta.diff` (after the checkout, so no PR file can stand in for it), re-checks with `/usr/bin/gh` right before each pass that the PR is still ready and at the same head, and runs `anthropics/claude-code-action` (pinned by SHA) once for the general pass and once more for the security pass. Records each pass's outcome, structured output and the `result` entry of the execution file, deletes that file (it is the whole transcript), and uploads `claude-review-raw`. |
+| `claude-review` | `Run Claude review passes` | `ANTHROPIC_API_KEY_SDK` | Checks out the PR head into `pr/` and the base SHA into `trusted/`, removes every symlink from `pr/`, fails unless the base SHA has `scripts/marketplace_ci/headless_review.py` (it never runs the PR's own copy), installs only the `headless-review` dependency group, and copies the patch into the checkout at `pr/.claude-review-input/delta.diff` (after the checkout, so no PR file can stand in for it). Right before each pass it re-checks with `/usr/bin/gh` that the PR is still ready and at the same head (a failed lookup is reported as `lookup_failed`, never as a moved head), then runs `headless-review-pass --route sdk` from `trusted/` (the Claude Agent SDK) once for the general pass and once more for the security pass. Each pass writes its own record (outcome, structured output, the result entry and token totals); a pass that leaves none (no key, a timeout, a crash) is recorded as failed. Uploads `claude-review-raw`. |
 | `claude-publish` | `Claude delta review` | none | Checks out the **base SHA** (it needs nothing from the PR), runs `publish-claude-review`, uploads `claude-review-result` and fails the check when the result says so. |
 
 **Scope (R3, R4).** The anchor is the head of the newest earlier run of this workflow whose `Claude delta
@@ -81,37 +81,37 @@ skipped and the result is `clean` ("nothing new to review"), which is an anchor.
 
 **What Claude may do (R5).** The prompts are built in `claude-scope` from the base SHA's
 `.github/claude-review/prompt.md`, `REVIEW.md` and `.claude/agents/security-reviewer.md`. The security pass
-runs only when a reviewed path is gate-critical. Each pass gets `--tools "Read,Grep,Glob"`, `--allowedTools`
-with the same three, `--disallowedTools "mcp__*"` (the action's own GitHub MCP servers included), and
-`--setting-sources user` plus `--settings` with `disableAllHooks`: by default the action (as of the pinned
-v1.0.271, read from its source) loads the user, project and local settings sources, and this repository's
-`.claude/settings.json` registers hooks that run its own scripts. The action restores `.claude/` and
-`CLAUDE.md` from the base branch for a PR, but leaves every other file at the PR head, so those hooks would
-run PR-supplied code next to the key. The same `--settings` sets `permissions.blockReadsOutsideWorkingDirectories`
-(Claude Code 2.1.257 or later; the pinned action bundles 2.1.322) and denies `Read(//proc/**)`,
+runs only when a reviewed path is gate-critical. Each pass runs `headless_review.run_sdk_pass` (the Claude
+Agent SDK, `claude-agent-sdk` pinned exactly in the `headless-review` group) from the base SHA's code in
+`trusted/`, with `cwd` the PR checkout in `pr/`: `tools` and `allowed_tools` Read, Grep and Glob,
+`disallowed_tools` `mcp__*`, no MCP servers and `strict_mcp_config`, and `setting_sources=[]`, so no user,
+project or local settings load: this repository's `.claude/settings.json` registers hooks that run its own
+scripts, and they would run PR-supplied code next to the key. Inline settings switch hooks off
+(`disableAllHooks`), set `permissions.blockReadsOutsideWorkingDirectories` and deny `Read(//proc/**)`,
 `Read(//sys/**)` and `Read(.git/**)`: a bare Read or Grep grant would otherwise reach `/proc/*/environ`,
-which holds the key, and the git config the action writes the job token into. `--strict-mcp-config` keeps a
-PR-supplied `.mcp.json` server from starting: the action writes `enableAllProjectMcpServers: true` into the
-user settings this run loads. Claude cannot read `.git`, so `claude-review-patch` gives it the PR's own change
+which holds the key. `permission_mode` is `dontAsk`, and Claude Code's stderr is discarded (it would carry
+API error text into the job log). Every symlink is removed from `pr/` first, so the review never depends on
+how Claude Code resolves a link. The key reaches only the two pass steps, as the environment variable
+`ANTHROPIC_API_KEY` both the SDK and the Claude Code process it starts read. Claude cannot read `.git`, so `claude-review-patch` gives it the PR's own change
 to the reviewed paths: `git diff` from the merge base to the head with `--no-ext-diff --no-textconv` (a
 PR-supplied `.gitattributes` cannot change what is shown) and literal pathspecs, cut at 1,000,000 bytes
 with a note saying how many bytes were left out; it includes the removed content of deleted paths. A git
 failure while building it fails `claude-scope`, so the review could not run. A finding on a deleted path cannot go
 inline and lands in the summary comment. Claude returns findings as
-`--json-schema` structured output; it posts nothing. The step that records a pass drops its output when it
-contains the key itself (the key reaches `jq` through its environment, not its arguments), and the
-publisher then refuses the pass (could-not-run, nothing posted). Any other text shaped like a credential
+structured output against the schema in `headless_review.REVIEW_SCHEMA`; it posts nothing. A pass's record
+drops its output when it contains the key itself, and the publisher then refuses the pass (could-not-run,
+nothing posted). Any other text shaped like a credential
 (the shared `token_shapes.json` shapes) is redacted rather than refused: a reviewed test fixture holds such
 shapes, and refusing would let a PR switch the review off. The schema caps a pass at 30 findings of at
-most 2000 characters, so its output fits the one environment variable the record step reads. The action gets `github_token:
-${{ github.token }}` (contents and pull-requests read), so it never exchanges an OIDC token for the Claude
-GitHub App's token and the job needs no `id-token: write`.
+most 2000 characters. An API error keeps only its HTTP status (`api_error_status`), a crash only the
+exception's type. The job needs no GitHub token beyond the re-check's read and no `id-token: write`.
 
 Accepted residuals (from the R11 security review): anyone who can push a branch here can edit this workflow
 in their own PR and read the key, as with every `pull_request` workflow that holds a secret, so the key
-should be a dedicated one in its own Console workspace (R9) that is cheap to rotate; and whether a nested
-`CLAUDE.md` in a PR-supplied directory loads under `--setting-sources user` has not been tested live (the
-prompt names it untrusted either way). The jobs without the key install uv with `astral-sh/setup-uv` (pinned
+should be a dedicated one in its own Console workspace (R9) that is cheap to rotate; the Claude Code process
+inherits the key in its environment, contained by the read-only tools, the blocked reads outside the
+checkout and the `/proc` deny; and whether a nested `CLAUDE.md` in a PR-supplied directory loads with no
+settings sources has not been tested live (the prompt names it untrusted either way). Every job installs uv with `astral-sh/setup-uv` (pinned
 by SHA, uv `0.12.21`), not `pip install uv`, and sync with `--no-build` (the two source-only packages
 `csscompressor` and `jsmin`, which these steps never use, are left out) and run `uv run --no-sync`, so no
 package's setup code runs, as in `marketplace-ci.yml`'s review-helpers job.
@@ -138,16 +138,18 @@ are not carried to later runs.
 | `CLAUDE_KIT_REVIEW_MODEL` | `claude-sonnet-5-5` | `^[A-Za-z0-9._-]{1,64}$`, used for both passes |
 | `CLAUDE_KIT_REVIEW_TIMEOUT_MS` | `1200000` (20 min) | a positive whole number of milliseconds; each pass step gets that many minutes, rounded up. Two passes plus 10 minutes of setup must fit the review job's 50-minute limit (`REVIEW_JOB_TIMEOUT_MINUTES`), so at most `1200000` |
 
-Each pass is capped at an estimated $1.00 (`--max-budget-usd`, Claude Code's client-side estimate, which can
+Each pass is capped at an estimated $1.00 (`max_budget_usd`, Claude Code's client-side estimate, which can
 overshoot) and a turn cap: 50 for the general pass, which reads the whole delta, and 25 for the security
 pass; reaching either cap fails the pass as could-not-run. The monthly $200 limit is a spend
 limit on the Anthropic Console workspace that holds the key, set outside this repository.
 
 **Credits.** The monthly API credits that come with a Claude subscription do not cover Claude Code
 ([API credits for subscribers](https://platform.claude.com/docs/en/about-claude/api-credits-for-subscribers)),
-and `claude-code-action` runs Claude Code. With only those credits in the organization, every pass fails
-with HTTP 400 ("Credit balance is too low"), recorded as `api_error_status` 400; the review runs on purchased
-credit. Whether a headless route draws the subscriber credits is what the test workflow below measures.
+and the Claude Agent SDK runs a bundled Claude Code. When the review still ran `claude-code-action`, with only
+those credits in the organization every pass failed with HTTP 400 ("Credit balance is too low"), recorded as
+`api_error_status` 400. Whether the SDK route draws the subscriber credits has not been determined; the
+test workflow below measures it. The review now uses its own key, `ANTHROPIC_API_KEY_SDK`, so the Console
+shows its usage separately.
 
 **Bootstrapping.** The PR that adds this workflow cannot review itself: `claude-scope` and `claude-publish`
 both run the base SHA's `scripts/marketplace_ci/`, which lacks the new subcommands, so both fail with an
@@ -159,7 +161,7 @@ so this blocks nothing; the first real review runs on the next PR.
 `.github/workflows/test-headless-claude-review-ci.yml` is a test beside the Claude delta review, not a
 replacement, and opt-in: it runs only while the repository variable `ACTIVATE_CLAUDE_REVIEW_TEST` is exactly
 `1`; any other value, or none, skips all four jobs. It runs the same reviewer prompts through three routes, two headless
-ones and the official `claude-code-action` exactly as the Claude delta review runs it, so that a real run shows which
+ones and the official `claude-code-action` as the Claude delta review ran it before it moved to the sdk route, so that a real run shows which
 Anthropic credit pool pays for each: the subscriber credits page lists the Claude Agent SDK as covered and
 Claude Code as not, but the Agent SDK runs a bundled Claude Code binary, and the docs do not say how such
 requests are billed. Its check, `Headless Claude review comparison`, is advisory, never required, and posts
@@ -169,14 +171,14 @@ nothing to the pull request: the comparison goes to the job summary only.
 |---|---|---|---|
 | `headless-scope` | `Compute the headless review scope` | none | The same steps as `claude-scope` (a test keeps the restore, settings, scope and prompt steps identical), except the anchor: the head before this push on `synchronize`, else none (the whole PR). Uploads `headless-review-scope`. |
 | `headless-review` | `Run the sdk route` / `Run the api route` | `ANTHROPIC_API_KEY_SDK` (sdk route), `ANTHROPIC_API_KEY` (api route) | A matrix over the two routes, one at a time (`max-parallel: 1`), so the Console's usage timeline tells them apart. Checks out the PR head into `pr/` and the base SHA into `trusted/`, removes every symlink from `pr/` (so neither route depends on how a link is resolved), installs only the `headless-review` dependency group (`anthropic` and `claude-agent-sdk` pinned exactly, plus PyYAML for the shared redaction), places the patch, re-checks the PR before each pass, and runs `headless-review-pass` from `trusted/` for the general pass and, when the delta has a gate-critical path, the security pass. Uploads `headless-review-raw-<route>`. |
-| `headless-review-action` | `Run the action route` | `ANTHROPIC_API_KEY_CODE` | After the matrix (so the usage timeline still shows one route at a time), even when a matrix route failed. Fails first when `ANTHROPIC_API_KEY_CODE` is unset or empty (that step sees only whether it is set). Then `claude-review`'s own steps: the PR head checked out at the workspace root, the patch placed, the PR re-checked before each pass, and both `claude-code-action` passes with the same pin, flags, caps and JSON schema, only the key changed (a test keeps the two identical). Its record steps write `claude-review`'s record plus the route, the token totals from the transcript's result entry and the start and end time. Runs no repository code. Uploads `headless-review-raw-action`. |
+| `headless-review-action` | `Run the action route` | `ANTHROPIC_API_KEY_CODE` | After the matrix (so the usage timeline still shows one route at a time), even when a matrix route failed. Fails first when `ANTHROPIC_API_KEY_CODE` is unset or empty (that step sees only whether it is set). Then the steps the Claude delta review used before it moved to the sdk route: the PR head checked out at the workspace root, the patch placed, the PR re-checked before each pass, and both `claude-code-action` passes (pinned by SHA) with `--setting-sources user` and the sdk route's tools, settings, caps and JSON schema as flags (a test keeps them equal to `headless_review`'s). Its record steps write the record `parse_pass` reads plus the route, the token totals from the transcript's result entry and the start and end time. Runs no repository code. Uploads `headless-review-raw-action`. |
 | `headless-compare` | `Headless Claude review comparison` | none | Checks out the base SHA, runs `headless-review-summary` and writes a table per route and pass (status, verdict, findings by severity, turns, reported cost, tokens, start and end time in UTC) to the job summary. |
 
 **The two headless routes** (`scripts/marketplace_ci/headless_review.py`; the third, `action`, is the workflow's own steps):
 
 - `sdk`: `claude_agent_sdk.query` with `tools`, `allowed_tools` = Read, Grep, Glob; `disallowed_tools`
   `mcp__*`, no MCP servers and `strict_mcp_config`; `setting_sources=[]` (no user, project or local settings,
-  so no repository hooks or `CLAUDE.md`); the same inline settings as `claude-review` (hooks off, reads outside
+  so no repository hooks or `CLAUDE.md`); the inline settings (hooks off, reads outside
   the working directory blocked, `.git`, `/proc` and `/sys` denied); `permission_mode` `dontAsk`; Claude Code's
   stderr discarded (it would carry API error text into the job log); `cwd` the PR checkout; the same turn caps,
   `max_budget_usd` 1.00 and JSON schema.
@@ -199,15 +201,15 @@ nothing to the pull request: the comparison goes to the job summary only.
 All three write the record shape `claude-review-raw` uses, plus the route, token totals and times, so
 `claude_review.parse_pass` reads them. An API error keeps only its HTTP status, a crash only the exception's
 type, output that holds the key is dropped, and in the sdk and api routes other credential-shaped text in
-the output is redacted before the artifact is written. The action route, like `claude-review`, only drops
+the output is redacted before the artifact is written. The action route only drops
 output that holds the key, since its job runs no repository code; the comparison table is redacted for all
 three, because `parse_pass` redacts each finding. Events, the fork, Dependabot and draft skips, the kill switch
 (`CLAUDE_CI_REVIEW_BYPASS`) and the model and timeout variables are the Claude delta review's; the opt-in
 variable is this workflow's own.
 
-**Reading the result.** The sdk route uses its own secret, `ANTHROPIC_API_KEY_SDK`, so the Console shows its
-usage on a key of its own, and the action route uses `ANTHROPIC_API_KEY_CODE` for the same reason; the api route
-uses `ANTHROPIC_API_KEY`, shared with the Claude delta review. There is no fallback: with `ANTHROPIC_API_KEY_SDK`
+**Reading the result.** The sdk route uses `ANTHROPIC_API_KEY_SDK`, the Claude delta review's own key, so the
+Console shows a test run's sdk usage beside the review's on that key; the action route uses
+`ANTHROPIC_API_KEY_CODE` and the api route `ANTHROPIC_API_KEY`, each on a key of its own. There is no fallback: with `ANTHROPIC_API_KEY_SDK`
 or `ANTHROPIC_API_KEY_CODE` unset or empty, that route fails with an error naming it. Every
 key in a linked organization still draws from one balance, so the run itself cannot say which pool paid. Compare the times in the job summary with the Console's
 usage by hour and the promotional-credit balance on the Billing page before and after a run.

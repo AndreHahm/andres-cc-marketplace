@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import shlex
 import shutil
 import subprocess
 from dataclasses import dataclass
@@ -708,39 +709,50 @@ def _action_step(name):
     return next(s for s in _steps("headless-review-action") if s.get("name") == name)
 
 
-def _claude_review_step(name):
-    return next(s for s in CLAUDE_WF["jobs"]["claude-review"]["steps"] if s.get("name") == name)
+_MODEL_EXPR = "${{ needs.headless-scope.outputs.model }}"
 
 
 @pytest.mark.parametrize("name", ["General pass", "Security pass"])
-def test_the_action_route_runs_the_claude_review_pass_with_only_its_key_changed(name: str):
-    ours, theirs = _action_step(name), _claude_review_step(name)
-    # The same pin, tools, settings, caps and schema; the key and the scope job's name differ.
-    assert ours["uses"] == theirs["uses"]
-    assert ours["with"]["anthropic_api_key"] == "${{ secrets.ANTHROPIC_API_KEY_CODE }}"
-    assert theirs["with"]["anthropic_api_key"] == "${{ secrets.ANTHROPIC_API_KEY }}"
+def test_the_action_route_has_the_sdk_routes_hardening(name: str):
+    """The action route as the Claude delta review ran it before it moved to the sdk route: the
+    same read-only tools, settings, caps and schema the sdk route uses, on its own key."""
+    step = _action_step(name)
+    assert step["uses"].startswith("anthropics/claude-code-action@")
+    assert step["with"]["anthropic_api_key"] == "${{ secrets.ANTHROPIC_API_KEY_CODE }}"
+    assert step["with"]["github_token"] == "${{ github.token }}"
+    assert step["continue-on-error"] is True and "pass_minutes" in step["timeout-minutes"]
+    args = shlex.split(step["with"]["claude_args"].replace(_MODEL_EXPR, "MODEL"))
+    assert args.count("--strict-mcp-config") == 1
+    args.remove("--strict-mcp-config")
+    pairs = dict(zip(args[::2], args[1::2], strict=True))
+    assert pairs["--model"] == "MODEL"
+    assert pairs["--tools"] == pairs["--allowedTools"] == "Read,Grep,Glob"
+    assert pairs["--disallowedTools"] == "mcp__*"
+    # The action loads user, project and local settings by default; only user settings here.
+    assert pairs["--setting-sources"] == "user"
+    assert json.loads(pairs["--settings"]) == hr.SDK_SETTINGS
+    assert json.loads(pairs["--json-schema"]) == hr.REVIEW_SCHEMA
+    review_pass = step["id"]
+    assert pairs["--max-turns"] == str(hr.MAX_TURNS[review_pass])
+    assert float(pairs["--max-budget-usd"]) == hr.MAX_BUDGET_USD
+    for forbidden in ("allowed_non_write_users", "show_full_output", "display_report"):
+        assert forbidden not in step["with"]
 
-    def normalized(step):
-        text = json.dumps({k: v for k, v in step.items()}, sort_keys=True)
-        return (
-            text.replace("secrets.ANTHROPIC_API_KEY_CODE", "KEY")
-            .replace("secrets.ANTHROPIC_API_KEY", "KEY")
-            .replace("needs.headless-scope.", "needs.SCOPE.")
-            .replace("needs.claude-scope.", "needs.SCOPE.")
-        )
 
-    assert normalized(ours) == normalized(theirs)
-
-
-@pytest.mark.parametrize(
-    "name",
-    [
-        "Place the reviewed patch in the checkout",
-        "Read the reviewer prompts",
-    ],
-)
-def test_the_action_route_prepares_the_checkout_as_the_claude_review_does(name: str):
-    assert _action_step(name)["run"] == _claude_review_step(name)["run"]
+def test_the_action_route_places_the_patch_in_its_checkout():
+    names = [s.get("name") for s in _steps("headless-review-action")]
+    run = _action_step("Place the reviewed patch in the checkout")["run"]
+    assert (
+        'cp -- "$RUNNER_TEMP/claude-scope/prompts/delta.diff" .claude-review-input/delta.diff'
+        in run
+    )
+    assert "rm -rf -- .claude-review-input" in run
+    assert (
+        names.index("Check out the PR's own head commit")
+        < names.index("Place the reviewed patch in the checkout")
+        < names.index("General pass")
+    )
+    assert "openssl rand -hex 16" in _action_step("Read the reviewer prompts")["run"]
 
 
 def test_the_action_route_checks_out_only_the_pr_head_and_runs_no_repository_code():
@@ -853,3 +865,50 @@ def test_the_action_record_step_keeps_only_numeric_token_counts(tmp_path):
     assert record["usage"] == {"input_tokens": 0, "output_tokens": 2,
                                "cache_creation_input_tokens": 0,
                                "cache_read_input_tokens": 0}  # fmt: skip
+
+
+def test_the_sdk_route_keeps_the_sdks_own_log_text_out_of_the_job_log(
+    monkeypatch, tmp_path: Path, capsys, caplog
+):
+    import logging
+    import sys
+
+    def fake_run(fn):
+        # What the SDK does on a reader failure: log the error's text.
+        logging.getLogger("claude_agent_sdk._internal.query").error(
+            "Fatal error in message reader: secret detail"
+        )
+        raise RuntimeError("secret detail")
+
+    monkeypatch.setitem(sys.modules, "anyio", SimpleNamespace(run=fake_run))
+    monkeypatch.setitem(sys.modules, "claude_agent_sdk", SimpleNamespace(
+        ClaudeAgentOptions=dict, ResultMessage=FakeResult, query=None,
+    ))  # fmt: skip
+    monkeypatch.setattr(logging.getLogger("claude_agent_sdk"), "level", logging.NOTSET)
+    caplog.set_level(logging.DEBUG)
+    record = hr.run_pass("sdk", "general", prompt="p", model="m", checkout=tmp_path)
+    assert record["outcome"] == "failure"
+    # A record is only made when the logger's level lets it through, so none reaches a handler.
+    assert not [r for r in caplog.records if r.name.startswith("claude_agent_sdk")]
+    captured = capsys.readouterr()
+    assert "secret detail" not in captured.out + captured.err
+    assert "RuntimeError" in captured.out
+
+
+def test_every_recheck_and_collect_step_matches_the_claude_review():
+    """The test's re-checks report a failed lookup as the Claude delta review does, never as a
+    moved head, and its collect steps carry that state as a skip."""
+    prod = next(
+        s for s in CLAUDE_WF["jobs"]["claude-review"]["steps"]
+        if s.get("name") == "Re-check the pull request before the general pass"
+    )["run"]  # fmt: skip
+    rechecks = [
+        s["run"] for job in ("headless-review", "headless-review-action")
+        for s in _steps(job) if str(s.get("name", "")).startswith("Re-check the pull request")
+    ]  # fmt: skip
+    assert len(rechecks) == 4
+    for run in rechecks:
+        assert run.startswith(prod)
+    for job in ("headless-review", "headless-review-action"):
+        collect = next(s for s in _steps(job) if s.get("name") == "Collect the passes")
+        assert "draft|head_moved|lookup_failed)" in collect["run"]

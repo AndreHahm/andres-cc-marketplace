@@ -1,17 +1,15 @@
-"""The test comparison of the routes for the Claude delta review
-(`.github/workflows/test-headless-claude-review-ci.yml`).
-
-The same reviewer prompt runs through two headless routes, so a real run shows how each is billed
-(the workflow also runs claude-code-action as a third route; `summarize` reads its records too):
+"""Headless routes for the Claude delta review. `.github/workflows/claude-review-ci.yml` runs
+each pass through the `sdk` route; `.github/workflows/test-headless-claude-review-ci.yml` compares
+both routes, plus claude-code-action as a third, so a real run shows how each is billed
+(`summarize` reads the action's records too):
 
 - `sdk`: the Claude Agent SDK (`claude-agent-sdk`), with Read/Grep/Glob only, no settings
   sources, no MCP servers, hooks off and reads confined to the PR checkout.
 - `api`: the Messages API (`anthropic`), in a loop this module drives, with its own read-only
   Read/Grep/Glob tools confined to the PR checkout, and turn, token and cost caps.
 
-Each pass writes the record shape `.github/workflows/claude-review-ci.yml`'s record step writes,
-so `claude_review.parse_pass` reads both routes. The workflow posts nothing to the pull request:
-`summarize` writes a comparison table to the job summary only.
+Each pass writes the record shape `claude_review.parse_pass` reads. The test workflow posts
+nothing to the pull request: `summarize` writes a comparison table to the job summary only.
 
 Nothing an API error says is kept: a failed pass records only its HTTP status code.
 """
@@ -20,6 +18,7 @@ from __future__ import annotations
 
 import fnmatch
 import json
+import logging
 import os
 import re
 import subprocess  # nosec B404  # one fixed inline program under sys.executable, no shell
@@ -64,7 +63,8 @@ def _prices(model: str, prompt_tokens: float) -> tuple[float, float, float, floa
     return PRICES[model]
 
 
-# The schema claude-review-ci.yml gives claude-code-action; the sdk route uses it as is.
+# The review's output schema; the sdk route uses it as is (the test's action route passes it as
+# --json-schema).
 REVIEW_SCHEMA: dict = {
     "type": "object",
     "required": ["verdict", "findings"],
@@ -109,8 +109,8 @@ def _without_unsupported(node: object) -> object:
     return node
 
 
-# The settings claude-review-ci.yml gives claude-code-action: hooks off, reads confined to the
-# working directory (the PR checkout), no .git, /proc or /sys.
+# The review's inline settings (the test's action route passes them as --settings): hooks off,
+# reads confined to the working directory (the PR checkout), no .git, /proc or /sys.
 SDK_SETTINGS = {
     "disableAllHooks": True,
     "permissions": {
@@ -169,7 +169,7 @@ class ToolError(ValueError):
 class CheckoutFiles:
     """Read-only access to one directory tree, the PR checkout. Every path is resolved,
     symlinks included, and refused unless it stays inside the root; anything under a `.git`
-    directory is refused too (as claude-review-ci.yml's `Read(.git/**)` deny)."""
+    directory is refused too (as the sdk route's `Read(.git/**)` deny)."""
 
     def __init__(self, root: Path) -> None:
         self.root = root.resolve(strict=True)
@@ -391,7 +391,8 @@ def cost_usd(model: str, usage: object) -> float:
 
 @dataclass
 class PassResult:
-    """What one pass returned, in claude-review-ci.yml's result shape, plus token totals."""
+    """What one pass returned, in the result shape `claude_review.parse_pass` reads, plus token
+    totals."""
 
     subtype: str
     is_error: bool
@@ -565,8 +566,8 @@ def pass_record(
     route: str, review_pass: str, outcome: str, result: PassResult | None, api_key: str,
     started_at: str, finished_at: str,
 ) -> dict:  # fmt: skip
-    """The record claude-review-ci.yml's record step writes, plus the route, the token totals
-    and when the pass ran. Output that holds the API key is dropped, as there."""
+    """The record `claude_review.parse_pass` reads, plus the route, the token totals
+    and when the pass ran. Output that holds the API key is dropped."""
     from scripts.marketplace_ci.claude_review import _redact_secrets
 
     structured = result.structured_output if result else ""
@@ -612,6 +613,10 @@ def run_pass(route: str, review_pass: str, *, prompt: str, model: str, checkout:
                 max_turns=MAX_TURNS[review_pass],
             )
         else:
+            # The SDK logs some failures with their text (claude_agent_sdk/_internal/query.py's
+            # "Fatal error in message reader: ..."); its child loggers inherit this level, so none
+            # of it reaches the job log, as Claude Code's discarded stderr.
+            logging.getLogger("claude_agent_sdk").setLevel(logging.CRITICAL + 1)
             import anyio  # ty: ignore[unresolved-import]  # only the headless-review group
             from claude_agent_sdk import (  # ty: ignore[unresolved-import]
                 ClaudeAgentOptions,

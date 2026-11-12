@@ -2,9 +2,10 @@ name: Claude Delta Review
 
 # Advisory Claude review of what a pull request changed since the head this workflow last
 # reviewed (docs/ci-claude-review-user-requirements.md, "R<n>" below; implementation in
-# docs/ci.md). Not a required check (R1). The API key reaches only claude-review, which runs no
-# repository code: Claude reads the PR checkout with Read/Grep/Glob only, and the jobs around it
-# run code restored from the base SHA.
+# docs/ci.md). Not a required check (R1). The API key reaches only claude-review, which runs the
+# Claude Agent SDK from code restored from the base SHA, beside (never inside) the PR checkout:
+# Claude reads that checkout with Read/Grep/Glob only, and no code from it runs. The jobs around
+# it also run code restored from the base SHA.
 on:
   pull_request:
     # R2: only events that bring new commits, plus ready_for_review (the whole PR).
@@ -304,7 +305,7 @@ jobs:
     timeout-minutes: 50
     permissions:
       contents: read
-      # The live draft and head re-check; the action's own setup reads the PR.
+      # The live draft and head re-check.
       pull-requests: read
     steps:
       - name: Download the review scope
@@ -313,36 +314,66 @@ jobs:
           name: claude-review-scope
           path: ${{ runner.temp }}/claude-scope
 
+      # The reviewed tree. Claude reads only inside it, and no code from it runs.
       - name: Check out the PR's own head commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
         with:
           persist-credentials: false
           ref: ${{ github.event.pull_request.head.sha }}
+          path: pr
 
-      # R5: the patch goes inside the checkout (Claude may read nothing outside it), placed after the
-      # checkout so no pull request file can stand in for it. prompt.md names this path.
+      # A PR symlink (to /proc/self/environ, to trusted/, ...) is removed before any pass, so the
+      # review never depends on how Claude Code resolves a link for
+      # blockReadsOutsideWorkingDirectories.
+      - name: Remove symlinks from the reviewed tree
+        run: |
+          set -euo pipefail
+          find pr -type l -print -delete | sed 's/^/removed symlink: /'
+          if [ -n "$(find pr -type l -print)" ]; then
+            echo "::error::a symlink is left in the reviewed tree"; exit 1
+          fi
+
+      # The code that holds the key, from the base SHA, beside (never inside) the reviewed tree.
+      - name: Check out the trusted code from the base SHA
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: trusted
+
+      # A base without the runner (a PR into a branch that predates it) fails here rather than
+      # running the PR's own copy.
+      - name: Check that the base SHA has the review runner
+        run: |
+          if [ ! -f trusted/scripts/marketplace_ci/headless_review.py ]; then
+            echo "::error::the base SHA has no scripts/marketplace_ci/headless_review.py; not running the PR's own copy"
+            exit 1
+          fi
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # ratchet:actions/setup-python@v7.0.0
+        with:
+          python-version: "3.13"
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # ratchet:astral-sh/setup-uv@v10.3.3
+        with:
+          version: "0.12.21"
+          enable-cache: "false"
+      # Only the pinned headless-review group; --no-build runs no package's setup code.
+      - name: Install the review dependencies
+        working-directory: trusted
+        run: uv sync --locked --no-config --no-install-project --only-group headless-review --no-build
+
+      # R5: the patch goes inside the reviewed tree (Claude may read nothing outside it), placed after
+      # the checkout so no pull request file can stand in for it. prompt.md names this path.
       - name: Place the reviewed patch in the checkout
         run: |
           set -euo pipefail
-          rm -rf -- .claude-review-input
-          mkdir -- .claude-review-input
-          cp -- "$RUNNER_TEMP/claude-scope/prompts/delta.diff" .claude-review-input/delta.diff
+          rm -rf -- pr/.claude-review-input
+          mkdir -- pr/.claude-review-input
+          cp -- "$RUNNER_TEMP/claude-scope/prompts/delta.diff" pr/.claude-review-input/delta.diff
 
-      # The prompts go to the action as step outputs; a random delimiter keeps a PR-chosen file
-      # name inside a prompt from ending the value early.
-      - name: Read the reviewer prompts
-        id: prompts
-        run: |
-          set -euo pipefail
-          for pass in general security; do
-            file="$RUNNER_TEMP/claude-scope/prompts/$pass.md"
-            [ -f "$file" ] || continue
-            delim="EOF_$(openssl rand -hex 16)"
-            { echo "$pass<<$delim"; cat "$file"; echo; echo "$delim"; } >> "$GITHUB_OUTPUT"
-          done
-
-      # Right before each API call: the PR must still be ready, at the head this run reviews.
-      # /usr/bin/gh by absolute path, so nothing in the PR checkout can stand in for it.
+      # Right before each API call: the PR must still be ready, at the head this run reviews. A
+      # failed lookup is reported as such, never as a moved head. /usr/bin/gh by absolute path, so
+      # nothing in the PR checkout can stand in for it.
       - name: Re-check the pull request before the general pass
         id: live_general
         env:
@@ -351,65 +382,39 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          read -r draft head < <(/usr/bin/gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '"\(.draft) \(.head.sha)"')
+          draft="" head=""
+          if info=$(/usr/bin/gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '"\(.draft) \(.head.sha)"'); then
+            read -r draft head <<< "$info" || true
+          fi
           if [ "$draft" = "true" ]; then state=draft
+          elif [ "$draft" != "false" ] || ! printf '%s' "$head" | grep -Eq '^[0-9a-f]{40}$'; then state=lookup_failed
           elif [ "$head" != "$HEAD_SHA" ]; then state=head_moved
           else state=ok; fi
           echo "pull request state: $state"
           echo "state=$state" >> "$GITHUB_OUTPUT"
 
-      # R5: read-only tools, no MCP tools, no project settings or hooks (the repository's
-      # .claude/settings.json registers hooks that run repository scripts). R9: per-pass caps.
+      # R5: read-only tools, no MCP tools, no settings sources or hooks; R9: per-pass caps. All set
+      # in headless_review.run_sdk_pass (the Claude Agent SDK), run from the base SHA. The key is
+      # this route's own (ANTHROPIC_API_KEY_SDK); an unset one fails the pass.
       - name: General pass
         id: general
         if: steps.live_general.outputs.state == 'ok'
         continue-on-error: true
         timeout-minutes: ${{ fromJSON(needs.claude-scope.outputs.pass_minutes) }}
-        uses: anthropics/claude-code-action@4fa93a88de49bbef68b10eb15aabedf28ca0e1ed # ratchet:anthropics/claude-code-action@v1.0.271
-        with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          github_token: ${{ github.token }}
-          prompt: ${{ steps.prompts.outputs.general }}
-          claude_args: >-
-            --model ${{ needs.claude-scope.outputs.model }}
-            --max-turns 50
-            --max-budget-usd 1.00
-            --tools "Read,Grep,Glob"
-            --allowedTools "Read,Grep,Glob"
-            --disallowedTools "mcp__*"
-            --strict-mcp-config
-            --setting-sources user
-            --settings '{"disableAllHooks":true,"permissions":{"blockReadsOutsideWorkingDirectories":true,"deny":["Read(//proc/**)","Read(//sys/**)","Read(.git/**)"]}}'
-            --json-schema '{"type":"object","required":["verdict","findings"],"additionalProperties":false,"properties":{"verdict":{"type":"string","enum":["LGTM","Changes Requested"]},"findings":{"type":"array","maxItems":30,"items":{"type":"object","required":["severity","path","line","title","body"],"additionalProperties":false,"properties":{"severity":{"type":"string","enum":["Critical","Major","Minor","Informational"]},"path":{"type":"string","maxLength":300,"pattern":"^[^`<>\\x00-\\x1f]+$"},"line":{"type":"integer","minimum":1},"title":{"type":"string","maxLength":200},"body":{"type":"string","maxLength":2000}}}}}}'
-
-      # The execution file is the whole transcript: only the result entry is kept, and the file
-      # is removed so the next pass cannot mix it up and nothing uploads it.
-      - name: Record the general pass
-        if: always() && steps.live_general.outputs.state != ''
+        working-directory: trusted
         env:
-          PASS: general
-          API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          OUTCOME: ${{ steps.general.outcome }}
-          STRUCTURED: ${{ steps.general.outputs.structured_output }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY_SDK }}
+          MODEL: ${{ needs.claude-scope.outputs.model }}
         run: |
-          set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/claude-raw"
-          exec_file="$RUNNER_TEMP/claude-execution-output.json"
-          result='null'
-          if [ -f "$exec_file" ]; then
-            result=$(jq -c '[.[] | select(.type == "result")] | last
-              | if . == null then null else {subtype, is_error, num_turns, total_cost_usd, api_error_status} end' \
-              "$exec_file" 2>/dev/null || echo null)
-            rm -f "$exec_file"
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::error::no API key for the Claude review (ANTHROPIC_API_KEY_SDK)"
+            exit 1
           fi
-          # Output that holds the API key itself is dropped here, before any file or artifact
-          # has it; the key and the output reach jq through its environment, never argv.
-          jq -n --argjson result "$result" '
-            ($ENV.API_KEY != "" and ($ENV.STRUCTURED | contains($ENV.API_KEY))) as $leak
-            | {pass: $ENV.PASS, outcome: $ENV.OUTCOME, result: $result, secret_found: $leak,
-               structured_output: (if $leak then "" else $ENV.STRUCTURED end)}' \
-            > "$RUNNER_TEMP/claude-raw/$PASS.json"
-          jq -c '{pass, outcome, result}' "$RUNNER_TEMP/claude-raw/$PASS.json"
+          mkdir -p "$RUNNER_TEMP/claude-raw"
+          uv run --no-sync python -m scripts.marketplace_ci headless-review-pass \
+            --route sdk --pass general --model "$MODEL" \
+            --prompt "$RUNNER_TEMP/claude-scope/prompts/general.md" \
+            --checkout "$GITHUB_WORKSPACE/pr" --out "$RUNNER_TEMP/claude-raw/general.json"
 
       - name: Re-check the pull request before the security pass
         id: live_security
@@ -420,8 +425,12 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          read -r draft head < <(/usr/bin/gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '"\(.draft) \(.head.sha)"')
+          draft="" head=""
+          if info=$(/usr/bin/gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '"\(.draft) \(.head.sha)"'); then
+            read -r draft head <<< "$info" || true
+          fi
           if [ "$draft" = "true" ]; then state=draft
+          elif [ "$draft" != "false" ] || ! printf '%s' "$head" | grep -Eq '^[0-9a-f]{40}$'; then state=lookup_failed
           elif [ "$head" != "$HEAD_SHA" ]; then state=head_moved
           else state=ok; fi
           echo "pull request state: $state"
@@ -433,50 +442,22 @@ jobs:
         if: steps.live_security.outputs.state == 'ok'
         continue-on-error: true
         timeout-minutes: ${{ fromJSON(needs.claude-scope.outputs.pass_minutes) }}
-        uses: anthropics/claude-code-action@4fa93a88de49bbef68b10eb15aabedf28ca0e1ed # ratchet:anthropics/claude-code-action@v1.0.271
-        with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          github_token: ${{ github.token }}
-          prompt: ${{ steps.prompts.outputs.security }}
-          claude_args: >-
-            --model ${{ needs.claude-scope.outputs.model }}
-            --max-turns 25
-            --max-budget-usd 1.00
-            --tools "Read,Grep,Glob"
-            --allowedTools "Read,Grep,Glob"
-            --disallowedTools "mcp__*"
-            --strict-mcp-config
-            --setting-sources user
-            --settings '{"disableAllHooks":true,"permissions":{"blockReadsOutsideWorkingDirectories":true,"deny":["Read(//proc/**)","Read(//sys/**)","Read(.git/**)"]}}'
-            --json-schema '{"type":"object","required":["verdict","findings"],"additionalProperties":false,"properties":{"verdict":{"type":"string","enum":["LGTM","Changes Requested"]},"findings":{"type":"array","maxItems":30,"items":{"type":"object","required":["severity","path","line","title","body"],"additionalProperties":false,"properties":{"severity":{"type":"string","enum":["Critical","Major","Minor","Informational"]},"path":{"type":"string","maxLength":300,"pattern":"^[^`<>\\x00-\\x1f]+$"},"line":{"type":"integer","minimum":1},"title":{"type":"string","maxLength":200},"body":{"type":"string","maxLength":2000}}}}}}'
-
-      - name: Record the security pass
-        if: always() && steps.live_security.outputs.state != ''
+        working-directory: trusted
         env:
-          PASS: security
-          API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          OUTCOME: ${{ steps.security.outcome }}
-          STRUCTURED: ${{ steps.security.outputs.structured_output }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY_SDK }}
+          MODEL: ${{ needs.claude-scope.outputs.model }}
         run: |
-          set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/claude-raw"
-          exec_file="$RUNNER_TEMP/claude-execution-output.json"
-          result='null'
-          if [ -f "$exec_file" ]; then
-            result=$(jq -c '[.[] | select(.type == "result")] | last
-              | if . == null then null else {subtype, is_error, num_turns, total_cost_usd, api_error_status} end' \
-              "$exec_file" 2>/dev/null || echo null)
-            rm -f "$exec_file"
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::error::no API key for the Claude review (ANTHROPIC_API_KEY_SDK)"
+            exit 1
           fi
-          # Output that holds the API key itself is dropped here, before any file or artifact
-          # has it; the key and the output reach jq through its environment, never argv.
-          jq -n --argjson result "$result" '
-            ($ENV.API_KEY != "" and ($ENV.STRUCTURED | contains($ENV.API_KEY))) as $leak
-            | {pass: $ENV.PASS, outcome: $ENV.OUTCOME, result: $result, secret_found: $leak,
-               structured_output: (if $leak then "" else $ENV.STRUCTURED end)}' \
-            > "$RUNNER_TEMP/claude-raw/$PASS.json"
-          jq -c '{pass, outcome, result}' "$RUNNER_TEMP/claude-raw/$PASS.json"
+          mkdir -p "$RUNNER_TEMP/claude-raw"
+          uv run --no-sync python -m scripts.marketplace_ci headless-review-pass \
+            --route sdk --pass security --model "$MODEL" \
+            --prompt "$RUNNER_TEMP/claude-scope/prompts/security.md" \
+            --checkout "$GITHUB_WORKSPACE/pr" --out "$RUNNER_TEMP/claude-raw/security.json"
 
+      # A pass whose step ended without a record (no key, a timeout, a crash) is recorded as failed.
       - name: Collect the passes
         if: always()
         env:
@@ -484,17 +465,34 @@ jobs:
           LIVE_SECURITY: ${{ steps.live_security.outputs.state }}
         run: |
           set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/claude-raw"
+          raw="$RUNNER_TEMP/claude-raw"
+          mkdir -p "$raw"
+          for pair in "general:$LIVE_GENERAL" "security:$LIVE_SECURITY"; do
+            pass="${pair%%:*}"; state="${pair#*:}"
+            if [ "$state" = "ok" ] && [ ! -s "$raw/$pass.json" ]; then
+              jq -n --arg pass "$pass" \
+                '{pass: $pass, outcome: "failure", result: null, secret_found: false, structured_output: ""}' \
+                > "$raw/$pass.json"
+            fi
+          done
           skipped=""
           for state in "$LIVE_GENERAL" "$LIVE_SECURITY"; do
-            case "$state" in draft|head_moved) skipped="$state" ;; esac
+            case "$state" in draft|head_moved|lookup_failed) skipped="$state" ;; esac
           done
-          jq -n --arg skipped "$skipped" \
-            '{skipped: (if $skipped == "" then null else $skipped end),
-              passes: [inputs]}' "$RUNNER_TEMP"/claude-raw/*.json \
-            > "$RUNNER_TEMP/claude-review-raw.json" 2>/dev/null \
-            || jq -n --arg skipped "$skipped" '{skipped: (if $skipped == "" then null else $skipped end), passes: []}' \
+          files=()
+          for f in "$raw"/general.json "$raw"/security.json; do
+            [ -s "$f" ] && files+=("$f")
+          done
+          if [ "${#files[@]}" -gt 0 ]; then
+            jq -n --arg skipped "$skipped" \
+              '{skipped: (if $skipped == "" then null else $skipped end), passes: [inputs]}' "${files[@]}" \
               > "$RUNNER_TEMP/claude-review-raw.json"
+          else
+            jq -n --arg skipped "$skipped" \
+              '{skipped: (if $skipped == "" then null else $skipped end), passes: []}' \
+              > "$RUNNER_TEMP/claude-review-raw.json"
+          fi
+          jq -c '.passes[] | {pass, outcome, result}' "$RUNNER_TEMP/claude-review-raw.json"
 
       - name: Upload the recorded passes
         if: always()
