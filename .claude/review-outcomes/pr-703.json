@@ -17,6 +17,69 @@
       "path": "scripts/marketplace_ci/pr_policy.py",
       "pr": 703,
       "recorded_at": "2026-11-11T20:19:04+00:00"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "4544431092",
+      "line": 1149,
+      "note": "Owner: the PR-author Dependabot check is a user requirement, kept in both review workflows. Follow-up for skipping without a bypass: issue 704.",
+      "path": ".github/workflows/marketplace-ci.yml",
+      "pr": 703,
+      "recorded_at": "2026-11-12T06:16:21+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "claude-run43120269591-gen-artifact",
+      "line": 411,
+      "note": "Same defect as the security-pass artifact finding. Fixed in 1bb83a25.",
+      "path": ".github/workflows/claude-review-ci.yml",
+      "pr": 703,
+      "recorded_at": "2026-11-12T06:16:21+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "claude-run43120269591-gen-needs-hygiene",
+      "line": 152,
+      "note": "docs/ci.md now states python-quality starts after hygiene (11s on this PR's run). Fixed in 1bb83a25.",
+      "path": ".github/workflows/marketplace-ci.yml",
+      "pr": 703,
+      "recorded_at": "2026-11-12T06:16:21+00:00"
+    },
+    {
+      "disposition": "declined",
+      "finding": "claude-run43120269591-gen-pathb-docs",
+      "line": 29,
+      "note": "Owner chose no docs/ci.md change; path B and its limits are documented in codex-bypass.md itself.",
+      "path": "plugins/git-kit/skills/triaging-dependabot-prs/references/codex-bypass.md",
+      "pr": 703,
+      "recorded_at": "2026-11-12T06:16:21+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "claude-run43120269591-gen-r9-status",
+      "line": 135,
+      "note": "Owner approved the 50-turn cap; R9 status now records that. Fixed in 1bb83a25.",
+      "path": "docs/ci-claude-review-user-requirements.md",
+      "pr": 703,
+      "recorded_at": "2026-11-12T06:16:21+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "claude-run43120269591-sec-argv",
+      "line": 411,
+      "note": "error_message removed (owner chose api_error_status only), so no API error text reaches jq argv; both record steps. Fixed in 1bb83a25.",
+      "path": ".github/workflows/claude-review-ci.yml",
+      "pr": 703,
+      "recorded_at": "2026-11-12T06:16:21+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "claude-run43120269591-sec-artifact",
+      "line": 402,
+      "note": "Artifact keeps only api_error_status; error_message removed in both record steps. Fixed in 1bb83a25.",
+      "path": ".github/workflows/claude-review-ci.yml",
+      "pr": 703,
+      "recorded_at": "2026-11-12T06:16:21+00:00"
     }
   ]
 }
