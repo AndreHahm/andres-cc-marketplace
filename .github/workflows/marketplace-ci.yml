@@ -322,6 +322,12 @@ jobs:
   # stale kill-switch copy can only affect this one non-blocking job.
   review-helpers-windows:
     name: Review helpers on Windows Git Bash (informational)
+    # Not for Dependabot (#714; the same two checks as codex-review): a dependency bump cannot
+    # change what these review-helper tests cover, and each triage rebase or bypass-label run
+    # would otherwise spend a Windows runner on it.
+    if: >-
+      github.actor != 'dependabot[bot]'
+      && github.event.pull_request.user.login != 'dependabot[bot]'
     runs-on: windows-latest
     timeout-minutes: 15
     permissions:
