@@ -1,7 +1,8 @@
-"""The test comparison of two headless routes for the Claude delta review
+"""The test comparison of the routes for the Claude delta review
 (`.github/workflows/test-headless-claude-review-ci.yml`).
 
-The same reviewer prompt runs through two routes, so a real run shows how each is billed:
+The same reviewer prompt runs through two headless routes, so a real run shows how each is billed
+(the workflow also runs claude-code-action as a third route; `summarize` reads its records too):
 
 - `sdk`: the Claude Agent SDK (`claude-agent-sdk`), with Read/Grep/Glob only, no settings
   sources, no MCP servers, hooks off and reads confined to the PR checkout.
@@ -28,7 +29,10 @@ from collections.abc import Callable, Iterator, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 
-ROUTES = ("sdk", "api")
+# The routes this module runs; the comparison also shows claude-code-action, which the workflow
+# runs itself (no code here).
+HEADLESS_ROUTES = ("sdk", "api")
+ROUTES = (*HEADLESS_ROUTES, "action")
 PASSES = ("general", "security")
 MAX_TURNS = {"general": 50, "security": 25}
 # R9 of docs/ci-claude-review-user-requirements.md: $1.00 per pass.
@@ -589,7 +593,7 @@ def utc_now() -> str:
 def run_pass(route: str, review_pass: str, *, prompt: str, model: str, checkout: Path) -> dict:
     """Run one pass of one route with the real SDKs and return its record. The API key comes
     from ANTHROPIC_API_KEY, which both SDKs read themselves."""
-    if route not in ROUTES or review_pass not in PASSES:
+    if route not in HEADLESS_ROUTES or review_pass not in PASSES:
         raise ValueError(f"unknown route or pass: {route} {review_pass}")
     api_key = os.environ.get("ANTHROPIC_API_KEY", "")
     started = utc_now()

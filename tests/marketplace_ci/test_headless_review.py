@@ -1,14 +1,16 @@
 """The test headless Claude review (scripts/marketplace_ci/headless_review.py and
 .github/workflows/test-headless-claude-review-ci.yml). Fakes stand in for both SDKs: nothing here
 calls the API. The security-relevant shape is pinned: the api route's tools read nothing outside
-the checkout or under .git, the sdk route loads no settings, MCP servers or write tools, the API key
-reaches only the two pass steps, and nothing is posted to the pull request."""
+the checkout or under .git, the sdk route loads no settings, MCP servers or write tools, the action
+route is the Claude delta review's own steps on its own key, each API key reaches only its route's
+pass steps (and the action route's leak checks), and nothing is posted to the pull request."""
 
 from __future__ import annotations
 
 import asyncio
 import json
 import os
+import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -343,7 +345,8 @@ def test_summary_compares_the_routes(tmp_path: Path):
 
 def test_summary_names_a_route_that_did_not_run():
     text = hr.summarize({}, frozenset(), "m")
-    assert "| sdk | - | did not run |" in text and "| api | - | did not run |" in text
+    for route in ("sdk", "api", "action"):
+        assert f"| {route} | - | did not run |" in text
 
 
 # --- the workflow ---------------------------------------------------------------------------
@@ -368,6 +371,11 @@ def test_every_later_job_skips_when_the_scope_job_is_skipped():
     review_if = JOBS["headless-review"]["if"]
     assert JOBS["headless-review"]["needs"] == "headless-scope"
     assert "needs.headless-scope.outputs.switched_off == 'false'" in review_if
+    action_if = JOBS["headless-review-action"]["if"]
+    assert JOBS["headless-review-action"]["needs"] == ["headless-scope", "headless-review"]
+    assert action_if.startswith("!cancelled() &&")
+    assert "needs.headless-scope.outputs.switched_off == 'false'" in action_if
+    assert "needs.headless-scope.outputs.has_paths == 'true'" in action_if
     assert JOBS["headless-compare"]["if"] == (
         "${{ !cancelled() && needs.headless-scope.result != 'skipped' }}"
     )
@@ -387,16 +395,29 @@ def test_the_scope_job_restores_exactly_what_the_claude_review_restores():
         assert ours[name] == theirs[name], name
 
 
-def test_the_api_key_reaches_only_the_two_pass_steps():
+def test_each_api_key_reaches_only_its_route_pass_steps():
     holders = [
         (job, step.get("name"))
         for job in JOBS
         for step in _steps(job)
         if "secrets" in json.dumps(step)
     ]
-    assert holders == [("headless-review", "General pass"), ("headless-review", "Security pass")]
-    # One secret per pass step, chosen by the matrix: never a hard-coded shared key.
-    assert TEXT.count("secrets") == 2
+    assert holders == [
+        ("headless-review", "General pass"),
+        ("headless-review", "Security pass"),
+        ("headless-review-action", "Check the action route's key"),
+        ("headless-review-action", "General pass"),
+        ("headless-review-action", "Record the general pass"),
+        ("headless-review-action", "Security pass"),
+        ("headless-review-action", "Record the security pass"),
+    ]
+    # The matrix picks the headless routes' secrets; the action route names its own, and the key
+    # check sees only whether it is set.
+    assert TEXT.count("secrets[matrix.key_secret]") == 2
+    assert TEXT.count("secrets.ANTHROPIC_API_KEY_CODE") == 5
+    assert "secrets.ANTHROPIC_API_KEY " not in TEXT and "secrets.ANTHROPIC_API_KEY }}" not in TEXT
+    check = _action_step("Check the action route's key")
+    assert check["env"] == {"KEY_SET": "${{ secrets.ANTHROPIC_API_KEY_CODE != '' }}"}
     for step in _steps("headless-review"):
         if "secrets" in json.dumps(step):
             assert step["working-directory"] == "trusted"
@@ -430,7 +451,10 @@ def test_nothing_is_posted_and_routes_run_one_at_a_time():
             {"route": "api", "key_secret": "ANTHROPIC_API_KEY"},
         ]
     }
-    assert "claude-code-action" not in TEXT
+    # claude-code-action runs only in the action route's job.
+    for name, job in JOBS.items():
+        if name != "headless-review-action":
+            assert "claude-code-action" not in json.dumps(job), name
 
 
 def test_the_key_holding_job_runs_base_code_beside_the_reviewed_tree():
@@ -675,3 +699,157 @@ def test_the_api_route_runs_on_haiku(checkout: Path):
     )  # fmt: skip
     assert result.subtype == "success" and create.calls[0]["model"] == "claude-haiku-5-5"
     assert result.total_cost_usd == pytest.approx(2 * (1000 * 0.10 + 100 * 0.50) / 1e6)
+
+
+# --- the action route -----------------------------------------------------------------------
+
+
+def _action_step(name):
+    return next(s for s in _steps("headless-review-action") if s.get("name") == name)
+
+
+def _claude_review_step(name):
+    return next(s for s in CLAUDE_WF["jobs"]["claude-review"]["steps"] if s.get("name") == name)
+
+
+@pytest.mark.parametrize("name", ["General pass", "Security pass"])
+def test_the_action_route_runs_the_claude_review_pass_with_only_its_key_changed(name: str):
+    ours, theirs = _action_step(name), _claude_review_step(name)
+    # The same pin, tools, settings, caps and schema; the key and the scope job's name differ.
+    assert ours["uses"] == theirs["uses"]
+    assert ours["with"]["anthropic_api_key"] == "${{ secrets.ANTHROPIC_API_KEY_CODE }}"
+    assert theirs["with"]["anthropic_api_key"] == "${{ secrets.ANTHROPIC_API_KEY }}"
+
+    def normalized(step):
+        text = json.dumps({k: v for k, v in step.items()}, sort_keys=True)
+        return (
+            text.replace("secrets.ANTHROPIC_API_KEY_CODE", "KEY")
+            .replace("secrets.ANTHROPIC_API_KEY", "KEY")
+            .replace("needs.headless-scope.", "needs.SCOPE.")
+            .replace("needs.claude-scope.", "needs.SCOPE.")
+        )
+
+    assert normalized(ours) == normalized(theirs)
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "Place the reviewed patch in the checkout",
+        "Read the reviewer prompts",
+    ],
+)
+def test_the_action_route_prepares_the_checkout_as_the_claude_review_does(name: str):
+    assert _action_step(name)["run"] == _claude_review_step(name)["run"]
+
+
+def test_the_action_route_checks_out_only_the_pr_head_and_runs_no_repository_code():
+    steps = _steps("headless-review-action")
+    checkouts = [s for s in steps if "actions/checkout@" in str(s.get("uses"))]
+    assert [(s["with"]["ref"], s["with"].get("path")) for s in checkouts] == [
+        ("${{ github.event.pull_request.head.sha }}", None)
+    ]
+    assert all(s["with"]["persist-credentials"] is False for s in checkouts)
+    runs = " ".join(s.get("run", "") for s in steps)
+    assert "uv " not in runs and "python" not in runs
+    assert JOBS["headless-review-action"]["permissions"] == {
+        "contents": "read", "pull-requests": "read"
+    }  # fmt: skip
+
+
+@pytest.mark.skipif(shutil.which("jq") is None, reason="the record step uses jq")
+@pytest.mark.parametrize(
+    ("structured", "leak"),
+    [(json.dumps(VERDICT), False), ('{"x":"key=sk-ant-DUMMY-KEY-123"}', True)],
+)
+def test_the_action_record_step_keeps_the_claude_review_shape(tmp_path, structured, leak):
+    run = _action_step("Record the general pass")["run"]
+    (tmp_path / "claude-execution-output.json").write_text(
+        json.dumps([{"type": "system"}, {"type": "result", "subtype": "success", "is_error": False,
+                    "num_turns": 3, "total_cost_usd": 0.2, "result": "transcript text",
+                    "usage": {"input_tokens": 7, "output_tokens": 5,
+                              "cache_read_input_tokens": 11}}]),
+        "utf-8",
+    )  # fmt: skip
+    env = {
+        "PATH": os.environ["PATH"],
+        "RUNNER_TEMP": str(tmp_path),
+        "PASS": "general",
+        "OUTCOME": "success",
+        "STRUCTURED": structured,
+        "API_KEY": "sk-ant-DUMMY-KEY-123",
+        "STARTED_AT": "2026-11-12T08:00:00Z",
+    }
+    subprocess.run(["bash", "-c", run], env=env, check=True, capture_output=True)
+    record = json.loads((tmp_path / "headless-raw" / "general.json").read_text("utf-8"))
+    assert record["route"] == "action" and record["pass"] == "general"
+    assert record["secret_found"] is leak
+    assert record["structured_output"] == ("" if leak else structured)
+    assert record["result"] == {"subtype": "success", "is_error": False, "num_turns": 3,
+                                "total_cost_usd": 0.2, "api_error_status": None}  # fmt: skip
+    assert record["usage"] == {"input_tokens": 7, "output_tokens": 5,
+                               "cache_creation_input_tokens": 0,
+                               "cache_read_input_tokens": 11}  # fmt: skip
+    assert record["started_at"] == "2026-11-12T08:00:00Z" and record["finished_at"].endswith("Z")
+    assert "transcript text" not in json.dumps(record)
+    assert not (tmp_path / "claude-execution-output.json").exists()
+    if not leak:
+        verdict, findings = parse_pass(record, frozenset({"a.py"}))
+        assert verdict == "Changes Requested" and len(findings) == 1
+
+
+@pytest.mark.skipif(shutil.which("jq") is None, reason="the record step uses jq")
+def test_the_action_record_step_without_a_transcript_records_no_result(tmp_path):
+    run = _action_step("Record the security pass")["run"]
+    env = {"PATH": os.environ["PATH"], "RUNNER_TEMP": str(tmp_path), "PASS": "security",
+           "OUTCOME": "failure", "STRUCTURED": "", "API_KEY": "k", "STARTED_AT": "t0"}  # fmt: skip
+    subprocess.run(["bash", "-c", run], env=env, check=True, capture_output=True)
+    record = json.loads((tmp_path / "headless-raw" / "security.json").read_text("utf-8"))
+    assert record["result"] is None and record["usage"] == {} and record["outcome"] == "failure"
+
+
+@pytest.mark.parametrize(("key_set", "code"), [("true", 0), ("false", 1)])
+def test_the_action_route_fails_early_without_its_key(tmp_path, key_set, code):
+    run = _action_step("Check the action route's key")["run"]
+    done = subprocess.run(
+        ["bash", "-c", run], env={"PATH": os.environ["PATH"], "KEY_SET": key_set},
+        capture_output=True, text=True,
+    )  # fmt: skip
+    assert done.returncode == code
+    if code:
+        assert "ANTHROPIC_API_KEY_CODE" in done.stdout
+
+
+def test_the_summary_shows_the_action_route(tmp_path: Path):
+    record = {"route": "action", "pass": "general", "outcome": "success",
+              "result": {"subtype": "success", "is_error": False, "num_turns": 4,
+                         "total_cost_usd": 0.07, "api_error_status": None},
+              "secret_found": False, "structured_output": json.dumps(VERDICT),
+              "usage": {"input_tokens": 3}, "started_at": "s", "finished_at": "f"}  # fmt: skip
+    text = hr.summarize({"action": {"skipped": None, "passes": [record]}}, frozenset({"a.py"}), "m")
+    row = next(line for line in text.splitlines() if line.startswith("| action | general"))
+    assert "| ok | Changes Requested |" in row and "0.0700" in row and "3/0/0/0" in row
+    assert "| sdk | - | did not run |" in text
+
+
+def test_run_pass_refuses_the_action_route(tmp_path: Path):
+    with pytest.raises(ValueError, match="unknown route"):
+        hr.run_pass("action", "general", prompt="p", model="m", checkout=tmp_path)
+
+
+@pytest.mark.skipif(shutil.which("jq") is None, reason="the record step uses jq")
+def test_the_action_record_step_keeps_only_numeric_token_counts(tmp_path):
+    run = _action_step("Record the general pass")["run"]
+    (tmp_path / "claude-execution-output.json").write_text(
+        json.dumps([{"type": "result", "subtype": "success", "is_error": False, "num_turns": 1,
+                     "total_cost_usd": 0.01,
+                     "usage": {"input_tokens": "| injected |", "output_tokens": 2}}]),
+        "utf-8",
+    )  # fmt: skip
+    env = {"PATH": os.environ["PATH"], "RUNNER_TEMP": str(tmp_path), "PASS": "general",
+           "OUTCOME": "success", "STRUCTURED": "", "API_KEY": "k", "STARTED_AT": "t0"}  # fmt: skip
+    subprocess.run(["bash", "-c", run], env=env, check=True, capture_output=True)
+    record = json.loads((tmp_path / "headless-raw" / "general.json").read_text("utf-8"))
+    assert record["usage"] == {"input_tokens": 0, "output_tokens": 2,
+                               "cache_creation_input_tokens": 0,
+                               "cache_read_input_tokens": 0}  # fmt: skip
