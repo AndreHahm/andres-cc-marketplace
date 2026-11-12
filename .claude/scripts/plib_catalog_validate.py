@@ -26,6 +26,7 @@ import stat
 import subprocess  # nosec B404 - git runs with fixed argument lists, no shell
 import sys
 import tempfile
+import unicodedata
 from collections.abc import Callable
 from pathlib import Path
 
@@ -312,6 +313,44 @@ def normalize_text(text: str) -> str:
     """LF-normalize and drop leading/trailing blank lines, so editors that differ on the final
     newline agree."""
     return text.replace("\r\n", "\n").replace("\r", "\n").strip("\n")
+
+
+MAX_HIDDEN_REPORTED = 50
+# Format (zero-width, bidi, tags), control, private-use, unassigned, line/paragraph separators.
+HIDDEN_CATEGORIES = frozenset({"Cf", "Cc", "Co", "Cn", "Zl", "Zp"})
+# Letters and marks that render blank or not at all.
+HIDDEN_EXTRA = frozenset({0x115F, 0x1160, 0x2800, 0x3164, 0xFFA0})
+
+
+def _is_hidden(ch: str) -> bool:
+    cp = ord(ch)
+    if ch == "\t":
+        return False
+    if 0xFE00 <= cp <= 0xFE0F or 0xE0100 <= cp <= 0xE01EF:  # variation selectors
+        return True
+    return cp in HIDDEN_EXTRA or unicodedata.category(ch) in HIDDEN_CATEGORIES
+
+
+def hidden_characters(text: str) -> tuple[list[dict], bool]:
+    """Characters a rendered preview does not show (format and control characters, variation
+    selectors, private-use or unassigned code points, separators, blank-looking letters), by
+    1-based line and code point, plus whether the list was cut at MAX_HIDDEN_REPORTED. The user
+    may otherwise approve text that reads differently from what runs. Reported, not rejected: an
+    emoji joiner or variation selector is legitimate."""
+    found = []
+    for lineno, line in enumerate(normalize_text(text).split("\n"), start=1):
+        for ch in line:
+            if _is_hidden(ch):
+                if len(found) >= MAX_HIDDEN_REPORTED:
+                    return found, True
+                found.append(
+                    {
+                        "line": lineno,
+                        "codepoint": f"U+{ord(ch):04X}",
+                        "name": unicodedata.name(ch, "UNNAMED CHARACTER"),
+                    }
+                )
+    return found, False
 
 
 def text_hash(text: str) -> str:
@@ -921,6 +960,10 @@ def cmd_show(args) -> dict:
         }
         for m in shown
     ]
+    for entry, m in zip(info["records"], shown):
+        entry["hidden_characters"], entry["hidden_characters_truncated"] = hidden_characters(
+            m["_body"]
+        )
     return info
 
 

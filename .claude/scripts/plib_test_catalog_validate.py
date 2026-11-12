@@ -1187,6 +1187,36 @@ class Robustness(Base):
         self.assertEqual(code, 1)
         self.assertEqual(res["matches"][0]["pattern"], "dotenv_secret_line")
 
+    def test_show_reports_invisible_format_characters_by_line(self):
+        body = "Review the diff.\nDelete​ nothing‮ here."
+        self.make_active(_body=body)
+        code, res = self.run_cli("show", SLUG)
+        self.assertEqual(code, 0, res)
+        hidden = res["records"][0]["hidden_characters"]
+        self.assertEqual(
+            [(h["line"], h["codepoint"]) for h in hidden], [(2, "U+200B"), (2, "U+202E")]
+        )
+        self.assertEqual(hidden[1]["name"], "RIGHT-TO-LEFT OVERRIDE")
+        self.assertFalse(res["records"][0]["hidden_characters_truncated"])
+
+    def test_show_reports_no_hidden_characters_for_plain_text(self):
+        self.make_active(_body="Tab\tis fine.\nSo is café and — a dash.")
+        code, res = self.run_cli("show", SLUG)
+        self.assertEqual(code, 0, res)
+        self.assertEqual(res["records"][0]["hidden_characters"], [])
+
+    def test_hidden_characters_cover_controls_selectors_and_blank_letters(self):
+        text = "a\x1bb️c\U000e0101d efㅤg"
+        found, truncated = V.hidden_characters(text)
+        self.assertEqual(
+            [h["codepoint"] for h in found],
+            ["U+001B", "U+FE0F", "U+E0101", "U+2028", "U+E000", "U+3164"],
+        )
+        self.assertFalse(truncated)
+        many, truncated = V.hidden_characters("​" * (V.MAX_HIDDEN_REPORTED + 1))
+        self.assertEqual(len(many), V.MAX_HIDDEN_REPORTED)
+        self.assertTrue(truncated)
+
     def test_the_stdin_cap_counts_utf8_bytes_not_characters(self):
         # Two bytes per character: fewer characters than the cap, but more bytes.
         over = "é" * (V.MAX_INPUT_BYTES // 2 + 1)
