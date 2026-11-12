@@ -45,8 +45,9 @@ _MODEL_MAP = {
 
 # Per Codex's subagent docs, `sandbox_mode` (and `approval_policy`) in a custom
 # agent file has no effect: a subagent inherits the parent turn's sandbox and
-# approval settings (issue #700; not yet verified live in this repo, so the
-# note below attributes the claim to the docs). `features.shell_tool = false` is
+# approval settings (issue #700). The sandbox half was confirmed live on Linux
+# with codex-cli 0.166.0 in both directions (docs/codex-subagents-schema.md);
+# Windows is not yet checked. `features.shell_tool = false` is
 # not a usable substitute: Codex reads and searches files through its shell,
 # so a live test (codex-cli 0.166.0) left such an agent unable to read the
 # files it reviews. A read-only claim is therefore instruction-only on the

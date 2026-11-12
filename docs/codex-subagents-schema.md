@@ -58,7 +58,17 @@ Source: the [Codex subagents](https://learn.chatgpt.com/docs/agent-configuration
 2026-11-11): "Subagents inherit the parent turn's current sandbox and approval settings, including
 changes made with `/permissions` or `--yolo`. A custom agent file can't replace those settings." It
 also names `sandbox_mode` among the session settings that "don't override the parent configuration
-when placed in a custom agent file." This repo has not yet verified that behavior live.
+when placed in a custom agent file."
+
+Live check on Linux, `codex-cli` 0.166.0 (2026-11-12), with the subagents' own session logs read, not
+just the parent's summary:
+
+- Parent `workspace-write`, agent file `sandbox_mode = "read-only"`: the subagent's sandbox was
+  `workspace-write` and its probe write succeeded.
+- Parent `read-only`, agent file `sandbox_mode = "workspace-write"`: the subagent's sandbox was
+  `read-only` and its probe write failed ("Read-only file system").
+
+In both runs the parent itself ran no command. Windows has not been checked yet (issue #700).
 
 `features.shell_tool = false` was considered as a substitute and rejected. A live test on `codex-cli`
 0.166.0 (2026-11-12) gave an agent with that key only the `collaboration.*` tools. Codex has no separate
