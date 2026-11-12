@@ -27,8 +27,9 @@ Unknown fields are rejected. Frontmatter uses a small YAML subset: scalars, one-
 lists of scalars. A bare value that looks like a number, `true`/`false`, `null`/`~` or `[]` is read as that
 type (so `name: 2024` fails "name must be text"): quote such values. Do not write frontmatter by hand when
 a validator command exists; `draft` and `update-draft` read a record you built and the validator rewrites
-it in its canonical form. The template in `assets/` is a minimal record whose `REPLACE` placeholders are deliberately invalid, so an
-unedited copy cannot be filed; replace every one, and extend it with `source_ref` for `session`/`web`
+it in its canonical form. The template in `assets/` is a minimal record. Its `slug`, `internal_id` and `origin` placeholders are
+deliberately invalid, so an unedited copy cannot be filed, but a leftover `name`, `area` or body passes
+validation; replace every `REPLACE` value and the body, and extend it with `source_ref` for `session`/`web`
 origin and with `previous_id` for a successor. These cannot be an `internal_id`: `active` and `catalog`
 (the layout's own file names), `claude`, `agents` and `gemini` (file names an agent may load as
 instructions) and the Windows device names (`con`, `prn`, `aux`, `nul`, `com0` to `com9`, `lpt0` to

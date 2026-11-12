@@ -78,15 +78,16 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
    record whose text was changed on purpose is not repaired in place: restore it, then make the change
    as a revision. Never edit, restore or repair a catalog file yourself.
 2. **Mode.** Use the first word of `$ARGUMENTS` (`add`, `revise`, `activate`, `deactivate`) and, for
-   the last three, the second word as the slug; if either is absent, ask with `AskUserQuestion`. The CLI takes an `internal_id`, not a slug, so resolve a slug to
-   its record(s) from `validate`'s `records` or `<CLI> show <slug> --history`; if more than one fits,
-   ask which. `deactivate`, and `activate` of an inactive record, skip steps 3 to 8: go to step 9. A draft
-   left by an interrupted add or revise (also when `activate` names a draft) resumes by its state: step 7
-   if it lacks a recorded quality verification. No record field shows whether `prompt-reviewer` already
-   ran, so an unverified draft always gets the review again. It resumes at step 8 if it has the quality
-   verification but, for `session` or `web` origin, lacks the import one, and at step 9 once it is fully
-   verified. A successor ends with
-   `finalize`; never start a second successor.
+   the last three, the second word as the slug; if either is absent, ask with `AskUserQuestion`.
+   - The CLI takes an `internal_id`, not a slug: resolve a slug to its record(s) from `validate`'s
+     `records` or `<CLI> show <slug> --history`; if more than one fits, ask which.
+   - `deactivate`, and `activate` of an inactive record, skip steps 3 to 8: go to step 9.
+   - A draft left by an interrupted add or revise (also when `activate` names a draft) resumes by its
+     state: at step 7 if it lacks a recorded quality verification (no record field shows whether
+     `prompt-reviewer` already ran, so an unverified draft always gets the review again); at step 8 if it
+     has the quality verification but, for `session` or `web` origin, lacks the import one; at step 9
+     once it is fully verified.
+   - A successor ends with `finalize`; never start a second successor.
 3. **Intake.** For `add`, follow `references/prompt-intake-sources.md`. The intake path sets `origin`:
    fetched text is always `web`, session text is always `session`; the user cannot label either as
    `user`. For `revise`, take the record from step 2, run `<CLI> show <slug> --history` (a plain `show`
@@ -138,15 +139,18 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
    count in the question when there are any. On yes, run `<CLI> record-verification <internal_id> --kind
    quality --expect-sha256 <that hash>` and, for `session` or `web` origin, again with `--kind import`.
    The expected hash makes the script refuse if the file changed after the user approved it.
-9. **Change status.** Show the proposed change and ask with `AskUserQuestion`. Then run
-   `<CLI> activate <id> --expect-sha256 <hash>` for an initial draft or an inactive record, `<CLI>
-   finalize <id> --expect-sha256 <hash>` for a successor (add `--active` or `--inactive` to choose; it
-   is required when the predecessor was inactive; when the predecessor was active the successor becomes
-   active by default, so `--inactive` is the only flag that changes anything), or `<CLI> deactivate <id>`. Take the hash from `<CLI> show <slug> --history` and include the
-   slug, the status change, the first 8 characters of that hash and, for `activate` or `finalize`, the
-   hidden-character count if any, in the question. What makes activation
-   safe is the verification recorded at step 8, which the script checks against the current text; the
-   expected hash here only guards against a change between this `show` and the command.
+9. **Change status.** Take the hash from `<CLI> show <slug> --history`. Show the proposed change and ask
+   with `AskUserQuestion`, naming the slug, the status change, the first 8 characters of that hash and,
+   for `activate` or `finalize`, the hidden-character count if any. Then run one of:
+   - `<CLI> activate <id> --expect-sha256 <hash>` for an initial draft or an inactive record;
+   - `<CLI> finalize <id> --expect-sha256 <hash>` for a successor. Add `--active` or `--inactive` to
+     choose; one is required when the predecessor was inactive. When the predecessor was active the
+     successor becomes active by default, so `--inactive` is the only flag that changes anything;
+   - `<CLI> deactivate <id>`.
+
+   What makes activation safe is the verification recorded at step 8, which the script checks against
+   the current text; the expected hash here only guards against a change between this `show` and the
+   command.
 10. **Report** what changed and the new status, and run `<CLI> validate` once more to confirm the catalog
     is still `ok`.
 
@@ -163,8 +167,9 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
 - A revision never retires the active prompt before `finalize`.
 - If `session-detail` (from session-kit) is not among the listed skills, session-by-reference intake is unavailable; fall
   back to the user pasting the chosen turns. Do not install or declare session-kit.
-- Set `origin` from the intake path and never leave the template's placeholder: the template is
-  invalid until every `REPLACE` value is edited, so an unedited copy cannot be filed. A mislabeled origin
+- Set `origin` from the intake path and never leave a template placeholder. The validator refuses an
+  unedited `slug`, `internal_id` or `origin`, but accepts a leftover `name`, `area` or body text, so
+  check that no `REPLACE` or "Replace this body" text remains before step 6. A mislabeled origin
   skips the import screen and the import hash, so state the origin to the user in step 6.
 - A recorded hash means "unchanged since recorded", not "reviewed": your step 7 and 8 gates with the user
   are what make it a review.
@@ -217,13 +222,10 @@ directly; last run 2026-11-12, 7 of 7 checks passed. It failed on a copy with a 
 - [ ] A resumed draft with no recorded quality verification goes back through `prompt-reviewer` (step 7).
 
 **Last dated run record:** validator fixture tests, 118 run (115 passing, 3 POSIX-only skipped on Windows), 2026-11-12
-(`scripts/plib_test_catalog_validate.py`). On 2026-10-04 a subagent followed steps 1 to 6 by hand
-against an empty throwaway catalog with a web-origin candidate carrying a fake key: the screen reported
-it without echoing it, and `draft` refused it with nothing filed. That run was not persisted, the user
-questions were simulated, and the review, verify and status steps were not exercised. A later live
-interactive run on 2026-10-14 (plugin loaded with `--plugin-dir`) ran add, near-duplicate, revise, finalize
-and deactivate, each status change behind its own approval; it found that step 5's triage was skipped,
-which was fixed in PR #566.
+(`scripts/plib_test_catalog_validate.py`). The latest live run, 2026-10-14 (plugin loaded with
+`--plugin-dir`), ran add, near-duplicate, revise, finalize and deactivate, each status change behind its
+own approval; the step 5 triage skip it found was fixed in PR #566. An earlier hand-followed run of steps
+1 to 6 (2026-10-04, not persisted) confirmed a fake key is reported unechoed and refused by `draft`.
 
 **Evals:** `evals/prompt-library/` holds with-skill versus baseline scenarios run by dry-run agents that
 follow this SKILL.md by hand against throwaway projects (approval questions scripted, the reviewer step done
