@@ -54,6 +54,12 @@ restrictions are instructions, not limits Codex enforces, and a real read-only b
 running the parent session read-only. The repo's `.codex/config.toml` sets the parent to
 `workspace-write`.
 
+Source: the [Codex subagents](https://learn.chatgpt.com/docs/agent-configuration/subagents) doc (read
+2026-11-11): "Subagents inherit the parent turn's current sandbox and approval settings, including
+changes made with `/permissions` or `--yolo`. A custom agent file can't replace those settings." It
+also names `sandbox_mode` among the session settings that "don't override the parent configuration
+when placed in a custom agent file." This repo has not yet verified that behavior live.
+
 `features.shell_tool = false` was considered as a substitute and rejected. A live test on `codex-cli`
 0.166.0 (2026-11-12) gave an agent with that key only the `collaboration.*` tools. Codex has no separate
 file-read tool, since reading and searching go through its shell, so such a reviewer cannot read the
