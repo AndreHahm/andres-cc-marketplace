@@ -43,7 +43,22 @@ MAX_OUTPUT_TOKENS = 16_000
 PRICES: dict[str, tuple[float, float, float, float]] = {
     "claude-sonnet-5-5": (2.00, 10.00, 2.50, 0.20),
     "claude-opus-5-5": (4.00, 20.00, 5.00, 0.20),
+    "claude-haiku-5-5": (0.10, 0.50, 0.125, 0.01),
 }
+# A model with a second rate card for a long prompt: above the threshold (prompt tokens, cached
+# ones included) every token of that request is billed at the second card. Claude Haiku 5.5:
+# $0.50 / $2.50 above 100K, cache writes 1.25x and reads 0.1x the input rate, as below it.
+LONG_PROMPT_PRICES: dict[str, tuple[int, tuple[float, float, float, float]]] = {
+    "claude-haiku-5-5": (100_000, (0.50, 2.50, 0.625, 0.05)),
+}
+
+
+def _prices(model: str, prompt_tokens: float) -> tuple[float, float, float, float]:
+    long_card = LONG_PROMPT_PRICES.get(model)
+    if long_card is not None and prompt_tokens > long_card[0]:
+        return long_card[1]
+    return PRICES[model]
+
 
 # The schema claude-review-ci.yml gives claude-code-action; the sdk route uses it as is.
 REVIEW_SCHEMA: dict = {
@@ -236,7 +251,9 @@ class CheckoutFiles:
         }
         try:
             # An empty environment: the child never sees ANTHROPIC_API_KEY.
-            done = subprocess.run(  # nosec B603  # sys.executable, fixed program, no shell
+            # Semgrep's subprocess audit fires only because sys.executable is not a literal: the
+            # program is the fixed constant above, argv carries nothing from the PR, no shell runs.
+            done = subprocess.run(  # nosec B603  # nosemgrep  # fixed program, no shell
                 [sys.executable, "-I", "-c", _GREP_WORKER],
                 input=json.dumps(request),
                 capture_output=True,
@@ -345,13 +362,17 @@ PROMPT_OVERHEAD_TOKENS = 5_000
 
 def request_bound_usd(model: str, input_tokens: float) -> float:
     """The most one request can cost: all input billed as a cache write, all output used."""
-    _inp, out, write, _read = PRICES[model]
+    _inp, out, write, _read = _prices(model, input_tokens)
     return (input_tokens * write + MAX_OUTPUT_TOKENS * out) / 1_000_000
 
 
 def cost_usd(model: str, usage: object) -> float:
-    """One response's cost from its usage block, at PRICES."""
-    inp, out, write, read = PRICES[model]
+    """One response's cost from its usage block, at PRICES (or the long-prompt card)."""
+    prompt = sum(
+        _usage_value(usage, k)
+        for k in ("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens")
+    )
+    inp, out, write, read = _prices(model, prompt)
     return (
         _usage_value(usage, "input_tokens") * inp
         + _usage_value(usage, "output_tokens") * out
@@ -570,7 +591,7 @@ def run_pass(route: str, review_pass: str, *, prompt: str, model: str, checkout:
     started = utc_now()
     try:
         if route == "api":
-            import anthropic
+            import anthropic  # ty: ignore[unresolved-import]  # only the headless-review group
 
             client = anthropic.Anthropic(max_retries=2)
             result = run_api_pass(
@@ -583,8 +604,12 @@ def run_pass(route: str, review_pass: str, *, prompt: str, model: str, checkout:
                 max_turns=MAX_TURNS[review_pass],
             )
         else:
-            import anyio
-            from claude_agent_sdk import ClaudeAgentOptions, ResultMessage, query
+            import anyio  # ty: ignore[unresolved-import]  # only the headless-review group
+            from claude_agent_sdk import (  # ty: ignore[unresolved-import]
+                ClaudeAgentOptions,
+                ResultMessage,
+                query,
+            )
 
             result = anyio.run(
                 lambda: run_sdk_pass(
