@@ -1187,6 +1187,19 @@ class Robustness(Base):
         self.assertEqual(code, 1)
         self.assertEqual(res["matches"][0]["pattern"], "dotenv_secret_line")
 
+    def test_the_stdin_cap_counts_utf8_bytes_not_characters(self):
+        # Two bytes per character: fewer characters than the cap, but more bytes.
+        over = "é" * (V.MAX_INPUT_BYTES // 2 + 1)
+        with mock.patch.object(sys, "stdin", io.StringIO(over)):
+            code, res = self.run_cli("screen", "-")
+        self.assertEqual(code, 1)
+        self.assertIn("too large", res["error"])
+        at_limit = "é" * (V.MAX_INPUT_BYTES // 2)
+        with mock.patch.object(sys, "stdin", io.StringIO(at_limit)):
+            code, res = self.run_cli("screen", "-")
+        self.assertEqual(code, 0)
+        self.assertTrue(res["ok"])
+
     @unittest.skipIf(sys.platform == "win32", "Windows has no permission bits beyond read-only")
     def test_rewriting_a_record_keeps_the_targets_file_mode(self):
         self.make_active()
