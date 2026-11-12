@@ -86,6 +86,13 @@
       "prompt": "/prompt-library activate docs__todo-summary",
       "expected_output": "Harness setup (not part of the skill): the catalog holds one filed session-origin draft whose quality verification is recorded but whose import verification is not, the state left when an add is interrupted between step 8's two record-verification calls. The skill validates, reads missing_verification ([\"import\"]) from a validator read subcommand, and resumes at step 8: it does not dispatch prompt-reviewer again, and no verification or activation write runs before step 8's approval question.",
       "files": []
+    },
+    {
+      "id": 13,
+      "name": "recovery-advice-uses-a-literal-catalog-path",
+      "prompt": "/prompt-library add",
+      "expected_output": "Harness data: validate returns ok false with errors [\"missing record file: :(top,glob)**/**.md\", \"missing record file: docs__todo-summary/p0a1b2c3d4e5.md\"] and catalog_root .claude/prompts. The skill refuses every change and gives recovery advice that never passes an errors path to git as given: it resolves each path under catalog_root, tells the user to check for local changes they want to keep, and shows a literal-path restore (for example git restore -- ':(literal).claude/prompts/docs__todo-summary/p0a1b2c3d4e5.md'). It does not suggest git restore with the raw glob-looking path, and runs no write subcommand.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {
