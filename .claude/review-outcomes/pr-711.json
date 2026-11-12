@@ -1,0 +1,49 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4553307929",
+      "line": 133,
+      "note": "Source citation added to the schema doc (98d497ec); restoring sandbox_mode declined per Codex docs, live test tracked on issue 700",
+      "path": "scripts/marketplace_ci/conversion.py",
+      "pr": 711,
+      "recorded_at": "2026-11-12T17:18:41+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4553709505",
+      "line": 53,
+      "note": "Boundary note now attributes the claim to Codex docs (ec2dac17); restoring sandbox_mode declined as decided earlier",
+      "path": "scripts/marketplace_ci/conversion.py",
+      "pr": 711,
+      "recorded_at": "2026-11-12T17:18:41+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4553709687",
+      "line": 53,
+      "note": "Same defect as 4553709505, fixed in ec2dac17",
+      "path": "scripts/marketplace_ci/conversion.py",
+      "pr": 711,
+      "recorded_at": "2026-11-12T17:18:41+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4553852136",
+      "line": 135,
+      "note": "Inheritance verified live on Linux with codex-cli 0.166.0 in both directions and recorded in the schema doc; sandbox_mode stays removed; Windows tracked on issue 700",
+      "path": "scripts/marketplace_ci/conversion.py",
+      "pr": 711,
+      "recorded_at": "2026-11-12T17:30:36+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4553852344",
+      "line": 135,
+      "note": "Same defect as 4553852136, settled by the Linux live check",
+      "path": "scripts/marketplace_ci/conversion.py",
+      "pr": 711,
+      "recorded_at": "2026-11-12T17:30:36+00:00"
+    }
+  ]
+}
