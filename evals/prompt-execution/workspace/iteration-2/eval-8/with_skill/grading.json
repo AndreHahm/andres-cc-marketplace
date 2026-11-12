@@ -1,0 +1,34 @@
+{
+  "eval_id": 8,
+  "eval_name": "hidden-characters-listed-in-preview-and-approval",
+  "arm": "with_skill",
+  "run_type": "dry run, Read-only agent following the component file by hand",
+  "date": "2026-11-12",
+  "expectations": [
+    {
+      "text": "Each hidden character is listed with line, column, code point and name above its prompt's text block",
+      "passed": true
+    },
+    {
+      "text": "The preview says the characters are invisible, so the text that runs can differ from what it appears to say",
+      "passed": true
+    },
+    {
+      "text": "The truncated prompt says the list stops at 50 and there are more",
+      "passed": true
+    },
+    {
+      "text": "The approval question names each affected slug with its hidden-character count (2, and 50 or more)",
+      "passed": true
+    },
+    {
+      "text": "After Cancel nothing runs and no recheck show is issued",
+      "passed": true
+    }
+  ],
+  "summary": {
+    "passed": 5,
+    "total": 5
+  },
+  "notes": "SKILL.md at the PR #712 round-1 fix."
+}

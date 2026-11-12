@@ -1421,5 +1421,33 @@ class Interrupted(Base):
         self.assertEqual(res["records"][0]["prompt_text"], evil)
 
 
+class SmokeGrantShape(unittest.TestCase):
+    """The smoke tests' grant-shape check accepts only the exact validator invocation."""
+
+    GOOD = (
+        'Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}'
+        '/scripts/plib_catalog_validate.py" show:*)'
+    )
+
+    @classmethod
+    def setUpClass(cls):
+        spec = importlib.util.spec_from_file_location(
+            "plib_smoke_common", Path(__file__).with_name("plib_smoke_common.py")
+        )
+        assert spec is not None and spec.loader is not None  # nosec B101 - test module
+        cls.C = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cls.C)
+
+    def test_the_exact_grant_shape_is_accepted(self):
+        self.assertEqual(self.C.malformed_validator_grants([self.GOOD]), [])
+
+    def test_an_injected_uv_option_or_wildcard_is_rejected(self):
+        injected = self.GOOD.replace("uv run --isolated", "uv run --with evil --isolated")
+        wildcard = self.GOOD.replace('" show:*)', '":*)')
+        self.assertEqual(
+            self.C.malformed_validator_grants([injected, wildcard]), [injected, wildcard]
+        )
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

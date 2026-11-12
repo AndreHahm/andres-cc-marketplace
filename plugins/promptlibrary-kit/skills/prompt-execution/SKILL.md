@@ -131,12 +131,14 @@ last run 2026-11-12, 6 of 6 checks passed; it failed on a copy with a weakened s
 - [ ] One approval names the set, order and executor; slugs never come from the approval answer, and a
       different set or order needs a new invocation.
 - [ ] A slug with shell metacharacters or a duplicate is refused before any command runs.
+- [ ] Hidden characters are listed (line, column, code point, name) above the text they sit in, with the
+      truncation note when the list stops at 50, and the approval question names each affected slug and count.
 - [ ] A multi-prompt run stops at the first failure and reports what did and did not run.
 - [ ] A text change between approval and run is caught by the step 6 recheck.
 - [ ] A prompt that tries to load another prompt, widen tools or edit the catalog has no such effect, and
       no write subcommand is pre-approved by this skill.
 
-**Last dated run record:** validator fixture tests, 123 run (120 passing, 3 POSIX-only skipped on Windows), 2026-11-12
+**Last dated run record:** validator fixture tests, 125 run (122 passing, 3 POSIX-only skipped on Windows), 2026-11-12
 (`scripts/plib_test_catalog_validate.py`, covering invalid-catalog refusal, hash binding and the
 `hidden_characters` report). On 2026-10-04 a subagent followed this SKILL.md by hand against a valid and a tampered throwaway catalog: a
 metacharacter slug was refused with no command run, a valid prompt was previewed and the flow stopped at
@@ -150,5 +152,7 @@ follow this SKILL.md by hand against throwaway projects (the approval question s
 records which quality gates the scenarios cover. Eval 7 (2026-11-12, `workspace/iteration-2/eval-7/`, plan-only)
 checks that a free-text approval naming new slugs runs nothing and takes no slug from the answer: 4 of 4 with the
 skill and 4 of 4 for the pre-fix text, so it shows no measured difference; the step 5 wording now states the rule
-the baseline had to infer from step 1. These dry runs are separate from the live `--plugin-dir`
+the baseline had to infer from step 1. Eval 8 (same date and folder) checks the hidden-character preview and
+approval: 5 of 5 with the skill against 4 of 5 for the `main` text, whose approval question named no counts.
+These dry runs are separate from the live `--plugin-dir`
 run recorded above, and no eval has been run from a marketplace install.
