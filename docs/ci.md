@@ -127,8 +127,10 @@ publishes nothing. The result file holds `status`
 (`clean`, `findings`, `could_not_run` or `skipped`), the verdict, `head_sha`, `run_attempt`, the anchor, the
 reviewed paths, the model, whether the security pass ran, cost and turns per pass, and the findings. The
 check fails on a Critical or Major finding in either pass, and on a review that could not run (an invalid
-setting, a failed scope job, an API error, a cap reached, a timeout, a newer push before the call). Findings
-are not carried to later runs.
+setting, a failed scope job, an API error, a cap reached, a timeout, a newer push before the call, a failed
+PR lookup before a pass). When the re-check before the security pass stops the run (the PR became a draft,
+moved or could not be looked up), the general pass's findings are still posted, but the run stays `skipped`
+or `could_not_run` and is never an anchor. Findings are not carried to later runs.
 
 **Settings (R8, R9, R10).** Repository variables, validated by `claude-review-settings`:
 
