@@ -1234,6 +1234,12 @@ class Robustness(Base):
         self.assertEqual(self.verify("p000000000001", "import")[0], 0)
         self.assertEqual(missing(), (True, []))
 
+    def test_hidden_characters_cover_invisible_combining_marks_but_not_accents(self):
+        for cp in (0x034F, 0x17B4, 0x17B5, 0x180B, 0x180C, 0x180D, 0x180F):
+            found, _ = V.hidden_characters("a" + chr(cp) + "b")
+            self.assertEqual([h["codepoint"] for h in found], [f"U+{cp:04X}"], hex(cp))
+        self.assertEqual(V.hidden_characters("café naïve")[0], [])
+
     def test_show_reports_no_hidden_characters_for_plain_text(self):
         self.make_active(_body="Tab\tis fine.\nSo is café and — a dash.")
         code, res = self.run_cli("show", SLUG)

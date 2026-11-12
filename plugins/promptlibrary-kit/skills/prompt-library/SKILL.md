@@ -221,7 +221,7 @@ directly; last run 2026-11-12, 7 of 7 checks passed. It failed on a copy with a 
 - [ ] Every status change and every draft filing was preceded by an `AskUserQuestion` approval.
 - [ ] A resumed draft with no recorded quality verification goes back through `prompt-reviewer` (step 7).
 
-**Last dated run record:** validator fixture tests, 120 run (117 passing, 3 POSIX-only skipped on Windows), 2026-11-12
+**Last dated run record:** validator fixture tests, 121 run (118 passing, 3 POSIX-only skipped on Windows), 2026-11-12
 (`scripts/plib_test_catalog_validate.py`). The latest live run, 2026-10-14 (plugin loaded with
 `--plugin-dir`), ran add, near-duplicate, revise, finalize and deactivate, each status change behind its
 own approval; the step 5 triage skip it found was fixed in PR #566. An earlier hand-followed run of steps

@@ -320,8 +320,12 @@ def normalize_text(text: str) -> str:
 MAX_HIDDEN_REPORTED = 50
 # Format (zero-width, bidi, tags), control, private-use, unassigned, line/paragraph separators.
 HIDDEN_CATEGORIES = frozenset({"Cf", "Cc", "Co", "Cn", "Zl", "Zp"})
-# Letters and marks that render blank or not at all.
-HIDDEN_EXTRA = frozenset({0x115F, 0x1160, 0x2800, 0x3164, 0xFFA0})
+# Letters and marks that render blank or not at all: Hangul fillers, the braille blank, and the
+# default-ignorable combining marks (grapheme joiner, Khmer inherent vowels, Mongolian free
+# variation selectors), which are category Mn like a visible accent.
+HIDDEN_EXTRA = frozenset(
+    {0x034F, 0x115F, 0x1160, 0x17B4, 0x17B5, 0x180B, 0x180C, 0x180D, 0x180F, 0x2800, 0x3164, 0xFFA0}
+)
 
 
 def _is_hidden(ch: str) -> bool:
@@ -335,7 +339,8 @@ def _is_hidden(ch: str) -> bool:
 
 def hidden_characters(text: str) -> tuple[list[dict], bool]:
     """Characters a rendered preview does not show (format and control characters, variation
-    selectors, private-use or unassigned code points, separators, blank-looking letters), by
+    selectors, private-use or unassigned code points, separators, blank-looking letters, invisible
+    combining marks), by
     1-based line and code point, plus whether the list was cut at MAX_HIDDEN_REPORTED. The user
     may otherwise approve text that reads differently from what runs. Reported, not rejected: an
     emoji joiner or variation selector is legitimate."""
