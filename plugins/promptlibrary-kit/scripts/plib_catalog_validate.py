@@ -462,6 +462,17 @@ def hash_problems(meta: dict) -> list[str]:
     return problems
 
 
+def missing_verification(meta: dict) -> list[str]:
+    """Required verification kinds that are absent or do not bind the current text, in step order
+    (quality, then import), so a resumed draft knows whether to restart at the review or the import
+    check."""
+    ver = meta.get("verification")
+    ver = ver if isinstance(ver, dict) else {}
+    current = text_hash(meta["_body"])
+    required = ["quality"] + (["import"] if meta.get("origin") in ("session", "web") else [])
+    return [kind for kind in required if ver.get(kind) != current]
+
+
 def validate_record(meta: dict, version: int) -> list[str]:
     errs = []
     required, optional = RECORD_REQUIRED[version], RECORD_OPTIONAL[version]
@@ -892,6 +903,7 @@ def summarize(meta: dict) -> dict:
         "area": meta.get("area"),
         "short_description": meta.get("short_description"),
         "verified": not hash_problems(meta),
+        "missing_verification": missing_verification(meta),
     }
 
 

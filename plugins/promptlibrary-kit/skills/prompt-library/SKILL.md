@@ -83,10 +83,10 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
      `records` or `<CLI> show <slug> --history`; if more than one fits, ask which.
    - `deactivate`, and `activate` of an inactive record, skip steps 3 to 8: go to step 9.
    - A draft left by an interrupted add or revise (also when `activate` names a draft) resumes by its
-     state: at step 7 if it lacks a recorded quality verification (no record field shows whether
-     `prompt-reviewer` already ran, so an unverified draft always gets the review again); at step 8 if it
-     has the quality verification but, for `session` or `web` origin, lacks the import one; at step 9
-     once it is fully verified.
+     state, read from the record's `missing_verification` list in `validate` or `show <slug> --history`:
+     at step 7 if it includes `quality` (no record field shows whether `prompt-reviewer` already ran, so
+     an unverified draft always gets the review again); at step 8 if it holds only `import` (`session` or
+     `web` origin); at step 9 once it is empty.
    - A successor ends with `finalize`; never start a second successor.
 3. **Intake.** For `add`, follow `references/prompt-intake-sources.md`. The intake path sets `origin`:
    fetched text is always `web`, session text is always `session`; the user cannot label either as
@@ -221,7 +221,7 @@ directly; last run 2026-11-12, 7 of 7 checks passed. It failed on a copy with a 
 - [ ] Every status change and every draft filing was preceded by an `AskUserQuestion` approval.
 - [ ] A resumed draft with no recorded quality verification goes back through `prompt-reviewer` (step 7).
 
-**Last dated run record:** validator fixture tests, 118 run (115 passing, 3 POSIX-only skipped on Windows), 2026-11-12
+**Last dated run record:** validator fixture tests, 120 run (117 passing, 3 POSIX-only skipped on Windows), 2026-11-12
 (`scripts/plib_test_catalog_validate.py`). The latest live run, 2026-10-14 (plugin loaded with
 `--plugin-dir`), ran add, near-duplicate, revise, finalize and deactivate, each status change behind its
 own approval; the step 5 triage skip it found was fixed in PR #566. An earlier hand-followed run of steps
@@ -230,7 +230,8 @@ own approval; the step 5 triage skip it found was fixed in PR #566. An earlier h
 **Evals:** `evals/prompt-library/` holds with-skill versus baseline scenarios run by dry-run agents that
 follow this SKILL.md by hand against throwaway projects (approval questions scripted, the reviewer step done
 inline). Its `evals.json` records which quality gates the scenarios cover. Scenario 11 (draft resume,
-2026-11-12, with-skill only, in `workspace/iteration-2/`) passed 3 of 4 checks. The miss: no read
-subcommand returned the record path. It was fixed by adding `path` to `show`, which a unit test covers,
-but the scenario was not re-run. These dry runs are separate from the live
+2026-11-12, with-skill only, in `workspace/iteration-2/`) first passed 3 of 4 checks: no read
+subcommand returned the record path. After `path` was added to `show` (covered by a unit test), a re-run
+the same day passed 4 of 4. Scenario 12 (a session draft with only its quality verification resumes at
+step 8, read from `missing_verification`) passed 5 of 5 the same day. These dry runs are separate from the live
 `--plugin-dir` run recorded above, and no eval has been run from a marketplace install.

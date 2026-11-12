@@ -1220,6 +1220,20 @@ class Robustness(Base):
         self.assertEqual(res["records"][0]["path"], filed["path"])
         self.assertTrue((self.root / res["records"][0]["path"]).is_file())
 
+    def test_show_history_names_the_missing_verification_kinds_for_resume(self):
+        self.add_draft(origin="session", source_ref={"session_id": "abc123", "turns": "4-9"})
+
+        def missing():
+            code, res = self.run_cli("show", SLUG, "--history")
+            self.assertEqual(code, 0, res)
+            return res["records"][0]["verified"], res["records"][0]["missing_verification"]
+
+        self.assertEqual(missing(), (False, ["quality", "import"]))
+        self.assertEqual(self.verify("p000000000001")[0], 0)
+        self.assertEqual(missing(), (False, ["import"]))
+        self.assertEqual(self.verify("p000000000001", "import")[0], 0)
+        self.assertEqual(missing(), (True, []))
+
     def test_show_reports_no_hidden_characters_for_plain_text(self):
         self.make_active(_body="Tab\tis fine.\nSo is café and — a dash.")
         code, res = self.run_cli("show", SLUG)
