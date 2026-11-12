@@ -63,6 +63,7 @@ files it reviews. A control agent without the key had `functions.exec` and ran c
 
 1. Omitting a required field (`name`, `description`, `developer_instructions`).
 2. Assuming a spawned agent inherits reasoning effort when only `model` is set.
-3. Relying on a custom agent file's `sandbox_mode` to keep it read-only: the subagent inherits the
-   parent session's sandbox (see "No sandbox in the exports" above).
+3. (This repo's correction, not the source doc's wording.) Relying on a custom agent file's
+   `sandbox_mode` to keep it read-only: it cannot override the parent's sandbox, so run the parent
+   session read-only instead (see "No sandbox in the exports" above).
 4. Building an overly broad agent instead of a narrow, opinionated one.
