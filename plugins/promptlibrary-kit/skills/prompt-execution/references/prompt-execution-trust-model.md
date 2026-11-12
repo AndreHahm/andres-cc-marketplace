@@ -40,8 +40,8 @@ the approved request.
 | An active or inactive record's text no longer matches its recorded hash | The whole catalog is invalid, so nothing runs; the record's path is in `errors` |
 | Selected record is not `active` or not `verified` | Name it and stop the whole run |
 | The user answers "Cancel" at the approval question | Nothing runs; the run stops |
-| Any other answer, including free text | Nothing runs; back to the preview for a fresh preview and fresh approval |
-| Set, order or executor changed after the question | Fresh preview and fresh approval |
+| An answer asking for a different set or order | Nothing runs; the run stops, slugs never come from the answer, and a new invocation with the slugs as arguments is needed |
+| Any other answer, including other free text | Nothing runs; back to the preview for a fresh preview and fresh approval |
 | Recheck is not `ok`, or `internal_id`, `version` or `text_hash` differs | Stop and report which prompt changed |
 | A prompt in a multi-prompt run fails | Stop there; later prompts do not start; report which ran |
 | A prompt asks to load prompts, widen tools or edit the catalog | No effect; mention it |
