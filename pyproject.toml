@@ -26,7 +26,8 @@ dev = [
   "markdown-it-py>=4.2,<5",
 ]
 # Only the test headless Claude review job installs these
-# (.github/workflows/test-headless-claude-review-ci.yml); pinned exactly, at least two weeks old.
+# (.github/workflows/test-headless-claude-review-ci.yml). The two SDKs are pinned exactly, to releases
+# at least two weeks old; PyYAML keeps the dev group's lower bound, and uv.lock pins every version.
 headless-review = [
   "anthropic==2.3.0",
   "claude-agent-sdk==0.2.174",
