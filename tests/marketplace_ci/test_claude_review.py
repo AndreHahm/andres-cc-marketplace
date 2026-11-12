@@ -474,13 +474,15 @@ def test_the_patch_cli_writes_the_patch_and_fails_closed(monkeypatch, tmp_path):
 )
 def test_a_skip_after_the_general_pass_keeps_its_findings(skipped, status):
     """Security review m2: a security re-check that stops the run must not hide a Critical the
-    general pass already found; the run is still neither clean, findings nor an anchor."""
+    general pass already found. PR #709 review: nothing is posted inline for it (the PR may have
+    moved), so it is recorded and counted in the reason; never clean, findings or an anchor."""
     raw = {"skipped": skipped, "passes": [_record("general", [_finding("Critical")])]}
     got = _decide(_scope(_PLAIN, _CRITICAL), raw)
     assert got["status"] == status and got["verdict"] is None
-    assert [f["severity"] for f in got["findings"]] == ["Critical"]
+    assert got["findings"] == []
+    assert [f["severity"] for f in got["recorded_findings"]] == ["Critical"]
     assert got["passes"] == {"general": {"cost_usd": 0.12, "turns": 4}}
-    assert "findings from the passes that finished are shown" in got["reason"]
+    assert "finished (1 Critical) are only recorded in the result artifact" in got["reason"]
 
 
 def test_a_skip_ignores_a_failed_or_invalid_pass():
@@ -490,4 +492,18 @@ def test_a_skip_ignores_a_failed_or_invalid_pass():
     ]}  # fmt: skip
     got = _decide(_scope(_PLAIN, _CRITICAL), raw)
     assert got["status"] == "could_not_run" and got["findings"] == []
+    assert "recorded_findings" not in got
     assert got["reason"] == "the pull request could not be re-checked before a pass"
+
+
+def test_recorded_findings_after_a_skip_are_never_posted_inline():
+    """PR #709 review: a run a re-check stopped posts only its summary, never inline comments
+    on a head the PR may have left; the summary's reason still counts the Critical one."""
+    raw = {"skipped": "lookup_failed", "passes": [_record("general", [_finding("Critical")])]}
+    result = _decide(_scope(_PLAIN, _CRITICAL), raw)
+    gh = FakeGh()
+    cr.publish(result, repo="o/r", pr_number=7, gh=gh)
+    assert not [a for a, _ in gh.calls if a[:3] == ["-X", "POST", "repos/o/r/pulls/7/comments"]]
+    summary = [p for a, p in gh.calls if a[:3] == ["-X", "POST", "repos/o/r/issues/7/comments"]]
+    assert len(summary) == 1 and "could_not_run" in summary[0]["body"]
+    assert "1 Critical" in summary[0]["body"]

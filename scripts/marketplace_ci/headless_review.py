@@ -544,9 +544,17 @@ async def run_sdk_pass(
         permission_mode="dontAsk",
     )
     final = None
-    async for message in query(prompt=prompt, options=options):
-        if isinstance(message, result_type):
-            final = message
+    try:
+        async for message in query(prompt=prompt, options=options):
+            if isinstance(message, result_type):
+                final = message
+    except Exception:
+        # After an error result (a cap reached, an API error) Claude Code exits non-zero and the
+        # SDK raises ResultError once that result is yielded: keep the result, whose subtype and
+        # status say why, and drop the exception (its text would carry the API's error message).
+        # Anything else (no result, or a successful one) still fails the pass in run_pass.
+        if final is None or not final.is_error:
+            raise
     if final is None:
         return PassResult("error_during_execution", True, 0, None)
     output = final.structured_output
