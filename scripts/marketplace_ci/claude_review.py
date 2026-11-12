@@ -312,12 +312,14 @@ def decide(
     }
     if raw.get("skipped") in skips:
         # A pass that finished before the skip (the general pass, when only the security
-        # re-check stopped the run) keeps its findings: posted for head_moved and lookup_failed
-        # (could_not_run), only recorded in the result for a draft (a skipped run posts nothing).
-        # The run is still not a full review, so it is never clean, findings or an anchor.
+        # re-check stopped the run) keeps its findings in `recorded_findings`, never in
+        # `findings`: publish posts nothing inline for them, since the PR may have moved or become
+        # a draft since. The reason counts them, so the summary of a could_not_run run shows a
+        # Critical one exists. The run is never clean, findings or an anchor.
         result["reason"] = skips[raw["skipped"]]
         if raw["skipped"] == "draft":
             result["status"] = "skipped"
+        recorded: list[dict] = []
         for record in raw.get("passes", []):
             if not isinstance(record, dict) or record.get("outcome") != "success":
                 continue
@@ -326,9 +328,16 @@ def decide(
             except InvalidReview:
                 continue
             result["passes"][record.get("pass")] = _pass_cost(record)
-            result["findings"].extend(findings)
-        if result["findings"]:
-            result["reason"] += "; findings from the passes that finished are shown"
+            recorded.extend(findings)
+        if recorded:
+            result["recorded_findings"] = recorded
+            counts = ", ".join(
+                f"{n} {s}" for s in SEVERITIES if (n := sum(f["severity"] == s for f in recorded))
+            )
+            result["reason"] += (
+                f"; findings from the passes that finished ({counts}) are only recorded in the "
+                "result artifact"
+            )
         return result
     expected = ["general", *(["security"] if needs_security_pass(scope) else [])]
     result["security_review"] = "security" in expected

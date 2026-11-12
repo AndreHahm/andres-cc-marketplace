@@ -22,7 +22,7 @@ import yaml
 
 from scripts.marketplace_ci import headless_review as hr
 from scripts.marketplace_ci.__main__ import main
-from scripts.marketplace_ci.claude_review import parse_pass
+from scripts.marketplace_ci.claude_review import InvalidReview, parse_pass
 
 ROOT = Path(__file__).resolve().parents[2]
 WF_PATH = ROOT / ".github/workflows/test-headless-claude-review-ci.yml"
@@ -930,3 +930,66 @@ def test_the_action_route_removes_symlinks_before_any_pass(tmp_path: Path):
     subprocess.run(["bash", "-c", run], cwd=tmp_path, check=True, capture_output=True)
     assert not (tmp_path / "leak").is_symlink() and not (tmp_path / "sub" / "up").is_symlink()
     assert (tmp_path / "keep.txt").exists()
+
+
+def test_sdk_pass_keeps_an_error_result_the_sdk_raises_after(tmp_path: Path):
+    """PR #709 review: the pinned SDK yields an error ResultMessage, then raises ResultError when
+    Claude Code exits non-zero; the result's subtype, status, turns and cost are kept."""
+
+    class ResultError(Exception):
+        pass
+
+    async def query(*, prompt, options):
+        yield FakeResult(
+            subtype="error_during_execution",
+            is_error=True,
+            num_turns=3,
+            total_cost_usd=0.02,
+            api_error_status=400,
+        )
+        raise ResultError("Claude Code returned an error result: secret detail")
+
+    result = asyncio.run(
+        hr.run_sdk_pass(query, dict, FakeResult, prompt="p", model="m", max_turns=1,
+                        checkout=tmp_path)
+    )  # fmt: skip
+    assert (result.subtype, result.is_error, result.api_error_status) == (
+        "error_during_execution",
+        True,
+        400,
+    )
+    assert (result.num_turns, result.total_cost_usd) == (3, 0.02)
+    record = hr.pass_record("sdk", "general", "success", result, "", "t0", "t1")
+    assert "secret detail" not in json.dumps(record)
+    with pytest.raises(InvalidReview, match="API status 400"):
+        parse_pass(record, frozenset({"a.py"}))
+
+
+@pytest.mark.parametrize("yielded", [None, FakeResult()])
+def test_sdk_pass_still_raises_without_an_error_result(tmp_path: Path, yielded):
+    async def query(*, prompt, options):
+        if yielded is not None:
+            yield yielded
+        raise RuntimeError("boom")
+        yield  # pragma: no cover
+
+    with pytest.raises(RuntimeError):
+        asyncio.run(
+            hr.run_sdk_pass(query, dict, FakeResult, prompt="p", model="m", max_turns=1,
+                            checkout=tmp_path)
+        )  # fmt: skip
+
+
+@pytest.mark.skipif(shutil.which("jq") is None, reason="the collect step uses jq")
+def test_the_action_collect_step_records_a_pass_that_left_no_record(tmp_path: Path):
+    """PR #709 review: as the sdk route, a pass the re-check let run but that left no record is
+    recorded as failed, never silently missing."""
+    run = _action_step("Collect the passes")["run"]
+    env = {"PATH": os.environ["PATH"], "RUNNER_TEMP": str(tmp_path),
+           "LIVE_GENERAL": "ok", "LIVE_SECURITY": ""}  # fmt: skip
+    subprocess.run(["bash", "-c", run], env=env, check=True, capture_output=True)
+    raw = json.loads((tmp_path / "headless-out" / "headless-review-raw.json").read_text("utf-8"))
+    assert raw["skipped"] is None
+    assert [(p["route"], p["pass"], p["outcome"]) for p in raw["passes"]] == [
+        ("action", "general", "failure")
+    ]

@@ -1,0 +1,44 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4550208245",
+      "line": 329,
+      "note": "Findings kept after a re-check skip are now recorded in the result, not posted inline; the reason counts them.",
+      "path": "scripts/marketplace_ci/claude_review.py",
+      "pr": 709,
+      "recorded_at": "2026-11-12T12:15:29+00:00",
+      "rule": "coderabbit:functional-correctness"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "PRR_kwDOTi7e-s8AAAABXiDxHA:outside-diff-1",
+      "line": 547,
+      "note": "run_sdk_pass keeps the SDK's error result when the SDK raises after yielding it; re-raises otherwise.",
+      "path": "scripts/marketplace_ci/headless_review.py",
+      "pr": 709,
+      "recorded_at": "2026-11-12T12:15:29+00:00",
+      "rule": "coderabbit:data-integrity"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "issuecomment-6822936179:row-1",
+      "line": 749,
+      "note": "The action route's collect step now records a pass that left no record as failed.",
+      "path": ".github/workflows/test-headless-claude-review-ci.yml",
+      "pr": 709,
+      "recorded_at": "2026-11-12T12:15:29+00:00",
+      "rule": "claude-delta-review:minor"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "issuecomment-6822936179:row-2",
+      "line": 316,
+      "note": "Same root cause as 4550208245; nothing is posted inline after a re-check skip.",
+      "path": "scripts/marketplace_ci/claude_review.py",
+      "pr": 709,
+      "recorded_at": "2026-11-12T12:15:29+00:00",
+      "rule": "claude-delta-review:informational"
+    }
+  ]
+}

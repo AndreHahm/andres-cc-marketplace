@@ -754,6 +754,15 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/headless-raw" "$RUNNER_TEMP/headless-out"
+          # A pass whose record step left nothing (it failed or never ran) is recorded as failed.
+          for pair in "general:$LIVE_GENERAL" "security:$LIVE_SECURITY"; do
+            pass="${pair%%:*}"; state="${pair#*:}"
+            if [ "$state" = "ok" ] && [ ! -s "$RUNNER_TEMP/headless-raw/$pass.json" ]; then
+              jq -n --arg pass "$pass" \
+                '{route: "action", pass: $pass, outcome: "failure", result: null, secret_found: false, structured_output: ""}' \
+                > "$RUNNER_TEMP/headless-raw/$pass.json"
+            fi
+          done
           skipped=""
           for state in "$LIVE_GENERAL" "$LIVE_SECURITY"; do
             case "$state" in draft|head_moved|lookup_failed) skipped="$state" ;; esac
