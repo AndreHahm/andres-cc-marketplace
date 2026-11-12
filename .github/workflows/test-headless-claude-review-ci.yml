@@ -2,7 +2,8 @@ name: Test Headless Claude Review
 
 # A test beside Claude Delta Review (claude-review-ci.yml), not a replacement: the same reviewer
 # prompts run headless through two routes, the Claude Agent SDK and the Messages API, so a real
-# run shows which Anthropic credit pool pays for each (docs/ci.md). Advisory and never required;
+# run shows which Anthropic credit pool pays for each (docs/ci.md). Opt-in (repository variable
+# ACTIVATE_CLAUDE_REVIEW_TEST=1), advisory and never required;
 # it posts nothing to the pull request, only a comparison table in the job summary. The API key
 # reaches only headless-review, which runs Python restored from the base SHA (on the PR that
 # introduces this workflow, the PR's own copy, since the base has none yet).
@@ -22,11 +23,14 @@ jobs:
     name: Compute the headless review scope
     # R2: same-repository PRs only (a fork has no secret: skipped, not failed), no Dependabot
     # PRs, no drafts.
+    # Opt-in: the whole test runs only while the repository variable ACTIVATE_CLAUDE_REVIEW_TEST is
+    # exactly 1; any other value or none skips this job, and the two jobs after it skip with it.
     if: >-
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.actor != 'dependabot[bot]' &&
       github.event.pull_request.user.login != 'dependabot[bot]' &&
-      github.event.pull_request.draft == false
+      github.event.pull_request.draft == false &&
+      vars.ACTIVATE_CLAUDE_REVIEW_TEST == '1'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -285,8 +289,14 @@ jobs:
     strategy:
       max-parallel: 1
       fail-fast: false
+      # Each route its own key, so the Console shows the sdk route's usage on a key of its own.
+      # No fallback: an unset ANTHROPIC_API_KEY_SDK is not replaced by the shared key.
       matrix:
-        route: [sdk, api]
+        include:
+          - route: sdk
+            key_secret: ANTHROPIC_API_KEY_SDK
+          - route: api
+            key_secret: ANTHROPIC_API_KEY
     timeout-minutes: 50
     permissions:
       contents: read
@@ -396,10 +406,15 @@ jobs:
         timeout-minutes: ${{ fromJSON(needs.headless-scope.outputs.pass_minutes) }}
         working-directory: trusted
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # The route's own secret (see the matrix); an unset one is empty and fails the pass.
+          ANTHROPIC_API_KEY: ${{ secrets[matrix.key_secret] }}
           ROUTE: ${{ matrix.route }}
           MODEL: ${{ needs.headless-scope.outputs.model }}
         run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::error::no API key for the $ROUTE route (sdk: ANTHROPIC_API_KEY_SDK, api: ANTHROPIC_API_KEY)"
+            exit 1
+          fi
           mkdir -p "$RUNNER_TEMP/headless-raw"
           uv run --no-sync python -m scripts.marketplace_ci headless-review-pass \
             --route "$ROUTE" --pass general --model "$MODEL" \
@@ -429,10 +444,15 @@ jobs:
         timeout-minutes: ${{ fromJSON(needs.headless-scope.outputs.pass_minutes) }}
         working-directory: trusted
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # The route's own secret (see the matrix); an unset one is empty and fails the pass.
+          ANTHROPIC_API_KEY: ${{ secrets[matrix.key_secret] }}
           ROUTE: ${{ matrix.route }}
           MODEL: ${{ needs.headless-scope.outputs.model }}
         run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::error::no API key for the $ROUTE route (sdk: ANTHROPIC_API_KEY_SDK, api: ANTHROPIC_API_KEY)"
+            exit 1
+          fi
           mkdir -p "$RUNNER_TEMP/headless-raw"
           uv run --no-sync python -m scripts.marketplace_ci headless-review-pass \
             --route "$ROUTE" --pass security --model "$MODEL" \

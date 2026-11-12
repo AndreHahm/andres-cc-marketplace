@@ -157,7 +157,8 @@ so this blocks nothing; the first real review runs on the next PR.
 ## Test: headless Claude review (advisory)
 
 `.github/workflows/test-headless-claude-review-ci.yml` is a test beside the Claude delta review, not a
-replacement. It runs the same reviewer prompts through two headless routes, so that a real run shows which
+replacement, and opt-in: it runs only while the repository variable `ACTIVATE_CLAUDE_REVIEW_TEST` is exactly
+`1`; any other value, or none, skips all three jobs. It runs the same reviewer prompts through two headless routes, so that a real run shows which
 Anthropic credit pool pays for each: the subscriber credits page lists the Claude Agent SDK as covered and
 Claude Code as not, but the Agent SDK runs a bundled Claude Code binary, and the docs do not say how such
 requests are billed. Its check, `Headless Claude review comparison`, is advisory, never required, and posts
@@ -166,7 +167,7 @@ nothing to the pull request: the comparison goes to the job summary only.
 | Job | Check name | Secret | What it does |
 |---|---|---|---|
 | `headless-scope` | `Compute the headless review scope` | none | The same steps as `claude-scope` (a test keeps the restore, settings, scope and prompt steps identical), except the anchor: the head before this push on `synchronize`, else none (the whole PR). Uploads `headless-review-scope`. |
-| `headless-review` | `Run the sdk route` / `Run the api route` | `ANTHROPIC_API_KEY` | A matrix over the two routes, one at a time (`max-parallel: 1`), so the Console's usage timeline tells them apart. Checks out the PR head into `pr/` and the base SHA into `trusted/`, removes every symlink from `pr/` (so neither route depends on how a link is resolved), installs only the `headless-review` dependency group (`anthropic` and `claude-agent-sdk` pinned exactly, plus PyYAML for the shared redaction), places the patch, re-checks the PR before each pass, and runs `headless-review-pass` from `trusted/` for the general pass and, when the delta has a gate-critical path, the security pass. Uploads `headless-review-raw-<route>`. |
+| `headless-review` | `Run the sdk route` / `Run the api route` | `ANTHROPIC_API_KEY_SDK` (sdk route), `ANTHROPIC_API_KEY` (api route) | A matrix over the two routes, one at a time (`max-parallel: 1`), so the Console's usage timeline tells them apart. Checks out the PR head into `pr/` and the base SHA into `trusted/`, removes every symlink from `pr/` (so neither route depends on how a link is resolved), installs only the `headless-review` dependency group (`anthropic` and `claude-agent-sdk` pinned exactly, plus PyYAML for the shared redaction), places the patch, re-checks the PR before each pass, and runs `headless-review-pass` from `trusted/` for the general pass and, when the delta has a gate-critical path, the security pass. Uploads `headless-review-raw-<route>`. |
 | `headless-compare` | `Headless Claude review comparison` | none | Checks out the base SHA, runs `headless-review-summary` and writes a table per route and pass (status, verdict, findings by severity, turns, reported cost, tokens, start and end time in UTC) to the job summary. |
 
 **The two routes** (`scripts/marketplace_ci/headless_review.py`):
@@ -197,10 +198,13 @@ Both write the record shape `claude-review-raw` uses, plus the route, token tota
 `claude_review.parse_pass` reads them. An API error keeps only its HTTP status, a crash only the exception's
 type, output that holds the key is dropped, and other credential-shaped text in the output is redacted
 before the artifact is written. Events, the fork, Dependabot and draft skips, the kill switch
-and the model and timeout variables are the Claude delta review's.
+(`CLAUDE_CI_REVIEW_BYPASS`) and the model and timeout variables are the Claude delta review's; the opt-in
+variable is this workflow's own.
 
-**Reading the result.** Both routes use the same key, and every key in a linked organization draws from one
-balance, so the run itself cannot say which pool paid. Compare the times in the job summary with the Console's
+**Reading the result.** The sdk route uses its own secret, `ANTHROPIC_API_KEY_SDK`, so the Console shows its
+usage on a key of its own; the api route uses `ANTHROPIC_API_KEY`, shared with the Claude delta review. There
+is no fallback: with `ANTHROPIC_API_KEY_SDK` unset or empty, the sdk passes fail with an error naming it. Every
+key in a linked organization still draws from one balance, so the run itself cannot say which pool paid. Compare the times in the job summary with the Console's
 usage by hour and the promotional-credit balance on the Billing page before and after a run.
 
 **Bootstrapping.** On the PR that adds this workflow the base SHA has no `headless_review.py`, so

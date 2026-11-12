@@ -358,7 +358,19 @@ def test_triggers_skips_and_concurrency_match_the_claude_review():
     assert set(on) == {"pull_request"}
     assert on == CLAUDE_WF.get("on", CLAUDE_WF.get(True))
     assert WF["concurrency"]["cancel-in-progress"] is True
-    assert JOBS["headless-scope"]["if"] == CLAUDE_WF["jobs"]["claude-scope"]["if"]
+    # The Claude review's skips, plus the opt-in variable.
+    assert JOBS["headless-scope"]["if"] == (
+        CLAUDE_WF["jobs"]["claude-scope"]["if"] + " && vars.ACTIVATE_CLAUDE_REVIEW_TEST == '1'"
+    )
+
+
+def test_every_later_job_skips_when_the_scope_job_is_skipped():
+    review_if = JOBS["headless-review"]["if"]
+    assert JOBS["headless-review"]["needs"] == "headless-scope"
+    assert "needs.headless-scope.outputs.switched_off == 'false'" in review_if
+    assert JOBS["headless-compare"]["if"] == (
+        "${{ !cancelled() && needs.headless-scope.result != 'skipped' }}"
+    )
 
 
 def test_the_scope_job_restores_exactly_what_the_claude_review_restores():
@@ -380,16 +392,29 @@ def test_the_api_key_reaches_only_the_two_pass_steps():
         (job, step.get("name"))
         for job in JOBS
         for step in _steps(job)
-        if "secrets." in json.dumps(step)
+        if "secrets" in json.dumps(step)
     ]
     assert holders == [("headless-review", "General pass"), ("headless-review", "Security pass")]
-    assert TEXT.count("secrets.") == 2
+    # One secret per pass step, chosen by the matrix: never a hard-coded shared key.
+    assert TEXT.count("secrets") == 2
     for step in _steps("headless-review"):
-        if "secrets." in json.dumps(step):
+        if "secrets" in json.dumps(step):
             assert step["working-directory"] == "trusted"
-            assert step["env"]["ANTHROPIC_API_KEY"] == "${{ secrets.ANTHROPIC_API_KEY }}"
+            assert step["env"]["ANTHROPIC_API_KEY"] == "${{ secrets[matrix.key_secret] }}"
             assert "headless-review-pass" in step["run"]
             assert '--checkout "$GITHUB_WORKSPACE/pr"' in step["run"]
+
+
+@pytest.mark.parametrize("name", ["General pass", "Security pass"])
+def test_a_pass_with_no_key_fails_before_running(tmp_path: Path, name: str):
+    step = next(s for s in _steps("headless-review") if s.get("name") == name)
+    env = {**os.environ, "ANTHROPIC_API_KEY": "", "ROUTE": "sdk", "RUNNER_TEMP": str(tmp_path)}
+    done = subprocess.run(
+        ["bash", "-c", step["run"]], cwd=tmp_path, env=env, capture_output=True, text=True
+    )
+    assert done.returncode == 1
+    assert "no API key for the sdk route (sdk: ANTHROPIC_API_KEY_SDK" in done.stdout
+    assert not (tmp_path / "headless-raw").exists()
 
 
 def test_nothing_is_posted_and_routes_run_one_at_a_time():
@@ -397,7 +422,14 @@ def test_nothing_is_posted_and_routes_run_one_at_a_time():
         assert "write" not in json.dumps(job.get("permissions", {}))
     assert WF["permissions"] == {"contents": "read"}
     strategy = JOBS["headless-review"]["strategy"]
-    assert strategy["max-parallel"] == 1 and strategy["matrix"]["route"] == ["sdk", "api"]
+    assert strategy["max-parallel"] == 1
+    # Each route its own secret, and no fallback from the sdk key to the shared one.
+    assert strategy["matrix"] == {
+        "include": [
+            {"route": "sdk", "key_secret": "ANTHROPIC_API_KEY_SDK"},
+            {"route": "api", "key_secret": "ANTHROPIC_API_KEY"},
+        ]
+    }
     assert "claude-code-action" not in TEXT
 
 
