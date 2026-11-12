@@ -89,6 +89,22 @@ def validator_subcommands_granted(allowed_tools: str) -> list[str]:
     return re.findall(pattern, allowed_tools)
 
 
+_VALIDATOR_GRANT_SHAPE = re.compile(
+    r'Bash\(uv run [^()]*plib_catalog_validate\.py" [a-z][a-z-]*:\*\)'
+)
+
+
+def malformed_validator_grants(grants: list[str]) -> list[str]:
+    """Validator grants not in the exact `... plib_catalog_validate.py" <subcommand>:*)` shape. A
+    wildcard such as `...py":*` names no subcommand, so validator_subcommands_granted would not see
+    it, yet it pre-approves every subcommand, including the ones that write."""
+    return [
+        g
+        for g in grants
+        if "plib_catalog_validate.py" in g and not _VALIDATOR_GRANT_SHAPE.fullmatch(g.strip())
+    ]
+
+
 def body_subcommands(body: str) -> set[str]:
     """Validator subcommands the skill body tells the model to run (`<CLI> <subcommand>`)."""
     return set(re.findall(r"<CLI>\s+([a-z][a-z-]*)", body))
@@ -127,6 +143,8 @@ class Fixture:
             cwd=self.repo,
             capture_output=True,
             text=True,
+            encoding="utf-8",  # the validator writes UTF-8 whatever the console code page is
+            errors="replace",
             timeout=60,
         )
         try:

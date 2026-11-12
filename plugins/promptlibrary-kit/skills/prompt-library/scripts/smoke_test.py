@@ -72,6 +72,10 @@ def check_grants():
             problems.append(f"pre-approved {name}")
         elif grant not in ALLOWED_OTHER_GRANTS:
             problems.append(f"unexpected grant {grant}")
+    problems += [
+        f"validator grant not scoped to one subcommand: {g}"
+        for g in C.malformed_validator_grants(grants)
+    ]
     real = set(C.V.COMMANDS)
     unknown = sorted(set(C.validator_subcommands_granted(tools)) - real)
     if unknown:
