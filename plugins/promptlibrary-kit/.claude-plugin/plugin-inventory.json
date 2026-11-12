@@ -23,10 +23,35 @@
       ],
       "path": "skills/prompt-execution",
       "provenance": {},
-      "score": null,
-      "scoring_history": [],
-      "security_score": null,
-      "security_scoring_history": [],
+      "score": 8.9,
+      "scoring_history": [
+        {
+          "gates_applied": [],
+          "graded_at": "2026-11-12T11:09:09Z",
+          "grader_schema_version": "1.1.0",
+          "imported_on": "2026-11-12",
+          "report_path": ".claude/output/plugin-grader/promptlibrary-kit-2026-11-12T11-09-09Z-components/prompt-execution.skill.json",
+          "report_sha256": "6e86745506f2c8a9772788cae29807de99068f3bb7d02dc51562a39b57dcd6b1",
+          "score": 8.9,
+          "target": "prompt-execution",
+          "target_type": "skill"
+        }
+      ],
+      "security_score": 5.5,
+      "security_scoring_history": [
+        {
+          "graded_at": "2026-11-12T11:09:09Z",
+          "grader_schema_version": "1.1.0",
+          "imported_on": "2026-11-12",
+          "is_na": false,
+          "report_path": ".claude/output/plugin-grader/promptlibrary-kit-2026-11-12T11-09-09Z-components/prompt-execution.skill.json",
+          "report_sha256": "6e86745506f2c8a9772788cae29807de99068f3bb7d02dc51562a39b57dcd6b1",
+          "security_score": 5.5,
+          "source_field": "dimensions.safety_risk_handling.score",
+          "target": "prompt-execution",
+          "target_type": "skill"
+        }
+      ],
       "status": "active",
       "status_history": [
         {
@@ -64,10 +89,35 @@
       ],
       "path": "skills/prompt-library",
       "provenance": {},
-      "score": null,
-      "scoring_history": [],
-      "security_score": null,
-      "security_scoring_history": [],
+      "score": 7.6,
+      "scoring_history": [
+        {
+          "gates_applied": [],
+          "graded_at": "2026-11-12T11:09:09Z",
+          "grader_schema_version": "1.1.0",
+          "imported_on": "2026-11-12",
+          "report_path": ".claude/output/plugin-grader/promptlibrary-kit-2026-11-12T11-09-09Z-components/prompt-library.skill.json",
+          "report_sha256": "e60fe8643082e733e0e2f57da5ca4b9aed9757f9af7634237c24df9e78a2414e",
+          "score": 7.6,
+          "target": "prompt-library",
+          "target_type": "skill"
+        }
+      ],
+      "security_score": 5.5,
+      "security_scoring_history": [
+        {
+          "graded_at": "2026-11-12T11:09:09Z",
+          "grader_schema_version": "1.1.0",
+          "imported_on": "2026-11-12",
+          "is_na": false,
+          "report_path": ".claude/output/plugin-grader/promptlibrary-kit-2026-11-12T11-09-09Z-components/prompt-library.skill.json",
+          "report_sha256": "e60fe8643082e733e0e2f57da5ca4b9aed9757f9af7634237c24df9e78a2414e",
+          "security_score": 5.5,
+          "source_field": "dimensions.safety_risk_handling.score",
+          "target": "prompt-library",
+          "target_type": "skill"
+        }
+      ],
       "status": "active",
       "status_history": [
         {
@@ -105,10 +155,35 @@
       ],
       "path": "skills/prompt-retrieval",
       "provenance": {},
-      "score": null,
-      "scoring_history": [],
-      "security_score": null,
-      "security_scoring_history": [],
+      "score": 8.9,
+      "scoring_history": [
+        {
+          "gates_applied": [],
+          "graded_at": "2026-11-12T11:09:09Z",
+          "grader_schema_version": "1.1.0",
+          "imported_on": "2026-11-12",
+          "report_path": ".claude/output/plugin-grader/promptlibrary-kit-2026-11-12T11-09-09Z-components/prompt-retrieval.skill.json",
+          "report_sha256": "a0b12298c4909b61c5a37b2540e7becac80e1bd7726f47b7beada5815f837daf",
+          "score": 8.9,
+          "target": "prompt-retrieval",
+          "target_type": "skill"
+        }
+      ],
+      "security_score": 9.5,
+      "security_scoring_history": [
+        {
+          "graded_at": "2026-11-12T11:09:09Z",
+          "grader_schema_version": "1.1.0",
+          "imported_on": "2026-11-12",
+          "is_na": false,
+          "report_path": ".claude/output/plugin-grader/promptlibrary-kit-2026-11-12T11-09-09Z-components/prompt-retrieval.skill.json",
+          "report_sha256": "a0b12298c4909b61c5a37b2540e7becac80e1bd7726f47b7beada5815f837daf",
+          "security_score": 9.5,
+          "source_field": "dimensions.safety_risk_handling.score",
+          "target": "prompt-retrieval",
+          "target_type": "skill"
+        }
+      ],
       "status": "active",
       "status_history": [
         {
@@ -146,10 +221,41 @@
       ],
       "path": "agents/prompt-reviewer.md",
       "provenance": {},
-      "score": null,
-      "scoring_history": [],
-      "security_score": null,
-      "security_scoring_history": [],
+      "score": 8.0,
+      "scoring_history": [
+        {
+          "gates_applied": [
+            {
+              "cap": 8.0,
+              "gate": "D_testing",
+              "reason": "Testing scored 0. Missing verification."
+            }
+          ],
+          "graded_at": "2026-11-12T11:09:09Z",
+          "grader_schema_version": "1.1.0",
+          "imported_on": "2026-11-12",
+          "report_path": ".claude/output/plugin-grader/promptlibrary-kit-2026-11-12T11-09-09Z-components/prompt-reviewer.agent.json",
+          "report_sha256": "6554f2fe56a5dc1f0da8edfed166638cee58411d9ffffc1a92bcaff48690547a",
+          "score": 8.0,
+          "target": "prompt-reviewer",
+          "target_type": "agent"
+        }
+      ],
+      "security_score": 5.5,
+      "security_scoring_history": [
+        {
+          "graded_at": "2026-11-12T11:09:09Z",
+          "grader_schema_version": "1.1.0",
+          "imported_on": "2026-11-12",
+          "is_na": false,
+          "report_path": ".claude/output/plugin-grader/promptlibrary-kit-2026-11-12T11-09-09Z-components/prompt-reviewer.agent.json",
+          "report_sha256": "6554f2fe56a5dc1f0da8edfed166638cee58411d9ffffc1a92bcaff48690547a",
+          "security_score": 5.5,
+          "source_field": "dimensions.safety_risk_handling.score",
+          "target": "prompt-reviewer",
+          "target_type": "agent"
+        }
+      ],
       "status": "active",
       "status_history": [
         {
@@ -171,5 +277,5 @@
   "plugin_name": "promptlibrary-kit",
   "prefix": "plib",
   "schema_version": "1.0.0",
-  "updated_on": "2026-10-03"
+  "updated_on": "2026-11-12"
 }
