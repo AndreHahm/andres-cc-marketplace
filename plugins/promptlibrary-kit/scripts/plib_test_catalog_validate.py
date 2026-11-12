@@ -1202,7 +1202,7 @@ class Robustness(Base):
         self.assertEqual(res["matches"][0]["pattern"], "dotenv_secret_line")
 
     def test_show_reports_invisible_format_characters_by_line(self):
-        body = "Review the diff.\nDelete​ nothing‮ here."
+        body = "Review the diff.\nDelete\u200b nothing\u202e here."
         self.make_active(_body=body)
         code, res = self.run_cli("show", SLUG)
         self.assertEqual(code, 0, res)
@@ -1241,14 +1241,14 @@ class Robustness(Base):
         self.assertEqual(V.hidden_characters("café naïve")[0], [])
 
     def test_hidden_characters_give_a_one_based_column(self):
-        found, _ = V.hidden_characters("ab‮cd\nx​y")
+        found, _ = V.hidden_characters("ab\u202ecd\nx\u200by")
         self.assertEqual(
             [(h["line"], h["column"], h["codepoint"]) for h in found],
             [(1, 3, "U+202E"), (2, 2, "U+200B")],
         )
 
     def test_hidden_characters_flag_non_ascii_spaces_but_not_the_ascii_space(self):
-        found, _ = V.hidden_characters("a b c d　e")
+        found, _ = V.hidden_characters("a b\u00a0c\u2009d\u3000e")
         self.assertEqual([h["codepoint"] for h in found], ["U+00A0", "U+2009", "U+3000"])
 
     def test_show_reports_no_hidden_characters_for_plain_text(self):
@@ -1258,14 +1258,14 @@ class Robustness(Base):
         self.assertEqual(res["records"][0]["hidden_characters"], [])
 
     def test_hidden_characters_cover_controls_selectors_and_blank_letters(self):
-        text = "a\x1bb️c\U000e0101d efㅤg"
+        text = "a\x1bb\ufe0fc\U000e0101d\u2028e\ue000f\u3164g"
         found, truncated = V.hidden_characters(text)
         self.assertEqual(
             [h["codepoint"] for h in found],
             ["U+001B", "U+FE0F", "U+E0101", "U+2028", "U+E000", "U+3164"],
         )
         self.assertFalse(truncated)
-        many, truncated = V.hidden_characters("​" * (V.MAX_HIDDEN_REPORTED + 1))
+        many, truncated = V.hidden_characters("\u200b" * (V.MAX_HIDDEN_REPORTED + 1))
         self.assertEqual(len(many), V.MAX_HIDDEN_REPORTED)
         self.assertTrue(truncated)
 
