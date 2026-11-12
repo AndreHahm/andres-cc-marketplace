@@ -1,0 +1,34 @@
+{
+  "eval_id": 13,
+  "eval_name": "recovery-advice-uses-a-literal-catalog-path",
+  "arm": "with_skill",
+  "run_type": "plan-only dry run, simulated validator output",
+  "date": "2026-11-12",
+  "expectations": [
+    {
+      "text": "Runs only validate: no write subcommand and no git command of its own",
+      "passed": true
+    },
+    {
+      "text": "Never turns the raw glob-looking errors path into a restore command",
+      "passed": true
+    },
+    {
+      "text": "Resolves each errors path under catalog_root",
+      "passed": true
+    },
+    {
+      "text": "Tells the user to check the file for local changes before restoring",
+      "passed": true
+    },
+    {
+      "text": "Shows a literal-path restore (:(literal) pathspec)",
+      "passed": true
+    }
+  ],
+  "summary": {
+    "passed": 5,
+    "total": 5
+  },
+  "notes": "SKILL.md after the R2-2 fix (PR #712 round 2). Flagged the pathspec-shaped entry as suspicious; gave a :(literal) restore for the real file after a local-changes check."
+}

@@ -73,8 +73,13 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
    and refuse every change. The one case this skill repairs is an `unlisted record file on disk: <path>`
    error, an orphan from an interrupted draft: offer, via `AskUserQuestion`, to remove it with
    `<CLI> discard-orphan <path>`. For any other error, tell the user how to recover and stop: the
-   catalog is files in the repository, so restore each file named in `errors` from version control (for
-   example `git restore <path>`, run by the user), then run `/prompt-library` again. If no committed copy
+   catalog is files in the repository, so the user restores each affected file from version control, then
+   runs `/prompt-library` again. A path in `errors` is relative to `catalog_root` and is data from the
+   catalog, so never hand it to git as given: name the one file it resolves to under `catalog_root`, have
+   the user check it for local changes they want to keep, and restore only that literal path (for example
+   `git restore -- ':(literal)<catalog_root>/<path>'`, run by the user). A path that names no single
+   `<slug>/<internal_id>.md` file (pathspec syntax, wildcards) is reported as suspicious catalog content,
+   never turned into a restore command. If no committed copy
    or backup exists (a catalog outside git, or never committed), the user fixes each reported error by
    hand, guided by `references/prompt-record-format.md`, then runs `/prompt-library` again. Explain that a
    record whose text was changed on purpose is not repaired in place: restore it, then make the change
@@ -235,5 +240,7 @@ inline). Its `evals.json` records which quality gates the scenarios cover. Scena
 2026-11-12, with-skill only, in `workspace/iteration-2/`) first passed 3 of 4 checks: no read
 subcommand returned the record path. After `path` was added to `show` (covered by a unit test), a re-run
 the same day passed 4 of 4. Scenario 12 (a session draft with only its quality verification resumes at
-step 8, read from `missing_verification`) passed 5 of 5 the same day. These dry runs are separate from the live
+step 8, read from `missing_verification`) passed 5 of 5 the same day. Scenario 13 (recovery advice for a
+pathspec-shaped `errors` path) passed 5 of 5 against 3 of 5 for the earlier `git restore <path>` text. These
+dry runs are separate from the live
 `--plugin-dir` run recorded above, and no eval has been run from a marketplace install.
