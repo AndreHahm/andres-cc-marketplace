@@ -27,7 +27,7 @@ V = importlib.util.module_from_spec(_SPEC)
 sys.modules["plib_catalog_validate"] = V
 try:
     _SPEC.loader.exec_module(V)
-except (OSError, SyntaxError, ImportError) as exc:
+except (OSError, SyntaxError, ImportError, ValueError, re.error) as exc:
     sys.modules.pop("plib_catalog_validate", None)
     raise SystemExit(
         f"cannot load the validator at {VALIDATOR} ({type(exc).__name__}: {exc}); "
@@ -90,7 +90,8 @@ def validator_subcommands_granted(allowed_tools: str) -> list[str]:
 
 
 _VALIDATOR_GRANT_SHAPE = re.compile(
-    r'Bash\(uv run [^()]*plib_catalog_validate\.py" [a-z][a-z-]*:\*\)'
+    r"Bash\(uv run --isolated --no-project --no-config python "
+    r'"\$\{CLAUDE_PLUGIN_ROOT\}/scripts/plib_catalog_validate\.py" [a-z][a-z-]*:\*\)'
 )
 
 

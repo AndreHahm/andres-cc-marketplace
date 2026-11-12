@@ -74,7 +74,9 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
    error, an orphan from an interrupted draft: offer, via `AskUserQuestion`, to remove it with
    `<CLI> discard-orphan <path>`. For any other error, tell the user how to recover and stop: the
    catalog is files in the repository, so restore each file named in `errors` from version control (for
-   example `git restore <path>`, run by the user), then run `/prompt-library` again. Explain that a
+   example `git restore <path>`, run by the user), then run `/prompt-library` again. If no committed copy
+   or backup exists (a catalog outside git, or never committed), the user fixes each reported error by
+   hand, guided by `references/prompt-record-format.md`, then runs `/prompt-library` again. Explain that a
    record whose text was changed on purpose is not repaired in place: restore it, then make the change
    as a revision. Never edit, restore or repair a catalog file yourself.
 2. **Mode.** Use the first word of `$ARGUMENTS` (`add`, `revise`, `activate`, `deactivate`) and, for
@@ -221,7 +223,7 @@ directly; last run 2026-11-12, 7 of 7 checks passed. It failed on a copy with a 
 - [ ] Every status change and every draft filing was preceded by an `AskUserQuestion` approval.
 - [ ] A resumed draft with no recorded quality verification goes back through `prompt-reviewer` (step 7).
 
-**Last dated run record:** validator fixture tests, 123 run (120 passing, 3 POSIX-only skipped on Windows), 2026-11-12
+**Last dated run record:** validator fixture tests, 125 run (122 passing, 3 POSIX-only skipped on Windows), 2026-11-12
 (`scripts/plib_test_catalog_validate.py`). The latest live run, 2026-10-14 (plugin loaded with
 `--plugin-dir`), ran add, near-duplicate, revise, finalize and deactivate, each status change behind its
 own approval; the step 5 triage skip it found was fixed in PR #566. An earlier hand-followed run of steps
