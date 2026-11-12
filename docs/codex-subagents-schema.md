@@ -27,7 +27,8 @@ Optional fields (inherited from `config.toml`'s `[agents]` section unless overri
 
 **There is no `tools` field in this schema.** Precedence when a value could come from more than one
 place: explicit spawn values → the agent's own TOML file → `[agents]` config defaults → parent
-session values.
+session values. Sandbox and approval settings are the exception: a subagent always inherits them from
+the parent turn (see "No sandbox in the exports" below).
 
 ## How this repo generates it
 
