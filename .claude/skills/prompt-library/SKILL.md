@@ -227,6 +227,8 @@ which was fixed in PR #566.
 
 **Evals:** `evals/prompt-library/` holds with-skill versus baseline scenarios run by dry-run agents that
 follow this SKILL.md by hand against throwaway projects (approval questions scripted, the reviewer step done
-inline). Its `evals.json` records which quality gates the scenarios cover; scenario 11 (draft resume,
-2026-11-12, with-skill only) is in `workspace/iteration-2/`. These dry runs are separate from the live
+inline). Its `evals.json` records which quality gates the scenarios cover. Scenario 11 (draft resume,
+2026-11-12, with-skill only, in `workspace/iteration-2/`) passed 3 of 4 checks. The miss: no read
+subcommand returned the record path. It was fixed by adding `path` to `show`, which a unit test covers,
+but the scenario was not re-run. These dry runs are separate from the live
 `--plugin-dir` run recorded above, and no eval has been run from a marketplace install.
