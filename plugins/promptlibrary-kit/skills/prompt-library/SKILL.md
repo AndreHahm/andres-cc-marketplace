@@ -183,7 +183,7 @@ A persisted smoke test, `scripts/smoke_test.py`, checks this skill's frontmatter
 grants (no pre-approved Read, Write, Edit or WebFetch), and runs the validator end to end: a web-origin
 draft carrying a fake key is refused with nothing filed, and a clean draft goes through activation and
 deactivation. It also checks that the triage step is its own `AskUserQuestion` with skill options. Run it
-directly; last run 2026-10-14, 7 of 7 checks passed, and it failed on a copy with a pre-approved Write
+directly; last run 2026-11-12, 7 of 7 checks passed. It failed on a copy with a pre-approved Write
 (2026-10-03) and on a copy with the pre-fix triage step (2026-10-14).
 
 **Verify this skill activates on:** (explicit invocation only; it cannot be model-triggered)
@@ -210,9 +210,10 @@ directly; last run 2026-10-14, 7 of 7 checks passed, and it failed on a copy wit
 - [ ] A revision produces a successor with `previous_id` and `version` + 1, and the predecessor stays
       untouched until `finalize`.
 - [ ] Every status change and every draft filing was preceded by an `AskUserQuestion` approval.
+- [ ] A resumed draft with no recorded quality verification goes back through `prompt-reviewer` (step 7).
 
-**Last dated run record:** validator fixture tests, 111 run (108 passing, 3 POSIX-only skipped on Windows), 2026-10-04
-(`scripts/plib_test_catalog_validate.py`). On the same date a subagent followed steps 1 to 6 by hand
+**Last dated run record:** validator fixture tests, 118 run (115 passing, 3 POSIX-only skipped on Windows), 2026-11-12
+(`scripts/plib_test_catalog_validate.py`). On 2026-10-04 a subagent followed steps 1 to 6 by hand
 against an empty throwaway catalog with a web-origin candidate carrying a fake key: the screen reported
 it without echoing it, and `draft` refused it with nothing filed. That run was not persisted, the user
 questions were simulated, and the review, verify and status steps were not exercised. A later live
@@ -222,5 +223,6 @@ which was fixed in PR #566.
 
 **Evals:** `evals/prompt-library/` holds with-skill versus baseline scenarios run by dry-run agents that
 follow this SKILL.md by hand against throwaway projects (approval questions scripted, the reviewer step done
-inline). Its `evals.json` records which quality gates the scenarios cover. These are not a live run in an
-installed session, which is still outstanding.
+inline). Its `evals.json` records which quality gates the scenarios cover; scenario 11 (draft resume,
+2026-11-12, with-skill only) is in `workspace/iteration-2/`. These dry runs are separate from the live
+`--plugin-dir` run recorded above, and no eval has been run from a marketplace install.

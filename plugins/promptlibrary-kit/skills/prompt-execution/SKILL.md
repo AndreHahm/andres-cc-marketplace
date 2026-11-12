@@ -112,7 +112,7 @@ written back into any record. See `references/prompt-execution-trust-model.md`.
 A persisted smoke test, `scripts/smoke_test.py`, checks this skill's frontmatter and
 `disable-model-invocation`, that its grants reach only `validate` and `show`, that the slug pattern in
 step 1 agrees with the validator's, and that an edited prompt invalidates the catalog. Run it directly;
-last run 2026-10-03, 6 of 6 checks passed, and it failed on a copy with a weakened slug pattern.
+last run 2026-11-12, 6 of 6 checks passed; it failed on a copy with a weakened slug pattern (2026-10-03).
 
 **Verify this skill activates on:** (explicit invocation only; it cannot be model-triggered)
 - "/prompt-execution review__missing-tests"
@@ -133,9 +133,9 @@ last run 2026-10-03, 6 of 6 checks passed, and it failed on a copy with a weaken
 - [ ] A prompt that tries to load another prompt, widen tools or edit the catalog has no such effect, and
       no write subcommand is pre-approved by this skill.
 
-**Last dated run record:** validator fixture tests, 111 run (108 passing, 3 POSIX-only skipped on Windows), 2026-10-04
-(`scripts/plib_test_catalog_validate.py`, covering invalid-catalog refusal and hash binding). On the same
-date a subagent followed this SKILL.md by hand against a valid and a tampered throwaway catalog: a
+**Last dated run record:** validator fixture tests, 118 run (115 passing, 3 POSIX-only skipped on Windows), 2026-11-12
+(`scripts/plib_test_catalog_validate.py`, covering invalid-catalog refusal, hash binding and the
+`hidden_characters` report). On 2026-10-04 a subagent followed this SKILL.md by hand against a valid and a tampered throwaway catalog: a
 metacharacter slug was refused with no command run, a valid prompt was previewed and the flow stopped at
 the approval question without running anything, and the tampered catalog was reported unavailable. That
 run was not persisted and the approval question could not be asked. A later live interactive run on
@@ -144,5 +144,5 @@ prompt, which was rechecked and ran once.
 
 **Evals:** `evals/prompt-execution/` holds with-skill versus baseline scenarios run by dry-run agents that
 follow this SKILL.md by hand against throwaway projects (the approval question scripted). Its `evals.json`
-records which quality gates the scenarios cover. These are not a live run in an installed session, which is
-still outstanding.
+records which quality gates the scenarios cover. These dry runs are separate from the live `--plugin-dir`
+run recorded above, and no eval has been run from a marketplace install.

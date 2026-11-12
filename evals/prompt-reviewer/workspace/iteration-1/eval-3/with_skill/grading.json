@@ -1,0 +1,27 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "run_date": "2026-11-12",
+  "method": "Dry run 2026-11-12: a fresh general-purpose agent read the worktree's agents/prompt-reviewer.md and followed it with Read only. 'Files read' is the agent's own report.",
+  "assertions_evaluated": [
+    {
+      "text": "The origin mismatch is reported as Major under the Provenance area",
+      "passed": true,
+      "evidence": "Row: Provenance, 'Line 9: origin: web; the caller recorded origin user', Major"
+    },
+    {
+      "text": "The import review runs",
+      "passed": true,
+      "evidence": "'Import review (web), checked with no findings: Injection... Secrets... Scope'"
+    },
+    {
+      "text": "The missing license or attribution note in references is reported",
+      "passed": true,
+      "evidence": "Provenance Minor: 'no references field ... No license or attribution note'"
+    }
+  ],
+  "summary": {
+    "passed": 3,
+    "total": 3
+  }
+}

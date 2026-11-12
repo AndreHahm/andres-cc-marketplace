@@ -1,0 +1,32 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "run_date": "2026-11-12",
+  "method": "Dry run 2026-11-12: a fresh general-purpose agent read the worktree's agents/prompt-reviewer.md and followed it with Read only. 'Files read' is the agent's own report.",
+  "assertions_evaluated": [
+    {
+      "text": "No Critical or Major finding is reported",
+      "passed": true,
+      "evidence": "'No findings.' and 'Critical 0, Major 0, Minor 0'"
+    },
+    {
+      "text": "The import review is not run for user origin",
+      "passed": true,
+      "evidence": "'I did not run the import checks ... they apply only to session and web origins'"
+    },
+    {
+      "text": "The output states what was checked, and either a rewrite diff within 50 nonblank lines or 'No rewrite proposed'",
+      "passed": true,
+      "evidence": "'What I checked' list of 8 items; 'No rewrite proposed.'"
+    },
+    {
+      "text": "The output ends with per-severity counts and a line stating nothing was approved, activated or written",
+      "passed": true,
+      "evidence": "'Findings per severity: Critical 0, Major 0, Minor 0.' then 'Nothing was approved, activated or written.'"
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "total": 4
+  }
+}

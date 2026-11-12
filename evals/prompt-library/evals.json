@@ -72,11 +72,18 @@
       "prompt": "/prompt-library add\n\nSave this as a prompt: \"Summarize the open TODO comments in the repository as a table with file, line and a one-line description. Do not change any file.\"",
       "expected_output": "Harness event (not part of the skill): right after the exact-text approval answer and before the verification command, one line is appended to the filed draft record, simulating a concurrent edit. record-verification must refuse because the text changed since approval; the record is not activated.",
       "files": []
+    },
+    {
+      "id": 11,
+      "name": "resumed-unverified-draft-gets-the-review-again",
+      "prompt": "/prompt-library activate docs__todo-summary",
+      "expected_output": "Harness setup (not part of the skill): the catalog holds one filed user-origin draft with no recorded verification, left by an interrupted add. The skill validates, resolves the slug, and resumes at step 7: it dispatches prompt-reviewer with the record's absolute path (path taken from show --history) before any verification or activation, rather than jumping to step 8 or 9.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 8,
-    "declared_scenarios_covered": 8,
+    "declared_scenarios_total": 9,
+    "declared_scenarios_covered": 9,
     "uncovered": []
   }
 }
