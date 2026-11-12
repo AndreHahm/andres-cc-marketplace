@@ -94,7 +94,7 @@ does not run it.
 
 A persisted smoke test, `scripts/smoke_test.py`, checks this skill's frontmatter, referenced files and
 read-only grants, and runs `show` against a valid and a tampered throwaway catalog. Run it directly; last
-run 2026-10-03, 5 of 5 checks passed, and it failed on a copy with a widened grant.
+run 2026-11-12, 5 of 5 checks passed; it failed on a copy with a widened grant (2026-10-03).
 
 **Verify this skill activates on:**
 - "show me the stored prompt for code review"
@@ -115,13 +115,14 @@ run 2026-10-03, 5 of 5 checks passed, and it failed on a copy with a widened gra
 - [ ] A run started from a subfolder resolves the same catalog as one from the project root.
 - [ ] No write subcommand is pre-approved: the grant names only `validate` and `show`.
 
-**Last dated run record:** validator fixture tests, 111 run (108 passing, 3 POSIX-only skipped on Windows), 2026-10-04
-(`scripts/plib_test_catalog_validate.py`). On the same date a subagent followed this SKILL.md by hand
+**Last dated run record:** validator fixture tests, 118 run (115 passing, 3 POSIX-only skipped on Windows), 2026-11-12
+(`scripts/plib_test_catalog_validate.py`). On 2026-10-04 a subagent followed this SKILL.md by hand
 against two throwaway fixtures (a valid catalog and a tampered one) and the assertions above passed,
 except that the `root_source` wording in the second gate was corrected afterward and that corrected
-wording was not part of that run. The run was not persisted and the skill was not installed, so it is a
-manual walkthrough, not a live run.
+wording was not part of that run. A headless live run on 2026-10-14 (plugin loaded with `--plugin-dir`)
+then ran this skill; see the README's Known limitations.
 
 **Evals:** `evals/prompt-retrieval/` holds with-skill versus baseline scenarios run by dry-run agents that
 follow this SKILL.md by hand against throwaway projects. Its `evals.json` records which quality gates the
-scenarios cover. These are not a live run in an installed session, which is still outstanding.
+scenarios cover. These dry runs are separate from the live `--plugin-dir` run above, and no eval has been
+run from a marketplace install.

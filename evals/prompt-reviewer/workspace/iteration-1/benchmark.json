@@ -1,0 +1,13 @@
+{
+  "iteration": 1,
+  "run_date": "2026-11-12",
+  "configurations": [
+    "with_skill"
+  ],
+  "baseline": "not run: the agent's behavior has no meaningful no-instructions baseline for these assertions",
+  "with_skill": {
+    "passed": 15,
+    "total": 15,
+    "pass_rate": 1.0
+  }
+}
