@@ -532,3 +532,51 @@ def test_each_job_installs_what_its_code_imports():
     assert any(dep.startswith("PyYAML") for dep in groups["headless-review"])
     sync = [s["run"] for s in _steps("headless-compare") if "uv sync" in str(s.get("run"))]
     assert sync and "--group dev" in sync[0]
+
+
+# --- fixes from the cross-model review ------------------------------------------------------
+
+
+def test_every_api_request_asks_for_prompt_caching(checkout: Path):
+    create = FakeCreate([_tool_turn(), _tool_turn(), _final_turn()])
+    _run(create, checkout)
+    assert len(create.calls) == 3
+    assert all(call["cache_control"] == {"type": "ephemeral"} for call in create.calls)
+
+
+def test_the_budget_stops_before_a_request_that_could_pass_it(checkout: Path):
+    # The first request's worst case is the overhead plus the prompt as cache writes and the
+    # full output; a budget just below it stops before anything is sent.
+    first = hr.request_bound_usd("claude-sonnet-5-5", hr.PROMPT_OVERHEAD_TOKENS + 3)
+    create = FakeCreate([_final_turn()])
+    result = _run(create, checkout, max_budget_usd=first * 0.99)
+    assert result.subtype == "error_max_budget_usd" and create.calls == []
+    # A large carried context makes the second request's bound pass the budget.
+    big = _tool_turn()
+    big.usage = _usage(inp=300_000)
+    create = FakeCreate([big, _final_turn()])
+    result = _run(create, checkout)
+    assert result.subtype == "error_max_budget_usd" and len(create.calls) == 1
+
+
+def test_a_backtracking_pattern_is_stopped_at_the_deadline(checkout: Path, monkeypatch):
+    (checkout / "evil.txt").write_text("a" * 40 + "b\n", encoding="utf-8")
+    monkeypatch.setattr(hr, "GREP_TIMEOUT_SECONDS", 1.0)
+    text, is_error = hr.run_tool(
+        hr.CheckoutFiles(checkout), "Grep", {"pattern": "(a+)+$", "path": "evil.txt"}
+    )
+    assert is_error and "stopped after 1 s" in text
+
+
+def test_the_grep_child_gets_no_environment(checkout: Path, monkeypatch):
+    seen = {}
+    real_run = hr.subprocess.run
+
+    def spy(*args, **kwargs):
+        seen["env"] = kwargs.get("env")
+        return real_run(*args, **kwargs)
+
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-should-not-reach-the-child")
+    monkeypatch.setattr(hr.subprocess, "run", spy)
+    assert hr.CheckoutFiles(checkout).grep("here", path="pkg") == "pkg/b.py:1:secret_word here"
+    assert seen["env"] == {}

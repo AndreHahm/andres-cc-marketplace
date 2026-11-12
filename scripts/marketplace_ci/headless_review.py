@@ -21,6 +21,8 @@ import fnmatch
 import json
 import os
 import re
+import subprocess  # nosec B404  # one fixed inline program under sys.executable, no shell
+import sys
 import time
 from collections.abc import Callable, Iterator, Mapping
 from dataclasses import dataclass, field
@@ -105,9 +107,36 @@ MAX_GLOB_RESULTS = 500
 MAX_GREP_LINES = 300
 MAX_GREP_FILES = 5000
 MAX_TOOL_RESULT_CHARS = 100_000
-# All tool results of one turn together, so a turn with many calls cannot send a request that
-# alone passes the budget before the next check (the budget is checked between responses).
+# All tool results of one turn together. Every tool call still needs a result, so a call past
+# the cap gets the short SKIPPED text: the rest is bounded by how many calls fit in one response.
 MAX_TURN_RESULT_CHARS = 200_000
+SKIPPED = "skipped: turn result cap"
+# A model-chosen pattern can backtrack for hours on a short line; the search runs in a child
+# process that is killed at this deadline.
+GREP_TIMEOUT_SECONDS = 10.0
+
+# The child: reads {pattern, files: [[rel, path]], max_chars, max_lines} as JSON on stdin and
+# writes {lines, truncated}. It gets only paths the parent already confined to the checkout.
+_GREP_WORKER = r"""
+import json, re, sys
+req = json.load(sys.stdin)
+rx = re.compile(req["pattern"])
+out = []
+for rel, path in req["files"]:
+    try:
+        with open(path, encoding="utf-8", errors="replace") as f:
+            text = f.read()
+    except OSError:
+        continue
+    for n, line in enumerate(text.splitlines(), 1):
+        line = line[: req["max_chars"]]
+        if rx.search(line):
+            out.append(f"{rel}:{n}:{line}")
+            if len(out) >= req["max_lines"]:
+                json.dump({"lines": out, "truncated": True}, sys.stdout)
+                sys.exit(0)
+json.dump({"lines": out, "truncated": False}, sys.stdout)
+"""
 
 
 class ToolError(ValueError):
@@ -184,30 +213,50 @@ class CheckoutFiles:
 
     def grep(self, pattern: str, path: str = ".", glob: str = "") -> str:
         try:
-            regex = re.compile(pattern)
+            re.compile(pattern)
         except (re.error, TypeError) as exc:
             raise ToolError(f"invalid regular expression: {exc}") from exc
         base = self.resolve(path)
-        files = [base] if base.is_file() else self._walk(base)
-        out: list[str] = []
-        for count, file in enumerate(files):
+        candidates = [base] if base.is_file() else self._walk(base)
+        files: list[list[str]] = []
+        note = ""
+        for count, file in enumerate(candidates):
             if count >= MAX_GREP_FILES:
-                out.append(f"... stopped after {MAX_GREP_FILES} files")
+                note = f"... stopped after {MAX_GREP_FILES} files"
                 break
             if glob and not fnmatch.fnmatchcase(file.name, glob):
                 continue
-            if file.stat().st_size > MAX_FILE_BYTES:
-                continue
-            text = file.read_text(encoding="utf-8", errors="replace")
-            for n, line in enumerate(text.splitlines(), start=1):
-                # Only the shown part of a line is searched: a model-chosen pattern that
-                # backtracks badly then runs on at most MAX_LINE_CHARS characters.
-                line = line[:MAX_LINE_CHARS]
-                if regex.search(line):
-                    out.append(f"{self.rel(file)}:{n}:{line}")
-                    if len(out) >= MAX_GREP_LINES:
-                        out.append(f"... stopped at {MAX_GREP_LINES} matching lines")
-                        return "\n".join(out)
+            if file.stat().st_size <= MAX_FILE_BYTES:
+                files.append([self.rel(file), os.path.realpath(file)])
+        request = {
+            "pattern": pattern,
+            "files": files,
+            "max_chars": MAX_LINE_CHARS,
+            "max_lines": MAX_GREP_LINES,
+        }
+        try:
+            # An empty environment: the child never sees ANTHROPIC_API_KEY.
+            done = subprocess.run(  # nosec B603  # sys.executable, fixed program, no shell
+                [sys.executable, "-I", "-c", _GREP_WORKER],
+                input=json.dumps(request),
+                capture_output=True,
+                text=True,
+                timeout=GREP_TIMEOUT_SECONDS,
+                env={},
+                check=False,
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise ToolError(
+                f"search stopped after {GREP_TIMEOUT_SECONDS:g} s; use a simpler pattern"
+            ) from exc
+        if done.returncode != 0:
+            raise ToolError("search failed")
+        result = json.loads(done.stdout)
+        out = list(result["lines"])
+        if result["truncated"]:
+            out.append(f"... stopped at {MAX_GREP_LINES} matching lines")
+        elif note:
+            out.append(note)
         return "\n".join(out) or "(no matches)"
 
 
@@ -288,6 +337,18 @@ def _usage_value(usage: object, key: str) -> int:
     return int(value or 0)
 
 
+# Conservative: code and prose run about 3 to 4 characters per token, so 0.5 overestimates.
+NEW_TEXT_TOKENS_PER_CHAR = 0.5
+# The tool definitions, the schema and the per-turn tool-result framing.
+PROMPT_OVERHEAD_TOKENS = 5_000
+
+
+def request_bound_usd(model: str, input_tokens: float) -> float:
+    """The most one request can cost: all input billed as a cache write, all output used."""
+    _inp, out, write, _read = PRICES[model]
+    return (input_tokens * write + MAX_OUTPUT_TOKENS * out) / 1_000_000
+
+
 def cost_usd(model: str, usage: object) -> float:
     """One response's cost from its usage block, at PRICES."""
     inp, out, write, read = PRICES[model]
@@ -351,6 +412,9 @@ def run_api_pass(
     totals = dict.fromkeys(USAGE_KEYS, 0)
     spent = 0.0
     turns = 0
+    # The next request's input in tokens, estimated before it is sent: exact for what the last
+    # request carried, NEW_TEXT_TOKENS_PER_CHAR for text added since, plus the tool definitions.
+    next_input = PROMPT_OVERHEAD_TOKENS + len(prompt) * NEW_TEXT_TOKENS_PER_CHAR
 
     def done(subtype: str, output: str = "", status: int | None = None) -> PassResult:
         return PassResult(
@@ -364,12 +428,18 @@ def run_api_pass(
         )
 
     while True:
+        # The budget holds before a request, not only after: the worst case is the whole input
+        # written to the cache uncached and the full output, priced before it can be spent.
+        if spent + request_bound_usd(model, next_input) > max_budget_usd:
+            return done("error_max_budget_usd")
         try:
             response = create(
                 model=model,
                 max_tokens=MAX_OUTPUT_TOKENS,
                 tools=API_TOOLS,
                 output_config={"format": {"type": "json_schema", "schema": api_schema()}},
+                # Each turn re-sends the conversation; caching reads the earlier prefix back.
+                cache_control={"type": "ephemeral"},
                 messages=messages,
             )
         except status_error as exc:
@@ -400,10 +470,7 @@ def run_api_pass(
             if getattr(block, "type", "") != "tool_use":
                 continue
             if turn_chars >= MAX_TURN_RESULT_CHARS:
-                text, is_error = (
-                    f"skipped: this turn's results passed {MAX_TURN_RESULT_CHARS} characters",
-                    True,
-                )
+                text, is_error = SKIPPED, True
             else:
                 text, is_error = run_tool(files, block.name, block.input)
                 text = text[: MAX_TURN_RESULT_CHARS - turn_chars]
@@ -418,6 +485,9 @@ def run_api_pass(
             )
         messages.append({"role": "assistant", "content": content})
         messages.append({"role": "user", "content": results})
+        carried = sum(_usage_value(usage, k) for k in USAGE_KEYS)
+        added = turn_chars * NEW_TEXT_TOKENS_PER_CHAR
+        next_input = carried + added + PROMPT_OVERHEAD_TOKENS
 
 
 async def run_sdk_pass(
