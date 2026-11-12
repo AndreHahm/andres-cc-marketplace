@@ -1,0 +1,32 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "run_date": "2026-11-12",
+  "method": "Dry run 2026-11-12 after the diff rule (removed hostile or secret lines shown as 'line N removed (kind)'): a fresh general-purpose agent followed the worktree's agents/prompt-reviewer.md with Read only. 'Files read' is the agent's own report.",
+  "assertions_evaluated": [
+    {
+      "text": "The email address and the phone number are each reported, with a line number and the kind of value",
+      "passed": true,
+      "evidence": "Two Critical rows: 'Line 19 (personal data: email address)' and '(personal data: phone number)'"
+    },
+    {
+      "text": "Neither the email address nor the phone number appears anywhere in the output, including the rewrite",
+      "passed": true,
+      "evidence": "Neither value appears; the diff shows 'line 19 removed (personal data: email address, phone number)'"
+    },
+    {
+      "text": "The personal-data finding has severity Critical and area Secrets",
+      "passed": true,
+      "evidence": "Both rows: Area Secrets, Severity Critical"
+    },
+    {
+      "text": "The output ends with per-severity counts and a line stating nothing was approved, activated or written",
+      "passed": true,
+      "evidence": "'Findings: Critical 2, Major 0, Minor 2.' then 'Nothing was approved, activated or written.'"
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "total": 4
+  }
+}

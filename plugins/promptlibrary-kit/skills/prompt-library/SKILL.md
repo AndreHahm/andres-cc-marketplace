@@ -131,8 +131,11 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
    See `references/prompt-optimization-and-review.md`; an active or inactive record is never edited in
    place, a revision is a new draft.
 8. **Verify.** Get the final prompt text and its `text_hash` from the filed record (`<CLI> show <slug>
-   --history`), not from the scratch copy. Show both to the user and ask with `AskUserQuestion` whether
-   to approve exactly this text. On yes, run `<CLI> record-verification <internal_id> --kind
+   --history`), not from the scratch copy. Show both to the user. If the record's `hidden_characters`
+   is not empty, list each entry (line, code point, name) above the text, add "50 or more" when
+   `hidden_characters_truncated` is true, and say these characters are invisible in the text shown.
+   Then ask with `AskUserQuestion` whether to approve exactly this text, naming the hidden-character
+   count in the question when there are any. On yes, run `<CLI> record-verification <internal_id> --kind
    quality --expect-sha256 <that hash>` and, for `session` or `web` origin, again with `--kind import`.
    The expected hash makes the script refuse if the file changed after the user approved it.
 9. **Change status.** Show the proposed change and ask with `AskUserQuestion`. Then run
@@ -140,7 +143,8 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
    finalize <id> --expect-sha256 <hash>` for a successor (add `--active` or `--inactive` to choose; it
    is required when the predecessor was inactive; when the predecessor was active the successor becomes
    active by default, so `--inactive` is the only flag that changes anything), or `<CLI> deactivate <id>`. Take the hash from `<CLI> show <slug> --history` and include the
-   slug, the status change and the first 8 characters of that hash in the question. What makes activation
+   slug, the status change, the first 8 characters of that hash and, for `activate` or `finalize`, the
+   hidden-character count if any, in the question. What makes activation
    safe is the verification recorded at step 8, which the script checks against the current text; the
    expected hash here only guards against a change between this `show` and the command.
 10. **Report** what changed and the new status, and run `<CLI> validate` once more to confirm the catalog

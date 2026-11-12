@@ -22,7 +22,7 @@ reviewed the text: a pulled branch or an edit can change both the text and its r
 The full-text preview, shown fresh in every run, is the real gate. A rendered preview hides some
 characters: format and control characters (zero-width, bidi, escape sequences), variation selectors,
 private-use and unassigned code points, line separators and blank-looking letters. `show` therefore
-reports them in `prompt_text` as `hidden_characters`, and the preview lists them above the text. They are
+reports them as `hidden_characters`, alongside `prompt_text`,, and the preview lists them above the text. They are
 flagged, not rejected, because some are legitimate (an emoji joiner). Visible look-alike letters are not
 flagged, and metadata is not scanned, because it never runs.
 
