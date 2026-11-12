@@ -304,16 +304,31 @@ def decide(
     if review_job != "success" or raw is None:
         result["reason"] = f"the review job did not complete ({review_job})"
         return result
-    if raw.get("skipped") == "draft":
-        result.update(status="skipped", reason="the pull request became a draft")
-        return result
-    if raw.get("skipped") == "head_moved":
-        result["reason"] = "a newer push landed before the review started"
-        return result
-    if raw.get("skipped") == "lookup_failed":
-        result["reason"] = "the pull request could not be re-checked before a pass"
-        return result
     reviewed = frozenset(result["reviewed_paths"])
+    skips = {
+        "draft": "the pull request became a draft",
+        "head_moved": "a newer push landed before the review started",
+        "lookup_failed": "the pull request could not be re-checked before a pass",
+    }
+    if raw.get("skipped") in skips:
+        # A pass that finished before the skip (the general pass, when only the security
+        # re-check stopped the run) keeps its findings, so a Critical one is still shown; the
+        # run is still not a full review, so it is never clean, findings or an anchor.
+        result["reason"] = skips[raw["skipped"]]
+        if raw["skipped"] == "draft":
+            result["status"] = "skipped"
+        for record in raw.get("passes", []):
+            if not isinstance(record, dict) or record.get("outcome") != "success":
+                continue
+            try:
+                _, findings = parse_pass(record, reviewed)
+            except InvalidReview:
+                continue
+            result["passes"][record.get("pass")] = _pass_cost(record)
+            result["findings"].extend(findings)
+        if result["findings"]:
+            result["reason"] += "; findings from the passes that finished are shown"
+        return result
     expected = ["general", *(["security"] if needs_security_pass(scope) else [])]
     result["security_review"] = "security" in expected
     records = {r.get("pass"): r for r in raw.get("passes", []) if isinstance(r, dict)}
