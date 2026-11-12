@@ -1240,6 +1240,17 @@ class Robustness(Base):
             self.assertEqual([h["codepoint"] for h in found], [f"U+{cp:04X}"], hex(cp))
         self.assertEqual(V.hidden_characters("café naïve")[0], [])
 
+    def test_hidden_characters_give_a_one_based_column(self):
+        found, _ = V.hidden_characters("ab‮cd\nx​y")
+        self.assertEqual(
+            [(h["line"], h["column"], h["codepoint"]) for h in found],
+            [(1, 3, "U+202E"), (2, 2, "U+200B")],
+        )
+
+    def test_hidden_characters_flag_non_ascii_spaces_but_not_the_ascii_space(self):
+        found, _ = V.hidden_characters("a b c d　e")
+        self.assertEqual([h["codepoint"] for h in found], ["U+00A0", "U+2009", "U+3000"])
+
     def test_show_reports_no_hidden_characters_for_plain_text(self):
         self.make_active(_body="Tab\tis fine.\nSo is café and — a dash.")
         code, res = self.run_cli("show", SLUG)

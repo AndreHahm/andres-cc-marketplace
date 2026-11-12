@@ -21,7 +21,8 @@ notice change. A matching hash means "unchanged since a hash was recorded". It d
 reviewed the text: a pulled branch or an edit can change both the text and its recorded hash together.
 The full-text preview, shown fresh in every run, is the real gate. A rendered preview hides some
 characters: format and control characters (zero-width, bidi, escape sequences), variation selectors,
-private-use and unassigned code points, line separators, blank-looking letters and invisible combining
+private-use and unassigned code points, line separators, non-ASCII spaces (a no-break space looks like
+an ordinary one), blank-looking letters and invisible combining
 marks (such as the grapheme joiner; a visible accent is not flagged). `show` therefore
 reports them as `hidden_characters`, alongside `prompt_text`, and the preview lists them above the text. They are
 flagged, not rejected, because some are legitimate (an emoji joiner). Visible look-alike letters are not

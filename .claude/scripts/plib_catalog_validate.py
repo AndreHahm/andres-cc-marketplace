@@ -334,25 +334,29 @@ def _is_hidden(ch: str) -> bool:
         return False
     if 0xFE00 <= cp <= 0xFE0F or 0xE0100 <= cp <= 0xE01EF:  # variation selectors
         return True
-    return cp in HIDDEN_EXTRA or unicodedata.category(ch) in HIDDEN_CATEGORIES
+    category = unicodedata.category(ch)
+    if category == "Zs":  # a space that is not the ASCII one renders like it but is not it
+        return ch != " "
+    return cp in HIDDEN_EXTRA or category in HIDDEN_CATEGORIES
 
 
 def hidden_characters(text: str) -> tuple[list[dict], bool]:
-    """Characters a rendered preview does not show (format and control characters, variation
-    selectors, private-use or unassigned code points, separators, blank-looking letters, invisible
-    combining marks), by
-    1-based line and code point, plus whether the list was cut at MAX_HIDDEN_REPORTED. The user
+    """Characters a rendered preview does not show or shows as something else (format and control
+    characters, variation selectors, private-use or unassigned code points, separators, non-ASCII
+    spaces, blank-looking letters, invisible combining marks), by 1-based line, 1-based column and
+    code point, plus whether the list was cut at MAX_HIDDEN_REPORTED. The user
     may otherwise approve text that reads differently from what runs. Reported, not rejected: an
     emoji joiner or variation selector is legitimate."""
     found = []
     for lineno, line in enumerate(normalize_text(text).split("\n"), start=1):
-        for ch in line:
+        for column, ch in enumerate(line, start=1):
             if _is_hidden(ch):
                 if len(found) >= MAX_HIDDEN_REPORTED:
                     return found, True
                 found.append(
                     {
                         "line": lineno,
+                        "column": column,
                         "codepoint": f"U+{ord(ch):04X}",
                         "name": unicodedata.name(ch, "UNNAMED CHARACTER"),
                     }
