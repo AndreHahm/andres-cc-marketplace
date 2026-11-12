@@ -70,16 +70,22 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
 
 1. **Preflight.** `<CLI> validate`. If the catalog is missing, offer `<CLI> init` via `AskUserQuestion`,
    showing the resolved `catalog_root` and `root_source`. If it exists but is not `ok`, report the errors
-   and refuse every change. The one recoverable case is an `unlisted record file on disk: <path>` error,
-   an orphan from an interrupted draft: offer, via `AskUserQuestion`, to remove it with
-   `<CLI> discard-orphan <path>`. Never repair anything else silently.
+   and refuse every change. The one case this skill repairs is an `unlisted record file on disk: <path>`
+   error, an orphan from an interrupted draft: offer, via `AskUserQuestion`, to remove it with
+   `<CLI> discard-orphan <path>`. For any other error, tell the user how to recover and stop: the
+   catalog is files in the repository, so restore each file named in `errors` from version control (for
+   example `git restore <path>`, run by the user), then run `/prompt-library` again. Explain that a
+   record whose text was changed on purpose is not repaired in place: restore it, then make the change
+   as a revision. Never edit, restore or repair a catalog file yourself.
 2. **Mode.** Use the first word of `$ARGUMENTS` (`add`, `revise`, `activate`, `deactivate`) and, for
    the last three, the second word as the slug; if either is absent, ask with `AskUserQuestion`. The CLI takes an `internal_id`, not a slug, so resolve a slug to
    its record(s) from `validate`'s `records` or `<CLI> show <slug> --history`; if more than one fits,
    ask which. `deactivate`, and `activate` of an inactive record, skip steps 3 to 8: go to step 9. A draft
    left by an interrupted add or revise (also when `activate` names a draft) resumes by its state: step 7
-   if `prompt-reviewer` has not run on it, step 8 if it lacks a recorded quality verification (or, for
-   `session` and `web` origin, an import one), step 9 once it is fully verified. A successor ends with
+   if it lacks a recorded quality verification. No record field shows whether `prompt-reviewer` already
+   ran, so an unverified draft always gets the review again. It resumes at step 8 if it has the quality
+   verification but, for `session` or `web` origin, lacks the import one, and at step 9 once it is fully
+   verified. A successor ends with
    `finalize`; never start a second successor.
 3. **Intake.** For `add`, follow `references/prompt-intake-sources.md`. The intake path sets `origin`:
    fetched text is always `web`, session text is always `session`; the user cannot label either as
@@ -117,7 +123,8 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
    <scratch-file>`; it validates, enforces the secret screen for `session`, `web`, `claude` and `codex` text, writes the record and
    lists it in the catalog together. Keep the `text_hash` and `path` it returns.
 7. **Review and optimize.** Dispatch `prompt-reviewer` with the absolute path of the filed record
-   (`catalog_root` + `/` + `path`) and its `origin`; it is read-only. Present its findings and its
+   (`catalog_root` + `/` + `path`, with `path` from step 6's `draft` output or, for a resumed draft, from
+   `<CLI> show <slug> --history`) and its `origin`; it is read-only. Present its findings and its
    proposed rewrite as a diff. If the user approves a rewrite, write the full replacement record to a
    scratch file and run `<CLI> update-draft <internal_id> <scratch-file>`; it screens the new text and
    clears the earlier verification when the text changed. This works on any draft, initial or successor.
