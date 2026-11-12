@@ -126,8 +126,8 @@ jobs:
           enable-cache: "false"
 
       # R3: the scope is computed by the same trusted code as the Codex review, restored from
-      # the base SHA. Kept identical to compute-scope's copy of this block by
-      # tests/marketplace_ci/test_claude_review_workflow.py.
+      # the base SHA. Kept identical to claude-review-ci.yml's claude-scope copy of this block by
+      # tests/marketplace_ci/test_headless_review.py.
       - name: Restore the base SHA's copy of the scope-decision code and its dependency spec (trust boundary)
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}

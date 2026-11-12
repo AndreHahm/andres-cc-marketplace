@@ -611,3 +611,35 @@ def test_summary_marks_an_api_budget_stop_as_the_conservative_guard():
     }
     assert "(conservative api-route guard)" in rows["| api"]
     assert "conservative" not in rows["| sdk"]
+
+
+# --- Haiku 5.5 pricing (CLAUDE_KIT_REVIEW_MODEL is claude-haiku-5-5) ------------------------
+
+
+def test_haiku_is_priced_on_both_rate_cards():
+    short = _usage(inp=1_000_000, out=0)
+    assert hr.cost_usd("claude-haiku-5-5", _usage(inp=100_000, out=1_000_000)) == pytest.approx(
+        (100_000 * 0.10 + 1_000_000 * 0.50) / 1e6
+    )
+    # Above 100K prompt tokens, cached ones included, the whole request uses the second card.
+    long = _usage(inp=1_000, out=1_000, write=50_000, read=60_000)
+    assert hr.cost_usd("claude-haiku-5-5", long) == pytest.approx(
+        (1_000 * 0.50 + 1_000 * 2.50 + 50_000 * 0.625 + 60_000 * 0.05) / 1e6
+    )
+    assert hr.cost_usd("claude-haiku-5-5", short) == pytest.approx(1_000_000 * 0.50 / 1e6)
+    assert hr.request_bound_usd("claude-haiku-5-5", 50_000) == pytest.approx(
+        (50_000 * 0.125 + hr.MAX_OUTPUT_TOKENS * 0.50) / 1e6
+    )
+    assert hr.request_bound_usd("claude-haiku-5-5", 200_000) == pytest.approx(
+        (200_000 * 0.625 + hr.MAX_OUTPUT_TOKENS * 2.50) / 1e6
+    )
+
+
+def test_the_api_route_runs_on_haiku(checkout: Path):
+    create = FakeCreate([_tool_turn(), _final_turn()])
+    result = hr.run_api_pass(
+        create, hr.CheckoutFiles(checkout), status_error=StatusError, api_error=ApiError,
+        prompt="review", model="claude-haiku-5-5", max_turns=50,
+    )  # fmt: skip
+    assert result.subtype == "success" and create.calls[0]["model"] == "claude-haiku-5-5"
+    assert result.total_cost_usd == pytest.approx(2 * (1000 * 0.10 + 100 * 0.50) / 1e6)
