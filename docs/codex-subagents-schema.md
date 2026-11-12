@@ -47,8 +47,8 @@ verbatim as `tools = [...]`, which is invalid Codex-side and silently broke ever
 
 ### No sandbox in the exports (issue #700)
 
-A Codex subagent always inherits the parent turn's sandbox and approval settings, so `sandbox_mode` in
-a custom agent file is ignored. `convert_agent()` therefore emits no `sandbox_mode`. Instead it prepends
+Per Codex's subagent docs (quoted below), a subagent always inherits the parent turn's sandbox and
+approval settings, so `sandbox_mode` in a custom agent file is ignored. `convert_agent()` therefore emits no `sandbox_mode`. Instead it prepends
 a generated note to every export's `developer_instructions`: the agent's stated tool and edit
 restrictions are instructions, not limits Codex enforces, and a real read-only boundary comes only from
 running the parent session read-only. The repo's `.codex/config.toml` sets the parent to
