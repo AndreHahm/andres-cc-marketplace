@@ -179,11 +179,15 @@ nothing to the pull request: the comparison goes to the job summary only.
   `max_budget_usd` 1.00 and JSON schema.
 - `api`: the Messages API in a loop the module drives, with its own Read, Grep and Glob tools (`CheckoutFiles`):
   every path is resolved, symlinks included, and refused outside the PR checkout or under `.git`; reads,
-  matches and results are size-capped, Grep searches only the first 2,000 characters of a line, and one turn's
-  results together are cut at 200,000 characters (the budget is checked between responses, so this bounds
-  what one request can add). The same turn caps; the pass also stops at 2,000,000 tokens or at
-  $1.00 computed from each response's usage and a price table in the module (a model missing from it is
-  refused). Structured outputs do not accept `maxItems`, `maxLength`, `minimum` or `pattern`, so this route
+  matches and results are size-capped. Grep runs in a child Python process with an empty environment (it
+  never sees the key) that is killed after 10 seconds, since a model-chosen pattern can backtrack for hours
+  on a short line. One turn's results together are cut at 200,000 characters; a call past that still gets a
+  short "skipped" result, which the API requires. Every request asks for prompt caching
+  (`cache_control: ephemeral`), so a turn reads the earlier conversation back instead of paying for it
+  again. The same turn caps; the pass also stops at 2,000,000 tokens or at $1.00, computed from each
+  response's usage and a price table in the module (a model missing from it is refused). Before each
+  request the module prices its worst case (all input as cache writes, with new text at two characters
+  per token, plus the full output) and stops instead of sending a request that could pass the budget. Structured outputs do not accept `maxItems`, `maxLength`, `minimum` or `pattern`, so this route
   sends the schema without them, and `parse_pass` checks the count and the line as for the action.
 
 Both write the record shape `claude-review-raw` uses, plus the route, token totals and times, so
