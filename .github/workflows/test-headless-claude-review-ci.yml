@@ -559,6 +559,16 @@ jobs:
           persist-credentials: false
           ref: ${{ github.event.pull_request.head.sha }}
 
+      # As the sdk route: a PR symlink (to /proc/self/environ, say) is removed before any pass,
+      # since the Read(//proc/**) deny does not match a link's in-tree name.
+      - name: Remove symlinks from the reviewed tree
+        run: |
+          set -euo pipefail
+          find . -type l -print -delete | sed 's/^/removed symlink: /'
+          if [ -n "$(find . -type l -print)" ]; then
+            echo "::error::a symlink is left in the reviewed tree"; exit 1
+          fi
+
       # Inside the checkout, placed after it, so no pull request file can stand in for it.
       - name: Place the reviewed patch in the checkout
         run: |

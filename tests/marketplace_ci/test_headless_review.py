@@ -912,3 +912,21 @@ def test_every_recheck_and_collect_step_matches_the_claude_review():
     for job in ("headless-review", "headless-review-action"):
         collect = next(s for s in _steps(job) if s.get("name") == "Collect the passes")
         assert "draft|head_moved|lookup_failed)" in collect["run"]
+
+
+def test_the_action_route_removes_symlinks_before_any_pass(tmp_path: Path):
+    """Cross-model review: as the sdk route, a PR symlink (to /proc/self/environ, say) is gone
+    before Claude can read the tree, since the /proc deny does not match a link's in-tree name."""
+    names = [s.get("name") for s in _steps("headless-review-action")]
+    remove = names.index("Remove symlinks from the reviewed tree")
+    assert names.index("Check out the PR's own head commit") < remove
+    assert remove < names.index("Place the reviewed patch in the checkout")
+    assert remove < names.index("General pass")
+    (tmp_path / "sub").mkdir()
+    (tmp_path / "keep.txt").write_text("x", encoding="utf-8")
+    (tmp_path / "leak").symlink_to("/proc/self/environ")
+    (tmp_path / "sub" / "up").symlink_to("..")
+    run = _action_step("Remove symlinks from the reviewed tree")["run"]
+    subprocess.run(["bash", "-c", run], cwd=tmp_path, check=True, capture_output=True)
+    assert not (tmp_path / "leak").is_symlink() and not (tmp_path / "sub" / "up").is_symlink()
+    assert (tmp_path / "keep.txt").exists()

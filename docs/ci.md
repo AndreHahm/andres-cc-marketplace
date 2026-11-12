@@ -128,9 +128,11 @@ publishes nothing. The result file holds `status`
 reviewed paths, the model, whether the security pass ran, cost and turns per pass, and the findings. The
 check fails on a Critical or Major finding in either pass, and on a review that could not run (an invalid
 setting, a failed scope job, an API error, a cap reached, a timeout, a newer push before the call, a failed
-PR lookup before a pass). When the re-check before the security pass stops the run (the PR became a draft,
-moved or could not be looked up), the general pass's findings are still posted, but the run stays `skipped`
-or `could_not_run` and is never an anchor. Findings are not carried to later runs.
+PR lookup before a pass). When the re-check before the security pass stops the run because the PR moved or
+could not be looked up, the general pass's findings are still posted, but the run stays `could_not_run` and is
+never an anchor. When it stops because the PR became a draft, the run is `skipped` and posts nothing; the
+general pass's findings are only recorded in `claude-review-result` (the whole PR is reviewed again on
+`ready_for_review`). Findings are not carried to later runs.
 
 **Settings (R8, R9, R10).** Repository variables, validated by `claude-review-settings`:
 
@@ -173,7 +175,7 @@ nothing to the pull request: the comparison goes to the job summary only.
 |---|---|---|---|
 | `headless-scope` | `Compute the headless review scope` | none | The same steps as `claude-scope` (a test keeps the restore, settings, scope and prompt steps identical), except the anchor: the head before this push on `synchronize`, else none (the whole PR). Uploads `headless-review-scope`. |
 | `headless-review` | `Run the sdk route` / `Run the api route` | `ANTHROPIC_API_KEY_SDK` (sdk route), `ANTHROPIC_API_KEY` (api route) | A matrix over the two routes, one at a time (`max-parallel: 1`), so the Console's usage timeline tells them apart. Checks out the PR head into `pr/` and the base SHA into `trusted/`, removes every symlink from `pr/` (so neither route depends on how a link is resolved), installs only the `headless-review` dependency group (`anthropic` and `claude-agent-sdk` pinned exactly, plus PyYAML for the shared redaction), places the patch, re-checks the PR before each pass, and runs `headless-review-pass` from `trusted/` for the general pass and, when the delta has a gate-critical path, the security pass. Uploads `headless-review-raw-<route>`. |
-| `headless-review-action` | `Run the action route` | `ANTHROPIC_API_KEY_CODE` | After the matrix (so the usage timeline still shows one route at a time), even when a matrix route failed. Fails first when `ANTHROPIC_API_KEY_CODE` is unset or empty (that step sees only whether it is set). Then the steps the Claude delta review used before it moved to the sdk route: the PR head checked out at the workspace root, the patch placed, the PR re-checked before each pass, and both `claude-code-action` passes (pinned by SHA) with `--setting-sources user` and the sdk route's tools, settings, caps and JSON schema as flags (a test keeps them equal to `headless_review`'s). Its record steps write the record `parse_pass` reads plus the route, the token totals from the transcript's result entry and the start and end time. Runs no repository code. Uploads `headless-review-raw-action`. |
+| `headless-review-action` | `Run the action route` | `ANTHROPIC_API_KEY_CODE` | After the matrix (so the usage timeline still shows one route at a time), even when a matrix route failed. Fails first when `ANTHROPIC_API_KEY_CODE` is unset or empty (that step sees only whether it is set). Then the steps the Claude delta review used before it moved to the sdk route: the PR head checked out at the workspace root, every symlink removed from it (as in the sdk route), the patch placed, the PR re-checked before each pass, and both `claude-code-action` passes (pinned by SHA) with `--setting-sources user` and the sdk route's tools, settings, caps and JSON schema as flags (a test keeps them equal to `headless_review`'s). Its record steps write the record `parse_pass` reads plus the route, the token totals from the transcript's result entry and the start and end time. Runs no repository code. Uploads `headless-review-raw-action`. |
 | `headless-compare` | `Headless Claude review comparison` | none | Checks out the base SHA, runs `headless-review-summary` and writes a table per route and pass (status, verdict, findings by severity, turns, reported cost, tokens, start and end time in UTC) to the job summary. |
 
 **The two headless routes** (`scripts/marketplace_ci/headless_review.py`; the third, `action`, is the workflow's own steps):
