@@ -79,6 +79,13 @@
       "prompt": "/prompt-library activate docs__todo-summary",
       "expected_output": "Harness setup (not part of the skill): the catalog holds one filed user-origin draft with no recorded verification, left by an interrupted add. The skill validates, resolves the slug, and resumes at step 7: it dispatches prompt-reviewer with the record's absolute path (path taken from show --history) before any verification or activation, rather than jumping to step 8 or 9.",
       "files": []
+    },
+    {
+      "id": 12,
+      "name": "quality-verified-session-draft-resumes-at-verify",
+      "prompt": "/prompt-library activate docs__todo-summary",
+      "expected_output": "Harness setup (not part of the skill): the catalog holds one filed session-origin draft whose quality verification is recorded but whose import verification is not, the state left when an add is interrupted between step 8's two record-verification calls. The skill validates, reads missing_verification ([\"import\"]) from a validator read subcommand, and resumes at step 8: it does not dispatch prompt-reviewer again, and no verification or activation write runs before step 8's approval question.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {
