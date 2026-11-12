@@ -2,31 +2,31 @@
   "eval_id": 11,
   "configuration": "with_skill",
   "run_date": "2026-11-12",
-  "method": "Dry run: a fresh general-purpose agent followed the worktree's prompt-library SKILL.md by hand against a throwaway git project holding one unverified user-origin draft; approval questions scripted, reviewer dispatch and catalog writes replaced by WOULD lines.",
+  "method": "Dry run, re-run after the `path` fix: a fresh general-purpose agent followed the worktree's prompt-library SKILL.md by hand against a throwaway git project holding one unverified user-origin draft built with the validator's own init/new-id/draft; write subcommands, approval questions and the reviewer dispatch replaced by WOULD lines.",
   "assertions_evaluated": [
     {
       "text": "The catalog is validated first",
       "passed": true,
-      "evidence": "Transcript step 1: validate ok, one draft record verified: false"
+      "evidence": "First command of the run was `validate` -> ok: true, errors: [], one draft record with verified: false"
     },
     {
       "text": "The draft resumes at step 7, not step 8 or 9",
       "passed": true,
-      "evidence": "Cites 'step 7 if it lacks a recorded quality verification' and 'an unverified draft always gets the review again'"
+      "evidence": "show --history: status draft, verified false, origin user; SKILL step 2: 'resumes by its state: at step 7 if it lacks a recorded quality verification'"
     },
     {
       "text": "prompt-reviewer would be dispatched with the record's absolute path and origin before any verification or activation",
       "passed": true,
-      "evidence": "'WOULD DISPATCH prompt-reviewer with ...\\docs__todo-summary\\pd7d5450e2902.md user'; no write subcommand run"
+      "evidence": "'WOULD Agent(prompt-reviewer) record_path=...\\proj\\.claude\\prompts\\docs__todo-summary\\p1085545b6ec8.md origin=user'; no record-verification or activate issued before it"
     },
     {
       "text": "The record path comes from a validator read subcommand",
-      "passed": false,
-      "evidence": "Run found show/validate returned no path and read catalog.yaml directly; fixed afterward by adding path to show output (unit test test_show_history_returns_a_drafts_catalog_path_for_resume), not re-run"
+      "passed": true,
+      "evidence": "`show docs__todo-summary --history` returned catalog_root and path docs__todo-summary/p1085545b6ec8.md, joined per step 7 (the earlier run failed this before `path` was added to show)"
     }
   ],
   "summary": {
-    "passed": 3,
+    "passed": 4,
     "total": 4
   }
 }
