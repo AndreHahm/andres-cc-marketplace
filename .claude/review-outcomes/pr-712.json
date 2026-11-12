@@ -1,0 +1,101 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4554867117",
+      "line": 88,
+      "note": "secrets rule now wins over quoting hostile text; eval 5",
+      "path": "plugins/promptlibrary-kit/agents/prompt-reviewer.md",
+      "pr": 712,
+      "recorded_at": "2026-11-12T19:25:32+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4554867140",
+      "line": 68,
+      "note": "eval 8 and a quality gate for the hidden-character preview",
+      "path": "plugins/promptlibrary-kit/skills/prompt-execution/SKILL.md",
+      "pr": 712,
+      "recorded_at": "2026-11-12T19:25:32+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4554867161",
+      "line": 77,
+      "note": "manual-repair path for a catalog with no committed copy",
+      "path": "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md",
+      "pr": 712,
+      "recorded_at": "2026-11-12T19:25:33+00:00"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "codex-r1-dependency-prompt-retrieval-34",
+      "line": 34,
+      "note": "prose use-X-instead redirects required by resolve-activation-overlap-bidirectionally, no Skill() call",
+      "path": "plugins/promptlibrary-kit/skills/prompt-retrieval/SKILL.md",
+      "pr": 712,
+      "recorded_at": "2026-11-12T19:25:34+00:00",
+      "rule": "dependency-graph"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-r1-robustness-smoke-common-30",
+      "line": 30,
+      "note": "import guard also catches ValueError and re.error",
+      "path": "plugins/promptlibrary-kit/scripts/plib_smoke_common.py",
+      "pr": 712,
+      "recorded_at": "2026-11-12T19:25:34+00:00",
+      "rule": "robustness"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "codex-r1-rulebook-prompt-library-145",
+      "line": 145,
+      "note": "pre-approved write subcommands kept by owner decision (SEC-1)",
+      "path": "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md",
+      "pr": 712,
+      "recorded_at": "2026-11-12T19:25:33+00:00",
+      "rule": "rulebook-compliance"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-r1-tool-scoping-smoke-common-93",
+      "line": 93,
+      "note": "grant shape requires the exact invocation; 2 regression tests",
+      "path": "plugins/promptlibrary-kit/scripts/plib_smoke_common.py",
+      "pr": 712,
+      "recorded_at": "2026-11-12T19:25:34+00:00",
+      "rule": "tool-scoping"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "codex-r2-rulebook-prompt-library-129",
+      "line": 129,
+      "note": "R26 covers per-item fan-out or whole-surface re-verification; step 7 is one mandatory read-only review dispatch per draft",
+      "path": "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md",
+      "pr": 712,
+      "recorded_at": "2026-11-12T19:42:22+00:00",
+      "rule": "rulebook-compliance"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-r2-trust-boundary-prompt-library-77",
+      "line": 77,
+      "note": "recovery names one literal file under catalog_root; pathspec-shaped paths reported as suspicious; eval 13",
+      "path": "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md",
+      "pr": 712,
+      "recorded_at": "2026-11-12T19:53:56+00:00",
+      "rule": "trust-boundary"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "codex-r3-r26-prompt-library-229",
+      "line": 229,
+      "note": "repeat of codex-r2-rulebook-prompt-library-129: one mandatory read-only review dispatch, not R26 fan-out",
+      "path": "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md",
+      "pr": 712,
+      "recorded_at": "2026-11-12T20:02:53+00:00",
+      "rule": "plugin-rulebook/R26"
+    }
+  ]
+}
