@@ -23,7 +23,7 @@
       ],
       "path": "skills/prompt-execution",
       "provenance": {},
-      "score": 8.9,
+      "score": 8.6,
       "scoring_history": [
         {
           "gates_applied": [],
@@ -33,6 +33,17 @@
           "report_path": ".claude/output/plugin-grader/promptlibrary-kit-2026-11-12T11-09-09Z-components/prompt-execution.skill.json",
           "report_sha256": "6e86745506f2c8a9772788cae29807de99068f3bb7d02dc51562a39b57dcd6b1",
           "score": 8.9,
+          "target": "prompt-execution",
+          "target_type": "skill"
+        },
+        {
+          "gates_applied": [],
+          "graded_at": "2026-11-12T18:10:44Z",
+          "grader_schema_version": "1.1.0",
+          "imported_on": "2026-11-12",
+          "report_path": ".claude/output/plugin-grader/promptlibrary-kit-2026-11-12T18-10-44Z-components/prompt-execution.skill.json",
+          "report_sha256": "427926c280f3a5d68fc32c35e1ba40b50fc8ea9706e0ad6ef2f7760959390f55",
+          "score": 8.6,
           "target": "prompt-execution",
           "target_type": "skill"
         }
@@ -46,6 +57,18 @@
           "is_na": false,
           "report_path": ".claude/output/plugin-grader/promptlibrary-kit-2026-11-12T11-09-09Z-components/prompt-execution.skill.json",
           "report_sha256": "6e86745506f2c8a9772788cae29807de99068f3bb7d02dc51562a39b57dcd6b1",
+          "security_score": 5.5,
+          "source_field": "dimensions.safety_risk_handling.score",
+          "target": "prompt-execution",
+          "target_type": "skill"
+        },
+        {
+          "graded_at": "2026-11-12T18:10:44Z",
+          "grader_schema_version": "1.1.0",
+          "imported_on": "2026-11-12",
+          "is_na": false,
+          "report_path": ".claude/output/plugin-grader/promptlibrary-kit-2026-11-12T18-10-44Z-components/prompt-execution.skill.json",
+          "report_sha256": "427926c280f3a5d68fc32c35e1ba40b50fc8ea9706e0ad6ef2f7760959390f55",
           "security_score": 5.5,
           "source_field": "dimensions.safety_risk_handling.score",
           "target": "prompt-execution",
@@ -89,7 +112,7 @@
       ],
       "path": "skills/prompt-library",
       "provenance": {},
-      "score": 7.6,
+      "score": 8.0,
       "scoring_history": [
         {
           "gates_applied": [],
@@ -99,6 +122,17 @@
           "report_path": ".claude/output/plugin-grader/promptlibrary-kit-2026-11-12T11-09-09Z-components/prompt-library.skill.json",
           "report_sha256": "e60fe8643082e733e0e2f57da5ca4b9aed9757f9af7634237c24df9e78a2414e",
           "score": 7.6,
+          "target": "prompt-library",
+          "target_type": "skill"
+        },
+        {
+          "gates_applied": [],
+          "graded_at": "2026-11-12T18:10:44Z",
+          "grader_schema_version": "1.1.0",
+          "imported_on": "2026-11-12",
+          "report_path": ".claude/output/plugin-grader/promptlibrary-kit-2026-11-12T18-10-44Z-components/prompt-library.skill.json",
+          "report_sha256": "32ef8490f206a40b4ecc33b5df71063ac17a4967f49c6d25a22793e979c3b9ce",
+          "score": 8.0,
           "target": "prompt-library",
           "target_type": "skill"
         }
@@ -112,6 +146,18 @@
           "is_na": false,
           "report_path": ".claude/output/plugin-grader/promptlibrary-kit-2026-11-12T11-09-09Z-components/prompt-library.skill.json",
           "report_sha256": "e60fe8643082e733e0e2f57da5ca4b9aed9757f9af7634237c24df9e78a2414e",
+          "security_score": 5.5,
+          "source_field": "dimensions.safety_risk_handling.score",
+          "target": "prompt-library",
+          "target_type": "skill"
+        },
+        {
+          "graded_at": "2026-11-12T18:10:44Z",
+          "grader_schema_version": "1.1.0",
+          "imported_on": "2026-11-12",
+          "is_na": false,
+          "report_path": ".claude/output/plugin-grader/promptlibrary-kit-2026-11-12T18-10-44Z-components/prompt-library.skill.json",
+          "report_sha256": "32ef8490f206a40b4ecc33b5df71063ac17a4967f49c6d25a22793e979c3b9ce",
           "security_score": 5.5,
           "source_field": "dimensions.safety_risk_handling.score",
           "target": "prompt-library",
@@ -155,7 +201,7 @@
       ],
       "path": "skills/prompt-retrieval",
       "provenance": {},
-      "score": 8.9,
+      "score": 9.1,
       "scoring_history": [
         {
           "gates_applied": [],
@@ -165,6 +211,17 @@
           "report_path": ".claude/output/plugin-grader/promptlibrary-kit-2026-11-12T11-09-09Z-components/prompt-retrieval.skill.json",
           "report_sha256": "a0b12298c4909b61c5a37b2540e7becac80e1bd7726f47b7beada5815f837daf",
           "score": 8.9,
+          "target": "prompt-retrieval",
+          "target_type": "skill"
+        },
+        {
+          "gates_applied": [],
+          "graded_at": "2026-11-12T18:10:44Z",
+          "grader_schema_version": "1.1.0",
+          "imported_on": "2026-11-12",
+          "report_path": ".claude/output/plugin-grader/promptlibrary-kit-2026-11-12T18-10-44Z-components/prompt-retrieval.skill.json",
+          "report_sha256": "386dced59e590dc8822a62335f3283d00e35b40e471a03576141807c37cac9f6",
+          "score": 9.1,
           "target": "prompt-retrieval",
           "target_type": "skill"
         }
@@ -178,6 +235,18 @@
           "is_na": false,
           "report_path": ".claude/output/plugin-grader/promptlibrary-kit-2026-11-12T11-09-09Z-components/prompt-retrieval.skill.json",
           "report_sha256": "a0b12298c4909b61c5a37b2540e7becac80e1bd7726f47b7beada5815f837daf",
+          "security_score": 9.5,
+          "source_field": "dimensions.safety_risk_handling.score",
+          "target": "prompt-retrieval",
+          "target_type": "skill"
+        },
+        {
+          "graded_at": "2026-11-12T18:10:44Z",
+          "grader_schema_version": "1.1.0",
+          "imported_on": "2026-11-12",
+          "is_na": false,
+          "report_path": ".claude/output/plugin-grader/promptlibrary-kit-2026-11-12T18-10-44Z-components/prompt-retrieval.skill.json",
+          "report_sha256": "386dced59e590dc8822a62335f3283d00e35b40e471a03576141807c37cac9f6",
           "security_score": 9.5,
           "source_field": "dimensions.safety_risk_handling.score",
           "target": "prompt-retrieval",
@@ -221,7 +290,7 @@
       ],
       "path": "agents/prompt-reviewer.md",
       "provenance": {},
-      "score": 8.0,
+      "score": 9.3,
       "scoring_history": [
         {
           "gates_applied": [
@@ -239,9 +308,20 @@
           "score": 8.0,
           "target": "prompt-reviewer",
           "target_type": "agent"
+        },
+        {
+          "gates_applied": [],
+          "graded_at": "2026-11-12T18:10:44Z",
+          "grader_schema_version": "1.1.0",
+          "imported_on": "2026-11-12",
+          "report_path": ".claude/output/plugin-grader/promptlibrary-kit-2026-11-12T18-10-44Z-components/prompt-reviewer.agent.json",
+          "report_sha256": "f316a210b54ca6eae1e2f292d482f7f14d3d702960d4c65a578febb267316c33",
+          "score": 9.3,
+          "target": "prompt-reviewer",
+          "target_type": "agent"
         }
       ],
-      "security_score": 5.5,
+      "security_score": 9.0,
       "security_scoring_history": [
         {
           "graded_at": "2026-11-12T11:09:09Z",
@@ -251,6 +331,18 @@
           "report_path": ".claude/output/plugin-grader/promptlibrary-kit-2026-11-12T11-09-09Z-components/prompt-reviewer.agent.json",
           "report_sha256": "6554f2fe56a5dc1f0da8edfed166638cee58411d9ffffc1a92bcaff48690547a",
           "security_score": 5.5,
+          "source_field": "dimensions.safety_risk_handling.score",
+          "target": "prompt-reviewer",
+          "target_type": "agent"
+        },
+        {
+          "graded_at": "2026-11-12T18:10:44Z",
+          "grader_schema_version": "1.1.0",
+          "imported_on": "2026-11-12",
+          "is_na": false,
+          "report_path": ".claude/output/plugin-grader/promptlibrary-kit-2026-11-12T18-10-44Z-components/prompt-reviewer.agent.json",
+          "report_sha256": "f316a210b54ca6eae1e2f292d482f7f14d3d702960d4c65a578febb267316c33",
+          "security_score": 9.0,
           "source_field": "dimensions.safety_risk_handling.score",
           "target": "prompt-reviewer",
           "target_type": "agent"

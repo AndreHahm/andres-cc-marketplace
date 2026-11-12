@@ -517,7 +517,7 @@
       ],
       "prefix": "plib",
       "provenance": {},
-      "score": 8.3,
+      "score": 8.8,
       "scoring_history": [
         {
           "gates_applied": [],
@@ -529,9 +529,20 @@
           "score": 8.3,
           "target": "promptlibrary-kit",
           "target_type": "plugin"
+        },
+        {
+          "gates_applied": [],
+          "graded_at": "2026-11-12T18:10:44Z",
+          "grader_schema_version": "1.1.0",
+          "imported_on": "2026-11-12",
+          "report_path": ".claude/output/plugin-grader/promptlibrary-kit-2026-11-12T18-10-44Z.json",
+          "report_sha256": "acb73c25b7bd8f26e1ce67d29482e4f5f2b44d9a6f73529bd08deac1d2bcf80b",
+          "score": 8.8,
+          "target": "promptlibrary-kit",
+          "target_type": "plugin"
         }
       ],
-      "security_score": 6.5,
+      "security_score": 7.4,
       "security_scoring_history": [
         {
           "graded_at": "2026-11-12T11:09:09Z",
@@ -541,6 +552,18 @@
           "report_path": ".claude/output/plugin-grader/promptlibrary-kit-2026-11-12T11-09-09Z.json",
           "report_sha256": "1585baf7e5e3c721d3614f5a228877c25efcaa56099948655d9c6e2fc3a960db",
           "security_score": 6.5,
+          "source_field": "plugin_security_score",
+          "target": "promptlibrary-kit",
+          "target_type": "plugin"
+        },
+        {
+          "graded_at": "2026-11-12T18:10:44Z",
+          "grader_schema_version": "1.1.0",
+          "imported_on": "2026-11-12",
+          "is_na": null,
+          "report_path": ".claude/output/plugin-grader/promptlibrary-kit-2026-11-12T18-10-44Z.json",
+          "report_sha256": "acb73c25b7bd8f26e1ce67d29482e4f5f2b44d9a6f73529bd08deac1d2bcf80b",
+          "security_score": 7.4,
           "source_field": "plugin_security_score",
           "target": "promptlibrary-kit",
           "target_type": "plugin"
