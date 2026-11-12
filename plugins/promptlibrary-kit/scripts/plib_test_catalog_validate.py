@@ -1199,6 +1199,13 @@ class Robustness(Base):
         self.assertEqual(hidden[1]["name"], "RIGHT-TO-LEFT OVERRIDE")
         self.assertFalse(res["records"][0]["hidden_characters_truncated"])
 
+    def test_show_history_returns_a_drafts_catalog_path_for_resume(self):
+        filed = self.add_draft()
+        code, res = self.run_cli("show", SLUG, "--history")
+        self.assertEqual(code, 0, res)
+        self.assertEqual(res["records"][0]["path"], filed["path"])
+        self.assertTrue((self.root / res["records"][0]["path"]).is_file())
+
     def test_show_reports_no_hidden_characters_for_plain_text(self):
         self.make_active(_body="Tab\tis fine.\nSo is café and — a dash.")
         code, res = self.run_cli("show", SLUG)

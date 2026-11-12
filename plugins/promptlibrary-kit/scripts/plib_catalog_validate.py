@@ -950,6 +950,7 @@ def cmd_show(args) -> dict:
     info["records"] = [
         {
             **summarize(m),
+            "path": m["_path"],
             "previous_id": m.get("previous_id"),
             "prerequisites": m.get("prerequisites"),
             "boundaries": m.get("boundaries"),

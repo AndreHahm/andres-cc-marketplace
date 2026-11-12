@@ -46,5 +46,6 @@ Two shapes exist. Use whichever keys the JSON actually carries:
   <error>."
 
 Then: "Nothing was listed." and every `warnings` entry when present. If the first error says
-`catalog.yaml is missing`, add that `/prompt-library` can create the catalog. Otherwise do not suggest
-reading or fixing the record files by hand.
+`catalog.yaml is missing`, add that `/prompt-library` can create the catalog. Otherwise add that
+`/prompt-library` explains how to recover the catalog, and do not suggest reading or fixing the record
+files yourself.
