@@ -189,9 +189,11 @@ SECRET_PATTERNS = (
             r"(?i)[?&](?:access_token|auth_token|token|api_key|apikey|password|secret)=[^&\s]{6,}"
         ),
     ),
-    ("stripe_key", re.compile(r"\b[sr]k_(?:live|test)_[A-Za-z0-9]{16,}\b")),
-    ("gitlab_token", re.compile(r"\bglpat-[A-Za-z0-9_-]{20,}\b")),
-    ("npm_token", re.compile(r"\bnpm_[A-Za-z0-9]{30,}\b")),
+    # re.ASCII for the same reason as the shared shapes: a Unicode \b misses a token next to an
+    # accented or CJK character. No trailing \b: a token followed by `_` must still match.
+    ("stripe_key", re.compile(r"\b[sr]k_(?:live|test)_[A-Za-z0-9]{16,}", re.ASCII)),
+    ("gitlab_token", re.compile(r"\bglpat-[A-Za-z0-9_-]{20,}", re.ASCII)),
+    ("npm_token", re.compile(r"\bnpm_[A-Za-z0-9]{30,}", re.ASCII)),
     (
         "home_directory_path",
         re.compile(r"(?:[A-Za-z]:[\\/]Users[\\/][^\\/\s]+|/home/[^/\s]+|/Users/[^/\s]+)"),
@@ -961,7 +963,7 @@ def cmd_show(args) -> dict:
         }
         for m in shown
     ]
-    for entry, m in zip(info["records"], shown):
+    for entry, m in zip(info["records"], shown, strict=True):
         entry["hidden_characters"], entry["hidden_characters_truncated"] = hidden_characters(
             m["_body"]
         )

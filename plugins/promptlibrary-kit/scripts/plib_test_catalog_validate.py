@@ -160,6 +160,18 @@ class TextAndYaml(unittest.TestCase):
         ):
             self.assertTrue(V.screen_text(text), text)
 
+    def test_local_token_shapes_are_screened_next_to_non_ascii_text_or_underscore(self):
+        # Pieces are joined so no token-shaped literal sits in this source file.
+        samples = {
+            "stripe_key": "sk_" + "live_" + "a" * 20,
+            "gitlab_token": "gl" + "pat-" + "b" * 22,
+            "npm_token": "np" + "m_" + "c" * 32,
+        }
+        for name, token in samples.items():
+            for text in ("é" + token + "é", "中" + token, token + "_x"):
+                hits = {h["pattern"] for h in V.screen_text(text)}
+                self.assertIn(name, hits, repr(text))
+
     def test_shared_token_shapes_are_screened_next_to_non_ascii_text(self):
         # Pieces are joined so no token-shaped literal sits in this source file.
         samples = {
@@ -1014,7 +1026,9 @@ class Robustness(Base):
         self.assertEqual(self.run_cli("init")[0], 0)
         scratch = Path(self.scratch())
         text = scratch.read_text(encoding="utf-8")
-        scratch.write_text(text.replace("name: Missing tests review", 'name: "bad \\ud800 name"'))
+        scratch.write_text(
+            text.replace("name: Missing tests review", 'name: "bad \\ud800 name"'), encoding="utf-8"
+        )
         code, res = self.run_cli("draft", str(scratch))
         self.assertEqual(code, 1)
         self.assertIn("invalid content", res["error"])

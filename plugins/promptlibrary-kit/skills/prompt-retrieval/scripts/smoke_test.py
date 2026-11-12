@@ -61,6 +61,9 @@ def check_grants_are_read_only():
     stray = [g for g in grants if C.grant_name(g) != "Bash" or "plib_catalog_validate.py" not in g]
     if stray:
         return False, "grants other than validator Bash: " + "; ".join(stray)
+    malformed = C.malformed_validator_grants(grants)
+    if malformed:
+        return False, "validator grants not scoped to one subcommand: " + "; ".join(malformed)
     granted = sorted(C.validator_subcommands_granted(tools))
     if granted != EXPECTED_SUBCOMMANDS:
         return False, f"granted subcommands {granted}, expected exactly {EXPECTED_SUBCOMMANDS}"
