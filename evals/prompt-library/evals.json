@@ -82,8 +82,8 @@
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 9,
-    "declared_scenarios_covered": 9,
+    "declared_scenarios_total": 10,
+    "declared_scenarios_covered": 10,
     "uncovered": []
   }
 }
