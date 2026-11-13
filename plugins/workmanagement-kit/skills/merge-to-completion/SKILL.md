@@ -26,6 +26,8 @@ open with follow-ups, or be reopened later.
 
 - Reviewing/marking a PR ready before merge → `pr-to-linear`.
 - Repairing drift unrelated to a fresh merge → `linear-github-reconciliation`.
+- A direct owner, priority, scope, date, status or closure change with no PR merge involved (none
+  being merged now, and none already merged and awaiting its closure) → `linear-work-management`.
 
 See Testing & Validation below for the concrete trigger phrases this section summarizes.
 
@@ -159,6 +161,7 @@ See Testing & Validation below for the concrete trigger phrases this section sum
 **Verify it does NOT activate on:**
 - "mark this PR ready" → `pr-to-linear`
 - "reconcile drift between Linear and GitHub" → `linear-github-reconciliation`
+- "close this Linear issue" (no PR being merged) → `linear-work-management`
 
 **Last dated run record:** evals/merge-to-completion/workspace/iteration-2/ -- 3/3 declared scenarios covered, 5/5 with_skill assertions passed on eval-3 (2026-09-11)
 

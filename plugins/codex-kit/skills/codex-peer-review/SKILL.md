@@ -2,18 +2,20 @@
 name: codex-peer-review
 description: >-
   Validate Claude's own analysis, design, or recommendation against Codex
-  before presenting it to the user. Use manually/on-request only — e.g. "get
-  a second opinion from codex before we commit to this", "codex peer review
-  this design". Not a proactive/automatic trigger (codex-kit deliberately
+  before presenting it to the user. Not a proactive/automatic trigger (codex-kit deliberately
   narrowed this from the original design's 'fires before every
   recommendation' behavior — too many silent Codex calls by default). For
   verifying an existing written plan/document file, use codex-verify
   instead. For a full multi-phase plan-validate-implement-review workflow
   (not just validating an already-formed position), use codex-plan-loop
   instead. For open-ended investigation of a topic with no existing Claude
-  position to validate, use codex-research instead. For the same second-opinion
-  workflow naming Gemini/Antigravity/agy instead of Codex, use antigravity-kit's
-  `antigravity` skill instead.
+  position to validate, use codex-research instead. For one action or choice
+  Claude is about to execute, use consulting-decision-model instead. For the
+  same second-opinion workflow naming Gemini/Antigravity/agy instead of Codex,
+  use antigravity-kit's `antigravity` skill instead.
+when_to_use: >-
+  Use manually/on-request only — e.g. "get a second opinion from codex before
+  we commit to this", "codex peer review this design".
 argument-hint: "[--base <ref>] [question or design summary]"
 allowed-tools: ["Bash(node */codex-kit/scripts/codex-companion.mjs:*)", "AskUserQuestion", "Agent", "WebSearch"]
 ---
@@ -109,6 +111,7 @@ Never ask before Round 1 or Round 2 — only the escalation and final-output ste
 **Verify it does NOT activate on:**
 - Proactively, without an explicit request — this skill deliberately has no automatic trigger
 - Verifying an existing written plan/document file → `codex-verify`
+- Checking one action or choice Claude is about to execute → decision-kit's `consulting-decision-model`
 - "get a second opinion from antigravity/gemini/agy" → antigravity-kit's `antigravity` skill instead
   (Gemini/Antigravity/agy named, not Codex)
 

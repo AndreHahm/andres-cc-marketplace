@@ -46,6 +46,8 @@ On a merge, this check runs in addition to `merge-pr`'s own readiness gates.
 - Reviewing a diff before a PR (`cross-model-review`), a design, analysis or recommendation Claude will
   present (`codex-peer-review`), or a written plan or document (`codex-verify`). This skill covers one
   action or choice Claude is about to execute, including a single irreversible step from a plan.
+  When the user asks for a plan or document to be verified, that stays with `codex-verify`, even if
+  Claude will later execute a step from it.
 - Routine, easily reversed work where Claude is confident.
 
 When more than one trigger could apply, use the stricter one (`critical` or `security`): those stop
@@ -162,6 +164,7 @@ and when to fire has no labelled examples until real consultation records exist.
 - "review my diff before the PR" → `cross-model-review`
 - "get a second opinion from codex on this design" → `codex-peer-review`
 - "verify this plan with codex" → `codex-verify`
+- "verify step 3 of plan.md" (the user asks for the check) → `codex-verify`
 
 **Quality gates:**
 - [ ] A `refused` result means no request left the machine

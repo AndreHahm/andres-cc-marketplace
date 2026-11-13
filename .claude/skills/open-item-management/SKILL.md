@@ -42,6 +42,12 @@ a completed Linear Issue (including one Wave 2's `merge-to-completion` just rout
 - Capturing the outcome/learning from completed work itself (as opposed to its open follow-ups) →
   `status-and-learning`.
 - Promoting new Notion knowledge into Linear → `idea-to-implementation`.
+- A direct create or refine of a Linear Issue with no Report, Decision or completed Issue as its
+  source → `linear-work-management`.
+- Bulk or periodic collection of open items from `.claude/output` reports, GitHub issues and PR
+  follow-ups, planned as batches and submitted to Linear → workledger-kit's `syncing-open-items`
+  (and `open-item-digest` for the digest). This skill dispositions one follow-up that starts from a
+  Notion Report or Decision, or from a completed Linear Issue.
 
 See Testing & Validation below for the concrete trigger phrases this section summarizes.
 
@@ -174,6 +180,8 @@ even under pressure to "just track everything."
 **Verify it does NOT activate on:**
 - "capture what we learned from this" → `status-and-learning`
 - "promote this idea to Linear" → `idea-to-implementation`
+- "create a Linear issue for X" (no source Report, Decision or completed Issue) → `linear-work-management`
+- "sync all open items from the reports into Linear" → workledger-kit's `syncing-open-items`
 
 **Last dated run record:** evals/open-item-management/workspace/iteration-1/ (2026-08-30) —
 `evals.json`'s expected_output was updated 2026-08-31 for the Disposition Record redesign (issue

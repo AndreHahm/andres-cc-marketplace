@@ -45,6 +45,7 @@ thread, resolving it, filing an issue for a deferred one, posting a review-trigg
 - **Merging the PR** — that's `merge-pr`'s job, with its own independent readiness gate. This skill's disclosure step (Workflow step 7) is informational input to that decision, never a substitute for it.
 - **Summarizing existing review comments into an updated PR description's own informational table** — that's `explain-pr-changes`'s job (its Step 4). That table is a byproduct of rewriting the PR body, carries no round-budget/severity-gate discipline, and never replies to, resolves, or files a real GitHub issue for a finding — this skill owns any of those actions once a finding is being formally triaged.
 - **Working an issue once it's already filed** (triage, relate, verify, prioritize, resolve or decline it) — that's `github-issue-lifecycle`'s job. This skill's own issue filing (Workflow step 5, `git-review-api.py issue-create`) only covers *filing* a PR-review finding as a new issue when the round budget calls for it; once that issue exists, this skill never touches it again — it's a freestanding issue at that point, same as any other.
+- **Working through several open Dependabot PRs in one pass** (ordering, `@dependabot rebase` requests, merge or close recommendations) — that's `triaging-dependabot-prs`' job. The line between them: a batch of Dependabot PRs goes there; findings a reviewer has already posted on one PR's review threads stay here. A request naming both: the batch runs there first, then this skill triages the reviewer threads on the PRs that remain open.
 
 The exclusions above follow this repo's `.claude/rules/resolve-activation-overlap-bidirectionally.md` convention — each named sibling skill carries the reciprocal half of the same exclusion.
 
@@ -143,6 +144,7 @@ Immediately before any `threads`, `resolve`, `reply`, `trigger-comment` or `issu
 - "is this PR ready to merge" → `merge-pr`
 - "the Codacy check failed on my PR, should I ignore these findings", or the same for Sonar → quality-kit's `resolving-analysis-findings`
 - "work issue #45 through triage, find related issues, resolve it" → `github-issue-lifecycle`; a freestanding issue, not a PR-review finding
+- "work through the open dependabot PRs" → `triaging-dependabot-prs`
 
 **Quality gates:**
 - [ ] A round is counted correctly per `references/round-and-dedup-rules.md` — only a fix-driven push advances it, never a pre-push review pass, rebase, or unrelated commit
