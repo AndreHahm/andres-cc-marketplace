@@ -19,7 +19,9 @@
       "completeness-reviewer",
       "hook-reviewer",
       "plugin-validator",
-      "activation-reviewer"
+      "activation-reviewer",
+      "command-reviewer",
+      "permission-reviewer"
     ]
   },
   "divergence_exceptions": [
