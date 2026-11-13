@@ -157,6 +157,56 @@
       "rule": "cross-plugin-dependency"
     },
     {
+      "disposition": "accepted",
+      "finding": "ci-run-43492881351-1",
+      "line": 14,
+      "note": "Descriptions of codex-peer-review and codex-verify still route to decision-kit unconditionally; deferred to issue 727 at the PR author's direction.",
+      "path": "plugins/codex-kit/skills/codex-peer-review/SKILL.md",
+      "pr": 726,
+      "recorded_at": "2026-11-13T19:57:26+00:00",
+      "rule": "scope-boundary"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "ci-run-43492881351-2",
+      "line": 35,
+      "note": "Wording names handling-review-findings without saying the user runs it; deferred to issue 727.",
+      "path": "plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md",
+      "pr": 726,
+      "recorded_at": "2026-11-13T19:57:26+00:00",
+      "rule": "dependency-graph/tool-scope"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "ci-run-43492881351-3",
+      "line": 46,
+      "note": "One eval scenario, minimum three; predates the PR; deferred to issue 728.",
+      "path": "plugins/codex-kit/skills/codex-peer-review/SKILL.md",
+      "pr": 726,
+      "recorded_at": "2026-11-13T19:57:26+00:00",
+      "rule": "plugin-rulebook/R28"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "ci-run-43492881351-4",
+      "line": 54,
+      "note": "One eval scenario, minimum three; predates the PR; deferred to issue 728.",
+      "path": "plugins/codex-kit/skills/codex-verify/SKILL.md",
+      "pr": 726,
+      "recorded_at": "2026-11-13T19:57:26+00:00",
+      "rule": "plugin-rulebook/R28"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "ci-run-43492881351-5",
+      "line": 28,
+      "note": "A plain see-also pointer is exempt from the R14 chain check, and the command constraint is stated inline.",
+      "path": "plugins/git-kit/skills/triaging-dependabot-prs/references/recovery.md",
+      "pr": 726,
+      "recorded_at": "2026-11-13T19:57:26+00:00",
+      "rule": "reference-chain"
+    },
+    {
       "disposition": "false_positive",
       "finding": "claude-delta-ff25b6f2-1",
       "line": 25,
