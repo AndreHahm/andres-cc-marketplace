@@ -106,6 +106,15 @@ branch", "get back to a clean main".
    `/git-cleanup` needs to run from a session started in the primary checkout, not from inside the
    worktree — the same constraint step 2 above stops on, not a separate one.
 
+## Boundaries
+
+- **`git -C <worktree-path> status --porcelain` (step 5) is deliberately ungranted.** This skill never
+  pre-approves it, so it raises a permission prompt unless your own settings or permission mode already allow
+  it. Reason (shared prefix): the worktree path is variable, so any grant must leave that position open, and an
+  open `git -C` position also admits state-changing forms such as `git -C . reset --hard` or
+  `git -C . push origin status --porcelain` (`git push` accepts `--porcelain` too). The step itself only reads.
+  Approve each run once; do not add a persistent allow rule, which would pre-approve those forms as well.
+
 ## Testing & Validation
 
 **Verify this skill activates on:**

@@ -31,7 +31,9 @@ Why each part of Safety Rule 10's check exists. Rebasing rewrites commit SHAs in
 branch's current tip being an ancestor of the default branch says nothing about whether the tag's own
 pre-rebase commit is), so raw-SHA ancestry alone is not enough; the fallback is a per-path,
 per-blob-and-mode history search: every path each of the tag's own commits changed must have that exact
-post-image blob AND mode somewhere in the default branch's own history at that same path.
+post-image blob AND mode somewhere in the default branch's own history at that same path. A plain deletion
+is the exception: it requires the path to be absent from the default branch's current tree, not merely
+deleted at some point after the merge-base.
 
 - **Exact content:** Git blobs are purely content-addressed, so this is already exact byte-for-byte
   equality with no whitespace-insensitivity to guard against.
