@@ -1,0 +1,13 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "6848301867",
+      "line": 265,
+      "note": "R15 status now cites the maintainer approval via issue 704; fixed in 73a32515",
+      "path": "docs/ci-codex-review-user-requirements.md",
+      "pr": 716,
+      "recorded_at": "2026-11-13T08:56:33+00:00"
+    }
+  ]
+}
