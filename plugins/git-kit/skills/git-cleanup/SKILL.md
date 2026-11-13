@@ -16,6 +16,14 @@ path that's only known at runtime, and `Bash(prefix:*)` permission syntax can't 
 but only followed by `status`" without a wrapper script. Reviewed 2026-08-11 (git-kit retro follow-up);
 no narrower grant is expressible with the current permission syntax.
 
+## Quick Start
+
+1. Run from a session in the primary checkout, only on the user's explicit `/git-cleanup`.
+2. Analyze and group branches, remote leftovers and rebase-backup tags (Phases 1-3.6), then check every
+   worktree for dirty and gitignored content with `git -C`, never `cd` (Phase 4).
+3. Gate 1: present the analysis. Gate 2: confirm the exact deletions, then execute (Phase 5).
+4. Report what was deleted and what remains (Phase 6); optionally offer Phase 7's guided tag review.
+
 ## When to Use
 
 - When the user has accumulated many local branches and worktrees
@@ -364,27 +372,8 @@ through still lets the rest proceed, and reports which index (if any) failed.
 
 ### Phase 6: Report
 
-```markdown
-## Cleanup Complete
-
-### Deleted
-- fix/typo
-- feat/login
-- feat/api
-- feat/api-v2
-- feat/api-refactor
-- feat/api-final
-- Worktree: ../proj-auth
-- Remote branch (stale, Phase 3.5): feat/old-worktree-feature
-- Rebase-backup tag (stale, Phase 3.6): feat/gone-branch-rebase-backup-20260701-093000
-
-### Remaining (4 branches)
-| Branch | Status |
-|--------|--------|
-| main | current |
-| wip/new-feature | active work |
-| experiment/old | needs review |
-```
+Report what was deleted (branches, worktrees, Phase 3.5 remote branches, Phase 3.6 tags) and what remains,
+with each remaining branch's status. Example: [references/cleanup-report-example.md](references/cleanup-report-example.md).
 
 ### Phase 7: Guided Manual Review (optional, offered after Phase 6 — rebase-backup tags only)
 
@@ -474,6 +463,24 @@ These are common shortcuts that lead to data loss. Reject them:
 
 ## Testing & Validation
 
-See [references/testing-and-validation.md](references/testing-and-validation.md) for activation
-triggers/non-triggers, the Phase 4 gitignored-content detection scenarios, and the full quality-gates
-checklist.
+**Verify this skill activates on:** "clean up my old branches and worktrees"; "I have a bunch of stale
+branches, help me clean up".
+
+**Verify it does NOT activate on:** "delete this one specific branch" with no broader cleanup context;
+automated or headless invocation (two user confirmations are required).
+
+**Quality gates:**
+- [ ] Nothing is deleted before both Gate 1 and Gate 2 are answered.
+- [ ] Phase 4 runs `--porcelain` and `--ignored` for every worktree, through `git -C`, never `cd`.
+- [ ] Tags are deleted only through `delete-rebase-backup-tags.sh` indices, never a typed tag name.
+
+## Reference Guide
+
+| Resource | Purpose |
+|---|---|
+| `references/critical-implementation-notes.md` | Squash-merge `-D`, PR-history commands, Safety Rule 10 rationale |
+| `references/guided-manual-review.md` | Phase 7's full guided tag-review procedure |
+| [references/testing-and-validation.md](references/testing-and-validation.md) | Phase 4 and 3.6 scenarios, full quality-gates checklist |
+| `references/cleanup-report-example.md` | Phase 6 report example |
+| `assets/analysis-report-template.md` | Gate 1 analysis layout |
+| `scripts/phase1-analysis.sh`, `scripts/delete-rebase-backup-tags.sh` | Phase 1 analysis; tag listing and deletion |
