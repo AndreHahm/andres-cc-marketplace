@@ -117,6 +117,7 @@ def _stub_gh(tmp_path, pr):
     gh.write_text(
         "#!/bin/sh\n"
         f'printf "GH_REPO=%s\\n" "${{GH_REPO:-}}" > "{log}"\n'
+        f'printf "ARG=%s\\n" "$@" >> "{log}"\n'
         'while [ "$#" -gt 0 ]; do [ "$1" = "--jq" ] && expr="$2"; shift; done\n'
         f'exec jq -r "$expr" "{fixture}"\n',
         encoding="utf-8",
@@ -191,7 +192,31 @@ def test_squash_merge_with_merged_pr_at_head_does_not_block(setup, tmp_path):
     env, log = _stub_gh(tmp_path, _pr("MERGED", head))
     env["GH_REPO"] = "someone/else"
     assert _run_guard(wt, home, env) == ""
-    assert log.read_text(encoding="utf-8").strip() == "GH_REPO="
+    lines = log.read_text(encoding="utf-8").splitlines()
+    assert lines[0] == "GH_REPO="
+    # The PR is looked up by branch on origin's repository, so a `gh repo
+    # set-default` pointing elsewhere cannot redirect the query; `--` keeps
+    # the branch from being read as an option.
+    assert lines[1:5] == ["ARG=pr", "ARG=view", "ARG=--repo", "ARG=acme/widgets"]
+    assert lines[-2:] == ["ARG=--", "ARG=feat"]
+
+
+def test_squash_merge_on_detached_head_keeps_warning(setup, tmp_path):
+    home, wt, head = _squash_merged(setup)
+    _git(wt, "checkout", "-q", "--detach", home=home)
+    env, log = _stub_gh(tmp_path, _pr("MERGED", head))
+    out = _run_guard(wt, home, env)
+    assert json.loads(out)["decision"] == "block"
+    assert not log.exists()
+
+
+def test_squash_merge_with_non_github_origin_keeps_warning(setup, tmp_path):
+    home, wt, head = _squash_merged(setup)
+    _git(wt, "remote", "set-url", "origin", "https://gitlab.example/acme/widgets.git", home=home)
+    env, log = _stub_gh(tmp_path, _pr("MERGED", head))
+    out = _run_guard(wt, home, env)
+    assert json.loads(out)["decision"] == "block"
+    assert not log.exists()
 
 
 @pytest.mark.parametrize(

@@ -96,7 +96,9 @@ branch", "get back to a clean main".
    `git branch --show-current` value, which only served step 1's own mismatch check) — if another
    worktree is still checked out on that specific branch, flag it (especially if it has uncommitted
    changes) without touching it. Check that worktree with `git -C <worktree-path> status --porcelain`
-   (add `--ignored` to also list gitignored content) — **never `cd` into it**, not even in a chained
+   (add `--ignored` to also list gitignored content), passing the path from `git worktree list` as one
+   single-quoted argument (write each `'` inside it as `'\''`), so spaces or shell metacharacters in it
+   are not split or interpreted — **never `cd` into it**, not even in a chained
    command: a `cd` into another worktree rebinds this session to it, and `/git-cleanup` then refuses to
    run from this session.
 6. **Hand off**: tell the user local `main` is synced and current, and that `/git-cleanup` is the next

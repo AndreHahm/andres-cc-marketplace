@@ -212,7 +212,8 @@ script's `--list` output never includes those, so nothing further filters them o
 Check ALL worktrees and current directory for uncommitted changes:
 
 ```bash
-# For each worktree path: always git -C, never cd (a cd rebinds this session to that worktree)
+# For each worktree path: always git -C, never cd (a cd rebinds this session to that worktree); pass the
+# path as one single-quoted argument, each ' inside it written as '\'' (here and below)
 git -C <worktree-path> status --porcelain
 
 # For current directory
