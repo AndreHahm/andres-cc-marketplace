@@ -68,7 +68,19 @@ just the parent's summary:
 - Parent `read-only`, agent file `sandbox_mode = "workspace-write"`: the subagent's sandbox was
   `read-only` and its probe write failed ("Read-only file system").
 
-In both runs the parent itself ran no command. Windows has not been checked yet (issue #700).
+In both runs the parent itself ran no command.
+
+The same two runs on Windows 11, `codex-cli` 0.162.1 (2026-11-13), gave the same result: the subagent
+ran with `workspace-write` and wrote under a `workspace-write` parent, and ran with `read-only` and was
+denied the write ("Access to the path ... is denied") under a `read-only` parent (issue #700). Two
+Windows-specific conditions applied:
+
+- Both runs used `windows.sandbox = "unelevated"`. With the `elevated` backend, the subagent's command
+  never started ("helper_unknown_error: setup refresh had errors"). That is a setup failure, not a
+  sandbox verdict.
+- Codex loads a project's `.codex/agents` only when the project is trusted. In an untrusted project the
+  parent's `spawn_agent` has no `agent_type` parameter, so it cannot select a custom agent. A
+  `workspace-write` `codex exec` run marked its project trusted in `~/.codex/config.toml` by itself.
 
 `features.shell_tool = false` was considered as a substitute and rejected. A live test on `codex-cli`
 0.166.0 (2026-11-12) gave an agent with that key only the `collaboration.*` tools. Codex has no separate
