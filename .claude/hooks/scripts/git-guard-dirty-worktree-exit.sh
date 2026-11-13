@@ -68,8 +68,53 @@ fi
 UNMERGED=false
 DEFAULT_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@') || true
 DEFAULT_BRANCH="${DEFAULT_BRANCH:-main}"
-if [ -n "$(git log "origin/$DEFAULT_BRANCH"..HEAD --oneline 2>/dev/null)" ]; then
-  UNMERGED=true
+# Compare by patch content, not SHA reachability: a rebase- or squash-merge
+# lands the branch's commits on the default branch under new SHAs, so a
+# `git log origin/<default>..HEAD` range reports already-merged work as
+# unmerged (issue #707). `git cherry` marks a commit `-` when an equivalent
+# patch is already upstream and `+` when it isn't. A missing upstream ref
+# keeps the earlier behavior (no unmerged state reported); a cherry failure
+# or timeout with the ref present fails toward warning. `git cherry` skips
+# merge commits, so a merge commit in the range keeps the warning too (it can
+# carry the only unlanded change, e.g. a conflict resolution). Patch-id
+# equivalence ignores whitespace, and a commit landed then reverted upstream
+# still counts as landed: both accepted limitations.
+HAS_TIMEOUT=false
+command -v timeout >/dev/null 2>&1 && HAS_TIMEOUT=true
+if git rev-parse --verify --quiet "origin/$DEFAULT_BRANCH^{commit}" >/dev/null 2>&1; then
+  # Bounded so the whole hook stays inside its 10s budget: a hook timeout
+  # under onError "warn" would end the turn with only a warning.
+  if [ "$HAS_TIMEOUT" = true ]; then
+    CHERRY=$(timeout -k 1 3 git cherry "origin/$DEFAULT_BRANCH" HEAD 2>/dev/null) || CHERRY="+ cherry-failed"
+  else
+    CHERRY=$(git cherry "origin/$DEFAULT_BRANCH" HEAD 2>/dev/null) || CHERRY="+ cherry-failed"
+  fi
+  MERGES=$(git rev-list --merges "origin/$DEFAULT_BRANCH..HEAD" 2>/dev/null) || MERGES="merges-failed"
+  if grep -q '^+' <<<"$CHERRY" || [ -n "$MERGES" ]; then
+    UNMERGED=true
+  fi
+fi
+
+# A squash-merge of several commits matches no single branch commit's patch,
+# so `git cherry` still reports `+`. Fall back to the branch's PR: treat the
+# work as merged only when the PR is MERGED into $DEFAULT_BRANCH of origin's
+# own repository and its head SHA is exactly this worktree's HEAD (nothing
+# committed after the merged head). Needs `gh`, `timeout` and network access;
+# any failure, timeout or mismatch keeps the warning. GH_REPO is dropped, and
+# the PR's repository is compared against origin's, so neither GH_REPO, a
+# `gh repo set-default` nor an `upstream` remote can pick another repository
+# (an origin that isn't on github.com never matches, so the warning stays).
+# The gh output is only compared as a string, never run. A PR merged and
+# later reverted on the default branch still counts as merged (accepted: the
+# work stays in GitHub's PR history).
+if [ "$UNMERGED" = true ] && [ "$HAS_TIMEOUT" = true ] && command -v gh >/dev/null 2>&1; then
+  HEAD_SHA=$(git rev-parse HEAD 2>/dev/null) || HEAD_SHA=""
+  ORIGIN_REPO=$(git remote get-url origin 2>/dev/null | sed -E 's#^(https://github\.com/|git@github\.com:|ssh://git@github\.com/)##; s#\.git$##; s#/$##') || ORIGIN_REPO=""
+  PR_STATE=$(env -u GH_REPO timeout -k 1 4 gh pr view --json state,baseRefName,headRefOid,url \
+    --jq '.state + " " + .baseRefName + " " + .headRefOid + " " + (.url | sub("^https://github\\.com/"; "") | sub("/pull/[0-9]+$"; ""))' 2>/dev/null) || PR_STATE=""
+  if [ -n "$HEAD_SHA" ] && [ -n "$ORIGIN_REPO" ] && [ "$PR_STATE" = "MERGED $DEFAULT_BRANCH $HEAD_SHA $ORIGIN_REPO" ]; then
+    UNMERGED=false
+  fi
 fi
 
 if [ "$DIRTY" = false ] && [ "$UNMERGED" = false ]; then
