@@ -262,4 +262,4 @@ Status: approved
   (issue #702) or a `pyproject.toml` `[build-system]` change. The commit check's untested residual in
   `docs/ci.md` (a spoofed `dependabot[bot]` author on a `web-flow`-signed commit) now also covers this gate.
 
-Status: approved (path set chosen by the maintainer on 2026-11-13)
+Status: approved (maintainer, issue #704; path set chosen 2026-11-13)
