@@ -1,0 +1,21 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/decision-kit/skills/consulting-decision-model/SKILL.md",
+  "assertions": [
+    {
+      "text": "'verify step 3 of plan.md' is routed to codex-verify and no other skill",
+      "type": "functionality",
+      "target": "routing.md"
+    },
+    {
+      "text": "'verify this plan with codex' is routed to codex-verify and no other skill",
+      "type": "functionality",
+      "target": "routing.md"
+    },
+    {
+      "text": "'before you force-push, check whether that's safe' is routed to consulting-decision-model and no other skill",
+      "type": "functionality",
+      "target": "routing.md"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "skill_name": "consulting-decision-model",
+  "skill_path": "plugins/decision-kit/skills/consulting-decision-model/SKILL.md",
+  "description": "Routing evals for the reciprocal exclusions between consulting-decision-model, cross-model-review, codex-peer-review and codex-verify. with_skill = routing text after the change; baseline = the same text on main before it.",
+  "testing_validation_coverage": {
+    "note": "Routing only; covers the skill's 'Verify it does NOT activate on' list (cross-model-review, codex-peer-review, codex-verify items), not its decision behavior."
+  },
+  "evals": [
+    {
+      "id": 1,
+      "name": "Pair A: cross-model-review vs codex-peer-review vs consulting-decision-model",
+      "prompt": "Route each request to exactly one of the four skills: get a codex second opinion on this design | review my diff before I open the PR | check this decision before you run that migration",
+      "expected_output": "'get a codex second opinion on this design' -> codex-peer-review; 'review my diff before I open the PR' -> cross-model-review; 'check this decision before you run that migration' -> consulting-decision-model",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "Pair B: codex-verify vs consulting-decision-model",
+      "prompt": "Route each request to exactly one of the four skills: verify step 3 of plan.md | verify this plan with codex | before you force-push, check whether that's safe",
+      "expected_output": "'verify step 3 of plan.md' -> codex-verify; 'verify this plan with codex' -> codex-verify; 'before you force-push, check whether that's safe' -> consulting-decision-model",
+      "files": []
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/decision-kit/skills/consulting-decision-model/SKILL.md",
+  "assertions": [
+    {
+      "text": "'get a codex second opinion on this design' is routed to codex-peer-review and no other skill",
+      "type": "functionality",
+      "target": "routing.md",
+      "note": "Known pre-existing gap M1 (cross-model-review wording); reported, not a gate for this batch"
+    },
+    {
+      "text": "'review my diff before I open the PR' is routed to cross-model-review and no other skill",
+      "type": "functionality",
+      "target": "routing.md"
+    },
+    {
+      "text": "'check this decision before you run that migration' is routed to consulting-decision-model and no other skill",
+      "type": "functionality",
+      "target": "routing.md"
+    }
+  ]
+}

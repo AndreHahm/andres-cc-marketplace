@@ -1,0 +1,26 @@
+{
+  "eval_id": 2,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "'verify step 3 of plan.md' is routed to codex-verify and no other skill",
+      "passed": true,
+      "evidence": "codex-verify: chosen; agent reports 'the boundary between the two skills is unclear' with consulting-decision-model ('a single irreversible step from a plan')"
+    },
+    {
+      "text": "'verify this plan with codex' is routed to codex-verify and no other skill",
+      "passed": true,
+      "evidence": "codex-verify: chosen; codex-peer-review weak second"
+    },
+    {
+      "text": "'before you force-push, check whether that's safe' is routed to consulting-decision-model and no other skill",
+      "passed": true,
+      "evidence": "consulting-decision-model: chosen; no second skill"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

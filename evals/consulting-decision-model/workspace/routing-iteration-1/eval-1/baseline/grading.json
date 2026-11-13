@@ -1,0 +1,26 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "'get a codex second opinion on this design' is routed to codex-peer-review and no other skill",
+      "passed": true,
+      "evidence": "codex-peer-review: chosen; cross-model-review weak second ('second-opinion review')"
+    },
+    {
+      "text": "'review my diff before I open the PR' is routed to cross-model-review and no other skill",
+      "passed": true,
+      "evidence": "cross-model-review: chosen; no second skill"
+    },
+    {
+      "text": "'check this decision before you run that migration' is routed to consulting-decision-model and no other skill",
+      "passed": true,
+      "evidence": "consulting-decision-model: chosen; codex-peer-review weak second"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}
