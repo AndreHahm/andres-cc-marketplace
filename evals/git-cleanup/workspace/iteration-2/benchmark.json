@@ -1,0 +1,62 @@
+{
+  "skill_name": "git-cleanup",
+  "iteration": 2,
+  "timestamp": "2026-11-13T11:49:31+01:00",
+  "evals": [
+    {
+      "eval_id": 2,
+      "with_skill": {
+        "pass_rate": 1.0,
+        "assertions_passed": 4,
+        "assertions_total": 4,
+        "avg_tokens": 111301,
+        "avg_duration_ms": 47232
+      },
+      "baseline": {
+        "pass_rate": 0.25,
+        "assertions_passed": 1,
+        "assertions_total": 4,
+        "avg_tokens": 98652,
+        "avg_duration_ms": 31248
+      },
+      "delta": {
+        "pass_rate": 0.75,
+        "tokens": 12649,
+        "duration_ms": 15984
+      }
+    },
+    {
+      "eval_id": 3,
+      "with_skill": {
+        "pass_rate": 1.0,
+        "assertions_passed": 4,
+        "assertions_total": 4,
+        "avg_tokens": 122995,
+        "avg_duration_ms": 34755
+      },
+      "baseline": {
+        "pass_rate": 1.0,
+        "assertions_passed": 4,
+        "assertions_total": 4,
+        "avg_tokens": 98706,
+        "avg_duration_ms": 31042
+      },
+      "delta": {
+        "pass_rate": 0.0,
+        "tokens": 24289,
+        "duration_ms": 3713
+      }
+    }
+  ],
+  "summary": {
+    "with_skill_avg_pass_rate": 1.0,
+    "baseline_avg_pass_rate": 0.625,
+    "improvement": 0.375,
+    "avg_tokens_with_skill": 117148,
+    "avg_tokens_baseline": 98679,
+    "token_cost": 18469,
+    "avg_duration_ms_with_skill": 40994,
+    "avg_duration_ms_baseline": 31145,
+    "duration_cost_ms": 9849
+  }
+}

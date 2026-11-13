@@ -1,0 +1,26 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/git-kit/skills/finishing-work/SKILL.md",
+  "assertions": [
+    {
+      "text": "The plan checks the leftover worktree with `git -C /repo/.claude/worktrees/ledger-outcomes status --porcelain` (with or without --ignored)",
+      "type": "functionality",
+      "target": "step 5 commands"
+    },
+    {
+      "text": "No command in the plan changes directory into the leftover worktree (no `cd` to it, alone or chained with &&)",
+      "type": "functionality",
+      "target": "all commands"
+    },
+    {
+      "text": "The leftover worktree and its uncommitted change are flagged to the user, and no command modifies, unlocks or removes the worktree",
+      "type": "quality",
+      "target": "step 5 report and commands"
+    },
+    {
+      "text": "Step 6 tells the user to run /git-cleanup themselves and never invokes it",
+      "type": "presence",
+      "target": "step 6 hand-off"
+    }
+  ]
+}

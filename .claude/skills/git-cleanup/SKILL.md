@@ -211,7 +211,7 @@ script's `--list` output never includes those, so nothing further filters them o
 Check ALL worktrees and current directory for uncommitted changes:
 
 ```bash
-# For each worktree path
+# For each worktree path: always git -C, never cd (a cd rebinds this session to that worktree)
 git -C <worktree-path> status --porcelain
 
 # For current directory
@@ -333,11 +333,10 @@ locked and by which reason, rather than surfacing git's raw error text unexplain
 **Stale remote branches (Phase 3.5):** no marker write needed — `gh api -X DELETE repos/*/git/refs/heads/*`
 isn't guarded by any PreToolUse hook (unlike `git branch -D` against a protected name), the same reason
 `merge-pr`'s own manual-delete-branch path calls it directly. Before each call, validate the branch name
-against `^[A-Za-z0-9._/-]+$` — the same safety check `merge-pr` applies before this exact command, since
+against `^[A-Za-z0-9._/@+=-]+$` — the same safety check `merge-pr` applies before this exact command, since
 git ref names can otherwise contain shell metacharacters (`;&|$`, backticks, parens) that would reach a
-shell context unsafely; if a name fails this check, skip it and report why rather than attempting the
-call. Resolve `<owner>/<repo>` via `gh repo view --json nameWithOwner --jq .nameWithOwner` once per run,
-not once per branch.
+shell context unsafely; if a name fails this check, skip it and report why rather than attempting the call.
+Resolve `<owner>/<repo>` via `gh repo view --json nameWithOwner --jq .nameWithOwner` once per run, not once per branch.
 
 **Stale rebase-backup tags (Phase 3.6):** no marker write needed — `delete-rebase-backup-tags.sh`'s own
 `git update-ref -d` call isn't guarded by `git-guard-raw-destructive-cleanup.sh` (that hook only matches

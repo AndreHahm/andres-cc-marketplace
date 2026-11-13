@@ -1,0 +1,31 @@
+{
+  "eval_id": "eval-2",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "feature+api, user@topic and release=next each get a `gh api -X DELETE repos/acme/widgets/git/refs/heads/<name>` command",
+      "passed": true,
+      "evidence": "`gh api -X DELETE repos/acme/widgets/git/refs/heads/feature+api`, `.../user@topic`, `.../release=next`, each its own call."
+    },
+    {
+      "text": "`fix/a;touch x` and `feat/$(id)` appear in no command at all",
+      "passed": true,
+      "evidence": "'No command is run for `fix/a;touch x` or `feat/$(id)`'; neither name appears in any command."
+    },
+    {
+      "text": "The two rejected names are reported to the user as skipped, with a reason naming the ref-name check or shell metacharacters",
+      "passed": true,
+      "evidence": "Phase 6 report lists both under 'Skipped: failed the ref-name safety check', naming `;` and `$(...)`."
+    },
+    {
+      "text": "The validation pattern used is ^[A-Za-z0-9._/@+=-]+$ (or an equivalent that admits @, + and =)",
+      "passed": true,
+      "evidence": "Validates against `^[A-Za-z0-9._/@+=-]+$`."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

@@ -8,7 +8,37 @@
       "name": "headRefName validated at step 1, before any shell interpolation",
       "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT attempt any `gh`/`git` calls -- describe exactly what you would do instead.\n\nYou are following your own step 1. `gh pr view $ARGUMENTS --json state,mergedAt,headRefName,url` returns `state: MERGED` and `headRefName: \"feat/x;rm -rf /\"` (a maliciously crafted branch name containing a shell metacharacter). Describe every check you perform, in order, and what happens next -- specifically, do you ever reach step 1.5's `git ls-remote` call with this value?",
       "expected_output": "Validates headRefName against ^[A-Za-z0-9._/@+=-]+$ immediately at step 1, before any other step. The value `feat/x;rm -rf /` fails this regex (contains `;` and space). Stops immediately and reports the failure -- never proceeds to step 1.5's git ls-remote or any other use of headRefName.",
-      "files": ["outputs/answer.md"]
+      "files": [
+        "outputs/answer.md"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Step 5 checks a leftover worktree with git -C, never cd",
+      "prompt": "This is a simulated exercise: there is no real repository, PR or worktree to operate on, and you must NOT run any `git`/`gh` command or change any file outside your outputs directory. Write every command you would run, in order and exactly as you would type it, plus your reasoning and what you would tell the user, to outputs/answer.md.\n\nYour session started in the primary checkout at /repo. PR #716 is MERGED; its headRefName is `fix/ledger-outcomes` (it passes step 1's validation). Steps 1-4 are done: local main is synced and `git status --porcelain` in /repo is empty. For step 5, `git worktree list` prints:\n\n/repo                                   33ff1155 [main]\n/repo/.claude/worktrees/ledger-outcomes 9c1d2e3f [fix/ledger-outcomes] locked\n\nCarry out step 5 and then step 6. Assume any status check you run against the leftover worktree prints ` M notes.md`.",
+      "expected_output": "Step 5 notices the worktree on fix/ledger-outcomes and checks it with `git -C /repo/.claude/worktrees/ledger-outcomes status --porcelain` (optionally --ignored), never `cd`-ing into it in any command. It flags the worktree and its uncommitted change to the user without modifying or removing it, then step 6 hands off to /git-cleanup without invoking it.",
+      "files": [
+        "outputs/answer.md"
+      ]
     }
-  ]
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 16,
+    "declared_scenarios_covered": 3,
+    "uncovered": [
+      "Step 1 always checks actual PR state via `gh pr view` — never assumes merged from context alone",
+      "A not-yet-merged PR always stops the flow before touching `main`",
+      "Step 1 always binds the merge confirmation to a specific branch and repository (`headRefName`, `nameWithOwner`) — never assumes `$ARGUMENTS` refers to the current branch/repo without checking, and always stops to ask on a mismatch rather than continuing silently",
+      "A session sandboxed to a worktree checkout is told plainly, at both step 2 and step 6, that it cannot complete the sync/hand-off from there — never left to discover the `cd` failure on its own",
+      "A diverged local default branch at step 2 always stops rather than force-syncing",
+      "Step 4 always runs `git-remap-handoff-shas.py`, even when the merge preserved SHAs unchanged (a regular merge commit) — the script itself detects the no-op case and exits cleanly; the skill never tries to pre-guess whether a remap is needed",
+      "Step 4's script never touches a tracked file — only `.claude/output/**/*.md`",
+      "An unresolved commit (no unique message or patch-id match) is always reported to the user, never silently dropped or guessed at",
+      "The script always refreshes `origin/<base>` (`git fetch origin <base>`) before any ancestry or replacement lookup, and always operates against that refreshed ref — never the bare local branch name, which could be stale and cause a wrong or missed remap (found by Codex/CodeRabbit's automated PR review, 2026-08-16)",
+      "Patch-id (content) match is always tried before commit-message match, and message match is always scoped to commits at/after the PR's `mergedAt` (with a buffer) — never searched across the entire base history, where an unrelated older commit could coincidentally share the same subject line",
+      "A report token that's an ambiguous prefix of more than one remapped commit is always left unresolved — never silently remapped to the first match found",
+      "Step 1.5 always skips when `merge_auto_delete_branch` is `false` — a surviving remote branch is never \"fixed\" when the setting says not to delete it",
+      "Step 1.5 never assumes the remote branch is gone — always checks with `git ls-remote --heads origin` rather than trusting `gh pr merge --delete-branch`'s exit code or the PR's `MERGED` state alone"
+    ]
+  }
 }

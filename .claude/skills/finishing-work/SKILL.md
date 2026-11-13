@@ -95,7 +95,10 @@ branch", "get back to a clean main".
    run `git worktree list` and compare against the PR's `headRefName` from step 1 (not the
    `git branch --show-current` value, which only served step 1's own mismatch check) — if another
    worktree is still checked out on that specific branch, flag it (especially if it has uncommitted
-   changes) without touching it.
+   changes) without touching it. Check that worktree with `git -C <worktree-path> status --porcelain`
+   (add `--ignored` to also list gitignored content) — **never `cd` into it**, not even in a chained
+   command: a `cd` into another worktree rebinds this session to it, and `/git-cleanup` then refuses to
+   run from this session.
 6. **Hand off**: tell the user local `main` is synced and current, and that `/git-cleanup` is the next
    step to review and delete the merged branch (and worktree, if any). Never invoke `git-cleanup`
    automatically — it has `disable-model-invocation: true` by design and only runs on direct user
@@ -145,6 +148,13 @@ branch", "get back to a clean main".
 - [ ] `headRefName` is always validated against `^[A-Za-z0-9._/@+=-]+$` at step 1, before its first use
       anywhere in this skill (including step 1.5's `git ls-remote`/`gh api -X DELETE` calls) — the
       whole skill stops with a report (never proceeds) on a name that fails this check
+- [ ] Step 5 always checks another worktree on the PR's branch with `git -C <worktree-path> status
+      --porcelain`, never by `cd`-ing into it, and only flags it, never modifies or removes it (issue #720)
+
+**Last dated run record:** 2026-11-13, `evals/finishing-work/workspace/iteration-2/` (`skill-tester` Full
+Pipeline, dry run): eval 2 (step 5's leftover-worktree check) passed 4/4 with the skill and 3/4 without it.
+The baseline also used `git -C` and never `cd`, so the no-`cd` assertion did not separate the arms; it
+failed only the `/git-cleanup` hand-off.
 
 **Step 1.5 — verified live, 2026-08-16, against this repository's real stale remote branch:** PR #41's
 `feat/plugin-auditor-codex-integration` remote branch was confirmed still present on `origin` (via

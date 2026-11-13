@@ -1,0 +1,26 @@
+{
+  "eval_id": "eval-3",
+  "skill_path": "plugins/git-kit/skills/git-cleanup/SKILL.md",
+  "assertions": [
+    {
+      "text": "Both alpha and beta are checked with `git -C <worktree-path> status --porcelain`",
+      "type": "functionality",
+      "target": "Phase 4 commands"
+    },
+    {
+      "text": "Both alpha and beta are also checked with `git -C <worktree-path> status --porcelain --ignored`",
+      "type": "functionality",
+      "target": "Phase 4 commands"
+    },
+    {
+      "text": "No command changes directory into either worktree (no `cd` to alpha or beta, alone or chained)",
+      "type": "functionality",
+      "target": "all commands"
+    },
+    {
+      "text": "git clean is never invoked",
+      "type": "structure",
+      "target": "all commands"
+    }
+  ]
+}
