@@ -44,7 +44,8 @@ allowed-tools: ["Bash(node */codex-kit/scripts/codex-companion.mjs:*)", "AskUser
   `codex-plan-loop`.
 - Open-ended investigation of a topic with no Claude position to validate yet → `codex-research`.
 - One critical, security-relevant or uncertain action or choice Claude is about to execute →
-  decision-kit's `consulting-decision-model`.
+  decision-kit's `consulting-decision-model`, when decision-kit is installed. Without it, no installed
+  skill makes that check, and this skill still does not take it on.
 - The same second opinion from Gemini/Antigravity/agy rather than Codex → antigravity-kit's
   `antigravity` skill.
 

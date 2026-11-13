@@ -68,7 +68,7 @@ on the working diff.
   diff *before* a PR exists or before a draft is flipped to ready; once a finding is posted against an
   actual open PR, it's out of this skill's domain regardless of who or what posted it.
 - **Checking one critical, security-relevant or uncertain action Claude is about to execute**, even a
-  plan step: decision-kit's `consulting-decision-model`. This skill reviews a diff, not one decision.
+  plan step: decision-kit's `consulting-decision-model` if installed. This skill reviews a diff, never one decision.
 
 ## Inputs
 
