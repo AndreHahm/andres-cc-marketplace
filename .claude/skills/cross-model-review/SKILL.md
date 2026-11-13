@@ -67,6 +67,8 @@ on the working diff.
   a human) — that's `handling-review-findings`'s job. This skill only ever reviews the local working
   diff *before* a PR exists or before a draft is flipped to ready; once a finding is posted against an
   actual open PR, it's out of this skill's domain regardless of who or what posted it.
+- **Checking one action or choice Claude is about to execute**, even one step of a plan — that's
+  decision-kit's `consulting-decision-model`. This skill reviews a diff, not a single decision.
 
 ## Inputs
 
@@ -473,6 +475,7 @@ See `references/deliberately-not-done.md` (extracted per plugin-rulebook's R13 l
 - "review PR #42" / "leave review comments on this PR" → `collaborating-on-a-pr`
 - "the Codex check is stuck, it already finished on the dashboard" → `codex-review-recovery`
 - "apply the fixes from the last review" → not this skill's job; it never edits code itself
+- "check this decision before you run that command" (one action, no diff) → `consulting-decision-model`
 
 **Concrete scenarios to check, and quality gates:** see
 `references/testing-scenarios.md` — extracted per plugin-rulebook's R13 line-count threshold; the

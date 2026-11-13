@@ -37,6 +37,8 @@ broken/stale link.
   → `linear-github-linking`. The distinguishing criterion: this skill only ever touches the
   Notion-side `linear-link` field and the Linear-side `notion-link` field; any request naming
   GitHub, a branch, a commit, or a PR belongs to `linear-github-linking` instead.
+- Changing a Linear record's own execution fields (owner, priority, scope, date, status) rather than
+  its Notion link → `linear-work-management`.
 
 See Testing & Validation below for the concrete trigger phrases this section summarizes.
 
@@ -116,6 +118,7 @@ repair pass is needed.
 
 **Verify it does NOT activate on:**
 - "promote this idea to Linear" (creating new work, not linking existing records) → `idea-to-implementation`
+- "change this Linear issue's owner and priority" (execution fields, not a Notion link) → `linear-work-management`
 
 **Last dated run record:** evals/work-linking/workspace/iteration-2/ (2026-09-11) — adds eval-3
 ("repair this broken link"), closing the R28 coverage gap (with_skill 1.0 pass rate vs. baseline

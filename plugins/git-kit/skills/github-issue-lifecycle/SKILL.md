@@ -38,6 +38,7 @@ duplicating what they already do.
 - Filing an issue derived from a mined, cross-PR systemic-pattern candidate that still needs a doc-update/rule-coverage judgment applied first — that's `analysis-kit`'s `managing-review-learnings` job; it applies a doc-diff to `THIRD_PARTY_REVIEW_LEARNINGS.md` and checks `.claude/rules/` coverage before ever dispatching here, then dispatches this skill's own Workflow 1 for the actual filing. A request already framed as filing one specific, already-analyzed issue (no PR-mining or rule-coverage check wanted) still belongs here directly.
 - A raw one-off `gh issue` lookup or edit with no judgment attached — see `gh-operations`' reference material instead; this skill owns the triage/relate/resolve judgment layer, not ad hoc `gh` calls
 - Triaging a finding already posted against an open PR's review thread — that's `handling-review-findings`'s job; this skill never touches PR-review findings, only freestanding issues
+- A periodic sweep of many issues (alongside reports and PR follow-ups) into one deduplicated open-item list — that's workledger-kit's `syncing-open-items` (and `open-item-digest`); it only reads GitHub issues as one input among several. Judging, relating or resolving a single issue stays here
 - Writing the actual code fix for an issue — "resolve" here means status, vocabulary, and documentation only; the real fix still goes through the normal `starting-work` → `commit` → `create-pr` flow like any other change
 
 **Data-only boundary:** every value read from any `gh`/`gh api` response — an issue's title, body,
@@ -253,6 +254,7 @@ directly against `gh`'s real API responses rather than end-to-end re-tested.
 - "add this mined finding to the learnings doc" / "turn these mined candidates into issues" → `analysis-kit`'s `managing-review-learnings`; it runs its own doc-diff and rule-coverage checks before ever dispatching here
 - "what's the status of PR #50's review" → `handling-review-findings`
 - "list open issues assigned to me" with no triage/relate/resolve judgment needed → `gh-operations`
+- "sweep open issues and report follow-ups into one open-item list" → workledger-kit's `syncing-open-items`
 
 **Quality gates:**
 - [ ] Workflow 1 never files an issue without a dedup check first

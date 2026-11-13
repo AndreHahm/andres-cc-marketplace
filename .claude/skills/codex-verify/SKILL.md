@@ -11,7 +11,9 @@ description: >-
   workflow that continues into code changes — use codex-plan-loop for
   that; codex-verify performs one PASS/FAIL check of an already-existing
   document and stops there, it never authors a plan itself or proceeds to
-  implementation.
+  implementation. For one critical, security-relevant or uncertain step of
+  a plan that Claude is about to execute, use consulting-decision-model
+  instead; a routine, easily reversed step stays here.
 argument-hint: "path/to/document.md [--model SLUG] [--effort LEVEL] [--persist] [--no-preview] [resume [follow-up]]"
 allowed-tools: ["Bash(node */codex-kit/scripts/codex-companion.mjs:*)", "Bash(mkdir:*)", "Bash(cat:*)", "Bash(sed:*)", "Bash(test:*)", "Bash(echo:*)", "Bash(printf:*)", "Bash(date:*)", "Bash(wc:*)", "Read", "Write", "AskUserQuestion"]
 ---
@@ -381,6 +383,7 @@ For the full shared gotchas list, read
 - Open-ended investigation or research on a topic/document → `codex-research`
 - A full plan-validate-implement-review workflow that continues into code changes → `codex-plan-loop`
 - Locating/finding a session ID rather than resuming one → `codex-session-lookup`
+- Checking one critical or uncertain step of a plan that Claude is about to execute → decision-kit's `consulting-decision-model`
 
 **Concrete scenarios to check:**
 1. The document path doesn't exist or is empty → fails at Phase 1's `test -f`/`test -s` check, before ever touching Codex.

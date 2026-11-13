@@ -30,6 +30,7 @@ Running (or resuming) the whole Wave 2 lifecycle for one accepted Linear Issue, 
   `create-pr`/`collaborating-on-a-pr`/`merge-pr`/`finishing-work` — it orchestrates Linear/Notion
   context and evidence around them; `git-kit` itself owns the actual mechanics for any raw,
   Linear-agnostic Git/GitHub task with no accepted-Issue framing.
+- A direct Linear read or update with no lifecycle run → `linear-work-management`.
 
 See Testing & Validation below for the concrete trigger phrases this section summarizes.
 
@@ -194,6 +195,7 @@ resume point (which phase to re-enter). On resume:
 **Verify it does NOT activate on:**
 - "just start work on this issue" → `work-to-development` directly
 - "just merge this PR" → `merge-to-completion` directly
+- "update this Linear issue's status" (no lifecycle run) → `linear-work-management`
 
 **Last dated run record:** evals/linear-github-lifecycle/workspace/iteration-1/ (2026-09-11) — 3/3 declared scenarios covered (eval-1 primary composition run, eval-2 "take this accepted issue all the way to merge" trigger, eval-3 "resume this interrupted Wave 2 lifecycle run" trigger), all passing 3/3 assertions with_skill vs. 1/3 baseline.
 

@@ -29,7 +29,10 @@ Several dependabot PRs are open and the goal is to merge the good ones and close
 
 - **Finding outdated dependencies in the local checkout** — `dependency-updater`; it has no PR, CI or merge awareness.
 - **Merging one specific PR** — `merge-pr` directly; this skill adds only batch ordering and the dependabot-specific checks.
-- **Triaging review findings on a PR** — `handling-review-findings`.
+- **Triaging findings a reviewer already posted on one PR's review threads**, a Dependabot PR included —
+  `handling-review-findings`. This skill owns the batch: ordering, rebase requests, merge or close.
+  A request naming both: run the batch here first, then hand the reviewer threads on the PRs that
+  remain open to `handling-review-findings`.
 
 ## Why a serial loop
 
@@ -132,6 +135,7 @@ Scenarios and pass/fail criteria are in `references/test-scenarios.md`. The lock
 **Verify it does NOT activate on:**
 - "are my dependencies outdated" → `dependency-updater`
 - "merge PR 123" → `merge-pr`
+- "triage the Codex findings on dependabot PR #12" → `handling-review-findings`
 
 **Quality gates:**
 - [ ] Every comment this skill posts, every close and every bypass is preceded by its own `AskUserQuestion`, with live state re-read just before it; the merge is asked once, by `merge-pr`
