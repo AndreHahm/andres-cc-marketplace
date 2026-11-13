@@ -1,0 +1,31 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4564836391",
+      "line": 155,
+      "note": "PR lookup pinned to origin via branch argument and --repo; fixed in 708cd513",
+      "path": "plugins/git-kit/hooks/scripts/git-guard-dirty-worktree-exit.sh",
+      "pr": 722,
+      "recorded_at": "2026-11-13T16:23:36+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4564836401",
+      "line": 187,
+      "note": "Stop hook prerequisites documented; fixed in 708cd513",
+      "path": "plugins/git-kit/README.md",
+      "pr": 722,
+      "recorded_at": "2026-11-13T16:23:36+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4564836415",
+      "line": 98,
+      "note": "Worktree path quoted as one argument here and in git-cleanup Phase 4; fixed in 708cd513",
+      "path": "plugins/git-kit/skills/finishing-work/SKILL.md",
+      "pr": 722,
+      "recorded_at": "2026-11-13T16:23:37+00:00"
+    }
+  ]
+}
