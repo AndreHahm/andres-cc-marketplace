@@ -8,6 +8,7 @@ from scripts.marketplace_ci.pr_policy import (
     check_pr_rights,
     check_pr_title,
     check_template,
+    codex_review_skip_allowed,
     commits_verified_from_trusted_bot,
     evaluate_pr_policy,
     python_quality_skip_allowed,
@@ -306,6 +307,51 @@ def test_python_quality_skip_denied_for_any_other_path_set(paths):
 def test_python_quality_skip_needs_trusted_bot_and_verified_commits(login, verified):
     paths = ["package.json", "pnpm-lock.yaml"]
     assert python_quality_skip_allowed(login, paths, bot_commits_verified=verified) is False
+
+
+@pytest.mark.parametrize(
+    "paths",
+    [
+        ["uv.lock"],
+        ["pyproject.toml", "uv.lock"],
+        ["package.json", "pnpm-lock.yaml"],
+        ["pnpm-lock.yaml"],
+        ["package.json", "uv.lock"],
+    ],
+)
+@pytest.mark.parametrize("login", ["dependabot[bot]", "Dependabot[bot]"])
+def test_codex_review_skip_allowed_for_verified_bot_manifests_only(login, paths):
+    assert codex_review_skip_allowed(login, paths, bot_commits_verified=True) is True
+
+
+@pytest.mark.parametrize(
+    "paths",
+    [
+        ["uv.lock", "scripts/marketplace_ci/pr_policy.py"],
+        [".github/workflows/x.yml"],
+        [".github/dependabot.yml"],
+        ["sub/package.json"],
+        ["plugins/x/pyproject.toml"],
+        ["package-lock.json"],
+        ["UV.LOCK"],
+        [],
+    ],
+)
+def test_codex_review_skip_denied_for_any_other_path_set(paths):
+    assert codex_review_skip_allowed("dependabot[bot]", paths, bot_commits_verified=True) is False
+
+
+@pytest.mark.parametrize(
+    ("login", "verified"),
+    [
+        ("dependabot[bot]", False),
+        ("andre", True),
+        ("dependabot", True),
+        ("evil-dependabot[bot]", True),
+    ],
+)
+def test_codex_review_skip_needs_trusted_bot_and_verified_commits(login, verified):
+    assert codex_review_skip_allowed(login, ["uv.lock"], bot_commits_verified=verified) is False
 
 
 def _fake_gh(monkeypatch, stdout="", returncode=0):

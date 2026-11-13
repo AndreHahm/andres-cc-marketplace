@@ -27,6 +27,12 @@ jobs:
       # decided by the base SHA's check-pr below. python-quality and publish
       # trust it only when this job succeeded.
       skip_python_quality: ${{ steps.check_pr.outputs.skip_python_quality }}
+      # true only for a verified dependabot PR that changes nothing but root
+      # dependency manifests/lockfiles (pr_policy.TRUSTED_BOT_PATHS, the
+      # merge-privilege exemption's own condition), decided the same way.
+      # publish then accepts the skipped Codex delta review without the
+      # bypass attestation (#704), trusting it only when this job succeeded.
+      skip_codex_review: ${{ steps.check_pr.outputs.skip_codex_review }}
     permissions:
       contents: read
       # check-pr's gh api calls (collaborator permission, PR commit list).
@@ -203,16 +209,22 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           # Bootstrap: check-pr runs from the base SHA's scripts/, which may
-          # predate --python-quality-skip-output. Then it runs without the flag
-          # and the skip is false (fail closed). Removable once every open PR's
-          # base has the flag.
+          # predate --python-quality-skip-output or --codex-review-skip-output.
+          # Each missing flag is left off and its skip is false (fail closed).
+          # Removable once every open PR's base has both flags.
           help_text=$(uv run --no-sync --no-build python -m scripts.marketplace_ci check-pr --help)
+          args=(--event /tmp/pr-event.json)
           if [[ "$help_text" == *--python-quality-skip-output* ]]; then
-            uv run --no-sync --no-build python -m scripts.marketplace_ci check-pr --event /tmp/pr-event.json --python-quality-skip-output "$GITHUB_OUTPUT"
+            args+=(--python-quality-skip-output "$GITHUB_OUTPUT")
           else
             echo "skip_python_quality=false" >> "$GITHUB_OUTPUT"
-            uv run --no-sync --no-build python -m scripts.marketplace_ci check-pr --event /tmp/pr-event.json
           fi
+          if [[ "$help_text" == *--codex-review-skip-output* ]]; then
+            args+=(--codex-review-skip-output "$GITHUB_OUTPUT")
+          else
+            echo "skip_codex_review=false" >> "$GITHUB_OUTPUT"
+          fi
+          uv run --no-sync --no-build python -m scripts.marketplace_ci check-pr "${args[@]}"
 
   python-quality:
     name: Python quality (ruff, ty, pytest)
@@ -1146,9 +1158,11 @@ jobs:
     name: Codex delta review
     needs: [hygiene, python-quality, marketplace-parity, prefix-permanence, compute-scope]
     # Not for Dependabot (the same two checks as claude-review-ci.yml): its runs
-    # get no secrets, so the review could only end could_not_run. publish then
-    # sees a skip that is not bypass_eligible and fails closed, so such a PR
-    # still needs the SHA-bound bypass attestation, exactly as before.
+    # get no secrets, so the review could only end could_not_run. publish
+    # accepts the skip without an attestation only when hygiene succeeded with
+    # skip_codex_review=true (verified dependabot commits, manifest/lockfile
+    # paths only, #704); any other Dependabot PR still fails closed there and
+    # needs the SHA-bound bypass attestation.
     if: >-
       github.event.pull_request.head.repo.fork == false
       && github.actor != 'dependabot[bot]'
@@ -2066,6 +2080,7 @@ jobs:
           HYGIENE_RESULT: ${{ needs.hygiene.result }}
           PYTHON_QUALITY_RESULT: ${{ needs.python-quality.result }}
           SKIP_PYTHON_QUALITY: ${{ needs.hygiene.outputs.skip_python_quality }}
+          SKIP_CODEX_REVIEW: ${{ needs.hygiene.outputs.skip_codex_review }}
           MARKETPLACE_PARITY_RESULT: ${{ needs.marketplace-parity.result }}
         run: |
           # hygiene, python-quality and marketplace-parity are the other
@@ -2079,12 +2094,13 @@ jobs:
           # verified dependabot PR changing only package.json/pnpm-lock.yaml).
           # Any other python-quality result than success still fails closed.
           # codex-review is then skipped too, and a bypass_eligible scope must
-          # not turn that into a pass with no human step: this exception
-          # requires the SHA-bound Codex bypass attestation (BYPASSED=true),
-          # checked again below. Dependabot runs get no secrets anyway.
+          # not turn that into a pass on its own: this exception requires
+          # either the SHA-bound Codex bypass attestation (BYPASSED=true) or
+          # hygiene's skip_codex_review=true (the verified-dependabot rule
+          # below, #704). Dependabot runs get no secrets anyway.
           if [ "$PYTHON_QUALITY_RESULT" = "skipped" ] && [ "$HYGIENE_RESULT" = "success" ] && [ "$SKIP_PYTHON_QUALITY" = "true" ]; then
-            if [ "$BYPASSED" != "true" ]; then
-              echo "python-quality was skipped for a dependabot npm-only PR, which needs the Codex bypass attestation -- failing closed."
+            if [ "$BYPASSED" != "true" ] && [ "$SKIP_CODEX_REVIEW" != "true" ]; then
+              echo "python-quality was skipped for a dependabot npm-only PR without the Codex bypass attestation or a verified-dependabot skip -- failing closed."
               exit 1
             fi
             echo "python-quality skipped: verified dependabot PR changing only package.json/pnpm-lock.yaml"
@@ -2107,6 +2123,25 @@ jobs:
           fi
           if [ "$BYPASSED" = "true" ]; then
             echo "Codex review bypassed (attested SHA-bound label exception or CODEX_CI_REVIEW_BYPASS variable). Never presented as a clean review — deterministic, PR-author-privilege, and branch-protection gates still apply unchanged."
+            exit 0
+          fi
+          # #704: codex-review never runs for Dependabot (no secrets), like
+          # Claude delta review. Its skip passes without the attestation only
+          # when hygiene itself succeeded and its base-SHA check-pr reported
+          # skip_codex_review=true: PR author dependabot[bot], every commit
+          # authored by dependabot[bot], committed by web-flow and signature-
+          # verified, and every changed path a root manifest/lockfile
+          # (TRUSTED_BOT_PATHS). A normal git push by a human to the branch
+          # fails the commit check and falls through to the rules below
+          # (attestation needed); whether an API-created web-flow commit with a
+          # spoofed dependabot[bot] author would pass is untested (docs/ci.md,
+          # the check-pr exemption's residual). Deliberately placed before the
+          # compute-scope check below: its outputs only steer the Codex review,
+          # which never runs here. Like the bypass above, it records no review
+          # result: nothing was reviewed, and later runs of a Dependabot PR
+          # skip the review too.
+          if [ "$CODEX_RESULT" = "skipped" ] && [ "$HYGIENE_RESULT" = "success" ] && [ "$SKIP_CODEX_REVIEW" = "true" ]; then
+            echo "Codex review not run: verified Dependabot PR changing only root dependency manifests/lockfiles (no Actions secrets for Dependabot). Never presented as a clean review — deterministic, PR-author-privilege, and branch-protection gates still apply unchanged."
             exit 0
           fi
           # compute-scope must have actually succeeded before its

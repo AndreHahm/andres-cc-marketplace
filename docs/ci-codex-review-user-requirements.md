@@ -241,3 +241,24 @@ Status: approved
   the latest one on that head. Any later push or re-run replaces it.
 
 Status: approved
+
+## R15. No CI Codex review on verified Dependabot pull requests (issue #704)
+
+- The Codex delta review never runs for Dependabot: `github.actor` or the pull request's author is
+  `dependabot[bot]`. Dependabot runs get no Actions secrets, so the review could only end without a verdict.
+  This matches `Claude delta review`, which skips Dependabot pull requests without failing.
+- `Publish Codex policy result` passes that skip with no bypass attestation only when all of these hold,
+  as decided by `Hygiene (PR contract)` from the base SHA's code: the pull request's author is
+  `dependabot[bot]`; every commit is authored by `dependabot[bot]`, committed by `web-flow` and
+  signature-verified (the merge-privilege exemption's own check); and every changed path is a root dependency
+  manifest or lockfile (`uv.lock`, `pyproject.toml`, `package.json`, `pnpm-lock.yaml`).
+- Any other Dependabot pull request, for example one a human pushed to or one that changes another file,
+  still needs the SHA-bound bypass attestation (R12).
+- The pass is never presented as a clean review and records no review result. The deterministic gates still
+  apply.
+- **Accepted consequence:** a verified Dependabot pull request's dependency changes get no Codex review and
+  no attestation. The maintainer's merge is the human check. Nothing machine-checks npm lockfile content
+  (issue #702) or a `pyproject.toml` `[build-system]` change. The commit check's untested residual in
+  `docs/ci.md` (a spoofed `dependabot[bot]` author on a `web-flow`-signed commit) now also covers this gate.
+
+Status: approved (path set chosen by the maintainer on 2026-11-13)

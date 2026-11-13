@@ -541,6 +541,7 @@ _GATES = {
     "HYGIENE_RESULT": "success",
     "PYTHON_QUALITY_RESULT": "success",
     "SKIP_PYTHON_QUALITY": "false",
+    "SKIP_CODEX_REVIEW": "false",
     "MARKETPLACE_PARITY_RESULT": "success",
     "PREFIX_PERMANENCE_RESULT": "success",
     "SCOPE_RESULT": "success",
@@ -568,6 +569,10 @@ _PQ_SKIP_BYPASSED = {
     "BYPASSED": "true",
     **_SKIPPED,
 }
+# #704: a verified dependabot PR changing only manifests/lockfiles; hygiene
+# succeeded and set skip_codex_review, codex-review was skipped, no attestation.
+_DEPENDABOT = {"SKIP_CODEX_REVIEW": "true", **_SKIPPED}
+_PQ_SKIP_DEPENDABOT = {**_PQ_SKIP_BYPASSED, "BYPASSED": "false", "SKIP_CODEX_REVIEW": "true"}
 
 
 @pytest.mark.parametrize(
@@ -623,6 +628,40 @@ _PQ_SKIP_BYPASSED = {
             {**_PQ_SKIP_BYPASSED, "BYPASSED": "false", "BYPASS_ELIGIBLE": "true"},
             False,
         ),
+        ("#704 verified dependabot skip, no attestation", _DEPENDABOT, True),
+        (
+            "#704 verified dependabot skip, carry not computed",
+            {**_DEPENDABOT, "CARRIED_BLOCKING": "error"},
+            True,
+        ),
+        ("#704 npm-only dependabot, python-quality skipped too", _PQ_SKIP_DEPENDABOT, True),
+        ("#704 skip flag missing", {**_DEPENDABOT, "SKIP_CODEX_REVIEW": ""}, False),
+        ("#704 skip flag but hygiene failed", {**_DEPENDABOT, "HYGIENE_RESULT": "failure"}, False),
+        (
+            "#704 skip flag but hygiene skipped",
+            {**_DEPENDABOT, "HYGIENE_RESULT": "skipped"},
+            False,
+        ),
+        (
+            "#704 skip flag does not clear a failed review",
+            {**_FAILED, "SKIP_CODEX_REVIEW": "true"},
+            False,
+        ),
+        (
+            "#704 skip flag does not clear a failed python-quality",
+            {**_DEPENDABOT, "PYTHON_QUALITY_RESULT": "failure"},
+            False,
+        ),
+        (
+            "#704 skip flag does not clear a failed prefix-permanence",
+            {**_DEPENDABOT, "PREFIX_PERMANENCE_RESULT": "failure"},
+            False,
+        ),
+        (
+            "#704 skip flag does not clear a failed marketplace-parity",
+            {**_DEPENDABOT, "MARKETPLACE_PARITY_RESULT": "failure"},
+            False,
+        ),
     ],
 )
 def test_publish_decision(case, overrides, passes, tmp_path):
@@ -655,6 +694,65 @@ def test_python_quality_skip_is_wired_fail_closed():
     assert "hygiene" in jobs["publish"]["needs"]
 
 
+def test_codex_review_skip_is_wired_fail_closed():
+    """#704: publish reads skip_codex_review only from hygiene's base-SHA check-pr,
+    and a base check-pr without the flag reports false."""
+    jobs = yaml.safe_load(_WORKFLOW.read_text(encoding="utf-8"))["jobs"]
+    hygiene = jobs["hygiene"]
+    assert hygiene["outputs"]["skip_codex_review"] == (
+        "${{ steps.check_pr.outputs.skip_codex_review }}"
+    )
+    (step,) = [s for s in hygiene["steps"] if s.get("id") == "check_pr"]
+    assert '--codex-review-skip-output "$GITHUB_OUTPUT"' in step["run"]
+    assert 'echo "skip_codex_review=false" >> "$GITHUB_OUTPUT"' in step["run"]
+    (decide,) = [
+        s for s in jobs["publish"]["steps"] if s.get("name") == "Determine final policy result"
+    ]
+    assert decide["env"]["SKIP_CODEX_REVIEW"] == "${{ needs.hygiene.outputs.skip_codex_review }}"
+
+
+@pytest.mark.parametrize(
+    ("help_text", "python_flag", "codex_flag"),
+    [
+        ("--python-quality-skip-output --codex-review-skip-output", True, True),
+        ("--python-quality-skip-output", True, False),
+        ("", False, False),
+    ],
+)
+def test_check_pr_step_passes_only_supported_flags(tmp_path, help_text, python_flag, codex_flag):
+    """The hygiene step runs the base SHA's check-pr: each flag it lacks is
+    left off and that skip written as false, never both or neither wrongly."""
+    jobs = yaml.safe_load(_WORKFLOW.read_text(encoding="utf-8"))["jobs"]
+    (step,) = [s for s in jobs["hygiene"]["steps"] if s.get("id") == "check_pr"]
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    calls = tmp_path / "calls"
+    uv = bin_dir / "uv"
+    uv.write_text(
+        "#!/bin/bash\n"
+        f'if [ "${{@: -1}}" = "--help" ]; then printf "%s\\n" "{help_text}"; exit 0; fi\n'
+        f'printf "%s\\n" "$*" >> "{calls}"\n',
+        encoding="utf-8",
+    )
+    uv.chmod(0o755)
+    out = tmp_path / "github_output"
+    out.write_text("", encoding="utf-8")
+    script = tmp_path / "check_pr.sh"
+    script.write_text(step["run"], encoding="utf-8")
+    env = {"PATH": f"{bin_dir}:{os.environ['PATH']}", "GITHUB_OUTPUT": str(out)}
+    result = subprocess.run(["bash", "-e", str(script)], env=env, capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+    (call,) = calls.read_text(encoding="utf-8").splitlines()
+    assert call.endswith(
+        "check-pr --event /tmp/pr-event.json"
+        + (f" --python-quality-skip-output {out}" if python_flag else "")
+        + (f" --codex-review-skip-output {out}" if codex_flag else "")
+    )
+    written = out.read_text(encoding="utf-8")
+    assert ("skip_python_quality=false" in written) is not python_flag
+    assert ("skip_codex_review=false" in written) is not codex_flag
+
+
 def test_codex_review_never_runs_for_dependabot():
     """Dependabot runs get no secrets; the review is skipped, not left to fail."""
     jobs = yaml.safe_load(_WORKFLOW.read_text(encoding="utf-8"))["jobs"]
@@ -663,13 +761,28 @@ def test_codex_review_never_runs_for_dependabot():
     assert "&& github.event.pull_request.user.login != 'dependabot[bot]' &&" in condition
 
 
-@pytest.mark.parametrize("bypassed", ["false", "true"])
-def test_publish_on_a_dependabot_skipped_codex_review_needs_the_attestation(tmp_path, bypassed):
+@pytest.mark.parametrize(
+    ("bypassed", "skip_codex_review", "passes"),
+    [
+        ("false", "false", False),  # not verified or not manifest-only: attestation needed
+        ("true", "false", True),
+        ("false", "true", True),  # #704: verified dependabot, manifest/lockfile paths only
+    ],
+)
+def test_publish_on_a_dependabot_skipped_codex_review(
+    tmp_path, bypassed, skip_codex_review, passes
+):
     script = tmp_path / "decide.sh"
     script.write_text(_publish_script(), encoding="utf-8")
-    env = {"PATH": _fake_gh(tmp_path, ""), **_GATES, **_SKIPPED, "BYPASSED": bypassed}
+    env = {
+        "PATH": _fake_gh(tmp_path, ""),
+        **_GATES,
+        **_SKIPPED,
+        "BYPASSED": bypassed,
+        "SKIP_CODEX_REVIEW": skip_codex_review,
+    }
     result = subprocess.run(["bash", "-e", str(script)], env=env, capture_output=True, text=True)
-    assert (result.returncode == 0) is (bypassed == "true"), (result.stdout, result.stderr)
+    assert (result.returncode == 0) is passes, (result.stdout, result.stderr)
 
 
 def _fake_gh(tmp_path, live: str) -> str:

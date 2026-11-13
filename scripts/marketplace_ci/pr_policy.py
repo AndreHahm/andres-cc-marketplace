@@ -158,6 +158,23 @@ def python_quality_skip_allowed(
     )
 
 
+def codex_review_skip_allowed(
+    user: str, changed_paths: list[str], *, bot_commits_verified: bool
+) -> bool:
+    """True only for a trusted bot's PR whose commits were verified and whose
+    every changed path is in TRUSTED_BOT_PATHS: the same condition as the
+    merge-privilege exemption in check_merge_rights. `Publish Codex policy
+    result` then accepts the skipped Codex delta review (it never runs for
+    Dependabot, whose runs get no secrets) without the bypass attestation
+    (#704). An empty path list never qualifies (fail closed)."""
+    return (
+        user.lower() in TRUSTED_BOT_LOGINS
+        and bot_commits_verified
+        and bool(changed_paths)
+        and all(path in TRUSTED_BOT_PATHS for path in changed_paths)
+    )
+
+
 def check_merge_rights(
     api: GitHubApi, changed_paths: list[str], *, bot_commits_verified: bool = False
 ) -> RightsResult:
