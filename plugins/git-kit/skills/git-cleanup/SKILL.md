@@ -43,7 +43,8 @@ no narrower grant is expressible with the current permission syntax.
 ## Critical Implementation Notes
 
 See [references/critical-implementation-notes.md](references/critical-implementation-notes.md) for the
-squash-merge `-D` requirement and the PR-history investigation commands — the branch-grouping procedure
+squash-merge `-D` requirement, the PR-history investigation commands and why Safety Rule 10's
+rebase-backup tag reachability check is built the way it is — the branch-grouping procedure
 itself is already fully covered by Phase 2 below, so the reference file doesn't restate it. Read the
 reference before Phase 3 (Categorize) for the squash-merge nuance; the PR-history commands apply
 specifically to `[gone]` branches within Phase 2/3.
@@ -427,38 +428,15 @@ memory — the reference has the full procedure and is the only place the decisi
    alone, regardless of the tag's own age
 10. **Never delete a rebase-backup tag whose branch is gone or merged unless its content is verified
     reachable** - neither "branch no longer exists locally" nor "branch is merged" is by itself evidence
-    the tag is redundant: the branch's deletion was never verified by this run in the gone case, and
-    rebasing rewrites commit SHAs in the merged case (a merged branch's current tip being an ancestor of
-    the default branch says nothing about whether the tag's own pre-rebase commit is) - Phase 3.6 proposes
-    deletion in either case once the tag's own commit is verified reachable from the default branch, by
-    either of two signals: raw-SHA ancestry (`git merge-base --is-ancestor`), or - when that fails, since a
-    rebase rewrites every commit's SHA while preserving its content - a per-path, per-blob-and-mode history
-    search: every path each of the tag's own commits changed must have that exact post-image blob AND mode
-    somewhere in the default branch's own history at that same path (a plain deletion instead requires the
-    path to be absent from the default branch's current tree). Git blobs are purely content-addressed, so
-    this is already exact byte-for-byte equality with no whitespace-insensitivity to guard against, and -
-    unlike an earlier version that required one single commit on the default branch to reproduce a tag
-    commit's entire diff byte-for-byte - it recognizes content the default branch's own history reorganized
-    into a different commit grouping than the tag recorded, and - unlike an earlier version of this
-    redesign itself - it also catches a mode-only change (`chmod +x`, or a file/symlink swap with identical
-    blob bytes) that never landed, matches every path literally rather than as a pathspec glob, and bounds
-    the history search to commits at or after the tag's own merge-base with the default branch (an
-    unbounded full-history search is a real false positive, not just theoretical: a path added then
-    deleted from the default branch entirely BEFORE the branches diverged, then coincidentally re-added
-    with byte-identical content on the tag's own branch, would otherwise match that stale pre-divergence
-    state and be reported reachable even though the default branch never actually restored it after
-    diverging) - a merge commit inside the tag's own history is diffed against EACH parent separately
-    (`git diff-tree -m`), not treated as a special trivial-or-unverifiable case: an earlier version used
-    `--cc` (which only shows a path differing from every parent) to decide whether a merge was "trivial"
-    and safe to skip, but that's blind to a merge that force-resolves to exactly one parent's state for a
-    path - invisible to `--cc` by definition, even when it represents real, unrecoverable content loss
-    relative to the OTHER parent (live-verified: a scratch-repo merge that drops a file matching one
-    parent exactly reported "reachable" under the old check even though the default branch still had that
-    file) - see `delete-rebase-backup-tags.sh`'s own `is_tag_content_reachable`/`is_path_blob_reachable`
-    for the full mechanism, including its fail-closed handling of merge commits and `git diff-tree`
-    failures - a tag unreachable by both signals is reported separately as needing manual review, never
-    included in "delete
-    all recommended"
+    the tag is redundant (the gone branch's deletion was never verified by this run, and a rebase rewrites
+    commit SHAs). Phase 3.6 proposes deletion only once the tag's own commit is verified reachable from the
+    default branch, by raw-SHA ancestry (`git merge-base --is-ancestor`) or, failing that, by a per-path
+    blob-AND-mode history search bounded to the tag's merge-base onward (a plain deletion instead requires
+    the path to be absent from the default branch's current tree), with every merge commit in the tag's
+    history diffed against EACH parent (`git diff-tree -m`). A tag unreachable by both signals is reported
+    separately as needing manual review, never included in "delete all recommended". Why each part of this
+    check exists: `references/critical-implementation-notes.md`; the code: `delete-rebase-backup-tags.sh`'s
+    `is_tag_content_reachable`/`is_path_blob_reachable`, including its fail-closed handling
 11. **Never type a tag name into a command, at all, for any reason** - a git tag name is legal with
     almost any shell metacharacter (`git check-ref-format` accepts e.g.
     `` `$(cmd)-rebase-backup-20260831-120000` ``), and no character-class check on a value the agent then
