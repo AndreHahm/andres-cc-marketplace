@@ -29,6 +29,76 @@
       "pr": 721,
       "recorded_at": "2026-11-13T11:47:38+00:00",
       "rule": "tool-scoping"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "ci-run-43420098708-1",
+      "line": 2,
+      "note": "The mutual pointers are reciprocal-exclusion routing text in the descriptions; both agents hold only Read/Grep/Glob and cannot dispatch each other, so no nesting is possible. User accepted as false positive.",
+      "path": ".codex/agents/authority-reviewer.toml",
+      "pr": 721,
+      "recorded_at": "2026-11-13T14:11:03+00:00",
+      "rule": "dependency-graph"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "ci-run-43420098708-2",
+      "line": 11,
+      "note": "Codex agent files have no tools allowlist; same class as ci-run-43413734299-3. User accepted the risk; deferred to #719.",
+      "path": ".codex/agents/authority-reviewer.toml",
+      "pr": 721,
+      "recorded_at": "2026-11-13T14:11:03+00:00",
+      "rule": "tool-scoping"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "ci-run-43420098708-3",
+      "line": 11,
+      "note": "Codex agent files have no tools allowlist; same class as ci-run-43413734299-3. User accepted the risk; deferred to #719.",
+      "path": ".codex/agents/permission-reviewer.toml",
+      "pr": 721,
+      "recorded_at": "2026-11-13T14:11:04+00:00",
+      "rule": "tool-scoping"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "ci-run-43420098708-4",
+      "line": 5,
+      "note": "Non-blocking notice; repeat of ci-run-43413734299-3, already deferred to #719.",
+      "path": ".codex/agents/command-reviewer.toml",
+      "pr": 721,
+      "recorded_at": "2026-11-13T14:11:04+00:00",
+      "rule": "tool-scoping"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "ci-run-43420098708-5",
+      "line": 5,
+      "note": "Body over 10,000 characters is pre-existing on main (21 of 27 exports exceed it); this PR changes one line. User accepted the risk; deferred to #677.",
+      "path": ".codex/agents/authority-reviewer.toml",
+      "pr": 721,
+      "recorded_at": "2026-11-13T14:11:04+00:00",
+      "rule": "prompt-quality"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "ci-run-43420098708-6",
+      "line": 5,
+      "note": "Body over 10,000 characters is pre-existing on main; this PR does not change the canonical body. User accepted the risk; deferred to #677.",
+      "path": ".codex/agents/command-reviewer.toml",
+      "pr": 721,
+      "recorded_at": "2026-11-13T14:11:04+00:00",
+      "rule": "prompt-quality"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "ci-run-43420098708-7",
+      "line": 5,
+      "note": "Body over 10,000 characters is pre-existing on main; this PR changes one line. User accepted the risk; deferred to #677.",
+      "path": ".codex/agents/permission-reviewer.toml",
+      "pr": 721,
+      "recorded_at": "2026-11-13T14:11:04+00:00",
+      "rule": "prompt-quality"
     }
   ]
 }
