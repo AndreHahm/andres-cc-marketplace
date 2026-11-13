@@ -557,6 +557,7 @@ def _handle_check_pr(args: argparse.Namespace) -> int:
     from scripts.marketplace_ci.pr_policy import (
         TRUSTED_BOT_LOGINS,
         RealGitHubApi,
+        codex_review_skip_allowed,
         commits_verified_from_trusted_bot,
         evaluate_pr_policy,
         python_quality_skip_allowed,
@@ -638,6 +639,16 @@ def _handle_check_pr(args: argparse.Namespace) -> int:
         print(f"check-pr [python-quality-skip]: {'YES' if skip else 'NO'}")
         with open(args.python_quality_skip_output, "a", encoding="utf-8") as out:
             out.write(f"skip_python_quality={'true' if skip else 'false'}\n")
+
+    if args.codex_review_skip_output:
+        # Same rule as the python-quality skip above: written only on a passing
+        # policy result, and trusted by publish only when Hygiene succeeded.
+        skip = result.passed and codex_review_skip_allowed(
+            user, changed_paths, bot_commits_verified=bot_commits_verified
+        )
+        print(f"check-pr [codex-review-skip]: {'YES' if skip else 'NO'}")
+        with open(args.codex_review_skip_output, "a", encoding="utf-8") as out:
+            out.write(f"skip_codex_review={'true' if skip else 'false'}\n")
 
     return 0 if result.passed else 1
 
@@ -2008,6 +2019,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--python-quality-skip-output",
         metavar="PATH",
         help="append skip_python_quality=true|false (GITHUB_OUTPUT format) to PATH",
+    )
+    check_pr.add_argument(
+        "--codex-review-skip-output",
+        metavar="PATH",
+        help="append skip_codex_review=true|false (GITHUB_OUTPUT format) to PATH",
     )
     check_pr.set_defaults(handler=_handle_check_pr)
 

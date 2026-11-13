@@ -56,6 +56,7 @@ Conversational, `AskUserQuestion`-driven skill: scenarios are checked by reading
 39d. **Path B uv sources check fails** — `check_uv_lock_bump.py --sources-only` exits 1 (a git, URL, path or other-registry source, an off-host file, or a new local-path entry) or 2: no bypass, the reasons are reported. Covered by `scripts/test_check_uv_lock_bump.py`'s `SourcesOnlyTests`.
 39b. **Path A failure never falls back to path B** — a `uv.lock`-only PR whose classifier exits 1 (not the stale-branch symptoms) or 2 is reported for manual review; path B is not offered.
 39c. **Scoped npm package** — a title naming `@scope/name` fails the package pattern: no bypass, reported.
+39e. **Verified Dependabot PR, Codex policy passing (#704)** — a `uv` or `npm_and_yarn` PR whose `Publish Codex policy result` passes on CI's own verified-Dependabot check: no bypass is offered or passed to `merge-pr`, no attestation is posted, and the PR goes to `merge-pr` like any PR with every required check passing.
 
 Dated live check of the classifier, 2026-10-08, merge-base against head of the then-open uv PRs (the skill itself compares the base branch's tip with the head, which is the same thing once the branch is current): accepted #489, #488, #484, #472 and #470; rejected #487 (a dependency edge to a new package) and #473 (two packages bumped).
 
