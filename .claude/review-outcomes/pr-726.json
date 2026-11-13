@@ -1,0 +1,214 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4567001647",
+      "line": 51,
+      "note": "User-requested plan-step verification stays in codex-verify; only Claude's own unrequested check goes to consulting-decision-model, at execution time.",
+      "path": "plugins/codex-kit/skills/codex-verify/SKILL.md",
+      "pr": 726,
+      "recorded_at": "2026-11-13T19:29:18+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4567001652",
+      "line": 35,
+      "note": "Combined request: the batch stops before merging or closing a PR with reviewer threads so they are triaged first.",
+      "path": "plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md",
+      "pr": 726,
+      "recorded_at": "2026-11-13T19:29:18+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4567001661",
+      "line": 164,
+      "note": "Test example now also excludes a PR already merged and awaiting closure, matching the exclusion.",
+      "path": "plugins/workmanagement-kit/skills/merge-to-completion/SKILL.md",
+      "pr": 726,
+      "recorded_at": "2026-11-13T19:29:18+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4567001684",
+      "line": 50,
+      "note": "Scope is now all open follow-ups from one source, not one follow-up.",
+      "path": "plugins/workmanagement-kit/skills/open-item-management/SKILL.md",
+      "pr": 726,
+      "recorded_at": "2026-11-13T19:29:18+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-run-43479615859-1",
+      "line": 45,
+      "note": "Redirect to consulting-decision-model limited to critical, security-relevant or uncertain actions.",
+      "path": "plugins/codex-kit/skills/codex-peer-review/SKILL.md",
+      "pr": 726,
+      "recorded_at": "2026-11-13T19:29:18+00:00",
+      "rule": "scope-boundary"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-run-43479615859-2",
+      "line": 48,
+      "note": "triaging-dependabot-prs is the sole coordinator; this skill never dispatches back.",
+      "path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+      "pr": 726,
+      "recorded_at": "2026-11-13T19:29:18+00:00",
+      "rule": "bidirectional-dependency"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "ci-run-43479615859-3",
+      "line": 33,
+      "note": "Missing Quick Start predates the PR; deferred to umbrella issue 461 by the user.",
+      "path": "plugins/workmanagement-kit/skills/linear-github-lifecycle/SKILL.md",
+      "pr": 726,
+      "recorded_at": "2026-11-13T19:29:18+00:00",
+      "rule": "plugin-rulebook/R35"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "ci-run-43479615859-4",
+      "line": 29,
+      "note": "Missing Quick Start predates the PR; deferred to umbrella issue 461 by the user.",
+      "path": "plugins/workmanagement-kit/skills/merge-to-completion/SKILL.md",
+      "pr": 726,
+      "recorded_at": "2026-11-13T19:29:18+00:00",
+      "rule": "plugin-rulebook/R35"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "ci-run-43479615859-5",
+      "line": 40,
+      "note": "Missing Quick Start predates the PR; deferred to umbrella issue 461 by the user.",
+      "path": "plugins/workmanagement-kit/skills/work-linking/SKILL.md",
+      "pr": 726,
+      "recorded_at": "2026-11-13T19:29:18+00:00",
+      "rule": "plugin-rulebook/R35"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-run-43479615859-6",
+      "line": 34,
+      "note": "Batch now stops before merge or close of a PR with untriaged reviewer threads.",
+      "path": "plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md",
+      "pr": 726,
+      "recorded_at": "2026-11-13T19:29:18+00:00",
+      "rule": "security-workflow"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-run-43486873277-1",
+      "line": 70,
+      "note": "Repeat of the run-1 scope-boundary finding; redirect qualified the same way.",
+      "path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+      "pr": 726,
+      "recorded_at": "2026-11-13T19:29:18+00:00",
+      "rule": "scope-boundary"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-run-43486873277-2",
+      "line": 34,
+      "note": "Repeat of the merge-before-triage finding; fixed by stopping the batch first.",
+      "path": "plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md",
+      "pr": 726,
+      "recorded_at": "2026-11-13T19:29:18+00:00",
+      "rule": "scope-boundary"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-run-43486873277-3",
+      "line": 48,
+      "note": "Repeat of the run-1 bidirectional finding; one coordinator, no dispatch back.",
+      "path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+      "pr": 726,
+      "recorded_at": "2026-11-13T19:29:18+00:00",
+      "rule": "bidirectional dependency"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-run-43486873277-4",
+      "line": 50,
+      "note": "Repeat of the codex-verify routing overlap; user-requested versus Claude's own unrequested check.",
+      "path": "plugins/codex-kit/skills/codex-verify/SKILL.md",
+      "pr": 726,
+      "recorded_at": "2026-11-13T19:29:18+00:00",
+      "rule": "activation-routing"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-run-43486873277-5",
+      "line": 45,
+      "note": "Pointers to decision-kit now say when installed and state the fallback; applied to all such pointers added in this PR.",
+      "path": "plugins/codex-kit/skills/codex-peer-review/SKILL.md",
+      "pr": 726,
+      "recorded_at": "2026-11-13T19:29:18+00:00",
+      "rule": "cross-plugin-dependency"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-run-43486873277-6",
+      "line": 48,
+      "note": "Pointers to workledger-kit now say when installed and state the fallback, also in github-issue-lifecycle.",
+      "path": "plugins/workmanagement-kit/skills/open-item-management/SKILL.md",
+      "pr": 726,
+      "recorded_at": "2026-11-13T19:29:18+00:00",
+      "rule": "cross-plugin-dependency"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "claude-delta-ff25b6f2-1",
+      "line": 25,
+      "note": "Close is the script's close action, not a comment command, so rule 4 correctly omits it; now stated explicitly.",
+      "path": "plugins/git-kit/skills/triaging-dependabot-prs/references/recovery.md",
+      "pr": 726,
+      "recorded_at": "2026-11-13T19:29:19+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "claude-delta-ff25b6f2-2",
+      "line": 28,
+      "note": "Dangling see-also fragment reworded.",
+      "path": "plugins/git-kit/skills/triaging-dependabot-prs/references/recovery.md",
+      "pr": 726,
+      "recorded_at": "2026-11-13T19:29:19+00:00"
+    },
+    {
+      "disposition": "ignored",
+      "finding": "claude-delta-ff25b6f2-3",
+      "line": 5,
+      "note": "Informational only; the attributed GitHub documentation is cited by URL in dependabot-comments.md.",
+      "path": "plugins/git-kit/skills/triaging-dependabot-prs/references/recovery.md",
+      "pr": 726,
+      "recorded_at": "2026-11-13T19:29:19+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "claude-delta-ff25b6f2-4",
+      "line": 14,
+      "note": "Same routing conflict as the CodeRabbit codex-verify thread; fixed together.",
+      "path": "plugins/codex-kit/skills/codex-verify/SKILL.md",
+      "pr": 726,
+      "recorded_at": "2026-11-13T19:29:19+00:00"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "claude-delta-ff25b6f2-5",
+      "line": 10,
+      "note": "JSON cannot carry comments; the justification for the four registry hosts is in issue 536 and the PR body.",
+      "path": ".claude/plugin-rulebook.config.json",
+      "pr": 726,
+      "recorded_at": "2026-11-13T19:29:19+00:00"
+    },
+    {
+      "disposition": "ignored",
+      "finding": "claude-delta-ff25b6f2-6",
+      "line": 10,
+      "note": "Informational security note; the hosts are read-only registries the triaging-dependabot-prs scripts already query.",
+      "path": ".claude/plugin-rulebook.config.json",
+      "pr": 726,
+      "recorded_at": "2026-11-13T19:29:19+00:00"
+    }
+  ]
+}
