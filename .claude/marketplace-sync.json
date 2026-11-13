@@ -21,7 +21,8 @@
       "plugin-validator",
       "activation-reviewer",
       "command-reviewer",
-      "permission-reviewer"
+      "permission-reviewer",
+      "authority-reviewer"
     ]
   },
   "divergence_exceptions": [
