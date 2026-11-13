@@ -643,6 +643,16 @@ _PQ_SKIP_DEPENDABOT = {**_PQ_SKIP_BYPASSED, "BYPASSED": "false", "SKIP_CODEX_REV
             False,
         ),
         (
+            "#704 skip flag but compute-scope failed",
+            {**_DEPENDABOT, "SCOPE_RESULT": "failure"},
+            False,
+        ),
+        (
+            "#704 skip flag but compute-scope cancelled",
+            {**_DEPENDABOT, "SCOPE_RESULT": "cancelled"},
+            False,
+        ),
+        (
             "#704 skip flag does not clear a failed review",
             {**_FAILED, "SKIP_CODEX_REVIEW": "true"},
             False,
