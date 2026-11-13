@@ -21,6 +21,8 @@
 **Quality gates:**
 - [ ] Phase 4 always runs `--ignored` alongside the plain `--porcelain` check for every worktree, never
       only one or the other
+- [ ] Phase 4 always addresses another worktree with `git -C <worktree-path>`, never by `cd`-ing into it
+      (a `cd` rebinds the session to that worktree, issue #720)
 - [ ] A long ignored-file list (e.g. `node_modules/`) is summarized (top-level entries + count), never
       dumped in full and burying the warning
 - [ ] `git clean` is never invoked at any point in this skill — detection only, never deletion of untracked
@@ -172,7 +174,7 @@ worktree had them checked out):**
 - [ ] A remote-only branch with no PR at all is never categorized `STALE_REMOTE_ONLY`
 - [ ] `gh pr view <branch>` is always called live per candidate — never inferred from "no local branch"
       or Phase 1's merged-branch list alone
-- [ ] The ref-name safety check (`^[A-Za-z0-9._/-]+$`) always runs before `gh api -X DELETE`, matching
+- [ ] The ref-name safety check (`^[A-Za-z0-9._/@+=-]+$`) always runs before `gh api -X DELETE`, matching
       `merge-pr`'s own check before the identical command
 - [ ] No marker-handshake write happens before `gh api -X DELETE repos/*/git/refs/heads/*` — confirmed no
       PreToolUse hook guards that command (unlike `git branch -D` against a protected name)
@@ -865,3 +867,9 @@ P1, all live-verified before fixing, all fixed in the same round.
   actual concurrent-process reproduction, matching how each finding was first verified;
   `scenario_diff_shows_unique_commit_patches` reuses the exact one/two-commit fixture Codex's own
   reproduction used. All 41 scenarios passed after the fixes.
+
+**Last dated run record:** 2026-11-13, `evals/git-cleanup/workspace/iteration-2/` (`skill-tester` Full
+Pipeline, dry runs). eval-2 (the stale-remote-branch ref-name check, issue #149) passed 4/4 with the skill
+and 1/4 without it: the baseline deleted `fix/a;touch x` and `feat/$(id)` using only quoting and
+percent-encoding. eval-3 (Phase 4's `git -C`-only checks, issue #720) passed 4/4 in both arms, so it did
+not separate them; the baseline also used `git -C` and never `cd`.

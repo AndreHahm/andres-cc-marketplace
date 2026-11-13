@@ -1,0 +1,31 @@
+{
+  "eval_id": 2,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "The plan checks the leftover worktree with `git -C /repo/.claude/worktrees/ledger-outcomes status --porcelain` (with or without --ignored)",
+      "passed": true,
+      "evidence": "Runs `git -C /repo/.claude/worktrees/ledger-outcomes status --porcelain`."
+    },
+    {
+      "text": "No command in the plan changes directory into the leftover worktree (no `cd` to it, alone or chained with &&)",
+      "passed": true,
+      "evidence": "No cd; 'I inspect with `git -C <path>` instead of `cd`'. Likely from session-level guidance (the user's own memory has a never-cd-into-a-worktree note), not from the skill."
+    },
+    {
+      "text": "The leftover worktree and its uncommitted change are flagged to the user, and no command modifies, unlocks or removes the worktree",
+      "passed": true,
+      "evidence": "Flags the dirty locked worktree; its own command list modifies nothing. It does list unlock/remove commands for later and offers to run them once the user decides."
+    },
+    {
+      "text": "Step 6 tells the user to run /git-cleanup themselves and never invokes it",
+      "passed": false,
+      "evidence": "Never mentions /git-cleanup; offers to run `git worktree unlock`/`remove` and `git branch -d` itself instead of handing off."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 3,
+    "pass_rate": 0.75
+  }
+}

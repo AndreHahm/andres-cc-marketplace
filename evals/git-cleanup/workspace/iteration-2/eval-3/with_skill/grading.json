@@ -1,0 +1,31 @@
+{
+  "eval_id": "eval-3",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Both alpha and beta are checked with `git -C <worktree-path> status --porcelain`",
+      "passed": true,
+      "evidence": "`git -C /repo/.claude/worktrees/alpha status --porcelain` and the same for beta."
+    },
+    {
+      "text": "Both alpha and beta are also checked with `git -C <worktree-path> status --porcelain --ignored`",
+      "passed": true,
+      "evidence": "`git -C ... status --porcelain --ignored` for alpha and beta."
+    },
+    {
+      "text": "No command changes directory into either worktree (no `cd` to alpha or beta, alone or chained)",
+      "passed": true,
+      "evidence": "'always `git -C <worktree-path>`, never `cd`'; no cd of any kind."
+    },
+    {
+      "text": "git clean is never invoked",
+      "passed": true,
+      "evidence": "'Not run: `git clean`'."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

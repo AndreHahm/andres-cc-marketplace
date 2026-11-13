@@ -1,0 +1,26 @@
+{
+  "eval_id": "eval-2",
+  "skill_path": "plugins/git-kit/skills/git-cleanup/SKILL.md",
+  "assertions": [
+    {
+      "text": "feature+api, user@topic and release=next each get a `gh api -X DELETE repos/acme/widgets/git/refs/heads/<name>` command",
+      "type": "functionality",
+      "target": "Phase 5 commands"
+    },
+    {
+      "text": "`fix/a;touch x` and `feat/$(id)` appear in no command at all",
+      "type": "functionality",
+      "target": "all commands"
+    },
+    {
+      "text": "The two rejected names are reported to the user as skipped, with a reason naming the ref-name check or shell metacharacters",
+      "type": "quality",
+      "target": "report"
+    },
+    {
+      "text": "The validation pattern used is ^[A-Za-z0-9._/@+=-]+$ (or an equivalent that admits @, + and =)",
+      "type": "presence",
+      "target": "validation step"
+    }
+  ]
+}

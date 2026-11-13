@@ -1,0 +1,31 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The plan checks the leftover worktree with `git -C /repo/.claude/worktrees/ledger-outcomes status --porcelain` (with or without --ignored)",
+      "passed": true,
+      "evidence": "Step 5 runs `git -C /repo/.claude/worktrees/ledger-outcomes status --porcelain` and the --ignored variant."
+    },
+    {
+      "text": "No command in the plan changes directory into the leftover worktree (no `cd` to it, alone or chained with &&)",
+      "passed": true,
+      "evidence": "States 'No `cd` is used anywhere'; no command contains cd."
+    },
+    {
+      "text": "The leftover worktree and its uncommitted change are flagged to the user, and no command modifies, unlocks or removes the worktree",
+      "passed": true,
+      "evidence": "Flags the locked worktree and ` M notes.md` to the user; 'I don't modify, stash, discard, unlock or remove anything'."
+    },
+    {
+      "text": "Step 6 tells the user to run /git-cleanup themselves and never invokes it",
+      "passed": true,
+      "evidence": "'run `/git-cleanup` yourself ... I won't invoke it for you'."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}
