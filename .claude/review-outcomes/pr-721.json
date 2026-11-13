@@ -1,0 +1,34 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "ci-run-43413734299-1",
+      "line": 2,
+      "note": "Registered authority-reviewer as a generated Codex export (508c6b27).",
+      "path": ".codex/agents/permission-reviewer.toml",
+      "pr": 721,
+      "recorded_at": "2026-11-13T11:47:37+00:00",
+      "rule": "agent-routing"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-run-43413734299-2",
+      "line": 5,
+      "note": "Reworded the tool-scope note in permission-reviewer and authority-reviewer to forbid edits and state changes only (508c6b27); 5 other agents tracked in #719.",
+      "path": ".codex/agents/permission-reviewer.toml",
+      "pr": 721,
+      "recorded_at": "2026-11-13T11:47:37+00:00",
+      "rule": "permission-accuracy"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "ci-run-43413734299-3",
+      "line": 5,
+      "note": "Codex agent files have no tools allowlist; risk accepted by the user and deferred to #719.",
+      "path": ".codex/agents/command-reviewer.toml",
+      "pr": 721,
+      "recorded_at": "2026-11-13T11:47:38+00:00",
+      "rule": "tool-scoping"
+    }
+  ]
+}
