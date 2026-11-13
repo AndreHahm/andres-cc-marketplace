@@ -52,8 +52,9 @@ For code review use `/codex-kit:cdx-review`. For research, use the `codex-resear
   this skill never authors a plan or proceeds to implementation.
 - Finding a session ID rather than resuming one → `codex-session-lookup`.
 - Claude's own check, with no user request to verify it, of one critical, security-relevant or
-  uncertain step it is about to execute → decision-kit's `consulting-decision-model`. That check runs
-  when Claude executes the step, separately from any verification the user asked for here.
+  uncertain step it is about to execute → decision-kit's `consulting-decision-model`, when decision-kit
+  is installed. That check runs when Claude executes the step, separately from any verification the
+  user asked for here. Without decision-kit, no installed skill makes it, and this skill still does not.
 - Code review → `/codex-kit:cdx-review`.
 
 ## Execution Contract
