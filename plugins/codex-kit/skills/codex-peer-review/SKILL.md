@@ -28,6 +28,24 @@ allowed-tools: ["Bash(node */codex-kit/scripts/codex-companion.mjs:*)", "AskUser
 2. **Compare** — agree, disagree with reasoning, or escalate to a tiebreak source (Round 2) if the disagreement can't be resolved by re-reading the evidence.
 3. **Report** the reconciled position to the user before presenting it as final — never present Claude's original, unchecked position if Codex materially disagreed.
 
+## When to Use
+
+- On explicit request only: "get a second opinion from codex before we commit to this", "codex peer
+  review this design".
+- Claude has formed an analysis, design or recommendation that is not yet presented or written to a
+  file, and the user wants Codex to check it first.
+
+## When NOT to Use
+
+- Proactively, with no explicit request: this skill deliberately has no automatic trigger.
+- An existing written plan or document file to check → `codex-verify`.
+- A full plan-validate-implement-review workflow, not just validating a formed position →
+  `codex-plan-loop`.
+- Open-ended investigation of a topic with no Claude position to validate yet → `codex-research`.
+- One action or choice Claude is about to execute → decision-kit's `consulting-decision-model`.
+- The same second opinion from Gemini/Antigravity/agy rather than Codex → antigravity-kit's
+  `antigravity` skill.
+
 ## Model check
 
 Both checks below fire in the main conversation, before the Quick Start's `Agent` dispatch — never
