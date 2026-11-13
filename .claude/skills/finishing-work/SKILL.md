@@ -16,6 +16,14 @@ Get local `main` back to a clean, current state right after a PR merges — with
 actually happened, and without doing the branch/worktree deletion itself (that stays a deliberate,
 user-invoked step via `/git-cleanup`).
 
+## Quick Start
+
+1. Confirm the PR's state is `MERGED`; stop otherwise (step 1).
+2. Switch to the resolved default branch, fast-forward pull it, and prune remote-tracking refs (steps 2-3).
+3. Remap stale handoff SHAs in this repository, then verify a clean tree and flag any other worktree still
+   on the PR's branch, checked with `git -C`, never `cd` (steps 4-5).
+4. Hand off to `/git-cleanup` for the branch and worktree deletion (step 6).
+
 ## When to Use
 
 Right after a PR merges: confirming the merge, returning to a synced `main`, and verifying nothing was
