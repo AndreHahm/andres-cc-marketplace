@@ -293,11 +293,20 @@ def test_fork_mapped_into_origin_namespace_blocks(setup, tmp_path):
 
 
 def test_slashed_remote_name_under_origin_blocks(setup, tmp_path):
-    # A remote named origin/fork lands in refs/remotes/origin/fork/* by default.
+    # A remote named origin/fork lands in refs/remotes/origin/fork/*. Git 2.56
+    # refuses `remote add origin/fork` next to origin, but a remote defined in
+    # config (older git, or hand-edited) still works, so define it that way.
     home, _clone, wt = setup
     fork = tmp_path / "fork.git"
     _git(tmp_path, "init", "--bare", "-b", "main", str(fork), home=home)
-    _git(wt, "remote", "add", "origin/fork", str(fork), home=home)
+    _git(wt, "config", "remote.origin/fork.url", str(fork), home=home)
+    _git(
+        wt,
+        "config",
+        "remote.origin/fork.fetch",
+        "+refs/heads/*:refs/remotes/origin/fork/*",
+        home=home,
+    )
     _commit(wt, "a.txt", "a\n", home)
     _git(wt, "push", "-u", "origin/fork", "feat", home=home)
     assert (
