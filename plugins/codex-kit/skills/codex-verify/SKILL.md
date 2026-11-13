@@ -33,6 +33,24 @@ For code review use `/codex-kit:cdx-review`. For research, use the `codex-resear
 2. **Invoke, wait** (Phase 2-3) — background the Codex call, poll for completion.
 3. **Double-check + report** (Phase 4-5) — read the document now (not before), classify Codex's PASS/FAIL verdict, save the report.
 
+## When to Use
+
+- "codex verify docs/my-plan.md", "verify this plan", "review this doc for issues": one PASS/FAIL check
+  of a plan or document that already exists as a file.
+- `resume [follow-up]` against a document already sent this session.
+- A routine, easily reversed step of a plan, checked as part of that plan.
+
+## When NOT to Use
+
+- Claude's own not-yet-written analysis or design, with no document to point at → `codex-peer-review`.
+- Open-ended investigation or research on a topic or document → `codex-research`.
+- A plan-validate-implement-review workflow that continues into code changes → `codex-plan-loop`;
+  this skill never authors a plan or proceeds to implementation.
+- Finding a session ID rather than resuming one → `codex-session-lookup`.
+- One critical, security-relevant or uncertain step of a plan that Claude is about to execute →
+  decision-kit's `consulting-decision-model`.
+- Code review → `/codex-kit:cdx-review`.
+
 ## Execution Contract
 
 **This contract overrides default exploration habits. Read it before Phase 1.**
