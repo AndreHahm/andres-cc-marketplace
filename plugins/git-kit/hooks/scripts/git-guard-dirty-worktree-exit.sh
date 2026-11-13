@@ -142,19 +142,28 @@ fi
 # work as merged only when the PR is MERGED into $DEFAULT_BRANCH of origin's
 # own repository and its head SHA is exactly this worktree's HEAD (nothing
 # committed after the merged head). Needs `gh`, `timeout` and network access;
-# any failure, timeout or mismatch keeps the warning. GH_REPO is dropped, and
-# the PR's repository is compared against origin's, so neither GH_REPO, a
-# `gh repo set-default` nor an `upstream` remote can pick another repository
-# (an origin that isn't on github.com never matches, so the warning stays).
-# The gh output is only compared as a string, never run. A PR merged and
-# later reverted on the default branch still counts as merged (accepted: the
-# work stays in GitHub's PR history).
+# any failure, timeout or mismatch keeps the warning. The PR is looked up by
+# the current branch's name with --repo set to origin's owner/name (gh needs
+# an explicit branch once --repo is given), so neither GH_REPO (also
+# dropped), a `gh repo set-default` nor an `upstream` remote can pick another
+# repository; the PR's repository is still compared against origin's. An
+# origin that isn't on github.com, or a detached HEAD, skips the lookup and
+# the warning stays. The gh output is only compared as a string, never run.
+# A PR merged and later reverted on the default branch still counts as merged
+# (accepted: the work stays in GitHub's PR history).
 if [ "$UNMERGED" = true ] && [ "$HAS_TIMEOUT" = true ] && command -v gh >/dev/null 2>&1; then
   HEAD_SHA=$(git rev-parse HEAD 2>/dev/null) || HEAD_SHA=""
+  PR_BRANCH=$(git symbolic-ref --quiet --short HEAD 2>/dev/null) || PR_BRANCH=""
   ORIGIN_REPO=$(git remote get-url origin 2>/dev/null | sed -E 's#^(https://github\.com/|git@github\.com:|ssh://git@github\.com/)##; s#\.git$##; s#/$##') || ORIGIN_REPO=""
-  PR_STATE=$(bounded 3 env -u GH_REPO gh pr view --json state,baseRefName,headRefOid,url \
-    --jq '.state + " " + .baseRefName + " " + .headRefOid + " " + (.url | sub("^https://github\\.com/"; "") | sub("/pull/[0-9]+$"; ""))' 2>/dev/null) || PR_STATE=""
-  if [ -n "$HEAD_SHA" ] && [ -n "$ORIGIN_REPO" ] && [ "$PR_STATE" = "MERGED $DEFAULT_BRANCH $HEAD_SHA $ORIGIN_REPO" ]; then
+  [[ "$ORIGIN_REPO" =~ ^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$ ]] || ORIGIN_REPO=""
+  PR_STATE=""
+  if [ -n "$HEAD_SHA" ] && [ -n "$PR_BRANCH" ] && [ -n "$ORIGIN_REPO" ]; then
+    # `--` keeps a branch name starting with `-` (possible via update-ref) from parsing as a gh option.
+    PR_STATE=$(bounded 3 env -u GH_REPO gh pr view --repo "$ORIGIN_REPO" --json state,baseRefName,headRefOid,url \
+      --jq '.state + " " + .baseRefName + " " + .headRefOid + " " + (.url | sub("^https://github\\.com/"; "") | sub("/pull/[0-9]+$"; ""))' \
+      -- "$PR_BRANCH" 2>/dev/null) || PR_STATE=""
+  fi
+  if [ -n "$PR_STATE" ] && [ "$PR_STATE" = "MERGED $DEFAULT_BRANCH $HEAD_SHA $ORIGIN_REPO" ]; then
     UNMERGED=false
   fi
 fi
