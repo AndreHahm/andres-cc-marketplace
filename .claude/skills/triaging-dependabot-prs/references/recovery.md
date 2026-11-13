@@ -22,11 +22,11 @@ than guessing.
    Any of these may indicate that the write took effect; none proves it. If it is still unclear, say so
    and ask the user instead of guessing.
 3. **Tell the user what was posted**: the PR number, the exact body, and that it is public and permanent.
-4. **Ask before anything else.** Post only a command from the "Per action" table below (`rebase`,
-   `recreate`, `ignore ...`, `unignore ...`, `show ... ignore conditions`), through the script, which
-   refuses any other body; ask for each separately and post it only if the user asks for it. The exact
-   accepted forms are in `dependabot-comments.md` (see also). The deprecated commands stay unavailable, including
-   as an "undo".
+4. **Ask before anything else.** Post only a comment command from the "Per action" table below
+   (`rebase`, `recreate`, `ignore ...`, `unignore ...`, `show ... ignore conditions`; its `close` row is
+   the script's close action, not a comment), through the script, which refuses any other body; ask for
+   each separately and post it only if the user asks for it. See also `dependabot-comments.md` for the
+   exact accepted forms. The deprecated commands stay unavailable, including as an "undo".
 5. A comment counts toward the two-rebase cap only if it was actually posted (rule 2), so a failed attempt
    that posted nothing does not count.
 

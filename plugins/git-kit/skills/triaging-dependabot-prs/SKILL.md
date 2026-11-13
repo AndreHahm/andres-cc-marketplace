@@ -31,8 +31,9 @@ Several dependabot PRs are open and the goal is to merge the good ones and close
 - **Merging one specific PR** — `merge-pr` directly; this skill adds only batch ordering and the dependabot-specific checks.
 - **Triaging findings a reviewer already posted on one PR's review threads**, a Dependabot PR included —
   `handling-review-findings`. This skill owns the batch: ordering, rebase requests, merge or close.
-  A request naming both: run the batch here first, then hand the reviewer threads on the PRs that
-  remain open to `handling-review-findings`.
+  A request naming both: this skill keeps the batch. Before it merges or closes a PR with reviewer
+  threads, stop and ask whether to triage them first with `handling-review-findings` or leave the PR
+  out of this batch.
 
 ## Why a serial loop
 

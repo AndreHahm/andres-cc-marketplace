@@ -9,8 +9,9 @@ description: >-
   instead. For a full multi-phase plan-validate-implement-review workflow
   (not just validating an already-formed position), use codex-plan-loop
   instead. For open-ended investigation of a topic with no existing Claude
-  position to validate, use codex-research instead. For one action or choice
-  Claude is about to execute, use consulting-decision-model instead. For the
+  position to validate, use codex-research instead. For one critical,
+  security-relevant or uncertain action or choice Claude is about to
+  execute, use consulting-decision-model instead. For the
   same second-opinion workflow naming Gemini/Antigravity/agy instead of Codex,
   use antigravity-kit's `antigravity` skill instead.
 when_to_use: >-
@@ -42,7 +43,8 @@ allowed-tools: ["Bash(node */codex-kit/scripts/codex-companion.mjs:*)", "AskUser
 - A full plan-validate-implement-review workflow, not just validating a formed position →
   `codex-plan-loop`.
 - Open-ended investigation of a topic with no Claude position to validate yet → `codex-research`.
-- One action or choice Claude is about to execute → decision-kit's `consulting-decision-model`.
+- One critical, security-relevant or uncertain action or choice Claude is about to execute →
+  decision-kit's `consulting-decision-model`.
 - The same second opinion from Gemini/Antigravity/agy rather than Codex → antigravity-kit's
   `antigravity` skill.
 
@@ -129,7 +131,7 @@ Never ask before Round 1 or Round 2 — only the escalation and final-output ste
 **Verify it does NOT activate on:**
 - Proactively, without an explicit request — this skill deliberately has no automatic trigger
 - Verifying an existing written plan/document file → `codex-verify`
-- Checking one action or choice Claude is about to execute → decision-kit's `consulting-decision-model`
+- Checking one critical, security-relevant or uncertain action Claude is about to execute → decision-kit's `consulting-decision-model`
 - "get a second opinion from antigravity/gemini/agy" → antigravity-kit's `antigravity` skill instead
   (Gemini/Antigravity/agy named, not Codex)
 

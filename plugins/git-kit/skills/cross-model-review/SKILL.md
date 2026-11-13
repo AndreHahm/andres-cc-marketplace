@@ -67,8 +67,8 @@ on the working diff.
   a human) — that's `handling-review-findings`'s job. This skill only ever reviews the local working
   diff *before* a PR exists or before a draft is flipped to ready; once a finding is posted against an
   actual open PR, it's out of this skill's domain regardless of who or what posted it.
-- **Checking one action or choice Claude is about to execute**, even one step of a plan — that's
-  decision-kit's `consulting-decision-model`. This skill reviews a diff, not a single decision.
+- **Checking one critical, security-relevant or uncertain action Claude is about to execute**, even a
+  plan step: decision-kit's `consulting-decision-model`. This skill reviews a diff, not one decision.
 
 ## Inputs
 
