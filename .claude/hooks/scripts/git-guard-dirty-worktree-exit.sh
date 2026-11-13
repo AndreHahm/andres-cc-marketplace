@@ -12,6 +12,7 @@
 # untrusted text quoted elsewhere in the transcript (a PR body, a tool
 # result) can't accidentally or deliberately trigger the override.
 set -euo pipefail
+START=$SECONDS # the history-check budget below counts from here, not from its first use
 
 INPUT=$(cat)
 
@@ -79,17 +80,37 @@ DEFAULT_BRANCH="${DEFAULT_BRANCH:-main}"
 # carry the only unlanded change, e.g. a conflict resolution). Patch-id
 # equivalence ignores whitespace, and a commit landed then reverted upstream
 # still counts as landed: both accepted limitations.
+#
+# Every history check below runs under one shared budget of 5s counted from
+# script start, minus 1s per call for whole-second rounding and the last
+# call's kill grace, and the transcript parse further down has its own 2s
+# cap: together they leave headroom under the 10s registration limit, since
+# a hook timeout under onError "warn" would end the turn with only a warning.
+# This makes an overrun unlikely, not impossible: the unbounded `git status`
+# above and process start-up still count against the limit. A check that runs
+# out of budget or fails keeps the warning. Without `timeout` nothing can be
+# bounded, so only a single-commit range probe runs (the behavior before
+# issue #707: a rebase- or squash-merged branch warns; the probe still walks
+# the range, like the earlier `git log` did) and the pushed and merged-PR
+# checks are skipped.
 HAS_TIMEOUT=false
 command -v timeout >/dev/null 2>&1 && HAS_TIMEOUT=true
+BUDGET_END=$((START + 5))
+bounded() { # bounded <max-seconds> <command...>: exit 124 once the budget is spent
+  local cap="$1" left=$((BUDGET_END - SECONDS - 1))
+  shift
+  [ "$left" -lt "$cap" ] && cap="$left"
+  [ "$cap" -ge 1 ] || return 124
+  timeout -k 1 "$cap" "$@"
+}
 if git rev-parse --verify --quiet "origin/$DEFAULT_BRANCH^{commit}" >/dev/null 2>&1; then
-  # Bounded so the whole hook stays inside its 10s budget: a hook timeout
-  # under onError "warn" would end the turn with only a warning.
   if [ "$HAS_TIMEOUT" = true ]; then
-    CHERRY=$(timeout -k 1 3 git cherry "origin/$DEFAULT_BRANCH" HEAD 2>/dev/null) || CHERRY="+ cherry-failed"
+    CHERRY=$(bounded 3 git cherry "origin/$DEFAULT_BRANCH" HEAD 2>/dev/null) || CHERRY="+ cherry-failed"
+    MERGES=$(bounded 2 git rev-list --merges "origin/$DEFAULT_BRANCH..HEAD" 2>/dev/null) || MERGES="merges-failed"
   else
-    CHERRY=$(git cherry "origin/$DEFAULT_BRANCH" HEAD 2>/dev/null) || CHERRY="+ cherry-failed"
+    CHERRY=""
+    MERGES=$(git rev-list --max-count=1 "origin/$DEFAULT_BRANCH..HEAD" 2>/dev/null) || MERGES="range-failed"
   fi
-  MERGES=$(git rev-list --merges "origin/$DEFAULT_BRANCH..HEAD" 2>/dev/null) || MERGES="merges-failed"
   if grep -q '^+' <<<"$CHERRY" || [ -n "$MERGES" ]; then
     UNMERGED=true
   fi
@@ -106,18 +127,13 @@ fi
 # remote branch deleted since then still reads as pushed) and writable
 # locally. Accepted: removal keeps the local branch, and a merge-time deletion
 # is covered above.
-if [ "$UNMERGED" = true ]; then
+if [ "$UNMERGED" = true ] && [ "$HAS_TIMEOUT" = true ]; then
   BRANCH=$(git symbolic-ref --quiet --short HEAD 2>/dev/null) || BRANCH=""
   BRANCH_REMOTE=""
   [ -n "$BRANCH" ] && { BRANCH_REMOTE=$(git config --get "branch.$BRANCH.remote" 2>/dev/null) || BRANCH_REMOTE=""; }
   UPSTREAM_REF=$(git rev-parse --symbolic-full-name '@{upstream}' 2>/dev/null) || UPSTREAM_REF=""
   if [ "$BRANCH_REMOTE" = origin ] && [[ "$UPSTREAM_REF" == refs/remotes/origin/?* ]]; then
-    # Bounded like git cherry above; a timeout keeps the warning.
-    if [ "$HAS_TIMEOUT" = true ]; then
-      timeout -k 1 2 git merge-base --is-ancestor HEAD "$UPSTREAM_REF" 2>/dev/null && UNMERGED=false
-    else
-      git merge-base --is-ancestor HEAD "$UPSTREAM_REF" 2>/dev/null && UNMERGED=false
-    fi
+    bounded 1 git merge-base --is-ancestor HEAD "$UPSTREAM_REF" 2>/dev/null && UNMERGED=false
   fi
 fi
 
@@ -136,7 +152,7 @@ fi
 if [ "$UNMERGED" = true ] && [ "$HAS_TIMEOUT" = true ] && command -v gh >/dev/null 2>&1; then
   HEAD_SHA=$(git rev-parse HEAD 2>/dev/null) || HEAD_SHA=""
   ORIGIN_REPO=$(git remote get-url origin 2>/dev/null | sed -E 's#^(https://github\.com/|git@github\.com:|ssh://git@github\.com/)##; s#\.git$##; s#/$##') || ORIGIN_REPO=""
-  PR_STATE=$(env -u GH_REPO timeout -k 1 4 gh pr view --json state,baseRefName,headRefOid,url \
+  PR_STATE=$(bounded 3 env -u GH_REPO gh pr view --json state,baseRefName,headRefOid,url \
     --jq '.state + " " + .baseRefName + " " + .headRefOid + " " + (.url | sub("^https://github\\.com/"; "") | sub("/pull/[0-9]+$"; ""))' 2>/dev/null) || PR_STATE=""
   if [ -n "$HEAD_SHA" ] && [ -n "$ORIGIN_REPO" ] && [ "$PR_STATE" = "MERGED $DEFAULT_BRANCH $HEAD_SHA $ORIGIN_REPO" ]; then
     UNMERGED=false
@@ -155,8 +171,13 @@ if [ -n "$TRANSCRIPT_PATH" ] && [ -f "$TRANSCRIPT_PATH" ]; then
   # Bounded to the transcript's tail: the override, if present, is always the
   # most recent user turn, and Stop must stay quick -- an unbounded jq -rs
   # over a long session's full JSONL both wastes time and risks a timeout,
-  # which (per Stop's own timeout semantics) fails this guard open.
-  LAST_USER_MSG=$(tail -n 200 "$TRANSCRIPT_PATH" 2>/dev/null | jq -rs '
+  # which (per Stop's own timeout semantics) fails this guard open. The parse
+  # gets its own 2s cap rather than the history budget, so a slow repository
+  # can never make the "exit anyway" override unusable; a timeout leaves the
+  # message empty, which keeps the block.
+  PARSE_LIMIT=()
+  [ "$HAS_TIMEOUT" = true ] && PARSE_LIMIT=(timeout -k 1 2)
+  LAST_USER_MSG=$(tail -n 200 "$TRANSCRIPT_PATH" 2>/dev/null | ${PARSE_LIMIT[@]+"${PARSE_LIMIT[@]}"} jq -rs '
     [.[] | select(.type == "user" and (.message.role // empty) == "user")]
     | if length == 0 then "" else
         last | .message.content
@@ -165,7 +186,7 @@ if [ -n "$TRANSCRIPT_PATH" ] && [ -f "$TRANSCRIPT_PATH" ]; then
           end
       end
     | gsub("^\\s+|\\s+$"; "")
-  ' 2>/dev/null || echo "")
+  ' 2>/dev/null) || LAST_USER_MSG="" # a killed parse drops its partial output
   LAST_USER_MSG_LOWER=$(printf '%s' "$LAST_USER_MSG" | tr '[:upper:]' '[:lower:]')
   if [ "$LAST_USER_MSG_LOWER" = "exit anyway" ]; then
     exit 0

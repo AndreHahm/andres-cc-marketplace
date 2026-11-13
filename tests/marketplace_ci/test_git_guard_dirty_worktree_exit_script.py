@@ -306,3 +306,101 @@ def test_slashed_remote_name_under_origin_blocks(setup, tmp_path):
     )
     out = _run_guard(wt, home)
     assert json.loads(out)["decision"] == "block"
+
+
+# Every history check is bounded by one shared budget inside the hook's 10s
+# limit; a check that times out, or cannot be bounded, keeps the warning.
+
+
+def _bin_without_timeout(home):
+    empty_bin = home / "no-timeout-bin"
+    empty_bin.mkdir()
+    for tool in ("git", "jq", "env", "sed", "awk", "grep", "tr", "tail", "cat"):
+        found = shutil.which(tool)
+        if found:
+            (empty_bin / tool).symlink_to(found)
+    return {"PATH": str(empty_bin)}
+
+
+def _bin_with_failing_timeout_for(home, word):
+    """A timeout wrapper that reports a timeout (124) when its command line contains word."""
+    bin_dir = home / "timeout-bin"
+    bin_dir.mkdir()
+    real = shutil.which("timeout")
+    stub = bin_dir / "timeout"
+    stub.write_text(
+        f'#!/bin/sh\ncase " $* " in *" {word} "*) exit 124 ;; esac\nexec "{real}" "$@"\n',
+        encoding="utf-8",
+    )
+    stub.chmod(stub.stat().st_mode | stat.S_IEXEC)
+    return {"PATH": f"{bin_dir}:{SYSTEM_PATH}"}
+
+
+def test_timed_out_merge_scan_keeps_warning(setup):
+    home, clone, wt = setup
+    _commit(wt, "a.txt", "a\n", home)
+    _land_on_main(clone, home, squash=False)
+    out = _run_guard(wt, home, _bin_with_failing_timeout_for(home, "rev-list"))
+    assert json.loads(out)["decision"] == "block"
+
+
+def test_exhausted_budget_keeps_warning(setup):
+    # git cherry succeeds but uses up the shared budget, so the merge scan is
+    # refused without running and the rebase-merged branch still warns.
+    home, clone, wt = setup
+    _commit(wt, "a.txt", "a\n", home)
+    _land_on_main(clone, home, squash=False)
+    bin_dir = home / "slow-timeout-bin"
+    bin_dir.mkdir()
+    real = shutil.which("timeout")
+    stub = bin_dir / "timeout"
+    stub.write_text(
+        f'#!/bin/sh\ncase " $* " in *" cherry "*) sleep 5 ;; esac\nexec "{real}" "$@"\n',
+        encoding="utf-8",
+    )
+    stub.chmod(stub.stat().st_mode | stat.S_IEXEC)
+    out = _run_guard(wt, home, {"PATH": f"{bin_dir}:{SYSTEM_PATH}"})
+    assert json.loads(out)["decision"] == "block"
+    # The transcript parse has its own cap, so the override still works on an
+    # exhausted budget.
+    transcript = home / "transcript.jsonl"
+    transcript.write_text(
+        json.dumps({"type": "user", "message": {"role": "user", "content": " Exit anyway "}})
+        + "\n",
+        encoding="utf-8",
+    )
+    result = subprocess.run(
+        [BASH, str(SCRIPT)],
+        cwd=wt,
+        input=json.dumps({"stop_hook_active": False, "transcript_path": str(transcript)}),
+        capture_output=True,
+        text=True,
+        env=_env(home, {"PATH": f"{bin_dir}:{SYSTEM_PATH}"}),
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == ""
+
+
+def test_no_timeout_falls_back_to_range_check(setup):
+    # Without timeout the patch comparison cannot be bounded, so a rebase-merged
+    # branch is reported by plain SHA range, as before issue #707.
+    home, clone, wt = setup
+    _commit(wt, "a.txt", "a\n", home)
+    _land_on_main(clone, home, squash=False)
+    out = _run_guard(wt, home, _bin_without_timeout(home))
+    assert json.loads(out)["decision"] == "block"
+
+
+def test_no_timeout_pushed_branch_keeps_warning(setup):
+    home, _clone, wt = setup
+    _commit(wt, "a.txt", "a\n", home)
+    _git(wt, "push", "-u", "origin", "feat", home=home)
+    out = _run_guard(wt, home, _bin_without_timeout(home))
+    assert json.loads(out)["decision"] == "block"
+
+
+def test_no_timeout_branch_with_nothing_new_does_not_block(setup):
+    # HEAD already on origin/main: the range is empty, so there is nothing to protect.
+    home, _clone, wt = setup
+    _git(wt, "fetch", "origin", home=home)
+    assert _run_guard(wt, home, _bin_without_timeout(home)) == ""
