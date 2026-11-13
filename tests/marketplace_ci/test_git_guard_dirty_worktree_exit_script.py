@@ -21,10 +21,16 @@ SCRIPT = REPO / "plugins/git-kit/hooks/scripts/git-guard-dirty-worktree-exit.sh"
 SYSTEM_PATH = os.environ.get("PATH", "/usr/bin:/bin")
 BASH = shutil.which("bash") or "bash"
 
-pytestmark = pytest.mark.skipif(
-    shutil.which("jq") is None or shutil.which("timeout") is None,
-    reason="the guard needs jq, and its PR fallback needs timeout",
-)
+pytestmark = pytest.mark.skipif(shutil.which("jq") is None, reason="the guard needs jq")
+
+
+@pytest.fixture(autouse=True)
+def _needs_timeout(request):
+    # Without timeout the guard always takes its fallback path, so only the
+    # test_no_timeout_* tests (which remove timeout from PATH themselves) can
+    # run on such a host, e.g. stock macOS, the host that fallback exists for.
+    if shutil.which("timeout") is None and not request.node.name.startswith("test_no_timeout"):
+        pytest.skip("needs timeout to bound the guard's history checks")
 
 
 def _env(home, extra=None):
