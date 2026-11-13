@@ -251,7 +251,8 @@ Status: approved
   as decided by `Hygiene (PR contract)` from the base SHA's code: the pull request's author is
   `dependabot[bot]`; every commit is authored by `dependabot[bot]`, committed by `web-flow` and
   signature-verified (the merge-privilege exemption's own check); and every changed path is a root dependency
-  manifest or lockfile (`uv.lock`, `pyproject.toml`, `package.json`, `pnpm-lock.yaml`).
+  manifest or lockfile (`uv.lock`, `pyproject.toml`, `package.json`, `pnpm-lock.yaml`). `Compute Codex review
+  scope` must also have succeeded, as for every other skip.
 - Any other Dependabot pull request, for example one a human pushed to or one that changes another file,
   still needs the SHA-bound bypass attestation (R12).
 - The pass is never presented as a clean review and records no review result. The deterministic gates still

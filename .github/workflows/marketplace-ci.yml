@@ -2135,12 +2135,12 @@ jobs:
           # fails the commit check and falls through to the rules below
           # (attestation needed); whether an API-created web-flow commit with a
           # spoofed dependabot[bot] author would pass is untested (docs/ci.md,
-          # the check-pr exemption's residual). Deliberately placed before the
-          # compute-scope check below: its outputs only steer the Codex review,
-          # which never runs here. Like the bypass above, it records no review
-          # result: nothing was reviewed, and later runs of a Dependabot PR
-          # skip the review too.
-          if [ "$CODEX_RESULT" = "skipped" ] && [ "$HYGIENE_RESULT" = "success" ] && [ "$SKIP_CODEX_REVIEW" = "true" ]; then
+          # the check-pr exemption's residual). compute-scope must also have
+          # succeeded: like every other skip, a failed or cancelled run is never
+          # taken as a legitimate one (it runs for Dependabot PRs too, with no
+          # secrets). Like the bypass above, it records no review result: nothing
+          # was reviewed, and later runs of a Dependabot PR skip the review too.
+          if [ "$CODEX_RESULT" = "skipped" ] && [ "$HYGIENE_RESULT" = "success" ] && [ "$SCOPE_RESULT" = "success" ] && [ "$SKIP_CODEX_REVIEW" = "true" ]; then
             echo "Codex review not run: verified Dependabot PR changing only root dependency manifests/lockfiles (no Actions secrets for Dependabot). Never presented as a clean review — deterministic, PR-author-privilege, and branch-protection gates still apply unchanged."
             exit 0
           fi
