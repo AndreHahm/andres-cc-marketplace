@@ -34,10 +34,10 @@
       "disposition": "false_positive",
       "finding": "ci-run-43420098708-1",
       "line": 2,
-      "note": "The mutual pointers are reciprocal-exclusion routing text in the descriptions; both agents hold only Read/Grep/Glob and cannot dispatch each other, so no nesting is possible. User accepted as false positive.",
+      "note": "The mutual pointers are reciprocal-exclusion routing text for the caller; neither export instructs invoking the other (out-of-scope items go into a report section, next steps go back to the caller). Not a tool limit: the exports enforce none (#719). User accepted as false positive.",
       "path": ".codex/agents/authority-reviewer.toml",
       "pr": 721,
-      "recorded_at": "2026-11-13T14:11:03+00:00",
+      "recorded_at": "2026-11-13T14:44:18+00:00",
       "rule": "dependency-graph"
     },
     {
@@ -99,6 +99,26 @@
       "pr": 721,
       "recorded_at": "2026-11-13T14:11:04+00:00",
       "rule": "prompt-quality"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-run-43441579323-1",
+      "line": 37,
+      "note": "Rewrote the dependency-graph false-positive note and the PR body line to rest on the exports' instructions, not an unenforced Read/Grep/Glob limit.",
+      "path": ".claude/review-outcomes/pr-721.json",
+      "pr": 721,
+      "recorded_at": "2026-11-13T14:44:18+00:00",
+      "rule": "permission-accuracy"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "ci-run-43441579323-2",
+      "line": 8,
+      "note": "A ledger entry's path records where CI raised the finding, not where it was fixed; the registry change is named in the note.",
+      "path": ".claude/review-outcomes/pr-721.json",
+      "pr": 721,
+      "recorded_at": "2026-11-13T14:44:18+00:00",
+      "rule": "audit-trail-accuracy"
     }
   ]
 }
