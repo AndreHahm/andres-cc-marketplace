@@ -119,6 +119,26 @@
       "pr": 721,
       "recorded_at": "2026-11-13T14:44:18+00:00",
       "rule": "audit-trail-accuracy"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "ci-run-43446153560-1",
+      "line": 19,
+      "note": "The converter copies Claude tool names into every export (21 of 26 on main); CI's own Codex reviewers use the same wording and work. User accepted the risk; deferred to #724.",
+      "path": ".codex/agents/command-reviewer.toml",
+      "pr": 721,
+      "recorded_at": "2026-11-13T15:18:14+00:00",
+      "rule": "agent-tool-compatibility"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "ci-run-43446153560-2",
+      "line": 28,
+      "note": "Same Claude tool names copied by the converter. User accepted the risk; deferred to #724.",
+      "path": ".codex/agents/authority-reviewer.toml",
+      "pr": 721,
+      "recorded_at": "2026-11-13T15:18:14+00:00",
+      "rule": "tool-scoping"
     }
   ]
 }
