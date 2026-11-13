@@ -1,8 +1,8 @@
 #!/bin/bash
 # Stop guard: blocks the agent's turn from ending while the current worktree
 # is one `starting-work` locked to this session (per its own lock step) and
-# that worktree has uncommitted changes or commits not yet in the resolved
-# default branch. Exists because Claude Code's built-in worktree exit flow
+# that worktree has uncommitted changes or commits neither in the resolved
+# default branch nor pushed to the branch's origin upstream. Exists because Claude Code's built-in worktree exit flow
 # (EnterWorktree/ExitWorktree) can remove a session's bound worktree on exit
 # -- this hook makes sure nothing gets silently lost in that moment.
 #
@@ -92,6 +92,32 @@ if git rev-parse --verify --quiet "origin/$DEFAULT_BRANCH^{commit}" >/dev/null 2
   MERGES=$(git rev-list --merges "origin/$DEFAULT_BRANCH..HEAD" 2>/dev/null) || MERGES="merges-failed"
   if grep -q '^+' <<<"$CHERRY" || [ -n "$MERGES" ]; then
     UNMERGED=true
+  fi
+fi
+
+# Commits already pushed to the branch's origin upstream are safe: removing
+# the worktree cannot lose them. Only an upstream under refs/remotes/origin/
+# counts, the same repository the merged-PR check below is bound to, and the
+# branch's configured remote must itself be origin: a fork whose refspec maps
+# into refs/remotes/origin/, or a remote named origin/<x>, still resolves
+# there. A local branch or another remote as upstream keeps the warning. This
+# is a convenience check against accidental loss, not proof of a push: the
+# remote-tracking ref is a local ref, read from the last fetch or push (a
+# remote branch deleted since then still reads as pushed) and writable
+# locally. Accepted: removal keeps the local branch, and a merge-time deletion
+# is covered above.
+if [ "$UNMERGED" = true ]; then
+  BRANCH=$(git symbolic-ref --quiet --short HEAD 2>/dev/null) || BRANCH=""
+  BRANCH_REMOTE=""
+  [ -n "$BRANCH" ] && { BRANCH_REMOTE=$(git config --get "branch.$BRANCH.remote" 2>/dev/null) || BRANCH_REMOTE=""; }
+  UPSTREAM_REF=$(git rev-parse --symbolic-full-name '@{upstream}' 2>/dev/null) || UPSTREAM_REF=""
+  if [ "$BRANCH_REMOTE" = origin ] && [[ "$UPSTREAM_REF" == refs/remotes/origin/?* ]]; then
+    # Bounded like git cherry above; a timeout keeps the warning.
+    if [ "$HAS_TIMEOUT" = true ]; then
+      timeout -k 1 2 git merge-base --is-ancestor HEAD "$UPSTREAM_REF" 2>/dev/null && UNMERGED=false
+    else
+      git merge-base --is-ancestor HEAD "$UPSTREAM_REF" 2>/dev/null && UNMERGED=false
+    fi
   fi
 fi
 
