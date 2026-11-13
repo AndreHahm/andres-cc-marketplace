@@ -219,3 +219,90 @@ def test_merge_commit_in_range_keeps_warning_without_pr(setup):
     _git(wt, "merge", "--no-ff", "-m", "merge main", "origin/main", home=home)
     out = _run_guard(wt, home)
     assert json.loads(out)["decision"] == "block"
+
+
+# A pushed-but-unmerged branch: its commits are safe on origin, so removing the
+# worktree loses nothing. Only an upstream under refs/remotes/origin/ counts.
+
+
+def test_branch_pushed_to_origin_does_not_block(setup):
+    home, _clone, wt = setup
+    _commit(wt, "a.txt", "a\n", home)
+    _git(wt, "push", "-u", "origin", "feat", home=home)
+    assert _run_guard(wt, home) == ""
+
+
+def test_commit_after_push_blocks(setup):
+    home, _clone, wt = setup
+    _commit(wt, "a.txt", "a\n", home)
+    _git(wt, "push", "-u", "origin", "feat", home=home)
+    _commit(wt, "b.txt", "b\n", home)
+    out = _run_guard(wt, home)
+    assert json.loads(out)["decision"] == "block"
+    assert "commits not yet in main" in out
+
+
+def test_dirty_pushed_branch_blocks(setup):
+    home, _clone, wt = setup
+    _commit(wt, "a.txt", "a\n", home)
+    _git(wt, "push", "-u", "origin", "feat", home=home)
+    (wt / "scratch.txt").write_text("wip\n", encoding="utf-8")
+    out = _run_guard(wt, home)
+    assert json.loads(out)["decision"] == "block"
+    assert "uncommitted changes" in out
+
+
+def test_upstream_on_another_remote_blocks(setup, tmp_path):
+    home, _clone, wt = setup
+    fork = tmp_path / "fork.git"
+    _git(tmp_path, "init", "--bare", "-b", "main", str(fork), home=home)
+    _git(wt, "remote", "add", "fork", str(fork), home=home)
+    _commit(wt, "a.txt", "a\n", home)
+    _git(wt, "push", "-u", "fork", "feat", home=home)
+    out = _run_guard(wt, home)
+    assert json.loads(out)["decision"] == "block"
+
+
+def test_local_branch_upstream_blocks(setup):
+    home, _clone, wt = setup
+    _commit(wt, "a.txt", "a\n", home)
+    _git(wt, "branch", "backup", "HEAD", home=home)
+    _git(wt, "branch", "--set-upstream-to=backup", home=home)
+    out = _run_guard(wt, home)
+    assert json.loads(out)["decision"] == "block"
+
+
+def test_fork_mapped_into_origin_namespace_blocks(setup, tmp_path):
+    # A fork whose fetch refspec writes into refs/remotes/origin/ must not pass as origin.
+    home, _clone, wt = setup
+    fork = tmp_path / "fork.git"
+    _git(tmp_path, "init", "--bare", "-b", "main", str(fork), home=home)
+    _git(wt, "remote", "add", "fork", str(fork), home=home)
+    _git(wt, "config", "remote.fork.fetch", "+refs/heads/*:refs/remotes/origin/*", home=home)
+    _commit(wt, "a.txt", "a\n", home)
+    _git(wt, "push", "fork", "feat", home=home)
+    _git(wt, "fetch", "fork", home=home)
+    _git(wt, "config", "branch.feat.remote", "fork", home=home)
+    _git(wt, "config", "branch.feat.merge", "refs/heads/feat", home=home)
+    assert (
+        _git(wt, "rev-parse", "--symbolic-full-name", "@{upstream}", home=home)
+        == "refs/remotes/origin/feat"
+    )
+    out = _run_guard(wt, home)
+    assert json.loads(out)["decision"] == "block"
+
+
+def test_slashed_remote_name_under_origin_blocks(setup, tmp_path):
+    # A remote named origin/fork lands in refs/remotes/origin/fork/* by default.
+    home, _clone, wt = setup
+    fork = tmp_path / "fork.git"
+    _git(tmp_path, "init", "--bare", "-b", "main", str(fork), home=home)
+    _git(wt, "remote", "add", "origin/fork", str(fork), home=home)
+    _commit(wt, "a.txt", "a\n", home)
+    _git(wt, "push", "-u", "origin/fork", "feat", home=home)
+    assert (
+        _git(wt, "rev-parse", "--symbolic-full-name", "@{upstream}", home=home)
+        == "refs/remotes/origin/fork/feat"
+    )
+    out = _run_guard(wt, home)
+    assert json.loads(out)["decision"] == "block"
