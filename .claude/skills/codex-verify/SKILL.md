@@ -2,18 +2,21 @@
 name: codex-verify
 description: >-
   Verify a plan or document using Codex as independent reviewer with
-  PASS/FAIL verdict. Use when asked "codex verify", "verify this plan",
-  "review this doc for issues", or to resume a prior verification.
-  Not for open-ended investigation or deep-dive research on a
+  PASS/FAIL verdict. Not for open-ended investigation or deep-dive research on a
   topic/document — use codex-research for that. For validating Claude's
   own not-yet-written analysis or design (no document to point at), use
   codex-peer-review instead. Not for a full plan-validate-implement-review
   workflow that continues into code changes — use codex-plan-loop for
   that; codex-verify performs one PASS/FAIL check of an already-existing
   document and stops there, it never authors a plan itself or proceeds to
-  implementation. For one critical, security-relevant or uncertain step of
-  a plan that Claude is about to execute, use consulting-decision-model
-  instead; a routine, easily reversed step stays here.
+  implementation. A plan, document or single plan step the user asks to
+  have verified stays here, even a critical step Claude will execute later.
+  Claude's own check of one critical, security-relevant or uncertain step
+  it is about to execute, with no such request, goes to
+  consulting-decision-model instead.
+when_to_use: >-
+  Use when asked "codex verify", "verify this plan", "review this doc for
+  issues", or to resume a prior verification.
 argument-hint: "path/to/document.md [--model SLUG] [--effort LEVEL] [--persist] [--no-preview] [resume [follow-up]]"
 allowed-tools: ["Bash(node */codex-kit/scripts/codex-companion.mjs:*)", "Bash(mkdir:*)", "Bash(cat:*)", "Bash(sed:*)", "Bash(test:*)", "Bash(echo:*)", "Bash(printf:*)", "Bash(date:*)", "Bash(wc:*)", "Read", "Write", "AskUserQuestion"]
 ---
@@ -38,7 +41,8 @@ For code review use `/codex-kit:cdx-review`. For research, use the `codex-resear
 - "codex verify docs/my-plan.md", "verify this plan", "review this doc for issues": one PASS/FAIL check
   of a plan or document that already exists as a file.
 - `resume [follow-up]` against a document already sent this session.
-- A routine, easily reversed step of a plan, checked as part of that plan.
+- One step of a plan the user asks to have verified ("verify step 3 of plan.md"), critical or not,
+  even when Claude will execute it later.
 
 ## When NOT to Use
 
@@ -47,8 +51,9 @@ For code review use `/codex-kit:cdx-review`. For research, use the `codex-resear
 - A plan-validate-implement-review workflow that continues into code changes → `codex-plan-loop`;
   this skill never authors a plan or proceeds to implementation.
 - Finding a session ID rather than resuming one → `codex-session-lookup`.
-- One critical, security-relevant or uncertain step of a plan that Claude is about to execute →
-  decision-kit's `consulting-decision-model`.
+- Claude's own check, with no user request to verify it, of one critical, security-relevant or
+  uncertain step it is about to execute → decision-kit's `consulting-decision-model`. That check runs
+  when Claude executes the step, separately from any verification the user asked for here.
 - Code review → `/codex-kit:cdx-review`.
 
 ## Execution Contract
@@ -401,7 +406,7 @@ For the full shared gotchas list, read
 - Open-ended investigation or research on a topic/document → `codex-research`
 - A full plan-validate-implement-review workflow that continues into code changes → `codex-plan-loop`
 - Locating/finding a session ID rather than resuming one → `codex-session-lookup`
-- Checking one critical or uncertain step of a plan that Claude is about to execute → decision-kit's `consulting-decision-model`
+- Claude checking, unasked, one critical or uncertain step of a plan it is about to execute → decision-kit's `consulting-decision-model` ("verify step 3 of plan.md", asked by the user, stays here)
 
 **Concrete scenarios to check:**
 1. The document path doesn't exist or is empty → fails at Phase 1's `test -f`/`test -s` check, before ever touching Codex.

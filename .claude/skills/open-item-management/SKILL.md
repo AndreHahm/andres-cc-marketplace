@@ -46,8 +46,8 @@ a completed Linear Issue (including one Wave 2's `merge-to-completion` just rout
   source → `linear-work-management`.
 - Bulk or periodic collection of open items from `.claude/output` reports, GitHub issues and PR
   follow-ups, planned as batches and submitted to Linear → workledger-kit's `syncing-open-items`
-  (and `open-item-digest` for the digest). This skill dispositions one follow-up that starts from a
-  Notion Report or Decision, or from a completed Linear Issue.
+  (and `open-item-digest` for the digest). This skill dispositions the open follow-ups from one Notion
+  Report or Decision, or from one completed Linear Issue.
 
 See Testing & Validation below for the concrete trigger phrases this section summarizes.
 
