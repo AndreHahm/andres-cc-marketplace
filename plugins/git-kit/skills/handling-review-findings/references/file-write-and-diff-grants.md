@@ -117,9 +117,10 @@ HEAD` did not run fsmonitor.
    its own checks, would make that unnecessary.
 5. **Smaller gaps.** `GIT_NO_LAZY_FETCH` needs a newer git than 2.43.0 (the exact version is unverified), so
    a partial clone could still fetch; `--text` on a very large blob is bounded by the time limit, not by
-   memory; the process-group kill is POSIX-only (on Windows only git itself is killed; not run on a real
-   Windows host); and in this repository's own sessions the
-   pinned scripts resolve to the `.claude/scripts/` mirror inside the checkout, which a PR can change. Only
+   memory; on Windows the timeout ends git's job object, but a process git starts before it joins the
+   job stays outside it and survives the kill, and when the job cannot be set up only git itself is
+   killed (in both cases the bounded read still returns on time); and in this repository's own sessions
+   the pinned scripts resolve to the `.claude/scripts/` mirror inside the checkout, which a PR can change. Only
    `allowed-tools` is pinned by the smoke check: other frontmatter keys are not.
 
 ## Follow-up: the same fix in other skills (Issue #587)
