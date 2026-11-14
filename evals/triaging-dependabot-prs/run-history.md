@@ -153,3 +153,14 @@ suite). New eval 19: 5 of 5, against 1 of 5 for a baseline on the pre-fix skill 
 review-body finding and closed past a swapped thread. Author-graded from one simulated answer each. Evals 1 to 18
 were not re-run; evals 17 and 18 still name `--fields comments` in their expected output, which the fixed skill's
 `comments,reviews` read satisfies. A third finding, the merge-path re-check, stays deferred to #732.
+
+2026-11-14, iteration 23 (PR #733, Codex delta review on `f8d5626e`). One Major finding (`dependency-reviewer`,
+tool scope) was fixed: the review-finding stop offered to triage with `handling-review-findings`, which the skill
+has no grant to invoke and which works only on a checkout of the PR's own head. The stop now asks whether to hold
+the PR for triage or leave it out of the batch; on hold, the PR is recorded as pending triage and the user is told
+to check it out and run that skill there. New eval 20: 5 of 5, against 4 of 5 for a baseline on the pre-fix skill,
+which reached the same outcome by inference from `allowed-tools` but did not say to check out the PR.
+Author-graded from one simulated answer each. Evals 1 to 19 were not re-run; the expected outputs of evals 17 to
+19 were reworded to the hold-for-triage question, so their recorded runs were graded against the old wording. Separately,
+Codacy's one Security finding on the PR (`dangerous-subprocess-use-audit`, a fake `CompletedProcess` in
+`test_dependabot_pr_read.py`) was fixed by making the `ThreadRun` fake delegate to `FakeRun`; 44 of 44 tests pass.

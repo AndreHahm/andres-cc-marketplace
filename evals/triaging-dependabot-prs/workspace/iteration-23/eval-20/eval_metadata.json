@@ -1,0 +1,31 @@
+{
+  "eval_id": 20,
+  "skill_path": "plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md",
+  "assertions": [
+    {
+      "text": "PR #501: stops before Skill(merge-pr) and asks via AskUserQuestion whether to hold the PR for triage or leave it out of the batch",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "On the triage answer, does not invoke Skill(handling-review-findings), and gives the reason (no grant, or that skill needs a checkout of the PR's own head while this run is on main)",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Records #501 as pending triage and neither merges nor closes it in this run",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Tells the user to check out PR #501 and run handling-review-findings there, with a later run of this skill re-reading the PR",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Continues to PR #502 and reports #501 as pending triage in the wrap-up; no raw gh call",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    }
+  ]
+}
