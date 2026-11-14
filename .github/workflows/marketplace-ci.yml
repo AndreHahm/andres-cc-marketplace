@@ -113,7 +113,10 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # ratchet:actions/setup-python@v7.0.0
         with:
           python-version: "3.13"
-      - run: pip install uv
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # ratchet:astral-sh/setup-uv@v10.3.3
+        with:
+          version: "0.12.21"
+          enable-cache: "false"
 
       # check-pr runs below with GH_TOKEN, so it and its dependency install
       # must not come from the PR's own untrusted checkout -- the same
@@ -314,7 +317,10 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # ratchet:actions/setup-python@v7.0.0
         with:
           python-version: "3.13"
-      - run: pip install uv
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # ratchet:astral-sh/setup-uv@v10.3.3
+        with:
+          version: "0.12.21"
+          enable-cache: "false"
       - run: uv sync --group dev
       - run: uv run ruff format --check scripts tests
       - run: uv run ruff check scripts tests
@@ -461,7 +467,10 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # ratchet:actions/setup-python@v7.0.0
         with:
           python-version: "3.13"
-      - run: pip install uv
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # ratchet:astral-sh/setup-uv@v10.3.3
+        with:
+          version: "0.12.21"
+          enable-cache: "false"
       - run: uv sync --group dev
       - run: uv run python -m scripts.marketplace_ci check-all --json-output marketplace-check.json
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # ratchet:actions/upload-artifact@v7.0.1
@@ -556,7 +565,10 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # ratchet:actions/setup-python@v7.0.0
         with:
           python-version: "3.13"
-      - run: pip install uv
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # ratchet:astral-sh/setup-uv@v10.3.3
+        with:
+          version: "0.12.21"
+          enable-cache: "false"
 
       # This job's own enforcement logic (scripts/marketplace_ci/__main__.py's
       # check-prefixes/check-prefix-permanence handlers, prefix_check.py's
@@ -861,7 +873,10 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # ratchet:actions/setup-python@v7.0.0
         with:
           python-version: "3.13"
-      - run: pip install uv
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # ratchet:astral-sh/setup-uv@v10.3.3
+        with:
+          version: "0.12.21"
+          enable-cache: "false"
 
       # The PR's diff must never be scored using decision code or a
       # dependency spec the PR itself could have edited -- same
@@ -1311,7 +1326,10 @@ jobs:
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # ratchet:actions/setup-python@v7.0.0
         with:
           python-version: "3.13"
-      - run: pip install uv
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # ratchet:astral-sh/setup-uv@v10.3.3
+        with:
+          version: "0.12.21"
+          enable-cache: "false"
 
       # This job's own run-codex-review step below is the primary review
       # gate itself, not just a bypass path -- publish only checks this
@@ -1790,7 +1808,10 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # ratchet:actions/setup-python@v7.0.0
         with:
           python-version: "3.13"
-      - run: pip install uv
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # ratchet:astral-sh/setup-uv@v10.3.3
+        with:
+          version: "0.12.21"
+          enable-cache: "false"
 
       # This job's own bypass check below runs resolve-attested-actor/
       # check-bypass from scripts/marketplace_ci/review.py -- the same
