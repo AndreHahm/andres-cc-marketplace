@@ -1,0 +1,41 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4572708897",
+      "line": 36,
+      "note": "Stop now reads pr-view --fields comments,reviews; reviews added to the read script allowlist (f8d5626e).",
+      "path": "plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md",
+      "pr": 733,
+      "recorded_at": "2026-11-14T09:12:01+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4572708900",
+      "line": 40,
+      "note": "Final re-read before a real close or ignore now applies the same stop as the first check (f8d5626e).",
+      "path": "plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md",
+      "pr": 733,
+      "recorded_at": "2026-11-14T09:12:01+00:00"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "4572708905",
+      "line": 43,
+      "note": "Merge-path re-check belongs in merge-pr; owner kept the disclosed deferral to issue 732. Major, needs risk acceptance before merge.",
+      "path": "plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md",
+      "pr": 733,
+      "recorded_at": "2026-11-14T09:12:01+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-delta-f8d5626e-tool-scope",
+      "line": 38,
+      "note": "Codex delta review (dependency-reviewer, artifact only): stop offered an ungranted handoff; now holds the PR for triage and never dispatches handling-review-findings (2b8d8735).",
+      "path": "plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md",
+      "pr": 733,
+      "recorded_at": "2026-11-14T09:44:07+00:00",
+      "rule": "tool-scope"
+    }
+  ]
+}
