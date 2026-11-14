@@ -38,6 +38,33 @@
     },
     {
       "disposition": "fixed",
+      "finding": "4568003307",
+      "line": 49,
+      "note": "Inline copy of the run-4 security finding; fixed in 00f0a472, thread replied and resolved.",
+      "path": "plugins/decision-kit/skills/consulting-decision-model/SKILL.md",
+      "pr": 726,
+      "recorded_at": "2026-11-14T06:51:34+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4571948380",
+      "line": 36,
+      "note": "Stop narrowed to the PR comments the reader can see; the review-thread read is issue 730.",
+      "path": "plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md",
+      "pr": 726,
+      "recorded_at": "2026-11-14T06:51:34+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4571948459",
+      "line": 45,
+      "note": "States that a step request verifies the whole document; step-scoped verification is issue 731.",
+      "path": "plugins/codex-kit/skills/codex-verify/SKILL.md",
+      "pr": 726,
+      "recorded_at": "2026-11-14T06:51:34+00:00"
+    },
+    {
+      "disposition": "fixed",
       "finding": "ci-run-43479615859-1",
       "line": 45,
       "note": "Redirect to consulting-decision-model limited to critical, security-relevant or uncertain actions.",
@@ -205,6 +232,70 @@
       "pr": 726,
       "recorded_at": "2026-11-13T19:57:26+00:00",
       "rule": "reference-chain"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-run-43497251664-1",
+      "line": 48,
+      "note": "Mixed request now one-way: this skill triages only the threads and never routes back.",
+      "path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+      "pr": 726,
+      "recorded_at": "2026-11-14T06:26:38+00:00",
+      "rule": "dependency-graph"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "claude-delta-f3f30230-1",
+      "line": 135,
+      "note": "Routing bullet now says when decision-kit is installed, with the fallback.",
+      "path": "plugins/codex-kit/skills/codex-peer-review/SKILL.md",
+      "pr": 726,
+      "recorded_at": "2026-11-14T06:26:38+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "claude-delta-f3f30230-2",
+      "line": 410,
+      "note": "Routing bullet now says when decision-kit is installed; execution-time check noted.",
+      "path": "plugins/codex-kit/skills/codex-verify/SKILL.md",
+      "pr": 726,
+      "recorded_at": "2026-11-14T06:26:38+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "claude-delta-f3f30230-3",
+      "line": 478,
+      "note": "Pointer now names decision-kit and applies only if installed.",
+      "path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+      "pr": 726,
+      "recorded_at": "2026-11-14T06:26:38+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "claude-delta-f3f30230-4",
+      "line": 143,
+      "note": "The earlier note is now accurate: the three remaining pointers were qualified.",
+      "path": ".claude/review-outcomes/pr-726.json",
+      "pr": 726,
+      "recorded_at": "2026-11-14T06:26:38+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "claude-delta-f3f30230-5",
+      "line": 49,
+      "note": "A verified plan no longer replaces the execution-time consult, except under the first exclusion.",
+      "path": "plugins/decision-kit/skills/consulting-decision-model/SKILL.md",
+      "pr": 726,
+      "recorded_at": "2026-11-14T06:26:38+00:00"
+    },
+    {
+      "disposition": "ignored",
+      "finding": "claude-delta-f3f30230-6",
+      "line": 10,
+      "note": "Repeat of an informational note already ignored; read-only registries the scripts query.",
+      "path": ".claude/plugin-rulebook.config.json",
+      "pr": 726,
+      "recorded_at": "2026-11-14T06:26:38+00:00"
     },
     {
       "disposition": "false_positive",
