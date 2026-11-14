@@ -146,11 +146,20 @@
       "files": [
         "outputs/answer.md"
       ]
+    },
+    {
+      "id": 17,
+      "name": "Combined request: unresolved inline thread stops close and merge",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT run any `gh`/`git`/shell command, post any comment, run any script or invoke any other skill -- describe exactly what you would do instead, and write your answer to outputs/answer.md.\n\nYou are following the `triaging-dependabot-prs` skill (plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md and its references). The user asked: \"triage the dependabot PRs and the review findings on them\". The plan from step 5 is approved and you are in the step 6 loop. Two PRs remain, both freshly re-read at 6.1 as OPEN and passing every check:\n- PR #201 is recommended close. `pr-view 201 --fields comments` returns no reviewer comment. `pr-threads 201` returns `count` 2, `unresolved_count` 1, and `unresolved` [{path: \"uv.lock\", line: 40, author: \"devin-ai-integration[bot]\"}].\n- PR #202 is recommended merge. Its required checks all pass. `pr-view 202 --fields comments` returns no reviewer comment. `pr-threads 202` returns `count` 3, `unresolved_count` 0.\nDescribe, for each PR in order, every read, stop and question you would make before any close or merge, and what you report.",
+      "expected_output": "PR #201: immediately before the close question, reads pr-threads 201 and pr-view 201 --fields comments; unresolved_count 1 (an inline thread on uv.lock by Devin) triggers the stop: asks via AskUserQuestion whether to triage the findings first with handling-review-findings or leave PR #201 out of this batch, and asks no close question and runs no close (dry run or real) before that answer. Does not treat the absence of reviewer comments as clearing the PR. PR #202: immediately before Skill(merge-pr), reads pr-threads 202 and its comments; unresolved_count 0 and no reviewer comment, so no stop; reports 3 resolved threads; hands the merge to merge-pr with no merge question of its own. No raw gh call, no GraphQL call outside the read script.",
+      "files": [
+        "outputs/answer.md"
+      ]
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 69,
-    "declared_scenarios_covered": 26,
+    "declared_scenarios_total": 70,
+    "declared_scenarios_covered": 27,
     "uncovered": [
       "Scenario 1: No dependabot PRs open",
       "Scenario 2: List truncation",

@@ -387,6 +387,150 @@ class PrReads(unittest.TestCase):
                     self.assertNotIn(word, call, call)
 
 
+def thread_page(nodes, next_cursor=None):
+    """One reviewThreads GraphQL response; `nodes` is a list of (resolved, path, line, author)."""
+    return json.dumps(
+        {
+            "data": {
+                "repository": {
+                    "pullRequest": {
+                        "reviewThreads": {
+                            "pageInfo": {
+                                "hasNextPage": next_cursor is not None,
+                                "endCursor": next_cursor,
+                            },
+                            "nodes": [
+                                {
+                                    "isResolved": resolved,
+                                    "path": path,
+                                    "line": line,
+                                    "comments": {
+                                        "nodes": [{"author": {"login": author}}] if author else []
+                                    },
+                                }
+                                for resolved, path, line, author in nodes
+                            ],
+                        }
+                    }
+                }
+            }
+        }
+    )
+
+
+class ThreadRun(FakeRun):
+    """Answers each `gh api graphql` call with the next queued page."""
+
+    def __init__(self, pages, rc=0):
+        super().__init__()
+        self.pages = list(pages)
+        self.rc = rc
+
+    def __call__(self, argv, **kwargs):
+        if argv[1:3] == ["api", "graphql"]:
+            self.calls.append((list(argv), kwargs))
+            return subprocess.CompletedProcess(argv, self.rc, stdout=self.pages.pop(0), stderr="")
+        return super().__call__(argv, **kwargs)
+
+    def graphql_calls(self):
+        return [c for c, _ in self.calls if c[1:3] == ["api", "graphql"]]
+
+
+def field(call, flag, key):
+    """The value of `flag key=value` in a gh argv, or None when it is absent."""
+    for i, word in enumerate(call[:-1]):
+        if word == flag and call[i + 1].startswith(key + "="):
+            return call[i + 1][len(key) + 1 :]
+    return None
+
+
+class PrThreads(unittest.TestCase):
+    """pr-threads (#730): every review thread page, counted, with a fixed read-only document."""
+
+    def test_counts_unresolved_across_pages_and_omits_cursor_on_the_first_page(self):
+        fake = ThreadRun(
+            [
+                thread_page([(True, "a.py", 1, "devin-ai-integration[bot]")], next_cursor="Y3Vy=="),
+                thread_page(
+                    [(False, "b.md", None, "chatgpt-codex-connector[bot]"), (False, "c", 3, None)]
+                ),
+            ]
+        )
+        code, out = run_main(["pr-threads", "482"], fake)
+        self.assertEqual(code, 0, out)
+        self.assertEqual((out["count"], out["unresolved_count"]), (3, 2))
+        self.assertEqual(
+            out["unresolved"],
+            [
+                {
+                    "resolved": False,
+                    "path": "b.md",
+                    "line": None,
+                    "author": "chatgpt-codex-connector[bot]",
+                },
+                {"resolved": False, "path": "c", "line": 3, "author": None},
+            ],
+        )
+        first, second = fake.graphql_calls()
+        # #312: a literal cursor=null on the first page silently returns zero threads.
+        self.assertIsNone(field(first, "-f", "cursor"))
+        self.assertIsNone(field(first, "-F", "cursor"))
+        self.assertEqual(field(second, "-f", "cursor"), "Y3Vy==")
+        for call in (first, second):
+            self.assertEqual(call[:5], [GH, "api", "graphql", "--hostname", "github.com"])
+            self.assertEqual(field(call, "-f", "owner"), "OwnerX")
+            self.assertEqual(field(call, "-f", "name"), "repo-y")
+            self.assertEqual(field(call, "-F", "number"), "482")
+            self.assertEqual(field(call, "-f", "query"), read_module.THREADS_QUERY)
+
+    def test_query_is_fixed_and_holds_no_mutation(self):
+        self.assertNotIn("mutation", read_module.THREADS_QUERY)
+        self.assertTrue(read_module.THREADS_QUERY.startswith("query("))
+        fake = ThreadRun([thread_page([])])
+        code, out = run_main(["pr-threads", "7"], fake)
+        self.assertEqual((code, out["count"], out["unresolved"]), (0, 0, []), out)
+        (call,) = fake.graphql_calls()
+        # Only owner, name and query are strings; only the digits-checked number is typed.
+        self.assertEqual([w for w in call if w == "-F"], ["-F"])
+        self.assertNotIn("--input", call)
+
+    def test_bad_pr_numbers_are_refused_before_any_call(self):
+        for pr in ("0", "-1", "12a", "1 2", "٤"):
+            with self.subTest(pr=pr):
+                fake = ThreadRun([])
+                code, out = run_main(["pr-threads", pr], fake)
+                self.assertEqual(code, 2, out)
+                self.assertEqual(fake.calls, [])
+
+    def test_failures_and_bad_shapes_are_tool_errors(self):
+        no_pr = json.dumps({"data": {"repository": {"pullRequest": None}}})
+        errors = json.dumps({"data": None, "errors": [{"message": "x"}]})
+        bad_resolved = thread_page([("no", "a", 1, "x")])
+        bad_cursor = thread_page([(True, "a", 1, "x")], next_cursor="bad cursor!")
+        cases = [
+            ThreadRun([thread_page([])], rc=1),
+            ThreadRun(["not json"]),
+            ThreadRun([no_pr]),
+            ThreadRun([errors]),
+            ThreadRun([bad_resolved]),
+            ThreadRun([bad_cursor]),
+            ThreadRun([json.dumps([])]),
+        ]
+        for fake in cases:
+            code, out = run_main(["pr-threads", "9"], fake)
+            self.assertEqual(code, 4, out)
+            self.assertFalse(out["ok"])
+            self.assertNotIn("unresolved", out)
+
+    def test_page_cap_is_a_tool_error_not_a_partial_count(self):
+        cap = read_module.MAX_THREAD_PAGES
+        fake = ThreadRun([thread_page([(False, "a", 1, "x")], next_cursor="c") for _ in range(cap)])
+        code, out = run_main(["pr-threads", "9"], fake)
+        self.assertEqual(code, 4, out)
+        self.assertNotIn("unresolved_count", out)
+        self.assertEqual(len(fake.graphql_calls()), cap)
+
+
 class PnpmLock(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()

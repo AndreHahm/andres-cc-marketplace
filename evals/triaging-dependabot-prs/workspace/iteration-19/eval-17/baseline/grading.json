@@ -1,0 +1,1 @@
+{"eval_id": 17, "passed": 2, "total": 5, "grader": "author", "baseline": true, "failed": [1, 2, 4], "note": "Pre-change skill (HEAD ccc79af7). Its prompt gave the thread facts in prose, because that skill has no pr-threads read. It disclosed the blind spot but went on to the close question; it passed assertions 3 and 5."}

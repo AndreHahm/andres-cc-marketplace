@@ -380,12 +380,13 @@ def check_no_gh_pr_read_grants():
     used = without_boundaries(body) + "\n" + "\n".join(reference_texts().values())
     problems += [f"raw gh pr command: {s[:50]}" for s in re.findall(r"`(gh pr [^`]*)`", used)]
     script = read(SKILL_DIR / "scripts" / "dependabot_pr_read.py")
-    for sub in ("pr-list", "pr-view", "pr-checks", "files", "commits", "uv-lock", "pnpm-lock"):
+    subs = ("pr-list", "pr-view", "pr-checks", "pr-threads", "files", "commits", "uv-lock")
+    for sub in subs + ("pnpm-lock",):
         if f'"{sub}"' not in script:
             problems.append(f"read script has no {sub} subcommand")
     if problems:
         return False, "; ".join(problems)
-    return True, "no gh grant or raw gh pr command; the read script has all seven subcommands"
+    return True, "no gh grant or raw gh pr command; the read script has all eight subcommands"
 
 
 def check_real_run_form_stays_ungranted():

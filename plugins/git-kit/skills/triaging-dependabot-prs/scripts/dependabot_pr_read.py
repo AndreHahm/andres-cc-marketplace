@@ -2,21 +2,27 @@
 """Read-only GitHub lookups for triaging-dependabot-prs, in place of raw `gh` read grants.
 
 The skill needs these reads: the open Dependabot PR list, one PR's fields, a PR's required checks,
-a PR's changed files and commits, and a `uv.lock` or `pnpm-lock.yaml` file at a ref. A raw `gh api` or `gh pr`
+a PR's review threads, a PR's changed files and commits, and a `uv.lock` or `pnpm-lock.yaml` file at
+a ref. A raw `gh api` or `gh pr`
 grant cannot be narrowed to those (a prefix grant lets any trailing argument through), so this
 script does exactly these things and nothing else, with the repository, the PR number and the
 JSON fields checked in code. It has no code path that posts, closes, edits or deletes anything on
 GitHub.
 
-`gh` and `git` are run by absolute path with an argument list (no shell). `gh api` always gets
---method GET and --hostname github.com, and `gh pr` always gets `-R github.com/<repo>`, against this
-checkout's own `origin` repository; the environment passed to both has GH_HOST, GH_REPO and the
-enterprise token variables removed.
+`gh` and `git` are run by absolute path with an argument list (no shell). `gh api` REST calls always
+get --method GET and --hostname github.com, and `gh pr` always gets `-R github.com/<repo>`, against
+this checkout's own `origin` repository; the environment passed to both has GH_HOST, GH_REPO and the
+enterprise token variables removed. The one GraphQL call (`pr-threads`) is a POST, as every
+GraphQL request is, but sends only the fixed THREADS_QUERY document, which holds no mutation; the
+owner, name and cursor go in as `-f` strings and the PR number as `-F`. git-guard-raw-pr-review.sh
+never sees this call (the command line names only this script), which is acceptable because no
+caller input can change the document.
 
 Usage:
   dependabot_pr_read.py pr-list
   dependabot_pr_read.py pr-view PR_NUMBER --fields FIELD[,FIELD...]
   dependabot_pr_read.py pr-checks PR_NUMBER
+  dependabot_pr_read.py pr-threads PR_NUMBER
   dependabot_pr_read.py files PR_NUMBER
   dependabot_pr_read.py commits PR_NUMBER
   dependabot_pr_read.py uv-lock --role base|head --ref REF --dir DIR
@@ -25,10 +31,13 @@ Usage:
 true when that page is full. `pr-view` returns only the requested fields, each from a fixed
 allowlist.
 `pr-checks` returns the required checks as name/bucket/elapsed/link rows (an empty list when none
-are reported). `files` and `commits` print a compact summary of the first page (100 entries);
-"truncated" is true when that page is full. `uv-lock` writes the file only to DIR/base-uv.lock or
-DIR/head-uv.lock (`pnpm-lock`: DIR/base-pnpm-lock.yaml or DIR/head-pnpm-lock.yaml; DIR must be an existing absolute directory inside the system temp directory; the
-target must not be a symlink; at most 8 MiB).
+are reported). `pr-threads` reads every page of the PR's review threads (at most 1000, else exit 4)
+and returns `count`, `unresolved_count` and `unresolved` (path, line and first-comment author of
+each unresolved thread; no comment text). `files` and `commits` print a compact summary of the
+first page (100 entries); "truncated" is true when that page is full. `uv-lock` writes the file
+only to DIR/base-uv.lock or DIR/head-uv.lock (`pnpm-lock`: DIR/base-pnpm-lock.yaml or
+DIR/head-pnpm-lock.yaml; DIR must be an existing absolute directory inside the system temp
+directory; the target must not be a symlink; at most 8 MiB).
 Prints one JSON object with an "ok" field. Exit 0 = done, 2 = bad arguments, 4 = `gh` or `git`
 failed or was unavailable, or the file could not be written.
 """
@@ -303,12 +312,79 @@ def pr_checks(run, gh, repo, pr):
     return {"count": len(rows), "items": rows}
 
 
+# A fixed read-only document: no caller input reaches it, and it holds no mutation.
+THREADS_QUERY = (
+    "query($owner: String!, $name: String!, $number: Int!, $cursor: String) {"
+    " repository(owner: $owner, name: $name) { pullRequest(number: $number) {"
+    " reviewThreads(first: 100, after: $cursor) { pageInfo { hasNextPage endCursor }"
+    " nodes { isResolved path line comments(first: 1) { nodes { author { login } } } } } } } }"
+)
+CURSOR_RE = re.compile(r"[A-Za-z0-9+/=_-]{1,200}")
+MAX_THREAD_PAGES = 10
+
+
+def _thread_page(run, gh, repo, pr, cursor):
+    """One page of a PR's review threads; the first page sends no cursor at all (see #312)."""
+    owner, name = repo.split("/", 1)
+    argv = [gh, "api", "graphql", "--hostname", HOST, "-f", f"owner={owner}", "-f", f"name={name}"]
+    argv += ["-F", f"number={pr}", "-f", f"query={THREADS_QUERY}"]
+    if cursor is not None:
+        argv += ["-f", f"cursor={cursor}"]
+    done = _run(run, argv)
+    if done.returncode != 0:
+        raise Refusal(f"gh api graphql reviewThreads for PR {pr} failed", EXIT_TOOL)
+    try:
+        data = json.loads(done.stdout)
+        if data.get("errors"):
+            raise ValueError("GraphQL errors")
+        page = data["data"]["repository"]["pullRequest"]["reviewThreads"]  # a null PR: TypeError
+        info, nodes = page["pageInfo"], page["nodes"]
+        if not isinstance(nodes, list) or not isinstance(info["hasNextPage"], bool):
+            raise TypeError("unexpected page")
+        threads = []
+        for node in nodes:
+            if not isinstance(node["isResolved"], bool):
+                raise TypeError("isResolved is not a boolean")
+            first = node["comments"]["nodes"]
+            author = ((first[0].get("author") or {}).get("login")) if first else None
+            threads.append(
+                {
+                    "resolved": node["isResolved"],
+                    "path": node["path"],
+                    "line": node["line"],
+                    "author": author,
+                }
+            )
+        end = info["endCursor"]
+        if info["hasNextPage"] and not (isinstance(end, str) and CURSOR_RE.fullmatch(end)):
+            raise TypeError("unexpected endCursor")
+    except (ValueError, KeyError, TypeError, AttributeError, IndexError) as exc:
+        raise Refusal(
+            f"gh api graphql reviewThreads for PR {pr} returned an unexpected shape", EXIT_TOOL
+        ) from exc
+    return threads, (end if info["hasNextPage"] else None)
+
+
+def pr_threads(run, gh, repo, pr):
+    """Every review thread of a PR (all pages), with the unresolved ones listed."""
+    threads, cursor = [], None
+    for _ in range(MAX_THREAD_PAGES):
+        page, cursor = _thread_page(run, gh, repo, pr, cursor)
+        threads += page
+        if cursor is None:
+            break
+    else:
+        raise Refusal(f"PR {pr} has more than {MAX_THREAD_PAGES * 100} review threads", EXIT_TOOL)
+    unresolved = [t for t in threads if not t["resolved"]]
+    return {"count": len(threads), "unresolved_count": len(unresolved), "unresolved": unresolved}
+
+
 def parse_args(argv):
     """Parse the command line; argparse's own errors exit 2 with no JSON, as documented."""
     parser = argparse.ArgumentParser(description="Read-only Dependabot PR lookups.")
     sub = parser.add_subparsers(dest="kind", required=True)
     sub.add_parser("pr-list")
-    for kind in ("files", "commits", "pr-checks"):
+    for kind in ("files", "commits", "pr-checks", "pr-threads"):
         sub.add_parser(kind).add_argument("pr_number")
     view = sub.add_parser("pr-view")
     view.add_argument("pr_number")
@@ -345,6 +421,9 @@ def main(argv=None, run=subprocess.run, which=shutil.which):
         elif args.kind == "pr-checks":
             result["pr"] = args.pr_number
             result.update(pr_checks(run, gh, repo, args.pr_number))
+        elif args.kind == "pr-threads":
+            result["pr"] = args.pr_number
+            result.update(pr_threads(run, gh, repo, args.pr_number))
         else:
             result["pr"] = args.pr_number
             result.update(list_page(run, gh, repo, args.kind, args.pr_number))
