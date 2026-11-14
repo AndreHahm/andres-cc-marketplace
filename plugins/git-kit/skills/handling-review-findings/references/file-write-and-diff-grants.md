@@ -41,7 +41,8 @@ HEAD` did not run fsmonitor.
   repository (the nearest ancestor of the starting directory holding a `.git` entry, found without running
   git; a git under that root, a home-directory dotfiles repository included, is refused with exit 2), output
   read under a 1,000,000-byte cap, a 60-second limit enforced by a timer thread that stops git's whole
-  process group (so it holds without `SIGALRM` and a child that keeps the pipe open cannot outlast it),
+  process group on POSIX or its job object on Windows, with the read itself bounded too (so it holds
+  without `SIGALRM` and a child that keeps the pipe open cannot outlast it),
   and no echo of git's own error text. A tree or blob id is refused as `--base`, and an empty diff exits 2.
 - **It cannot show an uncommitted fix**, so the self-review of an uncommitted fix (the usual case) reads the
   agent's own edits and the changed files (`fix-self-review.md` 4c). That review is weaker than a diff: it

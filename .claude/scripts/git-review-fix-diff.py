@@ -19,8 +19,9 @@ git binary is an absolute path from `PATH` that is not inside the repository (th
 of the starting directory holding a `.git` entry, found without running git; a git installed under
 that root, a home-directory dotfiles repository included, is refused), the environment passed to
 it is an allowlist, global and system configuration are switched off, a run is stopped after 60
-seconds with its whole process group, and git's own error text is never echoed (it can quote
-attacker-chosen names).
+seconds with everything it started (its process group on POSIX, its job object on Windows) and
+the call returns within a few seconds of that even if a process escaped the kill, and git's own
+error text is never echoed (it can quote attacker-chosen names).
 
 Exit codes: 0 a non-empty diff was printed, 2 it could not be shown (not in a repository, an unknown
 commit or one that is not a commit, an empty diff, git not found or found inside the repository, an
@@ -52,6 +53,8 @@ from pathlib import Path
 _OBJECT_ID = re.compile(r"[0-9a-f]{40}|[0-9a-f]{64}")
 _MAX_BYTES = 1_000_000
 _TIMEOUT_SECONDS = 60
+# How long past the limit to wait for the read once git has been killed, before giving up on it.
+_KILL_GRACE_SECONDS = 5
 # The only inherited variables git is given: locale and time zone. Everything else (GIT_DIR,
 # GIT_CONFIG_*, GIT_TRACE*, GIT_EXEC_PATH, GIT_SSH*, HOME, XDG_CONFIG_HOME, PAGER, ...) is dropped.
 _KEEP_ENV = ("LANG", "LC_ALL", "LC_CTYPE", "TZ")
@@ -98,13 +101,70 @@ def _git_env(git: str) -> dict[str, str]:
     return env
 
 
-def _kill(proc: subprocess.Popen) -> None:
-    """Stop git and anything it started: a child can hold the output pipe open after git is gone."""
+def _windows_job(pid: int) -> int | None:
+    """A Windows job object holding process `pid`, so a kill also reaches every process it starts.
+
+    A process `pid` starts before the assignment below stays outside the job; the caller's bounded
+    wait still returns on time then. None off Windows, or when the job cannot be set up."""
+    if sys.platform != "win32":
+        return None
+    import ctypes
+    from ctypes import wintypes
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.CreateJobObjectW.restype = wintypes.HANDLE
+    kernel32.CreateJobObjectW.argtypes = (ctypes.c_void_p, wintypes.LPCWSTR)
+    kernel32.OpenProcess.restype = wintypes.HANDLE
+    kernel32.OpenProcess.argtypes = (wintypes.DWORD, wintypes.BOOL, wintypes.DWORD)
+    kernel32.AssignProcessToJobObject.argtypes = (wintypes.HANDLE, wintypes.HANDLE)
+    kernel32.CloseHandle.argtypes = (wintypes.HANDLE,)
+    job = kernel32.CreateJobObjectW(None, None)
+    if not job:
+        return None
+    process = kernel32.OpenProcess(0x0101, False, pid)  # PROCESS_SET_QUOTA | PROCESS_TERMINATE
+    assigned = bool(process) and bool(kernel32.AssignProcessToJobObject(job, process))
+    if process:
+        kernel32.CloseHandle(process)
+    if not assigned:
+        kernel32.CloseHandle(job)
+        return None
+    return job
+
+
+def _kill_windows_job(job: int | None) -> None:
+    """End every process in a job from `_windows_job`; the job stays open."""
+    if sys.platform != "win32" or job is None:
+        return
+    import ctypes
+    from ctypes import wintypes
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.TerminateJobObject.argtypes = (wintypes.HANDLE, wintypes.UINT)
+    kernel32.TerminateJobObject(job, 1)
+
+
+def _close_windows_job(job: int | None) -> None:
+    """Close a job from `_windows_job`; processes still in it keep running."""
+    if sys.platform != "win32" or job is None:
+        return
+    import ctypes
+    from ctypes import wintypes
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.CloseHandle.argtypes = (wintypes.HANDLE,)
+    kernel32.CloseHandle(job)
+
+
+def _kill(proc: subprocess.Popen, job: int | None) -> None:
+    """Stop git and anything it started: a child can hold the output pipe open after git is gone.
+
+    POSIX signals git's process group; Windows ends git's job object (see `_windows_job`)."""
     try:
-        if hasattr(os, "killpg"):
+        if sys.platform != "win32" and hasattr(os, "killpg"):  # the platform check is for ty
             os.killpg(proc.pid, signal.SIGKILL)
-        else:
-            proc.kill()
+            return
+        _kill_windows_job(job)
+        proc.kill()  # git itself, also when the job could not be set up
     except OSError:
         pass  # already gone
 
@@ -141,21 +201,29 @@ def _show(git: str, base: str) -> bytes:
         stderr=subprocess.DEVNULL,
         start_new_session=hasattr(os, "killpg"),  # its own process group, so _kill reaches children
     )
+    job = _windows_job(proc.pid)  # Windows has no process group: a job object plays its role
     expired = threading.Event()
 
     def _expire() -> None:
         expired.set()
-        _kill(proc)
+        _kill(proc, job)
 
     # A timer thread, not SIGALRM, so the limit also holds where SIGALRM does not exist.
     timer = threading.Timer(_TIMEOUT_SECONDS, _expire)
     timer.daemon = True
+    # The read runs in its own thread and is waited for with a limit: a process that escaped the
+    # kill can hold the pipe open, and a blocking read here would then outlast the time limit.
+    assert proc.stdout is not None
+    stdout = proc.stdout
+    read: list[bytes] = []
+    reader = threading.Thread(target=lambda: read.append(stdout.read(_MAX_BYTES + 1)), daemon=True)
     timer.start()
+    reader.start()
     try:
-        assert proc.stdout is not None
-        out = proc.stdout.read(_MAX_BYTES + 1)
-        if expired.is_set():
+        reader.join(_TIMEOUT_SECONDS + _KILL_GRACE_SECONDS)
+        if expired.is_set() or not read:
             raise TimeoutError
+        out = read[0]
         if len(out) > _MAX_BYTES:
             raise OverflowError
         status = proc.wait()
@@ -166,9 +234,11 @@ def _show(git: str, base: str) -> bytes:
         return out
     finally:
         timer.cancel()
+        timer.join()  # a running _expire must finish before the job is closed under it
         if proc.poll() is None:  # never signal a group whose leader has already been reaped
-            _kill(proc)
+            _kill(proc, job)
         proc.wait()
+        _close_windows_job(job)
 
 
 def main(argv: list[str] | None = None) -> int:

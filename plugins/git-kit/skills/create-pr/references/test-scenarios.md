@@ -111,8 +111,8 @@ line-budget threshold. See `SKILL.md`'s own "Verify this skill activates on/does
 - Session cwd is a subdirectory of the checkout → the script resolves the repo root and still runs
 - Egress question is asked again on a re-run after a fix, not only on the first run
 - `--output` pointing inside the checkout → refused with exit 2 (treated as "could not run"), never written
-- A timed-out run → on POSIX the whole process group is killed, so no `codex` process lingers; on Windows the tree is killed with
-  `taskkill /F /T` and the wait for the pipes is bounded, so a surviving descendant cannot hang the run
+- A timed-out run → on POSIX the whole process group is killed, so no `codex` process lingers; on Windows the run's job object is
+  ended and the wait for the pipes is bounded, so a surviving descendant cannot hang the run
 - `CLAUDE_PLUGIN_ROOT` empty (this repository's own sessions) → step 4.5 runs `.claude/scripts/git-codex-parity-review.py`
   from the checkout root, matching the second grant, instead of failing with exit 127
 - A stalled `git fetch` / `gh` / `codex --version` → bounded by a 60 s timeout, then a warning or exit 2, never a hang

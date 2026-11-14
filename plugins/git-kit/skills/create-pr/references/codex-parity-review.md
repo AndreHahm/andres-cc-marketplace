@@ -73,8 +73,8 @@ alongside `cross-model-review`.
   A branch that changes `.codex/config.toml`, which Codex reads from the checkout, gets no fallback.
 - Ten minutes or more per run. The reviewers read the working tree locally and send the diff and any files
   they read to OpenAI under the user's Codex account (hence a separate confirmation on every run).
-- On timeout the whole process group (`uv`, `node`, `codex`) is killed (POSIX), or the whole tree via `taskkill /F /T` (Windows, not exercised on a real Windows host); the wait
-  for the pipes to close afterwards is bounded.
+- On timeout the whole process group (`uv`, `node`, `codex`) is killed (POSIX), or every process in the run's Windows job
+  object (#657); the wait for the pipes to close afterwards is bounded, so a process that left the job cannot hang the run.
 - The wrapper is a working-tree script like any other (tests, hooks): a branch can edit it, and the Tier-1
   warning covers only CI's dispatch files. Treat a clean result as advisory, not authoritative.
 - Parity is best effort: reviewer output varies between runs and a local Codex version can differ from CI's.
