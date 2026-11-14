@@ -28,8 +28,9 @@ jobs:
       # trust it only when this job succeeded.
       skip_python_quality: ${{ steps.check_pr.outputs.skip_python_quality }}
       # true only for a verified dependabot PR that changes nothing but root
-      # dependency manifests/lockfiles (pr_policy.TRUSTED_BOT_PATHS, the
-      # merge-privilege exemption's own condition), decided the same way.
+      # dependency manifests/lockfiles (pr_policy.TRUSTED_BOT_PATHS) or is a
+      # tag-verified actions pin bump (pr_policy.actions_pin_bump_verified):
+      # the merge-privilege exemption's own condition, decided the same way.
       # publish then accepts the skipped Codex delta review without the
       # bypass attestation (#704), trusting it only when this job succeeded.
       skip_codex_review: ${{ steps.check_pr.outputs.skip_codex_review }}
@@ -1185,7 +1186,8 @@ jobs:
     # get no secrets, so the review could only end could_not_run. publish
     # accepts the skip without an attestation only when hygiene succeeded with
     # skip_codex_review=true (verified dependabot commits, manifest/lockfile
-    # paths only, #704); any other Dependabot PR still fails closed there and
+    # paths only or a tag-verified actions pin bump, #704); any other
+    # Dependabot PR still fails closed there and
     # needs the SHA-bound bypass attestation.
     if: >-
       github.event.pull_request.head.repo.fork == false
@@ -2163,7 +2165,8 @@ jobs:
           # skip_codex_review=true: PR author dependabot[bot], every commit
           # authored by dependabot[bot], committed by web-flow and signature-
           # verified, and every changed path a root manifest/lockfile
-          # (TRUSTED_BOT_PATHS). A normal git push by a human to the branch
+          # (TRUSTED_BOT_PATHS) or the diff a tag-verified actions pin bump
+          # (actions_pin_bump_verified). A normal git push by a human to the branch
           # fails the commit check and falls through to the rules below
           # (attestation needed); whether an API-created web-flow commit with a
           # spoofed dependabot[bot] author would pass is untested (docs/ci.md,
@@ -2173,7 +2176,7 @@ jobs:
           # secrets). Like the bypass above, it records no review result: nothing
           # was reviewed, and later runs of a Dependabot PR skip the review too.
           if [ "$CODEX_RESULT" = "skipped" ] && [ "$HYGIENE_RESULT" = "success" ] && [ "$SCOPE_RESULT" = "success" ] && [ "$SKIP_CODEX_REVIEW" = "true" ]; then
-            echo "Codex review not run: verified Dependabot PR changing only root dependency manifests/lockfiles (no Actions secrets for Dependabot). Never presented as a clean review — deterministic, PR-author-privilege, and branch-protection gates still apply unchanged."
+            echo "Codex review not run: verified Dependabot PR changing only root dependency manifests/lockfiles or tag-verified action pins (no Actions secrets for Dependabot). Never presented as a clean review — deterministic, PR-author-privilege, and branch-protection gates still apply unchanged."
             exit 0
           fi
           # compute-scope must have actually succeeded before its

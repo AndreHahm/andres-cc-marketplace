@@ -164,3 +164,11 @@ Author-graded from one simulated answer each. Evals 1 to 19 were not re-run; the
 19 were reworded to the hold-for-triage question, so their recorded runs were graded against the old wording. Separately,
 Codacy's one Security finding on the PR (`dangerous-subprocess-use-audit`, a fake `CompletedProcess` in
 `test_dependabot_pr_read.py`) was fixed by making the `ThreadRun` fake delegate to `FakeRun`; 44 of 44 tests pass.
+
+2026-11-14, iteration 24 (the CI actions pin exemption). `check-pr` now passes merge-privilege, and lets
+`Publish Codex policy result` accept the skipped review, for a verified Dependabot `github_actions` PR whose every
+changed line is a tag-verified ratchet `uses:` pin swap. The `github_actions` row of `ordering-and-checks.md`,
+step 6.4's example, scenarios 8 and 39 and `codex-bypass.md`'s intro were updated to match. New eval 21 (covers
+scenario 8): 5 of 5, against 1 of 5 for a baseline on the pre-change skill (`1894953b`), which skipped the pin-only
+PR up front. Author-graded from one simulated answer each. Evals 1 to 20 were not re-run; the scripts were not
+changed, and the smoke test's 21 checks pass.

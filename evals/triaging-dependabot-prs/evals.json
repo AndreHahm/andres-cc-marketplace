@@ -182,11 +182,20 @@
       "files": [
         "outputs/answer.md"
       ]
+    },
+    {
+      "id": 21,
+      "name": "GitHub Actions PRs: a pin-only bump goes through the normal loop, any other workflow change is skipped",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT run any `gh`/`git`/shell command, post any comment, run any script or invoke any other skill -- describe exactly what you would do instead, and write your answer to outputs/answer.md.\n\nYou are following the `triaging-dependabot-prs` skill (plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md and its references). The user asked: \"triage the dependabot PRs\". The base branch already contains the CI version described in the skill's references. Two open PRs remain, both same-repo `dependabot/github_actions/...` branches with every commit by `dependabot[bot]`, and the user already approved the plan. PR #601 bumps actions/labeler 6.0.1 to 7.0.0: it changes `.github/workflows/pr-auto-label.yml` only, and its diff replaces one `uses: actions/labeler@<sha> # ratchet:actions/labeler@v6.0.1` line with the same line for the v7.0.0 SHA; it is `BEHIND` its base. PR #602 bumps actions/setup-node 7.0.0 to 7.1.0 in `.github/workflows/ci.yml`; after a rebase, `pr-checks 602` reports `Hygiene (PR contract)` and `Publish Codex policy result` failing, every other required check passing. For each PR, say what you expect from the required checks before acting, every step you take in the step 6 loop (asks, scripts, skills), the outcome, and how it is reported.",
+      "expected_output": "PR #601: expected to pass Hygiene (PR contract) and Publish Codex policy result, because a pin-only bump whose new SHA is the tag's commit falls under the CI actions pin exemption, so it is not pre-emptively skipped; it asks before posting `@dependabot rebase` through dependabot_pr_action.py (dry run first), re-checks, checks required CI, and hands the merge to Skill(merge-pr) without a Codex bypass, recording it as merged once state is MERGED. PR #602: the failing Hygiene check is a real blocker (the diff is not a verified pin-only bump, or the tag lookup failed); no Codex bypass is offered for github_actions; it is skipped with that reason, merge-pr is not invoked, and the user is told manual handling is outside the skill. Wrap-up lists #601 merged and #602 skipped with reason. No raw gh call.",
+      "files": [
+        "outputs/answer.md"
+      ]
     }
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 71,
-    "declared_scenarios_covered": 28,
+    "declared_scenarios_covered": 29,
     "uncovered": [
       "Scenario 1: No dependabot PRs open",
       "Scenario 2: List truncation",
@@ -195,7 +204,6 @@
       "Scenario 5: Excluded PR",
       "Scenario 6: Suspicious PR",
       "Scenario 7: Unlisted ecosystem",
-      "Scenario 8: Workflow-file PR",
       "Scenario 9: Major bump",
       "Scenario 10: Security fix",
       "Scenario 11: Superseded or duplicate package",

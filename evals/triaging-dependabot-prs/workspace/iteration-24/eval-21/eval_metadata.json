@@ -1,0 +1,31 @@
+{
+  "eval_id": 21,
+  "skill_path": "plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md",
+  "assertions": [
+    {
+      "text": "PR #601: expects Hygiene (PR contract) and Publish Codex policy result to pass under the CI actions pin exemption, so it is not skipped up front",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "PR #601: asks before posting `@dependabot rebase` through dependabot_pr_action.py (dry run first), re-checks, and reads required CI",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "PR #601: hands the merge to Skill(merge-pr) with no Codex bypass and records it merged once state is MERGED",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "PR #602: treats the failing Hygiene check as a real blocker (not a verified pin-only bump), offers no Codex bypass, does not invoke merge-pr, and says manual handling is outside the skill",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Wrap-up lists #601 merged and #602 skipped with its reason; no raw gh call",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    }
+  ]
+}

@@ -250,8 +250,10 @@ Status: approved
 - `Publish Codex policy result` passes that skip with no bypass attestation only when all of these hold,
   as decided by `Hygiene (PR contract)` from the base SHA's code: the pull request's author is
   `dependabot[bot]`; every commit is authored by `dependabot[bot]`, committed by `web-flow` and
-  signature-verified (the merge-privilege exemption's own check); and every changed path is a root dependency
-  manifest or lockfile (`uv.lock`, `pyproject.toml`, `package.json`, `pnpm-lock.yaml`). `Compute Codex review
+  signature-verified (the merge-privilege exemption's own check); and either every changed path is a root
+  dependency manifest or lockfile (`uv.lock`, `pyproject.toml`, `package.json`, `pnpm-lock.yaml`), or the diff
+  is a GitHub Actions pin bump whose every changed line swaps a ratchet-pinned `uses:` SHA for the commit its
+  tag names in the action's own repository (`docs/ci.md`, the actions pin exemption). `Compute Codex review
   scope` must also have succeeded, as for every other skip.
 - Any other Dependabot pull request, for example one a human pushed to or one that changes another file,
   still needs the SHA-bound bypass attestation (R12).
