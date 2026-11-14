@@ -46,8 +46,9 @@ On a merge, this check runs in addition to `merge-pr`'s own readiness gates.
 - Reviewing a diff before a PR (`cross-model-review`), a design, analysis or recommendation Claude will
   present (`codex-peer-review`), or a written plan or document (`codex-verify`). This skill covers one
   action or choice Claude is about to execute, including a single irreversible step from a plan.
-  When the user asks for a plan or document to be verified, that stays with `codex-verify`, even if
-  Claude will later execute a step from it.
+  When the user asks for a plan or document to be verified, that verification stays with `codex-verify`.
+  It does not replace this check: a critical, security-relevant or uncertain step from a verified plan
+  still consults this skill when Claude executes it, unless the first exclusion above applies.
 - Routine, easily reversed work where Claude is confident.
 
 When more than one trigger could apply, use the stricter one (`critical` or `security`): those stop
