@@ -13,3 +13,9 @@ updated skill and the `docs/ci.md` exemption, graded by the author. A baseline a
 
 The baseline skipped #601 at step 6.2 with no rebase, required-CI read or `merge-pr` call, and its wrap-up
 listed both PRs as skipped; only its #602 handling matched (assertion 4).
+
+After grading, cross-model review (pass 3) found that eval 21's expected output and assertion 4 named the
+cause of #602's Hygiene failure (a non-pin diff or a failed tag lookup), while Hygiene also fails on a title,
+template or commit-verification failure. Both were reworded to treat the failure as a blocker whatever its
+cause. The recorded answers were not re-run; both still pass assertion 4 as reworded, since it no longer
+grades the stated cause.
