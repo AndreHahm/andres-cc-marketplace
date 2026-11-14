@@ -1,0 +1,22 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4573242358",
+      "line": 120,
+      "note": "Stale Windows kill note in the smaller-gaps item corrected to the job-object behaviour and its two residuals, in 36d31cbb.",
+      "path": "plugins/git-kit/skills/handling-review-findings/references/file-write-and-diff-grants.md",
+      "pr": 734,
+      "recorded_at": "2026-11-14T11:40:30+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4573267506",
+      "line": 116,
+      "note": "setup-uv ran uv python find on the PR checkout before the trusted restores; python-version now set on all 8 steps so the lookup never runs, in 591c4ba2. Verified against the action source at the pinned SHA.",
+      "path": ".github/workflows/marketplace-ci.yml",
+      "pr": 734,
+      "recorded_at": "2026-11-14T11:40:34+00:00"
+    }
+  ]
+}
