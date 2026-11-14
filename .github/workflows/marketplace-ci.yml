@@ -117,6 +117,7 @@ jobs:
         with:
           version: "0.12.21"
           enable-cache: "false"
+          python-version: "3.13"
 
       # check-pr runs below with GH_TOKEN, so it and its dependency install
       # must not come from the PR's own untrusted checkout -- the same
@@ -321,6 +322,7 @@ jobs:
         with:
           version: "0.12.21"
           enable-cache: "false"
+          python-version: "3.13"
       # --locked and --no-build as in the Windows job below; --no-sync keeps uv run from syncing again.
       - run: uv sync --locked --group dev --no-build --no-install-package csscompressor --no-install-package jsmin
       - run: uv run --no-sync --no-build ruff format --check scripts tests
@@ -363,6 +365,7 @@ jobs:
         with:
           version: "0.12.21"
           enable-cache: "false"
+          python-version: "3.13"
       # --no-build runs no package's setup code. csscompressor and jsmin ship only as source, so
       # they would fail it; they come in through mkdocs-minify-plugin and these tests never use them.
       - run: uv sync --locked --no-install-project --group dev --no-build --no-install-package csscompressor --no-install-package jsmin
@@ -472,6 +475,7 @@ jobs:
         with:
           version: "0.12.21"
           enable-cache: "false"
+          python-version: "3.13"
       - run: uv sync --locked --group dev --no-build --no-install-package csscompressor --no-install-package jsmin
       - run: uv run --no-sync --no-build python -m scripts.marketplace_ci check-all --json-output marketplace-check.json
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # ratchet:actions/upload-artifact@v7.0.1
@@ -570,6 +574,7 @@ jobs:
         with:
           version: "0.12.21"
           enable-cache: "false"
+          python-version: "3.13"
 
       # This job's own enforcement logic (scripts/marketplace_ci/__main__.py's
       # check-prefixes/check-prefix-permanence handlers, prefix_check.py's
@@ -878,6 +883,7 @@ jobs:
         with:
           version: "0.12.21"
           enable-cache: "false"
+          python-version: "3.13"
 
       # The PR's diff must never be scored using decision code or a
       # dependency spec the PR itself could have edited -- same
@@ -1331,6 +1337,7 @@ jobs:
         with:
           version: "0.12.21"
           enable-cache: "false"
+          python-version: "3.13"
 
       # This job's own run-codex-review step below is the primary review
       # gate itself, not just a bypass path -- publish only checks this
@@ -1813,6 +1820,7 @@ jobs:
         with:
           version: "0.12.21"
           enable-cache: "false"
+          python-version: "3.13"
 
       # This job's own bypass check below runs resolve-attested-actor/
       # check-bypass from scripts/marketplace_ci/review.py -- the same
