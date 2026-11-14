@@ -59,6 +59,7 @@ _USES_PIN_LINE = re.compile(
     rf"(?P<action>{_ACTION_PATH})@(?P<sha>[0-9a-f]{{40}})(?P=quote)"
     rf"[ ]+#[ ]ratchet:(?P<ratchet>{_ACTION_PATH})@(?P<tag>[A-Za-z0-9._-]{{1,100}})"
 )
+_COMMIT_SHA = re.compile(r"[0-9a-f]{40}")
 _HUNK_HEADER = re.compile(r"@@ -\d+(?:,(?P<old>\d+))? \+\d+(?:,(?P<new>\d+))? @@")
 
 _EMOJI_PATTERN = re.compile("[\U0001f300-\U0001faff\U00002600-\U000027bf\U0001f1e6-\U0001f1ff]")
@@ -451,9 +452,23 @@ def actions_pin_bump_verified(
     resolve_tag = resolve_tag or resolve_action_tag_sha
     if not changed_paths or not all(_ACTIONS_PIN_FILE.fullmatch(p) for p in changed_paths):
         return False
-    git_diff = ["git", "diff", "--no-renames", "--no-ext-diff", "--no-textconv", "--no-color"]
-    status = subprocess.run(
-        [*git_diff, "-z", "--name-status", f"{base_sha}...{head_sha}"],
+    # The SHAs come from the event file. Only a full commit SHA may reach git,
+    # so no value can be read as an option.
+    if not (_COMMIT_SHA.fullmatch(base_sha) and _COMMIT_SHA.fullmatch(head_sha)):
+        return False
+    revisions = f"{base_sha}...{head_sha}"
+    status = subprocess.run(  # nosec B603 B607  # literal git subcommand, no shell, validated SHAs
+        [
+            "git",
+            "diff",
+            "--no-renames",
+            "--no-ext-diff",
+            "--no-textconv",
+            "--no-color",
+            "-z",
+            "--name-status",
+            revisions,
+        ],
         cwd=repo,
         capture_output=True,
     )
@@ -472,8 +487,19 @@ def actions_pin_bump_verified(
     if any(kind != b"M" for kind, _ in pairs) or listed != set(changed_paths):
         return False
 
-    diff = subprocess.run(
-        [*git_diff, "-U0", f"{base_sha}...{head_sha}", "--", *changed_paths],
+    diff = subprocess.run(  # nosec B603 B607  # literal git subcommand, no shell, paths after --
+        [
+            "git",
+            "diff",
+            "--no-renames",
+            "--no-ext-diff",
+            "--no-textconv",
+            "--no-color",
+            "-U0",
+            revisions,
+            "--",
+            *changed_paths,
+        ],
         cwd=repo,
         capture_output=True,
     )
