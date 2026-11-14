@@ -124,3 +124,15 @@ guidance named only npm items, not `pyproject.toml` (`[build-system]` requiremen
 and to "What path B does and does not prove", with two stale cross-references fixed. Hardening: a changed root entry
 must keep its exact name and source and list no files. Three more tests (61 in total); each new check fails its test
 when removed. Evals 3 and 16 were not re-run for this wording-only addition to the guidance list.
+
+2026-11-14, iterations 19 and 20 (issue #730). `dependabot_pr_read.py` gained `pr-threads`, a read of every review
+thread page through one fixed GraphQL `reviewThreads` query (no mutation; owner, name and cursor as `-f` strings, the
+PR number as `-F`, no cursor on the first page per #312). On a request that names both the batch and the reviewer
+findings, the skill now reads it before every close and merge and stops on an unresolved thread. 5 new unit tests (43
+in the suite); 4 of 5 mutants were killed, and the surviving one exposed a redundant check that was removed. A live
+run against PR #726 returned 7 threads, all resolved. Eval 17 added: iteration 19 passed 5 of 5, against 2 of 5 for a
+baseline on the pre-change skill (`ccc79af7`), whose prompt gave the thread facts in prose. A `security-reviewer` pass
+(static) found no Critical or Major issue. Its four Minor findings were fixed: the stop covers an `ignore`, threads are
+re-read before the real close, comments can only add a stop, and thread paths and authors are named as untrusted.
+Iteration 20 re-ran eval 17 on that final wording: 5 of 5. Both iterations were author-graded from one simulated
+answer each. Evals 1 to 16 were not re-run.
