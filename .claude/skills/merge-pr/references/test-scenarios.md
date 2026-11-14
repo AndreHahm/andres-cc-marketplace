@@ -169,6 +169,9 @@ a fresh `gh repo view` (skill-reviewer M1, 2026-08-31):**
   and the merge proceeds on the user's confirmation
 - Flag given on a step 7(d) rejection-fallback retry → the retry's full step-2 rerun applies the same
   stop before the fresh marker is written
+- Flag given together with `--bypass-codex-review`, and the PR's only conversation comments are this
+  skill's own step-4(b) attestation comment and a caller's `@dependabot rebase` request → neither is a
+  finding (each only carries a command or a status), so 4(e)'s and 7(b)'s reruns do not stop on them
 
 **Verify step 7's rebase-compatibility pre-check, squash-tradeoff disclosure, and rejection fallback:**
 - `pr_merge_type` is `REBASE`, the PR's commit history contains zero merge commits → step 7(a)'s pre-check finds a zero count and proceeds straight to `gh pr merge --rebase` with no `AskUserQuestion` interruption

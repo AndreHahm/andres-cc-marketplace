@@ -45,10 +45,11 @@ Several dependabot PRs are open and the goal is to merge the good ones and close
   apply the same stop to that read. For the merge, the re-read happens inside `merge-pr`: 6.6 passes
   `--stop-on-review-findings`, so `merge-pr` reads threads, comments and review bodies on each of its
   readiness passes, including the final one right before the merge write, and stops on the same
-  conditions; 6.7 then asks the hold-or-leave-out question. Only a finding posted after that final read starts and before the
-  merge itself is not caught.
+  conditions; 6.7 then asks the hold-or-leave-out question. Two gaps remain, both disclosed in `merge-pr`'s step 2: a
+  finding posted after that final read starts and before the merge itself is not caught, and it is not verified that the
+  read returns every comment or review on a PR with more than 100 of them.
   Comments and review bodies can only add a stop: `unresolved_count` above 0 stops whatever they say,
-  and one that cannot be classified stops too, the same rule `merge-pr` applies with the flag. Resolved threads do not trigger the stop; name their count in the
+  and one that cannot be classified stops too, the same rule `merge-pr` applies with the flag. A comment that only carries a command or a status, such as this skill's own `@dependabot rebase` request, is not a finding. Resolved threads do not trigger the stop; name their count in the
   report.
 
 ## Why a serial loop
