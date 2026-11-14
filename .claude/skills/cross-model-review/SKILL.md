@@ -475,7 +475,7 @@ See `references/deliberately-not-done.md` (extracted per plugin-rulebook's R13 l
 - "review PR #42" / "leave review comments on this PR" → `collaborating-on-a-pr`
 - "the Codex check is stuck, it already finished on the dashboard" → `codex-review-recovery`
 - "apply the fixes from the last review" → not this skill's job; it never edits code itself
-- "check this decision before you run that command" (one action, no diff) → `consulting-decision-model`
+- "check this decision before you run that command" (one action, no diff) → decision-kit's `consulting-decision-model`, if installed
 
 **Concrete scenarios to check, and quality gates:** see
 `references/testing-scenarios.md` — extracted per plugin-rulebook's R13 line-count threshold; the

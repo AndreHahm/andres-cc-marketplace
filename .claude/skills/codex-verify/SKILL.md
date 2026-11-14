@@ -407,7 +407,7 @@ For the full shared gotchas list, read
 - Open-ended investigation or research on a topic/document → `codex-research`
 - A full plan-validate-implement-review workflow that continues into code changes → `codex-plan-loop`
 - Locating/finding a session ID rather than resuming one → `codex-session-lookup`
-- Claude checking, unasked, one critical or uncertain step of a plan it is about to execute → decision-kit's `consulting-decision-model` ("verify step 3 of plan.md", asked by the user, stays here)
+- Claude checking, unasked, one critical or uncertain step of a plan it is about to execute → decision-kit's `consulting-decision-model`, when decision-kit is installed (without it, no installed skill makes that check). "verify step 3 of plan.md", asked by the user, stays here; the execution-time check still runs separately
 
 **Concrete scenarios to check:**
 1. The document path doesn't exist or is empty → fails at Phase 1's `test -f`/`test -s` check, before ever touching Codex.

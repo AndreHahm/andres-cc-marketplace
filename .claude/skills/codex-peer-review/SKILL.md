@@ -132,7 +132,7 @@ Never ask before Round 1 or Round 2 — only the escalation and final-output ste
 **Verify it does NOT activate on:**
 - Proactively, without an explicit request — this skill deliberately has no automatic trigger
 - Verifying an existing written plan/document file → `codex-verify`
-- Checking one critical, security-relevant or uncertain action Claude is about to execute → decision-kit's `consulting-decision-model`
+- Checking one critical, security-relevant or uncertain action Claude is about to execute → decision-kit's `consulting-decision-model`, when decision-kit is installed (without it, no installed skill makes that check)
 - "get a second opinion from antigravity/gemini/agy" → antigravity-kit's `antigravity` skill instead
   (Gemini/Antigravity/agy named, not Codex)
 
