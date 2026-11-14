@@ -244,6 +244,46 @@
       "rule": "dependency-graph"
     },
     {
+      "disposition": "false_positive",
+      "finding": "ci-run-43568657754-1",
+      "line": 18,
+      "note": "Intentional copy: issue 537 (closed by this PR) made recovery.md self-contained under R14; a pointer re-creates the chain.",
+      "path": "plugins/git-kit/skills/triaging-dependabot-prs/references/recovery.md",
+      "pr": 726,
+      "recorded_at": "2026-11-14T07:16:17+00:00",
+      "rule": "data-consistency"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-run-43568657754-2",
+      "line": 46,
+      "note": "Added a data-only boundary for Codex responses under Classify the outcome.",
+      "path": "plugins/codex-kit/skills/codex-peer-review/SKILL.md",
+      "pr": 726,
+      "recorded_at": "2026-11-14T07:16:17+00:00",
+      "rule": "plugin-rulebook:R32"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-run-43568657754-3",
+      "line": 411,
+      "note": "Added a data-only boundary for Codex findings and output in Phase 4.",
+      "path": "plugins/codex-kit/skills/codex-verify/SKILL.md",
+      "pr": 726,
+      "recorded_at": "2026-11-14T07:16:17+00:00",
+      "rule": "plugin-rulebook:R32"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-run-43568657754-4",
+      "line": 45,
+      "note": "Route excludes a Notion source; Notion Idea, Decision or Goal goes to idea-to-implementation.",
+      "path": "plugins/workmanagement-kit/skills/open-item-management/SKILL.md",
+      "pr": 726,
+      "recorded_at": "2026-11-14T07:16:17+00:00",
+      "rule": "trigger-quality"
+    },
+    {
       "disposition": "fixed",
       "finding": "claude-delta-f3f30230-1",
       "line": 135,
