@@ -506,6 +506,23 @@ def test_the_script_is_committed_executable_like_its_sibling_pinned_scripts(path
     assert staged and staged[0] == "100755", staged
 
 
+def test_the_windows_job_helpers_match_the_parity_review_copy():
+    # Each script strips its own directory from sys.path, so the helpers are copied, not shared.
+    import ast
+
+    def helpers(path: Path) -> dict[str, str]:
+        source = path.read_text(encoding="utf-8")
+        return {
+            node.name: ast.get_source_segment(source, node) or ""
+            for node in ast.parse(source).body
+            if isinstance(node, ast.FunctionDef) and node.name.endswith("_windows_job")
+        }
+
+    ours = helpers(SCRIPT)
+    assert set(ours) == {"_windows_job", "_kill_windows_job", "_close_windows_job"}
+    assert ours == helpers(SCRIPT.parent / "git-codex-parity-review.py")
+
+
 def test_the_time_limit_does_not_use_sigalrm():
     source = SCRIPT.read_text(encoding="utf-8")
     assert "signal.alarm" not in source
@@ -513,14 +530,7 @@ def test_the_time_limit_does_not_use_sigalrm():
     assert "threading.Timer" in source
 
 
-@pytest.mark.skipif(
-    os.name == "nt",
-    reason=(
-        "on Windows the time limit fires but the call returns only when a child holding the "
-        "output pipe exits (about 30 s with a .cmd git that runs ping); found by #655, "
-        "tracked in #657, not yet fixed in git-review-fix-diff.py"
-    ),
-)
+@pytest.mark.skipif(os.name == "nt", reason="a #!/bin/sh stub; the Windows case is the next test")
 def test_a_stalled_git_is_stopped_at_the_time_limit(tmp_path, monkeypatch):
     import time
 
@@ -536,3 +546,41 @@ def test_a_stalled_git_is_stopped_at_the_time_limit(tmp_path, monkeypatch):
     with pytest.raises(TimeoutError):
         module._show(str(stalled), "a" * 40)
     assert time.monotonic() - started < 15
+
+
+@pytest.mark.skipif(os.name != "nt", reason="a .cmd git and a Windows job object")
+def test_a_stalled_windows_git_is_stopped_with_its_child_at_the_time_limit(tmp_path, monkeypatch):
+    # #657: killing the cmd.exe wrapper alone left its child holding the output pipe for 30 s.
+    # No check that the child itself was ended: cmd.exe can start it before git is put in the job,
+    # and it then survives by design. The job-kill order is covered by the next test.
+    import time
+
+    module = _load_module()
+    stalled = tmp_path / "git.cmd"
+    stalled.write_text(
+        f'@"{sys.executable}" -c "import time; time.sleep(30)"\r\n', encoding="utf-8"
+    )
+    monkeypatch.setattr(module, "_TIMEOUT_SECONDS", 3)
+    monkeypatch.chdir(tmp_path)
+    started = time.monotonic()
+    with pytest.raises(TimeoutError):
+        module._show(str(stalled), "a" * 40)
+    assert time.monotonic() - started < 15
+
+
+def test_a_windows_kill_ends_the_job_before_git(monkeypatch):
+    import types
+
+    module = _load_module()
+    calls: list[tuple] = []
+
+    class FakeProc:
+        pid = 4242
+
+        def kill(self) -> None:
+            calls.append(("kill",))
+
+    monkeypatch.setattr(module, "sys", types.SimpleNamespace(platform="win32"))
+    monkeypatch.setattr(module, "_kill_windows_job", lambda job: calls.append(("kill-job", job)))
+    module._kill(FakeProc(), 77)
+    assert calls == [("kill-job", 77), ("kill",)]

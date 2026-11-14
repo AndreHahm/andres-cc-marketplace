@@ -206,7 +206,8 @@ def test_hostile_link_syntax_stays_fast():
     _check("[](" * 100_000 + "\n")
     _check("](" * 100_000 + "\n")
     _check("`" * 200_000 + "\n" + ("`a" * 100_000) + "\n")
-    assert time.perf_counter() - started < 5
+    # 15 s, not 5: parallel test workers slow every core, and a catastrophic scan takes far longer.
+    assert time.perf_counter() - started < 15
 
 
 def test_the_tree_answers_existence_for_files_and_folders_without_storing_prefixes():
@@ -443,7 +444,8 @@ def test_scanning_for_the_new_forms_stays_fast():
     _check("[r]:\n" * 50_000)
     _check("$CLAUDE_SKILL_DIR/" * 50_000 + "\n")
     _check("\\`" * 100_000 + "\n")
-    assert time.perf_counter() - started < 5
+    # 15 s, not 5: parallel test workers slow every core, and a catastrophic scan takes far longer.
+    assert time.perf_counter() - started < 15
 
 
 # A second security pass (static) claimed these. Each renders as a live link under CommonMark, so

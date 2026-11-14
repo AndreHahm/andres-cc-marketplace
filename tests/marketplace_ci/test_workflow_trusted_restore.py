@@ -134,8 +134,13 @@ def test_each_trusted_job_syncs_locked_and_config_free_and_the_pr_code_jobs_do_n
         assert "uv sync --group dev" not in body, job
     for job in PR_CODE_JOBS:
         body = _job_text(job)
-        assert "uv sync --group dev" in body, job
-        assert "--locked" not in body, job
+        # Locked and build-free (SonarCloud S8541/S8544), not the trusted config-free form.
+        assert "uv sync --locked --group dev --no-build" in body, job
+        assert "--no-config" not in body, job
+        # A plain `uv run` would sync again and build the packages the sync left out.
+        lines = [line.strip() for line in body.splitlines()]
+        uv_runs = [line for line in lines if "uv run" in line and not line.startswith("#")]
+        assert uv_runs and all("uv run --no-sync --no-build" in line for line in uv_runs), job
 
 
 def test_the_restore_or_refusal_runs_before_sync_and_before_any_secret_is_used():

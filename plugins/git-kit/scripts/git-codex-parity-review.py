@@ -165,10 +165,65 @@ def _run(argv: list[str], **kwargs) -> subprocess.CompletedProcess[str] | None:
         return None
 
 
+def _windows_job(pid: int) -> int | None:
+    """A Windows job object holding process `pid`, so a kill also reaches every process it starts.
+
+    A process `pid` starts before the assignment below stays outside the job; the caller's bounded
+    wait still returns on time then. None off Windows, or when the job cannot be set up."""
+    if sys.platform != "win32":
+        return None
+    import ctypes
+    from ctypes import wintypes
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.CreateJobObjectW.restype = wintypes.HANDLE
+    kernel32.CreateJobObjectW.argtypes = (ctypes.c_void_p, wintypes.LPCWSTR)
+    kernel32.OpenProcess.restype = wintypes.HANDLE
+    kernel32.OpenProcess.argtypes = (wintypes.DWORD, wintypes.BOOL, wintypes.DWORD)
+    kernel32.AssignProcessToJobObject.argtypes = (wintypes.HANDLE, wintypes.HANDLE)
+    kernel32.CloseHandle.argtypes = (wintypes.HANDLE,)
+    job = kernel32.CreateJobObjectW(None, None)
+    if not job:
+        return None
+    process = kernel32.OpenProcess(0x0101, False, pid)  # PROCESS_SET_QUOTA | PROCESS_TERMINATE
+    assigned = bool(process) and bool(kernel32.AssignProcessToJobObject(job, process))
+    if process:
+        kernel32.CloseHandle(process)
+    if not assigned:
+        kernel32.CloseHandle(job)
+        return None
+    return job
+
+
+def _kill_windows_job(job: int | None) -> None:
+    """End every process in a job from `_windows_job`; the job stays open."""
+    if sys.platform != "win32" or job is None:
+        return
+    import ctypes
+    from ctypes import wintypes
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.TerminateJobObject.argtypes = (wintypes.HANDLE, wintypes.UINT)
+    kernel32.TerminateJobObject(job, 1)
+
+
+def _close_windows_job(job: int | None) -> None:
+    """Close a job from `_windows_job`; processes still in it keep running."""
+    if sys.platform != "win32" or job is None:
+        return
+    import ctypes
+    from ctypes import wintypes
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.CloseHandle.argtypes = (wintypes.HANDLE,)
+    kernel32.CloseHandle(job)
+
+
 def _run_in_group(
     argv: list[str], *, env: dict[str, str], timeout: float
 ) -> subprocess.CompletedProcess[str] | None:
-    """Run `argv` in its own session so a timeout kills the whole tree (uv, node, codex)."""
+    """Run `argv` so a timeout kills the whole tree (uv, node, codex): its own session on POSIX,
+    a job object on Windows (see `_windows_job`)."""
     try:
         proc = subprocess.Popen(
             argv,
@@ -180,20 +235,23 @@ def _run_in_group(
         )
     except FileNotFoundError:
         return None
+    job = None if os.name == "posix" else _windows_job(proc.pid)
     try:
         stdout, stderr = proc.communicate(timeout=timeout)
     except subprocess.TimeoutExpired:
         if os.name == "posix":
             os.killpg(proc.pid, signal.SIGKILL)
         else:
-            # Without /T only the direct child dies; a surviving descendant keeps the pipes open.
-            _run(["taskkill", "/F", "/T", "/PID", str(proc.pid)])
-            proc.kill()
+            # Killing only the direct child would let a surviving descendant keep the pipes open.
+            _kill_windows_job(job)
+            proc.kill()  # also when the job could not be set up
         try:
             proc.communicate(timeout=_HELPER_TIMEOUT_SECONDS)
         except subprocess.TimeoutExpired:
             pass  # a descendant still holds the pipes; the run is already abandoned
         return None
+    finally:
+        _close_windows_job(job)
     return subprocess.CompletedProcess(argv, proc.returncode, stdout, stderr)
 
 

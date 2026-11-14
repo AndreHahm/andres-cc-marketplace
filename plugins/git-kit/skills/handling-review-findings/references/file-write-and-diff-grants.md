@@ -41,7 +41,8 @@ HEAD` did not run fsmonitor.
   repository (the nearest ancestor of the starting directory holding a `.git` entry, found without running
   git; a git under that root, a home-directory dotfiles repository included, is refused with exit 2), output
   read under a 1,000,000-byte cap, a 60-second limit enforced by a timer thread that stops git's whole
-  process group (so it holds without `SIGALRM` and a child that keeps the pipe open cannot outlast it),
+  process group on POSIX or its job object on Windows, with the read itself bounded too (so it holds
+  without `SIGALRM` and a child that keeps the pipe open cannot outlast it),
   and no echo of git's own error text. A tree or blob id is refused as `--base`, and an empty diff exits 2.
 - **It cannot show an uncommitted fix**, so the self-review of an uncommitted fix (the usual case) reads the
   agent's own edits and the changed files (`fix-self-review.md` 4c). That review is weaker than a diff: it
@@ -116,9 +117,10 @@ HEAD` did not run fsmonitor.
    its own checks, would make that unnecessary.
 5. **Smaller gaps.** `GIT_NO_LAZY_FETCH` needs a newer git than 2.43.0 (the exact version is unverified), so
    a partial clone could still fetch; `--text` on a very large blob is bounded by the time limit, not by
-   memory; the process-group kill is POSIX-only (on Windows only git itself is killed; not run on a real
-   Windows host); and in this repository's own sessions the
-   pinned scripts resolve to the `.claude/scripts/` mirror inside the checkout, which a PR can change. Only
+   memory; on Windows the timeout ends git's job object, but a process git starts before it joins the
+   job stays outside it and survives the kill, and when the job cannot be set up only git itself is
+   killed (in both cases the bounded read still returns on time); and in this repository's own sessions
+   the pinned scripts resolve to the `.claude/scripts/` mirror inside the checkout, which a PR can change. Only
    `allowed-tools` is pinned by the smoke check: other frontmatter keys are not.
 
 ## Follow-up: the same fix in other skills (Issue #587)
