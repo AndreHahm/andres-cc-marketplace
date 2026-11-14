@@ -44,6 +44,22 @@ TRUSTED_BOT_COMMITTER = "web-flow"
 # TRUSTED_BOT_PATHS on purpose: uv.lock and pyproject.toml change the Python
 # toolchain those checks run with.
 PYTHON_QUALITY_SKIP_PATHS = frozenset({"package.json", "pnpm-lock.yaml"})
+# A verified dependabot github_actions PR changes workflow and composite-action
+# files, so it can never meet TRUSTED_BOT_PATHS. It is exempted instead only
+# when every changed file is one of these and every changed line is a
+# ratchet-pinned `uses:` line whose new SHA is the commit its tag names in the
+# action's own repository (actions_pin_bump_verified).
+_ACTIONS_PIN_FILE = re.compile(
+    r"\.github/workflows/[^/]+\.ya?ml|\.github/actions/[^/]+/action\.ya?ml"
+)
+_OWNER_REPO = r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})/[A-Za-z0-9._-]{1,100}"
+_ACTION_PATH = rf"{_OWNER_REPO}(?:/[A-Za-z0-9._-]+)*"
+_USES_PIN_LINE = re.compile(
+    r"(?P<prefix>[ ]*(?:-[ ]+)?uses:[ ]+)(?P<quote>['\"]?)"
+    rf"(?P<action>{_ACTION_PATH})@(?P<sha>[0-9a-f]{{40}})(?P=quote)"
+    rf"[ ]+#[ ]ratchet:(?P<ratchet>{_ACTION_PATH})@(?P<tag>[A-Za-z0-9._-]{{1,100}})"
+)
+_HUNK_HEADER = re.compile(r"@@ -\d+(?:,(?P<old>\d+))? \+\d+(?:,(?P<new>\d+))? @@")
 
 _EMOJI_PATTERN = re.compile("[\U0001f300-\U0001faff\U00002600-\U000027bf\U0001f1e6-\U0001f1ff]")
 # GitHub-flavored markdown renders `:sparkles:`-style shortcodes as emoji too;
@@ -159,10 +175,15 @@ def python_quality_skip_allowed(
 
 
 def codex_review_skip_allowed(
-    user: str, changed_paths: list[str], *, bot_commits_verified: bool
+    user: str,
+    changed_paths: list[str],
+    *,
+    bot_commits_verified: bool,
+    actions_pins_verified: bool = False,
 ) -> bool:
     """True only for a trusted bot's PR whose commits were verified and whose
-    every changed path is in TRUSTED_BOT_PATHS: the same condition as the
+    every changed path is in TRUSTED_BOT_PATHS, or whose diff is a verified
+    actions pin bump (actions_pin_bump_verified): the same conditions as the
     merge-privilege exemption in check_merge_rights. `Publish Codex policy
     result` then accepts the skipped Codex delta review (it never runs for
     Dependabot, whose runs get no secrets) without the bypass attestation
@@ -171,25 +192,33 @@ def codex_review_skip_allowed(
         user.lower() in TRUSTED_BOT_LOGINS
         and bot_commits_verified
         and bool(changed_paths)
-        and all(path in TRUSTED_BOT_PATHS for path in changed_paths)
+        and (all(path in TRUSTED_BOT_PATHS for path in changed_paths) or actions_pins_verified)
     )
 
 
 def check_merge_rights(
-    api: GitHubApi, changed_paths: list[str], *, bot_commits_verified: bool = False
+    api: GitHubApi,
+    changed_paths: list[str],
+    *,
+    bot_commits_verified: bool = False,
+    actions_pins_verified: bool = False,
 ) -> RightsResult:
     if api.user.lower() == api.owner.lower():
         return RightsResult(allowed=True, reason="repository owner")
-    if (
-        api.user.lower() in TRUSTED_BOT_LOGINS
-        and bot_commits_verified
-        and changed_paths
-        and all(path in TRUSTED_BOT_PATHS for path in changed_paths)
-    ):
-        return RightsResult(
-            allowed=True,
-            reason="trusted automation account, verified bot commits, manifest paths only",
-        )
+    if api.user.lower() in TRUSTED_BOT_LOGINS and bot_commits_verified and changed_paths:
+        if all(path in TRUSTED_BOT_PATHS for path in changed_paths):
+            return RightsResult(
+                allowed=True,
+                reason="trusted automation account, verified bot commits, manifest paths only",
+            )
+        if actions_pins_verified:
+            return RightsResult(
+                allowed=True,
+                reason=(
+                    "trusted automation account, verified bot commits, "
+                    "tag-verified actions pin bump only"
+                ),
+            )
 
     matched_owners: tuple[str, ...] | None = None
     for pattern, owners in api.codeowners():
@@ -225,13 +254,17 @@ def evaluate_pr_policy(
     changed_paths: list[str],
     allowed_types: tuple[str, ...] = DEFAULT_ALLOWED_TYPES,
     bot_commits_verified: bool = False,
+    actions_pins_verified: bool = False,
 ) -> PrPolicyResult:
     return PrPolicyResult(
         title=check_pr_title(title, allowed_types),
         template=check_template(template, body),
         pr_privilege=check_pr_rights(api),
         merge_privilege=check_merge_rights(
-            api, changed_paths, bot_commits_verified=bot_commits_verified
+            api,
+            changed_paths,
+            bot_commits_verified=bot_commits_verified,
+            actions_pins_verified=actions_pins_verified,
         ),
     )
 
@@ -328,3 +361,155 @@ def commits_verified_from_trusted_bot(
             for c in commits
         )
     )
+
+
+def _safe_api_segment(value: str) -> bool:
+    """A repository or tag name used as a REST path segment: never `.`, `..`
+    or anything containing `..`, so it cannot climb out of its endpoint."""
+    return ".." not in value and value not in {"", "."}
+
+
+def resolve_action_tag_sha(owner_repo: str, tag: str) -> str | None:
+    """The commit SHA that `tag` names in `owner_repo` right now, read from
+    GitHub (`git/ref/tags/<tag>`, an exact-name lookup, peeling annotated
+    tags). Any API error, malformed answer or unexpected shape returns None,
+    so the caller fails closed."""
+    owner, _, repo = owner_repo.partition("/")
+    if not all(_safe_api_segment(part) for part in (owner, repo, tag)):
+        return None
+
+    def get(path: str) -> dict | None:
+        result = subprocess.run(
+            ["gh", "api", "--method", "GET", f"repos/{owner}/{repo}/{path}"],
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            return None
+        try:
+            data = json.loads(result.stdout)
+        except json.JSONDecodeError:
+            return None
+        return data if isinstance(data, dict) else None
+
+    ref = get(f"git/ref/tags/{tag}")
+    if ref is None or ref.get("ref") != f"refs/tags/{tag}":
+        return None
+    obj = ref.get("object")
+    # An annotated tag points at a tag object; peel a short chain of them.
+    for _ in range(3):
+        if not isinstance(obj, dict) or not isinstance(obj.get("sha"), str):
+            return None
+        if obj.get("type") == "commit":
+            sha = obj["sha"]
+            return sha if re.fullmatch(r"[0-9a-f]{40}", sha) else None
+        if obj.get("type") != "tag" or not re.fullmatch(r"[0-9a-f]{40}", obj["sha"]):
+            return None
+        tag_obj = get(f"git/tags/{obj['sha']}")
+        obj = tag_obj.get("object") if tag_obj else None
+    return None
+
+
+def _pin_pair_ok(old: str, new: str, resolve_tag, cache: dict) -> bool:
+    old_m = _USES_PIN_LINE.fullmatch(old)
+    new_m = _USES_PIN_LINE.fullmatch(new)
+    if old_m is None or new_m is None:
+        return False
+    action = new_m["action"]
+    if (
+        old_m["prefix"] != new_m["prefix"]
+        or old_m["quote"] != new_m["quote"]
+        or old_m["action"] != action
+        or new_m["ratchet"] != action
+    ):
+        return False
+    owner_repo = "/".join(action.split("/")[:2])
+    key = (owner_repo.lower(), new_m["tag"])
+    if key not in cache:
+        cache[key] = resolve_tag(owner_repo, new_m["tag"])
+    return cache[key] == new_m["sha"]
+
+
+def actions_pin_bump_verified(
+    repo: Path,
+    base_sha: str,
+    head_sha: str,
+    changed_paths: list[str],
+    *,
+    resolve_tag=None,
+) -> bool:
+    """True only if the PR (`base_sha...head_sha`) modifies nothing but
+    workflow or composite-action YAML files (_ACTIONS_PIN_FILE), and every
+    changed line is one `uses: <action>@<sha> # ratchet:<action>@<tag>` line
+    replaced by the same line shape for the same action, whose new SHA is the
+    commit `<tag>` names in the action's own repository right now. That last
+    check means the pin cannot point at a commit that exists only in a
+    third-party fork of the action (a tag moved inside the action's own
+    repository is still trusted). Anything else (an added or deleted file, a mode change, a
+    changed line of any other kind, a git or API error) returns False, so the
+    caller falls back to the normal CODEOWNERS check."""
+    resolve_tag = resolve_tag or resolve_action_tag_sha
+    if not changed_paths or not all(_ACTIONS_PIN_FILE.fullmatch(p) for p in changed_paths):
+        return False
+    git_diff = ["git", "diff", "--no-renames", "--no-ext-diff", "--no-textconv", "--no-color"]
+    status = subprocess.run(
+        [*git_diff, "-z", "--name-status", f"{base_sha}...{head_sha}"],
+        cwd=repo,
+        capture_output=True,
+    )
+    if status.returncode != 0:
+        return False
+    fields = status.stdout.split(b"\0")
+    if fields and fields[-1] == b"":
+        fields.pop()
+    if len(fields) % 2:
+        return False
+    pairs = list(zip(fields[::2], fields[1::2], strict=True))
+    try:
+        listed = {path.decode("utf-8") for _, path in pairs}
+    except UnicodeDecodeError:
+        return False
+    if any(kind != b"M" for kind, _ in pairs) or listed != set(changed_paths):
+        return False
+
+    diff = subprocess.run(
+        [*git_diff, "-U0", f"{base_sha}...{head_sha}", "--", *changed_paths],
+        cwd=repo,
+        capture_output=True,
+    )
+    if diff.returncode != 0:
+        return False
+    try:
+        lines = diff.stdout.decode("utf-8").split("\n")
+    except UnicodeDecodeError:
+        return False
+    if lines and lines[-1] == "":
+        lines.pop()
+
+    cache: dict = {}
+    hunks = 0
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if line.startswith(("diff --git ", "index ", "--- a/", "+++ b/")):
+            i += 1
+            continue
+        header = _HUNK_HEADER.match(line)
+        if header is None:
+            return False  # a mode change, binary file or anything unexpected
+        old_count = int(header["old"] or 1)
+        new_count = int(header["new"] or 1)
+        if old_count != new_count or old_count == 0:
+            return False
+        body = lines[i + 1 : i + 1 + old_count + new_count]
+        if len(body) != old_count + new_count:
+            return False
+        removed, added = body[:old_count], body[old_count:]
+        if not all(r.startswith("-") for r in removed) or not all(a.startswith("+") for a in added):
+            return False
+        for old, new in zip(removed, added, strict=True):
+            if not _pin_pair_ok(old[1:], new[1:], resolve_tag, cache):
+                return False
+        hunks += 1
+        i += 1 + old_count + new_count
+    return hunks > 0

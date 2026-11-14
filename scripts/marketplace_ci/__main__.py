@@ -557,6 +557,7 @@ def _handle_check_pr(args: argparse.Namespace) -> int:
     from scripts.marketplace_ci.pr_policy import (
         TRUSTED_BOT_LOGINS,
         RealGitHubApi,
+        actions_pin_bump_verified,
         codex_review_skip_allowed,
         commits_verified_from_trusted_bot,
         evaluate_pr_policy,
@@ -608,6 +609,10 @@ def _handle_check_pr(args: argparse.Namespace) -> int:
     bot_commits_verified = user.lower() in TRUSTED_BOT_LOGINS and commits_verified_from_trusted_bot(
         full_name, pr.get("number"), head_sha, pr.get("commits")
     )
+    # Read only for a verified bot PR: it makes git and GitHub API calls.
+    actions_pins_verified = bot_commits_verified and actions_pin_bump_verified(
+        repo, base_sha, head_sha, changed_paths
+    )
     result = evaluate_pr_policy(
         api,
         title=title,
@@ -615,6 +620,7 @@ def _handle_check_pr(args: argparse.Namespace) -> int:
         template=template,
         changed_paths=changed_paths,
         bot_commits_verified=bot_commits_verified,
+        actions_pins_verified=actions_pins_verified,
     )
 
     for label, check in (("title", result.title), ("template", result.template)):
@@ -644,7 +650,10 @@ def _handle_check_pr(args: argparse.Namespace) -> int:
         # Same rule as the python-quality skip above: written only on a passing
         # policy result, and trusted by publish only when Hygiene succeeded.
         skip = result.passed and codex_review_skip_allowed(
-            user, changed_paths, bot_commits_verified=bot_commits_verified
+            user,
+            changed_paths,
+            bot_commits_verified=bot_commits_verified,
+            actions_pins_verified=actions_pins_verified,
         )
         print(f"check-pr [codex-review-skip]: {'YES' if skip else 'NO'}")
         with open(args.codex_review_skip_output, "a", encoding="utf-8") as out:
