@@ -99,10 +99,15 @@ def test_windows_timeout_kills_the_tree_and_does_not_wait_forever(monkeypatch):
 
     monkeypatch.setattr(module, "os", types.SimpleNamespace(name="nt"))
     monkeypatch.setattr(module.subprocess, "Popen", lambda *a, **k: FakeProc())
+    monkeypatch.setattr(module, "_windows_job", lambda pid: calls.append(("job", pid)) or 77)
+    monkeypatch.setattr(module, "_kill_windows_job", lambda job: calls.append(("kill-job", job)))
+    monkeypatch.setattr(module, "_close_windows_job", lambda job: calls.append(("close-job", job)))
+    # No helper process: the tree is ended through the job, not a PATH-resolved taskkill.
     monkeypatch.setattr(module, "_run", lambda argv, **k: calls.append(tuple(argv)))
     assert module._run_in_group(["uv"], env={}, timeout=1) is None
-    assert ("taskkill", "/F", "/T", "/PID", "4242") in calls
-    assert ("kill",) in calls
+    assert calls.index(("job", 4242)) < calls.index(("kill-job", 77)) < calls.index(("kill",))
+    assert calls[-1] == ("close-job", 77)
+    assert not [c for c in calls if c[0] == "taskkill"]
     drains = [c for c in calls if c[0] == "communicate"]
     assert len(drains) == 2 and drains[1][1] is not None  # the second drain is bounded
 
