@@ -319,7 +319,8 @@ jobs:
       - run: uv run ruff format --check scripts tests
       - run: uv run ruff check scripts tests
       - run: uv run ty check scripts tests
-      - run: uv run pytest -q
+      # pytest-xdist: one worker per vCPU (#729).
+      - run: uv run pytest -q -n auto
       # Local pre-commit hooks are opt-in per clone (never installed by CI or on clone), so a
       # machine without them can land a file with no final newline that end-of-file-fixer then
       # rewrites on every other machine's next merge. Check the files this PR changes (the merge
@@ -367,10 +368,11 @@ jobs:
       # write-file checks, and the ledger, fix-diff and verify-fix-diff checks that refuse a git inside
       # the repository. Tests that need mode bits, case-distinct names, a ':' in a path, symlinks, a
       # non-UTF-8 path or a #!/bin/sh stand-in for git skip here, nearly all with a stated reason
-      # (#655); the fix-diff time-limit test skips until #657 is fixed. A few cases that cannot occur
-      # on Windows are dropped inside tests that still run, so -rs does not list them.
+      # (#655); the fix-diff time-limit test runs as a .cmd git (#657). A few cases that cannot occur
+      # on Windows are dropped inside tests that still run, so -rs does not list them. These files
+      # start many git and bash processes, slow on Windows, so they run in parallel (#729).
       - run: >-
-          uv run --no-sync --no-build pytest -q -rs
+          uv run --no-sync --no-build pytest -q -rs -n auto
           tests/marketplace_ci/test_git_review_scope_script.py
           tests/marketplace_ci/test_git_review_ledger_script.py
           tests/marketplace_ci/test_git_review_fix_diff_script.py

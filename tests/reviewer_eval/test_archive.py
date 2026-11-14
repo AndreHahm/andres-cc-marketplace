@@ -97,6 +97,9 @@ def test_extract_result_returns_the_parsed_result():
         _zip({"codex-review-result.json": b"[]"}),
         _zip({"codex-review-result.json": b"{}", "extra.txt": b"x"}),
     ],
+    # Fixed ids: a zip holds the current time, so byte-derived ids differ between pytest-xdist
+    # workers that collect in different seconds, and xdist then refuses to run.
+    ids=["not-a-zip", "empty-zip", "other-member", "invalid-json", "json-array", "extra-member"],
 )
 def test_extract_result_rejects_anything_but_one_json_object(payload):
     with pytest.raises(archive.ArchiveError):
