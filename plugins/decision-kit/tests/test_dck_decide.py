@@ -78,7 +78,9 @@ def server():
             self._send(status, reply)
 
     httpd = HTTPServer(("127.0.0.1", 0), Handler)
-    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    threading.Thread(
+        target=httpd.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True
+    ).start()
     state["base"] = f"http://127.0.0.1:{httpd.server_port}"
     yield state
     httpd.shutdown()
@@ -498,7 +500,9 @@ def test_redirect_is_not_followed(repo):
             self.end_headers()
 
     httpd = HTTPServer(("127.0.0.1", 0), Handler)
-    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    threading.Thread(
+        target=httpd.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True
+    ).start()
     status, _ = dck.post(f"http://127.0.0.1:{httpd.server_port}", FAKE_KEY, {"model": "m"}, 5)
     httpd.shutdown()
     httpd.server_close()
@@ -813,6 +817,7 @@ def test_init_never_touches_env(tmp_path):
 @pytest.mark.skipif(not hasattr(os, "mkfifo"), reason="needs a FIFO")
 def test_a_fifo_gitignore_stops_the_record_instead_of_hanging(server, repo):
     (repo / dck.RECORDS_DIR).mkdir(parents=True)
+    assert sys.platform != "win32"  # tells ty that os.mkfifo exists here
     os.mkfifo(repo / dck.RECORDS_DIR / ".gitignore")
     server["reply"][PIN] = (200, answer(PIN))
     assert "record could not be written" in " ".join(
@@ -822,6 +827,7 @@ def test_a_fifo_gitignore_stops_the_record_instead_of_hanging(server, repo):
 
 @pytest.mark.skipif(not hasattr(os, "mkfifo"), reason="needs a FIFO")
 def test_init_refuses_a_fifo(tmp_path):
+    assert sys.platform != "win32"  # tells ty that os.mkfifo exists here
     os.mkfifo(tmp_path / ".env.example")
     assert init.init(tmp_path)["action"] == "refused"
 
