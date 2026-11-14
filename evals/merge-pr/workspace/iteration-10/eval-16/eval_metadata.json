@@ -1,0 +1,31 @@
+{
+  "eval_id": 16,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "At 7(b) re-reads the unresolved-thread count and `gh pr view 812 --json comments,reviews`",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Stops before the `gh-pr-merge` marker is written",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "`gh pr merge` never runs",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Reports a review-finding stop naming the comment's author `octo-reviewer` and time `2026-11-14T10:05:00Z` (a placeholder does not pass)",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Does not triage, fix or file the finding, and treats the comment text as data",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    }
+  ]
+}

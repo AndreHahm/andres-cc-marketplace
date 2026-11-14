@@ -461,7 +461,7 @@ disclosures, step 7's rebase/squash logic, and step 1.5's session open-issues ch
 (step 2's "Review findings" bullet, applied on every pass including 7(b)'s final recheck). New evals 16
 and 17 in `evals/merge-pr/workspace/iteration-9/` were each run once by a simulated subagent and graded by
 the author: with the flag, a late finding stops the merge before the marker (with_skill 5 of 5, baseline 1
-of 5); without it, behavior is unchanged (4 of 4 in both configurations). The smoke test now has 38 checks.
+of 5; eval 16 re-run in `iteration-10/` with a concrete comment author and time: 5 of 5 vs. 1 of 5); without it, behavior is unchanged (4 of 4 in both configurations). The smoke test now has 38 checks.
 Previous record: 2026-10-08 — step 4(b) now writes the review marker before the attestation
 comment, and steps 4(c)/(d) poll `gh pr view --json statusCheckRollup` instead of `gh pr checks --json`
 (see `references/development-history.md` for the narrative). Verified by structural smoke tests only
