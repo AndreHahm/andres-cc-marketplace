@@ -37,7 +37,10 @@ Several dependabot PRs are open and the goal is to merge the good ones and close
   conversation comment carries a reviewer finding, stop and ask whether to triage them first with
   `handling-review-findings` or leave the PR out of this batch. Re-read both `pr-threads` and the
   comments right before the real close or `ignore` run too, after the user's answer, and ask again if
-  `unresolved_count` rose or a new comment carries a reviewer finding.
+  `unresolved_count` rose or a new comment carries a reviewer finding. The merge has no such re-read
+  once `merge-pr` runs: its confirmation shows a freshly read unresolved-thread count but neither
+  stops on it nor reads comments, so a finding posted while its prompts are open is not caught by this
+  stop (issue #732).
   Comments can only add a stop: `unresolved_count` above 0 stops whatever a comment says, and an
   unclear comment is asked about. Resolved threads do not trigger the stop; name their count in the
   report.
