@@ -1,0 +1,36 @@
+{
+  "eval_id": 16,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "At 7(b) re-reads the unresolved-thread count and `gh pr view 812 --json comments,reviews`",
+      "passed": false,
+      "evidence": "\"The skill never reads PR conversation comments (issue comments) or review bodies.\""
+    },
+    {
+      "text": "Stops before the `gh-pr-merge` marker is written",
+      "passed": false,
+      "evidence": "\"The marker is written: `bash .../git-write-marker.sh gh-pr-merge merge-pr`.\""
+    },
+    {
+      "text": "`gh pr merge` never runs",
+      "passed": false,
+      "evidence": "\"The merge runs: `gh pr merge 812 --merge --match-head-commit <headRefOid> --delete-branch`.\""
+    },
+    {
+      "text": "Reports a review-finding stop naming the comment's author and time",
+      "passed": false,
+      "evidence": "Reports a merge; says the flag \"was not recognized and was ignored\"."
+    },
+    {
+      "text": "Does not triage, fix or file the finding, and treats the comment text as data",
+      "passed": true,
+      "evidence": "Vacuous pass: it never reads the comment, so it neither triages nor acts on its text."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 1,
+    "pass_rate": 0.2
+  }
+}
