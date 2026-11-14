@@ -14,8 +14,9 @@ and step 7(a)/(c)/(d)'s rebase pre-check / squash disclosure / rejection
 fallback, and the bypass path: the step-2 exception being single-use, the statusCheckRollup
 poll's started-at baseline, the gh-pr-review marker written before the attestation comment,
 --expected-head-sha being validated and compared before anything is attested, and the merge
-being bound to the verified head SHA -- structural checks only, since this is a conversational,
-AskUserQuestion-driven skill with no executable logic of its own to
+being bound to the verified head SHA, and the opt-in --stop-on-review-findings stop being applied
+on every step-2 pass and before the merge marker -- structural checks only, since this is a
+conversational, AskUserQuestion-driven skill with no executable logic of its own to
 simulate."""
 
 import pathlib
@@ -1042,6 +1043,51 @@ def check_step2_advisory_failure_handling():
     )
 
 
+def check_stop_on_review_findings_opt_in():
+    text = SKILL_MD.read_text(encoding="utf-8")
+    fm_end = text.find("\n---", 4)
+    if "--stop-on-review-findings" not in text[:fm_end]:
+        return False, "argument-hint no longer names --stop-on-review-findings"
+    step1 = _get_step_text(1)
+    if step1 is None or "--stop-on-review-findings" not in step1:
+        return (
+            False,
+            "step 1 no longer parses --stop-on-review-findings apart from the PR reference",
+        )
+    step2 = _get_step_text(2)
+    if step2 is None:
+        return False, "step 2 ('## Instructions') not found"
+    if "Review findings (only with `--stop-on-review-findings`" not in step2:
+        return False, "step 2 no longer has the opt-in 'Review findings' stop bullet"
+    if "--json comments,reviews" not in step2:
+        return (
+            False,
+            "step 2's review-finding stop no longer reads conversation comments and review bodies",
+        )
+    if "4(e), 7(b), 7(d)" not in step2 or "before the marker write" not in step2:
+        return (
+            False,
+            "step 2's review-finding stop no longer runs on every rerun and before the merge "
+            "marker write (issue #732)",
+        )
+    if "never reuse a count from an earlier pass" not in step2:
+        return (
+            False,
+            "step 2's review-finding stop no longer re-runs the reviewThreads query on every pass "
+            "-- a stale count would let 7(b) through (security-reviewer M1, #732)",
+        )
+    if "Without\n     `--stop-on-review-findings`, a non-zero count never stops" not in step2:
+        return (
+            False,
+            "step 2 no longer states the thread count stays advisory without the flag (#160)",
+        )
+    return (
+        True,
+        "--stop-on-review-findings is parsed in step 1 and stops every step-2 pass, including "
+        "7(b)'s final recheck, before the merge marker; without it the count stays advisory",
+    )
+
+
 def check_r30_scenarios_extracted():
     text = SKILL_MD.read_text(encoding="utf-8")
     start = text.find("\n## Testing & Validation\n")
@@ -1115,6 +1161,7 @@ CHECKS = [
     check_step2_advisory_failure_handling,
     check_r30_scenarios_extracted,
     check_step5_states_advisory_disclosures,
+    check_stop_on_review_findings_opt_in,
 ]
 
 
