@@ -443,8 +443,8 @@ class ThreadRun(FakeRun):
 
     def __call__(self, argv, **kwargs):
         if argv[1:3] == ["api", "graphql"]:
-            self.calls.append((list(argv), kwargs))
-            return subprocess.CompletedProcess(argv, self.rc, stdout=self.pages.pop(0), stderr="")
+            self.api_stdout = self.pages.pop(0)
+            self.api_rc = self.rc
         return super().__call__(argv, **kwargs)
 
     def graphql_calls(self):
