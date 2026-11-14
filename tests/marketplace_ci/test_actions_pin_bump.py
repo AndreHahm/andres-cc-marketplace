@@ -372,6 +372,116 @@ def test_resolve_fails_closed_on_timeout(monkeypatch):
     assert timeouts[0] > 0
 
 
+def test_resolve_fails_closed_when_gh_cannot_start(monkeypatch):
+    def missing_gh(cmd, **kwargs):
+        raise FileNotFoundError(2, "No such file or directory", cmd[0])
+
+    monkeypatch.setattr(subprocess, "run", missing_gh)
+    assert resolve_action_tag_sha("o/r", "v1") is None
+
+
+@pytest.mark.parametrize(
+    "error",
+    [subprocess.TimeoutExpired(["git"], 60.0), FileNotFoundError(2, "No such file", "git")],
+)
+def test_git_diff_timeout_or_start_failure_fails_closed(monkeypatch, tmp_path, error):
+    timeouts = []
+
+    def failing_git(cmd, **kwargs):
+        timeouts.append(kwargs.get("timeout"))
+        raise error
+
+    monkeypatch.setattr(subprocess, "run", failing_git)
+    resolve = _tags(GOOD_TAGS)
+    assert not actions_pin_bump_verified(tmp_path, OLD, NEW, [WF], resolve_tag=resolve)
+    assert resolve.calls == []
+    # The first git call must carry a finite timeout of its own.
+    assert len(timeouts) == 1
+    assert isinstance(timeouts[0], (int, float))
+    assert timeouts[0] > 0
+
+
+def test_content_diff_has_a_timeout_and_literal_pathspecs(monkeypatch, git_repo):
+    base, head = _bump(
+        git_repo, {WF: _workflow(_line(OLD, "v6.0.1"))}, {WF: _workflow(_line(NEW, "v7.0.0"))}
+    )
+    real_run = subprocess.run
+    calls = []
+
+    def recording_run(cmd, **kwargs):
+        calls.append((cmd, kwargs.get("timeout")))
+        return real_run(cmd, **kwargs)
+
+    monkeypatch.setattr(subprocess, "run", recording_run)
+    assert actions_pin_bump_verified(git_repo.root, base, head, [WF], resolve_tag=_tags(GOOD_TAGS))
+    content_diff = [cmd for cmd, _ in calls if "-U0" in cmd]
+    assert len(content_diff) == 1
+    assert content_diff[0][:3] == ["git", "--literal-pathspecs", "diff"]
+    assert all(isinstance(t, (int, float)) and t > 0 for _, t in calls)
+
+
+def test_resolve_fails_closed_on_undecodable_output(monkeypatch):
+    def bad_bytes(cmd, **kwargs):
+        raise UnicodeDecodeError("utf-8", b"\xff", 0, 1, "invalid start byte")
+
+    monkeypatch.setattr(subprocess, "run", bad_bytes)
+    assert resolve_action_tag_sha("o/r", "v1") is None
+
+
+def test_every_listed_file_needs_its_own_checked_hunk(monkeypatch, tmp_path):
+    other = ".github/workflows/other.yml"
+    name_status = b"M\0" + WF.encode() + b"\0M\0" + other.encode() + b"\0"
+    content = (
+        f"diff --git a/{WF} b/{WF}\n--- a/{WF}\n+++ b/{WF}\n@@ -7 +7 @@\n"
+        f"-{_line(OLD, 'v6.0.1')}\n+{_line(NEW, 'v7.0.0')}\n"
+    ).encode()
+
+    def fake_git(cmd, **kwargs):
+        out = name_status if "--name-status" in cmd else content
+        return subprocess.CompletedProcess(cmd, 0, stdout=out, stderr=b"")
+
+    monkeypatch.setattr(subprocess, "run", fake_git)
+    # other.yml is listed as modified but yields no hunk: it must not pass on WF's hunk alone.
+    assert not actions_pin_bump_verified(
+        tmp_path, OLD, NEW, [WF, other], resolve_tag=_tags(GOOD_TAGS)
+    )
+    # The same output with only WF listed passes, so the refusal above is the coverage check.
+    name_status = b"M\0" + WF.encode() + b"\0"
+    assert actions_pin_bump_verified(tmp_path, OLD, NEW, [WF], resolve_tag=_tags(GOOD_TAGS))
+
+
+def test_workflow_name_with_a_space_still_passes(git_repo):
+    spaced = ".github/workflows/my ci.yml"
+    base = _commit_bytes(git_repo, {spaced: _workflow(_line(OLD, "v6.0.1")).encode()}, "base")
+    head = _commit_bytes(git_repo, {spaced: _workflow(_line(NEW, "v7.0.0")).encode()}, "bump")
+    assert actions_pin_bump_verified(
+        git_repo.root, base, head, [spaced], resolve_tag=_tags(GOOD_TAGS)
+    )
+
+
+def test_glob_named_workflow_file_is_still_content_checked(git_repo):
+    evil = ".github/workflows/[a].yml"
+    base = _commit_bytes(
+        git_repo,
+        {
+            WF: _workflow(_line(OLD, "v6.0.1")).encode(),
+            evil: _workflow("      - run: echo ok").encode(),
+        },
+        "base",
+    )
+    head = _commit_bytes(
+        git_repo,
+        {
+            WF: _workflow(_line(NEW, "v7.0.0")).encode(),
+            evil: _workflow("      - run: evil").encode(),
+        },
+        "bump",
+    )
+    assert not actions_pin_bump_verified(
+        git_repo.root, base, head, [evil, WF], resolve_tag=_tags(GOOD_TAGS)
+    )
+
+
 @pytest.mark.parametrize(("owner_repo", "tag"), [("o/..", "v1"), ("o/r", ".."), ("o/r", "a..b")])
 def test_resolve_refuses_path_climbing_segments(monkeypatch, owner_repo, tag):
     seen = _fake_gh(monkeypatch, {})

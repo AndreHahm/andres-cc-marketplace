@@ -1,0 +1,67 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4575676717",
+      "line": 14,
+      "note": "Scenario 8 now names the verified ratchet pin shape and verified commits; fixed in 12ebaa10.",
+      "path": "plugins/git-kit/skills/triaging-dependabot-prs/references/test-scenarios.md",
+      "pr": 742,
+      "recorded_at": "2026-11-14T21:46:03+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "6884246670",
+      "line": 383,
+      "note": "Tag lookup gh call now has a 30s timeout and fails closed on TimeoutExpired, with a test; fixed in 12ebaa10.",
+      "path": "scripts/marketplace_ci/pr_policy.py",
+      "pr": 742,
+      "recorded_at": "2026-11-14T21:46:03+00:00"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "6884246670:r2-1",
+      "line": 57,
+      "note": "Claimed Dependabot may not rewrite the ratchet tag comment. Refuted live: the verifier returned True on Dependabot's own diffs for PRs 485, 518, 603, 627 and 519.",
+      "path": "scripts/marketplace_ci/pr_policy.py",
+      "pr": 742,
+      "recorded_at": "2026-11-14T22:09:40+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "6884246670:r2-2",
+      "line": 466,
+      "note": "Both git diff calls in actions_pin_bump_verified now time out after 60s and fail closed on TimeoutExpired or OSError, with tests.",
+      "path": "scripts/marketplace_ci/pr_policy.py",
+      "pr": 742,
+      "recorded_at": "2026-11-14T22:09:41+00:00"
+    },
+    {
+      "disposition": "declined",
+      "finding": "6884246670:r2-3",
+      "line": 255,
+      "note": "Informational process note. The R15 extension was the owner's decision in this PR and is disclosed; no defect.",
+      "path": "docs/ci-codex-review-user-requirements.md",
+      "pr": 742,
+      "recorded_at": "2026-11-14T22:09:41+00:00"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "6884246670:r2-4",
+      "line": 507,
+      "note": "Claimed glob characters in a changed path skip its content check. Refuted by a git probe (exact-name match first, listing must equal changed_paths) and by security-reviewer; hardened anyway with --literal-pathspecs and a per-file hunk coverage check.",
+      "path": "scripts/marketplace_ci/pr_policy.py",
+      "pr": 742,
+      "recorded_at": "2026-11-14T22:09:41+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "6884246670:r2-5",
+      "line": 393,
+      "note": "The tag lookup now also returns None on OSError and UnicodeDecodeError, matching its fail-closed docstring, with tests.",
+      "path": "scripts/marketplace_ci/pr_policy.py",
+      "pr": 742,
+      "recorded_at": "2026-11-14T22:09:42+00:00"
+    }
+  ]
+}

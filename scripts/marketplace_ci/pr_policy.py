@@ -63,6 +63,8 @@ _COMMIT_SHA = re.compile(r"[0-9a-f]{40}")
 # One tag lookup (a single `gh api` call) may take this long before it counts
 # as failed; the hygiene job's own timeout-minutes bounds the whole check.
 _TAG_LOOKUP_TIMEOUT_SECONDS = 30
+# The same bound for each local `git diff` in actions_pin_bump_verified.
+_GIT_DIFF_TIMEOUT_SECONDS = 60
 _HUNK_HEADER = re.compile(r"@@ -\d+(?:,(?P<old>\d+))? \+\d+(?:,(?P<new>\d+))? @@")
 
 _EMOJI_PATTERN = re.compile("[\U0001f300-\U0001faff\U00002600-\U000027bf\U0001f1e6-\U0001f1ff]")
@@ -390,7 +392,7 @@ def resolve_action_tag_sha(owner_repo: str, tag: str) -> str | None:
                 text=True,
                 timeout=_TAG_LOOKUP_TIMEOUT_SECONDS,
             )
-        except subprocess.TimeoutExpired:
+        except (subprocess.TimeoutExpired, OSError, UnicodeDecodeError):
             return None
         if result.returncode != 0:
             return None
@@ -454,7 +456,7 @@ def actions_pin_bump_verified(
     check means the pin cannot point at a commit that exists only in a
     third-party fork of the action (a tag moved inside the action's own
     repository is still trusted). Anything else (an added or deleted file, a mode change, a
-    changed line of any other kind, a git or API error) returns False, so the
+    changed line of any other kind, a git or API error or timeout) returns False, so the
     caller falls back to the normal CODEOWNERS check."""
     resolve_tag = resolve_tag or resolve_action_tag_sha
     if not changed_paths or not all(_ACTIONS_PIN_FILE.fullmatch(p) for p in changed_paths):
@@ -464,21 +466,25 @@ def actions_pin_bump_verified(
     if not (_COMMIT_SHA.fullmatch(base_sha) and _COMMIT_SHA.fullmatch(head_sha)):
         return False
     revisions = f"{base_sha}...{head_sha}"
-    status = subprocess.run(  # nosec B603 B607  # literal git subcommand, no shell, validated SHAs
-        [
-            "git",
-            "diff",
-            "--no-renames",
-            "--no-ext-diff",
-            "--no-textconv",
-            "--no-color",
-            "-z",
-            "--name-status",
-            revisions,
-        ],
-        cwd=repo,
-        capture_output=True,
-    )
+    try:
+        status = subprocess.run(  # nosec B603 B607  # literal git subcommand, no shell, validated SHAs
+            [
+                "git",
+                "diff",
+                "--no-renames",
+                "--no-ext-diff",
+                "--no-textconv",
+                "--no-color",
+                "-z",
+                "--name-status",
+                revisions,
+            ],
+            cwd=repo,
+            capture_output=True,
+            timeout=_GIT_DIFF_TIMEOUT_SECONDS,
+        )
+    except (subprocess.TimeoutExpired, OSError):
+        return False
     if status.returncode != 0:
         return False
     fields = status.stdout.split(b"\0")
@@ -494,22 +500,28 @@ def actions_pin_bump_verified(
     if any(kind != b"M" for kind, _ in pairs) or listed != set(changed_paths):
         return False
 
-    diff = subprocess.run(  # nosec B603 B607  # literal git subcommand, no shell, paths after --
-        [
-            "git",
-            "diff",
-            "--no-renames",
-            "--no-ext-diff",
-            "--no-textconv",
-            "--no-color",
-            "-U0",
-            revisions,
-            "--",
-            *changed_paths,
-        ],
-        cwd=repo,
-        capture_output=True,
-    )
+    # --literal-pathspecs: a changed path is matched as its exact name, never as a glob.
+    try:
+        diff = subprocess.run(  # nosec B603 B607  # literal git subcommand, no shell, paths after --
+            [
+                "git",
+                "--literal-pathspecs",
+                "diff",
+                "--no-renames",
+                "--no-ext-diff",
+                "--no-textconv",
+                "--no-color",
+                "-U0",
+                revisions,
+                "--",
+                *changed_paths,
+            ],
+            cwd=repo,
+            capture_output=True,
+            timeout=_GIT_DIFF_TIMEOUT_SECONDS,
+        )
+    except (subprocess.TimeoutExpired, OSError):
+        return False
     if diff.returncode != 0:
         return False
     try:
@@ -521,15 +533,30 @@ def actions_pin_bump_verified(
 
     cache: dict = {}
     hunks = 0
+    # Every changed path must yield at least one checked hunk under its own
+    # `+++ b/<path>` header, so no file can drop out of the content check.
+    current: str | None = None
+    covered: set[str] = set()
     i = 0
     while i < len(lines):
         line = lines[i]
-        if line.startswith(("diff --git ", "index ", "--- a/", "+++ b/")):
+        if line.startswith("diff --git "):
+            current = None
+            i += 1
+            continue
+        if line.startswith("+++ b/"):
+            # git ends the name with a tab when it contains whitespace.
+            current = line[len("+++ b/") :].removesuffix("\t")
+            i += 1
+            continue
+        if line.startswith(("index ", "--- a/")):
             i += 1
             continue
         header = _HUNK_HEADER.match(line)
         if header is None:
             return False  # a mode change, binary file or anything unexpected
+        if current is None:
+            return False  # a hunk with no file header
         old_count = int(header["old"] or 1)
         new_count = int(header["new"] or 1)
         if old_count != new_count or old_count == 0:
@@ -544,5 +571,6 @@ def actions_pin_bump_verified(
             if not _pin_pair_ok(old[1:], new[1:], resolve_tag, cache):
                 return False
         hunks += 1
+        covered.add(current)
         i += 1 + old_count + new_count
-    return hunks > 0
+    return hunks > 0 and covered == set(changed_paths)
