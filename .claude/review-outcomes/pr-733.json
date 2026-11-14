@@ -22,10 +22,19 @@
       "disposition": "accepted",
       "finding": "4572708905",
       "line": 43,
-      "note": "Merge-path re-check belongs in merge-pr; owner kept the disclosed deferral to issue 732. Major, needs risk acceptance before merge.",
+      "note": "Deferred to issue 732 (merge-path re-check belongs in merge-pr). Risk explicitly accepted by the repository owner on 2026-11-14 in the handling-review-findings step 7 risk-acceptance question; owner's deferral reply: https://github.com/AndreHahm/andres-cc-marketplace/pull/733#discussion_r4572738901",
       "path": "plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md",
       "pr": 733,
-      "recorded_at": "2026-11-14T09:12:01+00:00"
+      "recorded_at": "2026-11-14T10:20:37+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4572981922",
+      "line": 22,
+      "note": "Claude delta review: C was recorded as accepted before the explicit step 7 risk acceptance; the owner then accepted the risk and the note now records that with a link.",
+      "path": ".claude/review-outcomes/pr-733.json",
+      "pr": 733,
+      "recorded_at": "2026-11-14T10:20:46+00:00"
     },
     {
       "disposition": "fixed",
