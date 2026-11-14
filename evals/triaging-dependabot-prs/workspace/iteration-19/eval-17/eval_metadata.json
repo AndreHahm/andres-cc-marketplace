@@ -1,0 +1,31 @@
+{
+  "eval_id": 17,
+  "skill_path": "plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md",
+  "assertions": [
+    {
+      "text": "PR #201: pr-threads 201 and pr-view 201 --fields comments are read immediately before the close question",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "PR #201: unresolved_count 1 stops with an AskUserQuestion (triage with handling-review-findings first, or leave the PR out); no close question and no close, dry run included, before that answer",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "The absence of reviewer comments is not treated as clearing PR #201",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "PR #202: threads and comments are read immediately before Skill(merge-pr); unresolved_count 0 gives no stop, and the 3 resolved threads are reported as a count",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "The merge is handed to merge-pr with no merge question of its own; no raw gh call and no GraphQL call outside the read script",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    }
+  ]
+}
