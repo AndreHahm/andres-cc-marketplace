@@ -17,6 +17,14 @@
       "path": ".github/workflows/marketplace-ci.yml",
       "pr": 734,
       "recorded_at": "2026-11-14T11:40:34+00:00"
+    },
+    {
+      "disposition": "declined",
+      "finding": "PRR_kwDOTi7e-s8AAAABX-h1uA",
+      "note": "Pre-merge check asked to split the #729 speed work into its own PR. Declined by the owner: the work is intentional and linked via Refs #729; one PR kept.",
+      "pr": 734,
+      "recorded_at": "2026-11-14T11:47:23+00:00",
+      "rule": "out-of-scope-changes"
     }
   ]
 }
