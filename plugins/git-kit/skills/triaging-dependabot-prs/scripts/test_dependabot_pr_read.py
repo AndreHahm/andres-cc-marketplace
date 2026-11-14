@@ -279,6 +279,21 @@ class PrReads(unittest.TestCase):
         self.assertEqual(out["data"], data)
         self.assertEqual(out["pr"], "482")
 
+    def test_pr_view_allows_reviews_alongside_comments(self):
+        # A finding left only in a review's body is in `reviews`, never in `comments`.
+        data = {
+            "comments": [],
+            "reviews": [{"author": {"login": "coderabbitai"}, "body": "finding"}],
+        }
+        fake = FakeRun(pr_stdout=json.dumps(data))
+        code, out = run_main(["pr-view", "482", "--fields", "comments,reviews"], fake)
+        self.assertEqual(code, 0, out)
+        self.assertEqual(
+            fake.pr_calls()[0][0],
+            [GH, "pr", "view", "482", "--json", "comments,reviews", "-R", f"github.com/{REPO}"],
+        )
+        self.assertEqual(out["data"], data)
+
     def test_pr_view_refuses_unlisted_repeated_and_empty_fields_before_any_call(self):
         for fields in ("state,nope", "state,state", "", "state;id", "assignees", "state,"):
             fake = FakeRun()
