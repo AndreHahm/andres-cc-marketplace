@@ -357,6 +357,21 @@ def test_resolve_fails_closed_on_api_error(monkeypatch):
     assert resolve_action_tag_sha("o/r", "v1") is None
 
 
+def test_resolve_fails_closed_on_timeout(monkeypatch):
+    timeouts = []
+
+    def hanging_run(cmd, **kwargs):
+        timeouts.append(kwargs.get("timeout"))
+        raise subprocess.TimeoutExpired(cmd, 30.0)
+
+    monkeypatch.setattr(subprocess, "run", hanging_run)
+    assert resolve_action_tag_sha("o/r", "v1") is None
+    # The call must carry a finite timeout, or a hung gh would block until the job times out.
+    assert len(timeouts) == 1
+    assert isinstance(timeouts[0], (int, float))
+    assert timeouts[0] > 0
+
+
 @pytest.mark.parametrize(("owner_repo", "tag"), [("o/..", "v1"), ("o/r", ".."), ("o/r", "a..b")])
 def test_resolve_refuses_path_climbing_segments(monkeypatch, owner_repo, tag):
     seen = _fake_gh(monkeypatch, {})
