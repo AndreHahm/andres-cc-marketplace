@@ -42,7 +42,8 @@ For code review use `/codex-kit:cdx-review`. For research, use the `codex-resear
   of a plan or document that already exists as a file.
 - `resume [follow-up]` against a document already sent this session.
 - One step of a plan the user asks to have verified ("verify step 3 of plan.md"), critical or not,
-  even when Claude will execute it later.
+  even when Claude will execute it later. The whole document is still verified and the verdict is
+  document-wide, so another step's problem can fail it; step-scoped verification is issue #731.
 
 ## When NOT to Use
 
