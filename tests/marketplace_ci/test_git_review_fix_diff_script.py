@@ -551,24 +551,36 @@ def test_a_stalled_git_is_stopped_at_the_time_limit(tmp_path, monkeypatch):
 @pytest.mark.skipif(os.name != "nt", reason="a .cmd git and a Windows job object")
 def test_a_stalled_windows_git_is_stopped_with_its_child_at_the_time_limit(tmp_path, monkeypatch):
     # #657: killing the cmd.exe wrapper alone left its child holding the output pipe for 30 s.
-    # The child here is a Python that records its PID, so the test can tell it was ended too:
-    # the bounded read would make the call return on time even if it survived.
+    # No check that the child itself was ended: cmd.exe can start it before git is put in the job,
+    # and it then survives by design. The job-kill order is covered by the next test.
     import time
 
     module = _load_module()
-    pidfile = tmp_path / "child.pid"
-    child = f"import os, time; open(r'{pidfile}', 'w').write(str(os.getpid())); time.sleep(30)"
     stalled = tmp_path / "git.cmd"
-    stalled.write_text(f'@"{sys.executable}" -c "{child}"\r\n', encoding="utf-8")
+    stalled.write_text(
+        f'@"{sys.executable}" -c "import time; time.sleep(30)"\r\n', encoding="utf-8"
+    )
     monkeypatch.setattr(module, "_TIMEOUT_SECONDS", 3)
     monkeypatch.chdir(tmp_path)
     started = time.monotonic()
     with pytest.raises(TimeoutError):
         module._show(str(stalled), "a" * 40)
     assert time.monotonic() - started < 15
-    pid = pidfile.read_text(encoding="utf-8")
-    # Bytes, not text: tasklist prints in the OEM code page, localized when no task matches.
-    listed = subprocess.run(
-        ["tasklist", "/FI", f"PID eq {pid}", "/FO", "CSV", "/NH"], capture_output=True, check=False
-    ).stdout
-    assert f'"{pid}"'.encode() not in listed  # the job ended the child, not just cmd.exe
+
+
+def test_a_windows_kill_ends_the_job_before_git(monkeypatch):
+    import types
+
+    module = _load_module()
+    calls: list[tuple] = []
+
+    class FakeProc:
+        pid = 4242
+
+        def kill(self) -> None:
+            calls.append(("kill",))
+
+    monkeypatch.setattr(module, "sys", types.SimpleNamespace(platform="win32"))
+    monkeypatch.setattr(module, "_kill_windows_job", lambda job: calls.append(("kill-job", job)))
+    module._kill(FakeProc(), 77)
+    assert calls == [("kill-job", 77), ("kill",)]
