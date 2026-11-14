@@ -4,4 +4,6 @@ Re-run of eval 17 after the `security-reviewer` pass on the #730 change, whose f
 
 | Eval | Result |
 |---|---|
-| 17: PR #201 (unresolved inline thread) stops before the close question, empty comments do not cancel the stop, and `pr-threads` is re-read before the real run; PR #202 (all resolved) is not stopped and its resolved count is reported | 5 of 5 |
+| 17: PR #201 (unresolved inline thread) stops before the close question and empty comments do not cancel the stop; PR #202 (all resolved) is not stopped and its resolved count is reported | 5 of 5 |
+
+The answer also described re-reading `pr-threads` before the real run, but none of the 5 assertions grades that step (they are the same as in iteration 19); eval 18 in iteration 21 covers it.
