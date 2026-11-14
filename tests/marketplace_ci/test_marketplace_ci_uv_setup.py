@@ -4,7 +4,9 @@ Every job that runs uv installs it once with the SHA-pinned astral-sh/setup-uv a
 version, before its first uv command, never with an unpinned `pip install uv`. The version is set
 explicitly so the action never falls back to PR-controlled config (`pyproject.toml`) or to `latest`,
 and the cache stays off: several of these jobs restore trusted code or hold secrets, and a cache
-written from a PR run would carry state into later runs.
+written from a PR run would carry state into later runs. `python-version` is set too: without it
+the action runs `uv python find` on the PR checkout and then executes the interpreter it finds,
+before the trusted jobs restore `.python-version` and `uv.toml`, so a PR could run code there.
 """
 
 from pathlib import Path
@@ -44,4 +46,8 @@ def test_every_uv_job_sets_up_one_pinned_uv_before_its_first_uv_command():
         first_uv = next(i for i, s in enumerate(steps) if _uses_uv(s))
         assert setups[0] < first_uv, name
         options = steps[setups[0]]["with"]
-        assert options == {"version": UV_VERSION, "enable-cache": "false"}, name
+        assert options == {
+            "version": UV_VERSION,
+            "enable-cache": "false",
+            "python-version": "3.13",
+        }, name
