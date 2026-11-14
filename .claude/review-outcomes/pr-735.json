@@ -1,0 +1,34 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "6876895721-1",
+      "line": 285,
+      "note": "Claude delta review, Minor: with the flag, merge-pr's own 4(b) attestation comment could read as unclassifiable and stop the merge; command/status comments are now not findings, swept to triaging-dependabot-prs too. Fixed in 18a8a20f.",
+      "path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+      "pr": 735,
+      "recorded_at": "2026-11-14T12:13:43+00:00",
+      "rule": "unclassifiable-own-comment"
+    },
+    {
+      "disposition": "declined",
+      "finding": "6876895721-2",
+      "line": 277,
+      "note": "Claude delta review, Informational: comments/reviews read completeness past 100 is unverified; already disclosed in merge-pr step 2 and the PR's Open Items, no change needed.",
+      "path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+      "pr": 735,
+      "recorded_at": "2026-11-14T12:13:44+00:00",
+      "rule": "read-completeness-unverified"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-run-43592191319-skill-reviewer-1",
+      "line": 48,
+      "note": "CI Codex delta review, Major: 'Only a finding posted after the final read' omitted merge-pr's unverified comments/reviews completeness gap; sentence now names both gaps. Fixed in 18a8a20f.",
+      "path": "plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md",
+      "pr": 735,
+      "recorded_at": "2026-11-14T12:13:43+00:00",
+      "rule": "workflow-accuracy"
+    }
+  ]
+}
