@@ -10,6 +10,15 @@
       "recorded_at": "2026-11-14T21:46:03+00:00"
     },
     {
+      "disposition": "false_positive",
+      "finding": "4575786282",
+      "line": 507,
+      "note": "Repeat of 6884246670:r2-4 as an inline thread. The ci[x].yml example was reproduced and does not skip the check on 12ebaa10 or 4ad94242; --literal-pathspecs and per-file coverage were added anyway.",
+      "path": "scripts/marketplace_ci/pr_policy.py",
+      "pr": 742,
+      "recorded_at": "2026-11-14T22:17:02+00:00"
+    },
+    {
       "disposition": "fixed",
       "finding": "6884246670",
       "line": 383,
@@ -62,6 +71,24 @@
       "path": "scripts/marketplace_ci/pr_policy.py",
       "pr": 742,
       "recorded_at": "2026-11-14T22:09:42+00:00"
+    },
+    {
+      "disposition": "declined",
+      "finding": "6884246670:r3-1",
+      "line": 52,
+      "note": "Asks to confirm owner intent for exempting workflow pin bumps. That is the purpose of this PR, decided by the owner; no defect.",
+      "path": "scripts/marketplace_ci/pr_policy.py",
+      "pr": 742,
+      "recorded_at": "2026-11-14T22:17:03+00:00"
+    },
+    {
+      "disposition": "declined",
+      "finding": "6884246670:r3-2",
+      "line": 2178,
+      "note": "Informational: the Codex skip covering workflow pin bumps is intended and disclosed with its residual in docs/ci.md; no defect.",
+      "path": ".github/workflows/marketplace-ci.yml",
+      "pr": 742,
+      "recorded_at": "2026-11-14T22:17:03+00:00"
     }
   ]
 }
