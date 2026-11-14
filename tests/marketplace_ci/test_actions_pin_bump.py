@@ -462,3 +462,32 @@ def test_non_utf8_diff_fails_closed(git_repo):
     assert not actions_pin_bump_verified(
         git_repo.root, base, head, [WF], resolve_tag=_tags(GOOD_TAGS)
     )
+
+
+@pytest.mark.parametrize(
+    ("base", "head"),
+    [
+        ("--output=/tmp/x", NEW),
+        (OLD, "-c core.pager=evil"),
+        ("HEAD~1", NEW),
+        (OLD, NEW.upper()),
+        (OLD[:39], NEW),
+    ],
+)
+def test_non_sha_revisions_fail_before_any_git_call(tmp_path, base, head):
+    # tmp_path is not a repository: reaching git would fail too, but the SHA
+    # check must refuse first and resolve nothing.
+    resolve = _tags(GOOD_TAGS)
+    assert not actions_pin_bump_verified(tmp_path, base, head, [WF], resolve_tag=resolve)
+    assert resolve.calls == []
+
+
+def test_symbolic_revision_is_refused_even_when_git_would_resolve_it(git_repo):
+    base, head = _bump(
+        git_repo, {WF: _workflow(_line(OLD, "v6.0.1"))}, {WF: _workflow(_line(NEW, "v7.0.0"))}
+    )
+    resolve = _tags(GOOD_TAGS)
+    assert actions_pin_bump_verified(git_repo.root, base, head, [WF], resolve_tag=resolve)
+    assert not actions_pin_bump_verified(
+        git_repo.root, "HEAD~1", head, [WF], resolve_tag=_tags(GOOD_TAGS)
+    )
