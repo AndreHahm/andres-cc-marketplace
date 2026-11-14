@@ -29,6 +29,16 @@
       "pr": 735,
       "recorded_at": "2026-11-14T12:13:43+00:00",
       "rule": "workflow-accuracy"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-run-43593898511-skill-reviewer-1",
+      "line": 285,
+      "note": "CI Codex delta review, Major: the round-1 fix exempted the whole 4(b) attestation comment, so a finding in its free-text reason would be missed; now only its structured fields are exempt and the reason is classified, with a scenario where a finding in the reason stops at 4(e).",
+      "path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+      "pr": 735,
+      "recorded_at": "2026-11-14T12:52:53+00:00",
+      "rule": "workflow-safety"
     }
   ]
 }

@@ -169,9 +169,15 @@ a fresh `gh repo view` (skill-reviewer M1, 2026-08-31):**
   and the merge proceeds on the user's confirmation
 - Flag given on a step 7(d) rejection-fallback retry → the retry's full step-2 rerun applies the same
   stop before the fresh marker is written
-- Flag given together with `--bypass-codex-review`, and the PR's only conversation comments are this
-  skill's own step-4(b) attestation comment and a caller's `@dependabot rebase` request → neither is a
-  finding (each only carries a command or a status), so 4(e)'s and 7(b)'s reruns do not stop on them
+- Flag given together with `--bypass-codex-review`, the attestation's reason only explains the bypass
+  (e.g. "Codex review timed out twice; the diff only touches docs"), and the PR's only other conversation
+  comment is a caller's `@dependabot rebase` request → no finding (the attestation's structured fields
+  are exempt, its reason carries none, and the rebase request only carries a command), so 4(e)'s and
+  7(b)'s reruns do not stop on them
+- Flag given together with `--bypass-codex-review`, and the attestation's free-text reason carries a
+  finding (e.g. "Codex timed out; note this bump also breaks the 3.10 CI job") → the reason is classified
+  like any other body, so 4(e)'s rerun stops with a review-finding stop naming the attestation comment
+  before 7(b)'s marker is ever written
 
 **Verify step 7's rebase-compatibility pre-check, squash-tradeoff disclosure, and rejection fallback:**
 - `pr_merge_type` is `REBASE`, the PR's commit history contains zero merge commits → step 7(a)'s pre-check finds a zero count and proceeds straight to `gh pr merge --rebase` with no `AskUserQuestion` interruption
