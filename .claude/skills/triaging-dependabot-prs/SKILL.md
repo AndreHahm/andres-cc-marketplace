@@ -48,7 +48,7 @@ Several dependabot PRs are open and the goal is to merge the good ones and close
   conditions; 6.7 then asks the hold-or-leave-out question. Only a finding posted after that final read starts and before the
   merge itself is not caught.
   Comments and review bodies can only add a stop: `unresolved_count` above 0 stops whatever they say,
-  and an unclear one is asked about. Resolved threads do not trigger the stop; name their count in the
+  and one that cannot be classified stops too, the same rule `merge-pr` applies with the flag. Resolved threads do not trigger the stop; name their count in the
   report.
 
 ## Why a serial loop
