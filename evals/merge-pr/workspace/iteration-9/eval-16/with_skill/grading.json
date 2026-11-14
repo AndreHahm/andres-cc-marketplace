@@ -1,0 +1,36 @@
+{
+  "eval_id": 16,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "At 7(b) re-reads the unresolved-thread count and `gh pr view 812 --json comments,reviews`",
+      "passed": true,
+      "evidence": "\"I read `gh pr view 812 --json comments,reviews`\" (7(b) step 4)"
+    },
+    {
+      "text": "Stops before the `gh-pr-merge` marker is written",
+      "passed": true,
+      "evidence": "\"The `gh-pr-merge` marker is not written. 7(b) stops before the marker write.\""
+    },
+    {
+      "text": "`gh pr merge` never runs",
+      "passed": true,
+      "evidence": "\"`gh pr merge` does not run.\""
+    },
+    {
+      "text": "Reports a review-finding stop naming the comment's author and time",
+      "passed": true,
+      "evidence": "\"Review-finding stop on PR #812... A conversation comment from <author> at <time> carries a reviewer finding\""
+    },
+    {
+      "text": "Does not triage, fix or file the finding, and treats the comment text as data",
+      "passed": true,
+      "evidence": "\"I take no fix, file or decline action on the finding\"; \"I treat the comment text only as data to classify\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

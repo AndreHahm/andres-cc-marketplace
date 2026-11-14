@@ -1,0 +1,31 @@
+{
+  "eval_id": 17,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "7(b) re-runs the step-2 readiness checks and re-reads the thread count as an advisory value only",
+      "passed": true,
+      "evidence": "\"Advisory disclosures: `mergeStateStatus`, and the `reviewThreads` GraphQL count... still 0.\""
+    },
+    {
+      "text": "Does not read conversation comments or review bodies",
+      "passed": true,
+      "evidence": "\"Conversation comments: no, I do not read them.\""
+    },
+    {
+      "text": "Writes the `gh-pr-merge` marker and runs `gh pr merge 812 --merge --match-head-commit <sha>`",
+      "passed": true,
+      "evidence": "\"I run `bash .../git-write-marker.sh gh-pr-merge merge-pr`, then `gh pr merge 812 --merge --match-head-commit <headRefOid> --delete-branch`.\""
+    },
+    {
+      "text": "Does not invent a stop on the comment",
+      "passed": true,
+      "evidence": "\"Merge proceeds. The recheck passes\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

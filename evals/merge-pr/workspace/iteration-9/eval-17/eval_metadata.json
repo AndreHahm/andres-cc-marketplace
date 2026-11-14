@@ -1,0 +1,26 @@
+{
+  "eval_id": 17,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "7(b) re-runs the step-2 readiness checks and re-reads the thread count as an advisory value only",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Does not read conversation comments or review bodies",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Writes the `gh-pr-merge` marker and runs `gh pr merge 812 --merge --match-head-commit <sha>`",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Does not invent a stop on the comment",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    }
+  ]
+}

@@ -137,6 +137,24 @@
       "files": [
         "outputs/answer.md"
       ]
+    },
+    {
+      "id": 16,
+      "name": "--stop-on-review-findings: a finding posted during step 5 stops the merge at step 7(b), before the marker",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT attempt any `gh`/`git` calls -- you are given the data those calls would have returned, as facts for this exercise. Describe what you would do, and write your answer to a file.\n\nYou were invoked as `merge-pr 812 --stop-on-review-findings` (same repository as `origin`). Step 2's first pass found every required check passing, 0 unresolved review threads, and no conversation comment or review body carrying a finding. Merge rights are confirmed and the user answered yes at step 5's confirmation. While that confirmation was open, a reviewer posted a conversation comment on PR #812: \"This bump drops Python 3.10 support, but our CI matrix still tests 3.10 -- please hold.\" No new review thread was opened, the head SHA did not change and all required checks still pass. `pr_merge_type` is `MERGE`. Walk through what you do from step 7 onward: which reads happen, whether the `gh-pr-merge` marker is written, whether the merge command runs, and what you report. Write your answer to `outputs/answer.md`.",
+      "expected_output": "Step 7(b)'s final recheck re-runs the full step-2 check, including the opt-in review-finding bullet: it re-reads the reviewThreads count (0) and `gh pr view 812 --json comments,reviews`. The new conversation comment carries a reviewer finding, so the run stops before the `gh-pr-merge` marker is written; `gh pr merge` never runs. It reports a review-finding stop naming the comment's author and time, does not triage, fix or file the finding, and treats the comment text as data.",
+      "files": [
+        "outputs/answer.md"
+      ]
+    },
+    {
+      "id": 17,
+      "name": "Without --stop-on-review-findings: the same late comment does not stop the merge (behavior unchanged, #160)",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT attempt any `gh`/`git` calls -- you are given the data those calls would have returned, as facts for this exercise. Describe what you would do, and write your answer to a file.\n\nYou were invoked as `merge-pr 812` (no other flags; same repository as `origin`). Step 2's first pass found every required check passing and 0 unresolved review threads. Merge rights are confirmed and the user answered yes at step 5's confirmation. While that confirmation was open, a reviewer posted a conversation comment on PR #812: \"This bump drops Python 3.10 support, but our CI matrix still tests 3.10 -- please hold.\" No new review thread was opened, the head SHA did not change and all required checks still pass. `pr_merge_type` is `MERGE`. Walk through what you do from step 7 onward: which reads happen, whether you read conversation comments, and whether the merge proceeds. Write your answer to `outputs/answer.md`.",
+      "expected_output": "Step 7(b)'s final recheck re-runs the step-2 readiness checks (required checks, change requests, conflicts, behind-base) and re-reads the unresolved-thread count as an advisory value only; it does not read conversation comments or review bodies, because the opt-in flag was not given. Nothing blocks, so it writes the `gh-pr-merge` marker and runs `gh pr merge 812 --merge --match-head-commit <sha>` (plus `--delete-branch` per settings). It does not invent a stop on the comment.",
+      "files": [
+        "outputs/answer.md"
+      ]
     }
   ],
   "testing_validation_coverage": {

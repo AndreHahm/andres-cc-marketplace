@@ -1,0 +1,31 @@
+{
+  "eval_id": 17,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "7(b) re-runs the step-2 readiness checks and re-reads the thread count as an advisory value only",
+      "passed": true,
+      "evidence": "\"Run the advisory disclosures... The count is still 0. Neither disclosure ever blocks.\""
+    },
+    {
+      "text": "Does not read conversation comments or review bodies",
+      "passed": true,
+      "evidence": "\"Conversation comments are not read. The 'Review findings' bullet... applies only with `--stop-on-review-findings`.\""
+    },
+    {
+      "text": "Writes the `gh-pr-merge` marker and runs `gh pr merge 812 --merge --match-head-commit <sha>`",
+      "passed": true,
+      "evidence": "\"Write the merge marker... Run `gh pr merge 812 --merge --match-head-commit <headRefOid>`\""
+    },
+    {
+      "text": "Does not invent a stop on the comment",
+      "passed": true,
+      "evidence": "\"The recheck passes.\" / \"The merge goes ahead.\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}
