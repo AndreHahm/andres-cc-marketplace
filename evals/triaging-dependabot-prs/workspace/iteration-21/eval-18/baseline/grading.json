@@ -1,0 +1,1 @@
+{"eval_id": 18, "passed": 1, "total": 5, "grader": "author", "baseline": true, "failed": [1, 2, 3, 4], "note": "Pre-fix skill (HEAD 7354be24), which re-reads only pr-threads before the real run. It ran the real close without reading the new comment, and named that as a gap in the skill; it passed assertion 5 only."}

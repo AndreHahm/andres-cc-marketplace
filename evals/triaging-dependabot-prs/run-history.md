@@ -136,3 +136,11 @@ baseline on the pre-change skill (`ccc79af7`), whose prompt gave the thread fact
 re-read before the real close, comments can only add a stop, and thread paths and authors are named as untrusted.
 Iteration 20 re-ran eval 17 on that final wording: 5 of 5. Both iterations were author-graded from one simulated
 answer each. Evals 1 to 16 were not re-run.
+
+2026-11-14, iteration 21 (issue #730, pre-PR cross-model review). Claude plus Codex found that the re-read right before
+the real close or `ignore` run covered `pr-threads` but not the PR's comments, so a reviewer comment posted after the
+close approval was never seen. The re-read now covers both. New eval 18: 5 of 5, against 1 of 5 for a baseline on the
+pre-fix skill (`7354be24`), which ran the real close without reading the new comment. The same review found that
+iteration 20's summary credited eval 17 with checking that re-read, which none of its assertions grades; the summary
+was reworded. Author-graded from one simulated answer each. Evals 1 to 17 were not re-run; the read script was not
+changed.
