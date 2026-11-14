@@ -76,6 +76,7 @@ VIEW_FIELDS = frozenset(
         "headRefOid",
         "isCrossRepository",
         "mergeStateStatus",
+        "reviews",
         "state",
         "url",
     }

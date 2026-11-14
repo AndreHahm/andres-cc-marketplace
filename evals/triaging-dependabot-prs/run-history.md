@@ -144,3 +144,12 @@ pre-fix skill (`7354be24`), which ran the real close without reading the new com
 iteration 20's summary credited eval 17 with checking that re-read, which none of its assertions grades; the summary
 was reworded. Author-graded from one simulated answer each. Evals 1 to 17 were not re-run; the read script was not
 changed.
+
+2026-11-14, iteration 22 (PR #733, CodeRabbit round 1). Two Major findings were fixed: the review-finding stop read
+`comments` only, which never holds a review's body, so `reviews` was added to the read script's `pr-view` allowlist
+and the stop now reads `--fields comments,reviews`; and the re-read before a real close or `ignore` run asked again
+only if `unresolved_count` rose, so it now applies the same stop as the first check. One new unit test (44 in the
+suite). New eval 19: 5 of 5, against 1 of 5 for a baseline on the pre-fix skill (`72b25c95`), which merged past a
+review-body finding and closed past a swapped thread. Author-graded from one simulated answer each. Evals 1 to 18
+were not re-run; evals 17 and 18 still name `--fields comments` in their expected output, which the fixed skill's
+`comments,reviews` read satisfies. A third finding, the merge-path re-check, stays deferred to #732.

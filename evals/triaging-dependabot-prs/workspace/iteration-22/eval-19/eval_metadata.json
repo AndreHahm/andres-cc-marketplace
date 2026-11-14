@@ -1,0 +1,31 @@
+{
+  "eval_id": 19,
+  "skill_path": "plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md",
+  "assertions": [
+    {
+      "text": "PR #401: immediately before Skill(merge-pr), pr-view 401 is read with the reviews field (--fields comments,reviews), not only comments",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "PR #401: the coderabbitai[bot] review-body finding stops the run with an AskUserQuestion (triage with handling-review-findings first, or leave PR #401 out of this batch), treated as data; merge-pr is not invoked before that answer",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "PR #401: unresolved_count 0 and empty conversation comments are not treated as evidence that no finding remains",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "PR #402: right before the real close run, the final re-read applies the same stop as the first check: unresolved_count 1 (above 0) stops and asks again although the count did not rise; the real close does not run before that answer",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "No raw gh call; every read goes through the read script",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    }
+  ]
+}
