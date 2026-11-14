@@ -60,6 +60,9 @@ _USES_PIN_LINE = re.compile(
     rf"[ ]+#[ ]ratchet:(?P<ratchet>{_ACTION_PATH})@(?P<tag>[A-Za-z0-9._-]{{1,100}})"
 )
 _COMMIT_SHA = re.compile(r"[0-9a-f]{40}")
+# One tag lookup (a single `gh api` call) may take this long before it counts
+# as failed; the hygiene job's own timeout-minutes bounds the whole check.
+_TAG_LOOKUP_TIMEOUT_SECONDS = 30
 _HUNK_HEADER = re.compile(r"@@ -\d+(?:,(?P<old>\d+))? \+\d+(?:,(?P<new>\d+))? @@")
 
 _EMOJI_PATTERN = re.compile("[\U0001f300-\U0001faff\U00002600-\U000027bf\U0001f1e6-\U0001f1ff]")
@@ -373,18 +376,22 @@ def _safe_api_segment(value: str) -> bool:
 def resolve_action_tag_sha(owner_repo: str, tag: str) -> str | None:
     """The commit SHA that `tag` names in `owner_repo` right now, read from
     GitHub (`git/ref/tags/<tag>`, an exact-name lookup, peeling annotated
-    tags). Any API error, malformed answer or unexpected shape returns None,
-    so the caller fails closed."""
+    tags). Any API error, timeout, malformed answer or unexpected shape
+    returns None, so the caller fails closed."""
     owner, _, repo = owner_repo.partition("/")
     if not all(_safe_api_segment(part) for part in (owner, repo, tag)):
         return None
 
     def get(path: str) -> dict | None:
-        result = subprocess.run(
-            ["gh", "api", "--method", "GET", f"repos/{owner}/{repo}/{path}"],
-            capture_output=True,
-            text=True,
-        )
+        try:
+            result = subprocess.run(
+                ["gh", "api", "--method", "GET", f"repos/{owner}/{repo}/{path}"],
+                capture_output=True,
+                text=True,
+                timeout=_TAG_LOOKUP_TIMEOUT_SECONDS,
+            )
+        except subprocess.TimeoutExpired:
+            return None
         if result.returncode != 0:
             return None
         try:
