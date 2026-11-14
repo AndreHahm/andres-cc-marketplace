@@ -15,8 +15,8 @@ importers:
         specifier: ^0.22.1
         version: 0.22.1
       mkdocs-material-linter:
-        specifier: ^1.5.3
-        version: 1.5.3(markdownlint@0.40.0)
+        specifier: ^1.5.4
+        version: 1.5.4(markdownlint@0.40.0)
 
 packages:
 
@@ -182,9 +182,9 @@ packages:
     engines: {node: '>=20'}
     hasBin: true
 
-  markdownlint-rule-helpers@0.29.0:
-    resolution: {integrity: sha512-a03vOcfL2Cc2k+6RtUxdBMEDqcTDisL9YNwuC0IS1DEZnRpAHkt0ytaYSXzE4a4Ghz4B6R2wrgW+Y3Mb8QuSyQ==}
-    engines: {node: '>=18'}
+  markdownlint-rule-helpers@0.31.0:
+    resolution: {integrity: sha512-UgVL6v1CB+5ds7W2IBTU6yVDRDH1gSGoWWTRrwZmniU/4AKO8nz0d42gySOIVllfRxzaIMn7Gei4u65y6Rcs2A==}
+    engines: {node: '>=22'}
 
   markdownlint@0.40.0:
     resolution: {integrity: sha512-UKybllYNheWac61Ia7T6fzuQNDZimFIpCg2w6hHjgV1Qu0w1TV0LlSgryUGzM0bkKQCBhy2FDhEELB73Kb0kAg==}
@@ -276,8 +276,8 @@ packages:
     resolution: {integrity: sha512-PXwfBhYu0hBCPw8Dn0E+WDYb7af3dSLVWKi3HGv84IdF4TyFoC0ysxFd0Goxw7nSv4T/PzEJQxsYsEiFCKo2BA==}
     engines: {node: '>=8.6'}
 
-  mkdocs-material-linter@1.5.3:
-    resolution: {integrity: sha512-nb1JQBPecma4xIxO5rpocDA8XKhlwcpbWYFgfTXW4oTVQuZr5f3lM2bF0CZOQ+wwJE2760FqY5cSEs3b5GygEg==}
+  mkdocs-material-linter@1.5.4:
+    resolution: {integrity: sha512-+Xv8bPdIhY9qM8LFgdnyiGovY8AzxpXZ2WcItXDs2omL3x0BK3licNFJRhob+BRtPTPx2MVeB74kHCBdHP672w==}
     engines: {node: '>=20.0.0'}
     peerDependencies:
       markdownlint: '>=0.30.0'
@@ -488,7 +488,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  markdownlint-rule-helpers@0.29.0: {}
+  markdownlint-rule-helpers@0.31.0: {}
 
   markdownlint@0.40.0:
     dependencies:
@@ -685,10 +685,10 @@ snapshots:
       braces: 3.0.3
       picomatch: 2.3.2
 
-  mkdocs-material-linter@1.5.3(markdownlint@0.40.0):
+  mkdocs-material-linter@1.5.4(markdownlint@0.40.0):
     dependencies:
       markdownlint: 0.40.0
-      markdownlint-rule-helpers: 0.29.0
+      markdownlint-rule-helpers: 0.31.0
 
   ms@2.1.3: {}
 
