@@ -1412,7 +1412,7 @@ SonarCloud outage can block merges. The requirement was kept on purpose. Finding
 
 ## Coverage: Codecov and the coverage tier
 
-`.github/workflows/coverage.yml` runs on every pull request and on pushes to `main`. **Neither of its jobs is a
+`.github/workflows/coverage.yml` runs on every pull request and on pushes to `main`. **None of its three jobs is a
 required check.**
 
 - **`Coverage (pytest-cov)`** runs the test suite with coverage (sources, data file and
