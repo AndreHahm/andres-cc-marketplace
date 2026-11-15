@@ -123,6 +123,9 @@ jobs:
           # No upload plugins: they would run tools inside the PR's checkout in the job with the token.
           plugins: noop
           fail_ci_if_error: false
+          # The CLI goes to a temporary directory, never the checkout, where a PR could plant a file
+          # of the same name that runs with the token if the download fails.
+          cleanup: true
 
   coverage-tier:
     name: Coverage tier
@@ -174,10 +177,16 @@ jobs:
             rm -f "$stderr_file"
             exit 1
           }
-          # The script and its defaults: the base copy when it exists. A PR that adds them (none on
-          # the base yet) runs its own copy, and the comment says so.
-          if ! { fetch plugins/quality-kit/scripts/qlty-coverage-tier.py "$trusted/tier.py" \
-            && fetch plugins/quality-kit/assets/qlty-coverage-tiers.yml "$trusted/defaults.yml"; }; then
+          # Fall back to the PR's own copies only when the base has neither file. A base with just one
+          # of them fails closed, so the PR's copy never replaces a trusted one.
+          have=0
+          if fetch plugins/quality-kit/scripts/qlty-coverage-tier.py "$trusted/tier.py"; then have=$((have + 1)); fi
+          if fetch plugins/quality-kit/assets/qlty-coverage-tiers.yml "$trusted/defaults.yml"; then have=$((have + 1)); fi
+          if [ "$have" -eq 1 ]; then
+            echo "::error::the base branch has only one of the tier script and its defaults; refusing to mix in the PR's copy"
+            exit 1
+          fi
+          if [ "$have" -eq 0 ]; then
             cp plugins/quality-kit/scripts/qlty-coverage-tier.py "$trusted/tier.py"
             cp plugins/quality-kit/assets/qlty-coverage-tiers.yml "$trusted/defaults.yml"
             echo "The tier script is not on the base branch yet, so this PR's own copy computed the tier, and the PR comment is skipped." >> "$trusted/notes.txt"
@@ -203,13 +212,16 @@ jobs:
       - name: Compute the tier
         id: tier
         run: |
-          set -uo pipefail
+          # +e: the runner's default bash adds -e, which would end the step on an orange or red
+          # exit before its code is read and the comment and summary are written.
+          set +e -uo pipefail
           trusted="$RUNNER_TEMP/trusted"
           out="$RUNNER_TEMP/coverage"
           # Plain text diff whatever .gitattributes the PR adds (no external diff, no textconv,
           # binary attributes ignored), with fixed prefixes and unquoted non-ASCII paths.
           git -c core.quotePath=false diff --no-ext-diff --no-textconv --text \
-            --src-prefix=a/ --dst-prefix=b/ --unified=0 HEAD^1 HEAD > "$out/patch.diff"
+            --src-prefix=a/ --dst-prefix=b/ --unified=0 HEAD^1 HEAD > "$out/patch.diff" \
+            || { echo "::error::could not build the PR diff"; exit 1; }
           run_tier() {
             uv run --no-project --no-config --with "pyyaml==6.0.3" --with "defusedxml==0.7.1" \
               python -I "$trusted/tier.py" \
@@ -232,10 +244,17 @@ jobs:
           REPO: ${{ github.repository }}
           PR: ${{ github.event.pull_request.number }}
           SAME_REPO: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+          EVENT_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
           if [ "$SAME_REPO" != "true" ]; then
             echo "Fork PR: comment skipped; see the job summary."
+            exit 0
+          fi
+          # A re-run of an older run keeps its old head SHA: never let it replace a newer result.
+          current=$(gh api "repos/$REPO/pulls/$PR" --jq '"\(.state) \(.head.sha)"')
+          if [ "$current" != "open $EVENT_HEAD_SHA" ]; then
+            echo "The PR is closed or has a newer head: comment skipped."
             exit 0
           fi
           marker='<!-- quality-kit:coverage-tier -->'

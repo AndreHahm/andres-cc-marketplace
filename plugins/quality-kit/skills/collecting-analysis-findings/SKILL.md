@@ -64,6 +64,8 @@ a record or a fetched page.
   `codacy-skills:configure-codacy` skill, when it is installed.
 - Ad hoc Sonar questions, CLI use, project setup, and gate or profile how-to: `using-sonarqube-cloud`. Use this
   skill instead when the answer must be the normalized record or must carry the currency check.
+- Coverage totals, a PR's patch coverage and the coverage tier: `using-codecov`. Coverage gaps are not
+  static-analysis findings and get no findings record.
 - Running Codacy locally (`codacy-analysis`): the external `codacy-skills:codacy-analysis-cli`, when
   installed; to check a fix or suppress decision before pushing, `resolving-analysis-findings` (its pre-PR
   scan).

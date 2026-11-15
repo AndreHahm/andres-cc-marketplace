@@ -9,7 +9,7 @@ description: >-
   get", or "set up Codecov". It reads and explains: it never uploads coverage, changes Codecov
   settings, or produces a findings record (coverage gaps are not static-analysis findings).
 argument-hint: (optional) the question, a PR number, or owner/repo
-allowed-tools: Read, Bash(gh pr view * --json headRefOid), Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/qlty-codecov-read.py:*), Bash(uv run --no-project --with pyyaml==6.0.3 --with defusedxml==0.7.1 python -I ${CLAUDE_PLUGIN_ROOT}/scripts/qlty-coverage-tier.py:*)
+allowed-tools: Read, Bash(gh pr view * --json headRefOid), Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/qlty-codecov-read.py:*), Bash(uv run --no-project --no-config --with pyyaml==6.0.3 --with defusedxml==0.7.1 python -I ${CLAUDE_PLUGIN_ROOT}/scripts/qlty-coverage-tier.py:*)
 ---
 
 # Using Codecov
@@ -64,7 +64,7 @@ red fail the `Coverage tier` check, which is not a required check, so GitHub sti
 3. Run the tier, from the repository root, with the repository's override when it has one:
 
 ```bash
-uv run --no-project --with pyyaml==6.0.3 --with defusedxml==0.7.1 python -I ${CLAUDE_PLUGIN_ROOT}/scripts/qlty-coverage-tier.py --coverage <report> --diff <diff file> --format markdown
+uv run --no-project --no-config --with pyyaml==6.0.3 --with defusedxml==0.7.1 python -I ${CLAUDE_PLUGIN_ROOT}/scripts/qlty-coverage-tier.py --coverage <report> --diff <diff file> --format markdown
 ```
 
 It reads `.github/coverage-tiers.yml` from the current directory unless `--override` names another file. CI

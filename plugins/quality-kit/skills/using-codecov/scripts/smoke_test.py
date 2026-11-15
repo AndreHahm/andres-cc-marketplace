@@ -44,6 +44,8 @@ def check(name: str, ok: bool, detail: str = "") -> None:
 
 
 def load(path: Path, name: str):
+    # Run any way (not only with -B or under pytest), loading the scripts writes no __pycache__.
+    sys.dont_write_bytecode = True
     spec = importlib.util.spec_from_file_location(name, path)
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
@@ -102,6 +104,12 @@ diff --git a/gone.py b/gone.py
 
 
 def check_diff_parser(tier) -> None:
+    refused(
+        tier,
+        "diff: a diff that ends inside a hunk is refused",
+        lambda: tier.changed_lines("+++ b/a.py\n@@ -0,0 +1,2 @@\n+a"),
+        "ends early",
+    )
     files = tier.changed_lines(DIFF)
     check("diff: added lines map to new-side numbers", files.get("a.py") == set(range(1, 11)))
     check("diff: a new file is read", files.get("b.py") == {1, 2})
@@ -208,6 +216,16 @@ def check_tiers(tier) -> None:
         json.dumps(result),
     )
     check("evaluate: missed lines are listed", result["files"][0]["missed_lines"] == [7, 8])
+    near = tier.evaluate(
+        {"a.py": ({1, 2}, {1, 2, 3})},
+        {"a.py": {1, 2, 3}},
+        {"green": 80.0, "yellow": 66.667, "orange": 50.0},
+    )
+    check(
+        "evaluate: 2 of 3 lines stays below a 66.667 yellow (no rounding before the tier)",
+        near["tier"] == "orange",
+        json.dumps(near),
+    )
     check(
         "evaluate: a file outside the report is skipped",
         [r["file"] for r in result["files"]] == ["a.py"],
@@ -240,6 +258,9 @@ def check_thresholds(tier) -> None:
         "wrong version": "version: 2\n",
         "not a mapping": "- 80\n",
         "invalid YAML": "tiers: [\n",
+        "duplicate top-level key": "tiers:\n  green: 95\ntiers:\n  orange: 50\n",
+        "duplicate tier": "tiers:\n  green: 90\n  green: 95\n",
+        "mapping used as a key": "? {a: 1}\n: 2\n",
     }
     for name, text in refused.items():
         path = write(f"bad-{len(name)}.yml", text)
@@ -304,6 +325,15 @@ def check_formats(tier) -> None:
             root=root,
         ),
         "DTD",
+    )
+    external = cobertura.replace(
+        "?>",
+        '?><!DOCTYPE coverage SYSTEM "http://cobertura.sourceforge.net/xml/coverage-04.dtd">',
+        1,
+    )
+    check(
+        "cobertura: an external-only DOCTYPE (gocover-cobertura) is read",
+        tier.load_report(write("external.xml", external), root=root) == report,
     )
     refused(
         tier,
@@ -377,6 +407,15 @@ def check_formats(tier) -> None:
     check(
         "match: an ambiguous suffix matches nothing",
         tier.evaluate(twice, {"a.py": {1}}, limits)["measurable"] == 0,
+    )
+    shared = {"a.py": ({1}, {1, 2})}
+    check(
+        "match: a report entry whose suffix fits two diff files matches neither",
+        tier.evaluate(shared, {"src/a.py": {1}, "tests/a.py": {2}}, limits)["measurable"] == 0,
+    )
+    check(
+        "match: an exact path still matches beside another file with the same suffix",
+        tier.evaluate(shared, {"a.py": {1}, "src/a.py": {2}}, limits)["measurable"] == 1,
     )
     check(
         "match: no partial-name match",
@@ -637,11 +676,43 @@ def check_skill() -> None:
         str(scripts),
     )
     check("skill: every granted script exists", all((PLUGIN_ROOT / s).is_file() for s in scripts))
+    uv_runs = re.findall(r"uv run [^\n`)]*", text)
+    check(
+        "skill: every uv run form passes --no-config (a local uv.toml cannot pick the index)",
+        bool(uv_runs) and all("--no-config" in form for form in uv_runs),
+        str(uv_runs),
+    )
     other = re.findall(r"Bash\(([^)]*)\)", grants.group(1) if grants else "")
     check(
         "skill: the only non-script grant is the read-only head-SHA lookup",
         [g for g in other if "CLAUDE_PLUGIN_ROOT" not in g] == ["gh pr view * --json headRefOid"],
         str(other),
+    )
+    template = (PLUGIN_ROOT / "assets" / "qlty-coverage-workflow.yml").read_text(encoding="utf-8")
+    tier_step = template.split("- name: Compute the tier", 1)[-1].split("- name:", 1)[0]
+    check(
+        "template: the tier step turns off the runner's -e, so an orange or red exit code is read",
+        "set +e" in tier_step,
+    )
+    check(
+        "template: the Codecov action downloads its CLI outside the checkout (cleanup: true)",
+        "cleanup: true" in template,
+    )
+    post_step = template.split("- name: Post or update the tier comment", 1)[-1].split(
+        "- name:", 1
+    )[0]
+    check(
+        "template: the comment is skipped when the PR is closed or has a newer head",
+        "EVENT_HEAD_SHA" in post_step and "comment skipped" in post_step,
+    )
+    check(
+        "template: a base with only one of the tier script and its defaults fails closed",
+        'if [ "$have" -eq 1 ]; then' in template and "if ! { fetch" not in template,
+    )
+    check(
+        "template: with -e off, a failed diff still ends the tier step (no empty-diff green)",
+        'patch.diff" \\\n            || { echo "::error::could not build the PR diff"; exit 1; }'
+        in tier_step,
     )
     refs = re.findall(r"`(references/[\w.-]+\.md)`", text)
     check("skill: the Reference Guide names the three references", len(set(refs)) == 3, str(refs))
