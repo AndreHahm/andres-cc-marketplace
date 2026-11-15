@@ -80,8 +80,9 @@ jobs:
           python-version: "3.13"
       - run: uv sync --locked --group dev --no-build --no-install-package csscompressor --no-install-package jsmin
       # Sources, data file and patch = subprocess come from [tool.coverage.*] in pyproject.toml.
+      # Wall-clock tests are left out: tracing slows the code past their bounds. Python quality runs them.
       - run: >-
-          uv run --no-sync --no-build pytest -q -n auto --cov
+          uv run --no-sync --no-build pytest -q -n auto --cov -m "not timing"
           --cov-report=xml:.temp/coverage/coverage.xml
           --cov-report=json:.temp/coverage/coverage.json
       - name: Keep the reports for the tier job

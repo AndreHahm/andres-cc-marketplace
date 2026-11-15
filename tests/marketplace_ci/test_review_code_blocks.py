@@ -145,6 +145,7 @@ def test_a_list_item_fence_that_never_closes_ends_with_its_list_item():
     assert finding.severity == "Critical"
 
 
+@pytest.mark.timing
 def test_the_parser_stays_linear_on_hostile_input():
     import time
 
@@ -224,6 +225,7 @@ def test_a_block_filled_in_the_middle_is_the_prs_even_if_its_fences_are_untouche
     assert finding["gate"] == "block" and finding["severity"] == "Critical"
 
 
+@pytest.mark.timing
 def test_the_count_comparison_is_linear_in_the_number_of_blocks():
     import time
 

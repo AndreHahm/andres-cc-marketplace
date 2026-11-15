@@ -285,6 +285,7 @@ def test_the_same_head_gives_the_same_call_graph_findings(git_repo):
     )
 
 
+@pytest.mark.timing
 def test_hostile_call_syntax_stays_fast():
     import time
 
@@ -411,6 +412,7 @@ def test_more_call_problems_than_the_cap_fail_the_run_closed(monkeypatch, git_re
         rv.run_verifiers(git_repo.root, (_modify(_skill("a")),), base)
 
 
+@pytest.mark.timing
 def test_the_findings_pass_checks_the_deadline_and_builds_the_graph_once(monkeypatch):
     import time
 

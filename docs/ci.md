@@ -1417,7 +1417,8 @@ required check.**
 
 - **`Coverage (pytest-cov)`** runs the test suite with coverage (sources, data file and
   `patch = ["subprocess"]` in `pyproject.toml`'s `[tool.coverage.*]`) and keeps the reports as an artifact. It
-  fails only when the tests fail.
+  fails only when the tests fail. Tests marked `timing` (a wall-clock bound on CPU work) are deselected there,
+  since tracing slows the code past the bound; `Python quality` still runs them.
 - **`Codecov upload`** uploads that artifact's `coverage.xml` with the `CODECOV_TOKEN` secret, in its own job so
   the PR's test code never runs where the token is. The upload is `continue-on-error`, so a Codecov outage
   changes nothing.

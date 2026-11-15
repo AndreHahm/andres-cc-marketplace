@@ -444,6 +444,7 @@ def test_base64_beside_ordinary_characters_is_refused(before, after):
     assert "github_token" in str(dck.screen([before + encoded + after], ""))
 
 
+@pytest.mark.timing
 def test_screen_stays_fast_at_the_size_limit():
     blob = base64.b64encode(b"x" * 21_000).decode()
     started = time.monotonic()
