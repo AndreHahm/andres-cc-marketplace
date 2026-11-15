@@ -255,5 +255,5 @@ jobs:
           case "$CODE" in
             0) exit 0 ;;
             1) echo "Coverage tier is orange or red (see the comment or summary)."; exit 1 ;;
-            *) echo "::error::the tier script exited $CODE (invalid input or no PyYAML)"; exit 1 ;;
+            *) echo "::error::the tier script exited $CODE (invalid input, or PyYAML or defusedxml missing)"; exit 1 ;;
           esac

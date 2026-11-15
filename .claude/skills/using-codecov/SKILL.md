@@ -70,7 +70,7 @@ uv run --no-project --with pyyaml==6.0.3 --with defusedxml==0.7.1 python -I ${CL
 It reads `.github/coverage-tiers.yml` from the current directory unless `--override` names another file. CI
 reads the override from the base branch, so a change to it in the same PR does not apply to that PR. Only the
 thresholds are protected that way: the PR's own coverage configuration still decides what is measurable. Exit codes:
-0 green or yellow, 1 orange or red, 2 a refused input (the message says which), 3 no PyYAML.
+0 green or yellow, 1 orange or red, 2 a refused input (the message says which), 3 PyYAML or defusedxml (needed for a Cobertura report) is missing.
 
 ## Boundaries
 
