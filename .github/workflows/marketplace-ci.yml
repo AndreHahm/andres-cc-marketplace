@@ -479,7 +479,7 @@ jobs:
           python-version: "3.13"
       - run: uv sync --locked --group dev --no-build --no-install-package csscompressor --no-install-package jsmin
       - run: uv run --no-sync --no-build python -m scripts.marketplace_ci check-all --json-output marketplace-check.json
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # ratchet:actions/upload-artifact@v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # ratchet:actions/upload-artifact@v7.0.2
         if: always()
         with:
           name: marketplace-check-report
@@ -1080,7 +1080,7 @@ jobs:
       # environment. codex-review downloads it; a missing file fails closed there.
       - name: Upload the carried findings
         if: steps.carry.outputs.count != 'error'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # ratchet:actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # ratchet:actions/upload-artifact@v7.0.2
         with:
           name: carried-findings
           path: ${{ runner.temp }}/carried-findings.json
@@ -1171,7 +1171,7 @@ jobs:
 
       - name: Upload the skipped-review record
         if: steps.skip_record.outcome == 'success'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # ratchet:actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # ratchet:actions/upload-artifact@v7.0.2
         with:
           name: codex-review-skip
           path: ${{ runner.temp }}/codex-review-skip.json
@@ -1687,7 +1687,7 @@ jobs:
 
       - name: Upload review result
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # ratchet:actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # ratchet:actions/upload-artifact@v7.0.2
         with:
           name: codex-review-result
           path: codex-review-result.json
@@ -2266,7 +2266,7 @@ jobs:
 
       - name: Upload the bypass record
         if: success() && steps.bypass.outputs.bypassed == 'true'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # ratchet:actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # ratchet:actions/upload-artifact@v7.0.2
         with:
           name: codex-review-bypass
           path: ${{ runner.temp }}/codex-review-bypass.json
