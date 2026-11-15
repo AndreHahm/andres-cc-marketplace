@@ -13,6 +13,7 @@ dev = [
   "ruff>=0.8",
   "ty>=0.0.1a1",
   "PyYAML>=6.0",
+  "defusedxml>=0.7.1",
   "pre-commit>=4.0",
   "mkdocs>=1.6.1",
   "mkdocs-awesome-pages-plugin>=2.10.1",

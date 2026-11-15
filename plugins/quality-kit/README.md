@@ -51,14 +51,15 @@ The Codacy Cloud CLI (`codacy`) authenticated for the repository, `gh` for the c
 (standard library only; the smoke tests were run on 3.13, and no older version was tried). The local pre-PR
 scan additionally needs `codacy-analysis` and a `.codacy/codacy.config.json`. For SonarQube Cloud, the `sonar`
 CLI authenticated for the project; its pre-PR scan (`sonar analyze`) sends project files to Sonar, whose retention
-period is undocumented, so it asks first. For coverage, `uv` (the tier script needs PyYAML and runs as
-`uv run --with pyyaml==6.0.3`); Codecov reads need nothing for a public repository and a personal
+period is undocumented, so it asks first. For coverage, `uv` (the tier script needs PyYAML and defusedxml and
+runs as `uv run --with pyyaml==6.0.3 --with defusedxml==0.7.1`); Codecov reads need nothing for a public repository and a personal
 `CODECOV_API_TOKEN` for a private one.
 
 ## Language
 
 **Python.** The plugin's scripts are Python, standard library only, except `scripts/qlty-coverage-tier.py`,
-which needs PyYAML for its thresholds files and exits 3 with a message when PyYAML is missing. The adapters run no subprocess: each reads
+which needs PyYAML for its thresholds files and defusedxml for a Cobertura report, and exits 3 with a message
+when either is missing. The adapters run no subprocess: each reads
 the JSON a provider's CLI already printed. The one production subprocess is `scripts/qlty-sonar-read.py`, which runs
 the `sonar` CLI; the smoke tests also start the adapters and a stub `sonar`. New scripts added to this plugin stay in Python.
 
@@ -89,7 +90,7 @@ From the plugin root (`plugins/quality-kit/`), each skill owns its smoke test:
 ```text
 python3 -I -B skills/collecting-analysis-findings/scripts/smoke_test.py
 python3 -I -B skills/resolving-analysis-findings/scripts/smoke_test.py
-uv run --no-project --with pyyaml==6.0.3 python -I -B skills/using-codecov/scripts/smoke_test.py
+uv run --no-project --with pyyaml==6.0.3 --with defusedxml==0.7.1 python -I -B skills/using-codecov/scripts/smoke_test.py
 ```
 
 `-B` matters: `-I` ignores `PYTHONDONTWRITEBYTECODE`, and a stray `.pyc` fails this repository's pre-push

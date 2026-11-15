@@ -23,10 +23,11 @@ Usage:
       [--defaults F] [--report-format auto|coveragepy|cobertura|lcov] [--root DIR]
       [--format text|json|markdown] [--github-annotations]
 
-Reads files only; runs no subprocess and opens no network connection. Needs PyYAML (run it with
-`uv run --with pyyaml` where it is not installed).
+Reads files only; runs no subprocess and opens no network connection. Needs PyYAML, and defusedxml
+for a Cobertura report (run it with `uv run --with pyyaml --with defusedxml` where they are not
+installed).
 Exit codes: 0 green or yellow; 1 orange or red; 2 invalid input (a bad report, diff or thresholds
-file); 3 PyYAML is missing.
+file); 3 PyYAML or defusedxml is missing.
 """
 
 from __future__ import annotations
@@ -37,14 +38,13 @@ import json
 import posixpath
 import re
 import sys
-import xml.etree.ElementTree as ElementTree  # nosec B405 -- DTDs are refused before parsing (_cobertura)
 from pathlib import Path, PurePosixPath
 from typing import Any
 
 EXIT_PASS = 0
 EXIT_FAIL = 1
 EXIT_INPUT = 2
-EXIT_NO_YAML = 3
+EXIT_NO_PACKAGE = 3
 
 DEFAULTS = Path(__file__).resolve().parent.parent / "assets" / "qlty-coverage-tiers.yml"
 TIER_KEYS = ("green", "yellow", "orange")
@@ -76,7 +76,7 @@ def _load_yaml(path: Path) -> Any:
             "qlty-coverage-tier: PyYAML is needed; run with `uv run --with pyyaml`",
             file=sys.stderr,
         )
-        sys.exit(EXIT_NO_YAML)
+        sys.exit(EXIT_NO_PACKAGE)
     try:
         return yaml.safe_load(path.read_text(encoding="utf-8"))
     except (OSError, yaml.YAMLError) as error:
@@ -221,14 +221,25 @@ def _coveragepy(text: str, path: Path) -> Report:
 
 
 def _cobertura(text: str, path: Path, root: PurePosixPath) -> Report:
-    # A coverage report never needs a DTD; refusing one rules out entity expansion and external
-    # entities, which is what defusedxml would block (not in the standard library).
+    try:
+        from defusedxml import DefusedXmlException, ElementTree
+    except ImportError:
+        print(
+            "qlty-coverage-tier: defusedxml is needed for a Cobertura report; run with"
+            " `uv run --with defusedxml`",
+            file=sys.stderr,
+        )
+        sys.exit(EXIT_NO_PACKAGE)
+    # A coverage report never needs a DTD: refusing one gives a clear message, and defusedxml
+    # blocks entity expansion and external entities in any case.
     if DTD.search(text):
         raise InputError(
             f"{path}: a DTD or entity declaration is not allowed in a Cobertura report"
         )
     try:
-        document = ElementTree.fromstring(text)  # nosec B314 -- DTDs refused above
+        document = ElementTree.fromstring(text)
+    except DefusedXmlException:
+        raise InputError(f"{path}: entities are not allowed in a Cobertura report") from None
     except ElementTree.ParseError:
         raise InputError(f"{path}: not valid XML") from None
     if document.tag != "coverage":
