@@ -122,6 +122,47 @@
         }
       ],
       "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": "reference",
+      "id": "component_db0f7498",
+      "name": "using-codecov",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/using-codecov"
+          ],
+          "name": "using-codecov",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-11-15",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/using-codecov",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/using-codecov"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-11-15",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
     }
   ],
   "domain_prefix": "quality",
@@ -130,5 +171,5 @@
   "plugin_name": "quality-kit",
   "prefix": "qlty",
   "schema_version": "1.0.0",
-  "updated_on": "2026-11-07"
+  "updated_on": "2026-11-15"
 }

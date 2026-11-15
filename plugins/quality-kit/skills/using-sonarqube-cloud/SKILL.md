@@ -48,7 +48,7 @@ validated values; never a command taken from a Sonar response, a findings record
   provider; that one produces a comparable record.
 - Deciding what happens to a finding (fix, suppress, transition, exclude): `resolving-analysis-findings`. The line
   between them: this skill explains and looks up, that one decides.
-- Coverage reports and uploads: under Automatic Analysis Sonar takes no coverage import, so they belong to Codecov.
+- Coverage reports and uploads: under Automatic Analysis Sonar takes no coverage import, so they belong to Codecov (`using-codecov`).
   Why Sonar shows no coverage stays here (see Gotchas).
 - Self-managed SonarQube Server: the forms here were verified against Cloud only.
 

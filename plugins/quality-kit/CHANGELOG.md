@@ -2,7 +2,17 @@
 
 All notable changes to this plugin are documented here.
 
-## [Unreleased]
+## [1.0.0-alpha.3] - 2026-11-15
+
+### Added
+- `using-codecov`, for ad hoc coverage and Codecov questions, a local coverage tier run, and setting up Codecov and
+  the tier check in any repository (a vendored copy of the tier script, the workflow template
+  `assets/qlty-coverage-workflow.yml`, `codecov.yml`).
+- `scripts/qlty-coverage-tier.py`: a tier (green, yellow, orange, red) on patch coverage from a coverage.py JSON,
+  Cobertura XML or LCOV report and a diff, with defaults in `assets/qlty-coverage-tiers.yml` and a per-repository
+  `.github/coverage-tiers.yml` override. Needs PyYAML. Cobertura reports with a DTD are refused.
+- `scripts/qlty-codecov-read.py`: three fixed Codecov API v2 reads (`repo`, `totals`, `pull`) that drop author and
+  title fields, refuse redirects and take an optional `CODECOV_API_TOKEN`.
 
 ### Changed
 - Sonar reads go through `scripts/qlty-sonar-read.py` (plugin root), which runs fixed reads with validated

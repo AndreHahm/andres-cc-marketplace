@@ -129,7 +129,8 @@ read and normalize in one piped command (3-4), check the analysis is current (5)
 | SonarQube Cloud (`sonar` CLI 1.11.0) | Verified 2026-11-07 against this repository's real output for `pr`, `repo` and `pr-status`. For `ignored`, the filters and the issue and comment shapes were verified separately; no issue was marked when the filters ran |
 | CodeQL, others | Planned extension points only. No command is documented because none has been verified here; adding one means writing an adapter to `references/adapter-contract.md` |
 
-Codecov is coverage, not static analysis, and is out of scope.
+Codecov is coverage, not static analysis, and is out of scope: coverage questions and the coverage tier belong to
+`using-codecov`.
 
 ## Boundaries
 

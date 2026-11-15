@@ -1,0 +1,17 @@
+# quality-kit's default coverage tiers, read by scripts/qlty-coverage-tier.py.
+#
+# The tier is judged on patch coverage: covered changed lines divided by the changed lines coverage can
+# measure. A repository overrides any of these in .github/coverage-tiers.yml (tracked, team policy); keys it
+# leaves out keep these values.
+#
+#   green  >= tiers.green               informational, the check passes
+#   yellow >= tiers.yellow              minor, the check passes with a warning
+#   orange >= tiers.orange              major, the check fails
+#   red     below tiers.orange          critical, the check fails
+#
+# Values are percentages from 0 to 100, with green >= yellow >= orange.
+version: 1
+tiers:
+  green: 80
+  yellow: 70
+  orange: 50
