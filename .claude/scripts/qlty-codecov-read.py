@@ -45,7 +45,7 @@ TIMEOUT_SECONDS = 60
 MAX_BYTES = 20 * 1024 * 1024
 TOTAL_FIELDS = ("coverage", "files", "lines", "hits", "misses", "partials")
 PATCH_FIELDS = ("coverage", "hits", "misses", "partials")
-TOKEN_ENV = "CODECOV_API_TOKEN"
+AUTH_ENV = "CODECOV_API_TOKEN"
 # File names come from the repository; at most this many are printed, the rest only counted.
 MAX_FILES = 200
 
@@ -77,7 +77,7 @@ def _checked(value: str | None, pattern: re.Pattern[str], name: str) -> str | No
 def _get(path: str, query: dict[str, str] | None = None) -> Any:
     url = f"{API}/{path}" + (f"?{urlencode(query)}" if query else "")
     request = urllib.request.Request(url, headers={"Accept": "application/json"})
-    token = os.environ.get(TOKEN_ENV)
+    token = os.environ.get(AUTH_ENV)
     if token:
         request.add_unredirected_header("Authorization", f"Bearer {token}")
     opener = urllib.request.build_opener(_NoRedirect)
@@ -92,7 +92,7 @@ def _get(path: str, query: dict[str, str] | None = None) -> Any:
         except ValueError:
             pass
         if error.code == 401:
-            message = f"Codecov answered 401: set {TOKEN_ENV} for this repository"
+            message = f"Codecov answered 401: set {AUTH_ENV} for this repository"
             raise ReadError(message, EXIT_AUTH) from None
         no_report = isinstance(detail, str) and any(text in detail for text in NO_REPORT)
         if error.code == 404 and no_report:

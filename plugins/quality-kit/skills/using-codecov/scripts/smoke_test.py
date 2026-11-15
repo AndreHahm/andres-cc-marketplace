@@ -6,9 +6,9 @@ tier boundaries, the three report formats (coverage.py JSON, Cobertura XML, LCOV
 matching, the threshold merge and its fail-closed refusals, and the exit codes. Loads
 `scripts/qlty-codecov-read.py` with its HTTP layer replaced (no network) and checks argument
 validation, the projection, the error mapping, the redirect refusal and that the token never
-reaches the output. Checks SKILL.md's grants against the scripts. Needs PyYAML, as the
-tier script does; run it with `uv run --with pyyaml` where PyYAML is not installed. Exit 0 when
-every check passes, 1 otherwise.
+reaches the output. Checks SKILL.md's grants against the scripts. Needs PyYAML and defusedxml,
+as the tier script does; run it with `uv run --with pyyaml --with defusedxml` where they are not
+installed. Exit 0 when every check passes, 1 otherwise.
 """
 
 from __future__ import annotations
@@ -610,14 +610,14 @@ def check_read(read) -> None:
         check("read: a redirect is refused", False, "followed")
     except read.ReadError as error:
         check("read: a redirect is refused", error.code == 1)
-    os.environ[read.TOKEN_ENV] = TOKEN
+    os.environ[read.AUTH_ENV] = TOKEN
     try:
         code, out, err, opener = read_with(read, _http_error(401, "Invalid token."), "repo", *base)
         sent = opener.requests[0].unredirected_hdrs.get("Authorization")
         check("read: the token is sent as an unredirected bearer header", sent == f"Bearer {TOKEN}")
         check("read: the token never reaches stdout or stderr", TOKEN not in out + err)
     finally:
-        del os.environ[read.TOKEN_ENV]
+        del os.environ[read.AUTH_ENV]
     code, _, _, opener = read_with(read, {"name": "flask"}, "repo", *base)
     check(
         "read: no token, no Authorization header",
@@ -659,9 +659,13 @@ def guarded(name: str, step) -> None:
 
 def main() -> int:
     try:
+        import defusedxml  # noqa: F401
         import yaml  # noqa: F401  # type: ignore[import-untyped]
     except ImportError:
-        print("SKIP: PyYAML is not installed; run with `uv run --with pyyaml`")
+        print(
+            "SKIP: PyYAML or defusedxml is not installed;"
+            " run with `uv run --with pyyaml --with defusedxml`"
+        )
         return 1
     tier = load(TIER_SCRIPT, "qlty_coverage_tier")
     guarded("diff parser", lambda: check_diff_parser(tier))

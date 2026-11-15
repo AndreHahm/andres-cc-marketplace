@@ -122,7 +122,8 @@ jobs:
           git -c core.quotePath=false diff --no-ext-diff --no-textconv --text \
             --src-prefix=a/ --dst-prefix=b/ --unified=0 HEAD^1 HEAD > "$RUNNER_TEMP/patch.diff"
           tier() {
-            uv run --no-project --no-config --with "pyyaml==6.0.3" python -I "$trusted/tier.py" \
+            uv run --no-project --no-config --with "pyyaml==6.0.3" --with "defusedxml==0.7.1" \
+              python -I "$trusted/tier.py" \
               --coverage "$report" --diff "$RUNNER_TEMP/patch.diff" --defaults "$trusted/defaults.yml" \
               --override "$trusted/override.yml" "$@"
           }
