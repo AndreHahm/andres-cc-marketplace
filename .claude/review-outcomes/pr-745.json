@@ -1,0 +1,43 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4579352800",
+      "line": 1237,
+      "note": "cleanup keeps what a committed catalog lists (snapshot_id check), also in _lifecycle; 2 regression tests",
+      "path": "plugins/promptlibrary-kit/scripts/plib_catalog_validate.py",
+      "pr": 745,
+      "recorded_at": "2026-11-15T17:29:24+00:00"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "claude-delta-r1-cmd-draft-1238",
+      "line": 1238,
+      "note": "unlink failing leaves the file, so the folder is not empty and rmdir could not succeed anyway",
+      "path": "plugins/promptlibrary-kit/scripts/plib_catalog_validate.py",
+      "pr": 745,
+      "recorded_at": "2026-11-15T17:29:24+00:00",
+      "rule": "robustness"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "claude-delta-r1-prompt-execution-298",
+      "line": 298,
+      "note": "cited eval workspaces are tracked; file has 160 lines",
+      "path": "plugins/promptlibrary-kit/skills/prompt-execution/SKILL.md",
+      "pr": 745,
+      "recorded_at": "2026-11-15T17:29:24+00:00",
+      "rule": "evidence"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "claude-delta-r1-prompt-retrieval-466",
+      "line": 466,
+      "note": "benchmark.json is tracked under workspace/iteration-2; file has 138 lines",
+      "path": "plugins/promptlibrary-kit/skills/prompt-retrieval/SKILL.md",
+      "pr": 745,
+      "recorded_at": "2026-11-15T17:29:25+00:00",
+      "rule": "evidence"
+    }
+  ]
+}
