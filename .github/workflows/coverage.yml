@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   coverage:
-    name: Coverage (pytest-cov, Codecov upload)
+    name: Coverage (pytest-cov)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -93,15 +93,34 @@ jobs:
             .temp/coverage/coverage.json
           retention-days: 7
           if-no-files-found: error
+
+  # The upload runs in its own job, so the PR's test code never runs where CODECOV_TOKEN is. The
+  # checkout is only read (Codecov maps report paths to repository files); nothing in it is run.
+  codecov-upload:
+    name: Codecov upload
+    needs: coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # ratchet:actions/download-artifact@v8.0.2
+        with:
+          name: coverage-reports
+          path: ${{ runner.temp }}/coverage
       # An upload failure never fails this job: Codecov is a view, not a gate.
       - name: Upload to Codecov
         continue-on-error: true
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # ratchet:codecov/codecov-action@v7.1.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: .temp/coverage/coverage.xml
+          files: ${{ runner.temp }}/coverage/coverage.xml
           disable_search: true
           disable_telem: true
+          # No upload plugins: they would run tools inside the PR's checkout in the job with the token.
+          plugins: noop
           fail_ci_if_error: false
 
   coverage-tier:

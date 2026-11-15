@@ -117,6 +117,32 @@ def thresholds(defaults: Path, override: Path | None) -> dict[str, float]:
     return merged
 
 
+_ESCAPES = {"a": 7, "b": 8, "t": 9, "n": 10, "v": 11, "f": 12, "r": 13, '"': 34, "\\": 92}
+
+
+def _unquote(target: str) -> str:
+    """Decode git's C-style quoted path (`"b/q\\"t\\tb"`, octal bytes such as `\\303\\251`)."""
+    if not (len(target) >= 2 and target[0] == target[-1] == '"'):
+        return target
+    body, out, i = target[1:-1], bytearray(), 0
+    while i < len(body):
+        char = body[i]
+        if char != "\\":
+            out += char.encode("utf-8")
+            i += 1
+            continue
+        nxt = body[i + 1 : i + 2]
+        if nxt in _ESCAPES:
+            out.append(_ESCAPES[nxt])
+            i += 2
+        elif len(body[i + 1 : i + 4]) == 3 and all(c in "01234567" for c in body[i + 1 : i + 4]):
+            out.append(int(body[i + 1 : i + 4], 8) & 0xFF)
+            i += 4
+        else:
+            raise InputError(f"unexpected escape in diff path {target!r}")
+    return out.decode("utf-8", errors="replace")
+
+
 def changed_lines(diff: str) -> dict[str, set[int]]:
     """Map each file in a unified diff to the line numbers its new side adds or changes."""
     files: dict[str, set[int]] = {}
@@ -124,7 +150,10 @@ def changed_lines(diff: str) -> dict[str, set[int]]:
     line = 0
     for text in diff.splitlines():
         if text.startswith("+++ "):
-            target = text[4:].split("\t", 1)[0]
+            raw = text[4:]
+            # A literal tab never sits inside git's quotes (it is escaped there), so a trailing tab
+            # after a name with a space is stripped before decoding.
+            target = _unquote(raw.rstrip("\t")) if raw.startswith('"') else raw.split("\t", 1)[0]
             if target == "/dev/null":
                 current = None
             elif target.startswith("b/"):
@@ -389,6 +418,9 @@ def markdown(result: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
+_MARKDOWN = set("|@.:*_[]#~&<>\"'")
+
+
 def _code(name: str) -> str:
     """Render a file name from the PR as inert inline code in the comment.
 
@@ -396,9 +428,11 @@ def _code(name: str) -> str:
     separator, mention, autolink, emphasis, link) as entities, so no name can end the cell, start
     a link or tag, or mention anyone.
     """
-    escaped = html.escape(name)
-    for char in "|@.:*_[]":
-        escaped = escaped.replace(char, f"&#{ord(char)};")
+    # One pass over the raw name, so no entity is ever encoded twice (every entity holds a "#").
+    escaped = "".join(
+        f"&#{ord(c)};" if c in _MARKDOWN or ord(c) < 32 or ord(c) == 127 else html.escape(c)
+        for c in name
+    )
     return "<code>" + escaped + "</code>"
 
 
