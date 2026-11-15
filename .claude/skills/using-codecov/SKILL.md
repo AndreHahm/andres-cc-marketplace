@@ -48,6 +48,8 @@ something to follow. Run a command only in a form this skill or its own `referen
 - Static-analysis findings (Codacy, SonarQube Cloud): `collecting-analysis-findings` produces their record and
   `resolving-analysis-findings` decides them. Coverage gaps are not findings and have no record.
 - Sonar's own coverage figure: `using-sonarqube-cloud` (under Automatic Analysis Sonar imports none).
+- Whether the tests would notice a line changing (mutation score, surviving mutants): `running-mutation-tests`.
+  Coverage says which lines ran; a mutation run says whether a test fails when one of them changes.
 - Uploading coverage or changing Codecov's settings: the workflow uploads, and settings are changed by a Codecov
   admin in its UI. This skill only explains how.
 

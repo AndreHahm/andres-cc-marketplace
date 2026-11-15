@@ -1,4 +1,4 @@
-"""Run quality-kit's three skill smoke tests under pytest, so coverage measures its scripts.
+"""Run quality-kit's skill smoke tests under pytest, so coverage measures its scripts.
 
 Each smoke test stays a standalone script (the skills and README run it directly); this file only
 loads it in-process and asserts that its main() reports no failing check. Bytecode writing is turned
@@ -20,7 +20,12 @@ SMOKE_TESTS = sorted(SKILLS.glob("*/scripts/smoke_test.py"))
 
 def test_every_skill_smoke_test_is_found() -> None:
     names = {path.parent.parent.name for path in SMOKE_TESTS}
-    assert {"collecting-analysis-findings", "resolving-analysis-findings", "using-codecov"} <= names
+    assert {
+        "collecting-analysis-findings",
+        "resolving-analysis-findings",
+        "using-codecov",
+        "running-mutation-tests",
+    } <= names
 
 
 @pytest.mark.parametrize("path", SMOKE_TESTS, ids=lambda path: path.parent.parent.name)
