@@ -33,8 +33,9 @@ A pull request's totals:
 ```
 
 Prints `pullid`, `state`, `ci_passed`, `updatestamp`, `base_totals`, `head_totals` and `patch` (`coverage`,
-`hits`, `misses`, `partials`). It carries no head SHA. Not yet seen for this marketplace repository; treat its
-shape here as verified on `pallets/flask` only.
+`hits`, `misses`, `partials`). It carries no head SHA. Also seen for this marketplace repository's PR 746
+(2026-11-15), the same keys: with no upload on the base branch yet, `base_totals` and `patch` were `null` and only
+`head_totals` was filled, so a `null` patch there means "no base to compare", not "no coverage".
 
 ## Exit codes
 
