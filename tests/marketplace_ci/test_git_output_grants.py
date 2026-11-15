@@ -156,6 +156,7 @@ def test_unparsable_frontmatter_fails_closed(tmp_path: Path) -> None:
     assert "could not be read or parsed" in violations[0].reason
 
 
+@pytest.mark.timing
 @pytest.mark.parametrize("option", ["-C", "--a", "-c", "--git-dir", "x"])
 def test_long_run_of_global_options_is_not_slow(tmp_path: Path, option: str) -> None:
     # A backtracking pattern took 0.2 s at 28 `-C` tokens and 80 s at 28 `--a` tokens.

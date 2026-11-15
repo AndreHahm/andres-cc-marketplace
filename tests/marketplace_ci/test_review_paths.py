@@ -435,6 +435,7 @@ def test_the_finding_cites_the_fence_lines_above_it_so_editing_them_makes_it_the
     assert f"{SKILL}:1" in finding.components and f"{SKILL}:3" in finding.components
 
 
+@pytest.mark.timing
 def test_scanning_for_the_new_forms_stays_fast():
     import time
 

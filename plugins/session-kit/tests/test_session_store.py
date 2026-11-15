@@ -299,6 +299,7 @@ class TestSearchSessions:
         assert len(results) >= 1
         assert "match" in results[0]
 
+    @pytest.mark.timing
     def test_redos_patterns_complete_quickly(self, fake_projects_dir):
         start = time.monotonic()
         results = search_sessions("(a+)+$", projects_base=fake_projects_dir)
