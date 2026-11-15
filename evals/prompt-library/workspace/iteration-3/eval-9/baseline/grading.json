@@ -1,0 +1,36 @@
+{
+  "eval_id": 9,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "The record has origin web and a source_ref with the URL and a retrieved_on date",
+      "passed": false,
+      "evidence": "Fixture record has origin: web and source_url, but no source_ref block and no retrieved_on date (only 'created: 2026-11-15')."
+    },
+    {
+      "text": "An import review was done (inline) in addition to the quality review",
+      "passed": true,
+      "evidence": "Question 5 (own quality review with a rewrite) and Question 8 (import review: 'no embedded instructions aimed at the assistant ... Accept the import?')."
+    },
+    {
+      "text": "record-verification was run for both --kind quality and --kind import with --expect-sha256",
+      "passed": false,
+      "evidence": "No record-verification was run; the baseline wrote the files by heredoc."
+    },
+    {
+      "text": "Activation happened only after both verifications and after an approval question",
+      "passed": false,
+      "evidence": "No verifications were recorded at all; the record was written with status active in one step, so activation did not follow two verifications."
+    },
+    {
+      "text": "Final catalog validates with one active web-origin record",
+      "passed": false,
+      "evidence": "No .claude/prompts catalog; the baseline used prompts/catalog.json, and validate on the project reports ok false."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 1,
+    "pass_rate": 0.2
+  }
+}

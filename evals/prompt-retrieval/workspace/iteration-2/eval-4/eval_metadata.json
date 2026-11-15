@@ -1,0 +1,26 @@
+{
+  "eval_id": 4,
+  "skill_path": "plugins/promptlibrary-kit/skills/prompt-retrieval/SKILL.md",
+  "assertions": [
+    {
+      "text": "Shows the full text of review__missing-tests in a fenced block",
+      "type": "functionality",
+      "target": "outputs/transcript.md and fixture project"
+    },
+    {
+      "text": "Lists both hidden characters with line, column, code point and name above the fenced text",
+      "type": "functionality",
+      "target": "outputs/transcript.md and fixture project"
+    },
+    {
+      "text": "Says the hidden characters are invisible in the text shown",
+      "type": "functionality",
+      "target": "outputs/transcript.md and fixture project"
+    },
+    {
+      "text": "No catalog file was modified",
+      "type": "functionality",
+      "target": "outputs/transcript.md and fixture project"
+    }
+  ]
+}

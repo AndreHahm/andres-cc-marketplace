@@ -1,0 +1,36 @@
+{
+  "eval_id": 11,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "The catalog is validated first",
+      "passed": false,
+      "evidence": "No validator run; started with git status/find and cat of catalog.yaml."
+    },
+    {
+      "text": "The draft resumes at step 7, not step 8 or 9",
+      "passed": true,
+      "evidence": "Equivalent behavior: an inline review with rewrite question ran before the approval and activation questions (no step framework, but review-first resume)."
+    },
+    {
+      "text": "prompt-reviewer is dispatched (or its review done inline and the dispatch recorded) with the record's absolute path and origin before any verification or activation",
+      "passed": false,
+      "evidence": "No prompt-reviewer dispatch made or recorded: 'Inline review (no reviewer tool used; my own read of the draft)'; no absolute path or origin passed."
+    },
+    {
+      "text": "The record path comes from a validator read subcommand",
+      "passed": false,
+      "evidence": "Record path came from find/cat, not a validator read subcommand."
+    },
+    {
+      "text": "After one review round the run goes on to step 8 without dispatching prompt-reviewer a second time",
+      "passed": true,
+      "evidence": "After declining another round, it went to the approval question; no prompt-reviewer dispatched at all."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 2,
+    "pass_rate": 0.4
+  }
+}

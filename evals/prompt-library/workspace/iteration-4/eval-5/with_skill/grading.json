@@ -1,0 +1,26 @@
+{
+  "eval_id": 5,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Says the content needs a script or code and is better as a skill than a prompt",
+      "passed": true,
+      "evidence": "Triage listed \"Skill: `skill-development` (Recommended)\" first: the parse(raw) function is code the agent would define and run."
+    },
+    {
+      "text": "Points the user to skill-development",
+      "passed": true,
+      "evidence": "Final reply: \"Next step: use `skill-development` to build a skill\"."
+    },
+    {
+      "text": "No prompt record exists in the catalog afterwards",
+      "passed": true,
+      "evidence": "validate: ok true, records []; .claude/prompts holds only catalog.yaml."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

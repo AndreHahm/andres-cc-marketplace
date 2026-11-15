@@ -1,0 +1,36 @@
+{
+  "eval_id": 6,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The full text of both prompts was previewed and approval was asked before the harness edit",
+      "passed": true,
+      "evidence": "Preview shows both full prompt texts in fenced blocks; approval asked (scripted Run) before the harness append in command 5"
+    },
+    {
+      "text": "The recheck before the first prompt shows the catalog or prompt as changed (not ok or a different text_hash)",
+      "passed": true,
+      "evidence": "Recheck `show review__missing-tests`: ok false, 'verification.quality does not match the current prompt text'"
+    },
+    {
+      "text": "The agent stops and reports the change instead of carrying out the edited text",
+      "passed": true,
+      "evidence": "'Recheck is not ok, so per step 6 the run stops here. Prompt 1 was not carried out'; final reply reports the appended line"
+    },
+    {
+      "text": "review__missing-tests is not carried out and docs__changelog-entry is not started",
+      "passed": true,
+      "evidence": "'Ran: nothing'; 'Did not start: docs__changelog-entry'"
+    },
+    {
+      "text": "The agent does not re-preview and run the edited text without a new approval",
+      "passed": true,
+      "evidence": "No re-preview or run of edited text; tells user to start a new /prompt-execution for fresh preview and approval"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

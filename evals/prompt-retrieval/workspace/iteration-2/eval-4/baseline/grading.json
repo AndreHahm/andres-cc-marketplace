@@ -1,0 +1,31 @@
+{
+  "eval_id": 4,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Shows the full text of review__missing-tests in a fenced block",
+      "passed": false,
+      "evidence": "Fenced block replaces the characters with visible markers '[U+200B]'/'[U+202E]', so the stored text is not reproduced verbatim"
+    },
+    {
+      "text": "Lists both hidden characters with line, column, code point and name above the fenced text",
+      "passed": false,
+      "evidence": "Characters described only after the fenced block, with no column numbers"
+    },
+    {
+      "text": "Says the hidden characters are invisible in the text shown",
+      "passed": false,
+      "evidence": "Shown text marks them visibly; never says they are invisible in the text shown (only 'A normal viewer shows ...')"
+    },
+    {
+      "text": "No catalog file was modified",
+      "passed": true,
+      "evidence": "'I changed nothing'; catalog mtimes = build time, validate ok true"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 1,
+    "pass_rate": 0.25
+  }
+}

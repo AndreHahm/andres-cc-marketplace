@@ -86,14 +86,20 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
    as a revision. Never edit, restore or repair a catalog file yourself.
 2. **Mode.** Use the first word of `$ARGUMENTS` (`add`, `revise`, `activate`, `deactivate`) and, for
    the last three, the second word as the slug; if either is absent, ask with `AskUserQuestion`.
+   - The slug must match `^[a-z0-9]+(-[a-z0-9]+)*__[a-z0-9]+(-[a-z0-9]+)*$` in full (no leading or
+     trailing space or newline), the same check `prompt-execution` applies; refuse anything else before
+     running any command with it, because the slug goes into a shell command line.
    - The CLI takes an `internal_id`, not a slug: resolve a slug to its record(s) from `validate`'s
      `records` or `<CLI> show <slug> --history`; if more than one fits, ask which.
+   - `activate` of a record that is already `active`, or `deactivate` of one that is not, is reported
+     ("already active", or its current status) and stops here, with no question and no command.
    - `deactivate`, and `activate` of an inactive record, skip steps 3 to 8: go to step 9.
    - A draft left by an interrupted add or revise (also when `activate` names a draft) resumes by its
      state, read from the record's `missing_verification` list in `validate` or `show <slug> --history`:
      at step 7 if it includes `quality` (no record field shows whether `prompt-reviewer` already ran, so
      an unverified draft always gets the review again); at step 8 if it holds only `import` (`session` or
-     `web` origin); at step 9 once it is empty.
+     `web` origin); at step 9 once it is empty. A resume records only the kinds still in
+     `missing_verification`; a kind already bound to the current text is not recorded again.
    - A successor ends with `finalize`; never start a second successor.
 3. **Intake.** For `add`, follow `references/prompt-intake-sources.md`. The intake path sets `origin`:
    fetched text is always `web`, session text is always `session`; the user cannot label either as
@@ -118,8 +124,10 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
    with these three options, in this order unless a skill fits better: "Prompt (Recommended)",
    "Skill: `skill-development`" (bundled scripts or references, tool restrictions, automatic activation) and
    "Workflow skill: `workflow-skill-development`" (multi-step phases or sub-agent orchestration). Exactly one
-   label carries `(Recommended)`: if a skill fits better, move the marker to that label and list it first. Naming an
-   existing script that the user already has is a prompt, not a bundled script. If the user picks a skill
+   label carries `(Recommended)`: if a skill fits better, move the marker to that label and list it first. Only
+   naming an existing script that the user already has is a prompt, not a bundled script. Text that carries
+   its own code for the agent to define or run (a function, a parser, a script body) needs a bundled script,
+   so recommend "Skill: `skill-development`" and say why. If the user picks a skill
    option, point to that skill, create no record and end the add flow here: do not run the duplicate
    check below and do not go on to step 6. Only if the user picks "Prompt", filter `validate`'s
    `records` for the same area or a similar name or description and offer to revise the existing prompt
@@ -136,15 +144,17 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
    proposed rewrite as a diff. If the user approves a rewrite, write the full replacement record to a
    scratch file and run `<CLI> update-draft <internal_id> <scratch-file>`; it screens the new text and
    clears the earlier verification when the text changed. This works on any draft, initial or successor.
-   See `references/prompt-optimization-and-review.md`; an active or inactive record is never edited in
-   place, a revision is a new draft.
+   Run one review round, then go on to step 8; dispatch `prompt-reviewer` again only when the user asks
+   for another round. See `references/prompt-optimization-and-review.md`; an active or inactive record
+   is never edited in place, a revision is a new draft.
 8. **Verify.** Get the final prompt text and its `text_hash` from the filed record (`<CLI> show <slug>
    --history`), not from the scratch copy. Show both to the user. If the record's `hidden_characters`
    is not empty, list each entry (line, column, code point, name) above the text, add "50 or more" when
    `hidden_characters_truncated` is true, and say these characters are invisible in the text shown.
    Then ask with `AskUserQuestion` whether to approve exactly this text, naming the hidden-character
    count in the question when there are any. On yes, run `<CLI> record-verification <internal_id> --kind
-   quality --expect-sha256 <that hash>` and, for `session` or `web` origin, again with `--kind import`.
+   quality --expect-sha256 <that hash>` and, for `session` or `web` origin, again with `--kind import`
+   (for a resumed draft, only the kinds in its `missing_verification`, see step 2).
    The expected hash makes the script refuse if the file changed after the user approved it.
 9. **Change status.** Take the hash from `<CLI> show <slug> --history`. Show the proposed change and ask
    with `AskUserQuestion`, naming the slug, the status change, the first 8 characters of that hash and,
@@ -199,7 +209,7 @@ A persisted smoke test, `scripts/smoke_test.py`, checks this skill's frontmatter
 grants (no pre-approved Read, Write, Edit or WebFetch), and runs the validator end to end: a web-origin
 draft carrying a fake key is refused with nothing filed, and a clean draft goes through activation and
 deactivation. It also checks that the triage step is its own `AskUserQuestion` with skill options. Run it
-directly; last run 2026-11-12, 7 of 7 checks passed. It failed on a copy with a pre-approved Write
+directly; last run 2026-11-15, 7 of 7 checks passed. It failed on a copy with a pre-approved Write
 (2026-10-03) and on a copy with the pre-fix triage step (2026-10-14).
 
 **Verify this skill activates on:** (explicit invocation only; it cannot be model-triggered)
@@ -219,7 +229,8 @@ directly; last run 2026-11-12, 7 of 7 checks passed. It failed on a copy with a 
       or echoed.
 - [ ] Every add asks the prompt-or-skill triage question as its own `AskUserQuestion` before filing, with a
       skill option offered; it is never merged into the file-draft question or skipped for plain text.
-- [ ] Script-needing content is routed to `skill-development` with no record created.
+- [ ] Script-needing content (text carrying its own code) is routed to `skill-development` with no record
+      created; text that only names an existing script is triaged as a prompt.
 - [ ] A near-duplicate is offered as a revision before a new record is created.
 - [ ] A `session` or `web` record cannot be activated without an import hash.
 - [ ] A file edited after the user approved its text is refused by `--expect-sha256`.
@@ -227,8 +238,12 @@ directly; last run 2026-11-12, 7 of 7 checks passed. It failed on a copy with a 
       untouched until `finalize`.
 - [ ] Every status change and every draft filing was preceded by an `AskUserQuestion` approval.
 - [ ] A resumed draft with no recorded quality verification goes back through `prompt-reviewer` (step 7).
+- [ ] A resume records only the kinds in `missing_verification`, and step 7 runs one review round unless
+      the user asks for another.
+- [ ] A slug that does not match the slug pattern is refused before any command runs with it.
+- [ ] `activate` of an already active record is reported and stops, with no question and no command.
 
-**Last dated run record:** validator fixture tests, 125 run (122 passing, 3 POSIX-only skipped on Windows), 2026-11-12
+**Last dated run record:** validator fixture tests, 134 run (131 passing, 3 POSIX-only skipped on Windows), 2026-11-15
 (`scripts/plib_test_catalog_validate.py`). The latest live run, 2026-10-14 (plugin loaded with
 `--plugin-dir`), ran add, near-duplicate, revise, finalize and deactivate, each status change behind its
 own approval; the step 5 triage skip it found was fixed in PR #566. An earlier hand-followed run of steps
@@ -241,6 +256,12 @@ inline). Its `evals.json` records which quality gates the scenarios cover. Scena
 subcommand returned the record path. After `path` was added to `show` (covered by a unit test), a re-run
 the same day passed 4 of 4. Scenario 12 (a session draft with only its quality verification resumes at
 step 8, read from `missing_verification`) passed 5 of 5 the same day. Scenario 13 (recovery advice for a
-pathspec-shaped `errors` path) passed 5 of 5 against 3 of 5 for the earlier `git restore <path>` text. These
-dry runs are separate from the live
+pathspec-shaped `errors` path) passed 5 of 5 against 3 of 5 for the earlier `git restore <path>` text.
+On 2026-11-15 every scenario was re-run with and without the skill against real fixture projects
+(`workspace/iteration-3/`, scenarios 1 to 15, adding 14 for an already active record and 15 for a
+malformed slug), replacing the 2026-10-04 baselines in `iteration-1/`: 95.6% of checks with the skill against
+53.4% without. Scenario 5 failed there (1 of 3, 3 of 3 on 2026-10-04): the step 5 "existing script" rule,
+added 2026-10-14, made text carrying its own parser a prompt. After the rule was narrowed, `iteration-4/` re-ran
+scenario 5 and a new scenario 16 (text that only names a script stays a prompt): 100% with the skill against
+25% without. These dry runs are separate from the live
 `--plugin-dir` run recorded above, and no eval has been run from a marketplace install.

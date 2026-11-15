@@ -1,0 +1,21 @@
+{
+  "eval_id": 5,
+  "skill_path": "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md",
+  "assertions": [
+    {
+      "text": "Says the content needs a script or code and is better as a skill than a prompt",
+      "type": "functionality",
+      "target": "outputs/transcript.md"
+    },
+    {
+      "text": "Points the user to skill-development",
+      "type": "quality",
+      "target": "outputs/transcript.md"
+    },
+    {
+      "text": "No prompt record exists in the catalog afterwards",
+      "type": "structure",
+      "target": "fixture directory"
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "eval_id": 8,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Identifies review__missing-tests as similar and offers to revise it before any new record is created",
+      "passed": true,
+      "evidence": "Question 1: 'A very similar active prompt already exists: review__missing-tests ... Revise it to a new version instead of creating a new prompt?' before any write."
+    },
+    {
+      "text": "The successor draft has previous_id equal to the predecessor's internal_id and version 2",
+      "passed": false,
+      "evidence": "Fixture active.md: version 2 but internal_id p000000000001 and no previous_id field; validate: 'a successor (version > 1) requires previous_id'."
+    },
+    {
+      "text": "The predecessor stays active and unchanged until the finalize step",
+      "passed": true,
+      "evidence": "Predecessor files were not touched until the single write step after the approval and activation answers (command 5)."
+    },
+    {
+      "text": "Finalize ran with --expect-sha256 after the user approved the exact text and the status change",
+      "passed": false,
+      "evidence": "No finalize and no --expect-sha256; files were rewritten with sed/heredoc."
+    },
+    {
+      "text": "Final catalog validates; review__missing-tests has an active version 2 and version 1 is historical",
+      "passed": false,
+      "evidence": "Fixture validate: ok false ('requires previous_id', 'duplicate internal_id p000000000001'); v1 has status inactive, not historical."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 2,
+    "pass_rate": 0.4
+  }
+}

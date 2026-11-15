@@ -1,0 +1,41 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The catalog was validated before anything was previewed",
+      "passed": true,
+      "evidence": "Command 2 `<CLI> validate` (ok true) ran before the `show` previews in commands 3-4"
+    },
+    {
+      "text": "The full text of both prompts is shown before the approval question is asked",
+      "passed": true,
+      "evidence": "Preview block quotes both prompt texts in full before the AskUserQuestion at step 5"
+    },
+    {
+      "text": "Exactly one approval question is asked, and it names both slugs, their order and the executor (this Claude session)",
+      "passed": true,
+      "evidence": "Single AskUserQuestion: 'Run these prompts in this order with executor `claude`? 1. review__missing-tests ... 2. docs__changelog-entry'"
+    },
+    {
+      "text": "After approval the review prompt is carried out first and the changelog prompt second",
+      "passed": true,
+      "evidence": "Final reply: '1. review__missing-tests: ran' then '2. docs__changelog-entry: ran'; rechecks in commands 5 then 6"
+    },
+    {
+      "text": "No catalog file was modified",
+      "passed": true,
+      "evidence": "All catalog/record files keep fixture-build mtimes (12:29, before the run); validate output unchanged; record hashes identical to the other arm"
+    },
+    {
+      "text": "Only validate and show subcommands of the validator were used",
+      "passed": true,
+      "evidence": "Validator calls are only `validate` and `show` (commands 2-6)"
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 6,
+    "pass_rate": 1.0
+  }
+}

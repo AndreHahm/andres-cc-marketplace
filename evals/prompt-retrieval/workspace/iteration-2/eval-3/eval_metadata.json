@@ -1,0 +1,31 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/promptlibrary-kit/skills/prompt-retrieval/SKILL.md",
+  "assertions": [
+    {
+      "text": "Reports the catalog as invalid or unavailable",
+      "type": "functionality",
+      "target": "outputs/transcript.md"
+    },
+    {
+      "text": "Lists no prompt names or texts taken from the invalid catalog",
+      "type": "quality",
+      "target": "outputs/transcript.md"
+    },
+    {
+      "text": "Does not run or carry out the missing-tests review prompt",
+      "type": "functionality",
+      "target": "outputs/transcript.md"
+    },
+    {
+      "text": "Points the user to prompt-execution for running prompts",
+      "type": "quality",
+      "target": "outputs/transcript.md"
+    },
+    {
+      "text": "No catalog file was modified",
+      "type": "structure",
+      "target": "fixture directory"
+    }
+  ]
+}

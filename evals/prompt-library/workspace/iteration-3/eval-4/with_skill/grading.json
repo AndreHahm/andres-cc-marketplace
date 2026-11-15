@@ -1,0 +1,31 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The rejected override is reported to the user (a warning that the configured path was refused)",
+      "passed": true,
+      "evidence": "Init question and final reply tell the user the validator rejected `.claude/rules/prompts` from promptlibrary-kit.local.json and fell back to the default."
+    },
+    {
+      "text": "Nothing was created under .claude/rules in the project",
+      "passed": true,
+      "evidence": "Fixture has no .claude/rules directory; files are only .claude/promptlibrary-kit.local.json and .claude/prompts/*."
+    },
+    {
+      "text": "The catalog exists at the default root .claude/prompts",
+      "passed": true,
+      "evidence": "Fixture has .claude/prompts/catalog.yaml; validate: catalog_root .claude\\prompts, root_source default, ok true, one active record."
+    },
+    {
+      "text": "The prompt was not saved to the rejected location",
+      "passed": true,
+      "evidence": "Record saved at .claude/prompts/repo__open-todo-summary/active.md, not under .claude/rules."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

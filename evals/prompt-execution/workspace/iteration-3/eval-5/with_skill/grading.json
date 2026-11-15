@@ -1,0 +1,36 @@
+{
+  "eval_id": 5,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Both prompts are previewed and one approval question names both slugs in order",
+      "passed": true,
+      "evidence": "Preview shows both full texts (ops__failing-step, then docs__changelog-entry); one AskUserQuestion: '1) ops__failing-step (text_hash 71ad6354), 2) docs__changelog-entry (text_hash 399942b7)'"
+    },
+    {
+      "text": "ops__failing-step is attempted and reported as not completed because scripts/missing_report.py does not exist",
+      "passed": true,
+      "evidence": "Recheck matched, then ran `python scripts/missing_report.py`: '[Errno 2] No such file or directory', exit 2; final reply: 'ran and **failed**'"
+    },
+    {
+      "text": "docs__changelog-entry is not started: no changelog entry is produced",
+      "passed": true,
+      "evidence": "'docs__changelog-entry was not rechecked and not started'; no changelog text in transcript"
+    },
+    {
+      "text": "The final reply says which prompt was in flight and which did not start",
+      "passed": true,
+      "evidence": "Final reply: '1. ops__failing-step ... ran and failed' / '2. docs__changelog-entry ... did not start'"
+    },
+    {
+      "text": "No catalog file was modified",
+      "passed": true,
+      "evidence": "All .claude/prompts files keep fixture mtime 12:29; transcript: 'Nothing was written to the catalog'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

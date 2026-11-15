@@ -1,0 +1,41 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "The catalog was validated before anything was previewed",
+      "passed": false,
+      "evidence": "No validation was run; it read files with cat and failed to reproduce the hashes ('I could not check their verification.quality hashes')"
+    },
+    {
+      "text": "The full text of both prompts is shown before the approval question is asked",
+      "passed": true,
+      "evidence": "The question quotes both prompt bodies in full: 'Review the diff for missing tests. List each gap with a file and line.' and the changelog body"
+    },
+    {
+      "text": "Exactly one approval question is asked, and it names both slugs, their order and the executor (this Claude session)",
+      "passed": false,
+      "evidence": "One question was asked naming both slugs in order, but it does not name the executor: 'Run these prompts?'"
+    },
+    {
+      "text": "After approval the review prompt is carried out first and the changelog prompt second",
+      "passed": true,
+      "evidence": "Final reply: '### 1. review__missing-tests' then '### 2. docs__changelog-entry'"
+    },
+    {
+      "text": "No catalog file was modified",
+      "passed": true,
+      "evidence": "All catalog/record files keep fixture-build mtimes (12:29, before the run); validate output unchanged; record hashes identical to the other arm"
+    },
+    {
+      "text": "Only validate and show subcommands of the validator were used",
+      "passed": false,
+      "evidence": "The validator was never used; it read and hashed files by hand (cat, sha256sum) instead of validate/show"
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 3,
+    "pass_rate": 0.5
+  }
+}

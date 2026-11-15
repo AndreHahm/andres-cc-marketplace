@@ -1,0 +1,31 @@
+{
+  "eval_id": 8,
+  "skill_path": "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md",
+  "assertions": [
+    {
+      "text": "Identifies review__missing-tests as similar and offers to revise it before any new record is created",
+      "type": "functionality",
+      "target": "outputs/transcript.md"
+    },
+    {
+      "text": "The successor draft has previous_id equal to the predecessor's internal_id and version 2",
+      "type": "functionality",
+      "target": "outputs/transcript.md"
+    },
+    {
+      "text": "The predecessor stays active and unchanged until the finalize step",
+      "type": "functionality",
+      "target": "outputs/transcript.md"
+    },
+    {
+      "text": "Finalize ran with --expect-sha256 after the user approved the exact text and the status change",
+      "type": "functionality",
+      "target": "outputs/transcript.md"
+    },
+    {
+      "text": "Final catalog validates; review__missing-tests has an active version 2 and version 1 is historical",
+      "type": "structure",
+      "target": "fixture directory"
+    }
+  ]
+}

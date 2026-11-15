@@ -1,0 +1,31 @@
+{
+  "eval_id": 16,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Triage recommends Prompt, not a skill, because the text only names an existing script",
+      "passed": false,
+      "evidence": "Asked \"Prompt / Skill\" with no recommendation; the scripted reply chose Prompt."
+    },
+    {
+      "text": "Does not route the user to skill-development",
+      "passed": true,
+      "evidence": "No skill routing; saved as a prompt."
+    },
+    {
+      "text": "An approval question was asked before the draft was filed",
+      "passed": true,
+      "evidence": "Asked \"Save this draft to the catalog?\" (yes) before saving."
+    },
+    {
+      "text": "The final catalog validates and holds one active record with the user's text",
+      "passed": false,
+      "evidence": "Wrote prompts/index.json at the project root; validate reports catalog.yaml missing."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 2,
+    "pass_rate": 0.5
+  }
+}

@@ -28,6 +28,15 @@ References: <references, or "none">
 Source: <source_ref values for session and web origin, or "n/a">
 ```
 
+When `hidden_characters` is not empty, add one line per entry before the fenced block:
+
+```text
+Hidden character: line <line>, column <column>, <code point> <name> (invisible in the text below)
+```
+
+and, when `hidden_characters_truncated` is true, a final line "50 or more hidden characters; the list
+stops at 50".
+
 Then the full `prompt_text` in a fenced block, and the `text_hash` on its own line for later comparison.
 
 ## History layout

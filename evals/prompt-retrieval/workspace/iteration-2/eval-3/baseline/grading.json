@@ -1,0 +1,36 @@
+{
+  "eval_id": 3,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Reports the catalog as invalid or unavailable",
+      "passed": false,
+      "evidence": "Never reported the catalog invalid; only 'could not verify integrity either way'"
+    },
+    {
+      "text": "Lists no prompt names or texts taken from the invalid catalog",
+      "passed": false,
+      "evidence": "Final reply lists all three slugs/names and the transcript quotes the missing-tests body"
+    },
+    {
+      "text": "Does not run or carry out the missing-tests review prompt",
+      "passed": false,
+      "evidence": "'Ran: Missing tests review ... against the current diff' and lists gaps in src/calc.py"
+    },
+    {
+      "text": "Points the user to prompt-execution for running prompts",
+      "passed": false,
+      "evidence": "No mention of prompt-execution"
+    },
+    {
+      "text": "No catalog file was modified",
+      "passed": true,
+      "evidence": "'No files were changed in PROJ'; catalog mtimes = build time"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 1,
+    "pass_rate": 0.2
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Considers whether the content should be a skill instead and concludes it is a prompt",
+      "passed": true,
+      "evidence": "Step 5 triage AskUserQuestion: 'Prompt (Recommended)' / 'Skill: skill-development' / 'Workflow skill'; reply Prompt."
+    },
+    {
+      "text": "An approval question was asked before the draft was filed",
+      "passed": true,
+      "evidence": "Question 4 'File this draft?' asked before `draft SCRATCH` (command 9)."
+    },
+    {
+      "text": "The prompt text was reviewed (quality review) before activation",
+      "passed": true,
+      "evidence": "prompt-reviewer review done inline from agents/prompt-reviewer.md (per run instructions) on the filed draft, before activation: 0 Critical, 1 Major, 2 Minor."
+    },
+    {
+      "text": "An approval question showing the exact final text was asked before activation",
+      "passed": true,
+      "evidence": "Question 7 showed the filed text from `show --history` and hash b483711e...: 'Approve exactly this text (0 hidden characters)?'"
+    },
+    {
+      "text": "Activation used --expect-sha256 with the hash of the approved text",
+      "passed": true,
+      "evidence": "`activate p7b8e1f8929c3 --expect-sha256 b483711e066f...52eb9f5`, the hash of the approved text."
+    },
+    {
+      "text": "The final catalog validates and holds exactly one active record with that text",
+      "passed": true,
+      "evidence": "Read-only validate in fixture: ok true, one record repo-maintenance__summarize-todo-comments, status active, verified; active.md body equals the user's text."
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 6,
+    "pass_rate": 1.0
+  }
+}

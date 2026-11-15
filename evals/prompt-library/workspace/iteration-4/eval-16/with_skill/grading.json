@@ -1,0 +1,31 @@
+{
+  "eval_id": 16,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Triage recommends Prompt, not a skill, because the text only names an existing script",
+      "passed": true,
+      "evidence": "Options in order \"Prompt (Recommended)\" (it only names an existing script; carries no code of its own), Skill, Workflow skill."
+    },
+    {
+      "text": "Does not route the user to skill-development",
+      "passed": true,
+      "evidence": "skill-development appears only as a non-recommended triage option; the record was filed as a prompt."
+    },
+    {
+      "text": "An approval question was asked before the draft was filed",
+      "passed": true,
+      "evidence": "The file-draft question showing slug, name, origin, description and hash was asked before `draft` ran."
+    },
+    {
+      "text": "The final catalog validates and holds one active record with the user's text",
+      "passed": true,
+      "evidence": "validate: ok true, records [reporting__weekly-report-totals active]."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

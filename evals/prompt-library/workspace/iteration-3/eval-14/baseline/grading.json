@@ -1,0 +1,36 @@
+{
+  "eval_id": 14,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Runs validate and finds review__missing-tests already active",
+      "passed": false,
+      "evidence": "No validator run; status found via cat of active.md."
+    },
+    {
+      "text": "Tells the user the record is already active",
+      "passed": true,
+      "evidence": "'review__missing-tests ... is already active ... There is nothing to activate.'"
+    },
+    {
+      "text": "Asks no approval question",
+      "passed": true,
+      "evidence": "'Questions asked: None.'"
+    },
+    {
+      "text": "Runs no write subcommand (activate, finalize, record-verification, draft, update-draft)",
+      "passed": true,
+      "evidence": "Only git status, find, cat, awk/sha256sum ran; no write commands."
+    },
+    {
+      "text": "No catalog file changed",
+      "passed": true,
+      "evidence": "Fixture file mtimes all 12:28:53-54 (fixture build time); 'No files were modified.'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 4,
+    "pass_rate": 0.8
+  }
+}

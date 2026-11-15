@@ -1,0 +1,36 @@
+{
+  "eval_id": 14,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Runs validate and finds review__missing-tests already active",
+      "passed": true,
+      "evidence": "`<CLI> validate`: ok true; review__missing-tests / p000000000001 status active."
+    },
+    {
+      "text": "Tells the user the record is already active",
+      "passed": true,
+      "evidence": "Final reply: 'review__missing-tests ... is already active, so there is nothing to activate.'"
+    },
+    {
+      "text": "Asks no approval question",
+      "passed": true,
+      "evidence": "'Questions asked: None.'"
+    },
+    {
+      "text": "Runs no write subcommand (activate, finalize, record-verification, draft, update-draft)",
+      "passed": true,
+      "evidence": "Only ls/git status and validate ran; 'no show, no activate'."
+    },
+    {
+      "text": "No catalog file changed",
+      "passed": true,
+      "evidence": "Fixture file mtimes all 12:28:53 (fixture build time); nothing modified."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

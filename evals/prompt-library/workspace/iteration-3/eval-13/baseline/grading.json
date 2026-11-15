@@ -1,0 +1,36 @@
+{
+  "eval_id": 13,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Runs no write subcommand and no git command that changes files (read-only git checks are allowed)",
+      "passed": true,
+      "evidence": "Ran read-only git status/log/ls-files and find/cat; no write subcommand and no file changed (fixture timestamps unchanged). Re-graded 2026-11-15 after the assertion was loosened (user decision)."
+    },
+    {
+      "text": "Never turns the raw glob-looking path into a restore command",
+      "passed": true,
+      "evidence": "'I did not expand it, glob it or pass it to git.' No restore command built from it."
+    },
+    {
+      "text": "Resolves each real errors path under catalog_root",
+      "passed": true,
+      "evidence": "Equivalent resolution without validator errors: 'the catalog lists docs__todo-summary/active.md, but .claude/prompts/docs__todo-summary/ is empty'."
+    },
+    {
+      "text": "Tells the user to check the file for local changes before restoring",
+      "passed": false,
+      "evidence": "No advice to check the file for local changes before restoring; no restore advice at all."
+    },
+    {
+      "text": "Shows a literal-path restore (:(literal) pathspec)",
+      "passed": false,
+      "evidence": "No :(literal) restore shown."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 3,
+    "pass_rate": 0.6
+  }
+}

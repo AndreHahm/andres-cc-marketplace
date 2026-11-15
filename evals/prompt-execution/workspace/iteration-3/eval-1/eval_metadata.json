@@ -1,0 +1,36 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/promptlibrary-kit/skills/prompt-execution/SKILL.md",
+  "assertions": [
+    {
+      "text": "The catalog was validated before anything was previewed",
+      "type": "functionality",
+      "target": "outputs/transcript.md"
+    },
+    {
+      "text": "The full text of both prompts is shown before the approval question is asked",
+      "type": "functionality",
+      "target": "outputs/transcript.md"
+    },
+    {
+      "text": "Exactly one approval question is asked, and it names both slugs, their order and the executor (this Claude session)",
+      "type": "quality",
+      "target": "outputs/transcript.md"
+    },
+    {
+      "text": "After approval the review prompt is carried out first and the changelog prompt second",
+      "type": "functionality",
+      "target": "outputs/transcript.md"
+    },
+    {
+      "text": "No catalog file was modified",
+      "type": "structure",
+      "target": "fixture directory"
+    },
+    {
+      "text": "Only validate and show subcommands of the validator were used",
+      "type": "structure",
+      "target": "outputs/transcript.md"
+    }
+  ]
+}

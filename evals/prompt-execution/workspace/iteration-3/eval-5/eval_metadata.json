@@ -1,0 +1,31 @@
+{
+  "eval_id": 5,
+  "skill_path": "plugins/promptlibrary-kit/skills/prompt-execution/SKILL.md",
+  "assertions": [
+    {
+      "text": "Both prompts are previewed and one approval question names both slugs in order",
+      "type": "functionality",
+      "target": "outputs/transcript.md"
+    },
+    {
+      "text": "ops__failing-step is attempted and reported as not completed because scripts/missing_report.py does not exist",
+      "type": "functionality",
+      "target": "outputs/transcript.md"
+    },
+    {
+      "text": "docs__changelog-entry is not started: no changelog entry is produced",
+      "type": "functionality",
+      "target": "outputs/transcript.md"
+    },
+    {
+      "text": "The final reply says which prompt was in flight and which did not start",
+      "type": "quality",
+      "target": "outputs/transcript.md"
+    },
+    {
+      "text": "No catalog file was modified",
+      "type": "structure",
+      "target": "fixture directory"
+    }
+  ]
+}

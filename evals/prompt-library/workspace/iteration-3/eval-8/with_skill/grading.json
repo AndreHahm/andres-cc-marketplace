@@ -1,0 +1,36 @@
+{
+  "eval_id": 8,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Identifies review__missing-tests as similar and offers to revise it before any new record is created",
+      "passed": true,
+      "evidence": "Question 2 offers 'Revise review__missing-tests (Recommended)' after the duplicate check, before new-id/draft."
+    },
+    {
+      "text": "The successor draft has previous_id equal to the predecessor's internal_id and version 2",
+      "passed": true,
+      "evidence": "Draft frontmatter: version 2, previous_id p000000000001 (predecessor internal_id p000000000001); fixture active.md confirms."
+    },
+    {
+      "text": "The predecessor stays active and unchanged until the finalize step",
+      "passed": true,
+      "evidence": "Command 12 (after record-verification, before finalize): 'predecessor p000000000001 still active'; no command touched it before finalize."
+    },
+    {
+      "text": "Finalize ran with --expect-sha256 after the user approved the exact text and the status change",
+      "passed": true,
+      "evidence": "Command 13 '<CLI> finalize p4af2b50eb657 --expect-sha256 6e16942d...' after Question 6 (approve exact text) and Question 7 (status change) were answered yes."
+    },
+    {
+      "text": "Final catalog validates; review__missing-tests has an active version 2 and version 1 is historical",
+      "passed": true,
+      "evidence": "Fixture validate: ok true, errors []; p4af2b50eb657 v2 active (active.md), p000000000001 v1 status historical."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

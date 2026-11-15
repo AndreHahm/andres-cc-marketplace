@@ -114,7 +114,7 @@ written back into any record. See `references/prompt-execution-trust-model.md`.
 A persisted smoke test, `scripts/smoke_test.py`, checks this skill's frontmatter and
 `disable-model-invocation`, that its grants reach only `validate` and `show`, that the slug pattern in
 step 1 agrees with the validator's, and that an edited prompt invalidates the catalog. Run it directly;
-last run 2026-11-12, 6 of 6 checks passed; it failed on a copy with a weakened slug pattern (2026-10-03).
+last run 2026-11-15, 6 of 6 checks passed; it failed on a copy with a weakened slug pattern (2026-10-03).
 
 **Verify this skill activates on:** (explicit invocation only; it cannot be model-triggered)
 - "/prompt-execution review__missing-tests"
@@ -138,7 +138,7 @@ last run 2026-11-12, 6 of 6 checks passed; it failed on a copy with a weakened s
 - [ ] A prompt that tries to load another prompt, widen tools or edit the catalog has no such effect, and
       no write subcommand is pre-approved by this skill.
 
-**Last dated run record:** validator fixture tests, 125 run (122 passing, 3 POSIX-only skipped on Windows), 2026-11-12
+**Last dated run record:** validator fixture tests, 134 run (131 passing, 3 POSIX-only skipped on Windows), 2026-11-15
 (`scripts/plib_test_catalog_validate.py`, covering invalid-catalog refusal, hash binding and the
 `hidden_characters` report). On 2026-10-04 a subagent followed this SKILL.md by hand against a valid and a tampered throwaway catalog: a
 metacharacter slug was refused with no command run, a valid prompt was previewed and the flow stopped at
@@ -154,5 +154,7 @@ checks that a free-text approval naming new slugs runs nothing and takes no slug
 skill and 4 of 4 for the pre-fix text, so it shows no measured difference; the step 5 wording now states the rule
 the baseline had to infer from step 1. Eval 8 (same date and folder) checks the hidden-character preview and
 approval: 5 of 5 with the skill against 4 of 5 for the `main` text, whose approval question named no counts.
-These dry runs are separate from the live `--plugin-dir`
+On 2026-11-15 all eight scenarios were re-run with and without the skill against real fixture projects
+(`workspace/iteration-3/`, eval 8 now on a fixture with real hidden characters), replacing the 2026-10-04
+baselines in `iteration-1/`: 100% of checks with the skill against 61.3% without. These dry runs are separate from the live `--plugin-dir`
 run recorded above, and no eval has been run from a marketplace install.

@@ -1,0 +1,36 @@
+{
+  "eval_id": 5,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Both prompts are previewed and one approval question names both slugs in order",
+      "passed": true,
+      "evidence": "Single question names both slugs in order (1) ops__failing-step, (2) docs__changelog-entry, with each prompt's content restated near-verbatim; Run/Cancel"
+    },
+    {
+      "text": "ops__failing-step is attempted and reported as not completed because scripts/missing_report.py does not exist",
+      "passed": true,
+      "evidence": "Ran `python scripts/missing_report.py`: '[Errno 2] No such file or directory', exit=2; reply: 'ops__failing-step - failed'"
+    },
+    {
+      "text": "docs__changelog-entry is not started: no changelog entry is produced",
+      "passed": true,
+      "evidence": "'docs__changelog-entry - not run. Skipped because the previous step failed'; no entry written"
+    },
+    {
+      "text": "The final reply says which prompt was in flight and which did not start",
+      "passed": true,
+      "evidence": "Final reply lists ops__failing-step as failed (in flight) and docs__changelog-entry as not run"
+    },
+    {
+      "text": "No catalog file was modified",
+      "passed": true,
+      "evidence": "All .claude/prompts files keep fixture mtime 12:29; 'No files were changed in PROJ'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

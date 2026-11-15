@@ -1,0 +1,31 @@
+{
+  "eval_id": 7,
+  "skill_path": "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md",
+  "assertions": [
+    {
+      "text": "Identifies the single error as an unlisted record file (an orphan) and not as a different problem",
+      "type": "functionality",
+      "target": "outputs/transcript.md"
+    },
+    {
+      "text": "Asks with an approval question before running discard-orphan",
+      "type": "functionality",
+      "target": "outputs/transcript.md"
+    },
+    {
+      "text": "After approval the orphan file is removed",
+      "type": "structure",
+      "target": "fixture directory"
+    },
+    {
+      "text": "No other file in the catalog changed and no new record was filed",
+      "type": "structure",
+      "target": "fixture directory"
+    },
+    {
+      "text": "A final validate shows the catalog ok",
+      "type": "functionality",
+      "target": "outputs/transcript.md"
+    }
+  ]
+}
