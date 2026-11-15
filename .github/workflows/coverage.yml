@@ -143,6 +143,7 @@ jobs:
           persist-credentials: false
           fetch-depth: 2
       - name: Restore the tier script and thresholds from the base SHA (a PR must not lower its own bar)
+        id: restore
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
@@ -173,7 +174,9 @@ jobs:
             && fetch plugins/quality-kit/assets/qlty-coverage-tiers.yml "$trusted/defaults.yml"; }; then
             cp plugins/quality-kit/scripts/qlty-coverage-tier.py "$trusted/tier.py"
             cp plugins/quality-kit/assets/qlty-coverage-tiers.yml "$trusted/defaults.yml"
-            echo "The tier script is not on the base branch yet, so this PR's own copy computed the tier." >> "$trusted/notes.txt"
+            echo "The tier script is not on the base branch yet, so this PR's own copy computed the tier, and the PR comment is skipped." >> "$trusted/notes.txt"
+            # The PR's own code runs in this job, so no later step may hold a write token.
+            echo "fallback=true" >> "$GITHUB_OUTPUT"
           fi
           # The repository override: the base copy, or none. The PR's own copy is never used.
           rm -f "$trusted/override.yml"
@@ -212,8 +215,9 @@ jobs:
             cat "$out/comment.md" >> "$GITHUB_STEP_SUMMARY"
           fi
       # A fork PR's token is read-only, so the comment is skipped there; the tier is in the job summary.
+      # Skipped too when the PR's own tier script ran: it could have changed PATH for this step.
       - name: Post or update the tier comment
-        if: steps.tier.outputs.code == '0' || steps.tier.outputs.code == '1'
+        if: (steps.tier.outputs.code == '0' || steps.tier.outputs.code == '1') && steps.restore.outputs.fallback != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}

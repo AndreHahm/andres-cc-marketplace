@@ -73,6 +73,7 @@ jobs:
           fetch-depth: 2
       # A PR must not lower its own bar: the script, defaults and override come from the base SHA.
       - name: Restore the tier inputs from the base SHA
+        id: restore
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
@@ -94,7 +95,9 @@ jobs:
             # The PR that adds the tier: its own copy, said in the comment.
             cp .github/quality-kit/qlty-coverage-tier.py "$trusted/tier.py"
             cp .github/quality-kit/qlty-coverage-tiers.yml "$trusted/defaults.yml"
-            echo "The tier script is not on the base branch yet, so this PR's own copy computed the tier." >> "$trusted/notes.txt"
+            echo "The tier script is not on the base branch yet, so this PR's own copy computed the tier, and the PR comment is skipped." >> "$trusted/notes.txt"
+            # The PR's own code runs in this job, so no later step may hold a write token.
+            echo "fallback=true" >> "$GITHUB_OUTPUT"
           fi
           # The override: the base copy, or none; never the PR's own.
           rm -f "$trusted/override.yml"
@@ -130,8 +133,9 @@ jobs:
             { tier --format markdown; cat "$trusted/notes.txt"; } > "$RUNNER_TEMP/comment.md"
             cat "$RUNNER_TEMP/comment.md" >> "$GITHUB_STEP_SUMMARY"
           fi
+      # Skipped when the PR's own tier script ran: it could have changed PATH for this step.
       - name: Post or update the tier comment
-        if: steps.tier.outputs.code == '0' || steps.tier.outputs.code == '1'
+        if: (steps.tier.outputs.code == '0' || steps.tier.outputs.code == '1') && steps.restore.outputs.fallback != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}

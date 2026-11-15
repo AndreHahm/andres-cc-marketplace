@@ -1428,7 +1428,8 @@ required check.**
 - **Thresholds:** the defaults ship in `plugins/quality-kit/assets/qlty-coverage-tiers.yml`; `.github/coverage-tiers.yml`
   overrides them key by key. The tier script, the defaults and the override are read from the **base SHA** into
   `$RUNNER_TEMP`, outside the PR's checkout, and run with `python -I`, so a PR cannot lower the thresholds; only a
-  PR that adds the script itself runs its own copy, and its comment says so. The diff is taken with
+  PR that adds the script itself runs its own copy; the tier then goes to the job summary only, with no PR
+  comment, because no step after the PR's own code may hold the write token. The diff is taken with
   `--no-ext-diff --no-textconv --text`, so a PR's `.gitattributes` cannot hide its changes. The limit: only the thresholds and the script are trusted: the PR's own code and configuration still produce the report and decide what is measurable (an `omit` entry, a `pragma: no cover`), and a change with no measurable line is green. Review a PR's coverage configuration like its code. A PR can also edit the workflow file itself, which runs from its merge commit, and drop these protections; that edit shows in its diff, and the check is not required.
 - **Codecov** is a view: `codecov.yml` keeps both of its statuses informational and turns its PR comment off.
   The tier is not required, so `merge-pr` does not stop on an orange or red tier.
