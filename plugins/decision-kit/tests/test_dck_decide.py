@@ -495,6 +495,9 @@ def test_redirect_is_not_followed(repo):
 
         def do_POST(self):
             seen.append(self.path)
+            # Read the body: closing with unread data resets the connection on Windows, and the
+            # client then reports a network failure instead of the 307.
+            self.rfile.read(int(self.headers["Content-Length"]))
             self.send_response(307)
             self.send_header("Location", "/stolen")
             self.send_header("Content-Length", "0")
