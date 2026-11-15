@@ -264,6 +264,8 @@ def parse_yaml(text: str) -> dict:
                     data[key] = {}
                 if not isinstance(data[key], dict):
                     raise CatalogError(f"mixed map and value under {key}")
+                if m.group(1) in data[key]:
+                    raise CatalogError(f"duplicate key: {key}.{m.group(1)}")
                 data[key][m.group(1)] = _parse_scalar(m.group(2))
     return data
 
@@ -423,6 +425,10 @@ def _write_atomic(path: Path, text: str) -> None:
                     os.fchmod(handle.fileno(), mode)
                 else:
                     os.chmod(tmp, mode)
+            # Flush to disk before the rename, so a crash right after it cannot leave the target
+            # name pointing at an empty or partly written file.
+            handle.flush()
+            os.fsync(handle.fileno())
         os.replace(tmp, path)
     except BaseException:
         try:
@@ -518,6 +524,9 @@ def validate_record(meta: dict, version: int) -> list[str]:
     for f in LIST_FIELDS & set(meta):
         if not isinstance(meta[f], list) or not all(isinstance(x, str) for x in meta[f]):
             errs.append(f"{f} must be a list of text")
+    for f in MAP_FIELDS & set(meta):
+        if meta[f] is not None and not isinstance(meta[f], dict):
+            errs.append(f"{f} must be a map")
     for f in ("prerequisites", "boundaries"):
         if f in meta and not isinstance(meta[f], str):
             errs.append(f"{f} must be text")
@@ -555,20 +564,30 @@ def _find_git(cwd: Path) -> str | None:
     shipped by a cloned repository), so the lookup result is checked against the working directory.
     """
     found = shutil.which("git")
-    if found and _norm_plain(Path(found)).startswith(_norm_plain(cwd) + os.sep):
+    if found and _within(Path(found), cwd):
         trusted = os.pathsep.join(
             p
             for p in os.environ.get("PATH", "").split(os.pathsep)
-            if p and p != os.curdir and not _norm_plain(Path(p)).startswith(_norm_plain(cwd))
+            if p and p != os.curdir and not _within(Path(p), cwd)
         )
         found = shutil.which("git", path=trusted)
-        if found and _norm_plain(Path(found)).startswith(_norm_plain(cwd) + os.sep):
+        if found and _within(Path(found), cwd):
             found = None
     return found
 
 
 def _norm_plain(path: Path) -> str:
     return os.path.normcase(os.path.realpath(str(path)))
+
+
+def _within(path: Path, folder: Path) -> bool:
+    """True when path is folder itself or lies below it.
+
+    A plain string prefix would also match a sibling such as /work/repo-tools for the folder
+    /work/repo, so the folder ends in a separator.
+    """
+    p, f = _norm_plain(path), _norm_plain(folder)
+    return p == f or p.startswith(f.rstrip(os.sep) + os.sep)
 
 
 def _git_toplevel(cwd: Path) -> Path | None:
@@ -1035,7 +1054,9 @@ def cmd_hash(args) -> dict:
 def screen_text(text: str) -> list[dict]:
     """Return {line, pattern} for each match. The matched text is never echoed."""
     found = []
-    for lineno, line in enumerate(text.replace("\r\n", "\n").split("\n"), start=1):
+    # A lone CR ends a line too, or a line-anchored pattern (dotenv_secret_line) would miss an
+    # assignment that follows one.
+    for lineno, line in enumerate(re.split(r"\r\n|\r|\n", text), start=1):
         for name, pattern in SECRET_PATTERNS:
             if pattern.search(line):
                 found.append({"line": lineno, "pattern": name})
@@ -1174,13 +1195,14 @@ def _valid_catalog(root: Path):
     return cat, records
 
 
-def _scratch_record(path_text: str, root: Path) -> dict:
+def _scratch_record(path_text: str, root: Path, version: int) -> dict:
+    """Read and check a scratch draft against the field list of the catalog's own version."""
     path = _readable_candidate(path_text, root)
     try:
         meta = read_record(path)
     except (CatalogError, OSError, UnicodeDecodeError) as exc:
         raise CatalogError(f"cannot read the draft file: {exc}") from exc
-    errs = validate_record(meta, 1)
+    errs = validate_record(meta, version)
     if meta.get("status") != "draft":
         errs.append("only a draft record can be added or updated here")
     if errs:
@@ -1196,7 +1218,7 @@ def cmd_draft(args) -> dict:
     info = resolve_root(getattr(args, "root", None))
     root = Path(info["catalog_root"])
     cat, records = _valid_catalog(root)
-    meta = _scratch_record(args.file, root)
+    meta = _scratch_record(args.file, root, cat["catalog_version"])
     errs = _check_new_draft(meta, records)
     if errs:
         raise CatalogError("; ".join(errs))
@@ -1204,12 +1226,17 @@ def cmd_draft(args) -> dict:
     target = _inside(root, root / meta["slug"] / f"{meta['internal_id']}.md")
     if target.exists():
         raise CatalogError(f"{rel} already exists")
+    new_dir = not target.parent.exists()
     target.parent.mkdir(exist_ok=True)
-    write_record(target, meta)
     try:
+        write_record(target, meta)
         write_catalog(root, cat, [m["_path"] for m in records.values()] + [rel])
-    except (OSError, CatalogError):
-        target.unlink(missing_ok=True)  # no orphan record file is left behind
+    except BaseException:
+        # No orphan record file, and no empty slug folder this call created, is left behind.
+        with contextlib.suppress(OSError):
+            target.unlink(missing_ok=True)
+            if new_dir:
+                target.parent.rmdir()
         raise
     info.update(
         ok=True, internal_id=meta["internal_id"], path=rel, text_hash=text_hash(meta["_body"])
@@ -1222,13 +1249,13 @@ def cmd_update_draft(args) -> dict:
     edit)."""
     info = resolve_root(getattr(args, "root", None))
     root = Path(info["catalog_root"])
-    _, records = _valid_catalog(root)
+    cat, records = _valid_catalog(root)
     current = _record_by_id(records, args.internal_id)
     if current["status"] != "draft":
         raise CatalogError(
             "only a draft can be updated in place; revise an active or inactive record instead"
         )
-    meta = _scratch_record(args.file, root)
+    meta = _scratch_record(args.file, root, cat["catalog_version"])
     for field in ("internal_id", "slug", "version", "previous_id", "origin", "source_ref"):
         if meta.get(field) != current.get(field):
             raise CatalogError(f"{field} cannot change when updating a draft")
@@ -1296,6 +1323,8 @@ def cmd_discard_orphan(args) -> dict:
             "only an unlisted draft can be discarded; this file is not a readable draft"
         )
     path.unlink()
+    with contextlib.suppress(OSError):
+        path.parent.rmdir()  # only succeeds when the slug folder is now empty
     info["ok"] = True
     info["removed"] = rel
     info["slug"] = meta.get("slug")
