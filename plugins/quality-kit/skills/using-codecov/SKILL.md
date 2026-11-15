@@ -9,7 +9,7 @@ description: >-
   get", or "set up Codecov". It reads and explains: it never uploads coverage, changes Codecov
   settings, or produces a findings record (coverage gaps are not static-analysis findings).
 argument-hint: (optional) the question, a PR number, or owner/repo
-allowed-tools: Read, Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/qlty-codecov-read.py:*), Bash(uv run --no-project --with pyyaml==6.0.3 python -I ${CLAUDE_PLUGIN_ROOT}/scripts/qlty-coverage-tier.py:*)
+allowed-tools: Read, Bash(gh pr view * --json headRefOid), Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/qlty-codecov-read.py:*), Bash(uv run --no-project --with pyyaml==6.0.3 python -I ${CLAUDE_PLUGIN_ROOT}/scripts/qlty-coverage-tier.py:*)
 ---
 
 # Using Codecov
@@ -74,7 +74,8 @@ thresholds are protected that way: the PR's own coverage configuration still dec
 
 ## Boundaries
 
-Its two grants are plugin-root scripts. `qlty-codecov-read.py` runs three fixed GET reads with validated values,
+Its script grants are two plugin-root scripts, and one read-only `gh` form, `gh pr view <n> --json
+headRefOid`, gives the PR head SHA for the currency check. `qlty-codecov-read.py` runs three fixed GET reads with validated values,
 over `urllib` with no shell, refuses redirects so the token is never sent elsewhere, and prints only projected
 fields. `qlty-coverage-tier.py` reads files only. Copying files and editing a workflow during setup raise a
 normal permission prompt, and setup writes nothing the user has not approved.
@@ -117,7 +118,7 @@ this repository on 2026-11-15 (design Build results). The scenarios have not bee
 - "why does Sonar show no coverage" (`using-sonarqube-cloud`)
 
 **Quality gates:**
-- [ ] Pre-approves only the two plugin-root scripts, and runs no Codecov write
+- [ ] Pre-approves only the two plugin-root scripts and the read-only `gh pr view` head-SHA lookup, and runs no Codecov write
 - [ ] An owner, repository, branch, SHA or PR number is checked before it reaches a command line
 - [ ] No token value is asked for, printed or written
 - [ ] Setup writes into the target repository only after the user approves each file
