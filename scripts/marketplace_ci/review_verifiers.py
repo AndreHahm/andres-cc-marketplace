@@ -1095,8 +1095,8 @@ class _HtmlUrls(HTMLParser):
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
         self.urls = []
-        self.CDATA_CONTENT_ELEMENTS = ()
-        self.RCDATA_CONTENT_ELEMENTS = ()
+        self.CDATA_CONTENT_ELEMENTS = ()  # ty: ignore[invalid-assignment]
+        self.RCDATA_CONTENT_ELEMENTS = ()  # ty: ignore[invalid-assignment]
         self._support_cdata = False
 
     def set_cdata_mode(self, *args, **kwargs) -> None:

@@ -608,7 +608,7 @@ def run_pass(route: str, review_pass: str, *, prompt: str, model: str, checkout:
     started = utc_now()
     try:
         if route == "api":
-            import anthropic  # ty: ignore[unresolved-import]  # only the headless-review group
+            import anthropic  # ty: ignore[import-not-found]  # only the headless-review group
 
             client = anthropic.Anthropic(max_retries=2)
             result = run_api_pass(
@@ -625,8 +625,8 @@ def run_pass(route: str, review_pass: str, *, prompt: str, model: str, checkout:
             # "Fatal error in message reader: ..."); its child loggers inherit this level, so none
             # of it reaches the job log, as Claude Code's discarded stderr.
             logging.getLogger("claude_agent_sdk").setLevel(logging.CRITICAL + 1)
-            import anyio  # ty: ignore[unresolved-import]  # only the headless-review group
-            from claude_agent_sdk import (  # ty: ignore[unresolved-import]
+            import anyio  # ty: ignore[import-not-found]  # only the headless-review group
+            from claude_agent_sdk import (  # ty: ignore[import-not-found]
                 ClaudeAgentOptions,
                 ResultMessage,
                 query,
