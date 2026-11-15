@@ -83,10 +83,16 @@ jobs:
           trusted="$RUNNER_TEMP/trusted"
           mkdir -p "$trusted"
           : > "$trusted/notes.txt"
+          # Returns 1 only on a 404 (not on the base branch); any other failure, a bad decode
+          # included, ends the step with `exit 1`, even where the call sits in an `if`.
           fetch() {
             local err; err=$(mktemp)
             if content=$(gh api --method GET "repos/$REPO/contents/$1" -f ref="$BASE_SHA" --jq '.content' 2>"$err"); then
-              echo "$content" | base64 -d > "$2"; rm -f "$err"; return 0
+              rm -f "$err"
+              if ! printf '%s\n' "$content" | base64 -d > "$2"; then
+                echo "::error::could not decode $1 at the base SHA"; exit 1
+              fi
+              return 0
             elif grep -q "HTTP 404" "$err"; then rm -f "$err"; return 1; fi
             echo "::error::could not read $1 at the base SHA"; rm -f "$err"; exit 1
           }
@@ -101,7 +107,9 @@ jobs:
           fi
           # The override: the base copy, or none; never the PR's own.
           rm -f "$trusted/override.yml"
-          fetch .github/coverage-tiers.yml "$trusted/override.yml" || true
+          if ! fetch .github/coverage-tiers.yml "$trusted/override.yml"; then
+            : # a 404: no override on the base branch, so the default thresholds apply
+          fi
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: coverage-report
