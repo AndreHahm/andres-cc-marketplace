@@ -1,0 +1,22 @@
+# Codecov is a view here, not a gate (docs/ci.md, "Coverage"). The pass/fail signal is the
+# "Coverage tier" job in .github/workflows/coverage.yml, computed from the workflow's own report,
+# so both Codecov statuses stay informational and Codecov's own PR comment is off: the tier comment
+# replaces it, one comment instead of two.
+coverage:
+  status:
+    project:
+      default:
+        informational: true
+    patch:
+      default:
+        informational: true
+
+comment: false
+
+# The measured sources are set in pyproject.toml ([tool.coverage.run]); these keep a mirror or test
+# path out even if a report ever lists one.
+ignore:
+  - ".claude/**"
+  - ".codex/**"
+  - ".agents/**"
+  - "**/tests/**"

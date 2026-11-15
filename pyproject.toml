@@ -25,6 +25,7 @@ dev = [
   "pymdown-extensions>=10.16.1",
   "markdown-it-py>=4.2,<5",
   "pytest-xdist>=3.8",
+  "pytest-cov>=7.1.0",
 ]
 # Only the test headless Claude review job installs these
 # (.github/workflows/test-headless-claude-review-ci.yml). The two SDKs are pinned exactly, to releases
@@ -47,6 +48,22 @@ select = ["E", "F", "I", "UP", "B"]
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests/marketplace_ci", "tests/reviewer_eval", "plugins/analysis-kit/tests", "plugins/session-kit/tests", "plugins/decision-kit/tests"]
+
+# Read only when pytest runs with --cov (.github/workflows/coverage.yml). The sources are the code that
+# pytest's testpaths exercise; the .claude/, .codex/ and .agents/ mirrors stay out. Data and reports go
+# under .temp/coverage/, which .gitignore covers. patch = subprocess measures the scripts the tests start
+# as subprocesses (91 % versus 89 % without it, 2026-11-15).
+[tool.coverage.run]
+source = ["scripts", "plugins/analysis-kit", "plugins/session-kit", "plugins/decision-kit"]
+omit = ["*/tests/*", "*/smoke_test.py"]
+data_file = ".temp/coverage/.coverage"
+parallel = true
+patch = ["subprocess"]
+
+[tool.coverage.report]
+# The plugin script directories have no __init__.py; without this, a script no test runs is left out of
+# the total instead of counting as 0 %.
+include_namespace_packages = true
 
 [tool.ty.environment]
 extra-paths = ["plugins/analysis-kit/scripts", "plugins/session-kit/scripts", "plugins/session-kit/skills/session-handoff/scripts", "plugins/session-kit/skills/session-recover/scripts", "plugins/workledger-kit/scripts"]

@@ -1,0 +1,143 @@
+# quality-kit coverage workflow template (copy to .github/workflows/coverage.yml).
+#
+# Set REPORT to the path your test step writes, and replace the test step with your own. The report may
+# be coverage.py JSON, Cobertura XML or LCOV. The tier script and its defaults are a vendored copy under
+# .github/quality-kit/ (using-codecov's references/project-setup.md). Action SHAs are the ones
+# quality-kit's own repository pins (checked 2026-11-15); keep them pinned by SHA.
+name: Coverage
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+env:
+  REPORT: coverage/lcov.info  # the report your test step writes
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Replace with your own test step; it must write the report to $REPORT.
+      - name: Run the tests with coverage
+        run: echo "replace this step with your test command" && exit 1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: coverage-report
+          path: ${{ env.REPORT }}
+          if-no-files-found: error
+      - name: Upload to Codecov
+        continue-on-error: true  # Codecov is a view: an upload failure never fails the job
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ${{ env.REPORT }}
+          disable_search: true
+          fail_ci_if_error: false
+
+  coverage-tier:
+    if: github.event_name == 'pull_request'
+    needs: coverage
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      # The pull_request checkout is the merge commit the coverage job measured; HEAD^1 is the base.
+      # Everything this job trusts or writes lives under $RUNNER_TEMP, outside that checkout: a PR can
+      # commit any file into the workspace (a planted module, a symlink, a fake override or notes
+      # file), but not into $RUNNER_TEMP.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+      # A PR must not lower its own bar: the script, defaults and override come from the base SHA.
+      - name: Restore the tier inputs from the base SHA
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          trusted="$RUNNER_TEMP/trusted"
+          mkdir -p "$trusted"
+          : > "$trusted/notes.txt"
+          fetch() {
+            local err; err=$(mktemp)
+            if content=$(gh api --method GET "repos/$REPO/contents/$1" -f ref="$BASE_SHA" --jq '.content' 2>"$err"); then
+              echo "$content" | base64 -d > "$2"; rm -f "$err"; return 0
+            elif grep -q "HTTP 404" "$err"; then rm -f "$err"; return 1; fi
+            echo "::error::could not read $1 at the base SHA"; rm -f "$err"; exit 1
+          }
+          if ! { fetch .github/quality-kit/qlty-coverage-tier.py "$trusted/tier.py" \
+              && fetch .github/quality-kit/qlty-coverage-tiers.yml "$trusted/defaults.yml"; }; then
+            # The PR that adds the tier: its own copy, said in the comment.
+            cp .github/quality-kit/qlty-coverage-tier.py "$trusted/tier.py"
+            cp .github/quality-kit/qlty-coverage-tiers.yml "$trusted/defaults.yml"
+            echo "The tier script is not on the base branch yet, so this PR's own copy computed the tier." >> "$trusted/notes.txt"
+          fi
+          # The override: the base copy, or none; never the PR's own.
+          rm -f "$trusted/override.yml"
+          fetch .github/coverage-tiers.yml "$trusted/override.yml" || true
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: coverage-report
+          path: ${{ runner.temp }}/report
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: "0.12.21"
+          enable-cache: "false"
+      # No token in this step's environment: it runs PR-controlled input through the script. -I keeps
+      # the workspace off sys.path and --no-config ignores a uv.toml the PR may add.
+      - name: Compute the tier
+        id: tier
+        run: |
+          set -uo pipefail
+          trusted="$RUNNER_TEMP/trusted"
+          # A single-file artifact keeps only its base name.
+          report="$RUNNER_TEMP/report/${REPORT##*/}"
+          # Plain text diff whatever .gitattributes the PR adds, with fixed prefixes.
+          git -c core.quotePath=false diff --no-ext-diff --no-textconv --text \
+            --src-prefix=a/ --dst-prefix=b/ --unified=0 HEAD^1 HEAD > "$RUNNER_TEMP/patch.diff"
+          tier() {
+            uv run --no-project --no-config --with "pyyaml==6.0.3" python -I "$trusted/tier.py" \
+              --coverage "$report" --diff "$RUNNER_TEMP/patch.diff" --defaults "$trusted/defaults.yml" \
+              --override "$trusted/override.yml" "$@"
+          }
+          tier --github-annotations
+          code=$?
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          if [ "$code" -le 1 ]; then
+            { tier --format markdown; cat "$trusted/notes.txt"; } > "$RUNNER_TEMP/comment.md"
+            cat "$RUNNER_TEMP/comment.md" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Post or update the tier comment
+        if: steps.tier.outputs.code == '0' || steps.tier.outputs.code == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          SAME_REPO: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+        run: |
+          set -euo pipefail
+          [ "$SAME_REPO" = "true" ] || { echo "Fork PR: comment skipped; see the job summary."; exit 0; }
+          marker='<!-- quality-kit:coverage-tier -->'
+          ids=$(gh api --paginate "repos/$REPO/issues/$PR/comments" \
+            --jq ".[] | select(.user.login == \"github-actions[bot]\" and (.body | startswith(\"$marker\"))) | .id")
+          existing=${ids%%$'\n'*}
+          if [ -n "$existing" ]; then
+            gh api --method PATCH "repos/$REPO/issues/comments/$existing" -F body=@"$RUNNER_TEMP/comment.md" > /dev/null
+          else
+            gh api --method POST "repos/$REPO/issues/$PR/comments" -F body=@"$RUNNER_TEMP/comment.md" > /dev/null
+          fi
+      - name: Fail on an orange or red tier, or a tier that could not be computed
+        env:
+          CODE: ${{ steps.tier.outputs.code }}
+        run: |
+          case "$CODE" in
+            0) exit 0 ;;
+            1) echo "Coverage tier is orange or red (see the comment or summary)."; exit 1 ;;
+            *) echo "::error::the tier script exited $CODE"; exit 1 ;;
+          esac
