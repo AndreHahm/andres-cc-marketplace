@@ -1,0 +1,6 @@
+{
+  "total_tokens": 107531,
+  "duration_ms": 473608,
+  "model": "claude-opus-5-5",
+  "source": "subagent usage reported by the harness"
+}

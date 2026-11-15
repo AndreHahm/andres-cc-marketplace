@@ -1,0 +1,31 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Shows the full text of review__missing-tests in a fenced block",
+      "passed": true,
+      "evidence": "Four-backtick fenced block contains the full text including both actual hidden characters (U+200B, U+202E present in transcript)"
+    },
+    {
+      "text": "Lists both hidden characters with line, column, code point and name above the fenced text",
+      "passed": true,
+      "evidence": "Above the fence: 'line 2, column 6, U+200B ZERO WIDTH SPACE' and 'line 2, column 14, U+202E RIGHT-TO-LEFT OVERRIDE'"
+    },
+    {
+      "text": "Says the hidden characters are invisible in the text shown",
+      "passed": true,
+      "evidence": "'this prompt contains hidden characters that are invisible in the text shown below'"
+    },
+    {
+      "text": "No catalog file was modified",
+      "passed": true,
+      "evidence": "Catalog files unchanged (mtimes = build time), validate ok true"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

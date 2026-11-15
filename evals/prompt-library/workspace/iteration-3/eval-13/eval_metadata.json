@@ -1,0 +1,31 @@
+{
+  "eval_id": 13,
+  "skill_path": "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md",
+  "assertions": [
+    {
+      "text": "Runs no write subcommand and no git command that changes files (read-only git checks are allowed)",
+      "type": "functionality",
+      "target": "outputs/transcript.md and fixture project"
+    },
+    {
+      "text": "Never turns the raw glob-looking path into a restore command",
+      "type": "functionality",
+      "target": "outputs/transcript.md and fixture project"
+    },
+    {
+      "text": "Resolves each real errors path under catalog_root",
+      "type": "functionality",
+      "target": "outputs/transcript.md and fixture project"
+    },
+    {
+      "text": "Tells the user to check the file for local changes before restoring",
+      "type": "functionality",
+      "target": "outputs/transcript.md and fixture project"
+    },
+    {
+      "text": "Shows a literal-path restore (:(literal) pathspec)",
+      "type": "functionality",
+      "target": "outputs/transcript.md and fixture project"
+    }
+  ]
+}

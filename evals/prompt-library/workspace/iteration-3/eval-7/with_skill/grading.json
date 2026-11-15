@@ -1,0 +1,36 @@
+{
+  "eval_id": 7,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Identifies the single error as an unlisted record file (an orphan) and not as a different problem",
+      "passed": true,
+      "evidence": "validate error 'unlisted record file on disk: review__orphan-draft/p0000000000ff.md'; transcript calls it an orphan draft left by an interrupted add."
+    },
+    {
+      "text": "Asks with an approval question before running discard-orphan",
+      "passed": true,
+      "evidence": "Question 1 (AskUserQuestion) 'Remove it with discard-orphan?' asked before command 3 '<CLI> discard-orphan review__orphan-draft/p0000000000ff.md'."
+    },
+    {
+      "text": "After approval the orphan file is removed",
+      "passed": true,
+      "evidence": "Fixture: review__orphan-draft/p0000000000ff.md no longer exists (only an empty folder remains)."
+    },
+    {
+      "text": "No other file in the catalog changed and no new record was filed",
+      "passed": true,
+      "evidence": "Fixture: catalog.yaml and the 3 record files keep fixture-build mtimes; catalog lists 3 records; no new record."
+    },
+    {
+      "text": "A final validate shows the catalog ok",
+      "passed": true,
+      "evidence": "Command 4 '<CLI> validate' -> exit 0, ok: true, errors: []."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

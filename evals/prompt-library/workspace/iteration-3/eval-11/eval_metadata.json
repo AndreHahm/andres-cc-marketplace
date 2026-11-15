@@ -1,0 +1,31 @@
+{
+  "eval_id": 11,
+  "skill_path": "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md",
+  "assertions": [
+    {
+      "text": "The catalog is validated first",
+      "type": "functionality",
+      "target": "outputs/transcript.md and fixture project"
+    },
+    {
+      "text": "The draft resumes at step 7, not step 8 or 9",
+      "type": "functionality",
+      "target": "outputs/transcript.md and fixture project"
+    },
+    {
+      "text": "prompt-reviewer is dispatched (or its review done inline and the dispatch recorded) with the record's absolute path and origin before any verification or activation",
+      "type": "functionality",
+      "target": "outputs/transcript.md and fixture project"
+    },
+    {
+      "text": "The record path comes from a validator read subcommand",
+      "type": "functionality",
+      "target": "outputs/transcript.md and fixture project"
+    },
+    {
+      "text": "After one review round the run goes on to step 8 without dispatching prompt-reviewer a second time",
+      "type": "functionality",
+      "target": "outputs/transcript.md and fixture project"
+    }
+  ]
+}

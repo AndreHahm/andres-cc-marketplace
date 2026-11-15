@@ -1,0 +1,36 @@
+{
+  "eval_id": 7,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Identifies the single error as an unlisted record file (an orphan) and not as a different problem",
+      "passed": true,
+      "evidence": "Transcript: orphan record p0000000000ff.md 'NOT listed in the catalog -> orphan record'."
+    },
+    {
+      "text": "Asks with an approval question before running discard-orphan",
+      "passed": false,
+      "evidence": "An approval question was asked, but the removal used 'rm ... && rmdir ...', not discard-orphan; the assertion names the skill mechanism."
+    },
+    {
+      "text": "After approval the orphan file is removed",
+      "passed": true,
+      "evidence": "Fixture: review__orphan-draft/ and its file are gone."
+    },
+    {
+      "text": "No other file in the catalog changed and no new record was filed",
+      "passed": true,
+      "evidence": "Fixture: catalog.yaml and the 3 record files keep fixture-build mtimes; no new record."
+    },
+    {
+      "text": "A final validate shows the catalog ok",
+      "passed": false,
+      "evidence": "No validate (or equivalent check) was run after the removal; the transcript only lists files and cats catalog.yaml."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 3,
+    "pass_rate": 0.6
+  }
+}

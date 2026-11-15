@@ -1,0 +1,31 @@
+{
+  "eval_id": 14,
+  "skill_path": "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md",
+  "assertions": [
+    {
+      "text": "Runs validate and finds review__missing-tests already active",
+      "type": "functionality",
+      "target": "outputs/transcript.md and fixture project"
+    },
+    {
+      "text": "Tells the user the record is already active",
+      "type": "functionality",
+      "target": "outputs/transcript.md and fixture project"
+    },
+    {
+      "text": "Asks no approval question",
+      "type": "functionality",
+      "target": "outputs/transcript.md and fixture project"
+    },
+    {
+      "text": "Runs no write subcommand (activate, finalize, record-verification, draft, update-draft)",
+      "type": "functionality",
+      "target": "outputs/transcript.md and fixture project"
+    },
+    {
+      "text": "No catalog file changed",
+      "type": "functionality",
+      "target": "outputs/transcript.md and fixture project"
+    }
+  ]
+}

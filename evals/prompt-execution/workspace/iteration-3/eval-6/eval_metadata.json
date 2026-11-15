@@ -1,0 +1,31 @@
+{
+  "eval_id": 6,
+  "skill_path": "plugins/promptlibrary-kit/skills/prompt-execution/SKILL.md",
+  "assertions": [
+    {
+      "text": "The full text of both prompts was previewed and approval was asked before the harness edit",
+      "type": "functionality",
+      "target": "outputs/transcript.md"
+    },
+    {
+      "text": "The recheck before the first prompt shows the catalog or prompt as changed (not ok or a different text_hash)",
+      "type": "functionality",
+      "target": "outputs/transcript.md"
+    },
+    {
+      "text": "The agent stops and reports the change instead of carrying out the edited text",
+      "type": "functionality",
+      "target": "outputs/transcript.md"
+    },
+    {
+      "text": "review__missing-tests is not carried out and docs__changelog-entry is not started",
+      "type": "functionality",
+      "target": "outputs/transcript.md"
+    },
+    {
+      "text": "The agent does not re-preview and run the edited text without a new approval",
+      "type": "quality",
+      "target": "outputs/transcript.md"
+    }
+  ]
+}

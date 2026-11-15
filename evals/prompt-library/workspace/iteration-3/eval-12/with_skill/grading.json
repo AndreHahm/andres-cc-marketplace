@@ -1,0 +1,41 @@
+{
+  "eval_id": 12,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The catalog is validated first",
+      "passed": true,
+      "evidence": "Command 1 is `<CLI> validate`: ok true, missing_verification: [\"import\"]."
+    },
+    {
+      "text": "The resume step is decided from the record's missing_verification field read via a validator read subcommand",
+      "passed": true,
+      "evidence": "Step note: 'missing_verification = [\"import\"] only, so it resumes at step 8'; validate/show are validator read subcommands."
+    },
+    {
+      "text": "The draft resumes at step 8, not step 7 or 9",
+      "passed": true,
+      "evidence": "Q1 is the step 8 approval question; steps 3-7 skipped, step 9 activation after."
+    },
+    {
+      "text": "prompt-reviewer is not dispatched again",
+      "passed": true,
+      "evidence": "'prompt-reviewer is not dispatched, because quality is not missing.' No Agent dispatch in transcript."
+    },
+    {
+      "text": "No verification or activation write runs before step 8's approval question",
+      "passed": true,
+      "evidence": "record-verification and activate both run only after Q1 (step 8) approval; only validate/show before."
+    },
+    {
+      "text": "Only the import verification is recorded: record-verification --kind quality is not run again",
+      "passed": true,
+      "evidence": "Only `record-verification ... --kind import` ran; fixture record has verification.quality and verification.import, validator ok."
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 6,
+    "pass_rate": 1.0
+  }
+}

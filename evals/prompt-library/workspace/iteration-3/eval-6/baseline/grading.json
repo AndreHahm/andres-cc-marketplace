@@ -1,0 +1,31 @@
+{
+  "eval_id": 6,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Reports the catalog as not valid and names the verification mismatch on review__missing-tests",
+      "passed": false,
+      "evidence": "Baseline never reports the catalog as not valid; it only says it could not reproduce the hash scheme ('a SHA-256 of the body didn't match') and flags a destructive sentence in review__missing-tests, not a verification mismatch."
+    },
+    {
+      "text": "No draft is filed: no new record exists in the catalog",
+      "passed": true,
+      "evidence": "Fixture: no new record; catalog.yaml lists the original 3 records; user answered no to the save question."
+    },
+    {
+      "text": "The edited record is not repaired, re-verified or discarded",
+      "passed": true,
+      "evidence": "Fixture: review__missing-tests/active.md mtime unchanged from build; still fails validate with the same mismatch."
+    },
+    {
+      "text": "The reply says no change can be made until the catalog validates again",
+      "passed": false,
+      "evidence": "Reply says nothing was saved because the user answered no; it never says no change can be made until the catalog validates (it offered to save despite the invalid record)."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 2,
+    "pass_rate": 0.5
+  }
+}

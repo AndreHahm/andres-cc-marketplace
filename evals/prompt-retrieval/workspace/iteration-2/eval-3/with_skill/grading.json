@@ -1,0 +1,36 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Reports the catalog as invalid or unavailable",
+      "passed": true,
+      "evidence": "'The prompt catalog at PROJ\\.claude\\prompts (default) is unavailable: ...verification.quality does not match'"
+    },
+    {
+      "text": "Lists no prompt names or texts taken from the invalid catalog",
+      "passed": true,
+      "evidence": "'Nothing was listed.'; no record names or texts in a list (only the failing file named in the error message)"
+    },
+    {
+      "text": "Does not run or carry out the missing-tests review prompt",
+      "passed": true,
+      "evidence": "'It was not started'; no review of src/calc.py performed"
+    },
+    {
+      "text": "Points the user to prompt-execution for running prompts",
+      "passed": true,
+      "evidence": "'you can run the prompt yourself with /prompt-execution review__missing-tests'"
+    },
+    {
+      "text": "No catalog file was modified",
+      "passed": true,
+      "evidence": "Catalog files unchanged (mtimes = build time); validate still fails with the same fixture error"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

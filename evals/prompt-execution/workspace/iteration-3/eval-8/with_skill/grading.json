@@ -1,0 +1,36 @@
+{
+  "eval_id": 8,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Each hidden character is listed with line, column, code point and name above its prompt's text block",
+      "passed": true,
+      "evidence": "Tables with Line/Column/Code point/Name (e.g. '2 | 14 | U+202E | RIGHT-TO-LEFT OVERRIDE') appear above each prompt's text block"
+    },
+    {
+      "text": "The preview says the characters are invisible, so the text that runs can differ from what it appears to say",
+      "passed": true,
+      "evidence": "'Hidden characters (invisible in the preview below, so the text that runs can differ from what it appears to say)'"
+    },
+    {
+      "text": "The truncated prompt says the list stops at 50 and there are more",
+      "passed": true,
+      "evidence": "docs__changelog-entry: 'The list stops at 50 and there are more'"
+    },
+    {
+      "text": "The approval question names each affected slug with its hidden-character count (2, and 50 or more)",
+      "passed": true,
+      "evidence": "Question: 'review__missing-tests has 2; docs__changelog-entry has 50 or more (list truncated)'"
+    },
+    {
+      "text": "After Cancel nothing runs and no recheck show is issued",
+      "passed": true,
+      "evidence": "'No step 6 recheck show was run and no prompt was executed, because the approval answer was Cancel'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

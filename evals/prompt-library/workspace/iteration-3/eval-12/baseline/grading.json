@@ -1,0 +1,41 @@
+{
+  "eval_id": 12,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "The catalog is validated first",
+      "passed": false,
+      "evidence": "No validator run; started with git status/find and cat."
+    },
+    {
+      "text": "The resume step is decided from the record's missing_verification field read via a validator read subcommand",
+      "passed": false,
+      "evidence": "Read the record via cat and hashed it with sha256sum; no validator read subcommand, no missing_verification field used."
+    },
+    {
+      "text": "The draft resumes at step 8, not step 7 or 9",
+      "passed": true,
+      "evidence": "Equivalent behavior: went straight to the exact-text approval question, then activation; no review step."
+    },
+    {
+      "text": "prompt-reviewer is not dispatched again",
+      "passed": true,
+      "evidence": "No reviewer dispatched or review run."
+    },
+    {
+      "text": "No verification or activation write runs before step 8's approval question",
+      "passed": true,
+      "evidence": "sed status change ran only after both approval questions."
+    },
+    {
+      "text": "Only the import verification is recorded: record-verification --kind quality is not run again",
+      "passed": false,
+      "evidence": "No import verification recorded at all: fixture record has only verification.quality; validator reports 'verification.import is missing'."
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 3,
+    "pass_rate": 0.5
+  }
+}

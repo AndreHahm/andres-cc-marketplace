@@ -1,0 +1,41 @@
+{
+  "eval_id": 3,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Considers whether the content should be a skill instead and concludes it is a prompt",
+      "passed": true,
+      "evidence": "Asked 'Save this as a reusable prompt, or as a skill?'; reply Prompt."
+    },
+    {
+      "text": "An approval question was asked before the draft was filed",
+      "passed": true,
+      "evidence": "Asked 'Save this draft to the catalog as summarize-open-todos (status: draft)?' before activation; file created as draft."
+    },
+    {
+      "text": "The prompt text was reviewed (quality review) before activation",
+      "passed": true,
+      "evidence": "Self-review of the draft (no reviewer tool) before activation: 'text is clear...'; suggested rewrite offered and declined."
+    },
+    {
+      "text": "An approval question showing the exact final text was asked before activation",
+      "passed": true,
+      "evidence": "Asked 'Approve this exact text: \"Summarize the open TODO comments...\"?' before activation."
+    },
+    {
+      "text": "Activation used --expect-sha256 with the hash of the approved text",
+      "passed": false,
+      "evidence": "No hash or --expect-sha256 used; activation was a `sed` edit of status: draft -> active."
+    },
+    {
+      "text": "The final catalog validates and holds exactly one active record with that text",
+      "passed": false,
+      "evidence": "Read-only validate in fixture: ok false, 'catalog.yaml is missing' (baseline wrote catalog.json, not a valid catalog)."
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 4,
+    "pass_rate": 0.6667
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md",
+  "assertions": [
+    {
+      "text": "Considers whether the content should be a skill instead and concludes it is a prompt",
+      "type": "functionality",
+      "target": "outputs/transcript.md"
+    },
+    {
+      "text": "An approval question was asked before the draft was filed",
+      "type": "functionality",
+      "target": "outputs/transcript.md"
+    },
+    {
+      "text": "The prompt text was reviewed (quality review) before activation",
+      "type": "functionality",
+      "target": "outputs/transcript.md"
+    },
+    {
+      "text": "An approval question showing the exact final text was asked before activation",
+      "type": "functionality",
+      "target": "outputs/transcript.md"
+    },
+    {
+      "text": "Activation used --expect-sha256 with the hash of the approved text",
+      "type": "structure",
+      "target": "outputs/transcript.md"
+    },
+    {
+      "text": "The final catalog validates and holds exactly one active record with that text",
+      "type": "structure",
+      "target": "fixture directory"
+    }
+  ]
+}

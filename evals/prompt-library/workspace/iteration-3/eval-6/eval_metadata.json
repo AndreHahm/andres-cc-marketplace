@@ -1,0 +1,26 @@
+{
+  "eval_id": 6,
+  "skill_path": "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md",
+  "assertions": [
+    {
+      "text": "Reports the catalog as not valid and names the verification mismatch on review__missing-tests",
+      "type": "functionality",
+      "target": "outputs/transcript.md"
+    },
+    {
+      "text": "No draft is filed: no new record exists in the catalog",
+      "type": "structure",
+      "target": "fixture directory"
+    },
+    {
+      "text": "The edited record is not repaired, re-verified or discarded",
+      "type": "structure",
+      "target": "fixture directory"
+    },
+    {
+      "text": "The reply says no change can be made until the catalog validates again",
+      "type": "quality",
+      "target": "outputs/transcript.md"
+    }
+  ]
+}

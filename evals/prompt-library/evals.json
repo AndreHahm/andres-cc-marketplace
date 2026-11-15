@@ -77,14 +77,14 @@
       "id": 11,
       "name": "resumed-unverified-draft-gets-the-review-again",
       "prompt": "/prompt-library activate docs__todo-summary",
-      "expected_output": "Harness setup (not part of the skill): the catalog holds one filed user-origin draft with no recorded verification, left by an interrupted add. The skill validates, resolves the slug, and resumes at step 7: it dispatches prompt-reviewer with the record's absolute path (path taken from show --history) before any verification or activation, rather than jumping to step 8 or 9.",
+      "expected_output": "Harness setup (not part of the skill): the catalog holds one filed user-origin draft with no recorded verification, left by an interrupted add. The skill validates, resolves the slug, and resumes at step 7: it dispatches prompt-reviewer with the record's absolute path (path taken from show --history) before any verification or activation, rather than jumping to step 8 or 9. After that one review round it goes on to step 8 and does not dispatch prompt-reviewer a second time unless the user asks.",
       "files": []
     },
     {
       "id": 12,
       "name": "quality-verified-session-draft-resumes-at-verify",
       "prompt": "/prompt-library activate docs__todo-summary",
-      "expected_output": "Harness setup (not part of the skill): the catalog holds one filed session-origin draft whose quality verification is recorded but whose import verification is not, the state left when an add is interrupted between step 8's two record-verification calls. The skill validates, reads missing_verification ([\"import\"]) from a validator read subcommand, and resumes at step 8: it does not dispatch prompt-reviewer again, and no verification or activation write runs before step 8's approval question.",
+      "expected_output": "Harness setup (not part of the skill): the catalog holds one filed session-origin draft whose quality verification is recorded but whose import verification is not, the state left when an add is interrupted between step 8's two record-verification calls. The skill validates, reads missing_verification ([\"import\"]) from a validator read subcommand, and resumes at step 8: it does not dispatch prompt-reviewer again, and no verification or activation write runs before step 8's approval question. At step 8 it records only the import verification; record-verification --kind quality is not run again.",
       "files": []
     },
     {
@@ -93,11 +93,82 @@
       "prompt": "/prompt-library add",
       "expected_output": "Harness data: validate returns ok false with errors [\"missing record file: :(top,glob)**/**.md\", \"missing record file: docs__todo-summary/p0a1b2c3d4e5.md\"] and catalog_root .claude/prompts. The skill refuses every change and gives recovery advice that never passes an errors path to git as given: it resolves each path under catalog_root, tells the user to check for local changes they want to keep, and shows a literal-path restore (for example git restore -- ':(literal).claude/prompts/docs__todo-summary/p0a1b2c3d4e5.md'). It does not suggest git restore with the raw glob-looking path, and runs no write subcommand.",
       "files": []
+    },
+    {
+      "id": 14,
+      "name": "already-active-record-is-reported-not-reactivated",
+      "prompt": "/prompt-library activate review__missing-tests",
+      "expected_output": "Harness setup (not part of the skill): review__missing-tests is already active and verified. The skill validates, finds the record already active, reports that and stops: no approval question and no write subcommand.",
+      "files": []
+    },
+    {
+      "id": 15,
+      "name": "malformed-slug-is-refused-before-any-command",
+      "prompt": "/prompt-library revise review__missing-tests$(touch PWNED)",
+      "expected_output": "The slug argument does not match the slug pattern, so the skill refuses it with a reason before running any command with it; no PWNED file is created and nothing in the catalog changes.",
+      "files": []
+    },
+    {
+      "id": 16,
+      "name": "naming-an-existing-script-stays-a-prompt",
+      "prompt": "/prompt-library add\n\nSave this as a prompt: \"Run `python scripts/gen_report.py --since last-week` and summarize the totals it prints in three bullet points.\"",
+      "expected_output": "The text only names a script the user already has and carries no code of its own, so triage recommends Prompt (not a skill); after the scripted approvals a prompt record is filed and activated.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 10,
-    "declared_scenarios_covered": 10,
-    "uncovered": []
+    "declared_scenarios_total": 13,
+    "declared_scenarios_covered": 13,
+    "uncovered": [],
+    "gate_to_scenarios": {
+      "A catalog that fails validation blocks every change; only an orphan file can be discarded, and only with the user's consent.": [
+        6,
+        7,
+        13
+      ],
+      "A secret in session, web, claude or codex text blocks the draft and is never auto-redacted or echoed.": [
+        1,
+        2
+      ],
+      "Every add asks the prompt-or-skill triage question as its own AskUserQuestion before filing.": [
+        3,
+        5
+      ],
+      "Script-needing content (text carrying its own code) is routed to skill-development with no record created; text that only names an existing script is triaged as a prompt.": [
+        5,
+        16
+      ],
+      "A near-duplicate is offered as a revision before a new record is created.": [
+        8
+      ],
+      "A session or web record cannot be activated without an import hash.": [
+        9,
+        12
+      ],
+      "A file edited after the user approved its text is refused by --expect-sha256.": [
+        10
+      ],
+      "A revision produces a successor with previous_id and version + 1, and the predecessor stays untouched until finalize.": [
+        8
+      ],
+      "Every status change and every draft filing was preceded by an AskUserQuestion approval.": [
+        3,
+        8,
+        9
+      ],
+      "A resumed draft with no recorded quality verification goes back through prompt-reviewer (step 7).": [
+        11
+      ],
+      "A resume records only the kinds in missing_verification, and step 7 runs one review round unless the user asks for another.": [
+        11,
+        12
+      ],
+      "A slug that does not match the slug pattern is refused before any command runs with it.": [
+        15
+      ],
+      "activate of an already active record is reported and stops, with no question and no command.": [
+        14
+      ]
+    }
   }
 }

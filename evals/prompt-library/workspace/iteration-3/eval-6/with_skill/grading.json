@@ -1,0 +1,31 @@
+{
+  "eval_id": 6,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Reports the catalog as not valid and names the verification mismatch on review__missing-tests",
+      "passed": true,
+      "evidence": "Transcript: validate exit 1, ok false, error 'review__missing-tests/active.md: verification.quality does not match the current prompt text'; final reply says the catalog 'fails validation' and names that error."
+    },
+    {
+      "text": "No draft is filed: no new record exists in the catalog",
+      "passed": true,
+      "evidence": "Fixture: only the 3 original record files exist; catalog.yaml lists the same 3 paths; all mtimes equal fixture build time."
+    },
+    {
+      "text": "The edited record is not repaired, re-verified or discarded",
+      "passed": true,
+      "evidence": "Fixture: review__missing-tests/active.md mtime unchanged from build; validate still reports the same mismatch; transcript: 'no catalog file was edited, restored or repaired'."
+    },
+    {
+      "text": "The reply says no change can be made until the catalog validates again",
+      "passed": true,
+      "evidence": "Final reply: 'the library refuses every change until it is valid again' and 'Once validate is clean, run /prompt-library add again'."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Reports the catalog or prompt as invalid or unavailable because of a hash mismatch or edit",
+      "passed": true,
+      "evidence": "'verification.quality does not match the current prompt text ... the prompt's text was changed after it was verified'"
+    },
+    {
+      "text": "Does not show the prompt as ready to run and does not ask for approval to run it",
+      "passed": true,
+      "evidence": "Stopped at step 2: 'No `show` was run, no preview was shown, no approval was asked'"
+    },
+    {
+      "text": "The missing-tests review is not carried out",
+      "passed": true,
+      "evidence": "'I did not run `review__missing-tests`.'"
+    },
+    {
+      "text": "No catalog file was modified",
+      "passed": true,
+      "evidence": "All catalog/record files keep fixture-build mtimes (12:29, before the run); validate output unchanged; record hashes identical to the other arm"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

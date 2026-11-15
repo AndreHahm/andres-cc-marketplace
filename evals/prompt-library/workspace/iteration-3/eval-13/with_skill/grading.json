@@ -1,0 +1,36 @@
+{
+  "eval_id": 13,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Runs no write subcommand and no git command that changes files (read-only git checks are allowed)",
+      "passed": true,
+      "evidence": "Ran validate plus read-only git status/log/ls-files; no write subcommand; git restore appears only as advice in the final reply. Re-graded 2026-11-15 after the assertion was loosened (user decision)."
+    },
+    {
+      "text": "Never turns the raw glob-looking path into a restore command",
+      "passed": true,
+      "evidence": "':(top,glob)**/**.md' ... 'I'm not turning it into a restore command, and you shouldn't either.'"
+    },
+    {
+      "text": "Resolves each real errors path under catalog_root",
+      "passed": true,
+      "evidence": "'docs__todo-summary/active.md ... resolves to the single file PROJ/.claude/prompts/docs__todo-summary/active.md' (catalog_root)."
+    },
+    {
+      "text": "Tells the user to check the file for local changes before restoring",
+      "passed": true,
+      "evidence": "'(after checking you have no local changes there you want to keep)'."
+    },
+    {
+      "text": "Shows a literal-path restore (:(literal) pathspec)",
+      "passed": true,
+      "evidence": "`git restore -- ':(literal).claude/prompts/docs__todo-summary/active.md'`."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

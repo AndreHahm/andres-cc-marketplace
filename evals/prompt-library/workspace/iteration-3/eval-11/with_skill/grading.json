@@ -1,0 +1,36 @@
+{
+  "eval_id": 11,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The catalog is validated first",
+      "passed": true,
+      "evidence": "Command 1 is `<CLI> validate` (step 1, preflight): ok true, errors []."
+    },
+    {
+      "text": "The draft resumes at step 7, not step 8 or 9",
+      "passed": true,
+      "evidence": "Step 2 note: missing_verification includes quality, 'so the resume starts at step 7'; review ran before step 8 approval."
+    },
+    {
+      "text": "prompt-reviewer is dispatched (or its review done inline and the dispatch recorded) with the record's absolute path and origin before any verification or activation",
+      "passed": true,
+      "evidence": "Inline review done and dispatch recorded: Agent(subagent_type: \"prompt-reviewer\", prompt: \"Review the prompt record at PROJ/.claude/prompts/docs__todo-summary/p0a1b2c3d4e5.md (origin: user)...\") before record-verification/activate (PROJ is the transcript's placeholder for the absolute project root)."
+    },
+    {
+      "text": "The record path comes from a validator read subcommand",
+      "passed": true,
+      "evidence": "Record path taken from `<CLI> show docs__todo-summary --history` -> path: docs__todo-summary/p0a1b2c3d4e5.md."
+    },
+    {
+      "text": "After one review round the run goes on to step 8 without dispatching prompt-reviewer a second time",
+      "passed": true,
+      "evidence": "User declined another round; next is step 8 show + record-verification; no second reviewer dispatch."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

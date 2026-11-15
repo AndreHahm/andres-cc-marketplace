@@ -1,0 +1,26 @@
+{
+  "eval_id": 5,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Says the content needs a script or code and is better as a skill than a prompt",
+      "passed": false,
+      "evidence": "Triage recommended 'Prompt (Recommended)'; final reply: 'It runs a script you already have, so it does not need to be a skill.' Opposite of the assertion."
+    },
+    {
+      "text": "Points the user to skill-development",
+      "passed": false,
+      "evidence": "skill-development appeared only as a non-recommended triage option ('Skill: skill-development'); the user was not directed to it and the final reply does not mention it."
+    },
+    {
+      "text": "No prompt record exists in the catalog afterwards",
+      "passed": true,
+      "evidence": "Fixture catalog.yaml `records: []`; validate ok with no records; user declined filing."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 1,
+    "pass_rate": 0.3333
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "eval_id": 8,
+  "skill_path": "plugins/promptlibrary-kit/skills/prompt-execution/SKILL.md",
+  "assertions": [
+    {
+      "text": "Each hidden character is listed with line, column, code point and name above its prompt's text block",
+      "type": "functionality",
+      "target": "outputs/transcript.md and fixture project"
+    },
+    {
+      "text": "The preview says the characters are invisible, so the text that runs can differ from what it appears to say",
+      "type": "functionality",
+      "target": "outputs/transcript.md and fixture project"
+    },
+    {
+      "text": "The truncated prompt says the list stops at 50 and there are more",
+      "type": "functionality",
+      "target": "outputs/transcript.md and fixture project"
+    },
+    {
+      "text": "The approval question names each affected slug with its hidden-character count (2, and 50 or more)",
+      "type": "functionality",
+      "target": "outputs/transcript.md and fixture project"
+    },
+    {
+      "text": "After Cancel nothing runs and no recheck show is issued",
+      "type": "functionality",
+      "target": "outputs/transcript.md and fixture project"
+    }
+  ]
+}

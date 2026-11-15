@@ -1,0 +1,36 @@
+{
+  "eval_id": 12,
+  "skill_path": "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md",
+  "assertions": [
+    {
+      "text": "The catalog is validated first",
+      "type": "functionality",
+      "target": "outputs/transcript.md and fixture project"
+    },
+    {
+      "text": "The resume step is decided from the record's missing_verification field read via a validator read subcommand",
+      "type": "functionality",
+      "target": "outputs/transcript.md and fixture project"
+    },
+    {
+      "text": "The draft resumes at step 8, not step 7 or 9",
+      "type": "functionality",
+      "target": "outputs/transcript.md and fixture project"
+    },
+    {
+      "text": "prompt-reviewer is not dispatched again",
+      "type": "functionality",
+      "target": "outputs/transcript.md and fixture project"
+    },
+    {
+      "text": "No verification or activation write runs before step 8's approval question",
+      "type": "functionality",
+      "target": "outputs/transcript.md and fixture project"
+    },
+    {
+      "text": "Only the import verification is recorded: record-verification --kind quality is not run again",
+      "type": "functionality",
+      "target": "outputs/transcript.md and fixture project"
+    }
+  ]
+}
