@@ -259,9 +259,9 @@ step 8, read from `missing_verification`) passed 5 of 5 the same day. Scenario 1
 pathspec-shaped `errors` path) passed 5 of 5 against 3 of 5 for the earlier `git restore <path>` text.
 On 2026-11-15 every scenario was re-run with and without the skill against real fixture projects
 (`workspace/iteration-3/`, scenarios 1 to 15, adding 14 for an already active record and 15 for a
-malformed slug), replacing the 2026-10-04 baselines in `iteration-1/`: 95.6% of checks with the skill against
-53.4% without. Scenario 5 failed there (1 of 3, 3 of 3 on 2026-10-04): the step 5 "existing script" rule,
+malformed slug), replacing the 2026-10-04 baselines in `iteration-1/`: a mean per-scenario pass rate of 95.6%
+with the skill against 53.4% without. Scenario 5 failed there (1 of 3, 3 of 3 on 2026-10-04): the step 5 "existing script" rule,
 added 2026-10-14, made text carrying its own parser a prompt. After the rule was narrowed, `iteration-4/` re-ran
-scenario 5 and a new scenario 16 (text that only names a script stays a prompt): 100% with the skill against
-25% without. These dry runs are separate from the live
+scenario 5 and a new scenario 16 (text that only names a script stays a prompt): a mean pass rate of 100% with
+the skill against 25% without. These dry runs are separate from the live
 `--plugin-dir` run recorded above, and no eval has been run from a marketplace install.
