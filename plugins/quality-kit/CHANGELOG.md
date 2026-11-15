@@ -2,6 +2,22 @@
 
 All notable changes to this plugin are documented here.
 
+## [1.0.0-alpha.4] - 2026-11-15
+
+### Added
+- `running-mutation-tests`, for measuring a module's test strength with mutmut 3.8.1: scope with a per-module
+  test selection, an isolated run, the score explained, and a proposed test or `# pragma: no mutate  # reason: ...`
+  for each survivor, written only after the user approves it. A mutant that no selected test ran is reported as
+  not measured, never as a survivor.
+- `agents/mutation-tester.md`, the plugin's first agent: copies the working tree (tracked and untracked files) to
+  a scratch directory outside the repository, runs the runner and parser there, and confirms the repository is
+  unchanged.
+- `scripts/qlty-mutation-run.py`: checks a green baseline, writes mutmut's configuration to a temporary
+  `setup.cfg` in the run tree, runs mutmut and exits with mutmut's own status; `--show` prints survivor diffs and
+  `--list-modules` reads a `.github/mutation-modules.yml` list.
+- `scripts/qlty-mutation-parse.py`: summarizes a run from mutmut's `.meta` files and refuses one whose counts
+  disagree with `mutmut-cicd-stats.json` or that holds an exit code outside mutmut 3.8.1's table.
+
 ## [1.0.0-alpha.3] - 2026-11-15
 
 ### Added

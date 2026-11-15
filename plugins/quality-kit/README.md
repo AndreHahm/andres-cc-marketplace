@@ -3,9 +3,10 @@
 A default strategy for resolving static-analysis findings, so a failing check is decided once, by one
 procedure, with the reason recorded. Codacy and SonarQube Cloud are the verified providers; the structure
 leaves room for others (see `skills/collecting-analysis-findings/references/adapter-contract.md`). Coverage is
-handled separately: Codecov as a view, and a coverage tier on patch coverage as the check.
+handled separately: Codecov as a view, and a coverage tier on patch coverage as the check. Mutation testing
+(mutmut) measures how well the tests catch real changes, as data, never as a gate.
 
-**Status: 1.0.0-alpha.3.** Built from issue #581, where the same Bandit rules on `git` subprocess calls were
+**Status: 1.0.0-alpha.4.** Built from issue #581, where the same Bandit rules on `git` subprocess calls were
 handled three different ways across this repository.
 
 ## Skills
@@ -16,6 +17,11 @@ handled three different ways across this repository.
 | `resolving-analysis-findings` | Decides each finding's outcome on a five-rung ladder (fix, inline suppression, per-issue ignore or transition, path exclusion, pattern or gate change), with decision rights per provider, required reasons, baseline versus new, verification after push, a local pre-PR scan and an author checklist |
 | `using-sonarqube-cloud` | Answers ad hoc SonarQube Cloud questions and walks through setup: quality gate lookups, one-off issue queries, `sonar` CLI use, linking a project, Automatic Analysis and `.sonarcloud.properties`. It produces no record, decides no finding and runs no write |
 | `using-codecov` | Answers ad hoc coverage and Codecov questions (totals, a PR's patch coverage, why coverage dropped), runs the coverage tier locally, and sets up Codecov plus the tier check in any repository. It uploads nothing and changes no Codecov setting |
+| `running-mutation-tests` | Picks a module and its test selection, has the `mutation-tester` agent run mutmut in an isolated copy of the working tree, explains the score, and proposes a test or a `# pragma: no mutate` with a reason for each survivor, written only after approval |
+
+| Agent | What it does |
+|---|---|
+| `mutation-tester` | Copies the working tree to a scratch directory outside the repository, runs `scripts/qlty-mutation-run.py` and `scripts/qlty-mutation-parse.py` there, confirms the repository is unchanged, and returns a digest. Edits no source and writes no tests |
 
 `resolving-analysis-findings` may call `collecting-analysis-findings`; the reverse never happens.
 
@@ -42,6 +48,10 @@ handled three different ways across this repository.
   `scripts/qlty-coverage-tier.py`, so a Codecov outage never changes it. Other repositories run a vendored copy
   of that script in CI, set up through the skill. Codecov reads go through `scripts/qlty-codecov-read.py`, which
   drops author and title fields and takes an optional `CODECOV_API_TOKEN`.
+- **Mutation scores are data.** `running-mutation-tests` never gates a merge. The runner writes `mutants/` and a
+  temporary `setup.cfg` only in the tree it runs in (the agent's export, or a CI checkout), and the parser refuses
+  a result that disagrees with mutmut's own totals or holds an exit code outside mutmut 3.8.1's table. A mutant
+  that no selected test ran is "not measured", never a survivor.
 - **Repository-specific policy** (which findings this repository accepts, and where) lives in the repository's
   own `CLAUDE.md`, `AGENTS.md` and `docs/ci.md`, not here.
 
@@ -53,7 +63,8 @@ scan additionally needs `codacy-analysis` and a `.codacy/codacy.config.json`. Fo
 CLI authenticated for the project; its pre-PR scan (`sonar analyze`) sends project files to Sonar, whose retention
 period is undocumented, so it asks first. For coverage, `uv` (the tier script needs PyYAML and defusedxml and
 runs as `uv run --no-project --no-config --with pyyaml==6.0.3 --with defusedxml==0.7.1`); Codecov reads need nothing for a public repository and a personal
-`CODECOV_API_TOKEN` for a private one.
+`CODECOV_API_TOKEN` for a private one. For mutation testing, `uv` (mutmut and PyYAML come from
+`uv run --with mutmut==3.8.1 --with pyyaml==6.0.3`) and the project's own test dependencies.
 
 ## Language
 
@@ -61,7 +72,7 @@ runs as `uv run --no-project --no-config --with pyyaml==6.0.3 --with defusedxml=
 which needs PyYAML for its thresholds files and defusedxml for a Cobertura report, and exits 3 with a message
 when either is missing. The adapters run no subprocess: each reads
 the JSON a provider's CLI already printed. The one production subprocess is `scripts/qlty-sonar-read.py`, which runs
-the `sonar` CLI; the smoke tests also start the adapters and a stub `sonar`. New scripts added to this plugin stay in Python.
+the `sonar` CLI, plus `scripts/qlty-mutation-run.py`, which runs pytest and mutmut (fixed argument lists, no shell) in the tree it is given; the smoke tests also start the adapters and a stub `sonar`. New scripts added to this plugin stay in Python.
 
 ## Install
 
@@ -82,6 +93,7 @@ Ask in plain words; each skill activates on its own trigger phrases:
 - "what is the Sonar quality gate on main" or "how do I link a project to Sonar" runs `using-sonarqube-cloud`.
 - "what's the patch coverage on this PR", "which coverage tier will my branch get" or "set up Codecov" runs
   `using-codecov`.
+- "run mutation tests on pr_policy" or "why did this mutant survive" runs `running-mutation-tests`.
 
 ## Test
 
@@ -91,10 +103,11 @@ From the plugin root (`plugins/quality-kit/`), each skill owns its smoke test:
 python3 -I -B skills/collecting-analysis-findings/scripts/smoke_test.py
 python3 -I -B skills/resolving-analysis-findings/scripts/smoke_test.py
 uv run --no-project --no-config --with pyyaml==6.0.3 --with defusedxml==0.7.1 python -I -B skills/using-codecov/scripts/smoke_test.py
+uv run --no-project --no-config --with pyyaml==6.0.3 python -I -B skills/running-mutation-tests/scripts/smoke_test.py
 ```
 
 `-B` matters: `-I` ignores `PYTHONDONTWRITEBYTECODE`, and a stray `.pyc` fails this repository's pre-push
-prefix check. In this repository, `tests/test_quality_kit_smoke.py` also runs all three under pytest, so the
+prefix check. In this repository, `tests/test_quality_kit_smoke.py` also runs all four under pytest, so the
 coverage workflow measures the plugin's scripts.
 
 ## License

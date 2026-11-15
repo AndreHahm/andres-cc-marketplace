@@ -1,0 +1,31 @@
+# Modules for the weekly mutation run (.github/workflows/mutation-testing.yml) and quality-kit's
+# running-mutation-tests skill. Each module carries its own test selection: mutmut only measures a
+# mutant that a selected test reaches in-process, so a narrow selection reports most mutants as
+# "not measured". Add a module only after a real run with its selection (see docs/ci.md).
+# Keep subprocess-launched Python tests that start from another working directory out of a
+# selection: under mutmut they stop the whole run.
+version: 1
+modules:
+  - module: scripts/marketplace_ci/pr_policy.py
+    tests:
+      - tests/marketplace_ci/test_pr_policy.py
+      - tests/marketplace_ci/test_actions_pin_bump.py
+      - tests/marketplace_ci/test_workflow_trusted_restore.py
+  - module: scripts/marketplace_ci/trust_boundary.py
+    tests:
+      - tests/marketplace_ci/test_workflow_trusted_restore.py
+  - module: scripts/marketplace_ci/review_contract.py
+    tests:
+      - tests/marketplace_ci/test_review_contract.py
+  - module: scripts/marketplace_ci/git_output_grants.py
+    tests:
+      - tests/marketplace_ci/test_git_output_grants.py
+  - module: scripts/marketplace_ci/token_shapes.py
+    tests:
+      - tests/marketplace_ci/test_token_shapes.py
+  - module: scripts/marketplace_ci/validators.py
+    tests:
+      - tests/marketplace_ci/test_validators.py
+      - tests/marketplace_ci/test_hooks.py
+      - tests/marketplace_ci/test_post_edit_hook.py
+      - tests/marketplace_ci/test_review.py

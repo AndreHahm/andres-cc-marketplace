@@ -1,0 +1,132 @@
+name: Mutation testing
+
+# Weekly mutmut run over the modules in .github/mutation-modules.yml, each with its own test selection
+# (docs/ci.md, "Mutation testing"). Never a required check, and never on pull_request: the score is
+# measured data, not a gate. Survivors and a low score leave the job green; a red baseline, mutmut's own
+# non-zero exit status, or a result the parser cannot reconcile with mutmut's totals fails it.
+on:
+  schedule:
+    - cron: "17 4 * * 1"
+  workflow_dispatch:
+    inputs:
+      module:
+        description: "One module path or file stem from .github/mutation-modules.yml (empty: all)"
+        required: false
+        default: ""
+
+concurrency:
+  group: mutation-testing-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  modules:
+    name: Select modules
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      matrix: ${{ steps.select.outputs.matrix }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check Workflow Kill Switch
+        uses: ./.github/actions/workflow-killswitch
+        with:
+          killswitch-var: ${{ vars.WORKFLOW_KILLSWITCH }}
+      - name: Track workflow rerun
+        if: github.run_attempt > 1
+        uses: ./.github/actions/track-rerun
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # ratchet:astral-sh/setup-uv@v10.3.3
+        with:
+          version: "0.12.21"
+          enable-cache: "false"
+          python-version: "3.13"
+      - id: select
+        env:
+          WANTED: ${{ inputs.module }}
+        run: |
+          set -euo pipefail
+          if ! [[ "${WANTED:-}" =~ ^[A-Za-z0-9_./-]{0,200}$ ]]; then
+            echo "::error::the module input may hold only letters, digits, '_', '.', '/' and '-'"
+            exit 1
+          fi
+          all=$(uv run --no-project --no-config --no-build --with "pyyaml==6.0.3" \
+            python -B plugins/quality-kit/scripts/qlty-mutation-run.py --list-modules)
+          matrix=$(jq -c --arg wanted "${WANTED:-}" '
+            map({module: ., name: (split("/") | last | rtrimstr(".py"))})
+            | if $wanted == "" then . else map(select(.module == $wanted or .name == $wanted)) end' <<<"$all")
+          if [ "$(jq 'length' <<<"$matrix")" -eq 0 ]; then
+            echo "::error::no module in .github/mutation-modules.yml matches '${WANTED}'"
+            exit 1
+          fi
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+
+  mutate:
+    name: mutmut (${{ matrix.name }})
+    needs: modules
+    runs-on: ubuntu-latest
+    # Provisional until the first run measures the 4-core time (about 10 min estimated for all six).
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.modules.outputs.matrix) }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # ratchet:actions/setup-python@v7.1.0
+        with:
+          python-version: "3.13"
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # ratchet:astral-sh/setup-uv@v10.3.3
+        with:
+          version: "0.12.21"
+          enable-cache: "false"
+          python-version: "3.13"
+      - run: uv sync --locked --group dev --no-build --no-install-package csscompressor --no-install-package jsmin
+      - name: Run mutmut
+        id: run
+        env:
+          MODULE: ${{ matrix.module }}
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: |
+          # set +e: the runner's own exit status (mutmut's, or 4 for a red baseline) is read below.
+          set +e -uo pipefail
+          uv run --no-sync --no-build --no-config --with "mutmut==3.8.1" --with "pyyaml==6.0.3" \
+            python -B plugins/quality-kit/scripts/qlty-mutation-run.py --module "$MODULE"
+          echo "status=$?" >> "$GITHUB_OUTPUT"
+      - name: Summarize
+        id: parse
+        if: steps.run.outputs.status == '0'
+        env:
+          NAME: ${{ matrix.name }}
+          MODULE: ${{ matrix.module }}
+        run: |
+          set -euo pipefail
+          mkdir -p .temp/mutation
+          python3 -B plugins/quality-kit/scripts/qlty-mutation-parse.py --module "$MODULE" --label "$NAME" --format json \
+            > .temp/mutation/summary.json
+          python3 -B plugins/quality-kit/scripts/qlty-mutation-parse.py --module "$MODULE" --label "$NAME" --format markdown \
+            >> "$GITHUB_STEP_SUMMARY"
+      - name: Keep the results
+        if: always() && steps.run.outputs.status == '0'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # ratchet:actions/upload-artifact@v7.0.2
+        with:
+          name: mutation-${{ matrix.name }}
+          path: |
+            .temp/mutation/summary.json
+            mutants/**/*.meta
+            mutants/mutmut-cicd-stats.json
+          retention-days: 30
+      - name: Fail on a broken run
+        if: steps.run.outputs.status != '0'
+        env:
+          STATUS: ${{ steps.run.outputs.status }}
+        run: |
+          echo "::error::qlty-mutation-run exited ${STATUS} (4: red baseline; 2/3: input or setup; other: mutmut's own status)"
+          exit 1

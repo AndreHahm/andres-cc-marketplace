@@ -39,6 +39,8 @@ reports/events/
 **/.backup/
 **/.temp/
 **/.experiments/
+# mutmut's working copy (quality-kit's qlty-mutation-run.py, .github/workflows/mutation-testing.yml)
+/mutants/
 
 # github-actions-conclusion-audit's own documented run-history collection directory
 # (SKILL.md's "Collect run JSON" recipe) -- deliberately repo-relative rather than the

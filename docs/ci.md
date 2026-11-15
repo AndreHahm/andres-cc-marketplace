@@ -1462,6 +1462,27 @@ required check.**
 
 Questions about the numbers, and setting the same check up in another repository: quality-kit's `using-codecov`.
 
+## Mutation testing: weekly mutmut runs
+
+`.github/workflows/mutation-testing.yml` runs mutmut 3.8.1 weekly (Monday 04:17 UTC) and on `workflow_dispatch`
+(optionally one module). It never runs on `pull_request` and **is not a required check**: the score is measured
+data, not a gate.
+
+- **Modules:** `.github/mutation-modules.yml` lists each module with its own test selection; one matrix job per
+  module. mutmut only measures a mutant that a selected test reaches in-process, so a module is added only after
+  a real run with its selection, and a Python test that starts a subprocess from another working directory stays
+  out of a selection (under mutmut it stops the whole run).
+- **Runner:** `plugins/quality-kit/scripts/qlty-mutation-run.py` checks a green baseline, writes mutmut's
+  configuration to a temporary `setup.cfg` (`pyproject.toml` has no `[tool.mutmut]`), runs mutmut and exits with
+  mutmut's own status. mutmut and PyYAML come from `uv run --with`, pinned by version, not by hash.
+- **Outcome:** survivors and a low score leave the job green. A red baseline, mutmut's own non-zero status, or a
+  result that `qlty-mutation-parse.py` cannot reconcile with mutmut's own totals fails it. A mutant that no
+  selected test ran is reported as **not measured**, never as a survivor.
+- **Results:** the job summary has the score table; the `mutation-<module>` artifact keeps the per-mutant `.meta`
+  files and the totals for 30 days. `mutants/` is gitignored.
+
+Working on survivors (a test, or `# pragma: no mutate` with a reason): quality-kit's `running-mutation-tests`.
+
 ## Codacy: `git` through `subprocess` in plugin scripts
 
 Codacy's Bandit and Prospector_bandit engines flag three rules on any script that runs `git`, whatever
