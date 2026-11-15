@@ -534,7 +534,7 @@ def test_a_file_in_the_scratch_tree_but_outside_a_scratchpad_directory_is_reject
 @pytest.mark.skipif(not hasattr(os, "getuid"), reason="POSIX owner check")
 def test_a_file_owned_by_another_user_is_rejected(env, monkeypatch):
     _, _, body = env
-    other_uid = os.getuid() + 1  # ty: ignore[unresolved-attribute, unused-ignore-comment]
+    other_uid = os.getuid() + 1  # ty: ignore[missing-attribute, unused-ignore-comment]
     monkeypatch.setattr(M.os, "getuid", lambda: other_uid)
     code, fake = _trigger(env, body)
     assert code != 0 and fake.gh_calls == []
@@ -544,7 +544,7 @@ def test_a_file_owned_by_another_user_is_rejected(env, monkeypatch):
 def test_real_roots_are_the_per_user_claude_tree_under_the_temp_directory(monkeypatch):
     monkeypatch.setattr(M, "IS_WINDOWS", False)
     roots = M.allowed_body_roots()
-    assert roots and all(r.endswith(f"claude-{os.getuid()}") for r in roots)  # ty: ignore[unresolved-attribute, unused-ignore-comment]
+    assert roots and all(r.endswith(f"claude-{os.getuid()}") for r in roots)  # ty: ignore[missing-attribute, unused-ignore-comment]
 
 
 # --- Windows branch (#623): runs on any platform by forcing IS_WINDOWS ----------------------------
@@ -766,7 +766,7 @@ def test_windows_reads_a_body_file_given_with_the_extended_drive_prefix(env, mon
 def _junction(link, target):
     import _winapi  # Windows only; the skipif above keeps other platforms from reaching this
 
-    _winapi.CreateJunction(str(target), str(link))  # ty: ignore[unresolved-attribute]
+    _winapi.CreateJunction(str(target), str(link))  # ty: ignore[missing-attribute]
 
 
 @windows_junctions
@@ -859,7 +859,7 @@ def test_body_file_that_is_a_directory_is_rejected(env):
 def test_body_file_that_is_a_fifo_is_rejected_without_blocking(env):
     _, _, body = env
     fifo = body.parent / "pipe"
-    os.mkfifo(fifo)  # ty: ignore[unresolved-attribute, unused-ignore-comment]
+    os.mkfifo(fifo)  # ty: ignore[missing-attribute, unused-ignore-comment]
     code, fake = _trigger(env, fifo)
     assert code != 0 and fake.gh_calls == []
 

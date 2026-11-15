@@ -2490,12 +2490,16 @@ def test_the_bridge_and_the_fallback_get_a_path_without_the_checkout(
     monkeypatch.setattr(review, "_run_bridge", fake_bridge)
     monkeypatch.setattr(subprocess, "run", _bridge_aware_run(lambda *_: None))
     scope = _skill_scope(change, dependency_index)
-    kwargs = (
-        {"allow_guardrails_fallback": True, "sandbox_probe": _probe_confirming_down()}
-        if fallback
-        else {}
-    )
-    dispatch_reviewers(scope, base_sha="deadbeef", repo=repo, **kwargs)
+    if fallback:
+        dispatch_reviewers(
+            scope,
+            base_sha="deadbeef",
+            repo=repo,
+            allow_guardrails_fallback=True,
+            sandbox_probe=_probe_confirming_down(),
+        )
+    else:
+        dispatch_reviewers(scope, base_sha="deadbeef", repo=repo)
     assert any(guarded for guarded, _ in seen) is fallback
     assert seen
     for _, env in seen:
