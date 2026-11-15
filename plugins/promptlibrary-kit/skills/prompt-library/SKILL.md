@@ -243,7 +243,7 @@ directly; last run 2026-11-15, 7 of 7 checks passed. It failed on a copy with a 
 - [ ] A slug that does not match the slug pattern is refused before any command runs with it.
 - [ ] `activate` of an already active record is reported and stops, with no question and no command.
 
-**Last dated run record:** validator fixture tests, 134 run (131 passing, 3 POSIX-only skipped on Windows), 2026-11-15
+**Last dated run record:** validator fixture tests, 136 run (133 passing, 3 POSIX-only skipped on Windows), 2026-11-15
 (`scripts/plib_test_catalog_validate.py`). The latest live run, 2026-10-14 (plugin loaded with
 `--plugin-dir`), ran add, near-duplicate, revise, finalize and deactivate, each status change behind its
 own approval; the step 5 triage skip it found was fixed in PR #566. An earlier hand-followed run of steps
