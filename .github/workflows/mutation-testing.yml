@@ -120,7 +120,7 @@ jobs:
           name: mutation-${{ matrix.name }}
           path: |
             .temp/mutation/summary.json
-            mutants/**/*.meta
+            mutants/${{ matrix.module }}.meta
             mutants/mutmut-cicd-stats.json
           retention-days: 30
       - name: Fail on a broken run

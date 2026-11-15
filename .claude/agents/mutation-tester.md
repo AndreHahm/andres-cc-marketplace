@@ -43,10 +43,14 @@ mutmut's.
 1. **Check the paths.** The scratch directory must not lie inside the repository root (compare resolved
    paths) and must be absent or empty. The scripts must exist.
 2. **Record the repository's state:** `git -C <root> status --porcelain=v1 -z` (keep the output).
-3. **Export the working tree:**
-   `git -C <root> ls-files -z -co --exclude-standard | tar -C <root> --null --ignore-failed-read -T - -cf - | tar -x -C <scratch>`
-   (create `<scratch>` first with `mkdir -p`). Then `git -C <scratch> init -q` and `git -C <scratch> add -A`
-   (tests that read git state need an index; never commit).
+3. **Export the working tree** (create `<scratch>` first with `mkdir -p`). This is the one pipeline, so it
+   runs under `pipefail` and fails on any stage:
+   `bash -o pipefail -c "git -C '<root>' ls-files -z -co --exclude-standard | tar -C '<root>' --null -T - -cf - | tar -x -C '<scratch>'"`
+   A non-zero status means the export is incomplete: stop and report it with tar's message, and do not
+   run anything in the export. A tracked file deleted in the working tree fails it too ("Cannot stat"):
+   report that file, so the user restores the file or commits the deletion. Then
+   `git -C <scratch> init -q` and `git -C <scratch> add -A` (tests that read git state need an index;
+   never commit).
 4. **Install dependencies** in the export with the environment command, run with `--directory <scratch>` (or
    its tool's equivalent), never in the repository root.
 5. **Run:** `uv --directory <scratch> run --no-sync --with mutmut==3.8.1 --with pyyaml==6.0.3 python -B <run script> --root <scratch> <selection>`.

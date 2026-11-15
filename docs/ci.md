@@ -1478,8 +1478,8 @@ data, not a gate.
 - **Outcome:** survivors and a low score leave the job green. A red baseline, mutmut's own non-zero status, or a
   result that `qlty-mutation-parse.py` cannot reconcile with mutmut's own totals fails it. A mutant that no
   selected test ran is reported as **not measured**, never as a survivor.
-- **Results:** the job summary has the score table; the `mutation-<module>` artifact keeps the per-mutant `.meta`
-  files and the totals for 30 days. `mutants/` is gitignored.
+- **Results:** the job summary has the score table; the `mutation-<module>` artifact keeps the module's own `.meta`
+  file (per-mutant exit codes) and the totals for 30 days. `mutants/` is gitignored.
 
 Working on survivors (a test, or `# pragma: no mutate` with a reason): quality-kit's `running-mutation-tests`.
 
