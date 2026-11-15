@@ -755,6 +755,7 @@ class Lifecycle(Base):
         self.assertEqual(self.run_cli("discard-orphan", f"{SLUG}/p000000000001.md")[0], 0)
         self.assertFalse(orphan.exists())
         self.assertEqual(self.run_cli("validate")[0], 0)
+        orphan.parent.mkdir(exist_ok=True)  # discard-orphan removed the emptied slug folder
         orphan.write_text(record(), encoding="utf-8")
         self.assertEqual(self.run_cli("register", f"{SLUG}/p000000000001.md")[0], 0)
         self.assertEqual(self.run_cli("validate")[0], 0)
@@ -1447,6 +1448,91 @@ class SmokeGrantShape(unittest.TestCase):
         self.assertEqual(
             self.C.malformed_validator_grants([injected, wildcard]), [injected, wildcard]
         )
+
+
+class ValidatorEdgeCases(Base):
+    """Edge cases from the 2026-11-12 grade (scripts-reviewer SCR-1 to SCR-7)."""
+
+    def test_a_duplicate_key_inside_a_nested_map_is_refused(self):
+        with self.assertRaisesRegex(V.CatalogError, r"duplicate key: source_ref\.url"):
+            V.parse_yaml("source_ref:\n  url: https://a.example\n  url: https://b.example\n")
+
+    def test_a_map_field_given_as_plain_text_is_refused(self):
+        self.assertEqual(self.run_cli("init")[0], 0)
+        code, res = self.run_cli("draft", self.scratch(verification="not-a-map"))
+        self.assertEqual(code, 1)
+        self.assertIn("verification must be a map", res["error"])
+
+    def test_scratch_drafts_are_checked_against_the_catalogs_own_version(self):
+        # A hypothetical catalog_version 2 that adds one optional record field: a draft using it
+        # is accepted only when the scratch check reads the catalog's version, not a fixed 1.
+        self.assertEqual(self.run_cli("init")[0], 0)
+        cat = self.root / "catalog.yaml"
+        text = cat.read_text(encoding="utf-8")
+        cat.write_bytes(text.replace("catalog_version: 1", "catalog_version: 2").encode("utf-8"))
+        with (
+            mock.patch.object(V, "SUPPORTED_CATALOG_VERSIONS", {1, 2}),
+            mock.patch.dict(V.CATALOG_FIELDS, {2: V.CATALOG_FIELDS[1]}),
+            mock.patch.dict(V.RECORD_REQUIRED, {2: V.RECORD_REQUIRED[1]}),
+            mock.patch.dict(V.RECORD_OPTIONAL, {2: (*V.RECORD_OPTIONAL[1], "owner")}),
+        ):
+            code, res = self.run_cli("draft", self.scratch(owner="platform-team"))
+        self.assertEqual(code, 0, res)
+
+    def test_a_sibling_folder_sharing_a_name_prefix_is_not_inside(self):
+        repo = self.proj / "repo"
+        sibling = self.proj / "repo-tools"
+        repo.mkdir()
+        sibling.mkdir()
+        self.assertTrue(V._within(repo, repo))
+        self.assertTrue(V._within(repo / "bin" / "git.exe", repo))
+        self.assertFalse(V._within(sibling, repo))
+        self.assertFalse(V._within(sibling / "git.exe", repo))
+
+    def test_a_lone_carriage_return_starts_a_new_screened_line(self):
+        hits = V.screen_text("Deploy notes\rDEPLOY_TOKEN=abc123")
+        self.assertIn({"line": 2, "pattern": "dotenv_secret_line"}, hits)
+
+    def test_a_record_write_is_flushed_to_disk_before_the_rename(self):
+        self.assertEqual(self.run_cli("init")[0], 0)
+        with mock.patch.object(V.os, "fsync", wraps=os.fsync) as spy:
+            self.assertEqual(self.run_cli("draft", self.scratch())[0], 0)
+        self.assertGreaterEqual(spy.call_count, 2)  # the record file and catalog.yaml
+
+    def test_a_failed_draft_write_leaves_no_empty_slug_folder(self):
+        self.assertEqual(self.run_cli("init")[0], 0)
+        for name in ("write_record", "write_catalog"):
+            with self.subTest(failing=name):
+                with mock.patch.object(V, name, side_effect=OSError("disk full")):
+                    code, res = self.run_cli("draft", self.scratch())
+                self.assertEqual(code, 1)
+                self.assertIn("disk full", res["error"])
+                self.assertFalse((self.root / SLUG).exists())
+                self.assertEqual(self.run_cli("validate")[0], 0)
+
+    def test_discarding_an_orphan_removes_its_slug_folder_only_when_empty(self):
+        self.make_active()
+        self.assertEqual(self.run_cli("init")[0], 1)  # catalog already exists
+        lone = self.root / "review__orphan-draft"
+        lone.mkdir()
+        (lone / "p0000000000ff.md").write_text(
+            record(slug="review__orphan-draft", internal_id="p0000000000ff"), encoding="utf-8"
+        )
+        shared = self.root / SLUG / "p0000000000fe.md"
+        shared.write_text(record(internal_id="p0000000000fe"), encoding="utf-8")
+        for rel in ("review__orphan-draft/p0000000000ff.md", f"{SLUG}/p0000000000fe.md"):
+            self.assertEqual(self.run_cli("discard-orphan", rel)[0], 0)
+        self.assertFalse(lone.exists())
+        self.assertTrue((self.root / SLUG / "active.md").exists())
+        self.assertEqual(self.run_cli("validate")[0], 0)
+
+    def test_a_failed_draft_write_keeps_a_slug_folder_that_already_existed(self):
+        self.assertEqual(self.run_cli("init")[0], 0)
+        (self.root / SLUG).mkdir()
+        with mock.patch.object(V, "write_catalog", side_effect=OSError("disk full")):
+            self.assertEqual(self.run_cli("draft", self.scratch())[0], 1)
+        self.assertTrue((self.root / SLUG).is_dir())
+        self.assertEqual(list((self.root / SLUG).iterdir()), [])
 
 
 if __name__ == "__main__":
