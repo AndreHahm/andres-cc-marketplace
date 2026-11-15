@@ -38,6 +38,7 @@ import json
 import posixpath
 import re
 import sys
+from collections.abc import Hashable, Iterable
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -58,7 +59,9 @@ LABELS = {
 }
 COMMENT_MARKER = "<!-- quality-kit:coverage-tier -->"
 REPORT_FORMATS = ("auto", "coveragepy", "cobertura", "lcov")
-DTD = re.compile(r"<!\s*(DOCTYPE|ENTITY)", re.IGNORECASE)
+# An entity declaration, or a DOCTYPE with an internal subset ("["). An external-only DOCTYPE, as
+# gocover-cobertura writes, is let through: defusedxml never loads it.
+DTD = re.compile(r"<!\s*ENTITY|<!\s*DOCTYPE[^>\[]*\[", re.IGNORECASE)
 
 # A report maps each file to (executed lines, measurable lines).
 Report = dict[str, tuple[set[int], set[int]]]
@@ -77,8 +80,27 @@ def _load_yaml(path: Path) -> Any:
             file=sys.stderr,
         )
         sys.exit(EXIT_NO_PACKAGE)
+
+    class _UniqueKeyLoader(yaml.SafeLoader):
+        """SafeLoader that refuses a repeated key instead of keeping the last one silently."""
+
+        def construct_mapping(self, node, deep=False):
+            keys = [self.construct_object(key, deep=deep) for key, _ in node.value]
+            seen = set()
+            for key in keys:
+                if not isinstance(key, Hashable):
+                    continue  # SafeLoader's own construct_mapping refuses it below
+                if key in seen:
+                    raise InputError(f"{path}: duplicate key {key!r}")
+                seen.add(key)
+            return super().construct_mapping(node, deep=deep)
+
     try:
-        return yaml.safe_load(path.read_text(encoding="utf-8"))
+        loader = _UniqueKeyLoader(path.read_text(encoding="utf-8"))
+        try:
+            return loader.get_single_data()
+        finally:
+            loader.dispose()
     except (OSError, yaml.YAMLError) as error:
         raise InputError(f"{path}: cannot read thresholds ({error.__class__.__name__})") from None
 
@@ -188,6 +210,8 @@ def changed_lines(diff: str) -> dict[str, set[int]]:
             old_left = int(match.group(1)) if match.group(1) is not None else 1
             line = int(match.group(2))
             new_left = int(match.group(3)) if match.group(3) is not None else 1
+    if old_left > 0 or new_left > 0:
+        raise InputError("diff hunk ends early at the end of the diff")
     return files
 
 
@@ -353,16 +377,25 @@ def load_report(path: Path, report_format: str = "auto", root: Path | None = Non
     return report
 
 
-def _match(name: str, report: Report) -> tuple[set[int], set[int]] | None:
-    """Find a diff file's report entry: an exact path, else one unique suffix match."""
+def _suffix(a: str, b: str) -> bool:
+    return a == b or a.endswith("/" + b) or b.endswith("/" + a)
+
+
+def _match(name: str, report: Report, diff: Iterable[str]) -> tuple[set[int], set[int]] | None:
+    """Find a diff file's report entry: an exact path, else a suffix match unique both ways.
+
+    The suffix match must name exactly one report entry, and that entry must fit no other diff
+    file, so one report entry never stands for two changed files.
+    """
     if name in report:
         return report[name]
-    hits = [
-        entry
-        for key, entry in report.items()
-        if name.endswith("/" + key) or key.endswith("/" + name)
-    ]
-    return hits[0] if len(hits) == 1 else None
+    hits = [key for key in report if _suffix(name, key)]
+    if len(hits) != 1:
+        return None
+    key = hits[0]
+    if sum(1 for other in diff if _suffix(other, key)) != 1:
+        return None
+    return report[key]
 
 
 def tier_for(percent: float | None, limits: dict[str, float]) -> str:
@@ -381,7 +414,7 @@ def evaluate(report: Report, diff: dict[str, set[int]], limits: dict[str, float]
     rows = []
     covered_total = measurable_total = 0
     for name in sorted(diff):
-        entry = _match(name, report)
+        entry = _match(name, report, diff)
         if entry is None:
             continue
         executed, measurable_lines = entry
@@ -399,8 +432,11 @@ def evaluate(report: Report, diff: dict[str, set[int]], limits: dict[str, float]
                 "missed_lines": sorted(measurable - covered),
             }
         )
-    percent = round(100 * covered_total / measurable_total, 2) if measurable_total else None
-    tier = tier_for(percent, limits)
+    # The tier compares the exact ratio; only the reported figure is rounded, so a value just
+    # under a threshold never rounds up into the tier above it.
+    exact = 100 * covered_total / measurable_total if measurable_total else None
+    percent = round(exact, 2) if exact is not None else None
+    tier = tier_for(exact, limits)
     return {
         "tier": tier,
         "label": LABELS[tier],
