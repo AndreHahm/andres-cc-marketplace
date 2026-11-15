@@ -11,6 +11,8 @@ All notable changes to this plugin are documented here.
 - `scripts/qlty-coverage-tier.py`: a tier (green, yellow, orange, red) on patch coverage from a coverage.py JSON,
   Cobertura XML or LCOV report and a diff, with defaults in `assets/qlty-coverage-tiers.yml` and a per-repository
   `.github/coverage-tiers.yml` override. Needs PyYAML. Cobertura reports with a DTD are refused.
+- `tests/test_quality_kit_smoke.py`: runs the three skill smoke tests under pytest, so this repository's coverage
+  workflow measures quality-kit's own scripts.
 - `scripts/qlty-codecov-read.py`: three fixed Codecov API v2 reads (`repo`, `totals`, `pull`) that drop author and
   title fields, refuse redirects and take an optional `CODECOV_API_TOKEN`.
 

@@ -119,6 +119,39 @@ def check_diff_parser(tier) -> None:
         "diff: context lines advance, removed lines do not",
         tier.changed_lines(context) == {"c.py": {2, 4}},
     )
+    tricky = "--- a/n.md\n+++ b/n.md\n@@ -1,2 +1,3 @@\n x\n+++ b/evil.py\n+++ added\n---- gone\n"
+    check(
+        "diff: content lines starting with '++ ' or '-- ' stay content, not headers",
+        tier.changed_lines(tricky) == {"n.md": {2, 3}},
+        repr(tier.changed_lines(tricky)),
+    )
+    try:
+        tier.changed_lines("--- a/t.py\n+++ b/t.py\n@@ -0,0 +1,3 @@\n+a\ndiff --git a/u b/u\n")
+        check("diff: a hunk shorter than its header is refused", False, "accepted")
+    except tier.InputError:
+        check("diff: a hunk shorter than its header is refused", True)
+    binary = SCRATCH / "binary.diff"
+    binary.write_bytes(
+        b"--- a/a.py\n+++ b/a.py\n@@ -0,0 +1,2 @@\n+one\n+two\n"
+        b"--- a/i.png\n+++ b/i.png\n@@ -0,0 +1 @@\n+\x89PNG\xff\xfe\n"
+    )
+    report = write("binary.json", json.dumps(REPORT))
+    code, out, err = run(
+        tier,
+        "--coverage",
+        str(report),
+        "--diff",
+        str(binary),
+        "--override",
+        str(SCRATCH / "none.yml"),
+        "--format",
+        "json",
+    )
+    check(
+        "diff: binary bytes in a --text diff are tolerated (the file is skipped)",
+        code == 0 and json.loads(out)["measurable"] == 2,
+        f"{code} {err}",
+    )
     quoted = (
         '--- "a/q\\"t\\tb\\\\\\303\\251.py"\n'
         '+++ "b/q\\"t\\tb\\\\\\303\\251.py"\n'

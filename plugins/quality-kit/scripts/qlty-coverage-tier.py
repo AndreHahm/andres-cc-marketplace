@@ -49,7 +49,7 @@ EXIT_NO_YAML = 3
 DEFAULTS = Path(__file__).resolve().parent.parent / "assets" / "qlty-coverage-tiers.yml"
 TIER_KEYS = ("green", "yellow", "orange")
 TOP_KEYS = {"version", "tiers"}
-HUNK = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@")
+HUNK = re.compile(r"^@@ -\d+(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
 LABELS = {
     "green": "informational",
     "yellow": "minor",
@@ -144,11 +144,31 @@ def _unquote(target: str) -> str:
 
 
 def changed_lines(diff: str) -> dict[str, set[int]]:
-    """Map each file in a unified diff to the line numbers its new side adds or changes."""
+    """Map each file in a unified diff to the line numbers its new side adds or changes.
+
+    Hunk bodies are read by the line counts in their @@ header, so a changed line whose content
+    starts with "++ " or "-- " (the diff lines "+++ ..." and "--- ...") is content, never a header.
+    """
     files: dict[str, set[int]] = {}
     current: set[int] | None = None
-    line = 0
+    line = old_left = new_left = 0
     for text in diff.splitlines():
+        if old_left > 0 or new_left > 0:
+            marker = text[:1]
+            if marker == "+":
+                new_left -= 1
+                if current is not None:
+                    current.add(line)
+                line += 1
+            elif marker == "-":
+                old_left -= 1
+            elif marker == " ":
+                old_left -= 1
+                new_left -= 1
+                line += 1
+            elif marker != "\\":
+                raise InputError(f"diff hunk ends early before {text[:40]!r}")
+            continue
         if text.startswith("+++ "):
             raw = text[4:]
             # A literal tab never sits inside git's quotes (it is escaped there), so a trailing tab
@@ -161,19 +181,11 @@ def changed_lines(diff: str) -> dict[str, set[int]]:
             else:
                 raise InputError(f"unexpected diff target {target!r}; use `git diff`")
             continue
-        if text.startswith("--- "):
-            continue
         match = HUNK.match(text)
         if match:
-            line = int(match.group(1))
-            continue
-        if current is None or not text:
-            continue
-        if text[0] == "+":
-            current.add(line)
-            line += 1
-        elif text[0] == " ":
-            line += 1
+            old_left = int(match.group(1)) if match.group(1) is not None else 1
+            line = int(match.group(2))
+            new_left = int(match.group(3)) if match.group(3) is not None else 1
     return files
 
 
@@ -457,8 +469,11 @@ def main(argv: list[str] | None = None) -> int:
     try:
         limits = thresholds(args.defaults, args.override)
         try:
-            diff_text = args.diff.read_text(encoding="utf-8") if args.diff else sys.stdin.read()
-        except (OSError, UnicodeDecodeError) as error:
+            # git diff --text prints a binary or non-UTF-8 file's raw bytes; they are replaced, not
+            # refused: such files are in no report, so evaluate() skips them.
+            raw = args.diff.read_bytes() if args.diff else sys.stdin.buffer.read()
+            diff_text = raw.decode("utf-8", errors="replace")
+        except OSError as error:
             raise InputError(f"cannot read the diff ({error.__class__.__name__})") from None
         report = load_report(args.coverage, args.report_format, args.root)
         result = evaluate(report, changed_lines(diff_text), limits)

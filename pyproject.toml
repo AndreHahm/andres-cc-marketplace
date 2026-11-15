@@ -47,14 +47,14 @@ select = ["E", "F", "I", "UP", "B"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
-testpaths = ["tests/marketplace_ci", "tests/reviewer_eval", "plugins/analysis-kit/tests", "plugins/session-kit/tests", "plugins/decision-kit/tests"]
+testpaths = ["tests/marketplace_ci", "tests/reviewer_eval", "plugins/analysis-kit/tests", "plugins/session-kit/tests", "plugins/decision-kit/tests", "plugins/quality-kit/tests"]
 
 # Read only when pytest runs with --cov (.github/workflows/coverage.yml). The sources are the code that
 # pytest's testpaths exercise; the .claude/, .codex/ and .agents/ mirrors stay out. Data and reports go
 # under .temp/coverage/, which .gitignore covers. patch = subprocess measures the scripts the tests start
 # as subprocesses (91 % versus 89 % without it, 2026-11-15).
 [tool.coverage.run]
-source = ["scripts", "plugins/analysis-kit", "plugins/session-kit", "plugins/decision-kit"]
+source = ["scripts", "plugins/analysis-kit", "plugins/session-kit", "plugins/decision-kit", "plugins/quality-kit"]
 omit = ["*/tests/*", "*/smoke_test.py"]
 data_file = ".temp/coverage/.coverage"
 parallel = true
