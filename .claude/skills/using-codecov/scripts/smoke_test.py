@@ -152,6 +152,15 @@ def check_diff_parser(tier) -> None:
         code == 0 and json.loads(out)["measurable"] == 2,
         f"{code} {err}",
     )
+    breaks = SCRATCH / "breaks.diff"
+    breaks.write_bytes(
+        b"--- a/a.py\n+++ b/a.py\n@@ -0,0 +1,2 @@\n+o\x0bn\x0ce\r\x1cx\n+two\xe2\x80\xa8\n"
+    )
+    check(
+        "diff: \\r, \\x0b, \\x0c, \\x1c and U+2028 inside a line do not split it",
+        tier.changed_lines(breaks.read_bytes().decode("utf-8", errors="replace"))
+        == {"a.py": {1, 2}},
+    )
     quoted = (
         '--- "a/q\\"t\\tb\\\\\\303\\251.py"\n'
         '+++ "b/q\\"t\\tb\\\\\\303\\251.py"\n'
@@ -348,6 +357,14 @@ def check_formats(tier) -> None:
             write("bad3.info", "SF:a.py\nDA:x\nend_of_record\n"), "lcov", root
         ),
         "DA needs",
+    )
+    refused(
+        tier,
+        "lcov: an SF inside an open record is refused",
+        lambda: tier.load_report(
+            write("bad4.info", "SF:a.py\nDA:1,0\nSF:b.py\nDA:1,1\nend_of_record\n"), "lcov", root
+        ),
+        "SF before",
     )
 
     # Suffix matching: a path outside the root still matches one diff file, never two.
@@ -573,6 +590,17 @@ def check_read(read) -> None:
     ]:
         code, _, err, _ = read_with(read, error, "totals", *base, "--branch", "main")
         check(f"read: {name}", code == expected, f"{code} {err}")
+    many = {
+        "totals": {"coverage": 50.0},
+        "files": [{"name": f"f{i}.py", "totals": {"coverage": 1.0}} for i in range(205)],
+    }
+    code, out, _, _ = read_with(read, many, "totals", *base, "--branch", "main")
+    shown = json.loads(out) if code == 0 else {}
+    check(
+        "read: totals prints at most MAX_FILES names and counts the rest",
+        len(shown.get("files", [])) == read.MAX_FILES and shown.get("files_not_shown") == 5,
+        out[:200],
+    )
     code, _, _, _ = read_with(read, ["not", "an", "object"], "repo", *base)
     check("read: an unexpected shape exits 2", code == 2)
     try:

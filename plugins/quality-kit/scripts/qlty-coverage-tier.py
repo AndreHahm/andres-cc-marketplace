@@ -152,7 +152,9 @@ def changed_lines(diff: str) -> dict[str, set[int]]:
     files: dict[str, set[int]] = {}
     current: set[int] | None = None
     line = old_left = new_left = 0
-    for text in diff.splitlines():
+    # git ends diff lines with \n only; str.splitlines() would also split on \r, \x0c and other
+    # characters a binary or text line may hold, and break the hunk counts.
+    for text in diff.split("\n"):
         if old_left > 0 or new_left > 0:
             marker = text[:1]
             if marker == "+":
@@ -270,6 +272,8 @@ def _lcov(text: str, path: Path) -> Report:
     for number, raw in enumerate(text.splitlines(), 1):
         line = raw.strip()
         if line.startswith("SF:"):
+            if name is not None:
+                raise InputError(f"{path}:{number}: SF before the previous record's end_of_record")
             name, executed, measurable = line[3:], set(), set()
         elif line.startswith("DA:"):
             if name is None:
