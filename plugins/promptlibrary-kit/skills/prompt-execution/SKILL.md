@@ -156,5 +156,5 @@ the baseline had to infer from step 1. Eval 8 (same date and folder) checks the 
 approval: 5 of 5 with the skill against 4 of 5 for the `main` text, whose approval question named no counts.
 On 2026-11-15 all eight scenarios were re-run with and without the skill against real fixture projects
 (`workspace/iteration-3/`, eval 8 now on a fixture with real hidden characters), replacing the 2026-10-04
-baselines in `iteration-1/`: 100% of checks with the skill against 61.3% without. These dry runs are separate from the live `--plugin-dir`
+baselines in `iteration-1/`: a mean per-scenario pass rate of 100% with the skill against 61.3% without. These dry runs are separate from the live `--plugin-dir`
 run recorded above, and no eval has been run from a marketplace install.

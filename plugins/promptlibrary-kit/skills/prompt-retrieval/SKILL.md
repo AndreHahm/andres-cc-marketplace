@@ -133,5 +133,6 @@ then ran this skill; see the README's Known limitations.
 follow this SKILL.md by hand against throwaway projects. Its `evals.json` records which quality gates the
 scenarios cover. On 2026-11-15 all five scenarios (adding 4 for hidden characters and 5 for a malformed slug)
 were run with and without the skill against real fixture projects (`workspace/iteration-2/`), replacing the
-2026-10-04 baselines in `iteration-1/`: 100% of checks with the skill against 65.6% without. These dry runs
+2026-10-04 baselines in `iteration-1/`: a mean per-scenario pass rate of 100% with the skill against 65.7%
+without (`benchmark.json` shows 65.6% because its aggregator rounds each scenario's rate first). These dry runs
 are separate from the live `--plugin-dir` run above, and no eval has been run from a marketplace install.
