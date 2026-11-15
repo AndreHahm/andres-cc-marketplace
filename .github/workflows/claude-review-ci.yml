@@ -287,7 +287,7 @@ jobs:
 
       - name: Upload the review scope
         if: steps.scope.outcome == 'success'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # ratchet:actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # ratchet:actions/upload-artifact@v7.0.2
         with:
           name: claude-review-scope
           path: ${{ runner.temp }}/claude-scope/
@@ -496,7 +496,7 @@ jobs:
 
       - name: Upload the recorded passes
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # ratchet:actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # ratchet:actions/upload-artifact@v7.0.2
         with:
           name: claude-review-raw
           path: ${{ runner.temp }}/claude-review-raw.json
@@ -576,7 +576,7 @@ jobs:
 
       - name: Upload the review result
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # ratchet:actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # ratchet:actions/upload-artifact@v7.0.2
         with:
           name: claude-review-result
           path: ${{ runner.temp }}/claude-review-result.json
