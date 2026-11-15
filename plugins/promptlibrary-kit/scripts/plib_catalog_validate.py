@@ -1195,6 +1195,17 @@ def _valid_catalog(root: Path):
     return cat, records
 
 
+def _catalog_committed(root: Path, before: dict) -> bool:
+    """True if catalog.yaml lost the snapshot_id read before a write, or cannot be read.
+    write_catalog always writes a new snapshot_id, and an interrupt can land after it replaced the
+    file but before it returned: cleanup must then keep what the catalog lists."""
+    try:
+        now = parse_yaml((root / "catalog.yaml").read_text(encoding="utf-8-sig"))
+    except (OSError, UnicodeDecodeError, CatalogError):
+        return True
+    return now.get("snapshot_id") != before.get("snapshot_id")
+
+
 def _scratch_record(path_text: str, root: Path, version: int) -> dict:
     """Read and check a scratch draft against the field list of the catalog's own version."""
     path = _readable_candidate(path_text, root)
@@ -1232,6 +1243,8 @@ def cmd_draft(args) -> dict:
         write_record(target, meta)
         write_catalog(root, cat, [m["_path"] for m in records.values()] + [rel])
     except BaseException:
+        if _catalog_committed(root, cat):
+            raise  # catalog.yaml already lists the draft: keep it
         # No orphan record file, and no empty slug folder this call created, is left behind.
         with contextlib.suppress(OSError):
             target.unlink(missing_ok=True)
@@ -1439,6 +1452,8 @@ def _lifecycle(args, op: str) -> dict:
             undo_steps.append(_move(root, meta, "active" if goes_active else "inactive", paths))
         write_catalog(root, cat, paths)  # catalog.yaml last, after every record move succeeded
     except BaseException:
+        if _catalog_committed(root, cat):
+            raise  # catalog.yaml already lists the moved records: undoing would break it
         # A move or the catalog write failed: put every record that already moved back, newest
         # first, so catalog.yaml (still listing the old paths) and the files on disk agree again.
         # If an undo itself fails, stop: undoing an earlier move on top of a half-restored state

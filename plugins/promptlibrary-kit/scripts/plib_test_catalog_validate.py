@@ -1534,6 +1534,30 @@ class ValidatorEdgeCases(Base):
         self.assertTrue((self.root / SLUG).is_dir())
         self.assertEqual(list((self.root / SLUG).iterdir()), [])
 
+    def _interrupt_after_catalog_write(self):
+        real = V.write_catalog
+
+        def commit_then_interrupt(*args, **kwargs):
+            real(*args, **kwargs)
+            raise KeyboardInterrupt
+
+        return mock.patch.object(V, "write_catalog", commit_then_interrupt)
+
+    def test_an_interrupt_after_the_catalog_commit_keeps_the_filed_draft(self):
+        self.assertEqual(self.run_cli("init")[0], 0)
+        with self._interrupt_after_catalog_write(), self.assertRaises(KeyboardInterrupt):
+            self.run_cli("draft", self.scratch())
+        self.assertTrue((self.root / SLUG / "p000000000001.md").is_file())
+        self.assertEqual(self.run_cli("validate")[0], 0)
+
+    def test_an_interrupt_after_the_catalog_commit_keeps_a_lifecycle_move(self):
+        self.make_active()
+        with self._interrupt_after_catalog_write(), self.assertRaises(KeyboardInterrupt):
+            self.run_cli("deactivate", "p000000000001")
+        self.assertTrue((self.root / SLUG / "p000000000001.md").is_file())
+        self.assertFalse((self.root / SLUG / "active.md").exists())
+        self.assertEqual(self.run_cli("validate")[0], 0)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
