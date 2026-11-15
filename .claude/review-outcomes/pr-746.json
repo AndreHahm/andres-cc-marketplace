@@ -1,0 +1,88 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4579410530",
+      "note": "fixed in 01fb2e75, verified by smoke test and Phase 2 verifiers",
+      "pr": 746,
+      "recorded_at": "2026-11-15T17:55:04+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4579413658",
+      "note": "fixed in 01fb2e75, verified by smoke test and Phase 2 verifiers",
+      "pr": 746,
+      "recorded_at": "2026-11-15T17:55:04+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4579413728",
+      "note": "fixed in 01fb2e75, verified by smoke test and Phase 2 verifiers",
+      "pr": 746,
+      "recorded_at": "2026-11-15T17:55:04+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4579413781",
+      "note": "fixed in 01fb2e75, verified by smoke test and Phase 2 verifiers",
+      "pr": 746,
+      "recorded_at": "2026-11-15T17:55:05+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4579460682",
+      "note": "fixed in 01fb2e75, verified by smoke test and Phase 2 verifiers",
+      "pr": 746,
+      "recorded_at": "2026-11-15T17:55:05+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4579460696",
+      "note": "fixed in 01fb2e75, verified by smoke test and Phase 2 verifiers",
+      "pr": 746,
+      "recorded_at": "2026-11-15T17:55:05+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4579460701",
+      "note": "fixed in 01fb2e75, verified by smoke test and Phase 2 verifiers",
+      "pr": 746,
+      "recorded_at": "2026-11-15T17:55:15+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4579460705",
+      "note": "fixed in 01fb2e75, verified by smoke test and Phase 2 verifiers",
+      "pr": 746,
+      "recorded_at": "2026-11-15T17:55:15+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4579460707",
+      "note": "fixed in 01fb2e75, verified by smoke test and Phase 2 verifiers",
+      "pr": 746,
+      "recorded_at": "2026-11-15T17:55:16+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4579460709",
+      "note": "fixed in 01fb2e75, verified by smoke test and Phase 2 verifiers",
+      "pr": 746,
+      "recorded_at": "2026-11-15T17:55:16+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4579460714",
+      "note": "fixed in 01fb2e75, verified by smoke test and Phase 2 verifiers",
+      "pr": 746,
+      "recorded_at": "2026-11-15T17:55:16+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4579460720",
+      "note": "fixed in 01fb2e75, verified by smoke test and Phase 2 verifiers",
+      "pr": 746,
+      "recorded_at": "2026-11-15T17:55:16+00:00"
+    }
+  ]
+}
