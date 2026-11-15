@@ -1415,10 +1415,12 @@ SonarCloud outage can block merges. The requirement was kept on purpose. Finding
 `.github/workflows/coverage.yml` runs on every pull request and on pushes to `main`. **Neither of its jobs is a
 required check.**
 
-- **`Coverage (pytest-cov, Codecov upload)`** runs the test suite with coverage (sources, data file and
-  `patch = ["subprocess"]` in `pyproject.toml`'s `[tool.coverage.*]`) and uploads `coverage.xml` to Codecov with
-  the `CODECOV_TOKEN` secret. It fails only when the tests fail: the upload is `continue-on-error`, so a Codecov
-  outage changes nothing.
+- **`Coverage (pytest-cov)`** runs the test suite with coverage (sources, data file and
+  `patch = ["subprocess"]` in `pyproject.toml`'s `[tool.coverage.*]`) and keeps the reports as an artifact. It
+  fails only when the tests fail.
+- **`Codecov upload`** uploads that artifact's `coverage.xml` with the `CODECOV_TOKEN` secret, in its own job so
+  the PR's test code never runs where the token is. The upload is `continue-on-error`, so a Codecov outage
+  changes nothing.
 - **`Coverage tier`** (pull requests only) computes quality-kit's tier on **patch coverage** (covered changed lines
   ÷ measurable changed lines) from that job's own `coverage.json`, never from Codecov. Green (≥ 80 %) passes,
   yellow (≥ 70 %) passes with a warning, orange (≥ 50 %) and red fail. It posts one sticky comment (skipped on

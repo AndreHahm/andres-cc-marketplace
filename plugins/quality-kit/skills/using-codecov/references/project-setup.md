@@ -61,9 +61,10 @@ root. Codecov reads the same report.
 ## 4. The workflow
 
 Copy the plugin's `assets/qlty-coverage-workflow.yml` to `.github/workflows/coverage.yml`, then set `REPORT` to
-the report path and replace the placeholder test step (it fails on purpose until replaced) with the repository's
-own test command. The template has two jobs: `coverage` runs the tests, keeps the report as an artifact and
-uploads it to Codecov (`continue-on-error`); `coverage-tier`, on pull requests only, restores the vendored script,
+the report path and `REPORT_NAME` to its file name, and replace the placeholder test step (it fails on purpose
+until replaced) with the repository's own test command. The template has three jobs: `coverage` runs the tests
+and keeps the report as an artifact; `codecov-upload` uploads that artifact to Codecov (`continue-on-error`), in
+its own job so the PR's test code never runs where `CODECOV_TOKEN` is; `coverage-tier`, on pull requests only, restores the vendored script,
 the defaults and the override from the base SHA, computes the tier on `git diff HEAD^1 HEAD` (the merge commit
 against its base), posts one sticky comment and fails on orange or red. Its action SHAs are the ones this
 marketplace pins (checked 2026-11-15); keep them pinned by SHA.

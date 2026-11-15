@@ -119,6 +119,23 @@ def check_diff_parser(tier) -> None:
         "diff: context lines advance, removed lines do not",
         tier.changed_lines(context) == {"c.py": {2, 4}},
     )
+    quoted = (
+        '--- "a/q\\"t\\tb\\\\\\303\\251.py"\n'
+        '+++ "b/q\\"t\\tb\\\\\\303\\251.py"\n'
+        "@@ -0,0 +1 @@\n+a\n"
+        "--- a/plain \u00e9.py\t\n+++ b/plain \u00e9.py\t\n@@ -0,0 +1 @@\n+a\n"
+        '--- "a/sp \\303\\251.py"\t\n+++ "b/sp \\303\\251.py"\t\n@@ -0,0 +1 @@\n+a\n'
+    )
+    names = set(tier.changed_lines(quoted))
+    check(
+        "diff: a quoted path (escapes, octal bytes) and a tab-suffixed path decode",
+        names == {'q"t\tb\\\u00e9.py', "plain \u00e9.py", "sp \u00e9.py"},
+        repr(names),
+    )
+    check(
+        "diff: a decoded newline cannot end the comment row",
+        "\n" not in tier._code("a\nb.py") and "&#10;" in tier._code("a\nb.py"),
+    )
     try:
         tier.changed_lines("--- x\n+++ x\n@@ -0,0 +1 @@\n+a\n")
         check("diff: a non-git target is refused", False, "no error")
@@ -403,8 +420,10 @@ def check_main(tier) -> None:
         "main: a hostile file name cannot break the cell, mention or tag",
         "@org" not in hostile
         and "<b>" not in hostile
-        and "x`&#124;&#64;org/team&lt;b&gt;&#46;py" in hostile
-        and "www.example" not in tier._code("www.example.com_x*.py"),
+        and "x`&#124;&#64;org/team&#60;b&#62;&#46;py" in hostile
+        and "&amp;#" not in hostile
+        and "www.example" not in tier._code("www.example.com_x*.py")
+        and "#123" not in tier._code("owner/repo#123.py"),
         hostile,
     )
     deep = write("deep.json", "[" * 100000 + "]" * 100000)
