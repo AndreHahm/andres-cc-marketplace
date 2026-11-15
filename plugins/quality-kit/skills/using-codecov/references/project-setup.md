@@ -73,7 +73,7 @@ Notes:
 
 - The `Compute the tier` step has no token in its environment: it runs PR-controlled input (the report and the
   diff) through the script.
-- Leave both jobs out of the branch protection's required checks unless the team wants orange and red to block
+- Leave all three jobs out of the branch protection's required checks unless the team wants orange and red to block
   the merge; quality-kit's default is a failing but not required check.
 - The tier job keeps every trusted input, the report and the comment under `$RUNNER_TEMP`, outside the PR's
   checkout, and runs the script with `python -I` and `uv run --no-config`: a PR can commit any file into the

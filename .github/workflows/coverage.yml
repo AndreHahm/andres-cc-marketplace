@@ -1,7 +1,7 @@
 name: Coverage
 
 # Measures test coverage, uploads it to Codecov, and on a pull request computes quality-kit's coverage
-# tier from patch coverage (docs/ci.md, "Coverage"). Neither job is a required check. A separate
+# tier from patch coverage (docs/ci.md, "Coverage"). None of its three jobs is a required check. A separate
 # workflow from marketplace-ci.yml because that one runs on pull_request only, so main would get no
 # Codecov baseline.
 on:
