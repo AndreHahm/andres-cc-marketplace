@@ -46,6 +46,8 @@ MAX_BYTES = 20 * 1024 * 1024
 TOTAL_FIELDS = ("coverage", "files", "lines", "hits", "misses", "partials")
 PATCH_FIELDS = ("coverage", "hits", "misses", "partials")
 TOKEN_ENV = "CODECOV_API_TOKEN"
+# File names come from the repository; at most this many are printed, the rest only counted.
+MAX_FILES = 200
 
 EXIT_REQUEST = 1
 EXIT_INPUT = 2
@@ -144,8 +146,9 @@ def totals_form(base: str, branch: str | None, sha: str | None) -> dict[str, Any
         "totals": _totals(document.get("totals")),
         "files": [
             {"name": _object(entry, "files[]").get("name"), **(_totals(entry.get("totals")) or {})}
-            for entry in files
+            for entry in files[:MAX_FILES]
         ],
+        "files_not_shown": max(len(files) - MAX_FILES, 0),
     }
 
 
