@@ -637,6 +637,12 @@ def check_skill() -> None:
         str(scripts),
     )
     check("skill: every granted script exists", all((PLUGIN_ROOT / s).is_file() for s in scripts))
+    other = re.findall(r"Bash\(([^)]*)\)", grants.group(1) if grants else "")
+    check(
+        "skill: the only non-script grant is the read-only head-SHA lookup",
+        [g for g in other if "CLAUDE_PLUGIN_ROOT" not in g] == ["gh pr view * --json headRefOid"],
+        str(other),
+    )
     refs = re.findall(r"`(references/[\w.-]+\.md)`", text)
     check("skill: the Reference Guide names the three references", len(set(refs)) == 3, str(refs))
     for ref in refs:
