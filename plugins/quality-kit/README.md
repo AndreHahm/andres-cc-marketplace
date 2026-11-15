@@ -93,7 +93,8 @@ uv run --no-project --with pyyaml==6.0.3 python -I -B skills/using-codecov/scrip
 ```
 
 `-B` matters: `-I` ignores `PYTHONDONTWRITEBYTECODE`, and a stray `.pyc` fails this repository's pre-push
-prefix check.
+prefix check. In this repository, `tests/test_quality_kit_smoke.py` also runs all three under pytest, so the
+coverage workflow measures the plugin's scripts.
 
 ## License
 
