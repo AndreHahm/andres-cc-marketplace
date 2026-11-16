@@ -326,14 +326,102 @@ attachments not met (CAT-2). Confirmed: yes (2026-11-16).
 
 ## 3. Intake (INT)
 
-| ID | Requirement | Source | State | Confirm |
-|---|---|---|---|---|
-| INT-1 | A prompt can be added from five origins: written by the user, by Claude or by Codex; taken from a Claude Code session; or imported from the web. | V4 §Intake Sources | met | ? |
-| INT-2 | Every intake produces a draft, never an active prompt. | V4 §Intake Sources | met | ? |
-| INT-3 | The intake path, not the user, sets `origin` for fetched (`web`) and session (`session`) text, so the import review cannot be skipped by a label. | V4 §Authority and Trust Model | met | ? |
-| INT-4 | Session text can be selected or pasted in-session; reading a past session by ID works only when `session-kit` is installed, and the plugin never reads transcript files by itself. | V4 §Intake Sources | met | ? |
-| INT-5 | Before a prompt is created, the user is asked whether it should be a skill instead, and offered to revise a near-duplicate; both are recommendations, the user decides. | V4 §Intake Triage | met | ? |
-| INT-6 | Only the user can start an add, revise, activate or deactivate (the management skill cannot be started by the model). | V4 §Components; code (`disable-model-invocation`) | met | ? |
+### INT-1: A prompt can come from six origins, and its origin is always recorded
+
+*As a developer, I can add a prompt I wrote, one Claude or Codex drafted, turns from a Claude Code
+session, or text from the web, and the plugin's own examples come in through setup, so that every prompt
+records where it came from and gets the level of screening that origin needs.*
+
+**What you'll notice:** every prompt carries one of six origins: `user`, `claude`, `codex`, `session`,
+`web` or `example`. The origin decides how strict the plugin is: `session`, `web`, `claude` and `codex`
+text is blocked on a secret, `session` and `web` also get the import review, and your own `user` text gets
+warnings only. `codex` is your claim (the plugin cannot verify who wrote pasted text), so it is screened
+as untrusted like `claude`. `example` is set only by `/prompt-library-setup` when you accept a shipped
+example (CAT-1); you never choose it by hand.
+
+**Changes to earlier decisions:** extends V4's five origins with `example` (decided in CAT-1).
+
+Source: V4 §Intake Sources; owner decision 2026-11-16. State: **partial** (five origins: met; `example`:
+not met). Confirmed: yes (2026-11-16).
+
+### INT-2: Every new prompt starts as a draft and runs only after my approval
+
+*As a developer, every prompt I add starts as a draft and becomes runnable only after review and my
+approval of its exact text, usually in the same run, so that an interrupted or abandoned add can never
+leave a runnable prompt behind.*
+
+**What you'll notice:** `/prompt-library add` normally goes all the way in one run: the prompt is filed
+as a draft, reviewed, you approve its exact text, and it becomes active. If you stop partway (you close
+the session or say "not yet"), it stays a draft: retrieval lists it only when you ask for non-active
+records, it cannot run, and `/prompt-library activate <slug>` picks up where you left off. No intake path
+(paste, session, web or example) skips the draft state.
+
+Source: V4 §Intake Sources. State: met. Confirmed: yes (2026-11-16).
+
+### INT-3: Text the plugin pulls in itself cannot be relabeled; pasted text's origin is shown first
+
+*As a developer, text the plugin fetches from the web or reads from a past session is always filed as
+`web` or `session`, and for pasted text I see and confirm the origin before it is filed, so that the
+import review can never be skipped silently by a label.*
+
+**What you'll notice:** a URL import is always `web` and a session read by ID is always `session`; you
+cannot file either as `user`. For text you paste, the plugin cannot know where it came from: before filing
+it shows you the slug, name, origin, description and fingerprint and asks whether to file the draft. If
+you paste web text and confirm it as `user`, it skips the import review, but that is a choice you saw and
+made, never a silent one.
+
+Source: V4 §Authority and Trust Model. State: met. Confirmed: yes (2026-11-16).
+
+### INT-4: I can save turns from a Claude Code session without the plugin reading transcripts
+
+*As a developer, I can save turns from a Claude Code session by selecting or pasting them, or, when
+session-kit is installed, by naming a session and turn ranges that are merged into one draft, so that I
+can capture good prompts from past work without the plugin itself reading my transcript files.*
+
+**What you'll notice:** selecting or pasting turns always works. Naming a session ID and turn ranges works
+only when session-kit is installed (detected at run time, not declared as a dependency); without it, that
+option is not offered and you paste instead. Several turns are merged into one draft whose `source_ref`
+lists the ranges used, and the result must still fit the 50-line limit (CAT-3), or you are asked to
+condense it. Session text is always `session` origin (INT-3), so it gets the import review and the hard
+secret block, because transcripts often hold keys and private data.
+
+Source: V4 §Intake Sources. State: met. Confirmed: yes (2026-11-16).
+
+### INT-5: Before saving, I am asked "prompt or skill?" and offered to revise a near-duplicate
+
+*As a developer, before a prompt is saved I am asked whether it should be a prompt, a skill or a workflow
+skill, and offered to revise a similar existing prompt instead, so that my library holds only real prompts
+without silent near-duplicates, while I make the final call.*
+
+**What you'll notice:** every add asks one question first, even when the answer looks obvious: "Prompt"
+(normally recommended), "Skill" (needs bundled scripts or references, tool restrictions or automatic
+activation; points to `skill-development`) or "Workflow skill" (multi-step phases or sub-agents; points to
+`workflow-skill-development`). Text that carries its own code for Claude to define or run gets "Skill"
+recommended, with the reason. Picking a skill saves nothing and ends the add. Picking "Prompt" checks for
+an existing prompt in the same area or with a similar name or description and, if one exists, offers to
+revise it or add a new one anyway. Both are recommendations; you decide.
+
+**Changes to earlier decisions:** V4 named two choices (prompt or skill); the third, "Workflow skill",
+exists in the code and is now part of the requirement.
+
+Source: V4 §Intake Triage; code (workflow-skill option). State: met. Confirmed: yes (2026-11-16).
+
+### INT-6: Only I can start a change to my library or its setup
+
+*As a developer, only I can start adding, revising, activating or deactivating a prompt, or setting up
+the library, by typing the command myself, so that no model action, including instructions hidden in
+imported text, can begin changing my catalog.*
+
+**What you'll notice:** Claude can suggest `/prompt-library add` but cannot start it; plain words like
+"save this as a prompt" do not start it either, you type the command. The same holds for
+`/prompt-library-setup` (PUR-6). Your exact-text approval (PUR-2) is still required on top.
+
+**Changes to earlier decisions:** extends the user-only start to the new `prompt-library-setup` skill
+(PUR-6), which V4 did not have.
+
+Source: V4 §Components; code (`disable-model-invocation`); owner decision 2026-11-16. State: **partial**
+(`prompt-library`: met; `prompt-library-setup`: not met, the skill does not exist). Confirmed: yes
+(2026-11-16).
 
 ## 4. Screening for secrets and personal data (SCR)
 
