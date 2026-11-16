@@ -19,6 +19,7 @@ import json
 import shutil
 import sys
 import tempfile
+import time
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
@@ -337,12 +338,24 @@ def check_run(run) -> None:
     check(
         "real key accepted",
         bool(
-            run.MUTANT_KEY.fullmatch(
+            run.is_mutant_key(
                 "scripts.marketplace_ci.trust_boundary.x_find_tier1_touches__mutmut_8"
             )
         ),
     )
-    check("method key accepted", bool(run.MUTANT_KEY.fullmatch("a.b.xǁFooǁ__init____mutmut_3")))
+    check("method key accepted", run.is_mutant_key("a.b.xǁFooǁ__init____mutmut_3"))
+    for bad_key in (
+        "a.x_f__mutmut_",
+        "a.x_f",
+        ".x_f__mutmut_1",
+        "a.x_f g__mutmut_1",
+        "a.xǁFooǁ__mutmut_1",
+    ):
+        check(f"key rejected: {bad_key!r}", not run.is_mutant_key(bad_key))
+    long_key = "a" * 50000 + ".x_" + "_" * 50000 + "__mutmut_"
+    started = time.perf_counter()
+    rejected = not run.is_mutant_key(long_key)
+    check("long key rejected in linear time", rejected and time.perf_counter() - started < 1.0)
     code, out, _ = call(
         run.main, ["--root", str(root), "--list", str(write_list(root, good)), "--list-modules"]
     )

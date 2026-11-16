@@ -42,7 +42,7 @@ import importlib.util
 import json
 import os
 import re
-import subprocess  # nosec B404 - runs pytest and mutmut with fixed argument lists, never a shell
+import subprocess  # nosec B404  # runs pytest and mutmut with fixed argument lists, never a shell
 import sys
 import tomllib
 from pathlib import Path, PurePosixPath
@@ -57,12 +57,38 @@ NEVER_COPY = {".git", ".venv", "node_modules", "mutants", "setup.cfg"}
 # Control characters would add lines to setup.cfg; a leading "-" would reach pytest as an option.
 UNSAFE_NAME = re.compile(r"[\x00-\x1f\x7f]|^-")
 # A mutmut 3.8.1 mutant key: "<module>.x_<function>__mutmut_<n>" or
-# "<module>.xǁ<Class>ǁ<method>__mutmut_<n>".
-MUTANT_KEY = re.compile(r"[\w.]+\.x(?:_|ǁ[^ǁ\s]+ǁ)[^\sǁ]+__mutmut_\d+")
+# "<module>.xǁ<Class>ǁ<method>__mutmut_<n>". Checked piecewise in is_mutant_key, because one regex
+# for the whole key backtracks super-linearly (Sonar S8786).
+KEY_MODULE = re.compile(r"[\w.]+")
+KEY_NAME = re.compile(r"[^\sǁ]+")
 
 
 class InputError(Exception):
     """The list file, the selection or the run tree is not usable."""
+
+
+def is_mutant_key(key: str) -> bool:
+    head, sep, number = key.rpartition("__mutmut_")
+    if not (sep and number.isdecimal()):
+        return False
+    parts = head.split("ǁ")
+    if len(parts) == 3:  # <module>.xǁ<Class>ǁ<method>
+        module, cls, name = parts
+        return (
+            module.endswith(".x")
+            and KEY_MODULE.fullmatch(module[:-2]) is not None
+            and KEY_NAME.fullmatch(cls) is not None
+            and KEY_NAME.fullmatch(name) is not None
+        )
+    # <module>.x_<function>: the first ".x_" gives the longest valid function name, and a module
+    # part failing [\w.]+ there fails for every later ".x_" too.
+    cut = head.find(".x_", 1)
+    return (
+        len(parts) == 1
+        and cut > 0
+        and KEY_MODULE.fullmatch(head[:cut]) is not None
+        and KEY_NAME.fullmatch(head[cut + 3 :]) is not None
+    )
 
 
 def checked_relative(value: Any, what: str) -> str:
@@ -186,7 +212,9 @@ def write_config(root: Path, module: str, tests: list[str]) -> Path:
 
 
 def run(argv: list[str], root: Path) -> int:
-    return subprocess.run(argv, cwd=root, check=False).returncode  # nosec B603 - fixed argv, no shell
+    # Every caller passes a literal command prefix plus keys checked by is_mutant_key or test paths
+    # checked by checked_relative (after "--"); no shell.
+    return subprocess.run(argv, cwd=root, check=False).returncode  # nosec B603  # nosemgrep  # literal prefix, no shell
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -224,7 +252,7 @@ def main(argv: list[str] | None = None) -> int:
             module, tests = entry["module"], entry["tests"]
         else:
             raise InputError("give either --module, or --source with --tests")
-        bad = [k for k in args.show or [] if not MUTANT_KEY.fullmatch(k)]
+        bad = [k for k in args.show or [] if not is_mutant_key(k)]
         if bad:
             raise InputError(f"not a mutant key: {', '.join(bad)}")
         check_root(root, module, tests)
