@@ -20,7 +20,8 @@ canonical findings envelope or a typed failure out. A caller gets the same envel
 and `devin` that it gets from Codex, so it needs no per-vendor case.
 
 **A bare `scripts/` here means the plugin root's `scripts/`**, shared with the `rva-review-diff`
-command; this skill has no scripts of its own. Run it as
+command; the skill's own `scripts/` holds only its structural self-test, `smoke_test.mjs`, which is not
+part of the contract. Run it as
 `node "${CLAUDE_PLUGIN_ROOT}/scripts/rva-dispatch.mjs" …`, the form the pre-approved tool matches.
 
 **Never asks the user.** Like `codex-review-bridge`, this is a dispatch primitive. Choosing reviewers,
@@ -166,14 +167,22 @@ replacing its config, pi loading user extensions) is recorded with its evidence 
 - "run a Codex review of this diff" → codex-kit's `codex-review-bridge`
 - "delegate this to agy" or `/agy-review` → antigravity-kit
 
-**Why no `evals.json`:** this skill has no model-driven behavior to evaluate. It is never invoked by
-the model (`disable-model-invocation: true`), and its whole contract is a deterministic script, so it is
-tested by direct execution against fake vendor binaries (below) plus a manual live check, per this repo's
-"deterministic scripts" testing rule, not by prompt-level evals.
+**Evals:** the contract itself is a deterministic script, tested by direct execution (below). The evals
+at `evals/review-adapter-dispatch/` check how a caller agent handles the dispatcher's refusals: 3
+dry-run-only scenarios (vendor not enabled, secret-named path without confirmation, a diff path missing
+from the target list), with the skill and without it. Neither arm ever confirmed egress or edited an
+input; the only difference was that each baseline probed the dispatcher once without `--dry-run`. A
+tracked-local-file scenario is not in the eval set; it stays covered by scenario 2 below.
+
+**Smoke test:** `scripts/smoke_test.mjs` checks the frontmatter, the named references, the six root
+scripts, the shipped settings (three vendors, all off, 600 000 ms), the command's two Bash grants, and
+that the dispatcher with no flags returns a JSON usage error. It spawns no vendor.
 
 **Last dated run record:** 2026-11-16, `node --test tests/` 26/26 passing; live check the same day, one
 run per vendor on the planted-bug fixture (all three found it), plus a canary-file injection probe on pi
-and devin (neither read the file).
+and devin (neither read the file). Same day: evals iteration-1, 12/12 assertions with the skill vs 9/12
+baseline (`evals/review-adapter-dispatch/workspace/iteration-1/benchmark.json`); `smoke_test.mjs` passing
+on the plugin copy.
 
 **Concrete scenarios** (run by `tests/rva-dispatch.test.mjs` against fake vendor binaries; no real
 vendor is called):
@@ -231,3 +240,4 @@ fixture with a planted bug.
 | `references/trust-and-config.md` | Shipped defaults, the local allow-list, the tracked-copy refusal, unattended use |
 | `references/typed-failures.md` | Failure categories this plugin adds to codex-kit's, and how to report each |
 | `references/codex-kit-locator.md` | How codex-kit's validator is found and checked before import |
+| `scripts/smoke_test.mjs` | Structural self-test; not part of the contract |
