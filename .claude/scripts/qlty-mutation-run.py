@@ -19,8 +19,9 @@ Steps, all inside `--root` (default: the current directory):
 
 The run tree gets `mutants/` and, for the run's length, `setup.cfg`: use a CI checkout or an
 isolated copy, never a working tree with changes you want to keep. It refuses a root whose
-`setup.cfg` exists or whose `pyproject.toml` already has `[tool.mutmut]`, and a module or test
-path that resolves outside the root (a symbolic link pointing elsewhere).
+`setup.cfg` exists or whose `pyproject.toml` already has `[tool.mutmut]`, a run in a root that
+already holds `mutants/` (mutmut would keep the old verdicts), and a module or test path that
+resolves outside the root (a symbolic link pointing elsewhere).
 
 Usage (mutmut and PyYAML come from uv):
   uv run --with mutmut==3.8.1 --with pyyaml python qlty-mutation-run.py --module pr_policy
@@ -265,6 +266,10 @@ def main(argv: list[str] | None = None) -> int:
         if bad:
             raise InputError(f"not a mutant key: {', '.join(bad)}")
         check_root(root, module, tests)
+        # mutmut keeps an existing mutants/ verdict unless the function's source changed, so a
+        # re-run after a test was strengthened would report old survivors as freshly measured.
+        if not args.show and os.path.lexists(root / "mutants"):
+            raise InputError(f"{root} already holds mutants/ from a run; use a fresh run tree")
     except InputError as exc:
         print(f"qlty-mutation-run: {exc}", file=sys.stderr)
         return EXIT_INPUT
