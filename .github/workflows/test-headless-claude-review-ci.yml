@@ -131,6 +131,7 @@ jobs:
         with:
           version: "0.12.21"
           enable-cache: "false"
+          python-version: "3.13"
 
       # R3: the scope is computed by the same trusted code as the Codex review, restored from
       # the base SHA. Kept identical to claude-review-ci.yml's claude-scope copy of this block by
@@ -373,6 +374,7 @@ jobs:
         with:
           version: "0.12.21"
           enable-cache: "false"
+          python-version: "3.13"
       # Only the pinned headless-review group; --no-build runs no package's setup code.
       - name: Install the headless review dependencies
         working-directory: trusted
@@ -832,6 +834,7 @@ jobs:
         with:
           version: "0.12.21"
           enable-cache: "false"
+          python-version: "3.13"
       # As claude-review-ci.yml's publish job (the summary reuses claude_review.parse_pass).
       - run: uv sync --locked --no-config --no-install-project --group dev --no-build --no-install-package csscompressor --no-install-package jsmin
 

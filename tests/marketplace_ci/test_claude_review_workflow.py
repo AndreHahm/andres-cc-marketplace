@@ -132,6 +132,27 @@ def test_uv_is_pinned_and_runs_no_package_setup_code():
         assert uv_runs and all("uv run --no-sync" in line for line in uv_runs), job
 
 
+@pytest.mark.parametrize("workflow", ["claude-review-ci.yml", "test-headless-claude-review-ci.yml"])
+def test_setup_uv_never_looks_up_a_python_from_the_checkout(workflow):
+    """Issue #736: without python-version, setup-uv runs `uv python find` on the working
+    directory and executes the interpreter it finds, before the scope jobs restore
+    .python-version and uv.toml from the base SHA, so a PR could run code there."""
+    jobs = yaml.safe_load((ROOT / ".github/workflows" / workflow).read_text("utf-8"))["jobs"]
+    setups = [
+        (name, step)
+        for name, spec in jobs.items()
+        for step in spec.get("steps", [])
+        if str(step.get("uses", "")).startswith("astral-sh/setup-uv@")
+    ]
+    assert len(setups) == 3, workflow
+    for name, step in setups:
+        assert step["with"] == {
+            "version": "0.12.21",
+            "enable-cache": "false",
+            "python-version": "3.13",
+        }, name
+
+
 @pytest.mark.parametrize("name", PASS_STEPS)
 def test_a_pass_with_no_key_fails_before_running(tmp_path, name):
     step = _step("claude-review", name)
