@@ -24,8 +24,11 @@ refusing with `vendor_not_allowed`: the same trust-boundary pattern git-kit uses
 lowercase name, still counts as tracked; any git error counts as tracked too. The file is read only under
 its exact lowercase name, in a `.claude` directory that is not a symbolic link, and only when the file and
 that directory are owned by the current user and writable by nobody else (group write is allowed only
-for the user's private group, the rule the dispatcher's input files follow). A shipped default can only
-switch a vendor off.
+for the user's private group, the rule the dispatcher's input files follow). The directory is opened and
+checked on its handle, and on Linux the file is opened through that handle, so a `.claude` directory
+swapped in between the check and the read is not used. Elsewhere the file is opened by path and the
+path must still name the checked directory afterwards, which leaves a swap-and-back window. A shipped
+default can only switch a vendor off.
 
 A lower `timeout_ms` and a `model` are read from both files; the local file wins. A `timeout_ms` above the
 shipped value is ignored. A `model` is not egress-neutral for pi: its first segment picks the provider
@@ -40,9 +43,11 @@ CLI is not the probed version; without it the dispatcher refuses that run before
 (`unsupported_cli_version`), because their isolation was verified only for the probed version. pi always
 runs with `--no-tools` and only gets an `inspection_limits` note.
 
-`"dev_sibling_codex_kit": true` (local file only) lets the dispatcher import the codex-kit next to this
-plugin in a marketplace checkout when none is installed; see `references/codex-kit-locator.md`. It has
-the same tracked-copy refusal, since it decides which code validates the review.
+`"dev_sibling_codex_kit": true` (local file only) lets the dispatcher import `plugins/codex-kit` next to
+this plugin when none is installed, only when this plugin itself is a checkout's
+`plugins/reviewadapters-kit` (never from a copy elsewhere, such as a `.claude/` mirror). The imported
+files pass the same ownership checks as an installed codex-kit. It has the same tracked-copy refusal,
+since it decides which code validates the review.
 
 ## Interactive and unattended callers
 

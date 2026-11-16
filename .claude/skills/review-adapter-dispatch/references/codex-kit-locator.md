@@ -11,7 +11,9 @@ codex-kit's `scripts/lib/`. Importing a module runs its code, so where it comes 
    `codex-kit@andres-cc-marketplace` in `~/.claude/plugins/installed_plugins.json`, used only when it is
    an absolute path. A codex-kit installed from another marketplace is not used.
 2. **Sibling in a marketplace checkout, opt-in only:** `<plugin-root>/../codex-kit`, used only when the
-   untracked local file sets `"dev_sibling_codex_kit": true`. In a checkout under review the sibling is
+   untracked local file sets `"dev_sibling_codex_kit": true` and this plugin's own directory really is
+   `plugins/reviewadapters-kit`. From a copy elsewhere (this repository's `.claude/` mirror, even inside a
+   checkout whose directory is named `plugins`), the sibling path is one no plugin occupies. In a checkout under review the sibling is
    the reviewed branch's own code, so a change could rewrite the validator that judges it; the opt-in is
    for developing this marketplace itself, on a branch the developer trusts. The same tracked-copy
    refusal as for vendors applies (`references/trust-and-config.md`).

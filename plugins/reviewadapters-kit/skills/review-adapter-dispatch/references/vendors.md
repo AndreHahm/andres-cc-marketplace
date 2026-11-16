@@ -1,10 +1,14 @@
 # Vendors: flags, isolation, output
 
+**Contents:** [Common to all three](#common-to-all-three) · [pi](#pi) · [devin](#devin) · [agy](#agy)
+
 Each adapter runs its CLI with a fixed argument list built in code. The caller-influenced values are the
 model (charset-checked, never starting with `-`, placed only as the value of `--model`) and the review
-content: for agy it travels as one prompt argument, for pi and devin in a file the dispatcher writes to
-its private `0700` run directory. Every run uses that directory as its working directory, gets a reduced
-environment, and is killed with its whole process group at the timeout (POSIX only).
+content, which travels in a `0600` file the dispatcher writes to its private `0700` run directory: named
+on the command line for pi and devin, fed as stdin for agy. No review content is ever a command-line
+argument, which other local users could read from `ps`. Every run uses that directory as its working
+directory, gets a reduced environment, and is killed with its whole process group at the timeout (POSIX
+only).
 
 ## Common to all three
 
@@ -85,8 +89,9 @@ devin -p --prompt-file <run-dir>/prompt.md --config <run-dir>/devin-config.json 
 ## agy
 
 ```text
-agy -p <prompt, inline> --mode plan --sandbox --output-format json
-    --json-schema <run-dir>/schema.json --print-timeout <n>s --model <model>   (stdin: /dev/null)
+agy --input-format stream-json --output-format stream-json --mode plan --sandbox
+    --json-schema <run-dir>/schema.json --print-timeout <n>s --model <model> -p=
+    (stdin: <run-dir>/prompt.md, one line {"event":"user","message":{"content":"<prompt>"}})
 ```
 
 - **Isolation:** headless agy refuses every permissioned tool, including `read_file`, and the prompt
@@ -95,21 +100,27 @@ agy -p <prompt, inline> --mode plan --sandbox --output-format json
   would further restrict agy is unverified. Isolation therefore rests on headless refusal and
   `--sandbox`, and an agy version other than the probed one is refused before sending
   (`unsupported_cli_version`) unless the local file sets `allow_unprobed_version` for agy.
-- **Argv exposure:** the prompt, diff included, is passed as one command-line argument, so other local
-  users can read it from `ps` or `/proc/<pid>/cmdline` while agy runs, unless `/proc` is mounted with
-  `hidepid`. pi and devin read their prompt from a `0600` file instead. Whether agy can read a prompt
-  from a file or stdin was not probed; the dry run's `reach` states the exposure so the egress
-  confirmation names it.
+- **Input:** the prompt goes on stdin, opened from the `0600` prompt file, not on argv. agy 1.5.9 reads
+  stdin only with `--input-format stream-json`, which requires `--output-format stream-json`. A live
+  probe on 2026-11-16 (a dummy prompt, no repository content) found the shape: one NDJSON line
+  `{"event":"user","message":{"content":"<text>"}}`. A line without `event` is an error, an unknown
+  event is ignored with a warning, and a message without `content` is refused. `-p` needs a value, so it
+  gets an empty one (`-p=`). A 400 KB line read from a regular file parsed, so the diff has no argument
+  size limit. Until this change, the prompt was a `-p` argument that other local users could read from
+  `/proc/<pid>/cmdline` (security finding M3).
 - **Auth variables:** `GEMINI_API_KEY`, `GOOGLE_API_KEY`, `GOOGLE_APPLICATION_CREDENTIALS`,
   `GOOGLE_CLOUD_PROJECT`.
 - **Egress:** Google.
-- **Output:** a JSON object with `status` and `structured_output`, which `--json-schema` constrains to
-  the findings subset. Output without a usable `structured_output` and with a non-empty
-  `denied_actions` (the probe saw `status: SUCCESS` and an empty `response`) is `tool_denied`, never a
-  clean pass; output that is not a JSON object is `invalid_json`. stdin must be
-  `/dev/null`, or agy drops stdout.
-- **Size:** the prompt is one argument; Linux caps a single argument at 128 KiB. The dispatcher refuses
-  any argument over 120 000 bytes (`input_too_large`). cross-model-review's default `max_slice_bytes`
-  is 80 000.
+- **Output:** one JSON event per line (`init`, `step_update`…, then `result`). The outcome is the last
+  `{"event":"result","result":{…}}` line, where `result` carries `status` and `structured_output`, which
+  `--json-schema` constrains to the findings subset. `structured_output` is used only when `status` is
+  `SUCCESS`; any other status may mean a partial turn and is `missing_final_message`. U+2028 and U+2029
+  in the prompt are escaped in the stdin line, so a reader that splits on them cannot cut it short.
+  A result without a usable `structured_output` and
+  with a non-empty `denied_actions` is `tool_denied`, never a clean pass. An earlier probe in single-JSON
+  output mode saw `status: SUCCESS` and an empty `response` there; where stream-json puts
+  `denied_actions` was not re-probed, and the adapter reads it from `result`. Output with no `result`
+  event is `missing_final_message`, or `invalid_json` when a line is not JSON. Model text sits
+  JSON-escaped inside events, so it cannot forge a `result` line.
 - **Not used:** antigravity-kit's `agy-delegate.sh`. It is built for delegation and returns text, and
   this adapter needs `--json-schema`, which the wrapper does not pass.

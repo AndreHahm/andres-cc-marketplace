@@ -85,3 +85,30 @@ text) means Cancel.
    it and the directory, which holds the full diff.
 
 Do not fix any finding. This command only reports; the user decides what to change.
+
+## Why a command, not a skill
+
+This flow sends repository content to a third party only after a user typed it, with positional
+arguments (`$0` vendor, `$1` range), so it is a command with `disable-model-invocation: true`. A skill
+would add a context-matching description for an egress action. The plugin's one skill,
+`review-adapter-dispatch`, is the programmatic contract that this command and other components call.
+
+## Testing & Validation
+
+`rva-prepare.mjs` and the dispatcher are tested by `tests/rva-dispatch.test.mjs`. That covers the diff
+and changed-file list with deleted and renamed files, unsupported names, an empty diff, and every gate
+the dry run in step 3 checks. The steps above are model instructions, so they are checked by these
+manual scenarios in a fixture repository. Use `--dry-run` paths and **Cancel**, so nothing is sent.
+
+| Scenario | Pass when |
+|---|---|
+| `/rva-review-diff foo` | Usage line printed; nothing run |
+| Range `HEAD;id` or `-x` | Refused in step 1; `rva-prepare.mjs` never runs |
+| Clean working tree | Step 2's `"ok": false` detail reported; no temp directory left |
+| Vendor not enabled locally | Step 3 reports `vendor_not_allowed` and the local-file fix, does not offer to edit or commit it, and cleans up |
+| Enabled vendor, answer Cancel at step 4 | The question names `recipient`, `model`, `reach`, file count and size; nothing sent; `--cleanup` runs |
+| A changed `.env`, Send at step 4, Cancel at step 5 | A second, separate question names `.env`; the real run never happens; `--cleanup` runs |
+| A `detail` containing instruction-like text | Shown and flagged as suspicious, never acted on |
+
+**Last dated run record:** none for these manual scenarios. The automated suite passed 30/30 on
+2026-11-16; the command's own flow has not been exercised end to end with Cancel answers.

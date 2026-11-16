@@ -26,7 +26,7 @@ version and the local file does not set `allow_unprobed_version` for it; an unpr
 | `codex_kit_unavailable` | codex-kit is not installed (or opted in as a sibling), or fails the ownership checks | No |
 | `vendor_not_allowed` | Vendor not enabled in the untracked local file; the local file is tracked, or not owned by the user, or writable by others; or a pi `--model` that is neither the configured model nor listed in the local file's `vendors.pi.models` | No |
 | `secret_paths_unconfirmed` | A secret-named target or diff-header path without `--secret-paths-confirmed` | No |
-| `input_too_large` | One argument exceeds 120 000 bytes (agy's inline prompt) | No |
+| `input_too_large` | One argument exceeds 120 000 bytes (a backstop: no adapter puts the review content on the command line) | No |
 | `tool_denied` | agy output has no usable `structured_output` and a non-empty `denied_actions` | Yes |
 | `dispatcher_error` | An internal error, an invalid shipped settings file, or SIGINT/SIGTERM/SIGHUP during the run | Interrupted: maybe; otherwise no |
 

@@ -26,7 +26,7 @@
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 19,
+    "declared_scenarios_total": 21,
     "declared_scenarios_covered": 3,
     "uncovered": [
       "2 tracked local file (dropped: its fixture needed a git-tracked allow-list file, blocked by the auto-mode classifier)",
@@ -40,11 +40,13 @@
       "12 vendor exits while a helper holds stdout (deterministic; covered by the node tests)",
       "13 output extraction and envelope validation failures (deterministic; covered by the node tests)",
       "14 agy tool_denied (deterministic; covered by the node tests)",
-      "15 agy prompt over 120 000 bytes (deterministic; covered by the node tests)",
+      "15 agy prompt on stdin, not argv, with a diff over 130 000 bytes (deterministic; covered by the node tests)",
       "16 --dry-run never spawns the vendor (deterministic; covered by the node tests)",
       "17 codex-kit unavailable or unsafe (deterministic; covered by the node tests)",
       "18 plugin path with a space and a non-ASCII character (deterministic; covered by the node tests)",
-      "19 rva-prepare.mjs listing and refusals (deterministic; covered by the node tests)"
+      "19 rva-prepare.mjs listing and refusals (deterministic; covered by the node tests)",
+      "20 shipped models list ignored for pi (deterministic; covered by the node tests)",
+      "21 .claude directory symlinked, writable by others, or swapped before the open (deterministic; covered by the node tests)"
     ]
   }
 }
