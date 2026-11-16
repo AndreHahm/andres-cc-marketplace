@@ -13,8 +13,9 @@ const PLUGIN_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "
 const BEGIN = "FINDINGS BEGIN";
 const END = "FINDINGS END";
 
-// Versions the flags below were verified against (references/vendors.md). Another version still runs,
-// with a note in inspection_limits, because these CLIs have changed flags between minor versions.
+// Versions the flags below were verified against (references/vendors.md). Another pi version still runs,
+// with a note in inspection_limits; another devin or agy version is refused before sending unless the
+// local file allows it (refuseUnprobed), because their isolation could change with a new version.
 export const PROBED_VERSIONS = { agy: "1.5.9", pi: "1.5.0", devin: "3000.12.57" };
 
 // The output shape lives here, not in the instruction file: callers supply their own instructions,
@@ -75,7 +76,9 @@ export function extractMarked(text) {
 
 // Variables every vendor gets: enough to find its binary, its own auth and config under HOME, and a
 // locale. Nothing else from the caller's environment is passed (no tokens of other tools).
-const BASE_ENV = ["PATH", "HOME", "USER", "LOGNAME", "LANG", "TERM", "TMPDIR", "XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_CACHE_HOME", "XDG_STATE_HOME", "XDG_RUNTIME_DIR"];
+// XDG_RUNTIME_DIR is left out: it points at the session's sockets (D-Bus, keyring, often the SSH or GPG
+// agent), which a tool-less review does not need.
+const BASE_ENV = ["PATH", "HOME", "USER", "LOGNAME", "LANG", "TERM", "TMPDIR", "XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_CACHE_HOME", "XDG_STATE_HOME"];
 
 function pick(names, extra = {}) {
   const env = {};
@@ -117,6 +120,7 @@ export const VENDORS = {
   },
   devin: {
     binary: "devin",
+    refuseUnprobed: true,
     recipient: "Cognition (Devin)",
     reach: "devin gets the diff inline and every tool, including read, is denied, so it reads no file itself",
     env() {
@@ -155,8 +159,9 @@ export const VENDORS = {
   },
   agy: {
     binary: "agy",
+    refuseUnprobed: true,
     recipient: "Google (Antigravity)",
-    reach: "agy gets the diff inline and every tool is refused in headless mode, so it reads no file itself",
+    reach: "agy gets the diff inline and every tool is refused in headless mode, so it reads no file itself; the prompt, diff included, is a command-line argument that other local users can read while agy runs (unless /proc is mounted with hidepid)",
     env() {
       return pick([...BASE_ENV, "GEMINI_API_KEY", "GOOGLE_API_KEY", "GOOGLE_APPLICATION_CREDENTIALS", "GOOGLE_CLOUD_PROJECT"]);
     },

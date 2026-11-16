@@ -17,18 +17,28 @@ Two JSON files, decided by the repository owner on 2026-11-16:
 Enabling a vendor sends repository content to that vendor. A tracked file can be changed by anyone with
 write access to the repository, including through the very change under review, so a tracked
 `"enabled": true` could widen egress without the owner noticing. The dispatcher runs
-`git ls-files --error-unmatch` on the local file and refuses (`vendor_not_allowed`) when it is tracked,
-the same trust-boundary pattern git-kit uses for `commit_confirm_before_commit`. The check is
-case-insensitive (`:(icase)`), so a committed `.claude/ReviewAdapters-Kit.local.json` that a macOS or
-Windows filesystem would open under the lowercase name still counts as tracked; any git error counts as
-tracked too. The file is read only under its exact lowercase name, in a `.claude` directory that is not a
-symbolic link. A shipped default can
-only switch a vendor off.
+`git ls-files -z -- ':(icase).claude/reviewadapters-kit.local.json'` and treats any output as tracked,
+refusing with `vendor_not_allowed`: the same trust-boundary pattern git-kit uses for
+`commit_confirm_before_commit`. The `:(icase)` match means a committed
+`.claude/ReviewAdapters-Kit.local.json`, which a macOS or Windows filesystem would open under the
+lowercase name, still counts as tracked; any git error counts as tracked too. The file is read only under
+its exact lowercase name, in a `.claude` directory that is not a symbolic link, and only when the file and
+that directory are owned by the current user and writable by nobody else (group write is allowed only
+for the user's private group, the rule the dispatcher's input files follow). A shipped default can only
+switch a vendor off.
 
-Fields that do not widen egress (a lower `timeout_ms`, `model`) are read from both files; the local file
-wins. A `timeout_ms` above the shipped value is ignored. Note that a pi `model` also picks the provider
-that receives the data (its first segment), so pinning a pi model is an egress choice too; the egress
-confirmation names it.
+A lower `timeout_ms` and a `model` are read from both files; the local file wins. A `timeout_ms` above the
+shipped value is ignored. A `model` is not egress-neutral for pi: its first segment picks the provider
+that receives the data, so pinning a pi model is an egress choice, and the egress confirmation names the
+provider. A caller's `--model` for pi must therefore be exactly the configured model or one listed in
+the local file's `vendors.pi.models` array; anything else, including a bare id or another id under the
+same provider prefix, is refused (`vendor_not_allowed`), because how pi maps an id to a provider is not
+pinned down. `models` is read from the local file only.
+
+`"allow_unprobed_version": true` under a vendor (local file only) lets devin or agy run when the installed
+CLI is not the probed version; without it the dispatcher refuses that run before sending
+(`unsupported_cli_version`), because their isolation was verified only for the probed version. pi always
+runs with `--no-tools` and only gets an `inspection_limits` note.
 
 `"dev_sibling_codex_kit": true` (local file only) lets the dispatcher import the codex-kit next to this
 plugin in a marketplace checkout when none is installed; see `references/codex-kit-locator.md`. It has
