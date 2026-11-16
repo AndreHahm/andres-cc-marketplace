@@ -21,7 +21,9 @@ The run tree gets `mutants/` and, for the run's length, `setup.cfg`: use a CI ch
 isolated copy, never a working tree with changes you want to keep. It refuses a root whose
 `setup.cfg` exists or whose `pyproject.toml` already has `[tool.mutmut]`, a run in a root that
 already holds `mutants/` (mutmut would keep the old verdicts), and a module or test path that
-resolves outside the root (a symbolic link pointing elsewhere).
+resolves outside the root (a symbolic link pointing elsewhere). pytest and mutmut get only an
+allowlisted environment (CHILD_ENV_NAMES, CHILD_ENV_PREFIXES), so no credential held in an
+environment variable reaches the tests; files the user can read still can.
 
 Usage (mutmut and PyYAML come from uv):
   uv run --with mutmut==3.8.1 --with pyyaml python qlty-mutation-run.py --module pr_policy
@@ -63,6 +65,17 @@ UNSAFE_NAME = re.compile(r"[\x00-\x1f\x7f]|^-")
 # for the whole key backtracks super-linearly (Sonar S8786).
 KEY_MODULE = re.compile(r"[\w.]+")
 KEY_NAME = re.compile(r"[^\sǁ]+")
+# The environment pytest and mutmut get (python_env): what an interpreter, a locale and a
+# temporary directory need, and nothing that usually holds a credential.
+CHILD_ENV_NAMES = frozenset(
+    {
+        "HOME", "USER", "LOGNAME", "SHELL", "TERM", "LANG", "LANGUAGE", "TZ", "NO_COLOR",
+        "TMPDIR", "TEMP", "TMP", "VIRTUAL_ENV", "SYSTEMROOT", "COMSPEC", "PATHEXT",
+    }
+)  # fmt: skip
+CHILD_ENV_PREFIXES = ("LC_", "PYTHON")
+# A prefix match can still catch a third-party name such as PYTHON_REGISTRY_TOKEN: drop those.
+SECRET_LIKE_NAME = re.compile(r"TOKEN|KEY|SECRET|PASS|AUTH|CREDENTIAL", re.IGNORECASE)
 
 
 class InputError(Exception):
@@ -224,7 +237,17 @@ def python_env() -> dict[str, str] | None:
     found = shutil.which("python3", path=folder)
     if found is None or not os.path.samefile(found, sys.executable):
         return None
-    return {**os.environ, "PATH": folder + os.pathsep + os.environ.get("PATH", "")}
+    # The selected tests run with only these variables, so a credential held in an environment
+    # variable (a token, a cloud key) does not reach them. Files the user can read (~/.netrc, a
+    # cloud CLI's config) still can: the tests run as the same user.
+    env = {
+        name: value
+        for name, value in os.environ.items()
+        if name in CHILD_ENV_NAMES
+        or (name.startswith(CHILD_ENV_PREFIXES) and not SECRET_LIKE_NAME.search(name))
+    }
+    env["PATH"] = folder + os.pathsep + os.environ.get("PATH", "")
+    return env
 
 
 def main(argv: list[str] | None = None) -> int:

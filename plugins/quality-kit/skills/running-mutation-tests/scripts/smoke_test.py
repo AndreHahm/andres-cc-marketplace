@@ -364,6 +364,29 @@ def check_run(run) -> None:
     rejected = not run.is_mutant_key(long_key)
     check("long key rejected in linear time", rejected and time.perf_counter() - started < 1.0)
     check("python3 found next to this interpreter", run.python_env() is not None)
+    planted = {
+        "QLTY_SMOKE_TOKEN": "s3cr3t",
+        "PYTHON_SMOKE_TOKEN": "s3cr3t",
+        "LC_SMOKE": "x",
+        "PYTHONSMOKE": "1",
+        "HOME": "/h",
+    }
+    saved_env = {name: os.environ.get(name) for name in planted}
+    try:
+        os.environ.update(planted)
+        child = run.python_env() or {}
+        check("secret variable not passed to tests", "QLTY_SMOKE_TOKEN" not in child)
+        check("secret-like PYTHON* name not passed to tests", "PYTHON_SMOKE_TOKEN" not in child)
+        check(
+            "HOME, LC_* and PYTHON* passed to tests",
+            child.get("HOME") == "/h" and "LC_SMOKE" in child and "PYTHONSMOKE" in child,
+        )
+    finally:
+        for name, value in saved_env.items():
+            if value is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = value
     # An unknown interpreter (empty sys.executable) is refused, even with a python3 in the cwd.
     decoy = Path(tempfile.mkdtemp())
     (decoy / "python3").write_text("#!/bin/sh\n", encoding="utf-8")
