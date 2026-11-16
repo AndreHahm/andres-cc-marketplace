@@ -132,7 +132,9 @@ export lives outside the repository, and nothing here deletes files.
 - **Tests get a reduced environment.** The runner passes pytest and mutmut only `PATH`, `HOME`, the locale,
   temporary-directory and `PYTHON*` variables and a few like them, so a token held in an environment variable
   does not reach the selected tests (files the user can read, such as `~/.netrc`, still can). A test that needs
-  another variable fails the baseline (exit 4); say so rather than reporting the tests as broken.
+  another variable fails the baseline (exit 4); say so rather than reporting the tests as broken. The allowlist
+  covers only pytest and mutmut, not the dependency install (Step 2's environment command), which keeps the full
+  environment; that is why the install command should be build-free.
 - **Different mutmut version:** the parser refuses an exit code outside mutmut 3.8.1's table instead of
   guessing. Update the parser's table and its fixtures together.
 

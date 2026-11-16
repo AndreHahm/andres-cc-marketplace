@@ -19,7 +19,8 @@ All notable changes to this plugin are documented here.
   holds `mutants/`, whose old verdicts mutmut would keep. It starts pytest and mutmut as
   the `python3` in the running interpreter's own folder, and stops when that folder has none (run it from a venv).
   Those processes get an allowlisted environment, so a credential held in an environment variable does not reach
-  the selected tests (files the user can read still can).
+  the selected tests (files the user can read still can). The dependency install before the run is not covered:
+  it keeps the full environment, so the skill recommends a build-free install command.
 - `scripts/qlty-mutation-parse.py`: summarizes a run from mutmut's `.meta` files and refuses one whose counts
   disagree with `mutmut-cicd-stats.json` or that holds an exit code outside mutmut 3.8.1's table.
 
