@@ -1,0 +1,39 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4584095945",
+      "note": "fixed in 91d41e20, verified by smoke checks and the fix self-review verifiers",
+      "pr": 750,
+      "recorded_at": "2026-11-16T10:04:45+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4584176071",
+      "note": "fixed in 91d41e20, verified by smoke checks and the fix self-review verifiers",
+      "pr": 750,
+      "recorded_at": "2026-11-16T10:04:45+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4584176077",
+      "note": "fixed in 91d41e20, verified by smoke checks and the fix self-review verifiers",
+      "pr": 750,
+      "recorded_at": "2026-11-16T10:04:45+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4584176091",
+      "note": "fixed in 91d41e20, verified by smoke checks and the fix self-review verifiers",
+      "pr": 750,
+      "recorded_at": "2026-11-16T10:04:45+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "6912877926",
+      "note": "Claude delta advisory: marketplace version bumped to 1.0.0-alpha.4 in 91d41e20",
+      "pr": 750,
+      "recorded_at": "2026-11-16T10:04:45+00:00"
+    }
+  ]
+}
