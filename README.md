@@ -26,6 +26,7 @@ development, git/GitHub workflows, session analysis, and more.
 | [`workledger-kit`](./plugins/workledger-kit) | Open-item ledger and PR history for a repository: collect, dedup and plan open items; every Linear/Notion write goes through `workmanagement-kit`'s approval gate. |
 | [`quality-kit`](./plugins/quality-kit) | Static-analysis findings: collect a PR's Codacy findings into one record, then decide to fix, suppress, ignore or exclude each with a recorded reason. |
 | [`decision-kit`](./plugins/decision-kit) | Independent second opinion from a pinned OpenRouter decision model before risky decisions; it can only add a stop. |
+| [`reviewadapters-kit`](./plugins/reviewadapters-kit) | Optional reviewer vendors (agy, pi, devin) on a diff with no tools, returning codex-kit's validated findings envelope; every vendor off until enabled locally. |
 
 See each plugin's own README for details.
 
