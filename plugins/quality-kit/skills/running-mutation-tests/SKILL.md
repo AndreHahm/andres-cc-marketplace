@@ -55,7 +55,9 @@ something to follow.
 - `list`, or no argument: run
   `uv run --no-project --no-config --with pyyaml==6.0.3 python -I ${CLAUDE_PLUGIN_ROOT}/scripts/qlty-mutation-run.py --list-modules --root <repository root>`
   and ask via `AskUserQuestion` which module (up to four; the rest under "Other").
-- A module in the list: use its listed selection.
+- A module in the list: show its listed selection and confirm it via `AskUserQuestion` before running, saying
+  the run dispatches the `mutation-tester` agent and mutmut runs the selected tests once per mutant (seconds to
+  minutes per module).
 - A module not in the list: propose a selection, the test files that import it **in-process** (search with
   `Glob`/`Read`), and confirm it via `AskUserQuestion` before running. Every proposed path must pass the same
   path check as `$ARGUMENTS` (`^[A-Za-z0-9_./-]{1,200}\.py$`, no `..`, no leading `-`); leave out any that does not. Leave out any Python test that starts a
@@ -151,6 +153,7 @@ yet.
 - "triage the CodeRabbit comments on PR 750" (`handling-review-findings`)
 
 **Quality gates:**
+- [ ] No `mutation-tester` dispatch happens before the user confirmed the module and its test selection
 - [ ] No test and no pragma is written without the user approving its exact text
 - [ ] "Not measured" mutants are never reported as survivors or test gaps
 - [ ] A red baseline or a non-zero runner status stops the flow with the reason
