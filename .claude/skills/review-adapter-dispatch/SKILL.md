@@ -172,7 +172,8 @@ at `evals/review-adapter-dispatch/` check how a caller agent handles the dispatc
 dry-run-only scenarios (vendor not enabled, secret-named path without confirmation, a diff path missing
 from the target list), with the skill and without it. Neither arm ever confirmed egress or edited an
 input; the only difference was that each baseline probed the dispatcher once without `--dry-run`. A
-tracked-local-file scenario is not in the eval set; it stays covered by scenario 2 below.
+tracked-local-file scenario is not in the eval set; it stays covered by scenario 2 in
+`references/test-scenarios.md`.
 
 **Smoke test:** `scripts/smoke_test.mjs` checks the frontmatter, the named references, the six root
 scripts, the shipped settings (three vendors, all off, 600 000 ms), the command's two Bash grants, and
@@ -184,43 +185,8 @@ and devin (neither read the file). Same day: evals iteration-1, 12/12 assertions
 baseline (`evals/review-adapter-dispatch/workspace/iteration-1/benchmark.json`); `smoke_test.mjs` passing
 on the plugin copy.
 
-**Concrete scenarios** (run by `tests/rva-dispatch.test.mjs` against fake vendor binaries; no real
-vendor is called):
-1. Vendor not in the local allow-list → `vendor_not_allowed`.
-2. The local file is tracked by git, also under another letter case → `vendor_not_allowed`; a tracked
-   copy setting `dev_sibling_codex_kit` does not enable the sibling codex-kit.
-3. A secret-named target path without `--secret-paths-confirmed` → `secret_paths_unconfirmed`.
-4. A diff header naming a path missing from the target list → usage error; a removed line shaped like a
-   header is not taken for one. `diffHeaderPaths` unit cases: deletion with `\ No newline`, rename,
-   blank context line, quoted path, truncated hunk, header lines hidden in an over-full hunk, no header,
-   unprefixed `---`/`+++`.
-5. Instruction file inside a target path → usage error naming that check.
-6. An input file writable by others, or `--cwd` below the top level → usage error.
-7. Repeated, `=`-form, unknown or value-less flags, a model starting with `-`, a vendor named
-   `__proto__`, a timeout not in plain digits → usage errors; a timeout above the limit is clamped.
-8. Vendor binary not on PATH (a PATH holding only git), or only inside the reviewed repository →
-   `cli_unavailable`.
-9. Each vendor's recorded argv carries its isolation flags (pi `--no-tools`, devin `--prompt-file`,
-   agy `--mode plan --sandbox`), its environment lacks an unrelated caller variable, and an unprobed
-   version (`fake 1.0`) is noted in `inspection_limits`.
-10. The shipped Devin config denies read, grep, glob and find; Devin's argv never carries the diff.
-11. A fake vendor that sleeps past the timeout → `timeout`, and its child process is gone afterwards.
-12. A vendor that exits while a helper holds stdout → still a finished run, not a timeout.
-13. Marked pi/devin output → validated envelope; no markers, malformed JSON, wrong keys, or a sole
-    finding citing an out-of-scope file → `missing_final_message`, `invalid_json`,
-    `schema_validation_failure`, `semantic_validation_failure` (when only some findings are out of scope,
-    codex-kit drops those and notes it in `inspection_limits`); non-zero exit → `non_zero_exit`; agy
-    printing `null` → `invalid_json`.
-14. agy `SUCCESS` with an empty response and `denied_actions` → `tool_denied`.
-15. An agy prompt over 120 000 bytes → `input_too_large`.
-16. `--dry-run` → the fake vendor is never spawned (that every gate runs before the dry-run return is
-    read from the code, not asserted).
-17. codex-kit not installed, installed at a relative path, or writable by others →
-    `codex_kit_unavailable`; the sibling codex-kit is used only with the local opt-in.
-18. The dispatcher run from a plugin path with a space and a non-ASCII character still prints JSON.
-19. The `rva-review-diff` command's `rva-prepare.mjs` (tested here because it feeds this contract) lists
-    a deleted secret-named file and both rename sides, refuses a changed file named outside the path
-    charset, and refuses an empty diff.
+**Concrete scenarios:** the 19 scenarios `tests/rva-dispatch.test.mjs` runs against fake vendor binaries
+(no real vendor is called) are listed in [references/test-scenarios.md](references/test-scenarios.md).
 
 **Live check (manual, sends a tiny fixture to each vendor):** one run per vendor against a two-line
 fixture with a planted bug.
@@ -240,4 +206,5 @@ fixture with a planted bug.
 | `references/trust-and-config.md` | Shipped defaults, the local allow-list, the tracked-copy refusal, unattended use |
 | `references/typed-failures.md` | Failure categories this plugin adds to codex-kit's, and how to report each |
 | `references/codex-kit-locator.md` | How codex-kit's validator is found and checked before import |
+| `references/test-scenarios.md` | The 19 concrete scenarios the node test suite runs against fake vendors |
 | `scripts/smoke_test.mjs` | Structural self-test; not part of the contract |

@@ -1,7 +1,7 @@
 ---
 description: Review a diff with one optional model (agy, pi or devin)
 argument-hint: "<agy|pi|devin> [git-range]"
-allowed-tools: Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/rva-prepare.mjs":*), Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/rva-dispatch.mjs":*), AskUserQuestion
+allowed-tools: Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/rva-prepare.mjs":*), Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/rva-dispatch.mjs":*)
 ---
 
 > **Invocation:** Run as `/reviewadapters-kit:rva-review-diff <agy|pi|devin> [git-range]` in the Claude
