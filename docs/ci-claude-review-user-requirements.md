@@ -52,6 +52,8 @@ Status: approved
   any other (as Codex R10).
 - Runs created before the pull request was created as ready or last moved to ready are not an anchor (as
   Codex R14).
+- An anchor this checkout lacks is fetched, retried after 1 and 3 seconds (as Codex R9). When it still
+  cannot be fetched, there is no anchor and the whole pull request is reviewed.
 - The delta is computed by the same trusted code as the Codex review (`check-scope-bypass --ci-delta`),
   restored from the base SHA.
 - The lookup of the last reviewed head moves out of `marketplace-ci.yml`'s inline shell into one trusted
@@ -62,7 +64,7 @@ Status: approved
   that could not review, and a skipped run do not count.
 - The anchor never comes from a pull request comment or anything else the author can edit.
 
-Status: approved (no trust check and the ready filter, as Codex R10 and R14, by the maintainer, 2026-11-16, issue #753)
+Status: approved (no trust check, the ready filter and the fetch retry, as Codex R10, R14 and R9, by the maintainer, 2026-11-16, issue #753)
 
 ## R4. Paths excluded from the review
 
