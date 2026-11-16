@@ -641,16 +641,130 @@ bound on `main`, bounded on the branch with the swap gap; attachments: not met).
 
 ## 6. Verification and lifecycle (LIF)
 
-| ID | Requirement | Source | State | Confirm |
-|---|---|---|---|---|
-| LIF-1 | No prompt becomes active without a quality approval bound to its exact text; `session` and `web` prompts also need an import approval bound to their exact text. | V4 §Verification record | met | ? |
-| LIF-2 | Changing a prompt's text invalidates earlier approvals; an approval never silently carries over. Line endings do not affect this (CRLF and LF agree). | V4 §Verification record | met | ? |
-| LIF-3 | Lifecycle: draft -> active <-> inactive; revising creates a new draft version; finalizing makes the old version historical; a historical version never becomes active again. | V4 §Lifecycle | met | ? |
-| LIF-4 | A revision never retires the active prompt until the new version is finalized. | V4 §Lifecycle, §Acceptance | met | ? |
-| LIF-5 | At most one active version per prompt. | V4 §Lifecycle | met | ? |
-| LIF-6 | Every catalog change is shown to the user and approved first. | V4 §Lifecycle | met (by skill text, see SEC-3) | ? |
-| LIF-7 | An approval applies only to the text the user was shown: if the file changes after the user saw it, the change is refused. | code (`--expect-sha256`) | met | ? |
-| LIF-8 | A draft left by an interrupted add or revise can be resumed from where it stopped, without repeating approvals already bound to its current text. | code | met | ? |
+### LIF-1: A prompt becomes active only with my approval of its exact content
+
+*As a developer, a prompt becomes active only after I approve its exact final content (text and
+attachments) in one question that shows me the content, its fingerprint and any invisible characters; for
+session and web prompts that one approval covers both the quality and the import review, so that nothing I
+have not seen can ever be activated, without asking me twice for the same text.*
+
+**What you'll notice:** after the review you see the final text, the first characters of its fingerprint
+and a list of invisible characters (line, column, name) if there are any, and answer one question. That
+yes records the quality approval and, for `session` and `web`, the import approval, both bound to that
+fingerprint. Activation refuses if any required approval does not match the current content.
+
+Source: V4 §Verification record; code. State: **partial** (text: met; attachments in the fingerprint: not
+met, CAT-2). Confirmed: yes (2026-11-16).
+
+### LIF-2: Any change to approved content cancels the approval, except line endings
+
+*As a developer, any change to an approved prompt's content (its text or an attached file), however small,
+cancels its approvals, while a change of line endings alone does not, so that what runs is always exactly
+what I approved and a checkout on another operating system does not break my prompts.*
+
+**What you'll notice:** a typo fixed directly in the file makes the prompt count as changed: it is blocked
+on its own until restored (CAT-6), and a real change goes through revise, review and approval. Windows and
+Unix line endings give the same fingerprint, so a checkout on another system keeps every approval.
+Whitespace and spelling changes are not exempt.
+
+Source: V4 §Verification record. State: **partial** (text: met; attachments: not met, CAT-2). Confirmed:
+yes (2026-11-16).
+
+### LIF-3: A prompt changes only by new versions, and going back is a new version too
+
+*As a developer, a prompt moves from draft to active, can be switched off and on without a new version,
+and is changed only by a new version that replaces the old one once approved; to go back, I start a new
+version from any earlier version's text, so that the history only grows, every version that runs was
+reviewed under today's rules, and I can always return to wording that worked.*
+
+**What you'll notice:** `draft -> active <-> inactive`; switching a prompt off and on needs no new version
+or review. A revise creates a new draft version; when it is finalized, the old version becomes historical,
+and if the old one was inactive you choose whether the new one starts active or inactive. A historical
+version never runs again: to go back to v2's wording, you revise starting from v2's text, which becomes a
+new version (for example v4) after review and approval.
+
+Source: V4 §Lifecycle; code (revise from a chosen earlier version). State: met. Confirmed: yes
+(2026-11-16).
+
+### LIF-4: Revising never interrupts the version in use, and I can discard a draft I no longer want
+
+*As a developer, the version in use keeps running unchanged while a new version is being prepared and is
+replaced only when I finalize the new one, and I can discard a draft I no longer want after seeing what
+will be removed, so that a revision in progress never breaks my work and an abandoned idea never blocks
+the next one.*
+
+**What you'll notice:** while v4 is a draft, `/prompt-execution` keeps running v3. A discard (for example
+`/prompt-library discard <slug>`) shows which draft will be removed and what stays active, and asks once;
+afterwards a new revise starts a fresh v4. Only a draft that never became active can be discarded, an
+initial draft included; a version that has run stays in the history (LIF-3). Nothing is discarded
+automatically.
+
+**Changes to earlier decisions:** adds discarding a listed draft. Today only an unlisted stray file can be
+discarded, and an abandoned revision blocks every further revise of that prompt until it is resumed.
+
+Source: V4 §Lifecycle, §Acceptance; owner decision 2026-11-16. State: **partial** (old version keeps
+running: met; discard: not met). Confirmed: yes (2026-11-16).
+
+### LIF-5: A prompt name always runs exactly one text
+
+*As a developer, each prompt has at most one active version, and when I want to compare wordings I save
+the variant as its own prompt (for example `review__missing-tests-short`), so that a prompt name always
+runs exactly one known text.*
+
+**What you'll notice:** activating a second version of the same prompt is refused; the new version replaces
+the old one through finalize (LIF-3). Two wordings you want to compare are two prompts with two names, each
+with its own review, approval and history.
+
+Source: V4 §Lifecycle. State: met. Confirmed: yes (2026-11-16).
+
+### LIF-6: Every change to my library needs my yes, without asking twice about the same text
+
+*As a developer, every change to my library is shown to me and needs my yes before it happens, and
+approving a prompt's exact text and activating it are one question ("Approve and activate", "Approve, keep
+as draft", "Cancel"), so that nothing changes without my consent and I am not asked twice about the same
+text.*
+
+**What you'll notice:** the simplest add asks three times: prompt or skill (INT-5), file this draft
+(showing slug, name, origin and fingerprint, INT-3), and approve-and-activate (LIF-1). "Approve, keep as
+draft" records the approval without activating. Activating a draft approved earlier, deactivating,
+reactivating, finalizing a revision and discarding a draft (LIF-4) each keep their own question.
+
+**Changes to earlier decisions:** merges today's separate "approve exactly this text" and "change status"
+questions into one for a draft being activated.
+
+Source: V4 §Lifecycle; owner decision 2026-11-16. State: **partial** (consent for every change: met by
+the skill's instructions, see SEC-3; combined question: not met). Confirmed: yes (2026-11-16).
+
+### LIF-7: My yes only counts for the exact content I saw
+
+*As a developer, my approval is applied only if the content is still exactly what I was shown; if it
+changed, nothing is approved, I see what changed since I looked, and I am asked again about the new
+content (after it is screened and reviewed if needed), so that a change I never saw can never be approved
+by my click and I can still finish in the same run.*
+
+**What you'll notice:** if another session, an editor or a sync changes the record while you are looking
+at the approval question, your click approves nothing. You see which lines changed after you looked; the
+new content goes through the screen (and the review, when its text changed) and you get a fresh question.
+
+**Changes to earlier decisions:** today the validator refuses (`--expect-sha256`) and the run stops with an
+error; showing the change and asking again is new.
+
+Source: code (`--expect-sha256`); owner decision 2026-11-16. State: **partial** (refusal: met; showing the
+change and asking again: not met). Confirmed: yes (2026-11-16).
+
+### LIF-8: An interrupted add or revise picks up where it stopped
+
+*As a developer, a draft left by an interrupted add or revise resumes where it stopped, keeping only
+approvals that still match its current content and redoing only what is missing, so that an interruption
+costs me nothing and a changed draft is never activated on an old approval.*
+
+**What you'll notice:** after a closed session or a crash, `/prompt-library activate <slug>` continues the
+draft. If you had already approved it and its content is unchanged (same fingerprint), you are only asked
+for the missing step, for example activation. If the content changed since your approval, or it was never
+reviewed, it goes back through review and approval (LIF-2, REV-1). The secret screen runs again either way
+(SCR-3).
+
+Source: code. State: met. Confirmed: yes (2026-11-16).
 
 ## 7. Retrieval (RET)
 
