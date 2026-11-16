@@ -68,15 +68,16 @@ Status: approved (no trust check and the ready filter, as Codex R10 and R14, by 
 
 The Claude review leaves out fewer paths than the Codex review (Codex R2):
 
-- Not reviewed: `issues/`, `evals/` and `reviewer-eval/` at the repository root, and generated agent
-  mirrors whose content and mode equal their source (as in Codex R2).
+- Not reviewed: `issues/`, `evals/` and `reviewer-eval/` at the repository root, `.claude/review-outcomes/`
+  (records of past review decisions, with no behavior), and generated agent mirrors whose content and mode
+  equal their source (as in Codex R2).
 - Reviewed, unlike Codex: test directories (`tests`, `test`, `__tests__`), `fixtures` directories, and
   test files (`smoke_test.<ext>`, `test_*.py`, `*_test.py`, `*.test.{js,mjs,cjs,ts}`), anywhere.
 - Gate-critical paths (Codex R3) are never excluded.
 - The shared scope code gets an option for this narrower exclusion set. The Codex review keeps its own
   set unchanged.
 
-Status: approved
+Status: approved (`.claude/review-outcomes/` added by the maintainer, 2026-11-16, issue #753)
 
 ## R5. What the reviewer is told and allowed to do
 

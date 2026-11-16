@@ -75,8 +75,8 @@ that head and the latest attempt; the same rules as the Codex anchor (Codex R11'
 same-execution pairing). An anchor that cannot be fetched (force-pushed away) is dropped and the whole PR is reviewed,
 unlike the Codex review, which skips then. As for Codex (its R10, R14), no trust check is made on the anchor,
 and runs created before the PR was last marked ready are no anchor. `--review-exclusions claude` keeps test
-directories, fixtures, test files, nested `evals/` and `.claude/review-outcomes/` in scope and leaves out
-only root `issues/`, `evals/`, `reviewer-eval/` and proven mirror copies. Nothing left to review means no API call: `claude-review` is
+directories, fixtures, test files and nested `evals/` in scope and leaves out only root `issues/`, `evals/`,
+`reviewer-eval/`, `.claude/review-outcomes/` and proven mirror copies. Nothing left to review means no API call: `claude-review` is
 skipped and the result is `clean` ("nothing new to review"), which is an anchor.
 
 **What Claude may do (R5).** The prompts are built in `claude-scope` from the base SHA's
@@ -338,7 +338,10 @@ review` is the gate after the PR exists and reviews only the delta, to cut OpenA
   bypass-eligible; carried findings still block (below). An anchor that cannot be fetched (force-pushed away) also reviews nothing, gate-critical
   paths included (without the anchor commit nothing can tell whether they changed), by decision (R9): a
   force-push review would be the most expensive one. `anchor_fetch` retries the fetch after 1 and 3 seconds
-  (R5), so a short git error does not count as a force-pushed anchor. That run writes no `codex-review-skip` record
+  (R5), so a short git error does not count as a force-pushed anchor; `codex-review` retries its own fetch
+  the same way. When compute-scope could not fetch the anchor but its deterministic checks blocked (or its
+  scope check failed), `codex-review` still runs, cannot fetch it either and fails closed; its error points
+  to compute-scope's log for the real reason. That run writes no `codex-review-skip` record
   (`anchor_fetch` reports `unresolved=true`), so its head is not taken as reviewed: later runs keep the older
   anchor, skip while it cannot be fetched, and review the whole PR once it has left the 30-run window. `codex-review` fetches the anchor again and fails
   closed when it cannot. The two jobs can still narrow differently: `compute-scope` compares from
