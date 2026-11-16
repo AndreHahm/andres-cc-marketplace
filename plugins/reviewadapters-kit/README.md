@@ -23,8 +23,10 @@ Requirements:
   codex-kit next to this plugin in a marketplace checkout.
 - **Node.js** and `git` on `PATH`.
 - The CLI of each vendor you enable (`agy`, `pi` or `devin`), already logged in. The flags were verified
-  against agy 1.5.9, pi 1.5.0 and devin 3000.12.57; another version still runs, with a note in the
-  result's `inspection_limits`.
+  against agy 1.5.9, pi 1.5.0 and devin 3000.12.57. Another pi version still runs, with a note in the
+  result's `inspection_limits`. Another agy or devin version is refused before anything is sent
+  (`unsupported_cli_version`), unless the local file sets `allow_unprobed_version` for that vendor
+  (see below).
 
 ## Enabling a vendor
 
@@ -39,8 +41,15 @@ Every vendor is off in the shipped `reviewadapters-kit.settings.json`. Enable on
 - **The file must stay untracked.** If git tracks it, the dispatcher refuses every vendor
   (`vendor_not_allowed`). A tracked file can be changed by anyone with write access, including by the
   change under review. The check ignores case, and any git error counts as tracked.
+- **The file must stay private.** It and its `.claude` directory must be owned by you and not writable by
+  others (group write is allowed only for a private group that only you belong to); otherwise every vendor is refused.
 - The local file can also lower `timeout_ms` (shipped: 600000) and pin a `model` per vendor. A higher
-  timeout is ignored. For pi, the model's first segment picks the provider that receives the diff.
+  timeout is ignored. For pi, the model's first segment picks the provider that receives the diff, so
+  pin `vendors.pi.model` locally if you do not want the provider to follow the shipped default.
+- `vendors.pi.models` (local file only) lists extra pi models a caller may pick with `--model`. Any other
+  `--model`, including another id under the same provider, is refused (`vendor_not_allowed`).
+- `"allow_unprobed_version": true` under `agy` or `devin` (local file only) lets that vendor run when
+  the installed CLI is not the verified version.
 - `"dev_sibling_codex_kit": true` is read from the local file only, with the same tracked-copy refusal.
 
 A CI job enables a vendor by writing this file at job time, never by committing it.
@@ -76,10 +85,15 @@ gates and output; `references/typed-failures.md` lists every failure type.
   changed paths and the full diff text. Nothing else from the repository is sent.
 - **No tools.** pi and devin run with their tools, extensions, skills and MCP servers turned off; agy
   runs in plan mode with its sandbox and relies on headless tool refusal. Every vendor runs in a private
-  temporary directory with a reduced environment. The diff is wrapped as data, never as an
-  instruction.
+  temporary directory with a reduced environment (`XDG_RUNTIME_DIR` is not passed, so a vendor that
+  reads its login from a session keyring may fail to authenticate). The diff is wrapped as data, never
+  as an instruction.
+- **agy's prompt is visible to other local users.** agy gets the prompt, diff included, as a
+  command-line argument, which other users on the same machine can read while it runs (unless `/proc`
+  is mounted with `hidepid`). pi and devin do not put the diff in their arguments.
 - **Mechanical gates** before anything is sent: the allow-list, a check for secret-named paths (refused
-  unless the caller confirmed them), a size cap and a timeout that kills the whole process group.
+  unless the caller confirmed them), a size cap and a timeout that kills the whole process group. The
+  secret check looks at file names only; it does not scan the diff's content for secrets.
 - The validated envelope uses the same schema as codex-kit's `codex-review-bridge`, so a caller handles
   every vendor the same way.
 
@@ -88,6 +102,10 @@ gates and output; `references/typed-failures.md` lists every failure type.
 **JavaScript** (Node.js ES modules, `.mjs`, no npm dependencies). New scripts in this plugin stay in
 JavaScript. Tests, from the repository root: `node --test plugins/reviewadapters-kit/tests/` (26 tests,
 verified on Node 26).
+
+When you change the shipped `reviewadapters-kit.settings.json` in this marketplace, copy it unchanged to
+`.claude/reviewadapters-kit.settings.json` at the repository root as well. The mirrored scripts in
+`.claude/scripts/` read that copy, and the mirror sync does not update it.
 
 ## Known limitations
 
