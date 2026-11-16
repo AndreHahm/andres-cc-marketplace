@@ -19,7 +19,8 @@ Steps, all inside `--root` (default: the current directory):
 
 The run tree gets `mutants/` and, for the run's length, `setup.cfg`: use a CI checkout or an
 isolated copy, never a working tree with changes you want to keep. It refuses a root whose
-`setup.cfg` exists or whose `pyproject.toml` already has `[tool.mutmut]`.
+`setup.cfg` exists or whose `pyproject.toml` already has `[tool.mutmut]`, and a module or test
+path that resolves outside the root (a symbolic link pointing elsewhere).
 
 Usage (mutmut and PyYAML come from uv):
   uv run --with mutmut==3.8.1 --with pyyaml python qlty-mutation-run.py --module pr_policy
@@ -148,6 +149,12 @@ def check_root(root: Path, module: str, tests: list[str]) -> None:
     missing = [t for t in tests if not (root / t).exists()]
     if missing:
         raise InputError(f"test paths not found under {root}: {', '.join(missing)}")
+    # A symbolic link may point anywhere; pytest and mutmut would follow it out of the run tree.
+    # This covers the listed paths (any link along them), not links inside a test directory.
+    base = root.resolve()
+    outside = [p for p in (module, *tests) if not (root / p).resolve().is_relative_to(base)]
+    if outside:
+        raise InputError(f"paths resolve outside {root}: {', '.join(outside)}")
 
 
 def cfg_list(values: list[str]) -> str:
