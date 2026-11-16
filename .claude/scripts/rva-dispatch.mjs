@@ -6,7 +6,7 @@
 //
 // Gates, in order, before anything is sent: codex-kit present and safe to import; vendor enabled in the
 // untracked local file (and, for pi, a caller --model the local file allows); secret-named paths
-// (target list and diff headers) confirmed by the caller; input within the vendor's size cap; vendor CLI
+// (target list and diff headers) confirmed by the caller; no single argument over the size cap; vendor CLI
 // on PATH. A real run also refuses an unprobed devin or agy version before sending. The contract is
 // documented in the review-adapter-dispatch skill.
 import { execFileSync } from "node:child_process";
@@ -23,7 +23,8 @@ const VALUE_FLAGS = new Set(["vendor", "reviewer-type", "dispatch-id", "instruct
 const BOOLEAN_FLAGS = new Set(["secret-paths-confirmed", "dry-run"]);
 const REQUIRED = ["vendor", "reviewer-type", "dispatch-id", "instruction-file", "diff-file", "target-paths-file", "cwd"];
 const MAX_INPUT_FILE_BYTES = 8 * 1024 * 1024;
-// Linux caps a single command-line argument at 128 KiB; agy's prompt is one argument.
+// Linux caps a single command-line argument at 128 KiB. No adapter puts the review content on the command
+// line any more (every vendor reads it from a file), so this is a backstop for a future adapter that does.
 const MAX_ARGUMENT_BYTES = 120_000;
 const VERSION_TIMEOUT_MS = 15_000;
 
@@ -324,7 +325,8 @@ async function dispatch(options, runDir) {
   }
   const remaining = timeoutMs - (Date.now() - started);
   if (remaining <= 0) throw new Failure("timeout", `${vendor.binary} --version used the whole ${timeoutMs} ms budget; nothing was sent`);
-  const run = await runVendor({ command: binary, args, cwd: runDir, env, timeoutMs: remaining });
+  const run = await runVendor({ command: binary, args, cwd: runDir, env, timeoutMs: remaining, stdinFile: vendor.stdin ? files.promptFile : undefined });
+  if (run.stdinError) throw new Failure("dispatcher_error", `the prompt file for ${vendorName} could not be opened; nothing was sent`);
   if (run.spawnError) throw new Failure("cli_unavailable", `${vendor.binary} could not be started`);
   if (run.timedOut) throw new Failure("timeout", `${vendorName} did not finish within ${timeoutMs} ms; the diff was already sent`);
   if (run.code !== 0) {

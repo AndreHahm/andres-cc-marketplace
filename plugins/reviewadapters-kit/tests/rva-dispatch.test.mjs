@@ -14,6 +14,7 @@ const PLUGIN = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const CODEX_KIT = fs.realpathSync(path.resolve(PLUGIN, "..", "codex-kit"));
 const DISPATCH = path.join(PLUGIN, "scripts", "rva-dispatch.mjs");
 const { diffHeaderPaths } = await import(DISPATCH);
+const { openInCheckedDir, LocalFileRefused } = await import(path.join(PLUGIN, "scripts", "rva-config.mjs"));
 const SHIPPED_TIMEOUT = JSON.parse(fs.readFileSync(path.join(PLUGIN, "reviewadapters-kit.settings.json"), "utf8")).timeout_ms;
 const PREPARE = path.join(PLUGIN, "scripts", "rva-prepare.mjs");
 const GOOD = JSON.stringify({
@@ -68,13 +69,13 @@ function fixture({ enable = ["pi", "devin", "agy"], changed = "calc.py", local =
   return { repo, inputs };
 }
 
-// Fake vendor binaries: each records its arguments and environment, then prints FAKE_OUT, sleeps, or
-// exits non-zero, per FAKE_MODE.
+// Fake vendor binaries: each records its arguments, environment and stdin, then prints FAKE_OUT, sleeps,
+// or exits non-zero, per FAKE_MODE.
 function fakeBin() {
   const dir = tempDir("rva-test-bin-");
   const script = `#!/bin/sh
 if [ "$1" = "--version" ]; then echo "fake 1.0"; exit 0; fi
-if [ -n "$FAKE_ARGS" ]; then printf '%s\\n' "$@" > "$FAKE_ARGS"; env > "$FAKE_ARGS.env"; fi
+if [ -n "$FAKE_ARGS" ]; then printf '%s\\n' "$@" > "$FAKE_ARGS"; env > "$FAKE_ARGS.env"; cat > "$FAKE_ARGS.stdin"; fi
 case "$FAKE_MODE" in
   sleep) sh -c 'echo $$ > "$FAKE_PIDFILE"; sleep 60' & sleep 60 ;;
   fail) echo "boom" >&2; exit 3 ;;
@@ -110,6 +111,13 @@ function dispatch({ repo, inputs }, vendor, extra = [], fake = {}, options = {})
 }
 
 const marked = (body) => `banner line\nFINDINGS BEGIN\n${body}\nFINDINGS END\n`;
+// agy's stream-json output (shape from a live agy 1.5.9 probe, references/vendors.md): an init event,
+// step updates, then the result event.
+const agyStream = (result) => [
+  JSON.stringify({ event: "init", init: { cwd: "/tmp/x" } }),
+  JSON.stringify({ event: "step_update", step_update: { step_index: 0, state: "DONE", step_type: "user_input" } }),
+  JSON.stringify({ event: "result", result })
+].join("\n");
 
 test("a vendor missing from the local allow-list, or a pi --model the local file does not allow, is refused", () => {
   const r = dispatch(fixture({ enable: ["devin"] }), "pi");
@@ -203,12 +211,12 @@ test("each vendor runs with its isolation flags, the diff inline and a minimal e
   const expectations = {
     pi: { must: ["--no-tools", "--no-extensions", "--no-mcp", "--no-context-files", "--offline"], mustNot: ["--tools", "--append-system-prompt"] },
     devin: { must: ["--prompt-file", "--config", "auto", "--respect-workspace-trust"], mustNot: ["--"] },
-    agy: { must: ["--mode", "plan", "--sandbox", "--json-schema"], mustNot: [] }
+    agy: { must: ["--input-format", "stream-json", "--mode", "plan", "--sandbox", "--json-schema", "-p="], mustNot: ["-p", "--print"] }
   };
   for (const [vendor, { must, mustNot }] of Object.entries(expectations)) {
     const f = fixture();
     const record = path.join(f.inputs, `${vendor}.args`);
-    const out = vendor === "agy" ? JSON.stringify({ structured_output: JSON.parse(GOOD) }) : marked(GOOD);
+    const out = vendor === "agy" ? agyStream({ status: "SUCCESS", structured_output: JSON.parse(GOOD) }) : marked(GOOD);
     const r = dispatch(f, vendor, [], { FAKE_ARGS: record, FAKE_OUT: out }, { env: { RVA_TEST_UNRELATED_TOKEN: "leak", XDG_RUNTIME_DIR: "/run/user/rva-test" } });
     assert.equal(r.code, 0, `${vendor}: ${JSON.stringify(r.out)}`);
     const args = fs.readFileSync(record, "utf8").split("\n");
@@ -276,21 +284,40 @@ test("missing, malformed and out-of-scope output become typed failures", () => {
   const outside = GOOD.replace("calc.py:2", "other.py:1");
   assert.equal(dispatch(f, "pi", [], { FAKE_OUT: marked(outside) }).out.category, "semantic_validation_failure");
   assert.equal(dispatch(f, "pi", [], { FAKE_MODE: "fail" }).out.category, "non_zero_exit");
-  assert.equal(dispatch(fixture(), "agy", [], { FAKE_OUT: "null" }).out.category, "invalid_json");
+  assert.equal(dispatch(fixture(), "agy", [], { FAKE_OUT: "not json" }).out.category, "invalid_json");
+  assert.equal(dispatch(fixture(), "agy", [], { FAKE_OUT: JSON.stringify({ event: "result", result: null }) }).out.category, "invalid_json");
+  // Events without a result event: the run ended without an outcome.
+  assert.equal(dispatch(fixture(), "agy", [], { FAKE_OUT: "null" }).out.category, "missing_final_message");
 });
 
 test("agy SUCCESS with no output and denied actions is tool_denied, not a clean pass", () => {
-  const out = JSON.stringify({ status: "SUCCESS", response: "", denied_actions: [{ action: "read_file" }] });
+  const out = agyStream({ status: "SUCCESS", response: "", denied_actions: [{ action: "read_file" }] });
   assert.equal(dispatch(fixture(), "agy", [], { FAKE_OUT: out }).out.category, "tool_denied");
-  const ok = JSON.stringify({ status: "SUCCESS", structured_output: JSON.parse(GOOD) });
+  const ok = agyStream({ status: "SUCCESS", structured_output: JSON.parse(GOOD) });
   assert.equal(dispatch(fixture(), "agy", [], { FAKE_OUT: ok }).code, 0);
+  // A result that is not SUCCESS may be partial, so its structured_output is not used.
+  const partial = agyStream({ status: "ERROR", structured_output: JSON.parse(GOOD) });
+  assert.equal(dispatch(fixture(), "agy", [], { FAKE_OUT: partial }).out.category, "missing_final_message");
 });
 
-test("a prompt over agy's argument cap is refused before anything runs", () => {
+test("agy's prompt travels on stdin from the private prompt file, never on the command line, so a large diff is not refused", () => {
   const f = fixture();
-  fs.appendFileSync(path.join(f.inputs, "diff.patch"), "x".repeat(130_000));
-  // The trailing text is outside any hunk, so the header check passes and the size gate decides.
-  assert.equal(dispatch(f, "agy").out.category, "input_too_large");
+  // The trailing text is outside any hunk, so the header check passes; it used to exceed the argv cap.
+  // It also carries U+2028 and U+2029, which must not break the stdin line.
+  fs.appendFileSync(path.join(f.inputs, "diff.patch"), `${String.fromCharCode(0x2028)}${String.fromCharCode(0x2029)}${"x".repeat(130_000)}`);
+  const record = path.join(f.inputs, "agy-stdin.args");
+  const r = dispatch(f, "agy", [], { FAKE_ARGS: record, FAKE_OUT: agyStream({ status: "SUCCESS", structured_output: JSON.parse(GOOD) }) });
+  assert.equal(r.code, 0, JSON.stringify(r.out));
+  assert.doesNotMatch(fs.readFileSync(record, "utf8"), /return a - b/, "the diff must not travel in agy's argv");
+  const raw = fs.readFileSync(`${record}.stdin`, "utf8");
+  assert.doesNotMatch(raw, new RegExp(`[${String.fromCharCode(0x2028, 0x2029)}]`), "a Unicode line separator reached stdin unescaped");
+  const lines = raw.trim().split("\n");
+  assert.equal(lines.length, 1);
+  const message = JSON.parse(lines[0]);
+  assert.equal(message.event, "user");
+  assert.match(message.message.content, /return a - b/);
+  assert.ok(message.message.content.includes(String.fromCharCode(0x2028)), "the escaped separator must decode back to the same text");
+  assert.match(message.message.content, /x{130000}/);
 });
 
 test("--dry-run runs the five gates and spawns nothing", () => {
@@ -320,7 +347,78 @@ test("codex-kit not installed, or writable by others, is codex_kit_unavailable; 
   const mirrored = path.join(elsewhere, "reviewadapters-kit", "scripts", "rva-dispatch.mjs");
   const args = ["--vendor", "pi", "--reviewer-type", "t", "--dispatch-id", "d1", "--instruction-file", path.join(opted.inputs, "instr.md"),
     "--diff-file", path.join(opted.inputs, "diff.patch"), "--target-paths-file", path.join(opted.inputs, "changed.txt"), "--cwd", opted.repo, "--dry-run"];
-  assert.equal(runNode(mirrored, args, { home: homeWithCodexKit(null) }).out.category, "codex_kit_unavailable");
+  assert.match(runNode(mirrored, args, { home: homeWithCodexKit(null) }).out.detail, /was not found/);
+  // Nor from a .claude/ mirror inside a checkout whose own directory is named plugins: the sibling would
+  // be <checkout>/codex-kit, which no plugin occupies.
+  const checkout = path.join(tempDir("rva-test-mirror-"), "plugins");
+  fs.cpSync(PLUGIN, path.join(checkout, ".claude"), { recursive: true });
+  fs.cpSync(CODEX_KIT, path.join(checkout, "codex-kit"), { recursive: true });
+  const inMirror = path.join(checkout, ".claude", "scripts", "rva-dispatch.mjs");
+  assert.match(runNode(inMirror, args, { home: homeWithCodexKit(null) }).out.detail, /was not found/);
+});
+
+test("a models list in the shipped settings never widens pi's allowed models; only the local file can", () => {
+  const root = path.join(tempDir("rva-test-shipped-"), "plugins");
+  fs.cpSync(PLUGIN, path.join(root, "reviewadapters-kit"), { recursive: true });
+  const settings = path.join(root, "reviewadapters-kit", "reviewadapters-kit.settings.json");
+  const shipped = JSON.parse(fs.readFileSync(settings, "utf8"));
+  shipped.vendors.pi.models = ["openai/gpt-x"];
+  fs.writeFileSync(settings, JSON.stringify(shipped));
+  const f = fixture();
+  const args = ["--vendor", "pi", "--reviewer-type", "t", "--dispatch-id", "d1", "--instruction-file", path.join(f.inputs, "instr.md"),
+    "--diff-file", path.join(f.inputs, "diff.patch"), "--target-paths-file", path.join(f.inputs, "changed.txt"), "--cwd", f.repo,
+    "--model", "openai/gpt-x", "--dry-run"];
+  const r = runNode(path.join(root, "reviewadapters-kit", "scripts", "rva-dispatch.mjs"), args);
+  assert.equal(r.out?.category, "vendor_not_allowed", r.raw.stdout + r.raw.stderr);
+});
+
+test("a .claude directory that is a symbolic link, or writable by others, cannot enable a vendor", () => {
+  const linked = fixture();
+  const real = path.join(tempDir("rva-test-realdir-"), "claude");
+  fs.renameSync(path.join(linked.repo, ".claude"), real);
+  fs.symlinkSync(real, path.join(linked.repo, ".claude"));
+  assert.equal(dispatch(linked, "pi", ["--dry-run"]).out.category, "vendor_not_allowed");
+  const open = fixture();
+  fs.chmodSync(path.join(open.repo, ".claude"), 0o777);
+  const r = dispatch(open, "pi", ["--dry-run"]);
+  assert.equal(r.out.category, "vendor_not_allowed", JSON.stringify(r.out));
+  assert.match(r.out.detail, /writable by others/);
+});
+
+// A .claude directory holding a local file, and a private replacement that would enable something else.
+function swappableClaudeDir() {
+  const repo = tempDir("rva-test-swap-");
+  for (const [dir, body] of [[".claude", '{"original":true}'], ["planted", '{"planted":true}']]) {
+    fs.mkdirSync(path.join(repo, dir), { mode: 0o700 });
+    fs.chmodSync(path.join(repo, dir), 0o700);
+    fs.writeFileSync(path.join(repo, dir, "reviewadapters-kit.local.json"), body, { mode: 0o600 });
+    fs.chmodSync(path.join(repo, dir, "reviewadapters-kit.local.json"), 0o600);
+  }
+  const file = path.join(repo, ".claude", "reviewadapters-kit.local.json");
+  const swap = () => {
+    fs.renameSync(path.join(repo, ".claude"), path.join(repo, "moved"));
+    fs.renameSync(path.join(repo, "planted"), path.join(repo, ".claude"));
+  };
+  return { file, swap };
+}
+
+test("the local file is read from the .claude directory that was checked, even if it is swapped before the open", { skip: process.platform !== "linux" && "the handle-based open is Linux only" }, () => {
+  const { file, swap } = swappableClaudeDir();
+  const fd = openInCheckedDir(file, { afterDirCheck: swap });
+  try {
+    assert.deepEqual(JSON.parse(fs.readFileSync(fd, "utf8")), { original: true });
+  } finally {
+    fs.closeSync(fd);
+  }
+});
+
+test("on the by-path fallback, a .claude directory swapped before the open is refused", () => {
+  const { file, swap } = swappableClaudeDir();
+  assert.throws(() => openInCheckedDir(file, { byPath: true, afterDirCheck: swap }), (error) => error instanceof LocalFileRefused && /changed/.test(error.message));
+  // Without a swap the fallback reads the file.
+  const plain = swappableClaudeDir();
+  const fd = openInCheckedDir(plain.file, { byPath: true });
+  fs.closeSync(fd);
 });
 
 test("the dispatcher runs from a plugin path with a space and a non-ASCII character", () => {

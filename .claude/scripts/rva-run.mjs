@@ -6,9 +6,10 @@
 // killActiveGroups() (called from the dispatcher's SIGINT/SIGTERM handler) signal the group. A helper
 // that keeps the output pipes open must not turn a finished run into a timeout, so the run ends when
 // the leader exits (after a short grace for the pipes to drain), not only when the pipes close.
-// stdin is always /dev/null: agy drops stdout when stdin is not a terminal, and no vendor is ever meant
-// to read from it. POSIX only: Windows has no process groups here.
+// stdin is /dev/null unless the caller names a file (agy reads its prompt from one, so the prompt is not
+// a command-line argument other local users could read). POSIX only: Windows has no process groups here.
 import { spawn } from "node:child_process";
+import fs from "node:fs";
 
 const MAX_CAPTURE_BYTES = 16 * 1024 * 1024;
 const EXIT_GRACE_MS = 2000;
@@ -28,14 +29,26 @@ export function killActiveGroups() {
   active.clear();
 }
 
-export function runVendor({ command, args, cwd, env, timeoutMs }) {
+export function runVendor({ command, args, cwd, env, timeoutMs, stdinFile }) {
   return new Promise((resolve) => {
     let child;
+    let stdinFd;
+    if (stdinFile) {
+      try {
+        stdinFd = fs.openSync(stdinFile, fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW ?? 0));
+      } catch {
+        resolve({ stdinError: true, stdout: "", stderr: "", code: null, timedOut: false });
+        return;
+      }
+    }
     try {
-      child = spawn(command, args, { cwd, env, detached: true, stdio: ["ignore", "pipe", "pipe"] });
+      // The child gets its own copy of the descriptor, so the parent's is closed right after spawning.
+      child = spawn(command, args, { cwd, env, detached: true, stdio: [stdinFd ?? "ignore", "pipe", "pipe"] });
     } catch (error) {
       resolve({ spawnError: error.code ?? String(error), stdout: "", stderr: "", code: null, timedOut: false });
       return;
+    } finally {
+      if (stdinFd !== undefined) fs.closeSync(stdinFd);
     }
     if (child.pid) active.add(child.pid);
     const out = [];
