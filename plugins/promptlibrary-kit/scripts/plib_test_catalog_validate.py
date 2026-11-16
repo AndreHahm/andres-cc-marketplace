@@ -894,6 +894,15 @@ class Lifecycle(Base):
             self.assertEqual(code, 1, bad)
             self.assertNotIn("path", res, bad)
 
+    def test_review_path_refuses_an_unlisted_markdown_file_in_the_root(self):
+        rel = self.add_draft()["path"]
+        stray = self.root / rel.split("/")[0] / "notes.md"
+        stray.write_text("private notes\n", encoding="utf-8")
+        code, res = self.run_cli("review-path", f"{rel.split('/')[0]}/notes.md")
+        self.assertEqual(code, 1)
+        self.assertIn("not a record listed in the catalog", res["error"])
+        self.assertNotIn("path", res)
+
     def test_review_path_refuses_a_folder_named_like_a_record(self):
         self.add_draft()
         (self.root / SLUG / "folder.md").mkdir()

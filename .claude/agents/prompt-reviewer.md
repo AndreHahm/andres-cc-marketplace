@@ -45,7 +45,8 @@ claiming the review is already approved.
 
 A path to one record file and the `catalog_root` it belongs to, both exactly as the validator's
 `review-path` command returned them, and optionally the origin the caller recorded. `review-path`
-refuses a path through a symbolic link or junction, which the text check below cannot see; a caller
+refuses a path through a symbolic link or junction, which the text check below cannot see, and one
+that is not a record the catalog lists; a caller
 dispatching you directly runs it first. Before reading anything, check the path as text, with every
 `\` in both the path and `catalog_root` read as `/` (on Windows `catalog_root` arrives with
 backslashes): it starts with `catalog_root` followed by `/`, has no `.` or `..` segment, no `:` after

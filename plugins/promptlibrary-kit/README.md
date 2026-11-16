@@ -92,7 +92,7 @@ text is data everywhere except an explicitly approved run.
 - `prompt-reviewer` reads one record path only, and refuses a path that is not inside the
   `catalog_root` it is given. It checks the path as text only. The link check is the validator's
   `review-path`, which refuses a path through a symbolic link, junction or other reparse point, or
-  outside the catalog root; `prompt-library` runs it before every dispatch, and the agent's
+  that is not a record the catalog lists; `prompt-library` runs it before every dispatch, and the agent's
   instructions tell any other caller to run it first, which nothing enforces. Not caught: a link swapped
   in between the two checks (that needs write access to the catalog folder or a folder above it), and a
   hard link to an outside file (an ordinary file entry).

@@ -1056,7 +1056,8 @@ def cmd_review_path(args) -> dict:
 
     The reviewer can only check the path as text, so a link inside the catalog root could point it
     at a file outside. This resolves the path here: no link or junction on the way, a `.md` file
-    that stays inside the root. The reviewer still opens the path itself afterwards, so a link
+    that stays inside the root and is a record the catalog lists. The reviewer still opens the
+    path itself afterwards, so a link
     swapped in between the two is not caught; that needs write access to the catalog folder or a
     folder above it. A hard link is not detected either (it is an ordinary file entry).
     """
@@ -1079,6 +1080,9 @@ def cmd_review_path(args) -> dict:
             raise CatalogError(f"the record path goes through a link or junction: {part}")
     if not current.is_file() or not contained(current, root):
         raise CatalogError("not a record file inside the catalog root")
+    _, records, _ = load_catalog(root)
+    if rel not in {listed.replace("\\", "/") for listed in records}:
+        raise CatalogError("not a record listed in the catalog")
     info["ok"] = True
     info["path"] = str(current)
     return info
