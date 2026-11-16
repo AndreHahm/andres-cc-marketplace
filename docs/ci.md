@@ -72,8 +72,9 @@ Dependabot PR skip the whole workflow without failing. A newer push cancels a ru
 **Scope (R3, R4).** The anchor is the head of the newest earlier run of this workflow whose `Claude delta
 review` job finished `success` or `failure` and left a `claude-review-result` of `findings` or `clean` naming
 that head and the latest attempt; the same rules as the Codex anchor (Codex R11's creation time, Codex R5's
-same-execution pairing). An anchor that cannot be fetched (force-pushed away) is dropped and the whole PR is reviewed,
-unlike the Codex review, which skips then. As for Codex (its R10, R14), no trust check is made on the anchor,
+same-execution pairing). The anchor fetch is retried after 1 and 3 seconds, as Codex's is; an anchor that still
+cannot be fetched (force-pushed away) is dropped and the whole PR is reviewed, unlike the Codex review, which skips
+then. `claude-scope` holds `pull-requests: read` and `issues: read` for the ready-time read. As for Codex (its R10, R14), no trust check is made on the anchor,
 and runs created before the PR was last marked ready are no anchor. `--review-exclusions claude` keeps test
 directories, fixtures, test files and nested `evals/` in scope and leaves out only root `issues/`, `evals/`,
 `reviewer-eval/`, `.claude/review-outcomes/` and proven mirror copies. Nothing left to review means no API call: `claude-review` is

@@ -102,7 +102,12 @@ def test_the_job_with_the_key_runs_only_base_code_beside_the_reviewed_tree():
 
 def test_every_job_has_least_privilege_and_a_timeout():
     assert WF["permissions"] == {"contents": "read"}
-    assert JOBS["claude-scope"]["permissions"] == {"contents": "read", "actions": "read"}
+    assert JOBS["claude-scope"]["permissions"] == {
+        "contents": "read",
+        "actions": "read",
+        "pull-requests": "read",
+        "issues": "read",
+    }
     assert JOBS["claude-review"]["permissions"] == {"contents": "read", "pull-requests": "read"}
     assert JOBS["claude-publish"]["permissions"] == {"contents": "read", "pull-requests": "write"}
     for spec in JOBS.values():
@@ -272,6 +277,48 @@ def test_the_scope_uses_the_shared_anchor_lookup_and_the_claude_exclusions():
     )
     run = _step("claude-scope", "Compute the reviewed paths")["run"]
     assert "--ci-delta --review-exclusions claude" in run and "--emit-review-paths" in run
+
+
+@pytest.mark.parametrize(
+    ("present", "failed_fetches", "anchor_out", "fetches"),
+    [(True, 0, "b" * 40, 0), (False, 0, "b" * 40, 1), (False, 2, "b" * 40, 3), (False, 3, "", 3)],
+)
+def test_the_anchor_fetch_is_retried_before_the_whole_pr_is_reviewed(
+    tmp_path, present, failed_fetches, anchor_out, fetches
+):
+    """R3: like the Codex review (Codex R9), the anchor fetch is retried after 1 and 3 seconds;
+    only when every attempt fails is there no anchor (the whole PR is reviewed)."""
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    count = tmp_path / "fetches"
+    (tmp_path / "temp").mkdir()
+    tools = {
+        "git": (
+            f'if [ "$1" = cat-file ]; then exit {0 if present else 1}; fi\n'
+            f'n=$(($(cat "{count}" 2>/dev/null || echo 0) + 1)); echo "$n" > "{count}"\n'
+            f'[ "$n" -gt {failed_fetches} ]'
+        ),
+        "sleep": "exit 0",
+        # find-review-anchor writes the anchor it found to its --github-output file.
+        "uv": f'echo "sha={"b" * 40}" > "$RUNNER_TEMP/anchor-output"',
+    }
+    for name, body in tools.items():
+        tool = bin_dir / name
+        tool.write_text(f"#!/bin/sh\n{body}\n", encoding="utf-8")
+        tool.chmod(0o755)
+    script = tmp_path / "anchor.sh"
+    script.write_text(_step("claude-scope", "Find the last reviewed head")["run"], encoding="utf-8")
+    output = tmp_path / "out"
+    env = {
+        "PATH": f"{bin_dir}:{os.environ['PATH']}",
+        "RUNNER_TEMP": str(tmp_path / "temp"),
+        "GITHUB_OUTPUT": str(output),
+        "REPO": "owner/repo",
+    }
+    run = subprocess.run(["bash", "-e", str(script)], env=env, capture_output=True, text=True)
+    assert run.returncode == 0, run.stderr
+    assert output.read_text(encoding="utf-8") == f"sha={anchor_out}\n"
+    assert (int(count.read_text("utf-8")) if count.exists() else 0) == fetches
 
 
 def test_a_cancelled_run_publishes_nothing():
