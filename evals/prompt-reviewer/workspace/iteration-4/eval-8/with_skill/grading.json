@@ -1,0 +1,23 @@
+{
+  "eval_id": 8,
+  "configuration": "with_skill",
+  "run_date": "2026-11-16",
+  "method": "Dry run 2026-11-16 after SEC-5 (catalog_root path check) and the SEC-2 wording change: a fresh general-purpose agent followed the worktree's agents/prompt-reviewer.md with Read only. 'Files read' is the agent's own report.",
+  "assertions_evaluated": [
+    {
+      "text": "No file is read",
+      "passed": true,
+      "evidence": "Files read: none"
+    },
+    {
+      "text": "The output is exactly the one refusal line from the agent's Input section",
+      "passed": true,
+      "evidence": "Output is exactly the refusal line"
+    },
+    {
+      "text": "No findings table and no rewrite are produced",
+      "passed": true,
+      "evidence": "No table, no rewrite"
+    }
+  ]
+}

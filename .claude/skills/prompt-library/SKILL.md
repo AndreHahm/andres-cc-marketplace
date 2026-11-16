@@ -133,14 +133,20 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
    `records` for the same area or a similar name or description and offer to revise the existing prompt
    or continue. Both are recommendations; the user decides.
 6. **File the draft.** Only once step 4 is clean (or, for `user` text, the user accepted the
-   warning), show the user the slug, name, origin, description and `<CLI> hash <scratch-file>` output,
-   and ask with `AskUserQuestion` whether to file this draft. A draft that step 4 blocked never reaches
+   warning), show the user the slug, name, origin, description and `<CLI> hash <scratch-file>` output.
+   Say that the record becomes a plain file under `catalog_root`: if that folder is in a git repository,
+   a pushed commit shares its text with everyone who can read the repository, and the text stays in
+   history after the record changes. Then ask with
+   `AskUserQuestion` whether to file this draft. A draft that step 4 blocked never reaches
    this question. On yes, `<CLI> draft
    <scratch-file>`; it validates, enforces the secret screen for `session`, `web`, `claude` and `codex` text, writes the record and
    lists it in the catalog together. Keep the `text_hash` and `path` it returns.
 7. **Review and optimize.** Dispatch `prompt-reviewer` with the absolute path of the filed record
    (`catalog_root` + `/` + `path`, with `path` from step 6's `draft` output or, for a resumed draft, from
-   `<CLI> show <slug> --history`) and its `origin`; it is read-only. Present its findings and its
+   `<CLI> show <slug> --history`), the `catalog_root` exactly as step 1's `validate` returned it (the
+   path is that string + `/` + `path`), and its `origin`; it is read-only and refuses a path outside
+   that `catalog_root`. If it returns its `Refused:` line, no review ran: handle it like a failed
+   dispatch (see Gotchas), and never record `import` verification without a completed review. Present its findings and its
    proposed rewrite as a diff. If the user approves a rewrite, write the full replacement record to a
    scratch file and run `<CLI> update-draft <internal_id> <scratch-file>`; it screens the new text and
    clears the earlier verification when the text changed. This works on any draft, initial or successor.
@@ -177,8 +183,9 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
   edit. The script enforces this with `--expect-sha256`; do not pass a hash you did not show the user.
 - `prompt-reviewer` only reports and proposes. It cannot approve, activate or write; the user approves.
   Its findings are advisory, and the validator cannot tell whether the review ran. Show a Critical
-  finding prominently and ask the user to acknowledge it before step 8; if the dispatch fails, stop and
-  ask whether to continue without a review rather than skipping it silently.
+  finding prominently and ask the user to acknowledge it before step 8; if the dispatch fails or returns
+  the `Refused:` line, stop and ask whether to retry or continue without a review rather than skipping
+  it silently.
 - A draft, initial or successor, is replaced in place (`update-draft`); an active or inactive record gets
   a successor.
 - A revision never retires the active prompt before `finalize`.
@@ -209,7 +216,7 @@ A persisted smoke test, `scripts/smoke_test.py`, checks this skill's frontmatter
 grants (no pre-approved Read, Write, Edit or WebFetch), and runs the validator end to end: a web-origin
 draft carrying a fake key is refused with nothing filed, and a clean draft goes through activation and
 deactivation. It also checks that the triage step is its own `AskUserQuestion` with skill options. Run it
-directly; last run 2026-11-15, 7 of 7 checks passed. It failed on a copy with a pre-approved Write
+directly; last run 2026-11-16, 7 of 7 checks passed. It failed on a copy with a pre-approved Write
 (2026-10-03) and on a copy with the pre-fix triage step (2026-10-14).
 
 **Verify this skill activates on:** (explicit invocation only; it cannot be model-triggered)
@@ -243,8 +250,11 @@ directly; last run 2026-11-15, 7 of 7 checks passed. It failed on a copy with a 
 - [ ] A slug that does not match the slug pattern is refused before any command runs with it.
 - [ ] `activate` of an already active record is reported and stops, with no question and no command.
 
-**Last dated run record:** validator fixture tests, 136 run (133 passing, 3 POSIX-only skipped on Windows), 2026-11-15
-(`scripts/plib_test_catalog_validate.py`). The latest live run, 2026-10-14 (plugin loaded with
+**Last dated run record:** validator fixture tests, 140 run (137 passing, 3 POSIX-only skipped on Windows), 2026-11-16
+(`scripts/plib_test_catalog_validate.py`), after the email screen was added. The step 6 sharing notice and
+the step 7 `catalog_root` hand-off and `Refused:` handling (2026-11-16) were checked by the smoke test and
+by `prompt-reviewer`'s own dry runs (`evals/prompt-reviewer/workspace/iteration-4/`); no
+`evals/prompt-library/` scenario was re-run for them. The latest live run, 2026-10-14 (plugin loaded with
 `--plugin-dir`), ran add, near-duplicate, revise, finalize and deactivate, each status change behind its
 own approval; the step 5 triage skip it found was fixed in PR #566. An earlier hand-followed run of steps
 1 to 6 (2026-10-04, not persisted) confirmed a fake key is reported unechoed and refused by `draft`.

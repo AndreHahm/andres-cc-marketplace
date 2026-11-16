@@ -1,0 +1,13 @@
+{
+  "iteration": 4,
+  "run_date": "2026-11-16",
+  "configurations": [
+    "with_skill"
+  ],
+  "scope": "eval 1 re-run with catalog_root after SEC-5; new evals 6-8 (path refusals); evals 2-5 not re-run (their checks are unchanged, only the catalog_root argument was added to their prompts)",
+  "with_skill": {
+    "passed": 13,
+    "total": 13,
+    "pass_rate": 1.0
+  }
+}

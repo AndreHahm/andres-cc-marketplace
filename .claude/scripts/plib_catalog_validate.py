@@ -198,6 +198,24 @@ SECRET_PATTERNS = (
         "home_directory_path",
         re.compile(r"(?:[A-Za-z]:[\\/]Users[\\/][^\\/\s]+|/home/[^/\s]+|/Users/[^/\s]+)"),
     ),
+    # The only personal data screened besides home paths; phone shapes are left to the reviewer,
+    # because digit patterns also hit dates, versions and IDs. The lookbehind starts a match only at
+    # the start of a local-part run, so a long run with no "@" is scanned once, not quadratically.
+    # The domain must end where no label character or ".label" follows, so the engine
+    # cannot retry a shorter domain to dodge an exemption. Not matched: RFC 2606 example domains
+    # (placeholders, never a person), and user@host followed by ":path/", the shape of a git SSH
+    # remote such as git@github.com:org/repo. ASCII addresses only.
+    (
+        "email_address",
+        re.compile(
+            r"(?<![A-Za-z0-9._%+-])[A-Za-z0-9._%+-]+@"
+            r"(?!(?:[A-Za-z0-9-]+\.)*(?i:example\.(?:com|net|org))(?![A-Za-z0-9-]|\.[A-Za-z0-9]))"
+            r"[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*"
+            r"\.(?!(?i:example|test|invalid|localhost)(?![A-Za-z0-9-]|\.[A-Za-z0-9]))[A-Za-z]{2,}"
+            r"(?![A-Za-z0-9-]|\.[A-Za-z0-9])(?!:[^\s@]*/)",
+            re.ASCII,
+        ),
+    ),
 )
 
 
@@ -1088,7 +1106,8 @@ def _assert_clean(meta: dict) -> None:
         if hits:
             names = ", ".join(sorted({h["pattern"] for h in hits}))
             raise CatalogError(
-                f"possible secret or personal data found ({names}); remove it and try again"
+                f"possible secret, email address or home-directory path found ({names}); "
+                "remove it and try again"
             )
 
 
