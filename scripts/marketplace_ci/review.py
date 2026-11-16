@@ -1078,10 +1078,9 @@ def collapse_identical_mirrors(
 # issue drafts and eval data, and generated agent mirrors (marketplace-parity proves each
 # matches its source, which is reviewed). A gate-critical path is never excluded or
 # narrowed away. The local parity review never passes the flags that turn this on.
-_CI_EXCLUDED_ROOT_PREFIXES = ("issues/", "evals/", "reviewer-eval/")
-# Codex R2 only: records of past review decisions, with no behavior. The Claude review (its R4)
-# still reviews them.
-_CI_EXCLUDED_CODEX_ONLY_PREFIXES = (".claude/review-outcomes/",)
+# `.claude/review-outcomes/` holds records of past review decisions, with no behavior (Codex R2,
+# Claude review R4).
+_CI_EXCLUDED_ROOT_PREFIXES = ("issues/", "evals/", "reviewer-eval/", ".claude/review-outcomes/")
 _CI_EXCLUDED_DIR_SEGMENTS = frozenset({"tests", "test", "__tests__", "fixtures", "evals"})
 _CI_EXCLUDED_TEST_FILE = re.compile(
     r"smoke_test\.[A-Za-z0-9]+|test_[^/]*\.py|[^/]*_test\.py|[^/]*\.test\.(?:js|mjs|cjs|ts)"
@@ -1127,8 +1126,6 @@ def is_ci_review_excluded(
         return True
     if keep_tests:
         return path in generated
-    if path.startswith(_CI_EXCLUDED_CODEX_ONLY_PREFIXES):
-        return True
     *dirs, name = path.split("/")
     if any(d in _CI_EXCLUDED_DIR_SEGMENTS for d in dirs):
         return True

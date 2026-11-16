@@ -1769,6 +1769,76 @@ def test_an_unfetchable_anchor_writes_no_skip_record(
     assert "steps.anchor_fetch.outputs.unresolved != 'true'" in skip_if
 
 
+_DISPATCH_STEP = "Dispatch reviewers directly, validate output, aggregate findings"
+
+
+@pytest.mark.parametrize(
+    ("present", "failed_fetches", "rc", "fetches"),
+    [(True, 0, 0, 0), (False, 0, 0, 1), (False, 2, 0, 3), (False, 3, 1, 3)],
+)
+def test_codex_review_retries_the_anchor_fetch_then_fails_closed(
+    tmp_path, present, failed_fetches, rc, fetches
+):
+    """R9: codex-review fetches the anchor again with the same retries as compute-scope; when it
+    still cannot, it fails closed and points to compute-scope's log for the reason."""
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    count = tmp_path / "fetches"
+    git = bin_dir / "git"
+    git.write_text(
+        "#!/bin/sh\n"
+        f'if [ "$1" = cat-file ]; then exit {0 if present else 1}; fi\n'
+        f'n=$(($(cat "{count}" 2>/dev/null || echo 0) + 1)); echo "$n" > "{count}"\n'
+        f'[ "$n" -gt {failed_fetches} ]\n',
+        encoding="utf-8",
+    )
+    git.chmod(0o755)
+    for name, body in (("sleep", "exit 0"), ("uv", "exit 0")):
+        tool = bin_dir / name
+        tool.write_text(f"#!/bin/sh\n{body}\n", encoding="utf-8")
+        tool.chmod(0o755)
+    script = tmp_path / "dispatch.sh"
+    script.write_text(_step("codex-review", _DISPATCH_STEP)["run"], encoding="utf-8")
+    env = {
+        "PATH": f"{bin_dir}:{os.environ['PATH']}",
+        "ANCHOR_SHA": "b" * 40,
+        "REPO": "owner/repo",
+        "BASE_SHA": "a" * 40,
+    }
+    run = subprocess.run(["bash", "-e", str(script)], env=env, capture_output=True, text=True)
+    assert run.returncode == rc, run.stderr
+    assert (int(count.read_text("utf-8")) if count.exists() else 0) == fetches
+    if rc:
+        assert "Compute Codex review scope" in run.stdout
+
+
+def test_run_codex_review_escalates_a_governance_path_only_without_an_anchor(
+    monkeypatch, git_repo, tmp_path
+):
+    """Codex R3 on codex-review's own call site: `full` on the first run, `delta` with an anchor."""
+    base = _commit(git_repo, "base", **{_SYNC_PATH: "{}\n"})
+    anchor = _commit(git_repo, "pr 1", a_py="a\n")
+    _commit(git_repo, "pr 2", **{_SYNC_PATH: '{"v": 2}\n'})
+
+    class _Stop(BaseException):
+        pass
+
+    modes = []
+    real = review_module.derive_review_scope
+
+    def spy(*args, **kwargs):
+        modes.append(real(*args, **kwargs).mode)
+        raise _Stop
+
+    monkeypatch.setattr(review_module, "derive_review_scope", spy)
+    monkeypatch.chdir(git_repo.root)
+    for extra in ([], ["--anchor-sha", anchor]):
+        with pytest.raises(_Stop):
+            main(["run-codex-review", "--base-sha", base, "--ci-delta", *extra,
+                  "--output", str(tmp_path / "result.json")])  # fmt: skip
+    assert modes == ["full", "delta"]
+
+
 # Claude review R3: the anchor lookup is one subcommand both review workflows call.
 
 
@@ -1877,15 +1947,16 @@ def test_the_claude_review_keeps_tests_and_nested_evals(path):
 
 
 @pytest.mark.parametrize(
-    "path", ["issues/639-runtime.md", "evals/skill-tester/a.json", "reviewer-eval/corpus/a.json"]
+    "path",
+    [
+        "issues/639-runtime.md",
+        "evals/skill-tester/a.json",
+        "reviewer-eval/corpus/a.json",
+        ".claude/review-outcomes/pr-745.json",
+    ],
 )
 def test_the_claude_review_still_leaves_out_the_root_record_directories(path):
     assert is_ci_review_excluded(path, keep_tests=True)
-
-
-def test_the_claude_review_still_reviews_the_review_outcome_records():
-    """Codex R2 leaves them out; the Claude review's R4 does not name them."""
-    assert not is_ci_review_excluded(".claude/review-outcomes/pr-745.json", keep_tests=True)
 
 
 def test_the_claude_review_still_leaves_out_proven_mirror_copies():

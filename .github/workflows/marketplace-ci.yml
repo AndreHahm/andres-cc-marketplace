@@ -1622,12 +1622,22 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           # Same anchor compute-scope used (issue #639); fetched here too, since this job's
-          # merge-ref checkout may not hold it. compute-scope found it, so failing to fetch it
-          # here fails closed instead of narrowing differently from compute-scope.
-          if [ -n "$ANCHOR_SHA" ]; then
-            git cat-file -e "$ANCHOR_SHA^{commit}" 2>/dev/null \
-              || git fetch --no-tags --quiet "https://github.com/$REPO" "$ANCHOR_SHA" \
-              || { echo "::error::cannot fetch the last reviewed head $ANCHOR_SHA"; exit 1; }
+          # merge-ref checkout may not hold it. The fetch is retried after 1 and 3 seconds, like
+          # compute-scope's (R9); failing after that fails closed instead of narrowing differently
+          # from compute-scope.
+          if [ -n "$ANCHOR_SHA" ] && ! git cat-file -e "$ANCHOR_SHA^{commit}" 2>/dev/null; then
+            fetched=false
+            for delay in 1 3 0; do
+              if git fetch --no-tags --quiet "https://github.com/$REPO" "$ANCHOR_SHA"; then
+                fetched=true
+                break
+              fi
+              sleep "$delay"
+            done
+            if [ "$fetched" != true ]; then
+              echo "::error::cannot fetch the last reviewed head $ANCHOR_SHA. If compute-scope could not fetch it either, it skipped the Codex review (R9) and this job runs only because compute-scope's deterministic checks blocked or its scope check failed: the reason is in the 'Compute Codex review scope' job log"
+              exit 1
+            fi
           fi
           uv run python -m scripts.marketplace_ci run-codex-review \
             --base-sha "$BASE_SHA" \
