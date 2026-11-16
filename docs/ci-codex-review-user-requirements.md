@@ -90,11 +90,15 @@ A failed lookup means no anchor.
   not cost a full review.
 - **Accepted residual:** when the lookup still fails after the retries (a longer API outage), CI reviews the
   whole pull request, and carried findings survive only if Codex finds them again.
+- **Accepted residual:** a read that fails for one candidate run (its job list, its result download or its
+  attempt check) skips that run, and the next older qualifying run becomes the anchor. Everything since that
+  older anchor is reviewed, but the skipped run's blocking findings are not carried and survive only if Codex
+  finds them again. Retrying the download is not worth it, since a missing bypass or skip record is normal.
 - **Accepted residual:** the artifacts carry no retention setting, so the repository default applies. An
   anchor whose result has expired is not found: the whole pull request is reviewed and its carried findings
   are lost.
 
-Status: approved (retry added by the maintainer, 2026-11-16, issue #753)
+Status: approved (retry and the per-candidate residual added by the maintainer, 2026-11-16, issue #753)
 
 ## R6. Only changes since the anchor are reviewed
 
@@ -160,6 +164,7 @@ After a force-push, CI reviews the files whose change differs from the anchor (R
 fetched because it was force-pushed away, the review is skipped, gate-critical paths included (R3: without
 the anchor commit CI cannot tell whether they changed): a force-push review would be the most expensive one.
 CI fetches the anchor by its SHA, which GitHub normally still serves after a force-push, so this case is rare.
+The fetch is retried like the lookup's API calls (R5), so a short git error does not count as unfetchable.
 That run writes no `codex-review-skip` record, since it compared nothing: the head stays unreviewed, and later runs keep the older anchor. They skip too while it
 cannot be fetched, and review the whole pull request once it has left the 30-run lookup window. When `compute-scope` found the anchor but `codex-review`
 cannot fetch it, `codex-review` fails closed. The two jobs can still narrow differently: `compute-scope`

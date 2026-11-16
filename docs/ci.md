@@ -73,10 +73,10 @@ Dependabot PR skip the whole workflow without failing. A newer push cancels a ru
 review` job finished `success` or `failure` and left a `claude-review-result` of `findings` or `clean` naming
 that head and the latest attempt; the same rules as the Codex anchor (Codex R11's creation time, Codex R5's
 same-execution pairing). An anchor that cannot be fetched (force-pushed away) is dropped and the whole PR is reviewed,
-unlike the Codex review, which skips then. `narrow_to_unreviewed`'s distrust of an anchor whose changes touch
-a gate-critical or reviewer-steering path applies unchanged. `--review-exclusions claude` keeps test
-directories, fixtures, test files and nested `evals/` in scope and leaves out only root `issues/`, `evals/`,
-`reviewer-eval/` and proven mirror copies. Nothing left to review means no API call: `claude-review` is
+unlike the Codex review, which skips then. As for Codex (its R10, R14), no trust check is made on the anchor,
+and runs created before the PR was last marked ready are no anchor. `--review-exclusions claude` keeps test
+directories, fixtures, test files, nested `evals/` and `.claude/review-outcomes/` in scope and leaves out
+only root `issues/`, `evals/`, `reviewer-eval/` and proven mirror copies. Nothing left to review means no API call: `claude-review` is
 skipped and the result is `clean` ("nothing new to review"), which is an anchor.
 
 **What Claude may do (R5).** The prompts are built in `claude-scope` from the base SHA's
@@ -291,7 +291,8 @@ review` is the gate after the PR exists and reviews only the delta, to cut OpenA
 
 - **Exclusions.** Left out of the reviewers' scope: tests and fixtures (a `tests`, `test`, `__tests__`,
   `fixtures` or `evals` directory anywhere, `smoke_test.<ext>` with one letters-and-digits extension, `test_*.py`, `*_test.py`, `*.test.{js,mjs,cjs,ts}`),
-  `issues/`, `evals/`, `reviewer-eval/`, and generated agent mirrors: a `.agents/skills/` or `.claude/` path
+  `issues/`, `evals/`, `reviewer-eval/`, `.claude/review-outcomes/` (records of past review decisions), and
+  generated agent mirrors: a `.agents/skills/` or `.claude/` path
   whose blob and mode at the head equal those of its source (`.claude/skills/` for the former, a mirrored
   plugin's file for the latter, never a declared divergence exception); an extra file with no identical
   source stays. Smoke tests and fixtures are excluded anywhere, including inside a plugin's component
@@ -304,44 +305,62 @@ review` is the gate after the PR exists and reviews only the delta, to cut OpenA
   introduced it, there is no anchor and the whole PR is reviewed. The lookup reads this run's `created_at` (unchanged across
   attempts) and this PR's earlier Marketplace CI runs from the GitHub API, keeps only runs whose `updated_at`
   is earlier (an `updated_at` is at or after the run's completion, so those runs were complete when this run
-  was created; R11), and takes the PR head of the newest one that left: a `codex-review-result` of `findings`
+  was created; R11) and whose `created_at` is at or after the PR's last move to ready (R14: the later of the
+  PR's `created_at` and its newest `ready_for_review` issue event), and takes the PR head of the newest one that left: a `codex-review-result` of `findings`
   or `clean` from a `Codex delta review` job that finished `success` or `failure`; a `codex-review-skip`
   record from a successful `compute-scope` (when that job was skipped; see "Carried findings" below); or a
-  `codex-review-bypass` record from a successful `publish` (R12, under "Bypass label" below). When the
-  creation time cannot be read there is no anchor, never a newer one. Each file must carry `head_sha` equal to
+  `codex-review-bypass` record from a successful `publish` (R12, under "Bypass label" below). Each GitHub
+  API read is retried twice (after 1 and 3 seconds, `_GH_RETRY_DELAYS`; R5), so a short API error does not
+  cost a whole-PR review. When this run's creation time or the PR's last ready time cannot be read there is
+  no anchor, never a newer one. Each file must carry `head_sha` equal to
   the run's head and a `run_attempt` whose execution of the job that wrote it is still the latest one
   (`attempts/<n>/jobs` shows that job with the same `completed_at` as the run's latest job list). A re-run of
   only the failed jobs reuses the passed jobs' executions and outputs under a new attempt number, and `gh run
   download` is not tied to an attempt, so this pairs each file with the verdict of the execution that wrote
   it; a file without both fields is not an anchor. The `codex-review` merge step stamps both on every result
   it leaves (including `run-codex-review`'s own and the `could_not_run` rewrites), and the delta-base failure
-  writes them too. Accepted residuals: a failed lookup (an API error) means no anchor, so the whole PR is
-  reviewed and carried findings survive only if Codex finds them again; and the artifacts set no
+  writes them too. Accepted residuals: a lookup that still fails after its retries means no anchor, so the whole PR is
+  reviewed and carried findings survive only if Codex finds them again; a read that fails for one
+  candidate run (its job list, its result download, which is not retried since a missing bypass or skip
+  record is normal, or its attempt check) skips that run, so an older run becomes the anchor and the
+  skipped run's blocking findings are not carried; and the artifacts set no
   `retention-days`, so the repository default applies, and an anchor whose result has expired means a
   whole-PR review whose carried findings are lost. A cancelled or skipped
   run, or one that stopped before its reviewers ran (`could_not_run`), reviewed nothing and does not count, so a push that cancels a running
-  review leaves its commits for the next run. An `opened` event, or no such run, means no anchor: the whole PR
-  (minus the exclusions) is reviewed. That is the first run's review.
+  review leaves its commits for the next run. An `opened` or `ready_for_review` event, or no such run, means
+  no anchor: the whole PR (minus the exclusions) is reviewed. That is the first run's review, and the only
+  run on which a `FULL_ESCALATION_PATHS` file escalates to `mode: "full"` (R3).
 - **Narrowing.** With an anchor, only files whose PR-side patch (`base...head`, line numbers and blob ids
   dropped) differs from the one at the anchor are reviewed. Each hunk keeps which occurrence of its old-side
   lines in the old file it applies to, so an edit moved between two places with identical context is
   reviewed, while a rebase that only shifts it is not. A rebase that only moves the PR's changes, and an
   event with no new commits (`edited`, `labeled`, `reopened`), make no Codex call and the job is skipped as
-  bypass-eligible; carried findings still block (below). An anchor that cannot be fetched (force-pushed away) also reviews nothing, by decision:
-  a force-push review would be the most expensive one. That run writes no `codex-review-skip` record
+  bypass-eligible; carried findings still block (below). An anchor that cannot be fetched (force-pushed away) also reviews nothing, gate-critical
+  paths included (without the anchor commit nothing can tell whether they changed), by decision (R9): a
+  force-push review would be the most expensive one. `anchor_fetch` retries the fetch after 1 and 3 seconds
+  (R5), so a short git error does not count as a force-pushed anchor. That run writes no `codex-review-skip` record
   (`anchor_fetch` reports `unresolved=true`), so its head is not taken as reviewed: later runs keep the older
   anchor, skip while it cannot be fetched, and review the whole PR once it has left the 30-run window. `codex-review` fetches the anchor again and fails
   closed when it cannot. The two jobs can still narrow differently: `compute-scope` compares from
   `github.event.pull_request.base.sha`, `codex-review` from the merge commit's first parent, so
   `codex-review` may review more than `compute-scope` predicts, never less. A moved base branch or a rebase
   is accepted; only the PR-side patch comparison decides what is reviewed again.
-- **Gate-critical paths are never narrowed away.** A changed path in `FULL_ESCALATION_PATHS` or under
-  `BYPASS_INELIGIBLE_PREFIXES` stays in scope on every run that runs a Codex review (not a draft, R14, nor a
-  bypass-label run, R12), so it keeps forcing a real review and the Tier-1 refusal. An anchor whose own PR changes touch such a path is not trusted, because that run's code and
-  workflow came from the PR: the whole delta is reviewed instead. The same holds for an anchor whose changes
-  touch a file Codex may load as instructions or config (`AGENTS*.md` at any depth, `.codex/`, the root
-  `REVIEW.md`), since such a run could have been told to report nothing and the change reverted later. A re-run of a failed job replays the same anchor,
-  so the same delta is reviewed again: it anchors only on runs complete before the run was created.
+- **Gate-critical paths are narrowed like any other (R3).** A changed path in `FULL_ESCALATION_PATHS` or
+  under `BYPASS_INELIGIBLE_PREFIXES` is never excluded, and is reviewed on the first run and on every later
+  run where its PR-side change differs from the anchor, not again while it is unchanged; its blocking
+  findings carry forward. `derive_review_scope` escalates a `FULL_ESCALATION_PATHS` file to `mode: "full"`
+  only without an anchor (`first_run`); with one, it gets the normal delta reviewers. The local parity
+  review (no `--ci-delta`) always escalates. The Tier-1 refusal in `codex-review` is unchanged: it checks the
+  whole PR diff on every run that makes a Codex call.
+- **No trust check on the anchor (R10).** An anchor is used the same way whatever its PR changed, including
+  a gate-critical path or a file Codex may load as instructions or config (`AGENTS*.md` at any depth,
+  `.codex/`, the root `REVIEW.md`): only the delta since it is reviewed and its findings are carried. For a
+  `pull_request` event GitHub runs the PR's own copy of the workflow, so the current run is no more
+  trustworthy than the anchor run. Accepted residual: a PR that edits the workflow, the review code or a
+  reviewer-steering file can forge a review result, a bypass record or a clean verdict, in the anchor run and
+  in the current run; the protection is the human review of that change. A re-run of a failed job replays
+  the same anchor, so the same delta is reviewed again: it anchors only on runs complete before the run was
+  created.
 - **Forks.** `compute-scope`, `codex-review` and `publish` skip a PR from a fork; `fork-unsupported` fails
   it explicitly.
 - **What still sees the whole PR delta.** The script verifiers, the structural checks and the diff-scoped
@@ -362,9 +381,8 @@ review` is the gate after the PR exists and reviews only the delta, to cut OpenA
   finding: `- <rule> <path>:<line> – accepted|residual|deferred #<issue>`, optionally followed by
   `: <reason>` (`-` for a finding without a rule, `0` without a line, no spaces in the path; `#<issue>` is
   required only for `deferred`, and must be an open issue of this repository, checked through the API). The job
-  summary prints the line to copy for each carried finding. An untrusted anchor carries nothing, since the
-  whole delta is reviewed again. A blocking entry the step cannot read, more than 500 findings, or an anchor
-  that cannot be fetched and that GitHub's compare API cannot show to be trusted, all report `error`. The PR
+  summary prints the line to copy for each carried finding. Every anchor carries (R10). A blocking entry the
+  step cannot read, or more than 500 findings, reports `error`. The PR
   body is read live from the API, so a re-run cannot bring back a removed waiver. `publish` fails while `carried_blocking` is not `0`, and fails closed when
   it could not be computed. So a label or body edit after a failed review no longer clears it (R8).
   `compute-scope` uploads the carried list as its `carried-findings` artifact (a file, never a job output
@@ -392,7 +410,9 @@ review` is the gate after the PR exists and reviews only the delta, to cut OpenA
   compare with the anchor reports `error` too, rather than being dropped.
 - **Drafts (R14).** On a draft PR, `compute-scope` reports `bypass_eligible=true` without a lookup, no
   Codex call is made, and `publish` passes as skipped. The workflow listens to `ready_for_review`; that
-  event has no anchor, so the whole PR delta minus the exclusions is reviewed. `converted_to_draft` is not a
+  event has no anchor, so the whole PR delta minus the exclusions is reviewed, on every move to ready
+  (ready -> draft -> ready included). The anchor lookup ignores runs created before the PR was last marked
+  ready, so if the `ready_for_review` run is interrupted the next run reviews the whole PR. `converted_to_draft` is not a
   trigger. `publish` re-reads the live draft flag
   and head and passes the skip only while the PR is still a draft at that head. A run that started on a
   ready PR re-reads the live draft flag right before the Codex call (`Make no Codex call if the PR was
@@ -410,13 +430,10 @@ review` is the gate after the PR exists and reviews only the delta, to cut OpenA
   therefore no longer carries the bypassed findings. `bypassed=true` only comes from the base-restored
   `check-bypass` (both the label path and the `CODEX_CI_REVIEW_BYPASS` path need a SHA-bound attestation, and
   both record the same durable clear),
-  and the record is distrusted like any other anchor whose own changes touch a gate-critical or
-  reviewer-steering file (R10), the same protection the `codex-review-result` artifact relies on. Accepted
-  consequence: the bypassed head counts as reviewed even when CI never reviewed its content, and later runs
-  review only what changes after it. Accepted residual (M2): an anchor whose own changes touch a
-  gate-critical path or a reviewer-steering file carries nothing (R10), so a harmless edit to such a file
-  (for example `REVIEW.md`) followed by a revert can clear carried findings unless the whole-delta review
-  finds them again; the same holds for a PR that edits the workflow to forge a result or a bypass record.
+  and the record is a normal anchor, also when the PR touches a gate-critical or reviewer-steering file
+  (R10). Accepted consequence: the bypassed head counts as reviewed even when CI never reviewed its
+  content, and later runs review only what changes after it. A PR that edits the workflow can forge a
+  bypass record like a review result (R10's accepted residual).
 
 ## The reviewed delta and the result status
 
@@ -1378,7 +1395,8 @@ checkout it's running in (the exact, current list is `review.py`'s own
 the kind of duplicate fact that drifts; each of those files escalates in **either** its canonical
 `plugins/plugin-devkit/skills/plugin-rulebook/` copy or its `.claude/skills/plugin-rulebook/`
 in-development mirror, via `_RULEBOOK_GOVERNANCE_ROOTS`) — or an oversized dependency closure escalates
-`derive_review_scope` to `mode == "full"`. Every one of those rulebook-content paths (not just `SKILL.md`,
+`derive_review_scope` to `mode == "full"`. In CI, a shared-governance path escalates only on the first run,
+which has no anchor (Codex requirements R3); on a later run it is reviewed with the delta reviewers. Every one of those rulebook-content paths (not just `SKILL.md`,
 and not just the canonical copy) is an escalation trigger because a reviewer agent's own instructions
 read them live rather than from the validated base SHA — a PR editing only one of them, in only one
 location, would otherwise be judged against its own just-edited rule content (found live, PR #276; the

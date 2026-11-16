@@ -973,11 +973,11 @@ jobs:
       # job (success or failure; cancelled or skipped runs reviewed nothing), a `codex-review-skip`
       # from compute-scope when narrowing left nothing to review (R7: it holds the carried
       # findings), or a valid bypass record from publish (R12: `codex-review-bypass`, no findings).
-      # narrow_to_unreviewed distrusts an anchor whose own changes touch a gate-critical path,
-      # since that run's code and workflow came from the PR. `opened` has none by definition, and
-      # no such run means the first review: the whole PR. Read from the GitHub API, never from the
-      # PR. A failed lookup leaves the anchor empty, so the review widens to the whole PR rather
-      # than skipping anything. Fetched by SHA when this checkout lacks it; a SHA that cannot be
+      # No trust check is made on the anchor (R10). Runs created before the PR was last marked
+      # ready are ignored (R14). `opened` and `ready_for_review` have none by definition, and no
+      # such run means the first review: the whole PR. Read from the GitHub API, never from the
+      # PR; each API read is retried (R5). A lookup that still fails leaves the anchor empty, so
+      # the review widens to the whole PR rather than skipping anything. Fetched by SHA when this checkout lacks it; a SHA that cannot be
       # fetched (force-pushed away) skips the review, by decision.
       - name: Find the last reviewed head
         id: anchor
@@ -1009,7 +1009,9 @@ jobs:
           echo "sha=$anchor" >> "$GITHUB_OUTPUT"
 
       # An anchor that cannot be fetched skips the review (R9), so this head is then not recorded as
-      # reviewed either (unresolved=true): a skip record would make the skip permanent.
+      # reviewed either (unresolved=true): a skip record would make the skip permanent. The fetch is
+      # retried after 1 and 3 seconds, like the lookup's API reads (R5), so a short git error is not
+      # taken for a force-pushed anchor.
       - name: Fetch the last reviewed head when this checkout lacks it
         id: anchor_fetch
         if: steps.anchor.outputs.sha != ''
@@ -1017,8 +1019,19 @@ jobs:
           ANCHOR_SHA: ${{ steps.anchor.outputs.sha }}
           REPO: ${{ github.repository }}
         run: |
-          if git cat-file -e "$ANCHOR_SHA^{commit}" 2>/dev/null \
-            || git fetch --no-tags --quiet "https://github.com/$REPO" "$ANCHOR_SHA"; then
+          fetched=false
+          if git cat-file -e "$ANCHOR_SHA^{commit}" 2>/dev/null; then
+            fetched=true
+          else
+            for delay in 1 3 0; do
+              if git fetch --no-tags --quiet "https://github.com/$REPO" "$ANCHOR_SHA"; then
+                fetched=true
+                break
+              fi
+              sleep "$delay"
+            done
+          fi
+          if [ "$fetched" = true ]; then
             echo "unresolved=false" >> "$GITHUB_OUTPUT"
           else
             echo "::notice::last reviewed head $ANCHOR_SHA cannot be fetched (force-pushed away?); the Codex review is skipped and this head is not recorded as reviewed"
@@ -2252,8 +2265,7 @@ jobs:
       # check-bypass above said `bypassed=true` and the decision step passed, writes it; a label
       # without a valid attestation fails the decision step, so nothing is recorded. The anchor
       # lookup accepts it only from a run whose publish job succeeded, for that run's head, with an
-      # empty findings list, and still distrusts it like any anchor whose own changes touch a
-      # gate-critical or reviewer-steering path (R10).
+      # empty findings list, and uses it like any other anchor (R10).
       - name: Record a valid bypass as this head's review result (R12)
         if: success() && steps.bypass.outputs.bypassed == 'true'
         env:
