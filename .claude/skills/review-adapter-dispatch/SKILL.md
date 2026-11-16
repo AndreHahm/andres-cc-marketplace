@@ -117,21 +117,19 @@ In the envelope, `provenance.provider` is the `recipient` label, `provenance.exe
    `secret_paths_unconfirmed`. An interactive caller passes it only after its own extra confirmation
    naming the hit; an unattended caller only when its configuration says so.
 4. **Size.** No single argument may exceed 120 000 bytes (Linux caps one argument at 128 KiB) →
-   `input_too_large`. In practice this limits agy, whose whole prompt is one argument; pi and devin read
-   theirs from a file, so for them only the 8 MiB input-file limit applies.
+   `input_too_large`. Every vendor reads the review from a private file (agy as stdin), so this is a
+   backstop; in practice only the 8 MiB input-file limit applies.
 5. **CLI present.** The vendor binary must be on `PATH`, at a location outside the reviewed repository
    (relative `PATH` entries are skipped) → `cli_unavailable`.
 
 ## What runs
 
-Each vendor gets one prompt holding the instructions, a fixed data-only sentence, the changed-file list
-and the diff, and is run so that it reads no file itself: `pi --no-tools`; `devin` with every tool its
-probed version exposes denied by name (read included) through a private copy of a shipped config; `agy`
-in headless plan mode with `--sandbox`, where every permissioned tool is refused when attempted. This
-holds for the probed CLI versions and was checked live, not by the tests (which use fake binaries). The
-vendor's working directory is a private temp directory, its environment is reduced to the list in
-`references/vendors.md`, and the run is killed with its whole process group at the timeout. POSIX only: process groups are not used on Windows. See
-`references/vendors.md` for the exact flags and the evidence behind each.
+Each vendor gets one prompt (the instructions, a fixed data-only sentence, the changed-file list, the
+diff) from a `0600` file in a private run directory, never as a command-line argument, and runs so that
+it reads no file itself: `pi --no-tools`; `devin` with every tool denied by name; `agy` in headless plan
+mode with `--sandbox`. That isolation holds for the probed CLI versions and was checked live, not by the
+tests. The environment is reduced and the whole process group is killed at the timeout (POSIX only).
+Flags, environment and probe evidence per vendor: `references/vendors.md`.
 
 The model returns only `findings`, `verdict` and `inspection_limits`. The adapter builds `dispatch` and
 `provenance` itself, checks the result's structure against `ENVELOPE_SCHEMA`, then runs codex-kit's
@@ -186,14 +184,16 @@ tracked-local-file scenario is not in the eval set; it stays covered by scenario
 scripts, the shipped settings (three vendors, all off, 600 000 ms), the command's two Bash grants, and
 that the dispatcher with no flags returns a JSON usage error. It spawns no vendor.
 
-**Last dated run record:** 2026-11-16, `node --test tests/` 26/26 passing; live check the same day, one
-run per vendor on the planted-bug fixture (all three found it), plus a canary-file injection probe on pi
-and devin (neither read the file). Same day: evals iteration-1, 12/12 assertions with the skill vs 9/12
+**Last dated run record:** 2026-11-16, `node --test tests/` 30/30 passing after agy moved to stdin
+input; live check earlier the same day, one run per vendor on the planted-bug fixture (all three found it,
+agy still with argv input), plus a canary-file injection probe on pi and devin (neither read the file).
+agy's stdin input was then probed live with a dummy prompt only, not re-run on the fixture. Same day: evals iteration-1, 12/12 assertions with the skill vs 9/12
 baseline (`evals/review-adapter-dispatch/workspace/iteration-1/benchmark.json`); `smoke_test.mjs` passing
 on the plugin copy.
 
-**Concrete scenarios:** the 19 scenarios `tests/rva-dispatch.test.mjs` runs against fake vendor binaries
-(no real vendor is called) are listed in [references/test-scenarios.md](references/test-scenarios.md).
+**Concrete scenarios:** the 30 tests in `tests/rva-dispatch.test.mjs` cover 21 scenarios against fake
+vendor binaries (no real vendor is called); the scenarios are listed in
+[references/test-scenarios.md](references/test-scenarios.md).
 
 **Live check (manual, sends a tiny fixture to each vendor):** one run per vendor against a two-line
 fixture with a planted bug.
@@ -213,5 +213,5 @@ fixture with a planted bug.
 | `references/trust-and-config.md` | Shipped defaults, the local allow-list, the tracked-copy refusal, unattended use |
 | `references/typed-failures.md` | Failure categories this plugin adds to codex-kit's, and how to report each |
 | `references/codex-kit-locator.md` | How codex-kit's validator is found and checked before import |
-| `references/test-scenarios.md` | The 19 concrete scenarios the node test suite runs against fake vendors |
+| `references/test-scenarios.md` | The 21 concrete scenarios the 30 node tests cover against fake vendors |
 | `scripts/smoke_test.mjs` | Structural self-test; not part of the contract |
