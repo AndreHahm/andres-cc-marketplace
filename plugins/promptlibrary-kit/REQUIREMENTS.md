@@ -132,7 +132,7 @@ Source: V4 §Purpose; owner decision 2026-11-16. State: **not met** (no hook exi
 *As a developer who just installed the plugin, I can run one setup skill that checks what the plugin
 needs, creates my catalog and writes my local settings, and I can re-run it later as a health check.*
 
-**What you'll notice:** `/prompt-library-setup` (user-invoked only) walks through four steps, each shown
+**What you'll notice:** `/prompt-library-setup` (user-invoked only) walks through five steps, each shown
 and confirmed before it changes anything:
 
 1. **Check prerequisites:** `uv` works; you are in a git repository (warns if not); `session-kit` is present
@@ -140,7 +140,8 @@ and confirmed before it changes anything:
 2. **Create the catalog** at the resolved catalog root, showing the path first.
 3. **Write local settings:** `.claude/promptlibrary-kit.local.json` with your `catalog_root` and approval
    lifetime (30/60/90 days), and make sure git ignores it and the approvals file.
-4. **Report status** (also the whole run when everything is already set up; changes nothing): catalog
+4. **Offer example prompts** shipped with the plugin; each one you pick is added as a draft (CAT-1).
+5. **Report status** (also the whole run when everything is already set up; changes nothing): catalog
    valid, where each setting came from, approvals in force and when they expire, guard hook active.
 
 Setup becomes the main way to start. The first `/prompt-library add` in a project without a catalog
@@ -173,15 +174,155 @@ Confirmed: yes (2026-11-16).
 
 ## 2. Catalog and records (CAT)
 
-| ID | Requirement | Source | State | Confirm |
-|---|---|---|---|---|
-| CAT-1 | The catalog lives in the using project, not in the plugin; the plugin ships no prompt data. | V4 §Catalog Location | met | ? |
-| CAT-2 | Each prompt record carries the 16 fields of V4's record model (name, area, slug, internal_id, version, short_description, status, previous_id, origin, source_ref, prerequisites, boundaries, references, attachments, verification, prompt_text). | V4 §Record Model | met | ? |
-| CAT-3 | A prompt's text is at most 50 nonblank lines. | V4 §Record Model | met | ? |
-| CAT-4 | Slugs are `<area>__<name>` in kebab-case, immutable, never reused; display names never build a path. | V4 §Slug and path rules | met | ? |
-| CAT-5 | Retrieval and execution use only a complete, validated catalog; a missing, inconsistent or partially written catalog is "unavailable", never guessed from stray files. | V4 §Layout, §Interrupted updates | met | ? |
-| CAT-6 | An interrupted catalog change leaves the catalog unusable for retrieval and execution, and management refuses new changes until the user restores it; nothing is repaired silently. | V4 §Interrupted updates | met (plus rollback, see CODE-6) | ? |
-| CAT-7 | A stored prompt can never be loaded by Claude Code as project instructions (the catalog may not sit inside `.git`, `.github` or Claude Code's configuration folders). | code (`FORBIDDEN_ROOTS`) | met | ? |
+### CAT-1: My prompts live in my project (and later Notion); the plugin ships examples only
+
+*As a developer, my own prompts are stored in my project (and in Notion once that is available) and
+never inside the plugin, so that updating or removing the plugin can never change or delete them; the
+plugin ships only example prompts that I can choose to add.*
+
+**What you'll notice:** updating or uninstalling the plugin never touches your prompts. Your library
+starts empty; `/prompt-library-setup` offers the shipped examples, and each one you accept is added as a
+**draft** that goes through the same review and exact-text approval as any other prompt (PUR-2) before it
+can run. An added example is marked `origin: example`, gets the quality review and your approval, and
+sits under its own slug like any prompt; changing it later makes a new version in your catalog, never a
+change to the plugin's copy. A prompt saved in one project does not appear in another until you add it
+there (shared prompts come with Notion, PUR-5).
+
+**Format change:** `example` is a new allowed `origin` value. Under V4's extension rules that is an
+additive change with a `catalog_version` bump; catalogs at the current version stay valid.
+
+**Changes to earlier decisions:** replaces V4 §Catalog Location "it ships no prompt data" with "ships no
+user prompt data; ships example prompts only", and extends V4's five origins with `example`.
+
+Source: V4 §Catalog Location; owner decision 2026-11-16. State: **partial** (catalog in project: met;
+examples, `example` origin and setup offer: not met). Confirmed: yes (2026-11-16).
+
+### CAT-2: What a saved prompt contains, including attached project files
+
+*As a developer, each saved prompt carries a name, area, short description and optional prerequisites,
+boundaries, references and attached project files that I write, plus origin, version, status and approval
+details the plugin fills in, so that I can tell what a prompt is for and where it came from before I run
+it, and its attached files are loaded with it when it runs.*
+
+**What you'll notice:**
+
+- You write: name and area (they form the slug, for example `review__missing-tests`), a short description
+  of at most 3 sentences, the prompt text, and optionally prerequisites, boundaries, references and
+  attachments. The plugin fills in internal ID, version, status, origin, source (for session and web
+  text), approval fingerprints and the link to the previous version.
+- Prerequisites and boundaries are shown to you, not enforced: Claude does not check them before a run.
+- You cannot add fields of your own (tags, owner); unknown fields are rejected, and a new field needs a
+  format version bump.
+- **Attachments** are project files loaded into the session together with the prompt when it runs:
+  - Only text files inside the project, under the same path rules as the catalog (never outside the
+    project, never through a link, never in `.git` or Claude Code's configuration folders), with a size
+    limit. No web addresses, so a run never fetches anything (PUR-4).
+  - Their content is screened for secrets like the prompt text, shown in the review and in the
+    first-run preview, and **fingerprinted together with the prompt text**: if an attached file changes,
+    the prompt counts as changed. Its approvals, including remembered ones (PUR-3), are void and it goes
+    back through review and approval.
+  - Trade-off you accepted: editing a file that several prompts attach (for example a style guide)
+    re-triggers review and approval for each of them.
+
+**Changes to earlier decisions:** V4 defined `attachments` as "supporting file or resource references"
+with no behavior, and V4's verification hashes cover prompt text only (and V4 §Extension Seams relies on
+that, so a prompt keeps its verification when moved to another catalog). Loading attachments at run time
+and fingerprinting their content changes both: the approval now covers text plus attached content, and a
+prompt moved to another project keeps its verification only if its attached files are identical there.
+EXE-6 ("cannot load further prompts") is unaffected: attachments are files, not prompts. The fingerprint
+change and the new file loading are security-relevant: `security-reviewer` before the first commit.
+
+Source: V4 §Record Model; owner decisions 2026-11-16. State: **partial** (record model met; attachment
+loading, path rules for attachments and attachment fingerprints not met; the field is stored but unused
+today). Confirmed: yes (2026-11-16).
+
+### CAT-3: Prompt text is at most 50 non-blank lines
+
+*As a developer, a saved prompt's text is at most 50 non-blank lines, and I am asked to shorten anything
+longer rather than having it cut, so that prompts stay focused and anything bigger becomes a skill.*
+
+**What you'll notice:** pasting, importing or consolidating more than 50 non-blank lines gets a request to
+condense it; nothing is truncated silently. The reviewer reports an over-length prompt as Major and the
+checker refuses to file it. Attachments (CAT-2) do not count toward the 50 lines; they have their own
+size limit (value still open, see CAT-2), and are still reviewed, fingerprinted and previewed.
+
+Source: V4 §Record Model, §Intake Sources. State: met (attachment size limit: not met). Confirmed: yes
+(2026-11-16).
+
+### CAT-4: Each prompt has a permanent short name (slug)
+
+*As a developer, each prompt has a permanent short name made of area and name (for example
+`review__missing-tests`) that I use to run or find it; its display name can be anything, so that names
+stay stable across versions and can never be turned into a path or a command.*
+
+**What you'll notice:** slugs are lowercase letters, digits and single hyphens, with exactly one `__`
+between area and name. New versions keep the slug, so the slug always runs the current active version.
+A slug is permanent: renaming means a new prompt with a new slug, and an old slug is never reused, even
+after retirement (a typo stays in history). Display names may contain spaces, capitals and accents and
+are never used for file or folder names. Every slug is checked strictly before any command uses it.
+
+Source: V4 §Slug and path rules. State: met. Confirmed: yes (2026-11-16).
+
+### CAT-5: Prompts are used only from a catalog that checks out
+
+*As a developer, I can only browse and run prompts from a catalog that checks out; if one prompt was
+changed outside the plugin, only that prompt is unavailable and I am told why, but if the catalog's
+structure is broken, nothing is used until it is repaired.*
+
+**What you'll notice:** every browse and run checks the whole catalog first. Two kinds of problem are
+handled differently:
+
+| Problem | Effect |
+|---|---|
+| **Structure:** the catalog index is unreadable or unsupported, a listed file is missing, an unlisted file sits where records live, version chains are inconsistent, a half-finished update | The whole catalog is unavailable for browsing and running; you are told what is wrong and how to recover. The plugin never guesses from loose files. |
+| **One prompt:** its text (or, per CAT-2, an attached file) no longer matches its approval fingerprint | Only that prompt is unavailable, shown as "changed since approval" with the reason; everything else keeps working. |
+
+**Changes to earlier decisions:** V4 §Layout and today's code make any problem disable the whole catalog.
+This narrows that to structural problems. Management follows the same split (CAT-6).
+
+Source: V4 §Layout, §Interrupted updates; owner decision 2026-11-16. State: **partial** (structural case
+met; per-prompt isolation not met). Confirmed: yes (2026-11-16).
+
+### CAT-6: An interrupted change never leaves a silently broken catalog
+
+*As a developer, an interrupted change never leaves me with a silently broken catalog: I am told exactly
+what is wrong and how to restore it, nothing is repaired without asking, and a prompt changed outside the
+plugin blocks only changes to that prompt.*
+
+**What you'll notice:** writes go through a temporary file that is then swapped in, the catalog index is
+written last, and completed steps are undone if a later one fails, so an interruption almost never costs
+anything. If the catalog still ends up inconsistent:
+
+- **Structural problem** (CAT-5): browsing and running stop, and `/prompt-library` refuses every change.
+  It names the exact file and how to restore it from git; outside git you fix it by hand with the format
+  guide. The one repair it offers itself, after asking, is removing a leftover draft file from an
+  interrupted save.
+- **One prompt changed since approval:** only that prompt is blocked; other prompts can still be added
+  and changed. The affected prompt can only be restored from git, never revised from its unapproved text
+  (that would turn an outside edit into an approved new version).
+- Nothing is ever repaired silently.
+
+**Changes to earlier decisions:** V4 §Interrupted updates and today's code refuse every change while any
+validation problem exists. This keeps that for structural problems and narrows it to the one prompt for a
+fingerprint mismatch.
+
+Source: V4 §Interrupted updates; code (atomic writes, rollback, orphan removal); owner decision
+2026-11-16. State: **partial** (structural handling met; per-prompt blocking not met). Confirmed: yes
+(2026-11-16).
+
+### CAT-7: A stored prompt can never become a standing instruction
+
+*As a developer, my catalog can never be placed where Claude Code or GitHub loads files automatically, so
+that a stored or imported prompt can never become a standing instruction without my review and
+approval.*
+
+**What you'll notice:** a catalog location in or below `.git`, `.github` or Claude Code's configuration
+folders under `.claude/` (`rules`, `skills`, `commands`, `agents`, `hooks` and similar) is refused; the
+default is used and you are told why. Stored prompts cannot double as rules, commands or skills: a
+standing rule is written as a rule. Attached files (CAT-2) follow the same location rule.
+
+Source: code (`FORBIDDEN_ROOTS` in the validator); not stated in V4. State: met for the catalog;
+attachments not met (CAT-2). Confirmed: yes (2026-11-16).
 
 ## 3. Intake (INT)
 
