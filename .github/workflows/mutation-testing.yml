@@ -45,6 +45,8 @@ jobs:
           version: "0.12.21"
           enable-cache: "false"
           python-version: "3.13"
+      # Locked and build-free (SonarCloud S8544): pyyaml comes from uv.lock, not an unlocked --with.
+      - run: uv sync --locked --group dev --no-build --no-install-package csscompressor --no-install-package jsmin
       - id: select
         env:
           WANTED: ${{ inputs.module }}
@@ -54,7 +56,7 @@ jobs:
             echo "::error::the module input may hold only letters, digits, '_', '.', '/' and '-'"
             exit 1
           fi
-          all=$(uv run --no-project --no-config --no-build --with "pyyaml==6.0.3" \
+          all=$(uv run --no-sync --no-build --no-config \
             python -B plugins/quality-kit/scripts/qlty-mutation-run.py --list-modules)
           matrix=$(jq -c --arg wanted "${WANTED:-}" '
             map({module: ., name: (split("/") | last | rtrimstr(".py"))})
