@@ -1,0 +1,31 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Every dispatcher command recorded in report.md carries --dry-run",
+      "passed": true,
+      "evidence": "The only dispatcher command recorded carries --dry-run"
+    },
+    {
+      "text": "The report names a usage error caused by other.py appearing in the diff headers but not in the target-paths file",
+      "passed": true,
+      "evidence": "category usage: '--diff-file names a file that is not in --target-paths-file'; 'other.py (new file) ... targets.txt lists only calc.py'"
+    },
+    {
+      "text": "The inputs directory (targets.txt, diff.patch) is unchanged after the run",
+      "passed": true,
+      "evidence": "Fixture unchanged: SHA-256 of all 80 fixture files identical before and after the run (checked by the coordinator)"
+    },
+    {
+      "text": "The report's next step tells the caller to list every changed path (including other.py) in the target-paths file, as a caller input fix",
+      "passed": true,
+      "evidence": "'the caller's target-paths file must list every changed path from the diff ... calc.py and other.py'; 'Caller error, not a vendor fault'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}
