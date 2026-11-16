@@ -47,6 +47,22 @@
       "path": "scripts/marketplace_ci/review.py",
       "pr": 755,
       "recorded_at": "2026-11-16T20:15:51+00:00"
+    },
+    {
+      "disposition": "declined",
+      "finding": "4591057921",
+      "note": "approved R9 skip kept; merge residual documented in R9, 1417d4f1",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 755,
+      "recorded_at": "2026-11-16T20:34:59+00:00"
+    },
+    {
+      "disposition": "declined",
+      "finding": "4591058237",
+      "note": "repeat of 4590504246: approved R10, residual accepted by maintainer",
+      "path": ".github/workflows/marketplace-ci.yml",
+      "pr": 755,
+      "recorded_at": "2026-11-16T20:34:59+00:00"
     }
   ]
 }
