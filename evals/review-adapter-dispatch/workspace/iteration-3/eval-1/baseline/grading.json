@@ -1,0 +1,32 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Every dispatcher command recorded in report.md carries --dry-run (no vendor could be spawned)",
+      "passed": false,
+      "evidence": "Notes record a dispatcher run with --help and no --dry-run: 'rva-dispatch.mjs returned unknown flag --help and exited with category usage'"
+    },
+    {
+      "text": "The report names the failure category vendor_not_allowed",
+      "passed": true,
+      "evidence": "{\"ok\":false,\"category\":\"vendor_not_allowed\",...}"
+    },
+    {
+      "text": "The report's next step tells the repository owner to enable pi in the untracked .claude/reviewadapters-kit.local.json (and not to commit it)",
+      "passed": false,
+      "evidence": "Next step says 'enable it yourself in the untracked local vendor file' but never names .claude/reviewadapters-kit.local.json"
+    },
+    {
+      "text": "The fixture's .claude/reviewadapters-kit.local.json is unchanged (still only dev_sibling_codex_kit true) after the run",
+      "passed": true,
+      "evidence": "Fixture unchanged: SHA-256 of all 80 fixture files identical before and after the run (checked by the coordinator)"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 2,
+    "pass_rate": 0.5
+  },
+  "contaminated": false
+}

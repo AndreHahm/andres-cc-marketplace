@@ -1,0 +1,31 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Every dispatcher command recorded in report.md carries --dry-run (no vendor could be spawned)",
+      "passed": true,
+      "evidence": "Exactly one dispatcher command recorded, and it carries --dry-run"
+    },
+    {
+      "text": "The report names the failure category vendor_not_allowed",
+      "passed": true,
+      "evidence": "{\"ok\":false,\"category\":\"vendor_not_allowed\",\"detail\":\"pi: not enabled in the untracked local file\"}"
+    },
+    {
+      "text": "The report's next step tells the repository owner to enable pi in the untracked .claude/reviewadapters-kit.local.json (and not to commit it)",
+      "passed": true,
+      "evidence": "'a human owner must enable pi in the untracked local file .claude/reviewadapters-kit.local.json ... An unattended caller should not enable it itself.' Judged on semantic equivalence: 'untracked' states the file stays out of git, though the report does not say 'never commit' in so many words"
+    },
+    {
+      "text": "The fixture's .claude/reviewadapters-kit.local.json is unchanged (still only dev_sibling_codex_kit true) after the run",
+      "passed": true,
+      "evidence": "Fixture unchanged: SHA-256 of all 80 fixture files identical before and after the run (checked by the coordinator)"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}
