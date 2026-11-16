@@ -1078,8 +1078,8 @@ def collapse_identical_mirrors(
 # issue drafts and eval data, and generated agent mirrors (marketplace-parity proves each
 # matches its source, which is reviewed). A gate-critical path is never excluded or
 # narrowed away. The local parity review never passes the flags that turn this on.
-# `.claude/review-outcomes/` holds records of past review decisions, with no behavior (Codex R2,
-# Claude review R4).
+# `.claude/review-outcomes/` holds records of past review decisions: no gate or CI reviewer reads
+# them; local triage reads them only as a hint, and evals as data (Codex R2, Claude review R4).
 _CI_EXCLUDED_ROOT_PREFIXES = ("issues/", "evals/", "reviewer-eval/", ".claude/review-outcomes/")
 _CI_EXCLUDED_DIR_SEGMENTS = frozenset({"tests", "test", "__tests__", "fixtures", "evals"})
 _CI_EXCLUDED_TEST_FILE = re.compile(
@@ -3594,9 +3594,11 @@ def _gh_get_json(path: str, *fields: str):
         return None
 
 
-def _last_ready_epoch(repo: str, pr_number: int) -> float | None:
-    """When the pull request was created as ready or last moved to ready (Codex R14): the later
-    of its creation time and its newest `ready_for_review` event. None when either read fails."""
+def _last_ready_epoch(repo: str, pr_number: int, created: float) -> float | None:
+    """When the pull request was created as ready or last moved to ready before this run was
+    created (Codex R14): the later of its creation time and its newest `ready_for_review` event
+    at or before `created`. A later event is ignored, so a re-run keeps its delta (Codex R11).
+    None when either read fails."""
     pr = _gh_get_json(f"repos/{repo}/pulls/{pr_number}")
     events = _gh_api(
         f"repos/{repo}/issues/{pr_number}/events", "-F", "per_page=100", "--paginate",
@@ -3607,7 +3609,7 @@ def _last_ready_epoch(repo: str, pr_number: int) -> float | None:
     try:
         return max(
             [_epoch(pr["created_at"])]  # type: ignore[index]
-            + [_epoch(line) for line in events.split()]
+            + [t for t in (_epoch(line) for line in events.split()) if t <= created]
         )
     except (TypeError, KeyError, ValueError):
         return None
@@ -3648,8 +3650,9 @@ def find_review_anchor(
         )
         return "", None
     # Codex R14: the first run after the PR was created as ready or last moved to ready reviews
-    # the whole PR, so runs created before that moment are no anchor.
-    ready = _last_ready_epoch(repo, pr_number)
+    # the whole PR, so runs created before that moment are no anchor. Only ready events up to
+    # this run's creation count, so a re-run finds the same anchor (Codex R11).
+    ready = _last_ready_epoch(repo, pr_number, created)
     if ready is None:
         print(
             "::warning::cannot read when the PR was last marked ready; no anchor, the whole PR"
