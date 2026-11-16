@@ -42,6 +42,7 @@ import importlib.util
 import json
 import os
 import re
+import shutil
 import subprocess  # nosec B404  # runs pytest and mutmut with fixed argument lists, never a shell
 import sys
 import tomllib
@@ -211,10 +212,16 @@ def write_config(root: Path, module: str, tests: list[str]) -> Path:
     return path
 
 
-def run(argv: list[str], root: Path) -> int:
-    # Every caller passes a literal command prefix plus keys checked by is_mutant_key or test paths
-    # checked by checked_relative (after "--"); no shell.
-    return subprocess.run(argv, cwd=root, check=False).returncode  # nosec B603  # nosemgrep  # literal prefix, no shell
+def python_env() -> dict[str, str] | None:
+    # The subprocess calls below start a literal "python3" (Semgrep's subprocess audit flags any
+    # computed command, sys.executable included). Putting the running interpreter's own folder first
+    # on PATH makes that "python3" the same environment, so pytest and mutmut stay importable. None
+    # when that folder holds no python3 that is this interpreter: never fall back further down PATH.
+    folder = os.path.abspath(os.path.dirname(sys.executable))
+    found = shutil.which("python3", path=folder)
+    if found is None or not os.path.samefile(found, sys.executable):
+        return None
+    return {**os.environ, "PATH": folder + os.pathsep + os.environ.get("PATH", "")}
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -268,6 +275,14 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
         return EXIT_NO_PACKAGE
+    env = python_env()
+    if env is None:
+        print(
+            f"qlty-mutation-run: no python3 next to {sys.executable} that is the same interpreter;"
+            " run it from a venv",
+            file=sys.stderr,
+        )
+        return EXIT_NO_PACKAGE
 
     if args.show:
         if not (root / "mutants").is_dir():
@@ -276,7 +291,9 @@ def main(argv: list[str] | None = None) -> int:
         config = write_config(root, module, tests)
         try:
             for key in args.show:
-                status = run([sys.executable, "-m", "mutmut", "show", key], root)
+                status = subprocess.run(  # nosec B603 B607  # literal python3 from python_env, checked key
+                    ["python3", "-m", "mutmut", "show", key], cwd=root, env=env, check=False
+                ).returncode
                 if status != 0:
                     print(f"qlty-mutation-run: mutmut show {key} exited {status}", file=sys.stderr)
                     return status
@@ -285,9 +302,12 @@ def main(argv: list[str] | None = None) -> int:
             config.unlink(missing_ok=True)
 
     print(f"qlty-mutation-run: baseline for {module}: pytest {' '.join(tests)}", file=sys.stderr)
-    baseline = run(
-        [sys.executable, "-B", "-m", "pytest", "-q", "-p", "no:cacheprovider", "--", *tests], root
-    )
+    baseline = subprocess.run(  # nosec B603 B607  # literal python3 from python_env, checked paths
+        ["python3", "-B", "-m", "pytest", "-q", "-p", "no:cacheprovider", "--", *tests],
+        cwd=root,
+        env=env,
+        check=False,
+    ).returncode
     if baseline != 0:
         print(
             f"qlty-mutation-run: the baseline is red (pytest exit {baseline}); no mutation run",
@@ -297,11 +317,15 @@ def main(argv: list[str] | None = None) -> int:
 
     config = write_config(root, module, tests)
     try:
-        status = run([sys.executable, "-m", "mutmut", "run"], root)
+        status = subprocess.run(  # nosec B603 B607  # literal command, python3 from python_env
+            ["python3", "-m", "mutmut", "run"], cwd=root, env=env, check=False
+        ).returncode
         if status != 0:
             print(f"qlty-mutation-run: mutmut run exited {status}", file=sys.stderr)
             return status
-        status = run([sys.executable, "-m", "mutmut", "export-cicd-stats"], root)
+        status = subprocess.run(  # nosec B603 B607  # literal command, python3 from python_env
+            ["python3", "-m", "mutmut", "export-cicd-stats"], cwd=root, env=env, check=False
+        ).returncode
         if status != 0:
             print(f"qlty-mutation-run: mutmut export-cicd-stats exited {status}", file=sys.stderr)
         return status
