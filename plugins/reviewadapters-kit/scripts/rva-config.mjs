@@ -3,11 +3,13 @@
 // Only the local file under the reviewed repository can enable a vendor, because enabling one sends
 // repository content to that vendor. A git-tracked copy of the local file is refused outright: a
 // tracked file can be changed by anyone with write access, including by the change under review. A
-// timeout above the shipped value is ignored; a model may come from either file, local wins.
+// timeout above the shipped value is ignored; a model may come from either file, local wins. The local
+// file must also be owned by the current user and not writable by others.
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { ownedAndPrivate } from "./rva-codex-kit.mjs";
 
 const PLUGIN_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 export const LOCAL_CONFIG_RELATIVE = ".claude/reviewadapters-kit.local.json";
@@ -18,13 +20,25 @@ function readJson(file) {
   return JSON.parse(fs.readFileSync(file, "utf8"));
 }
 
+class LocalFileRefused extends Error {}
+
 // The local file is opened once, without following a final symlink or blocking on a FIFO, and checked
-// on the open handle, so it cannot be swapped between the check and the read.
+// on the open handle, so it cannot be swapped between the check and the read. It enables egress, so it
+// and its .claude directory must belong to the current user and be writable by nobody else, the same
+// rule the dispatcher's input files and codex-kit's files follow.
 function readLocalJson(file) {
-  const fd = fs.openSync(file, fs.constants.O_RDONLY | fs.constants.O_NONBLOCK | (fs.constants.O_NOFOLLOW ?? 0));
+  let fd;
+  try {
+    fd = fs.openSync(file, fs.constants.O_RDONLY | fs.constants.O_NONBLOCK | (fs.constants.O_NOFOLLOW ?? 0));
+  } catch {
+    throw new LocalFileRefused("the local file cannot be opened (a symbolic link, or unreadable), so it cannot enable anything");
+  }
   try {
     const stat = fs.fstatSync(fd);
-    if (!stat.isFile() || stat.size > 64 * 1024) throw new Error("not a small regular file");
+    if (!stat.isFile() || stat.size > 64 * 1024) throw new LocalFileRefused("the local file is not a regular file of at most 64 KiB, so it cannot enable anything");
+    if (!ownedAndPrivate(stat) || !ownedAndPrivate(fs.statSync(path.dirname(file)))) {
+      throw new LocalFileRefused("the local file or its .claude directory is not owned by you, or is writable by others, so it cannot enable anything");
+    }
     return JSON.parse(fs.readFileSync(fd, "utf8"));
   } finally {
     fs.closeSync(fd);
@@ -67,7 +81,8 @@ function readLocal(repoRoot) {
     const local = readLocalJson(localFile);
     if (!local || typeof local !== "object" || Array.isArray(local)) return { local: null, reason: "the local file is not a JSON object" };
     return { local, reason: "" };
-  } catch {
+  } catch (error) {
+    if (error instanceof LocalFileRefused) return { local: null, reason: error.message };
     return { local: null, reason: "the local file is not valid JSON" };
   }
 }
@@ -85,6 +100,8 @@ export function loadConfig(repoRoot, vendor) {
   const result = {
     enabled: false,
     reason: "not enabled in the untracked local file",
+    allowUnprobedVersion: false,
+    allowedModels: [],
     timeoutMs: shipped.timeout_ms,
     model: typeof shippedVendor.model === "string" && MODEL_PATTERN.test(shippedVendor.model) ? shippedVendor.model : undefined
   };
@@ -101,6 +118,13 @@ export function loadConfig(repoRoot, vendor) {
   if (localVendor.enabled === true) {
     result.enabled = true;
     result.reason = "enabled in the untracked local file";
+  }
+  // Running a vendor version whose isolation flags were never verified widens what may leave the
+  // machine, so only the local file can allow it, per vendor.
+  if (localVendor.allow_unprobed_version === true) result.allowUnprobedVersion = true;
+  // Extra models a caller's --model may pick (pi): an egress choice, so only from the local file.
+  if (Array.isArray(localVendor.models)) {
+    result.allowedModels = localVendor.models.filter((m) => typeof m === "string" && MODEL_PATTERN.test(m));
   }
   return result;
 }

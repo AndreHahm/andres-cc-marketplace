@@ -13,13 +13,19 @@ environment, and is killed with its whole process group at the timeout (POSIX on
   you…", the changed-file list and the diff. A vendor with a read tool could open any file the OS user
   can, and the diff is untrusted text that may ask it to.
 - **Environment.** `PATH`, `HOME`, `USER`, `LOGNAME`, `LANG`, `LC_*`, `TERM`, `TMPDIR` and the
-  `XDG_*_HOME`/`XDG_RUNTIME_DIR` variables, plus the vendor's own auth variables listed below when they
-  are set (pi also gets `PI_OFFLINE=1`). Nothing else from the caller's environment is passed. On the probe machine all three CLIs kept
-  their credentials in files under `HOME`, not in variables.
+  `XDG_*_HOME` variables, plus the vendor's own auth variables listed below when they are set (pi also
+  gets `PI_OFFLINE=1`). Nothing else from the caller's environment is passed; `XDG_RUNTIME_DIR` is left
+  out because it points at the session's sockets (D-Bus, keyring, often the SSH or GPG agent). On the
+  probe machine all three CLIs kept their credentials in files under `HOME`, not in variables; a CLI that
+  instead reads them from a keyring over D-Bus would now fail authentication (not re-checked live).
 - **Version.** The flags were verified against agy 1.5.9, pi 1.5.0 and devin 3000.12.57 on 2026-11-16.
-  Another version (matched as a whole token, so `1.5.90` is not `1.5.9`) still runs, with a note in
-  `inspection_limits`; re-probe after an upgrade, because each of these CLIs has changed flags between
-  minor versions. The version is read with a bare `<cli> --version`, under the reduced environment but
+  The first version number in the `--version` output must equal the probed one (so `1.5.90`, or a newer
+  CLI printing `2.0.0 (compat 1.5.9)`, is another version). Another version still runs for pi, with a
+  note in `inspection_limits`; for devin and agy it is refused before sending (`unsupported_cli_version`)
+  unless the local file sets `allow_unprobed_version` for that vendor. The probe and the real run are
+  separate executions of the same binary, so a CLI that updates itself in between would run unprobed;
+  whether agy or devin self-update was not checked. Re-probe after an upgrade, because each of these CLIs
+  has changed flags between minor versions. The version is read with a bare `<cli> --version`, under the reduced environment but
   without the isolation flags below; it runs before anything is sent and inside the time budget.
 
 ## pi
@@ -63,8 +69,9 @@ devin -p --prompt-file <run-dir>/prompt.md --config <run-dir>/devin-config.json 
   `mcp_list_tools`, `mcp_read_resource`, `web_search`, `webfetch`, `browser_preview`, `run_subagent`,
   `skill` and `request_scope`. Tool names come from the trace's `agent.tool_definitions`; a `mcp__*`
   pattern matches nothing. `auto` mode alone is not read-only: a probe saw it run `cat` through `exec`.
-  A tool Devin adds in a later version is not in this list, which is one reason a version change is
-  noted.
+  A tool Devin adds in a later version is not in this list, so a devin version other than the probed
+  one is refused before sending (`unsupported_cli_version`) unless the local file sets
+  `allow_unprobed_version` for devin.
 - **Input:** `--prompt-file` loads the prompt from the run directory, so the diff is not in argv.
 - **Auth variables:** `DEVIN_API_KEY`, `WINDSURF_API_KEY`.
 - **Egress:** Cognition. The model is pinned with `--model` because the default changes.
@@ -86,7 +93,13 @@ agy -p <prompt, inline> --mode plan --sandbox --output-format json
   says not to use tools. No isolating `--settings` is passed: a scoped `--settings` read allow did not
   help in a probe (the model reached for `bash`, was refused, and the run ended empty), and which keys
   would further restrict agy is unverified. Isolation therefore rests on headless refusal and
-  `--sandbox`.
+  `--sandbox`, and an agy version other than the probed one is refused before sending
+  (`unsupported_cli_version`) unless the local file sets `allow_unprobed_version` for agy.
+- **Argv exposure:** the prompt, diff included, is passed as one command-line argument, so other local
+  users can read it from `ps` or `/proc/<pid>/cmdline` while agy runs, unless `/proc` is mounted with
+  `hidepid`. pi and devin read their prompt from a `0600` file instead. Whether agy can read a prompt
+  from a file or stdin was not probed; the dry run's `reach` states the exposure so the egress
+  confirmation names it.
 - **Auth variables:** `GEMINI_API_KEY`, `GOOGLE_API_KEY`, `GOOGLE_APPLICATION_CREDENTIALS`,
   `GOOGLE_CLOUD_PROJECT`.
 - **Egress:** Google.

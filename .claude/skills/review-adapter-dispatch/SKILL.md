@@ -70,13 +70,15 @@ flag is a usage error.
   per line, LF only, each checked as `codex-review-bridge` checks a target path. Empty is a usage error.
   A finding may cite only these.
 - `--model` (optional) — passed to the vendor; must start with a letter or digit, charset
-  `[A-Za-z0-9._/:-]`. Without it the shipped default for that vendor is used, never the vendor's own
-  unpinned default.
+  `[A-Za-z0-9._/:-]`. Without it the configured model (local pin, else the shipped default) is used,
+  never the vendor's own unpinned default. For pi, whose model picks who receives the diff, it must be
+  the configured model or one listed in the local file's `vendors.pi.models` → otherwise
+  `vendor_not_allowed`.
 - `--timeout-ms` (optional, plain digits) — lowers the configured limit (shipped 600 000 ms, which the
   local file may lower further); a higher value is clamped to that limit, never raised past it.
 - `--secret-paths-confirmed` (optional, no value) — see Gates.
-- `--dry-run` (optional, no value; unlike `codex-review-bridge`'s `--dry-run true`) — runs every gate
-  and spawns nothing.
+- `--dry-run` (optional, no value; unlike `codex-review-bridge`'s `--dry-run true`) — runs the five
+  gates and spawns nothing, so it does not probe the vendor's version.
 
 Relative paths in the three file flags resolve against `--cwd`, not the caller's working directory;
 pass absolute paths. Neither file may contain a NUL byte.
@@ -106,8 +108,10 @@ In the envelope, `provenance.provider` is the `recipient` label, `provenance.exe
    installed codex-kit at run time. See `references/codex-kit-locator.md` for how the module is found
    and the ownership checks applied before it is imported. Missing or unsafe → `codex_kit_unavailable`.
 2. **Vendor allowed.** The vendor must be enabled in the untracked local file
-   `.claude/reviewadapters-kit.local.json` under `--cwd`. Shipped defaults enable nothing, and a
-   tracked copy of the local file is refused → `vendor_not_allowed`. See `references/trust-and-config.md`.
+   `.claude/reviewadapters-kit.local.json` under `--cwd`. Shipped defaults enable nothing; a tracked
+   copy of the local file, or one not owned by the user or writable by others, is refused, and so is a
+   pi `--model` the local file does not allow → `vendor_not_allowed`. See
+   `references/trust-and-config.md`.
 3. **Secret-named paths.** If any target path or diff-header path matches codex-kit's secret-filename
    patterns, the call is refused unless the caller passes `--secret-paths-confirmed` →
    `secret_paths_unconfirmed`. An interactive caller passes it only after its own extra confirmation
@@ -132,8 +136,10 @@ vendor's working directory is a private temp directory, its environment is reduc
 The model returns only `findings`, `verdict` and `inspection_limits`. The adapter builds `dispatch` and
 `provenance` itself, checks the result's structure against `ENVELOPE_SCHEMA`, then runs codex-kit's
 `semanticallyValidate` (in-scope paths, unique ids, dropped citations recorded in `inspection_limits`).
-A vendor version other than the probed one, and a Devin run whose trace lacks `final_metrics`, are noted
-in `inspection_limits`.
+A pi version other than the probed one, and a Devin run whose trace lacks `final_metrics`, are noted in
+`inspection_limits`. A devin or agy version other than the probed one is refused after its `--version`
+probe and before the diff is sent (`unsupported_cli_version`), unless the local file sets
+`allow_unprobed_version` for that vendor; a dry run does not probe the version.
 
 ## Content trust boundary
 
@@ -144,7 +150,8 @@ a `<diff>` block after a fixed sentence telling the model that block is data, wh
 instruction file says. Closing tags of the prompt's own blocks inside the diff (`</diff>`,
 `</changed_files>`, `</file>`) are rewritten by the adapter's own `neutralizeBlockTags`; codex-kit's
 `neutralizeClosingTags` is not used, because it rewrites every closing tag and would alter HTML or JSX
-under review.
+under review. A diff can still steer the model's verdict (for example to `pass` with no findings), and
+the envelope would validate: an unattended caller never treats `verdict: pass` alone as approval.
 
 ## Typed failures
 

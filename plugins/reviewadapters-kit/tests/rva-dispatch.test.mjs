@@ -47,14 +47,18 @@ function git(repo, ...args) {
   return execFileSync("git", ["-C", repo, "-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false", ...args], { encoding: "utf8" });
 }
 
-// A fixture repository (git init, nothing committed) with one changed file and the dispatch inputs.
-function fixture({ enable = ["pi", "devin", "agy"], changed = "calc.py", local = {} } = {}) {
+// A fixture repository (git init, nothing committed) with one changed file and the dispatch inputs. The
+// fake vendors report an unprobed version, so the fixture allows it unless a test says otherwise.
+function fixture({ enable = ["pi", "devin", "agy"], changed = "calc.py", local = {}, unprobed = true, piModels } = {}) {
   const repo = tempDir("rva-test-repo-");
   execFileSync("git", ["init", "-q", repo]);
   fs.writeFileSync(path.join(repo, "calc.py"), "def add(a, b):\n    return a - b\n");
-  fs.mkdirSync(path.join(repo, ".claude"));
-  const vendors = Object.fromEntries(enable.map((v) => [v, { enabled: true }]));
-  fs.writeFileSync(path.join(repo, ".claude", "reviewadapters-kit.local.json"), JSON.stringify({ vendors, ...local }));
+  fs.mkdirSync(path.join(repo, ".claude"), { mode: 0o700 });
+  fs.chmodSync(path.join(repo, ".claude"), 0o700);
+  const vendors = Object.fromEntries(enable.map((v) => [v, unprobed ? { enabled: true, allow_unprobed_version: true } : { enabled: true }]));
+  if (piModels && vendors.pi) vendors.pi.models = piModels;
+  fs.writeFileSync(path.join(repo, ".claude", "reviewadapters-kit.local.json"), JSON.stringify({ vendors, ...local }), { mode: 0o600 });
+  fs.chmodSync(path.join(repo, ".claude", "reviewadapters-kit.local.json"), 0o600);
   const inputs = tempDir("rva-test-in-");
   fs.writeFileSync(path.join(inputs, "instr.md"), "Review it.\n");
   fs.writeFileSync(path.join(inputs, "diff.patch"), changed === "calc.py" ? DIFF : `diff --git a/${changed} b/${changed}\n`);
@@ -107,19 +111,34 @@ function dispatch({ repo, inputs }, vendor, extra = [], fake = {}, options = {})
 
 const marked = (body) => `banner line\nFINDINGS BEGIN\n${body}\nFINDINGS END\n`;
 
-test("a vendor missing from the local allow-list is refused", () => {
+test("a vendor missing from the local allow-list, or a pi --model the local file does not allow, is refused", () => {
   const r = dispatch(fixture({ enable: ["devin"] }), "pi");
   assert.equal(r.code, 2);
   assert.equal(r.out.category, "vendor_not_allowed");
+  // pi's model picks who receives the diff, so a caller's --model must be the configured model or one the
+  // local file lists; a bare id or another id on the same provider prefix is not enough.
+  const f = fixture();
+  for (const model of ["openai/gpt-x", "nvidia", "nvidia/another-model"]) {
+    const refused = dispatch(f, "pi", ["--model", model, "--dry-run"]);
+    assert.equal(refused.out.category, "vendor_not_allowed", `${model}: ${JSON.stringify(refused.out)}`);
+  }
+  const listed = dispatch(fixture({ piModels: ["nvidia/another-model"] }), "pi", ["--model", "nvidia/another-model", "--dry-run"]);
+  assert.equal(listed.out.dryRun, true, JSON.stringify(listed.out));
+  assert.equal(listed.out.model, "nvidia/another-model");
 });
 
-test("a git-tracked local file cannot enable a vendor", () => {
+test("a git-tracked local file, or one writable by others, cannot enable a vendor", () => {
   const f = fixture();
   // -f: a global gitignore may ignore .claude/; force-adding is how a tracked copy would arise anyway.
   execFileSync("git", ["-C", f.repo, "add", "-f", ".claude/reviewadapters-kit.local.json"]);
   const r = dispatch(f, "pi");
   assert.equal(r.out.category, "vendor_not_allowed");
   assert.match(r.out.detail, /tracked/);
+  const open = fixture();
+  fs.chmodSync(path.join(open.repo, ".claude", "reviewadapters-kit.local.json"), 0o666);
+  const w = dispatch(open, "pi", ["--dry-run"]);
+  assert.equal(w.out.category, "vendor_not_allowed", JSON.stringify(w.out));
+  assert.match(w.out.detail, /writable by others/);
 });
 
 test("a secret-named target path needs --secret-paths-confirmed", () => {
@@ -190,13 +209,14 @@ test("each vendor runs with its isolation flags, the diff inline and a minimal e
     const f = fixture();
     const record = path.join(f.inputs, `${vendor}.args`);
     const out = vendor === "agy" ? JSON.stringify({ structured_output: JSON.parse(GOOD) }) : marked(GOOD);
-    const r = dispatch(f, vendor, [], { FAKE_ARGS: record, FAKE_OUT: out }, { env: { RVA_TEST_UNRELATED_TOKEN: "leak" } });
+    const r = dispatch(f, vendor, [], { FAKE_ARGS: record, FAKE_OUT: out }, { env: { RVA_TEST_UNRELATED_TOKEN: "leak", XDG_RUNTIME_DIR: "/run/user/rva-test" } });
     assert.equal(r.code, 0, `${vendor}: ${JSON.stringify(r.out)}`);
     const args = fs.readFileSync(record, "utf8").split("\n");
     for (const flag of must) assert.ok(args.includes(flag), `${vendor} lacks ${flag}`);
     for (const flag of mustNot) assert.ok(!args.includes(flag), `${vendor} has ${flag}`);
     const env = fs.readFileSync(`${record}.env`, "utf8");
     assert.doesNotMatch(env, /RVA_TEST_UNRELATED_TOKEN/, `${vendor} received an unrelated variable`);
+    assert.doesNotMatch(env, /^XDG_RUNTIME_DIR=/m, `${vendor} received XDG_RUNTIME_DIR`);
     assert.match(r.out.inspection_limits.join("\n"), /differs from the probed/);
   }
 });
@@ -273,7 +293,7 @@ test("a prompt over agy's argument cap is refused before anything runs", () => {
   assert.equal(dispatch(f, "agy").out.category, "input_too_large");
 });
 
-test("--dry-run runs every gate and spawns nothing", () => {
+test("--dry-run runs the five gates and spawns nothing", () => {
   const f = fixture();
   const pidfile = path.join(f.inputs, "child.pid");
   const r = dispatch(f, "devin", ["--dry-run"], { FAKE_MODE: "sleep", FAKE_PIDFILE: pidfile });
@@ -292,6 +312,15 @@ test("codex-kit not installed, or writable by others, is codex_kit_unavailable; 
   fs.cpSync(CODEX_KIT, copy, { recursive: true });
   fs.chmodSync(path.join(copy, "scripts", "lib", "codex-exec.mjs"), 0o666);
   assert.match(dispatch(f, "pi", ["--dry-run"], {}, { home: homeWithCodexKit(copy) }).out.detail, /writable by others/);
+  // Outside a plugins/ directory (like this repository's .claude/ mirror) the opt-in finds no sibling,
+  // even when a codex-kit directory sits next to the plugin.
+  const elsewhere = path.join(tempDir("rva-test-mirror-"), "notplugins");
+  fs.cpSync(PLUGIN, path.join(elsewhere, "reviewadapters-kit"), { recursive: true });
+  fs.cpSync(CODEX_KIT, path.join(elsewhere, "codex-kit"), { recursive: true });
+  const mirrored = path.join(elsewhere, "reviewadapters-kit", "scripts", "rva-dispatch.mjs");
+  const args = ["--vendor", "pi", "--reviewer-type", "t", "--dispatch-id", "d1", "--instruction-file", path.join(opted.inputs, "instr.md"),
+    "--diff-file", path.join(opted.inputs, "diff.patch"), "--target-paths-file", path.join(opted.inputs, "changed.txt"), "--cwd", opted.repo, "--dry-run"];
+  assert.equal(runNode(mirrored, args, { home: homeWithCodexKit(null) }).out.category, "codex_kit_unavailable");
 });
 
 test("the dispatcher runs from a plugin path with a space and a non-ASCII character", () => {
@@ -368,10 +397,16 @@ test("diffHeaderPaths reads headers and refuses malformed hunks", () => {
   assert.match(diffHeaderPaths("--- x\n+++ y\n").error, /no a\/ or b\/ prefix/);
 });
 
-test("a version other than the probed one is matched as a whole token", () => {
-  const f = fixture();
+test("an unprobed version is noted for pi and refused for devin and agy unless the local file allows it", () => {
+  const f = fixture({ unprobed: false });
   const r = dispatch(f, "pi", [], { FAKE_OUT: marked(GOOD) });
   assert.match(r.out.inspection_limits.join("\n"), /differs from the probed 1\.5\.0/);
+  for (const vendor of ["devin", "agy"]) {
+    const record = path.join(f.inputs, `${vendor}-unprobed.args`);
+    const refused = dispatch(f, vendor, [], { FAKE_ARGS: record, FAKE_OUT: marked(GOOD) });
+    assert.equal(refused.out.category, "unsupported_cli_version", `${vendor}: ${JSON.stringify(refused.out)}`);
+    assert.equal(fs.existsSync(record), false, `${vendor} was spawned with the diff`);
+  }
 });
 
 test("a timeout above the configured limit is clamped to it, not raised", () => {

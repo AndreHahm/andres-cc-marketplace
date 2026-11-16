@@ -5,9 +5,10 @@
 // "usage" and exits 1.
 //
 // Gates, in order, before anything is sent: codex-kit present and safe to import; vendor enabled in the
-// untracked local file; secret-named paths (target list and diff headers) confirmed by the caller; input
-// within the vendor's size cap; vendor CLI on PATH. The contract is documented in the
-// review-adapter-dispatch skill.
+// untracked local file (and, for pi, a caller --model the local file allows); secret-named paths
+// (target list and diff headers) confirmed by the caller; input within the vendor's size cap; vendor CLI
+// on PATH. A real run also refuses an unprobed devin or agy version before sending. The contract is
+// documented in the review-adapter-dispatch skill.
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
@@ -266,6 +267,12 @@ async function dispatch(options, runDir) {
   let model = config.model;
   if (options.model !== undefined) {
     if (!MODEL_PATTERN.test(options.model)) throw usage("--model must start with a letter or digit and use only [A-Za-z0-9._/:-]");
+    // pi's model picks the company that receives the diff, and how pi resolves an id to a provider is not
+    // pinned down, so a caller's --model must be exactly the configured model or one the untracked local
+    // file lists in vendors.pi.models.
+    if (vendorName === "pi" && options.model !== config.model && !config.allowedModels.includes(options.model)) {
+      throw new Failure("vendor_not_allowed", "pi: --model is neither the configured model nor listed in vendors.pi.models in the untracked local file");
+    }
     model = options.model;
   }
   if (!model) throw usage(`no model configured for ${vendorName}`);
@@ -306,6 +313,15 @@ async function dispatch(options, runDir) {
   const env = vendor.env(model);
   const started = Date.now();
   const version = await cliVersion(binary, runDir, env);
+  // The first version-shaped token must equal the probed version, so 1.5.90, 11.5.9 or a newer CLI that
+  // prints "2.0.0 (compat 1.5.9)" does not pass for the probed 1.5.9.
+  const versionProbed = /\d+(?:\.\d+)+/.exec(version)?.[0] === PROBED_VERSIONS[vendorName];
+  // devin's isolation is a list of denied tool names and agy's rests on its headless refusal: a newer
+  // version may add a tool neither covers, so it is refused before the diff is sent unless the local file
+  // allows it. pi runs with --no-tools, so an unprobed pi only gets a note.
+  if (!versionProbed && vendor.refuseUnprobed && !config.allowUnprobedVersion) {
+    throw new Failure("unsupported_cli_version", `${vendorName} version "${version}" differs from the probed ${PROBED_VERSIONS[vendorName]}; nothing was sent (allow it with allow_unprobed_version in the untracked local file)`);
+  }
   const remaining = timeoutMs - (Date.now() - started);
   if (remaining <= 0) throw new Failure("timeout", `${vendor.binary} --version used the whole ${timeoutMs} ms budget; nothing was sent`);
   const run = await runVendor({ command: binary, args, cwd: runDir, env, timeoutMs: remaining });
@@ -340,9 +356,7 @@ async function dispatch(options, runDir) {
     inspection_limits: [...extracted.value.inspection_limits]
   };
   if (!ownershipChecked) envelope.inspection_limits.push("codex-kit's ownership check was skipped on this platform");
-  // Whole-token match, so 1.5.90 or 11.5.9 does not pass for the probed 1.5.9.
-  const probed = PROBED_VERSIONS[vendorName].replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  if (!new RegExp(`(^|[^0-9.])${probed}($|[^0-9.])`).test(version)) {
+  if (!versionProbed) {
     envelope.inspection_limits.push(`${vendorName} version "${version}" differs from the probed ${PROBED_VERSIONS[vendorName]}; its isolation flags were not re-verified`);
   }
   const note = vendor.completionNote?.(files);
