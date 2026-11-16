@@ -176,11 +176,13 @@ SECRET_PATTERNS = (
     *_TOKEN_SHAPES,
     ("pem_private_key_block", re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----")),
     # Shapes beyond the analysis-kit list: this list diverges on purpose, see the R20 note above.
-    # The lookbehind starts a scheme only at the start of its run: a long dotted run (a.a.a...)
-    # would otherwise be rescanned from every word boundary, which is quadratic.
+    # The lookbehind starts a match only at the start of a scheme-character run: a long dotted run
+    # (a.a.a...) would otherwise be rescanned from every word boundary, which is quadratic. The run
+    # may open with digits or punctuation before the scheme letter, so "1.https://u:p@h" (a list
+    # item with no space) or "-https://u:p@h" is still caught.
     (
         "url_embedded_credentials",
-        re.compile(r"(?<![a-z0-9+.-])\b[a-z][a-z0-9+.-]*://[^/\s:@]+:[^/\s@]+@"),
+        re.compile(r"(?<![a-z0-9+.-])[0-9+.-]*[a-z][a-z0-9+.-]*://[^/\s:@]+:[^/\s@]+@"),
     ),
     (
         "key_value_secret",
@@ -208,8 +210,9 @@ SECRET_PATTERNS = (
     # the start of a local-part run, so a long run with no "@" is scanned once, not quadratically.
     # The domain must end where no label character or ".label" follows, so the engine
     # cannot retry a shorter domain to dodge an exemption. Not matched: RFC 2606 example domains
-    # (placeholders, never a person), and user@host followed by ":path/", the shape of a git SSH
-    # remote such as git@github.com:org/repo. ASCII addresses only.
+    # (placeholders, never a person), and user@host followed by ":path/" or ":name.git", the shape
+    # of a git SSH remote such as git@github.com:org/repo or git@host.com:project.git. ASCII
+    # addresses only.
     (
         "email_address",
         re.compile(
@@ -217,7 +220,7 @@ SECRET_PATTERNS = (
             r"(?!(?:[A-Za-z0-9-]+\.)*(?i:example\.(?:com|net|org))(?![A-Za-z0-9-]|\.[A-Za-z0-9]))"
             r"[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*"
             r"\.(?!(?i:example|test|invalid|localhost)(?![A-Za-z0-9-]|\.[A-Za-z0-9]))[A-Za-z]{2,}"
-            r"(?![A-Za-z0-9-]|\.[A-Za-z0-9])(?!:[^\s@]*/)",
+            r"(?![A-Za-z0-9-]|\.[A-Za-z0-9])(?!:[^\s@]*(?:/|\.git(?![A-Za-z0-9])))",
             re.ASCII,
         ),
     ),

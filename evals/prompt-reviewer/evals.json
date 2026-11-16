@@ -126,6 +126,20 @@
         "The output is exactly the one refusal line from the agent's Input section",
         "No findings table and no rewrite are produced"
       ]
+    },
+    {
+      "id": 10,
+      "name": "backslash-catalog-root-accepted",
+      "prompt": "Review evals\\prompt-reviewer\\files/clean-user.md (catalog_root: evals\\prompt-reviewer\\files; origin recorded by the caller: user).",
+      "expected_output": "Accepts the path, because with every backslash in both the path and catalog_root read as a slash the path starts with catalog_root followed by /; reads only clean-user.md and reviews it as in eval 4.",
+      "files": [
+        "evals/prompt-reviewer/files/clean-user.md"
+      ],
+      "assertions": [
+        "The refusal line is not output",
+        "Only evals/prompt-reviewer/files/clean-user.md is read",
+        "The output ends with per-severity counts and a line stating nothing was approved, activated or written"
+      ]
     }
   ],
   "testing_validation_coverage": {

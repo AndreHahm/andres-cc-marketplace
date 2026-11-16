@@ -43,7 +43,8 @@ claiming the review is already approved.
 ## Input
 
 A path to one record file, the `catalog_root` it belongs to, and optionally the origin the caller
-recorded. Before reading anything, check the path as text, with every `\` read as `/`: it starts with
+recorded. Before reading anything, check the path as text, with every `\` in both the path and
+`catalog_root` read as `/` (on Windows `catalog_root` arrives with backslashes): it starts with
 `catalog_root` followed by `/`, has no `.` or `..` segment and no segment after `catalog_root` that
 ends in a dot or a space (Windows trims those), and ends in `.md`. If `catalog_root` is
 missing or any check fails, read nothing and output only one line, `Refused: the record path is not

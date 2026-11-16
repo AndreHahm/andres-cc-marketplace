@@ -1,0 +1,13 @@
+{
+  "iteration": 6,
+  "run_date": "2026-11-16",
+  "configurations": [
+    "with_skill"
+  ],
+  "scope": "new eval 10 (backslash catalog_root accepted) and eval 7 re-run (outside path still refused) after both the path and catalog_root are normalized; evals 1-6, 8 and 9 not re-run (their roots and paths contain no backslash, so the change does not affect them)",
+  "with_skill": {
+    "passed": 6,
+    "total": 6,
+    "pass_rate": 1.0
+  }
+}

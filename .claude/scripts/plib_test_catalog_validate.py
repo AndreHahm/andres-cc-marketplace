@@ -267,6 +267,8 @@ class TextAndYaml(unittest.TestCase):
             "git@github.com:org/repo",  # git SSH remotes, not mailboxes
             "git@gitlab.corp.com:org/repo",
             "git@ssh.dev.azure.com:v3/org/project/repo",
+            "git@myserver.com:project.git",  # a root-level remote, no slash after the colon
+            "deploy@ci.corp.net:repo.git.",
             "@types/node",
             "a@b",
         ):
@@ -281,6 +283,32 @@ class TextAndYaml(unittest.TestCase):
         self.assertNotIn("acme.io", message)
         self.assertNotIn("personal data", message)
 
+    def test_email_followed_by_a_colon_and_non_git_token_is_still_screened(self):
+        for text in ("mail bob" + "@acme.io:gitlab", "bob" + "@acme.io:x.github"):
+            self.assertEqual([h["pattern"] for h in V.screen_text(text)], ["email_address"], text)
+
+    def test_url_credentials_after_a_digit_or_punctuation_run_are_screened(self):
+        # The lookbehind that keeps the pattern linear must not hide a URL that opens its run late.
+        for text in (
+            "1.https://u:" + "p@h",  # a numbered list item with no space
+            "see .https://u:" + "p@h",
+            "x -https://u:" + "p@h",
+            "A.https://u:" + "p@h",
+            "(+https://u:" + "p@h)",
+            "2.git+ssh://u:" + "p@h",
+            "foo.https://u:" + "p@h",
+        ):
+            self.assertIn(
+                "url_embedded_credentials", [h["pattern"] for h in V.screen_text(text)], text
+            )
+
+    def test_url_credentials_screen_stays_fast_on_long_runs(self):
+        url = dict(V.SECRET_PATTERNS)["url_embedded_credentials"]
+        for line in ("a." * 100000, "1." * 100000, "-a" * 100000, "1.a" * 70000, "+" * 200000):
+            started = time.perf_counter()
+            url.search(line)
+            self.assertLess(time.perf_counter() - started, 5.0)
+
     def test_email_screen_stays_fast_on_long_at_sign_runs(self):
         # Times the email pattern alone, so a slow neighbor cannot mask or cause a failure here.
         email = dict(V.SECRET_PATTERNS)["email_address"]
@@ -291,6 +319,8 @@ class TextAndYaml(unittest.TestCase):
             ("a" * 50 + "@") * 5000,
             "a@" + "b." * 100000,
             "x@" + "example.com." * 20000,
+            "x@a.co:" + "b" * 200000,
+            "x@a.co:" + ".gi" * 70000,
         ):
             started = time.perf_counter()
             email.search(line)

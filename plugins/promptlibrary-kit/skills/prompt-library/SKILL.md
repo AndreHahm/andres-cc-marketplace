@@ -250,8 +250,8 @@ directly; last run 2026-11-16, 7 of 7 checks passed. It failed on a copy with a 
 - [ ] A slug that does not match the slug pattern is refused before any command runs with it.
 - [ ] `activate` of an already active record is reported and stops, with no question and no command.
 
-**Last dated run record:** validator fixture tests, 140 run (137 passing, 3 POSIX-only skipped on Windows), 2026-11-16
-(`scripts/plib_test_catalog_validate.py`), after the email screen was added. The step 6 sharing notice and
+**Last dated run record:** validator fixture tests, 143 run (140 passing, 3 POSIX-only skipped on Windows), 2026-11-16
+(`scripts/plib_test_catalog_validate.py`), after the email screen and the review fixes to it were added. The step 6 sharing notice and
 the step 7 `catalog_root` hand-off and `Refused:` handling (2026-11-16) were checked by the smoke test and
 by `prompt-reviewer`'s own dry runs (`evals/prompt-reviewer/workspace/iteration-4/`); no
 `evals/prompt-library/` scenario was re-run for them. The latest live run, 2026-10-14 (plugin loaded with
