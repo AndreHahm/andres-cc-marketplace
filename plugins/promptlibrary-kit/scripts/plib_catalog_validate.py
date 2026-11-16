@@ -8,9 +8,8 @@ Every subcommand prints one JSON object on stdout and exits 0 (ok) or 1 (not ok)
 library only.
 
 Usage: plib_catalog_validate.py [--root PATH] <subcommand> [args]
-Subcommands: validate, show, hash, screen, init, new-id, draft, update-draft, register, discard-
-orphan,
-             record-verification, activate, deactivate, finalize
+Subcommands: validate, show, review-path, hash, screen, init, new-id, draft, update-draft, register,
+             discard-orphan, record-verification, activate, deactivate, finalize
 """
 
 from __future__ import annotations
@@ -210,17 +209,19 @@ SECRET_PATTERNS = (
     # the start of a local-part run, so a long run with no "@" is scanned once, not quadratically.
     # The domain must end where no label character or ".label" follows, so the engine
     # cannot retry a shorter domain to dodge an exemption. Not matched: RFC 2606 example domains
-    # (placeholders, never a person), and user@host followed by ":path/" or ":name.git", the shape
-    # of a git SSH remote such as git@github.com:org/repo or git@host.com:project.git. ASCII
-    # addresses only.
+    # (placeholders, never a person), and a git SSH remote, git@host:path (git@github.com:org/repo,
+    # git@host.com:project.git). Only the local part "git" is exempt: any other user@host:path is
+    # screened, so a suffix such as ":/x" or ":x.git" cannot hide a real address. ASCII addresses
+    # only.
     (
         "email_address",
         re.compile(
-            r"(?<![A-Za-z0-9._%+-])[A-Za-z0-9._%+-]+@"
+            r"(?<![A-Za-z0-9._%+-])(?!git@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*:[^\s@])"
+            r"[A-Za-z0-9._%+-]+@"
             r"(?!(?:[A-Za-z0-9-]+\.)*(?i:example\.(?:com|net|org))(?![A-Za-z0-9-]|\.[A-Za-z0-9]))"
             r"[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*"
             r"\.(?!(?i:example|test|invalid|localhost)(?![A-Za-z0-9-]|\.[A-Za-z0-9]))[A-Za-z]{2,}"
-            r"(?![A-Za-z0-9-]|\.[A-Za-z0-9])(?!:[^\s@]*(?:/|\.git(?![A-Za-z0-9])))",
+            r"(?![A-Za-z0-9-]|\.[A-Za-z0-9])",
             re.ASCII,
         ),
     ),
@@ -1036,6 +1037,53 @@ def cmd_show(args) -> dict:
     return info
 
 
+def _is_link(path: Path) -> bool:
+    """A symbolic link (any platform), or on Windows any reparse point: a junction, a mount point, a
+    cloud placeholder. Read with lstat, so it works on every Python version and never follows the
+    link. Fails closed: an entry whose attributes cannot be read counts as a link."""
+    try:
+        st = os.lstat(path)
+    except FileNotFoundError:
+        return False  # nothing there to follow; the is_file check refuses it
+    except OSError:
+        return True
+    reparse = getattr(st, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT
+    return stat.S_ISLNK(st.st_mode) or bool(reparse)
+
+
+def cmd_review_path(args) -> dict:
+    """Check a record path before prompt-reviewer reads it.
+
+    The reviewer can only check the path as text, so a link inside the catalog root could point it
+    at a file outside. This resolves the path here: no link or junction on the way, a `.md` file
+    that stays inside the root. The reviewer still opens the path itself afterwards, so a link
+    swapped in between the two is not caught; that needs write access to the catalog folder or a
+    folder above it. A hard link is not detected either (it is an ordinary file entry).
+    """
+    info = resolve_root(getattr(args, "root", None))
+    root = Path(info["catalog_root"])
+    rel = args.path.replace("\\", "/")
+    parts = rel.split("/")
+    if (
+        rel.startswith("/")
+        or ":" in rel
+        or "\x00" in rel
+        or not rel.endswith(".md")
+        or any(part in ("", ".", "..") or part != part.rstrip(". ") for part in parts)
+    ):
+        raise CatalogError("not a record path relative to the catalog root")
+    current = root
+    for part in parts:
+        current = current / part
+        if _is_link(current):
+            raise CatalogError(f"the record path goes through a link or junction: {part}")
+    if not current.is_file() or not contained(current, root):
+        raise CatalogError("not a record file inside the catalog root")
+    info["ok"] = True
+    info["path"] = str(current)
+    return info
+
+
 MAX_INPUT_BYTES = 262144
 
 
@@ -1507,6 +1555,10 @@ def build_parser() -> argparse.ArgumentParser:
     s = sub.add_parser("show")
     s.add_argument("slug")
     s.add_argument("--history", action="store_true")
+    rp = sub.add_parser("review-path")
+    rp.add_argument(
+        "path", help="record path relative to the catalog root, e.g. <slug>/<internal_id>.md"
+    )
     h = sub.add_parser("hash")
     h.add_argument("file", help="a file inside the catalog root or the system temp directory")
     sc = sub.add_parser("screen")
@@ -1548,6 +1600,7 @@ def build_parser() -> argparse.ArgumentParser:
 COMMANDS = {
     "validate": cmd_validate,
     "show": cmd_show,
+    "review-path": cmd_review_path,
     "hash": cmd_hash,
     "screen": cmd_screen,
     "init": cmd_init,

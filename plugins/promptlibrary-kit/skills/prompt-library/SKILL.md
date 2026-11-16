@@ -8,7 +8,7 @@ description: >-
   prompts (prompt-retrieval) or running them (prompt-execution).
 disable-model-invocation: true
 argument-hint: "[add|revise|activate|deactivate] [slug]"
-allowed-tools: Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" validate:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" show:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" hash:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" screen:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" init:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" new-id:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" draft:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" update-draft:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" discard-orphan:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" record-verification:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" activate:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" deactivate:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" finalize:*), Agent(prompt-reviewer), Skill(session-detail)
+allowed-tools: Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" validate:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" show:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" review-path:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" hash:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" screen:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" init:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" new-id:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" draft:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" update-draft:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" discard-orphan:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" record-verification:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" activate:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" deactivate:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" finalize:*), Agent(prompt-reviewer), Skill(session-detail)
 ---
 
 # Prompt Library
@@ -141,11 +141,12 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
    this question. On yes, `<CLI> draft
    <scratch-file>`; it validates, enforces the secret screen for `session`, `web`, `claude` and `codex` text, writes the record and
    lists it in the catalog together. Keep the `text_hash` and `path` it returns.
-7. **Review and optimize.** Dispatch `prompt-reviewer` with the absolute path of the filed record
-   (`catalog_root` + `/` + `path`, with `path` from step 6's `draft` output or, for a resumed draft, from
-   `<CLI> show <slug> --history`), the `catalog_root` exactly as step 1's `validate` returned it (the
-   path is that string + `/` + `path`), and its `origin`; it is read-only and refuses a path outside
-   that `catalog_root`. If it returns its `Refused:` line, no review ran: handle it like a failed
+7. **Review and optimize.** Run `<CLI> review-path <path>`, with `path` from step 6's `draft` output or,
+   for a resumed draft, from `<CLI> show <slug> --history`. It refuses a path through a link or junction
+   or outside the catalog root; if it fails, report its error and do not dispatch. Otherwise dispatch
+   `prompt-reviewer` with the `path` and `catalog_root` it returned, exactly as returned, and the record's
+   `origin`; it is read-only and refuses a path outside that `catalog_root`. If it returns its
+   `Refused:` line, no review ran: handle it like a failed
    dispatch (see Gotchas), and never record `import` verification without a completed review. Present its findings and its
    proposed rewrite as a diff. If the user approves a rewrite, write the full replacement record to a
    scratch file and run `<CLI> update-draft <internal_id> <scratch-file>`; it screens the new text and
@@ -250,10 +251,11 @@ directly; last run 2026-11-16, 7 of 7 checks passed. It failed on a copy with a 
 - [ ] A slug that does not match the slug pattern is refused before any command runs with it.
 - [ ] `activate` of an already active record is reported and stops, with no question and no command.
 
-**Last dated run record:** validator fixture tests, 143 run (140 passing, 3 POSIX-only skipped on Windows), 2026-11-16
-(`scripts/plib_test_catalog_validate.py`), after the email screen and the review fixes to it were added. The step 6 sharing notice and
+**Last dated run record:** validator fixture tests, 150 run (147 passing, 3 POSIX-only skipped on Windows), 2026-11-16
+(`scripts/plib_test_catalog_validate.py`), after the email screen, its review fixes and `review-path`
+(link and junction refusal, tested with a real junction on Windows) were added. The step 6 sharing notice and
 the step 7 `catalog_root` hand-off and `Refused:` handling (2026-11-16) were checked by the smoke test and
-by `prompt-reviewer`'s own dry runs (`evals/prompt-reviewer/workspace/iteration-4/`); no
+by `prompt-reviewer`'s own dry runs (`evals/prompt-reviewer/workspace/iteration-4/` and `-6/`); no
 `evals/prompt-library/` scenario was re-run for them. The latest live run, 2026-10-14 (plugin loaded with
 `--plugin-dir`), ran add, near-duplicate, revise, finalize and deactivate, each status change behind its
 own approval; the step 5 triage skip it found was fixed in PR #566. An earlier hand-followed run of steps

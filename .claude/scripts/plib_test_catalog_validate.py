@@ -13,6 +13,7 @@ import importlib.util
 import io
 import json
 import os
+import shutil
 import stat
 import subprocess  # nosec B404 - test helper, fixed argument lists, no shell
 import sys
@@ -268,7 +269,7 @@ class TextAndYaml(unittest.TestCase):
             "git@gitlab.corp.com:org/repo",
             "git@ssh.dev.azure.com:v3/org/project/repo",
             "git@myserver.com:project.git",  # a root-level remote, no slash after the colon
-            "deploy@ci.corp.net:repo.git.",
+            "git@host.com:/srv/repo.git",
             "@types/node",
             "a@b",
         ):
@@ -283,8 +284,18 @@ class TextAndYaml(unittest.TestCase):
         self.assertNotIn("acme.io", message)
         self.assertNotIn("personal data", message)
 
-    def test_email_followed_by_a_colon_and_non_git_token_is_still_screened(self):
-        for text in ("mail bob" + "@acme.io:gitlab", "bob" + "@acme.io:x.github"):
+    def test_email_followed_by_a_remote_shaped_suffix_is_still_screened(self):
+        # Only git@host:path is a remote; any other user@host keeps its address screened.
+        for text in (
+            "mail bob" + "@acme.io:gitlab",
+            "bob" + "@acme.io:x.github",
+            "jane" + "@acme.io:/note",
+            "jane" + "@acme.io:note.git",
+            "scp f jane" + "@acme.io:/tmp/x",
+            "deploy" + "@ci.corp.net:repo.git",
+            "agit" + "@acme.io:org/repo",
+            "Mail git" + "@acme.io: thanks",  # a space after the colon: prose, not a remote
+        ):
             self.assertEqual([h["pattern"] for h in V.screen_text(text)], ["email_address"], text)
 
     def test_url_credentials_after_a_digit_or_punctuation_run_are_screened(self):
@@ -320,7 +331,8 @@ class TextAndYaml(unittest.TestCase):
             "a@" + "b." * 100000,
             "x@" + "example.com." * 20000,
             "x@a.co:" + "b" * 200000,
-            "x@a.co:" + ".gi" * 70000,
+            "git@" + "a." * 100000,
+            "git@" + "a-" * 100000 + ":",
         ):
             started = time.perf_counter()
             email.search(line)
@@ -847,6 +859,102 @@ class Lifecycle(Base):
         code, res = self.run_cli("discard-orphan", f"{SLUG}/active.md")
         self.assertEqual(code, 1)
         self.assertIn("is not an unlisted record file", res["error"])
+
+    def test_review_path_returns_the_record_file_inside_the_root(self):
+        rel = self.add_draft()["path"]
+        code, res = self.run_cli("review-path", rel)
+        self.assertEqual(code, 0, res)
+        self.assertEqual(Path(res["path"]), self.root / rel)
+        self.assertEqual(res["catalog_root"], str(self.root))
+        self.assertEqual(self.run_cli("review-path", rel.replace("/", "\\"))[0], 0)
+
+    def test_review_path_refuses_paths_that_are_not_records_in_the_root(self):
+        rel = self.add_draft()["path"]
+        slug = rel.split("/")[0]
+        for bad in (
+            f"../{rel}",
+            f"/{rel}",
+            f"{slug}/../{rel}",
+            f"{slug}/./x.md",
+            f"{slug}//x.md",
+            f"{slug}./x.md",
+            f"{slug} /x.md",
+            f"{slug}/missing.md",
+            f"{slug}/x.txt",
+            "C:/x.md",
+            f"{rel}:stream.md",
+            f"{rel}.",  # a final part ending in a dot
+            "\\\\server\\share\\x.md",  # UNC
+            "\\\\?\\C:\\x.md",  # Windows device paths
+            "//?/C:/x.md",
+            "\\\\.\\C:\\x.md",
+            f"{slug}/x\x00.md",
+        ):
+            code, res = self.run_cli("review-path", bad)
+            self.assertEqual(code, 1, bad)
+            self.assertNotIn("path", res, bad)
+
+    def test_review_path_refuses_a_folder_named_like_a_record(self):
+        self.add_draft()
+        (self.root / SLUG / "folder.md").mkdir()
+        code, res = self.run_cli("review-path", f"{SLUG}/folder.md")
+        self.assertEqual(code, 1)
+        self.assertIn("not a record file", res["error"])
+
+    def _link_folder(self, target: Path, link: Path) -> None:
+        """A junction on Windows (no extra privilege needed), a symlink elsewhere."""
+        if os.name == "nt":
+            import _winapi
+
+            _winapi.CreateJunction(str(target), str(link))
+        else:
+            os.symlink(target, link, target_is_directory=True)
+
+    def test_review_path_refuses_a_link_even_when_it_points_inside_the_root(self):
+        rel = self.add_draft()["path"]
+        self._link_folder(self.root / rel.split("/")[0], self.root / "alias")
+        code, res = self.run_cli("review-path", "alias/" + rel.split("/")[1])
+        self.assertEqual(code, 1)
+        self.assertIn("link or junction", res["error"])
+
+    def test_review_path_fails_closed_when_an_entry_cannot_be_read(self):
+        rel = self.add_draft()["path"]
+        real_lstat = os.lstat
+
+        def denied(path, *a, **k):
+            if Path(path).name == rel.split("/")[0]:
+                raise PermissionError("denied")
+            return real_lstat(path, *a, **k)
+
+        with mock.patch.object(V.os, "lstat", side_effect=denied):
+            code, res = self.run_cli("review-path", rel)
+        self.assertEqual(code, 1)
+        self.assertIn("link or junction", res["error"])
+
+    def _outside_record(self) -> Path:
+        outside = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, outside, True)
+        (outside / "x.md").write_text(record(), encoding="utf-8")
+        return outside
+
+    def test_review_path_refuses_a_linked_record_file(self):
+        self.add_draft()
+        outside = self._outside_record()
+        try:
+            os.symlink(outside / "x.md", self.root / SLUG / "link.md")
+        except (OSError, NotImplementedError):
+            self.skipTest("symlinks are not permitted here")
+        code, res = self.run_cli("review-path", f"{SLUG}/link.md")
+        self.assertEqual(code, 1)
+        self.assertIn("link or junction", res["error"])
+
+    def test_review_path_refuses_a_linked_or_junctioned_folder(self):
+        self.add_draft()
+        outside = self._outside_record()
+        self._link_folder(outside, self.root / "linked")
+        code, res = self.run_cli("review-path", "linked/x.md")
+        self.assertEqual(code, 1)
+        self.assertIn("link or junction", res["error"])
 
     def test_successor_finalize_retires_predecessor(self):
         self.make_active()
