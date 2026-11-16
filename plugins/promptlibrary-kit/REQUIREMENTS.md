@@ -530,28 +530,114 @@ other origins: not met). Confirmed: yes (2026-11-16).
 
 ## 5. Review and optimization (REV)
 
-| ID | Requirement | Source | State | Confirm |
-|---|---|---|---|---|
-| REV-1 | Every prompt gets a quality review (clarity, boundaries and prerequisites, the line limit, redundancy, an unambiguous success condition, executor-neutral wording) before it can be activated. | V4 §Quality review | met | ? |
-| REV-2 | `session` and `web` prompts also get an import review: injection-like content, secrets and personal data, provenance, scope fit. | V4 §Import review | met | ? |
-| REV-3 | The reviewer proposes an optimized rewrite as a diff; nothing is rewritten without the user's approval. An initial draft is rewritten in place; an active or inactive prompt gets a new version. | V4 §Optimization | met | ? |
-| REV-4 | The reviewer can only report and propose; it cannot approve, activate, edit or write anything. | V4 §Optimization, §Components | met | ? |
-| REV-5 | The reviewer treats the prompt as data: it never follows instructions in it, never quotes secrets, and cites hostile text by line only. | V4 §Authority and Trust Model; code (agent) | met | ? |
-| REV-6 | The reviewer reviews exactly the one record the user is filing, and cannot be pointed at, or tricked into reading, any other file (outside the catalog, an unlisted file, or a file reached through a link). | code + branch | partial (see note) | ? |
+### REV-1: Every prompt is reviewed before it can run, with no way around it
 
-**Note on REV-6.** This is the requirement `review-path` exists for. Current mechanisms:
+*As a developer, every prompt gets a quality review whose findings I see before approving, and a Critical
+finding must be acknowledged; if the reviewer cannot run, the prompt stays a draft until a review
+succeeds, so that no prompt ever runs unreviewed.*
 
-- On `main`: the skill passes the reviewer an absolute file path; the agent reads only that file.
-  Nothing stops a path outside the catalog or through a link.
-- On the branch: the validator's `review-path` checks the path (inside the catalog, a listed record, no
-  link or junction on the way), and the agent re-checks it as text before reading. Step 4.5's review found
-  a remaining gap: a link swapped in between the check and the agent's read escapes it.
-- Proposed alternative: the skill passes the record's text and metadata (from `show --history`) to the
-  reviewer inline, and the reviewer reads no file at all. REV-6 then holds without `review-path`,
-  because there is no file read left to steer.
+**What you'll notice:** the reviewer checks clarity, boundaries and prerequisites, the 50-line limit,
+redundancy, a clear success condition and wording not tied to one tool, for every origin. Findings are
+advisory: you see them before approving, and a Critical one needs your acknowledgment. If the reviewer
+cannot be started, the add or revise stops with the prompt saved as a draft; `/prompt-library activate
+<slug>` later resumes with the review. While the reviewer is broken, no new prompt can be activated.
 
-Whichever mechanism is chosen must satisfy REV-1 to REV-6 together; the choice is an implementation
-decision made against this requirement, not a change to it.
+**Changes to earlier decisions:** removes the current "continue without a review" choice after a failed
+reviewer dispatch, so PUR-2 holds without exception.
+
+Source: V4 §Quality review; owner decision 2026-11-16. State: **partial** (review and acknowledgment: met;
+no-review-no-activation: not met, the skill offers to continue without a review). Confirmed: yes
+(2026-11-16).
+
+### REV-2: Imported and AI-written text is checked for hidden instructions
+
+*As a developer, prompts from a session or the web get the full import review with its own approval, and
+prompts written by Claude or Codex are also checked for hidden instructions and for doing more than their
+description says, so that instructions picked up from outside text are caught whichever way they arrive.*
+
+**What you'll notice:** for `session` and `web` prompts the reviewer checks for injection-like text aimed
+at the agent (ignore rules, exfiltrate, call tools, fetch more, act outside the purpose), provenance
+(`source_ref` complete, license or attribution noted) and scope fit, and you approve the import review
+separately from the quality review. For `claude` and `codex` prompts the reviewer runs the same
+hidden-instruction and scope-fit checks and reports them like any other finding (a hidden instruction is
+Critical); there is no separate import approval and no provenance check for them. Personal data is
+covered for every origin by SCR-6.
+
+**Changes to earlier decisions:** V4 limited all import checks to `session` and `web`; this extends the
+hidden-instruction and scope-fit checks to `claude` and `codex`.
+
+Source: V4 §Import review; owner decision 2026-11-16. State: **partial** (`session`, `web`: met; `claude`,
+`codex`: not met). Confirmed: yes (2026-11-16).
+
+### REV-3: The reviewer proposes a rewrite; I accept it, reject it or ask for another round
+
+*As a developer, the reviewer proposes an optimized rewrite shown as a diff, and I accept it whole, reject
+it, or ask for another round with my own instructions; an accepted rewrite replaces a draft in place,
+while a change to an active or inactive prompt becomes a new version that is reviewed and approved again,
+so that nothing is rewritten without my approval and a prompt in use is never changed underneath me.*
+
+**What you'll notice:** one review round runs automatically; the rewrite changes wording, not intent, and
+stays within 50 lines. If you want only part of it, you ask for another round and say what to keep (for
+example "keep the example section"). A draft that never ran has no version 2: the accepted rewrite replaces
+it, and the original stays visible in the diff (and in git when the catalog is tracked). Changing an
+active or inactive prompt always creates a new draft version that goes through review and approval.
+
+Source: V4 §Optimization. State: **partial** (rewrite, approval, in-place and new-version handling: met;
+passing my own instructions to another round: not stated in the skill). Confirmed: yes (2026-11-16).
+
+### REV-4: The reviewer can only look and suggest
+
+*As a developer, the reviewer can only read the prompt and report findings and a proposed rewrite; it
+cannot approve, activate, edit, write, run commands or fetch anything, so that a prompt designed to
+manipulate the reviewer can at most produce a wrong report, which I see before deciding.*
+
+**What you'll notice:** an accepted rewrite is filed by the management skill through the validator after
+your approval, never by the reviewer. A prompt that tells the reviewer to approve, activate or change files
+has no effect beyond the reviewer's report.
+
+Source: V4 §Optimization, §Components; code (agent `tools: Read`). State: met. Confirmed: yes (2026-11-16).
+
+### REV-5: The reviewer treats the prompt as data, never as orders
+
+*As a developer, the reviewer never follows instructions inside a prompt; it cites hostile text by line in
+its findings, shows me the exact wording only in a clearly labelled quoted-data block, never quotes
+secrets or personal data at all, and never carries hostile text into its rewrite, so that I can judge what
+was found without the prompt being able to steer the review or leak a secret.*
+
+**What you'll notice:** text addressed to "the reviewer" or claiming the review is already approved is
+reported as a Critical finding, not obeyed. The findings table cites it by line; a labelled quoted-data
+block below the table shows its wording, unless it contains a secret or personal data, in which case only
+the line and the kind of value appear. The proposed rewrite removes it.
+
+Source: V4 §Authority and Trust Model; code (agent). State: met. Confirmed: yes (2026-11-16).
+
+### REV-6: The reviewer sees exactly the prompt being filed and its own attachments
+
+*As a developer, the reviewer sees exactly the prompt being filed and the project files it attaches, and
+cannot be pointed at, or tricked into reading, anything else (another prompt, a file outside the catalog
+or project, a file reached through a link, or a file swapped in after the check), so that hidden
+instructions in a prompt and in its attachments are both reviewed while nothing else can leak into the
+review.*
+
+**What you'll notice:** a hidden instruction in an attached file (for example line 40 of
+`docs/style-guide.md`) is reported like one in the prompt text, because attachments are loaded into the
+agent at every run (CAT-2). Nothing the record says can make the reviewer see `.env`, another prompt, a
+file outside the project or a file reached through a symlink or junction.
+
+**Changes to earlier decisions:** extends the reviewer's scope from "the one record" to the record plus
+its attachments, as CAT-2 ("shown in the review") requires.
+
+**Mechanism (implementation decision, not part of the requirement).** On `main` the skill passes the
+reviewer an absolute record path and nothing bounds it. On the security-bundle branch, the validator's
+`review-path` checks the path (inside the catalog, a listed record, no link on the way) and the agent
+re-checks it, but a link swapped in between the check and the read still escapes. Passing the record's
+text and metadata inline (no file read left to steer) satisfies REV-6 only if the attachments' content is
+passed too; extending `review-path` to attachments must also close the swap gap. Either way, REV-1 to
+REV-6 and CAT-2 must hold together.
+
+Source: code + branch; owner decision 2026-11-16. State: **partial** (single-record review: met without a
+bound on `main`, bounded on the branch with the swap gap; attachments: not met). Confirmed: yes
+(2026-11-16).
 
 ## 6. Verification and lifecycle (LIF)
 
