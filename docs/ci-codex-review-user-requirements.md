@@ -29,6 +29,7 @@ Status: approved
 The CI reviewers are not sent:
 
 - `issues/`, `evals/` and `reviewer-eval/` at the repository root.
+- `.claude/review-outcomes/`: records of past review decisions, with no behavior.
 - Any path with a `tests`, `test`, `__tests__`, `fixtures` or `evals` directory at any depth.
 - Files named `smoke_test.<ext>` (one letters-and-digits extension), `test_*.py`, `*_test.py` or `*.test.{js,mjs,cjs,ts}`, anywhere, including
   inside a plugin's component folders where they can be run. The local parity review covers them.
@@ -38,26 +39,34 @@ The CI reviewers are not sent:
 
 A renamed file is excluded only when both its old and its new path are excluded.
 
-Status: approved
+Status: approved (`.claude/review-outcomes/` added by the maintainer, 2026-11-16, issue #753)
 
-## R3. Gate-critical paths are always reviewed
+## R3. Gate-critical paths are reviewed when they change
 
 A changed path in `FULL_ESCALATION_PATHS` or under `BYPASS_INELIGIBLE_PREFIXES` (`scripts/`, `.github/`,
 `.codex/agents/`, `.claude/rules/`, `.claude/skills/plugin-rulebook/`, `pyproject.toml`, `uv.lock`, the
 `codex-kit` bridge files, CODEOWNERS, `marketplace.json`, `marketplace-sync.json` and the rulebook governance
-files) is never excluded and never narrowed away. While a pull request contains such a change, every CI run
-that runs a Codex review reviews it, so the Tier-1 refusal fires every time. A draft (R14) and a run started
-by the bypass label (R12) make no Codex call.
+files) is never excluded (R2). It is narrowed like any other file (R6): reviewed on the first run (R4) and
+on every later run where its pull-request-side change differs from the anchor, not again while it is
+unchanged. Its blocking findings carry forward (R7).
 
-Status: approved
+- **Escalation only on the first run.** A `FULL_ESCALATION_PATHS` file escalates to the larger reviewer set
+  (`mode: "full"`) only on the first run. When it changes on a later run, it is reviewed with the normal
+  delta reviewers.
+- **The Tier-1 refusal is unchanged.** It checks the whole pull request, not the delta, so pull-request-modified
+  review code never runs with the API key. It fires on every run that makes a Codex call.
+
+A draft (R14) and a run started by the bypass label (R12) make no Codex call.
+
+Status: approved (maintainer, 2026-11-16, issue #753)
 
 ## R4. The first review covers the whole pull request
 
 On an `opened` event, or when no earlier run qualifies as an anchor (R5), CI reviews the whole pull request
 delta minus the exclusions (R2). This is the only case where the whole pull request is reviewed, apart from
-an untrusted anchor (R10) and a move from draft to ready (R14).
+a move from draft to ready (R14).
 
-Status: approved
+Status: approved (maintainer, 2026-11-16, issue #753)
 
 ## R5. The anchor: the last reviewed head
 
@@ -77,13 +86,15 @@ that stopped before its reviewers ran (`could_not_run`), reviewed nothing and do
 read from the GitHub API, never from the pull request, among the 30 most recent completed runs on the branch.
 A failed lookup means no anchor.
 
-- **Accepted residual:** when the lookup itself fails (an API error), CI reviews the whole pull request, and
-  carried findings survive only if Codex finds them again.
+- **Retry:** the lookup retries its GitHub API calls a few times before it gives up, so a short API error does
+  not cost a full review.
+- **Accepted residual:** when the lookup still fails after the retries (a longer API outage), CI reviews the
+  whole pull request, and carried findings survive only if Codex finds them again.
 - **Accepted residual:** the artifacts carry no retention setting, so the repository default applies. An
   anchor whose result has expired is not found: the whole pull request is reviewed and its carried findings
   are lost.
 
-Status: approved
+Status: approved (retry added by the maintainer, 2026-11-16, issue #753)
 
 ## R6. Only changes since the anchor are reviewed
 
@@ -106,7 +117,7 @@ Status: approved
 
 After a run with blocking findings, those findings keep blocking later runs until the flagged file changes,
 the finding is waived, or a valid bypass clears it (R12), however many runs pass in between (the accepted
-residuals here and under R5, R9 and R10 are the exceptions):
+residuals here and under R5 and R9 are the exceptions):
 
 - **Carry forward.** CI reads the anchor run's blocking findings from its `codex-review-result` artifact. A
   finding whose file is unchanged since the anchor blocks again, without a new Codex call. A finding whose
@@ -132,7 +143,7 @@ residuals here and under R5, R9 and R10 are the exceptions):
   `accepted` waiver, pushes a commit that does not touch the flagged file, then removes the waiver, drops
   the finding for good, and the final body shows no waiver.
 
-Status: approved
+Status: approved (maintainer, 2026-11-16, issue #753)
 
 ## R8. Events without new commits make no Codex call
 
@@ -146,9 +157,10 @@ Status: approved
 ## R9. Force-push: review the changed files, skip an unfetchable anchor
 
 After a force-push, CI reviews the files whose change differs from the anchor (R6). When the anchor cannot be
-fetched because it was force-pushed away, the review is skipped except for gate-critical paths (R3): a
-force-push review would be the most expensive one. That run writes no `codex-review-skip` record, since it
-compared nothing: the head stays unreviewed, and later runs keep the older anchor. They skip too while it
+fetched because it was force-pushed away, the review is skipped, gate-critical paths included (R3: without
+the anchor commit CI cannot tell whether they changed): a force-push review would be the most expensive one.
+CI fetches the anchor by its SHA, which GitHub normally still serves after a force-push, so this case is rare.
+That run writes no `codex-review-skip` record, since it compared nothing: the head stays unreviewed, and later runs keep the older anchor. They skip too while it
 cannot be fetched, and review the whole pull request once it has left the 30-run lookup window. When `compute-scope` found the anchor but `codex-review`
 cannot fetch it, `codex-review` fails closed. The two jobs can still narrow differently: `compute-scope`
 compares from the event's base SHA, `codex-review` from the merge commit's first parent, so `codex-review` may
@@ -157,25 +169,23 @@ Carried findings (R7) come from the anchor run's artifact, not from the anchor c
 be fetched, CI cannot tell whether a flagged file changed, so those findings keep blocking until waived, or
 until the anchor run leaves the 30-run lookup window: the next run then has no anchor, carries nothing and
 reviews the whole pull request again.
-Whether such an anchor can be trusted (R10) is then read from GitHub's compare API. When that call fails,
-or shows the anchor changed a gate-critical or reviewer-steering file, `Publish Codex policy result` blocks
-until a re-run or a bypass, even when the anchor had no findings.
+Such an anchor is used like any other (R10): no trust check is made on it.
 
-Status: approved
+Status: approved (maintainer, 2026-11-16, issue #753)
 
-## R10. An anchor the pull request could have influenced is not trusted
+## R10. An anchor the pull request could have influenced does not force a full review
 
-When the anchor's own pull request changes touch a gate-critical path (R3), or a file Codex may load as
-instructions or configuration (`AGENTS*.md` at any depth, `.codex/`, the root `REVIEW.md`), its run may not
-have reviewed honestly. CI then reviews the whole pull request delta minus the exclusions. That run's
-findings are not carried (R7): the whole review replaces them.
+When the pull request changes a gate-critical path (R3) or a file Codex may load as instructions or
+configuration (`AGENTS*.md` at any depth, `.codex/`, the root `REVIEW.md`), its anchor run may not have
+reviewed honestly. CI still reviews only the delta since that anchor (R6) and carries its findings (R7), as
+for every other anchor. A full re-review would add no assurance: for a `pull_request` event GitHub runs the
+pull request's own copy of the workflow, so the current run is no more trustworthy than the anchor run.
 
-- **Accepted residual:** because such an anchor carries nothing, a harmless edit to a reviewer-steering file
-  (for example `REVIEW.md`) followed by a revert can clear carried findings, unless the whole-delta review
-  finds them again. The same holds for a pull request that edits the workflow to forge a review result or a
-  bypass record.
+- **Accepted residual:** a pull request that edits the workflow, the review code or a reviewer-steering file
+  can forge a review result, a bypass record or a clean verdict, in the anchor run and in the current run.
+  The protection is the human review of that change, not CI.
 
-Status: approved
+Status: approved (maintainer, 2026-11-16, issue #753)
 
 ## R11. A re-run of a failed job reviews the same delta
 
@@ -207,8 +217,8 @@ Status: approved
   reviewed with no findings, and later runs take it as their anchor (R5), so the bypassed findings are not
   carried again after the next push. Only `Publish Codex policy result`, after the trusted attestation
   check, records it; a label without a valid attestation records nothing. A pass through
-  `CODEX_CI_REVIEW_BYPASS` records the same durable clear. The record is still distrusted
-  like any anchor whose own changes touch a gate-critical or reviewer-steering file (R10).
+  `CODEX_CI_REVIEW_BYPASS` records the same durable clear. Like any anchor, the record is used even
+  when the pull request touches a gate-critical or reviewer-steering file (R10).
 - **Accepted consequence:** the bypassed head's content counts as reviewed even when CI never reviewed it
   (for example after a Tier-1 refusal or a review that could not run). Later runs review only what changes
   after it. That is what the bypass means.
@@ -216,7 +226,7 @@ Status: approved
 - Any other label, and a title or body edit, does not clear a failed review (R7, R8). A body edit can
   only waive specific findings through the `## Accepted Review Findings` section (R7).
 
-Status: approved
+Status: approved (maintainer, 2026-11-16, issue #753)
 
 ## R13. The deterministic checks still see the whole pull request
 
@@ -234,13 +244,17 @@ Status: approved
   CI reviews the whole pull request delta minus the exclusions (R2). This holds for every move to ready,
   including ready → draft → ready. Later runs use that run as their anchor (R5). Only `ready_for_review` is
   a trigger; `converted_to_draft` is not, so a move back to draft starts no run.
+- The first run is the first non-interrupted run after the pull request was created as ready or last moved
+  to ready. The anchor search (R5) ignores runs created before that moment, read from the pull request's
+  creation time and its newest `ready_for_review` event. If the `ready_for_review` run is interrupted, the
+  next run therefore reviews the whole pull request.
 - The draft pass holds only while the pull request is still a draft at the same head, re-read from the
   GitHub API at publish time, so a re-run of an old draft run cannot pass a ready pull request.
 - **Accepted residual:** a draft's green check stays attached to its head after the pull request is marked
   ready. If the `ready_for_review` run is then cancelled by hand or never starts, that green check may stay
   the latest one on that head. Any later push or re-run replaces it.
 
-Status: approved
+Status: approved (first-run rule added by the maintainer, 2026-11-16, issue #753)
 
 ## R15. No CI Codex review on verified Dependabot pull requests (issue #704)
 
