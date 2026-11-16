@@ -338,7 +338,8 @@ review` is the gate after the PR exists and reviews only the delta, to cut OpenA
   event with no new commits (`edited`, `labeled`, `reopened`), make no Codex call and the job is skipped as
   bypass-eligible; carried findings still block (below). An anchor that cannot be fetched (force-pushed away) also reviews nothing, gate-critical
   paths included (without the anchor commit nothing can tell whether they changed), by decision (R9): a
-  force-push review would be the most expensive one. `anchor_fetch` retries the fetch after 1 and 3 seconds
+  force-push review would be the most expensive one. Accepted residual (R9): that run is bypass-eligible, so
+  the policy check passes and the PR can merge with that head unreviewed. `anchor_fetch` retries the fetch after 1 and 3 seconds
   (R5), so a short git error does not count as a force-pushed anchor; `codex-review` retries its own fetch
   the same way. When compute-scope could not fetch the anchor but its deterministic checks blocked (or its
   scope check failed), `codex-review` still runs, cannot fetch it either and fails closed; its error points
