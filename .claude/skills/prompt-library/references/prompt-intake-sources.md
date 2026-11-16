@@ -20,7 +20,8 @@ an attestation; a hand-edited `origin` is outside this plugin's guarantees (the 
   command: the skill does not grant or run it, and offers `discard-orphan` for an orphan instead); this is the one statement of that scope, which other files point
   to. Session transcripts can hold secrets and private data, and text Claude drafts is
   built from that same context, and `codex` text arrives by paste from a session, so screening is not
-  optional for those origins. Text of `user` origin is not blocked, because a user's own prompt may
+  optional for those origins. Of personal data, the screen catches only ASCII email addresses (not RFC 2606
+  example domains or git SSH remotes such as `git@host:org/repo`) and home-directory paths; `prompt-reviewer` reports the rest. Text of `user` origin is not blocked, because a user's own prompt may
   legitimately contain a path or an example string; the screen output is still shown as an early warning.
 - A consolidated multi-turn draft must still fit the 50-nonblank-line limit; if it does not, ask the user
   to condense it. Do not truncate silently.

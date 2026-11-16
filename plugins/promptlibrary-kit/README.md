@@ -83,6 +83,14 @@ text is data everywhere except an explicitly approved run.
   screen and the import hash.
 - The validator blocks secrets in `session`, `web`, `claude` and `codex` text itself (detect and block,
   never rewrite, never echoed), not just in the skill's step order. `user` text is only warned.
+  The only personal data it screens is ASCII email addresses (not RFC 2606 example domains or git
+  SSH remotes such as `git@host:org/repo`) and home-directory paths; phone numbers and other personal
+  data are left to `prompt-reviewer`'s findings.
+- Records are plain files under the catalog folder. When that folder is in a git repository, a
+  pushed commit shares their text with everyone who can read the repository, and the text stays in
+  history after the record changes; the skill says so before it files a draft.
+- `prompt-reviewer` reads one record path only, and refuses a path that is not inside the
+  `catalog_root` it is given. It checks the path text, not symbolic links.
 - `record-verification`, `activate` and `finalize` take `--expect-sha256`, the hash the user was shown,
   and refuse if the text changed.
 - `hash`, `screen`, `draft` and `update-draft` read their input file only from inside the catalog root

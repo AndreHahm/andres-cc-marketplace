@@ -245,6 +245,58 @@ class TextAndYaml(unittest.TestCase):
         ):
             self.assertTrue(V.screen_text(text), repr(text))
 
+    def test_email_address_is_screened(self):
+        for text in (
+            "mail jane.doe" + "@acme.io now",
+            "Contact: j+x" + "@corp.co.uk.",
+            "alice" + "@gmail.com: can you check this",  # a colon after a two-label domain
+            "bob" + "@mail.corp.com: hi",
+            "x@example.com" + ".evil.org",  # a real domain that only starts like a placeholder
+            "x@example.com" + "-mail.org",
+        ):
+            self.assertEqual([h["pattern"] for h in V.screen_text(text)], ["email_address"], text)
+
+    def test_placeholder_and_non_email_at_signs_are_not_screened(self):
+        for text in (
+            "user@example.com",
+            "x@mail.example.org",
+            "a@foo.test",
+            "x@localhost",
+            "x@Example.COM",
+            "see user@example.com.",
+            "git@github.com:org/repo",  # git SSH remotes, not mailboxes
+            "git@gitlab.corp.com:org/repo",
+            "git@ssh.dev.azure.com:v3/org/project/repo",
+            "@types/node",
+            "a@b",
+        ):
+            self.assertEqual(V.screen_text(text), [], text)
+
+    def test_email_screen_blocks_a_web_draft_and_names_what_it_screens(self):
+        meta = {"origin": "web", "_body": "Ask jane.doe" + "@acme.io first."}
+        with self.assertRaises(V.CatalogError) as ctx:
+            V._assert_clean(meta)
+        message = str(ctx.exception)
+        self.assertIn("email address", message)
+        self.assertNotIn("acme.io", message)
+        self.assertNotIn("personal data", message)
+
+    def test_email_screen_stays_fast_on_long_at_sign_runs(self):
+        # Times the email pattern alone: url_embedded_credentials is separately slow on long dotted
+        # runs, which this test is not about.
+        email = dict(V.SECRET_PATTERNS)["email_address"]
+        for line in (
+            "a" * 270000,
+            "a@" * 100000,
+            "a.@" * 90000,
+            ("a" * 50 + "@") * 5000,
+            "a@" + "b." * 100000,
+            "x@" + "example.com." * 20000,
+        ):
+            started = time.perf_counter()
+            email.search(line)
+            self.assertLess(time.perf_counter() - started, 5.0)
+
     def test_ordinary_equals_lines_are_not_screened(self):
         for text in ("name = value", "# keys are listed below", "x = 3", "version = 2"):
             self.assertEqual(V.screen_text(text), [], text)

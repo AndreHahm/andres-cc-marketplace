@@ -14,14 +14,17 @@ An additional pass the skill runs before it asks the user to approve activation 
 that the hash matches the text, so it cannot tell whether this pass ran): injection-like content aimed at
 the executing agent (instructions to ignore rules, exfiltrate, call tools, fetch further content, or act
 outside the stated purpose); secrets and personal data (reported; blocking is done by the validator's
-`screen` check, whose scope is stated in `prompt-intake-sources.md`); provenance (`source_ref` complete, any license or attribution note in `references`); and scope fit (the
+`screen` check, whose scope is stated in `prompt-intake-sources.md`, and a phone number or other personal
+data that check does not cover has only this finding); provenance (`source_ref` complete, any license or attribution note in `references`); and scope fit (the
 text does what its description says and no more).
 
 ## Reviewer findings are advisory
 
 A finding never blocks or approves anything by itself. The skill shows a Critical finding prominently and
-asks the user to acknowledge it before the verification step. If the reviewer cannot be dispatched, the
-skill stops and asks whether to continue without a review; it never skips the pass silently.
+asks the user to acknowledge it before the verification step. If the reviewer cannot be dispatched, or
+returns its `Refused:` line (the record path was not inside the `catalog_root` it was given, so no review
+ran), the skill stops and asks whether to retry with a corrected path or continue without a review; it
+never skips the pass silently, and never records `import` verification without a completed review.
 
 ## Applying an approved rewrite
 
