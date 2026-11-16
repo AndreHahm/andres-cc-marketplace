@@ -1,0 +1,52 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4590481382",
+      "note": "ready cutoff bound to run creation (R11), 947f6b43",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 755,
+      "recorded_at": "2026-11-16T20:15:51+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4590481686",
+      "note": "REVIEW.md aligned to approved first-run-only escalation (R3/R4), 947f6b43",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 755,
+      "recorded_at": "2026-11-16T20:15:51+00:00"
+    },
+    {
+      "disposition": "declined",
+      "finding": "4590504246",
+      "note": "approved R10: no anchor trust check, residual documented",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 755,
+      "recorded_at": "2026-11-16T20:15:51+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4590504419",
+      "note": "REVIEW.md aligned to approved R3/R4, 947f6b43",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 755,
+      "recorded_at": "2026-11-16T20:15:51+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4590504608",
+      "note": "REVIEW.md aligned to approved R3/R4, 947f6b43",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 755,
+      "recorded_at": "2026-11-16T20:15:51+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4590574440",
+      "note": "same defect as 4590481382, 947f6b43",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 755,
+      "recorded_at": "2026-11-16T20:15:51+00:00"
+    }
+  ]
+}
