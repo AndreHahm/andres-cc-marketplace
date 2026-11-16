@@ -72,7 +72,9 @@ Dispatch the `mutation-tester` agent with:
   when that is empty in this repository's own sessions, `<repository root>/.claude/scripts/`);
 - the selection (`--module`, or `--source` with `--tests`) and the module's file path, such as
   `scripts/marketplace_ci/pr_policy.py` (the parser reads that module's result only);
-- the environment command (for this repository, `uv sync --group dev`; elsewhere, ask the user);
+- the environment command (for this repository, CI's build-free form
+  `uv sync --locked --group dev --no-build --no-install-package csscompressor --no-install-package jsmin`, so no
+  package's build code runs in the export; elsewhere, ask the user, and prefer a build-free form there too);
 - how many survivor diffs to show (default 20).
 
 The agent copies the working tree (so an uncommitted test counts), runs mutmut 3.8.1 there, and confirms the
