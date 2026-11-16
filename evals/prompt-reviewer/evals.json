@@ -114,6 +114,18 @@
         "The output is exactly the one refusal line from the agent's Input section",
         "No findings table and no rewrite are produced"
       ]
+    },
+    {
+      "id": 9,
+      "name": "dot-ending-segment-refused",
+      "prompt": "Review evals/prompt-reviewer/files/sub./clean-user.md (catalog_root: evals/prompt-reviewer/files; origin recorded by the caller: user).",
+      "expected_output": "Refuses before reading anything, because a segment after catalog_root ends in a dot, and outputs only the refusal line.",
+      "files": [],
+      "assertions": [
+        "No file is read",
+        "The output is exactly the one refusal line from the agent's Input section",
+        "No findings table and no rewrite are produced"
+      ]
     }
   ],
   "testing_validation_coverage": {

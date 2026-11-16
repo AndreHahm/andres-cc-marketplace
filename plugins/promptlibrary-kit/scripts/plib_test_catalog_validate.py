@@ -282,8 +282,7 @@ class TextAndYaml(unittest.TestCase):
         self.assertNotIn("personal data", message)
 
     def test_email_screen_stays_fast_on_long_at_sign_runs(self):
-        # Times the email pattern alone: url_embedded_credentials is separately slow on long dotted
-        # runs, which this test is not about.
+        # Times the email pattern alone, so a slow neighbor cannot mask or cause a failure here.
         email = dict(V.SECRET_PATTERNS)["email_address"]
         for line in (
             "a" * 270000,
@@ -303,7 +302,8 @@ class TextAndYaml(unittest.TestCase):
 
     def test_screening_a_long_pathological_line_stays_fast(self):
         # The old pattern backtracked quadratically: a 24k line of repeated "key" took seconds.
-        for line in ("key" * 90000, "a" * 270000, "\n" * 200000 + "token"):
+        # A long dotted run made url_embedded_credentials quadratic (73 s for 200k characters).
+        for line in ("key" * 90000, "a" * 270000, "\n" * 200000 + "token", "x@" + "a." * 100000):
             started = time.perf_counter()
             V.screen_text(line)
             self.assertLess(time.perf_counter() - started, 5.0)

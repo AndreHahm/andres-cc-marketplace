@@ -176,7 +176,12 @@ SECRET_PATTERNS = (
     *_TOKEN_SHAPES,
     ("pem_private_key_block", re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----")),
     # Shapes beyond the analysis-kit list: this list diverges on purpose, see the R20 note above.
-    ("url_embedded_credentials", re.compile(r"\b[a-z][a-z0-9+.-]*://[^/\s:@]+:[^/\s@]+@")),
+    # The lookbehind starts a scheme only at the start of its run: a long dotted run (a.a.a...)
+    # would otherwise be rescanned from every word boundary, which is quadratic.
+    (
+        "url_embedded_credentials",
+        re.compile(r"(?<![a-z0-9+.-])\b[a-z][a-z0-9+.-]*://[^/\s:@]+:[^/\s@]+@"),
+    ),
     (
         "key_value_secret",
         re.compile(

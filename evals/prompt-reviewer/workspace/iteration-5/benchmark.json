@@ -1,0 +1,13 @@
+{
+  "iteration": 5,
+  "run_date": "2026-11-16",
+  "configurations": [
+    "with_skill"
+  ],
+  "scope": "eval 1 re-run and new eval 9 after the dot-or-space segment check; evals 6-8 from iteration 4 still apply (their refusals do not depend on the new check)",
+  "with_skill": {
+    "passed": 7,
+    "total": 7,
+    "pass_rate": 1.0
+  }
+}
