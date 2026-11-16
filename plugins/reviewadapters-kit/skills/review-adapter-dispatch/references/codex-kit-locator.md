@@ -1,0 +1,46 @@
+# Finding codex-kit's validator
+
+The dispatcher imports `ENVELOPE_SCHEMA`, `semanticallyValidate`, `isValidToken`, `isValidPathToken`
+and `isWithin` from codex-kit's `skills/codex-review-bridge/scripts/bridge-invoke.mjs`, plus
+`findSchemaViolation`, `redactSecrets`, `FAILURE_CATEGORIES` and `matchesSecretFilename` from
+codex-kit's `scripts/lib/`. Importing a module runs its code, so where it comes from is a trust decision.
+
+## Search order (first match wins)
+
+1. **Installed plugin:** the `installPath` recorded under the exact key
+   `codex-kit@andres-cc-marketplace` in `~/.claude/plugins/installed_plugins.json`, used only when it is
+   an absolute path. A codex-kit installed from another marketplace is not used.
+2. **Sibling in a marketplace checkout, opt-in only:** `<plugin-root>/../codex-kit`, used only when the
+   untracked local file sets `"dev_sibling_codex_kit": true`. In a checkout under review the sibling is
+   the reviewed branch's own code, so a change could rewrite the validator that judges it; the opt-in is
+   for developing this marketplace itself, on a branch the developer trusts. The same tracked-copy
+   refusal as for vendors applies (`references/trust-and-config.md`).
+
+No environment variable can point the import elsewhere: a variable is easier to set by accident, or by
+another tool, than a file in one of these places.
+
+## Checks before import
+
+On the resolved real path (symlinks resolved), every directory from codex-kit's root down to each
+imported file, and every file in each imported file's directory (the imported modules load siblings
+such as `cdx-process.mjs` and `cdx-token-shapes.json`):
+
+- is owned by the current user;
+- is not writable by others;
+- is not writable by a group, unless that group is the user's own private group: the user's primary
+  gid, named like the user, with no members listed in `/etc/group` and no other account in `/etc/passwd`
+  using it as its primary gid. On a umask-002 system every checkout is group-writable this way, and
+  refusing it would make the plugin unusable there. A group that `/etc/group` does not list (for example
+  from LDAP) gets no exception.
+
+Directories above codex-kit's root are not checked. A candidate whose files are missing is skipped;
+a candidate that fails a check stops the search (it does not fall through to the next one). Any failure
+→ `codex_kit_unavailable`, with the failing check named and the path omitted. On Windows, where these
+POSIX bits do not apply, the check is reported as skipped in `inspection_limits` of every envelope from
+that run.
+
+## Version
+
+`provenance.cli_version` holds the vendor CLI's version, not codex-kit's. The dispatcher does not pin a
+codex-kit version; instead, a missing named export (codex-kit renamed or removed it) is
+`codex_kit_unavailable`, never a partial run with a stand-in validator.
