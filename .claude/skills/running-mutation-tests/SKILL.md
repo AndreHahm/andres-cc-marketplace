@@ -9,7 +9,7 @@ description: >-
   "add a module to the weekly mutation run". Not for line coverage (using-codecov) or review findings
   posted on a PR (handling-review-findings); it never gates a merge.
 argument-hint: (optional) a module path or file stem, or "list"
-allowed-tools: Read, Glob, AskUserQuestion, Agent, Bash(uv run --no-project --no-config --with pyyaml==6.0.3 python -I ${CLAUDE_PLUGIN_ROOT}/scripts/qlty-mutation-run.py --list-modules:*)
+allowed-tools: Read, Glob, Edit, Write, AskUserQuestion, Agent, Bash(uv run --no-project --no-config --with pyyaml==6.0.3 python -I "${CLAUDE_PLUGIN_ROOT}/scripts/qlty-mutation-run.py" --list-modules:*)
 ---
 
 # Running Mutation Tests
@@ -53,7 +53,7 @@ something to follow.
 ## Step 1: Scope
 
 - `list`, or no argument: run
-  `uv run --no-project --no-config --with pyyaml==6.0.3 python -I ${CLAUDE_PLUGIN_ROOT}/scripts/qlty-mutation-run.py --list-modules --root <repository root>`
+  `uv run --no-project --no-config --with pyyaml==6.0.3 python -I "${CLAUDE_PLUGIN_ROOT}/scripts/qlty-mutation-run.py" --list-modules --root '<repository root>'`
   and ask via `AskUserQuestion` which module (up to four; the rest under "Other").
 - A module in the list: show its listed selection and confirm it via `AskUserQuestion` before running, saying
   the run dispatches the `mutation-tester` agent and mutmut runs the selected tests once per mutant (seconds to
@@ -111,9 +111,10 @@ approved changes, offer one re-run (Step 2) to confirm the targeted mutants are 
 
 ## Boundaries
 
-Pre-approved: listing the module list file, `Read`, `Glob`, asking the user, and dispatching
-`mutation-tester`, which runs the runner and the parser itself. Writing a test or a pragma uses a normal `Edit`/`Write` permission prompt, after
-the user approved the text in this skill. mutmut and PyYAML come from `uv run --with`, pinned by version
+Pre-approved: listing the module list file, `Read`, `Glob`, `Edit`, `Write`, asking the user, and dispatching
+`mutation-tester`, which runs the runner and the parser itself. `Edit` and `Write` are used only for a test or a
+pragma, and only after the user approved its exact text in Step 4: that approval is the gate, so the write itself
+does not prompt again. mutmut and PyYAML come from `uv run --with`, pinned by version
 (mutmut 3.8.1, the version the runner's and parser's exit-code tables were checked against). The agent's
 export lives outside the repository, and nothing here deletes files.
 

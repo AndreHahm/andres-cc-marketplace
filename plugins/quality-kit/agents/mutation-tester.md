@@ -44,7 +44,12 @@ mutmut's.
 
 1. **Check the paths.** The scratch directory must not lie inside the repository root (compare resolved
    paths) and must be absent or empty. The scripts must exist.
-2. **Record the repository's state:** `git -C '<root>' status --porcelain=v1 -z` (keep the output).
+2. **Record the repository's state:** `git -C '<root>' status --porcelain=v1 -z`, and a fingerprint of the
+   contents of every tracked and untracked file (the root is passed as `$1`, never written into the script):
+   `bash -o pipefail -c 'git -C "$1" ls-files -z -co --exclude-standard | (cd "$1" && xargs -0 -r sha256sum --) | sha256sum' fingerprint '<root>'`.
+   Keep both outputs: the status alone misses a second edit to a file that was already modified. A non-zero
+   status from the fingerprint means a listed file could not be read (usually a tracked file deleted in the
+   working tree): report that file and stop.
 3. **Export the working tree** (create it first: `mkdir -p '<scratch>'`). This is the one pipeline, so it
    runs under `pipefail` and fails on any stage. The script text is fixed; the two paths are passed as
    arguments `$1` and `$2`, never written into the script:
@@ -67,8 +72,8 @@ mutmut's.
    `uv --directory '<scratch>' run --no-sync --with mutmut==3.8.1 --with pyyaml==6.0.3 python -B '<run script>' --root '<scratch>' <selection> --show '<key>' ['<key>'...]`.
    The keys come from the parser's output, so single-quote each one, and leave out (and report) any key that
    contains a single quote, whitespace or a control character; the runner checks the rest of a key's shape.
-8. **Check the repository:** run step 2's command again and compare. If anything differs, say so first in the
-   report: the run was supposed to touch nothing there. This check sees tracked and untracked files only, not
+8. **Check the repository:** run step 2's two commands again and compare both outputs. If either differs, say
+   so first in the report: the run was supposed to touch nothing there. This check sees tracked and untracked files only, not
    ignored paths (`.venv/`, caches) or anything outside the repository; say so in the report.
 
 Leave the scratch directory in place; the caller may need it for more diffs. Do not delete anything.

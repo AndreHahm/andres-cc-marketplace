@@ -336,6 +336,12 @@ def check_run(run) -> None:
         ],
     )
     check("bad --show key: exit 2", code == 2 and "not a mutant key" in err, err)
+    (root / "mutants").mkdir()
+    code, _, err = call(
+        run.main, ["--root", str(root), "--list", str(write_list(root, good)), "--module", "mod"]
+    )
+    check("leftover mutants/ refused: exit 2", code == 2 and "already holds mutants" in err, err)
+    (root / "mutants").rmdir()
     check(
         "real key accepted",
         bool(
@@ -381,12 +387,13 @@ def check_run(run) -> None:
 def check_skill() -> None:
     text = SKILL.read_text(encoding="utf-8")
     header = text.split("---", 2)[1]
-    check("grant: list modules", "qlty-mutation-run.py --list-modules" in header)
+    check("grant: list modules", 'qlty-mutation-run.py" --list-modules' in header)
     check("parser not pre-approved (the agent runs it)", "qlty-mutation-parse.py" not in header)
+    grants = header.split("allowed-tools:")[1]
+    check("Edit and Write pre-approved", "Edit" in grants and "Write" in grants)
     check(
-        "no Edit or Write pre-approved",
-        "Edit" not in header.split("allowed-tools:")[1]
-        and "Write" not in header.split("allowed-tools:")[1],
+        "writes gated on the user's approval of the exact text",
+        "only after the user approved its exact text" in text,
     )
 
 
