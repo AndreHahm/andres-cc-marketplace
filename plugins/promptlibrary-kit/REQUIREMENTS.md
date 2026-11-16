@@ -425,14 +425,108 @@ Source: V4 §Components; code (`disable-model-invocation`); owner decision 2026-
 
 ## 4. Screening for secrets and personal data (SCR)
 
-| ID | Requirement | Source | State | Confirm |
-|---|---|---|---|---|
-| SCR-1 | Secrets in `session`, `web`, `claude` and `codex` text block the draft; the user sees where it matched and removes it. Nothing is auto-redacted and the secret is never echoed. | V4 §Import review; code (extended to `claude`, `codex`) | met | ? |
-| SCR-2 | For `user` text, a match is a warning the user may accept. | code | met | ? |
-| SCR-3 | The screen is re-applied at every later filing, verification and activation step, so a secret added later is still blocked. | code | met | ? |
-| SCR-4 | Screened shapes include cloud and API keys, tokens, bearer and authorization headers, PEM blocks, home-directory paths, and credentials embedded in URLs. | V4 §Import review; code (URL credentials, shared `plib-token-shapes.json`) | met | ? |
-| SCR-5 | Email addresses are screened (except git SSH remotes `git@host:path` and reserved example domains). | branch (ad706e64, 7df79b46) | branch | ? |
-| SCR-6 | Phone numbers and other personal data are left to the reviewer's findings, not blocked by the screen. | code | met | ? |
+### SCR-1: A secret in imported or AI-written text stops the draft
+
+*As a developer, when text from a session, the web, Claude or Codex contains something that looks like a
+secret, the draft is stopped and I see the line and the kind of match (never the secret itself), and I
+remove it myself, so that no key can end up in my library and no prompt is silently rewritten.*
+
+**What you'll notice:** for `session`, `web`, `claude` and `codex` text, a match is a hard stop before
+anything is saved: you see a line number and a pattern name (for example "line 7: bearer_token"), never the
+matched text. You edit the line and the plugin screens again; only a clean draft can be filed. Nothing is
+auto-redacted, because a prompt silently rewritten to a placeholder can be broken or misleading.
+
+**Changes to earlier decisions:** V4 hard-blocked only `session` and `web`; the block also covers `claude`
+and `codex`, because AI-written text often carries keys over from the session (consistent with INT-1).
+
+Source: V4 §Import review; code (extended to `claude`, `codex`). State: met. Confirmed: yes (2026-11-16).
+
+### SCR-2: In my own text, a match is a warning I can accept
+
+*As a developer, when my own text matches a secret pattern I get a warning naming the line and the kind of
+match and can choose to keep it, so that legitimate paths and example strings in my prompts are not
+blocked while a real secret is still made visible to me.*
+
+**What you'll notice:** a `user` prompt containing, for example, `/Users/alex/projects/api` or a fake
+example token gets a warning ("line 3: home_directory_path") and a choice to keep it or fix it; it is never blocked. The trade-off:
+a real key you paste into your own prompt and accept is saved in your project catalog.
+
+Source: code. State: met. Confirmed: yes (2026-11-16).
+
+### SCR-3: The secret check repeats at every later step, and reaches older prompts through status
+
+*As a developer, the secret check is repeated at every step that files, verifies or activates a prompt,
+and the library status check flags active prompts that match a newly added pattern, so that a secret
+cannot slip in after the first check and a stricter screen still reaches my older prompts.*
+
+**What you'll notice:** a draft update, the recording of verification and activation each screen the text
+again (blocking for the origins in SCR-1), so an accepted rewrite or a hand-edited draft carrying a key is
+refused even though the first screen passed. A run of an active prompt is not re-screened; it cannot
+change without being blocked (CAT-6). When a plugin update adds a pattern, the status check of
+`/prompt-library-setup` (PUR-6) lists active prompts that now match, so you can revise them; their runs
+are not blocked.
+
+**Changes to earlier decisions:** adds the status-check flag for active prompts, which V4 and the code do
+not have.
+
+Source: code; owner decision 2026-11-16. State: **partial** (re-screening at filing, verification and
+activation: met; status-check flag: not met). Confirmed: yes (2026-11-16).
+
+### SCR-4: The screen catches common secret kinds, plus patterns I add for my project
+
+*As a developer, the screen catches service keys and tokens, credential lines and headers, private-key
+blocks, credentials in URLs and personal home-directory paths, and I can add my own patterns for a
+project, so that common secrets and my organization's own formats are both caught before a prompt is
+saved.*
+
+**What you'll notice:** caught without any setup: service keys and tokens (for example AWS, GitHub, Slack,
+OpenAI-style `sk-`, Google, Stripe, GitLab, npm, JWT), credential lines (`Authorization:`, `Bearer ...`,
+`API_KEY=...`, `password: ...`, `?token=` in a URL), PEM private-key blocks, `user:pass@` in a URL, and
+personal home paths (`/home/<name>`, `/Users/<name>`, `C:\Users\<name>`). A plugin update can add new
+providers without changing this requirement. Formats only your organization uses (an internal token prefix,
+an internal host) are caught only after you add them as project patterns; a pattern you add that is too
+broad can block too much.
+
+**Changes to earlier decisions:** adds project-specific patterns, which V4 and the code do not have; where
+they are stored and in what format is decided in Area 10 (CFG).
+
+Source: V4 §Import review; code (URL credentials, credential lines, shared `plib-token-shapes.json`); owner
+decision 2026-11-16. State: **partial** (built-in categories: met; project patterns: not met). Confirmed:
+yes (2026-11-16).
+
+### SCR-5: Email addresses are screened like secrets
+
+*As a developer, an email address in my prompt is treated like a secret (blocked for session, web, Claude
+and Codex text, a warning for my own text), while git remotes such as `git@host:path` and reserved example
+domains such as `example.com` or `.test` are allowed, so that colleagues' and customers' addresses do not
+end up in my library.*
+
+**What you'll notice:** a colleague's address carried over from a transcript stops the draft (SCR-1) or
+warns you in your own text (SCR-2); you replace it, for example with "the on-call owner". A git remote
+(`git@github.com:org/repo.git`) and reserved example addresses (`example.com`, `.net`, `.org`, and the
+`.example`, `.test`, `.invalid`, `.localhost` endings) pass. The trade-off: a prompt that really needs a
+team mailbox cannot be saved from session or AI text; you rephrase it or write that part as your own text.
+
+Source: branch (ad706e64, 7df79b46); owner decision 2026-11-16. State: **branch** (only on the unmerged
+security-bundle branch). Confirmed: yes (2026-11-16).
+
+### SCR-6: The reviewer reports other personal data in every prompt
+
+*As a developer, the reviewer reports personal data (phone numbers, names, postal addresses, customer
+identifiers) as a Critical finding for every prompt, whatever its origin, showing the line and the kind of
+data but never the value, and I decide whether to remove it, so that personal data is never saved
+unnoticed while legitimate mentions are not blocked.*
+
+**What you'll notice:** before you approve, findings such as "line 4: phone number (Critical)" appear for
+`user`, `claude`, `codex`, `session`, `web` and `example` prompts alike. They never block on their own;
+you remove the data or keep it. An occasional false alarm (a version string that looks like a phone
+number) is possible. Email addresses are handled by the screen instead (SCR-5).
+
+**Changes to earlier decisions:** V4 and the code check personal data only in the import review
+(`session` and `web`); this extends the reviewer's personal-data check to every origin.
+
+Source: V4 §Import review; code; owner decision 2026-11-16. State: **partial** (`session`, `web`: met;
+other origins: not met). Confirmed: yes (2026-11-16).
 
 ## 5. Review and optimization (REV)
 
