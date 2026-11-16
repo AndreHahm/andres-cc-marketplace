@@ -1,0 +1,10 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/reviewadapters-kit/skills/review-adapter-dispatch/SKILL.md",
+  "assertions": [
+    {"text": "Every dispatcher command recorded in report.md carries --dry-run", "type": "functionality", "target": "outputs/report.md"},
+    {"text": "The report names a usage error caused by other.py appearing in the diff headers but not in the target-paths file", "type": "presence", "target": "outputs/report.md"},
+    {"text": "The inputs directory (targets.txt, diff.patch) is unchanged after the run", "type": "functionality", "target": "rva-evals2/header-not-in-targets/inputs/"},
+    {"text": "The report's next step tells the caller to list every changed path (including other.py) in the target-paths file, as a caller input fix", "type": "quality", "target": "outputs/report.md"}
+  ]
+}
