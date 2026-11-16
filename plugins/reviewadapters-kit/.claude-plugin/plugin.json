@@ -1,0 +1,13 @@
+{
+  "name": "reviewadapters-kit",
+  "version": "1.0.0-alpha.1",
+  "description": "Run an optional reviewer model (Antigravity agy, Pi pi or Devin devin) read-only on a diff and get codex-kit's validated findings envelope back, so a review pipeline such as cross-model-review can add a third or fourth vendor beside Claude and Codex. One dispatch contract for callers and CI, plus a command that reviews the current diff with one vendor after an egress confirmation. Every vendor is off until enabled in an untracked local allow-list; vendors run with no write, shell, web or MCP access.",
+  "author": {
+    "name": "Andre Hahm",
+    "url": "https://github.com/andrehahm"
+  },
+  "homepage": "https://github.com/andrehahm/andres-cc-marketplace",
+  "repository": "https://github.com/andrehahm/andres-cc-marketplace",
+  "license": "Apache-2.0",
+  "dependencies": ["codex-kit"]
+}
