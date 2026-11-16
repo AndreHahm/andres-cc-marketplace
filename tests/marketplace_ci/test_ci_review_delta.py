@@ -1571,6 +1571,17 @@ def test_runs_from_before_the_last_move_to_ready_are_no_anchor(tmp_path):
 
 
 @pytest.mark.skipif(shutil.which("jq") is None, reason="the workflow step uses jq")
+def test_a_ready_event_after_the_run_was_created_keeps_its_anchor(tmp_path):
+    """Codex R11: a re-run of run 3 (created 01:00) after a later ready -> draft -> ready finds the
+    same anchor as its first attempt; only ready events up to its creation count (R14)."""
+    candidates = _newer_and_older("2026-01-01T00:30:00Z")
+    candidates[0]["run_created"] = "2026-01-01T00:15:00Z"
+    anchor, _ = _run_lookup(tmp_path, candidates, ready=["2026-01-01T00:10:00Z",
+                                                         "2026-01-01T02:00:00Z"])  # fmt: skip
+    assert anchor == _SHA4
+
+
+@pytest.mark.skipif(shutil.which("jq") is None, reason="the workflow step uses jq")
 def test_an_unreadable_ready_time_means_no_anchor(tmp_path):
     anchor = _run_lookup(tmp_path, _newer_and_older("2026-01-01T00:30:00Z"), pr=False)
     assert anchor == ("", None)

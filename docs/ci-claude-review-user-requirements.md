@@ -71,7 +71,8 @@ Status: approved (no trust check, the ready filter and the fetch retry, as Codex
 The Claude review leaves out fewer paths than the Codex review (Codex R2):
 
 - Not reviewed: `issues/`, `evals/` and `reviewer-eval/` at the repository root, `.claude/review-outcomes/`
-  (records of past review decisions, with no behavior), and generated agent mirrors whose content and mode
+  (records of past review decisions: no gate or CI reviewer reads them; local triage reads them only as a
+  hint, and evals as data), and generated agent mirrors whose content and mode
   equal their source (as in Codex R2).
 - Reviewed, unlike Codex: test directories (`tests`, `test`, `__tests__`), `fixtures` directories, and
   test files (`smoke_test.<ext>`, `test_*.py`, `*_test.py`, `*.test.{js,mjs,cjs,ts}`), anywhere.

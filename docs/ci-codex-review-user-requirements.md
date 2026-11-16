@@ -29,7 +29,8 @@ Status: approved
 The CI reviewers are not sent:
 
 - `issues/`, `evals/` and `reviewer-eval/` at the repository root.
-- `.claude/review-outcomes/`: records of past review decisions, with no behavior.
+- `.claude/review-outcomes/`: records of past review decisions. No gate or CI reviewer reads them; local
+  triage reads them only as a hint, and evals as data.
 - Any path with a `tests`, `test`, `__tests__`, `fixtures` or `evals` directory at any depth.
 - Files named `smoke_test.<ext>` (one letters-and-digits extension), `test_*.py`, `*_test.py` or `*.test.{js,mjs,cjs,ts}`, anywhere, including
   inside a plugin's component folders where they can be run. The local parity review covers them.
@@ -251,7 +252,8 @@ Status: approved
   a trigger; `converted_to_draft` is not, so a move back to draft starts no run.
 - The first run is the first non-interrupted run after the pull request was created as ready or last moved
   to ready. The anchor search (R5) ignores runs created before that moment, read from the pull request's
-  creation time and its newest `ready_for_review` event. If the `ready_for_review` run is interrupted, the
+  creation time and its newest `ready_for_review` event at or before the current run's creation, so a
+  re-run keeps its delta (R11). If the `ready_for_review` run is interrupted, the
   next run therefore reviews the whole pull request.
 - The draft pass holds only while the pull request is still a draft at the same head, re-read from the
   GitHub API at publish time, so a re-run of an old draft run cannot pass a ready pull request.
@@ -259,7 +261,7 @@ Status: approved
   ready. If the `ready_for_review` run is then cancelled by hand or never starts, that green check may stay
   the latest one on that head. Any later push or re-run replaces it.
 
-Status: approved (first-run rule added by the maintainer, 2026-11-16, issue #753)
+Status: approved (first-run rule added by the maintainer, 2026-11-16, issue #753; the re-run cutoff by the maintainer after PR #755's review)
 
 ## R15. No CI Codex review on verified Dependabot pull requests (issue #704)
 
