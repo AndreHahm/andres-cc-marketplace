@@ -79,7 +79,7 @@ def test_an_unknown_placeholder_is_an_error():
 
 
 def _scope(*entries, anchor=""):
-    return {"anchor_sha": anchor, "anchor_status": "trusted" if anchor else "none",
+    return {"anchor_sha": anchor, "anchor_status": "narrowed" if anchor else "none",
             "paths": [dict(e) for e in entries]}  # fmt: skip
 
 

@@ -324,10 +324,16 @@ def derive_review_scope(
     dependency_index: dict[str, tuple[str, ...]],
     *,
     dependency_closure_limit: int = 50,
+    first_run: bool = True,
 ) -> ReviewScope:
+    """`first_run` is False for a CI run that has an anchor: a governance path changed since the
+    anchor then gets the normal delta reviewers, not the escalated set (Codex R3). The local
+    parity review and a CI run without an anchor (Codex R4) keep the default."""
     paths = _changed_path_set(changes)
 
-    triggering_governance_paths = [p for p in paths if p in FULL_ESCALATION_PATHS]
+    triggering_governance_paths = (
+        [p for p in paths if p in FULL_ESCALATION_PATHS] if first_run else []
+    )
 
     closure: set[str] = set(paths)
     for path in paths:
@@ -388,9 +394,11 @@ def derive_review_scope(
     # flag. Falling through to the delta branch below is enough on its own:
     # `_is_bypass_scoped_path` never excludes these prefixes, so
     # has_reviewer_scoped_path comes out True and the baseline three
-    # dispatch for real.
+    # dispatch for real. The same holds for a FULL_ESCALATION_PATHS file on a
+    # CI run with an anchor (first_run=False, Codex R3): it is not escalated,
+    # but it still gets the delta reviewers, never the zero-reviewer path.
     if not any(p.startswith("plugins/") for p in paths) and not any(
-        p.startswith(BYPASS_INELIGIBLE_PREFIXES) for p in paths
+        is_gate_critical(p) for p in paths
     ):
         return ReviewScope(
             mode="light", structural_check=STRUCTURAL_CHECK_REF, validate=(), audit=(), paths=paths
@@ -1071,6 +1079,9 @@ def collapse_identical_mirrors(
 # matches its source, which is reviewed). A gate-critical path is never excluded or
 # narrowed away. The local parity review never passes the flags that turn this on.
 _CI_EXCLUDED_ROOT_PREFIXES = ("issues/", "evals/", "reviewer-eval/")
+# Codex R2 only: records of past review decisions, with no behavior. The Claude review (its R4)
+# still reviews them.
+_CI_EXCLUDED_CODEX_ONLY_PREFIXES = (".claude/review-outcomes/",)
 _CI_EXCLUDED_DIR_SEGMENTS = frozenset({"tests", "test", "__tests__", "fixtures", "evals"})
 _CI_EXCLUDED_TEST_FILE = re.compile(
     r"smoke_test\.[A-Za-z0-9]+|test_[^/]*\.py|[^/]*_test\.py|[^/]*\.test\.(?:js|mjs|cjs|ts)"
@@ -1116,6 +1127,8 @@ def is_ci_review_excluded(
         return True
     if keep_tests:
         return path in generated
+    if path.startswith(_CI_EXCLUDED_CODEX_ONLY_PREFIXES):
+        return True
     *dirs, name = path.split("/")
     if any(d in _CI_EXCLUDED_DIR_SEGMENTS for d in dirs):
         return True
@@ -1249,49 +1262,18 @@ def _pr_side_patch(repo: Path, base_sha: str, tip: str, paths: Sequence[str]) ->
     return b"\n".join(out)
 
 
-def _steers_reviewers(path: str) -> bool:
-    """Project files Codex may load as instructions or config from its working directory
-    (`AGENTS*.md` at any depth, `.codex/`, the root `REVIEW.md`). A run whose PR changed one
-    could have been told to report nothing, so its verdict does not make it an anchor."""
-    name = path.rsplit("/", 1)[-1]
+def anchor_resolved(repo: Path, anchor_sha: str) -> bool:
+    """Whether this checkout has `anchor_sha` (False when it was force-pushed away and could not
+    be fetched). No trust check is made on an anchor (Codex R10): for a `pull_request` event the
+    current run is no more trustworthy than the anchor run."""
     return (
-        (name.startswith("AGENTS") and name.endswith(".md"))
-        or path.startswith(".codex/")
-        or path == "REVIEW.md"
+        subprocess.run(
+            ["git", "rev-parse", "--verify", "--quiet", f"{anchor_sha}^{{commit}}"],
+            cwd=repo,
+            capture_output=True,
+        ).returncode
+        == 0
     )
-
-
-def _anchor_touches_gate(repo: Path, base_sha: str, anchor_sha: str) -> bool:
-    """True when the anchor head's own PR changes include a gate-critical path (or that
-    cannot be told). Such a run was reviewed by code and a workflow the PR itself edited,
-    so its result does not prove anything was reviewed."""
-    try:
-        raw = _run_git(
-            repo, "diff", "-z", "--name-only", "--no-renames", f"{base_sha}...{anchor_sha}"
-        )
-    except RuntimeError:
-        return True
-    return any(
-        is_gate_critical(p) or _steers_reviewers(p)
-        for p in raw.decode("utf-8", errors="surrogateescape").split("\0")
-        if p
-    )
-
-
-def anchor_trust(repo: Path, base_sha: str, anchor_sha: str) -> str:
-    """How narrow_to_unreviewed treats `anchor_sha`: "unresolved" when this checkout cannot
-    resolve it (force-pushed away), "untrusted" when its own changes touch a gate-critical or
-    reviewer-steering path, else "trusted"."""
-    resolved = subprocess.run(
-        ["git", "rev-parse", "--verify", "--quiet", f"{anchor_sha}^{{commit}}"],
-        cwd=repo,
-        capture_output=True,
-    )
-    if resolved.returncode != 0:
-        return "unresolved"
-    if _anchor_touches_gate(repo, base_sha, anchor_sha):
-        return "untrusted"
-    return "trusted"
 
 
 def narrow_to_unreviewed(
@@ -1300,25 +1282,13 @@ def narrow_to_unreviewed(
     """The entries of `changed` (the PR delta at HEAD) whose PR-side patch differs from the
     one at `anchor_sha`, the head an earlier CI run reviewed. A path the PR changes the same
     way at both heads was reviewed then, including when a rebase only shifted it; a commit
-    absorbed from the base is not the PR's change at all. A gate-critical entry is always
-    kept, and an anchor whose own changes touch a gate-critical path is not trusted (the
-    whole delta is kept). An anchor this checkout cannot resolve (force-pushed away) keeps
-    only the gate-critical entries: by the maintainer's decision the rest of the review is
-    skipped then, not widened to the whole PR. A patch git cannot compute is kept."""
-
-    def critical(cp: ChangedPath) -> bool:
-        return any(is_gate_critical(p) for p in (cp.old_path, cp.new_path) if p is not None)
-
-    trust = anchor_trust(repo, base_sha, anchor_sha)
-    if trust == "unresolved":
-        return tuple(cp for cp in changed if critical(cp))
-    if trust == "untrusted":
-        return tuple(changed)
+    absorbed from the base is not the PR's change at all. Gate-critical paths are narrowed like
+    any other (Codex R3). An anchor this checkout cannot resolve (force-pushed away) keeps
+    nothing: the review is skipped (Codex R9). A patch git cannot compute is kept."""
+    if not anchor_resolved(repo, anchor_sha):
+        return ()
     kept = []
     for cp in changed:
-        if critical(cp):
-            kept.append(cp)
-            continue
         paths = [p for p in (cp.old_path, cp.new_path) if p is not None]
         now = _pr_side_patch(repo, base_sha, "HEAD", paths)
         then = _pr_side_patch(repo, base_sha, anchor_sha, paths)
@@ -1380,41 +1350,16 @@ def carry_blocking_findings(
     anchor_result: object,
     pr_body: str,
     issue_is_open: Callable[[int], bool],
-    anchor_paths: Callable[[], Sequence[str]] | None = None,
 ) -> list[dict]:
     """The anchor run's blocking findings that still block: their file has not changed since the
-    anchor (or the anchor cannot be resolved here, so that cannot be told) and the pull request
-    body does not waive them. An anchor whose own changes touch a gate-critical path or a
-    reviewer-steering file carries nothing, since the whole delta is reviewed again (R10).
-    When the anchor cannot be resolved here, `anchor_paths` (the paths its PR changes, from the
-    GitHub API) decides that trust question instead; without it, or when it fails, this raises
-    CarryError. A blocking entry that cannot be read (no usable path or rule, more entries than
-    can be checked) raises CarryError too, rather than silently not blocking. Each returned entry
-    holds `rule`, `path`, `line` and `severity`."""
-    resolved = (
-        subprocess.run(
-            ["git", "rev-parse", "--verify", "--quiet", f"{anchor_sha}^{{commit}}"],
-            cwd=repo,
-            capture_output=True,
-        ).returncode
-        == 0
-    )
-    if resolved:
-        if _anchor_touches_gate(repo, base_sha, anchor_sha):
-            return []
-    else:
-        if anchor_paths is None:
-            raise CarryError("anchor unresolved and its changed paths are unknown")
-        try:
-            paths = list(anchor_paths())
-        except Exception as exc:
-            raise CarryError(f"cannot list the anchor's changed paths: {exc!r}") from exc
-        if any(is_gate_critical(p) or _steers_reviewers(p) for p in paths):
-            # Without the commit nothing re-reviews the whole delta (narrowing keeps only the
-            # gate-critical paths), so an untrusted, unfetchable anchor cannot be decided.
-            raise CarryError("the unfetchable anchor changed a gate-critical or reviewer file")
-    # After the trust checks: an anchor result without a findings list is unreadable, not clean
-    # (run-codex-review always writes one).
+    anchor (or the anchor cannot be resolved here, so that cannot be told, Codex R9) and the pull
+    request body does not waive them. Every anchor carries (Codex R10: no trust check). A blocking
+    entry that cannot be read (no usable path or rule, more entries than can be checked) raises
+    CarryError rather than silently not blocking. Each returned entry holds `rule`, `path`, `line`
+    and `severity`."""
+    resolved = anchor_resolved(repo, anchor_sha)
+    # An anchor result without a findings list is unreadable, not clean (run-codex-review always
+    # writes one).
     findings = anchor_result.get("findings") if isinstance(anchor_result, dict) else None
     if not isinstance(findings, list):
         raise CarryError("anchor result has no findings list")
@@ -3622,16 +3567,52 @@ _ANCHOR_ATTEMPT = re.compile(r"[1-9][0-9]{0,3}")
 _ANCHOR_SHA = re.compile(r"[0-9a-f]{40}")
 
 
+# Codex R5: a short GitHub API error must not cost a full review, so each read is retried.
+_GH_RETRY_DELAYS = (1, 3)
+
+
+def _gh_api(*args: str) -> str | None:
+    """`gh api -X GET <args>`'s output, retried after each delay in _GH_RETRY_DELAYS; None when
+    every attempt failed."""
+    import time
+
+    for delay in (*_GH_RETRY_DELAYS, None):
+        result = subprocess.run(["gh", "api", "-X", "GET", *args], capture_output=True, text=True)
+        if result.returncode == 0:
+            return result.stdout
+        if delay is not None:
+            time.sleep(delay)
+    return None
+
+
 def _gh_get_json(path: str, *fields: str):
-    """`gh api -X GET path` parsed as JSON, or None when the call or the parse fails."""
-    result = subprocess.run(
-        ["gh", "api", "-X", "GET", path, *fields, "--jq", "."], capture_output=True, text=True
-    )
-    if result.returncode != 0:
+    """`gh api -X GET path` parsed as JSON, or None when the call (after its retries) or the
+    parse fails."""
+    out = _gh_api(path, *fields, "--jq", ".")
+    if out is None:
         return None
     try:
-        return json.loads(result.stdout)
+        return json.loads(out)
     except ValueError:
+        return None
+
+
+def _last_ready_epoch(repo: str, pr_number: int) -> float | None:
+    """When the pull request was created as ready or last moved to ready (Codex R14): the later
+    of its creation time and its newest `ready_for_review` event. None when either read fails."""
+    pr = _gh_get_json(f"repos/{repo}/pulls/{pr_number}")
+    events = _gh_api(
+        f"repos/{repo}/issues/{pr_number}/events", "-F", "per_page=100", "--paginate",
+        "--jq", '.[] | select(.event == "ready_for_review") | .created_at',
+    )  # fmt: skip
+    if events is None:
+        return None
+    try:
+        return max(
+            [_epoch(pr["created_at"])]  # type: ignore[index]
+            + [_epoch(line) for line in events.split()]
+        )
+    except (TypeError, KeyError, ValueError):
         return None
 
 
@@ -3669,6 +3650,15 @@ def find_review_anchor(
             "::warning::cannot read this run's creation time; no anchor, the whole PR is reviewed"
         )
         return "", None
+    # Codex R14: the first run after the PR was created as ready or last moved to ready reviews
+    # the whole PR, so runs created before that moment are no anchor.
+    ready = _last_ready_epoch(repo, pr_number)
+    if ready is None:
+        print(
+            "::warning::cannot read when the PR was last marked ready; no anchor, the whole PR"
+            " is reviewed"
+        )
+        return "", None
     listing = _gh_get_json(
         f"repos/{repo}/actions/workflows/{profile.workflow_file}/runs",
         "-f", "event=pull_request", "-f", f"branch={head_ref}",
@@ -3682,6 +3672,7 @@ def find_review_anchor(
             and (r.get("head_repository") or {}).get("full_name") == repo
             and any(pr.get("number") == pr_number for pr in r.get("pull_requests") or [])
             and _epoch(r["updated_at"]) < created
+            and _epoch(r["created_at"]) >= ready
         ]
     except (TypeError, KeyError, ValueError, AttributeError):
         candidates = []

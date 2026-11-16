@@ -3,8 +3,9 @@
 `--ci-delta` leaves tests, fixtures, issues/, evals/, reviewer-eval/ and generated agent mirrors
 out of the reviewers' scope (never a gate-critical path). `--anchor-sha` narrows the rest to the
 files whose PR-side patch changed since that already-reviewed head; a rebase that only moves the
-PR's changes yields nothing, and an anchor the checkout cannot resolve skips the review. Without
-the flags (the local parity review) the scope is unchanged.
+PR's changes yields nothing, and an anchor the checkout cannot resolve skips the review,
+gate-critical paths included. No trust check is made on an anchor (Codex R10). Without the flags
+(the local parity review) the scope is unchanged.
 """
 
 import json
@@ -51,6 +52,7 @@ from scripts.marketplace_ci.review import (
         "issues/639-runtime.md",
         "evals/skill-tester/fixtures/a.json",
         "reviewer-eval/corpus/pr-565.json",
+        ".claude/review-outcomes/pr-745.json",
     ],
 )
 def test_excluded_paths(path):
@@ -235,6 +237,35 @@ def test_check_scope_bypass_reviews_a_component_change_since_the_anchor(
     assert _scope_bypass(monkeypatch, git_repo.root, tmp_path, *args)["bypass_eligible"] is False
 
 
+_SYNC_PATH = ".claude/marketplace-sync.json"  # a FULL_ESCALATION_PATHS entry
+
+
+def test_a_governance_path_escalates_only_on_the_first_run(monkeypatch, git_repo, tmp_path):
+    """Codex R3: full mode only without an anchor; a later change gets the delta reviewers."""
+    base = _commit(git_repo, "base", **{_SYNC_PATH: "{}\n"})
+    anchor = _commit(git_repo, "pr 1", a_py="a\n")
+    _commit(git_repo, "pr 2", **{_SYNC_PATH: '{"v": 2}\n'})
+    first = _scope_bypass(monkeypatch, git_repo.root, tmp_path, "--base-sha", base, "--ci-delta")
+    assert (first["mode"], first["bypass_eligible"]) == ("full", False)
+    later = _scope_bypass(monkeypatch, git_repo.root, tmp_path, "--base-sha", base, "--ci-delta",
+                          "--anchor-sha", anchor)  # fmt: skip
+    assert (later["mode"], later["bypass_eligible"]) == ("delta", False)
+    # the local parity review (no --ci-delta) keeps escalating
+    local = _scope_bypass(monkeypatch, git_repo.root, tmp_path, "--base-sha", base,
+                          "--anchor-sha", anchor)  # fmt: skip
+    assert local["mode"] == "full"
+
+
+def test_an_unchanged_governance_path_is_not_reviewed_again(monkeypatch, git_repo, tmp_path):
+    base = _commit(git_repo, "base", **{_SYNC_PATH: "{}\n"})
+    anchor = _commit(git_repo, "pr 1", **{_SYNC_PATH: '{"v": 2}\n'})
+    _commit(git_repo, "pr 2", plugins__demo__tests__test_x_py="t\n")
+    monkeypatch.setattr(main_module, "_deterministic_checks_block", lambda *_a: 0)
+    got = _scope_bypass(monkeypatch, git_repo.root, tmp_path, "--base-sha", base, "--ci-delta",
+                        "--anchor-sha", anchor)  # fmt: skip
+    assert (got["mode"], got["bypass_eligible"]) == ("light", True)
+
+
 SYNC = json.dumps(
     {"version": 1, "plugin_mirrors": ["demo"], "scripts_mirrors": [], "divergence_exceptions": []}
 )
@@ -325,40 +356,46 @@ def test_a_carry_comparison_git_cannot_compute_is_an_error(git_repo, monkeypatch
         )
 
 
-def test_gate_critical_entries_are_never_narrowed_away(git_repo):
+def test_gate_critical_entries_are_narrowed_like_any_other(git_repo):
+    """Codex R3: reviewed while they change, not again while they are unchanged."""
     base = _commit(git_repo, "base", a_py="a\n")
-    anchor = _commit(git_repo, "pr 1", a_py="b\n")
-    _commit(git_repo, "pr 2", scripts__marketplace_ci__x_py="x\n")
-    changed = compute_pr_delta(git_repo.root, base)
-    # unresolvable anchor: the gate-critical entry stays, the rest is skipped
-    assert _paths(narrow_to_unreviewed(git_repo.root, changed, base, "1" * 40)) == [
-        "scripts/marketplace_ci/x_py"
-    ]
-    assert _paths(narrow_to_unreviewed(git_repo.root, changed, base, anchor)) == [
-        "scripts/marketplace_ci/x_py"
-    ]
-
-
-def test_an_anchor_that_touched_a_gate_critical_path_is_not_trusted(git_repo):
-    base = _commit(git_repo, "base", a_py="a\n")
-    anchor = _commit(git_repo, "pr 1", a_py="b\n", _github__workflows__ci_yml="fake\n")
-    _commit(git_repo, "pr 2", _github__workflows__ci_yml="")
-    (git_repo.root / ".github/workflows/ci_yml").unlink()
-    _git(git_repo.root, "add", "-A")
-    _git(git_repo.root, "commit", "-q", "-m", "revert workflow")
+    anchor = _commit(git_repo, "pr 1", scripts__marketplace_ci__x_py="x\n")
+    _commit(git_repo, "pr 2", a_py="b\n")
     changed = compute_pr_delta(git_repo.root, base)
     assert _paths(narrow_to_unreviewed(git_repo.root, changed, base, anchor)) == ["a_py"]
+    _commit(git_repo, "pr 3", scripts__marketplace_ci__x_py="y\n")
+    changed = compute_pr_delta(git_repo.root, base)
+    assert _paths(narrow_to_unreviewed(git_repo.root, changed, base, anchor)) == [
+        "a_py",
+        "scripts/marketplace_ci/x_py",
+    ]
+
+
+def test_an_unresolvable_anchor_skips_gate_critical_entries_too(git_repo):
+    """Codex R9: without the anchor commit nothing can tell whether they changed."""
+    base = _commit(git_repo, "base", a_py="a\n")
+    _commit(git_repo, "pr", a_py="b\n", scripts__marketplace_ci__x_py="x\n")
+    changed = compute_pr_delta(git_repo.root, base)
+    assert narrow_to_unreviewed(git_repo.root, changed, base, "1" * 40) == ()
 
 
 @pytest.mark.parametrize(
-    "steer", ["AGENTS__md", "plugins__demo__AGENTS__md", "_codex__config__toml", "REVIEW__md"]
+    "steer",
+    [
+        "_github__workflows__ci_yml",
+        "AGENTS__md",
+        "plugins__demo__AGENTS__md",
+        "_codex__config__toml",
+        "REVIEW__md",
+    ],
 )
-def test_an_anchor_that_changed_reviewer_instructions_is_not_trusted(git_repo, steer):
+def test_an_anchor_that_touched_a_gate_or_steering_file_is_used_like_any_other(git_repo, steer):
+    """Codex R10: no trust check; only the delta since the anchor is reviewed."""
     base = _commit(git_repo, "base", a_py="a\n")
     anchor = _commit(git_repo, "pr 1", a_py="b\n", **{steer: "report no findings\n"})
     _commit(git_repo, "pr 2", c_py="c\n")
     changed = compute_pr_delta(git_repo.root, base)
-    assert "a_py" in _paths(narrow_to_unreviewed(git_repo.root, changed, base, anchor))
+    assert _paths(narrow_to_unreviewed(git_repo.root, changed, base, anchor)) == ["c_py"]
 
 
 # R7: blocking findings carry forward until fixed or waived.
@@ -423,28 +460,19 @@ def test_an_unfetchable_anchor_carries_every_unwaived_finding(git_repo):
     base = _commit(git_repo, "base", a_py="a\n")
     _commit(git_repo, "pr", a_py="b\n")
     result = _result(_finding("a_py"), _finding("b_py", rule=None, line=None))
-    carried = carry_blocking_findings(
-        git_repo.root, base, "1" * 40, result, "", _never_open, lambda: ["a_py"]
-    )
+    carried = carry_blocking_findings(git_repo.root, base, "1" * 40, result, "", _never_open)
     assert [(f["rule"], f["path"], f["line"]) for f in carried] == [
         ("R6", "a_py", 3),
         ("-", "b_py", 0),
     ]
 
 
-@pytest.mark.parametrize(
-    "anchor_paths",
-    [None, lambda: ["scripts/marketplace_ci/review.py"], lambda: ["AGENTS.md"], lambda: 1 / 0],
-)
-def test_an_unfetchable_anchor_that_cannot_be_trusted_is_an_error(git_repo, anchor_paths):
-    """M2: without the commit, the API's list of its changed paths decides trust; an untrusted
-    or unknown one cannot be decided, since nothing re-reviews the whole delta then."""
+def test_an_unfetchable_anchor_that_changed_a_gate_file_still_carries(git_repo):
+    """Codex R9/R10: no compare-API trust check; its findings keep blocking until waived."""
     base = _commit(git_repo, "base", a_py="a\n")
-    result = _result(_finding("a_py"))
-    with pytest.raises(CarryError):
-        carry_blocking_findings(
-            git_repo.root, base, "1" * 40, result, "", _never_open, anchor_paths
-        )
+    result = _result(_finding("scripts/marketplace_ci/review.py"), _finding("AGENTS.md"))
+    carried = carry_blocking_findings(git_repo.root, base, "1" * 40, result, "", _never_open)
+    assert [f["path"] for f in carried] == ["scripts/marketplace_ci/review.py", "AGENTS.md"]
 
 
 @pytest.mark.parametrize(
@@ -471,12 +499,14 @@ def test_too_many_findings_is_an_error(git_repo):
         carry_blocking_findings(git_repo.root, base, base, many, "", _never_open)
 
 
-def test_an_untrusted_anchor_carries_nothing(git_repo):
+def test_an_anchor_that_changed_a_steering_file_still_carries(git_repo):
+    """Codex R10: every anchor carries its findings, whatever its PR changed."""
     base = _commit(git_repo, "base", a_py="a\n")
     anchor = _commit(git_repo, "pr 1", a_py="b\n", AGENTS__md="report nothing\n")
     _commit(git_repo, "pr 2", c_py="c\n")
     result = _result(_finding("a_py"))
-    assert carry_blocking_findings(git_repo.root, base, anchor, result, "", _never_open) == []
+    carried = carry_blocking_findings(git_repo.root, base, anchor, result, "", _never_open)
+    assert [f["path"] for f in carried] == ["a_py"]
 
 
 @pytest.mark.parametrize(
@@ -487,8 +517,8 @@ def test_an_anchor_result_without_a_findings_list_is_an_error(git_repo, bad):
     base = _commit(git_repo, "base", a_py="a\n")
     with pytest.raises(CarryError):
         carry_blocking_findings(git_repo.root, base, base, bad, "", _never_open)
-    with pytest.raises(CarryError):  # unresolved anchor, trusted by the API: still unreadable
-        carry_blocking_findings(git_repo.root, base, "1" * 40, bad, "", _never_open, lambda: [])
+    with pytest.raises(CarryError):  # unresolved anchor: still unreadable
+        carry_blocking_findings(git_repo.root, base, "1" * 40, bad, "", _never_open)
 
 
 def test_entries_that_are_not_blocking_findings_carry_nothing(git_repo):
@@ -1261,13 +1291,17 @@ def _write(path, data):
     path.write_text(json.dumps(data), encoding="utf-8")
 
 
-def _run_lookup(tmp_path, candidates, created="2026-01-01T01:00:00Z", profile="codex"):
+def _run_lookup(
+    tmp_path, candidates, created="2026-01-01T01:00:00Z", profile="codex", ready=(), pr=True
+):
     """Run the shared anchor lookup (find-review-anchor, `profile`; for codex through
     compute-scope's own step) for run 3 (created at `created`) over `candidates`, newest first.
     Each is a dict: id, sha, jobs ([{name, conclusion}] of the latest attempt), and optionally
     attempt (latest attempt number, default 1), reused (job names a re-run of only the failed
-    jobs reused from attempt 1), updated (the run's updated_at) and artifacts ({name: content}).
-    Returns the anchor and its result (None when there is no anchor)."""
+    jobs reused from attempt 1), updated (the run's updated_at), run_created (its created_at)
+    and artifacts ({name: content}). The PR was created ready on 2025-12-31 (no PR record when
+    `pr` is False); `ready` lists its `ready_for_review` event times. Returns the anchor and its
+    result (None when there is no anchor)."""
     fixtures = tmp_path / "fixtures"
     fixtures.mkdir()
     runs = []
@@ -1276,6 +1310,7 @@ def _run_lookup(tmp_path, candidates, created="2026-01-01T01:00:00Z", profile="c
         runs.append(
             {"id": rid, "head_sha": c["sha"], "run_attempt": attempt,
              "updated_at": c.get("updated", f"2026-01-01T00:00:{rid:02d}Z"),
+             "created_at": c.get("run_created", "2025-12-31T12:00:00Z"),
              "head_repository": {"full_name": "o/r"}, "pull_requests": [{"number": 7}]}
         )  # fmt: skip
         done = {j["name"]: f"2026-01-01T00:{rid:02d}:{i:02d}Z" for i, j in enumerate(c["jobs"])}
@@ -1300,6 +1335,13 @@ def _run_lookup(tmp_path, candidates, created="2026-01-01T01:00:00Z", profile="c
     )
     if created is not None:
         _write(fixtures / "repos_o_r_actions_runs_3.json", {"id": 3, "created_at": created})
+    if pr:
+        _write(fixtures / "repos_o_r_pulls_7.json", {"created_at": "2025-12-31T00:00:00Z"})
+    _write(
+        fixtures / "repos_o_r_issues_7_events.json",
+        [{"event": "labeled", "created_at": "2025-12-31T06:00:00Z"}]
+        + [{"event": "ready_for_review", "created_at": t} for t in ready],
+    )
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     gh = bin_dir / "gh"
@@ -1514,6 +1556,45 @@ def test_an_unreadable_creation_time_means_no_anchor(tmp_path):
     assert (anchor, result) == ("", None)
 
 
+@pytest.mark.skipif(shutil.which("jq") is None, reason="the workflow step uses jq")
+def test_runs_from_before_the_last_move_to_ready_are_no_anchor(tmp_path):
+    """Codex R14: the first run after ready -> draft -> ready reviews the whole PR."""
+    (tmp_path / "a").mkdir()
+    (tmp_path / "b").mkdir()
+    candidates = _newer_and_older("2026-01-01T00:30:00Z")
+    assert _run_lookup(tmp_path / "a", candidates, ready=["2026-01-01T00:10:00Z"]) == ("", None)
+    # the newest ready event counts; a run created after it is an anchor again
+    candidates[0]["run_created"] = "2026-01-01T00:15:00Z"
+    anchor, _ = _run_lookup(tmp_path / "b", candidates, ready=["2025-12-31T09:00:00Z",
+                                                              "2026-01-01T00:10:00Z"])  # fmt: skip
+    assert anchor == _SHA4
+
+
+@pytest.mark.skipif(shutil.which("jq") is None, reason="the workflow step uses jq")
+def test_an_unreadable_ready_time_means_no_anchor(tmp_path):
+    anchor = _run_lookup(tmp_path, _newer_and_older("2026-01-01T00:30:00Z"), pr=False)
+    assert anchor == ("", None)
+
+
+def test_the_lookup_retries_a_failed_api_call(monkeypatch):
+    """Codex R5: a short API error does not cost a full review."""
+    calls = []
+
+    def fake_run(cmd, **_kw):
+        calls.append(cmd)
+        ok = len(calls) == 3
+        return subprocess.CompletedProcess(cmd, 0 if ok else 1, stdout='{"a": 1}' if ok else "")
+
+    monkeypatch.setattr(review_module.subprocess, "run", fake_run)
+    monkeypatch.setattr(review_module, "_GH_RETRY_DELAYS", (0, 0))
+    assert review_module._gh_get_json("repos/o/r") == {"a": 1}
+    assert len(calls) == 3
+    calls.clear()
+    monkeypatch.setattr(review_module, "_GH_RETRY_DELAYS", (0,))
+    assert review_module._gh_get_json("repos/o/r") is None
+    assert len(calls) == 2
+
+
 # R7 (D2): a run that skips the Codex call still records its head with the carried findings.
 
 _SKIP_JOBS = [
@@ -1644,15 +1725,31 @@ def test_the_compute_scope_skip_record_step(tmp_path, count, findings, rc, statu
     assert upload["with"]["name"] == "codex-review-skip"
 
 
-@pytest.mark.parametrize(("git_rc", "unresolved"), [(0, "false"), (1, "true")])
-def test_an_unfetchable_anchor_writes_no_skip_record(tmp_path, git_rc, unresolved):
+@pytest.mark.parametrize(
+    ("present", "failed_fetches", "unresolved", "fetches"),
+    [(True, 0, "false", 0), (False, 0, "false", 1), (False, 2, "false", 3), (False, 3, "true", 3)],
+)
+def test_an_unfetchable_anchor_writes_no_skip_record(
+    tmp_path, present, failed_fetches, unresolved, fetches
+):
     """R9: an anchor that cannot be fetched skips the review, so its head is not recorded as
-    reviewed; a skip record would let the next run narrow the unreviewed content away for good."""
+    reviewed; a skip record would let the next run narrow the unreviewed content away for good.
+    R5: the fetch is retried, so a short git error does not count as a force-pushed anchor."""
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     git = bin_dir / "git"
-    git.write_text(f"#!/bin/sh\nexit {git_rc}\n", encoding="utf-8")
+    count = tmp_path / "fetches"
+    git.write_text(
+        "#!/bin/sh\n"
+        f'if [ "$1" = cat-file ]; then exit {0 if present else 1}; fi\n'
+        f'n=$(($(cat "{count}" 2>/dev/null || echo 0) + 1)); echo "$n" > "{count}"\n'
+        f'[ "$n" -gt {failed_fetches} ]\n',
+        encoding="utf-8",
+    )
     git.chmod(0o755)
+    sleep = bin_dir / "sleep"
+    sleep.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    sleep.chmod(0o755)
     output = tmp_path / "output"
     step = _step("compute-scope", "Fetch the last reviewed head when this checkout lacks it")
     assert step["id"] == "anchor_fetch"
@@ -1667,6 +1764,7 @@ def test_an_unfetchable_anchor_writes_no_skip_record(tmp_path, git_rc, unresolve
     run = subprocess.run(["bash", "-e", str(script)], env=env, capture_output=True, text=True)
     assert run.returncode == 0, run.stderr
     assert output.read_text(encoding="utf-8") == f"unresolved={unresolved}\n"
+    assert (int(count.read_text("utf-8")) if count.exists() else 0) == fetches
     skip_if = _step("compute-scope", _SKIP_STEP)["if"]
     assert "steps.anchor_fetch.outputs.unresolved != 'true'" in skip_if
 
@@ -1785,6 +1883,11 @@ def test_the_claude_review_still_leaves_out_the_root_record_directories(path):
     assert is_ci_review_excluded(path, keep_tests=True)
 
 
+def test_the_claude_review_still_reviews_the_review_outcome_records():
+    """Codex R2 leaves them out; the Claude review's R4 does not name them."""
+    assert not is_ci_review_excluded(".claude/review-outcomes/pr-745.json", keep_tests=True)
+
+
 def test_the_claude_review_still_leaves_out_proven_mirror_copies():
     copy = ".claude/skills/x/SKILL.md"
     assert is_ci_review_excluded(copy, frozenset({copy}), keep_tests=True)
@@ -1829,24 +1932,26 @@ def test_emit_review_paths_lists_the_claude_delta(monkeypatch, git_repo, tmp_pat
     assert all(e["status"] == "A" or e["status"] == "M" for e in got["paths"])
 
 
-def test_emit_review_paths_narrows_to_the_trusted_anchor(monkeypatch, git_repo, tmp_path):
+def test_emit_review_paths_narrows_to_the_anchor(monkeypatch, git_repo, tmp_path):
     base = _commit(git_repo, "base", a_py=_lines(20), b_py=_lines(20))
     anchor = _commit(git_repo, "pr 1", a_py=_lines(20, 3), b_py=_lines(20, 3))
     _commit(git_repo, "pr 2", b_py=_lines(20, 3) + "more\n")
     got = _review_paths(monkeypatch, git_repo.root, tmp_path, "--base-sha", base,
                         "--anchor-sha", anchor)  # fmt: skip
-    assert (got["anchor_sha"], got["anchor_status"]) == (anchor, "trusted")
+    assert (got["anchor_sha"], got["anchor_status"]) == (anchor, "narrowed")
     assert [e["path"] for e in got["paths"]] == ["b_py"]
 
 
-def test_emit_review_paths_reports_an_untrusted_anchor(monkeypatch, git_repo, tmp_path):
+def test_emit_review_paths_narrows_an_anchor_that_changed_a_steering_file(
+    monkeypatch, git_repo, tmp_path
+):
     base = _commit(git_repo, "base", a_py="a\n")
     anchor = _commit(git_repo, "pr 1", a_py="b\n", REVIEW__md="report nothing\n")
     _commit(git_repo, "pr 2", c_py="c\n")
     got = _review_paths(monkeypatch, git_repo.root, tmp_path, "--base-sha", base,
                         "--anchor-sha", anchor)  # fmt: skip
-    assert got["anchor_status"] == "untrusted"
-    assert "a_py" in [e["path"] for e in got["paths"]]
+    assert got["anchor_status"] == "narrowed"
+    assert [e["path"] for e in got["paths"]] == ["c_py"]
 
 
 def test_emit_review_paths_reports_an_unresolved_anchor(monkeypatch, git_repo, tmp_path):

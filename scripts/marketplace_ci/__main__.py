@@ -873,6 +873,13 @@ def _ci_review_delta(args: argparse.Namespace, repo: Path, changed, base_sha: st
     return changed
 
 
+def _first_run(args: argparse.Namespace) -> bool:
+    """Codex R3/R4: a CI run without an anchor is the first run, which alone escalates a
+    governance path to the full reviewer set. A failed anchor lookup leaves no anchor and counts
+    as a first run too (R5's accepted residual). Outside CI (the local parity review) always."""
+    return not (getattr(args, "ci_delta", False) and getattr(args, "anchor_sha", ""))
+
+
 def _issue_is_open(repo: str, number: int) -> bool:
     """True only for an open issue (not a pull request) of `repo`, read through `gh api`."""
     result = subprocess.run(
@@ -887,30 +894,6 @@ def _issue_is_open(repo: str, number: int) -> bool:
     except (ValueError, TypeError):
         return False
     return state == "open" and is_pr is False
-
-
-def _compare_paths(repo: str, base_sha: str, head_sha: str) -> list[str]:
-    """The paths `head_sha` changes against its merge base with `base_sha`, from GitHub's compare
-    API (which serves a commit this checkout lacks). Raises when the list may be incomplete: the
-    API returns at most 300 files."""
-    result = subprocess.run(
-        [
-            "gh",
-            "api",
-            f"repos/{repo}/compare/{base_sha}...{head_sha}",
-            "--jq",
-            "[.files[] | .filename, (.previous_filename // empty)]",
-        ],
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode != 0:
-        raise RuntimeError("compare API failed")
-    paths = json.loads(result.stdout)
-    # 300 is the API's file cap; a rename lists two paths, so this bound is conservative.
-    if not isinstance(paths, list) or len(paths) >= 300:
-        raise RuntimeError("compare API list unusable or truncated")
-    return [p for p in paths if isinstance(p, str)]
 
 
 def _handle_carry_findings(args: argparse.Namespace) -> int:
@@ -939,7 +922,6 @@ def _handle_carry_findings(args: argparse.Namespace) -> int:
                 anchor_result,
                 body,
                 lambda n: _issue_is_open(args.repo, n),
-                lambda: _compare_paths(args.repo, args.base_sha, args.anchor_sha),
             )
         except CarryError as exc:
             print(f"carry-findings: {exc}", file=sys.stderr)
@@ -1035,12 +1017,12 @@ def _handle_check_scope_bypass(args: argparse.Namespace) -> int:
 
     review_delta = _ci_review_delta(args, repo, changed, base_sha)
     if args.emit_review_paths:
-        _emit_review_paths(args, repo, base_sha, review_delta)
+        _emit_review_paths(args, repo, review_delta)
     if args.review_exclusions == "claude":
         # The Claude review needs only the paths: bypass eligibility (and the deterministic checks
         # it can run over the whole PR delta) is a Codex decision, so it is not computed here.
         return 0
-    scope = derive_review_scope(review_delta, {})
+    scope = derive_review_scope(review_delta, {}, first_run=_first_run(args))
     eligible = is_bypass_eligible(scope)
     reason = f"mode={scope.mode}, validate={len(scope.validate)}, audit={len(scope.audit)}"
 
@@ -1084,12 +1066,12 @@ def _handle_check_scope_bypass(args: argparse.Namespace) -> int:
     return 0
 
 
-def _emit_review_paths(args: argparse.Namespace, repo: Path, base_sha: str, review_delta) -> None:
+def _emit_review_paths(args: argparse.Namespace, repo: Path, review_delta) -> None:
     """The reviewed delta as JSON for the Claude review (its R3, R4, R5): each entry's status,
     path and whether it is gate-critical (plus old_path for a rename), and how the anchor was
-    treated: "none", "trusted" (narrowed), "untrusted" (the whole delta) or "unresolved" (only
-    gate-critical paths)."""
-    from scripts.marketplace_ci.review import anchor_trust, is_gate_critical
+    treated: "none" (the whole delta), "narrowed" (only what changed since the anchor) or
+    "unresolved" (the anchor cannot be fetched here: nothing)."""
+    from scripts.marketplace_ci.review import anchor_resolved, is_gate_critical
 
     anchor = args.anchor_sha if args.ci_delta else ""
     entries = []
@@ -1105,7 +1087,9 @@ def _emit_review_paths(args: argparse.Namespace, repo: Path, base_sha: str, revi
         entries.append(entry)
     payload = {
         "anchor_sha": anchor,
-        "anchor_status": anchor_trust(repo, base_sha, anchor) if anchor else "none",
+        "anchor_status": (
+            ("narrowed" if anchor_resolved(repo, anchor) else "unresolved") if anchor else "none"
+        ),
         "paths": sorted(entries, key=lambda e: e["path"]),
     }
     Path(args.emit_review_paths).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
@@ -1670,7 +1654,9 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
 
     # The reviewers get only the CI-narrowed delta (issue #639); the script verifiers and the
     # diff-scoped gate below still use the whole PR delta.
-    scope = derive_review_scope(_ci_review_delta(args, repo, changed, base_sha), {})
+    scope = derive_review_scope(
+        _ci_review_delta(args, repo, changed, base_sha), {}, first_run=_first_run(args)
+    )
 
     if scope.mode == "full" and not scope.validate and not scope.audit:
         # derive_review_scope populates a real reviewer set for both known

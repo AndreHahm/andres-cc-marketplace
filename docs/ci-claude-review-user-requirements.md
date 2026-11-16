@@ -48,19 +48,21 @@ Status: approved
   attempt (the same rules as Codex R5 and R11, applied to this workflow's own runs and result artifact).
 - With an anchor, only files whose pull-request-side change differs from the anchor are reviewed (as
   Codex R6). Without an anchor, the whole pull request minus the exclusions (R4) is reviewed.
-- An anchor that the pull request could have influenced is not trusted, and the whole pull request is
-  reviewed instead (as Codex R10).
+- No trust check is made on the anchor: an anchor that the pull request could have influenced is used like
+  any other (as Codex R10).
+- Runs created before the pull request was created as ready or last moved to ready are not an anchor (as
+  Codex R14).
 - The delta is computed by the same trusted code as the Codex review (`check-scope-bypass --ci-delta`),
   restored from the base SHA.
 - The lookup of the last reviewed head moves out of `marketplace-ci.yml`'s inline shell into one trusted
   `scripts/marketplace_ci` subcommand. Both workflows call it, each with its own workflow, job and result
-  artifact names. The Codex anchor behavior must not change.
+  artifact names. Both reviews share the same anchor rules.
 - When nothing is left to review, no API call is made.
 - A run that reviewed counts as an anchor whether or not it found something (R7). A cancelled run, a run
   that could not review, and a skipped run do not count.
 - The anchor never comes from a pull request comment or anything else the author can edit.
 
-Status: approved
+Status: approved (no trust check and the ready filter, as Codex R10 and R14, by the maintainer, 2026-11-16, issue #753)
 
 ## R4. Paths excluded from the review
 
