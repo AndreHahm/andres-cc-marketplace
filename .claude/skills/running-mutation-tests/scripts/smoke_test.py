@@ -16,6 +16,7 @@ from __future__ import annotations
 import importlib.util
 import io
 import json
+import os
 import shutil
 import sys
 import tempfile
@@ -356,6 +357,20 @@ def check_run(run) -> None:
     started = time.perf_counter()
     rejected = not run.is_mutant_key(long_key)
     check("long key rejected in linear time", rejected and time.perf_counter() - started < 1.0)
+    check("python3 found next to this interpreter", run.python_env() is not None)
+    # An unknown interpreter (empty sys.executable) is refused, even with a python3 in the cwd.
+    decoy = Path(tempfile.mkdtemp())
+    (decoy / "python3").write_text("#!/bin/sh\n", encoding="utf-8")
+    (decoy / "python3").chmod(0o700)
+    saved_exe, saved_cwd = sys.executable, Path.cwd()
+    try:
+        sys.executable = ""
+        os.chdir(decoy)
+        check("empty sys.executable refused", run.python_env() is None)
+    finally:
+        sys.executable = saved_exe
+        os.chdir(saved_cwd)
+        shutil.rmtree(decoy)
     code, out, _ = call(
         run.main, ["--root", str(root), "--list", str(write_list(root, good)), "--list-modules"]
     )

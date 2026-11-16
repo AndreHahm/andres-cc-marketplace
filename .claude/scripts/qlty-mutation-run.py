@@ -31,8 +31,8 @@ Usage (mutmut and PyYAML come from uv):
                                                needs the same configuration, so it is written again)
 
 Exit codes: mutmut's own exit status from `mutmut run` (0 when it finished, whatever survived), or
-that of `export-cicd-stats` when the run returned 0; 2 invalid input; 3 PyYAML or mutmut missing;
-4 red baseline.
+that of `export-cicd-stats` when the run returned 0; 2 invalid input; 3 PyYAML or mutmut missing, or
+no python3 next to the running interpreter that is that interpreter; 4 red baseline.
 """
 
 from __future__ import annotations
@@ -217,6 +217,8 @@ def python_env() -> dict[str, str] | None:
     # computed command, sys.executable included). Putting the running interpreter's own folder first
     # on PATH makes that "python3" the same environment, so pytest and mutmut stay importable. None
     # when that folder holds no python3 that is this interpreter: never fall back further down PATH.
+    if not sys.executable:  # unknown interpreter: abspath("") would mean the current directory
+        return None
     folder = os.path.abspath(os.path.dirname(sys.executable))
     found = shutil.which("python3", path=folder)
     if found is None or not os.path.samefile(found, sys.executable):
