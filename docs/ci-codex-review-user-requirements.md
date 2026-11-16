@@ -177,7 +177,11 @@ until the anchor run leaves the 30-run lookup window: the next run then has no a
 reviews the whole pull request again.
 Such an anchor is used like any other (R10): no trust check is made on it.
 
-Status: approved (maintainer, 2026-11-16, issue #753)
+- **Accepted residual:** the skipped run counts as bypass-eligible, so `Publish Codex policy result` passes
+  and the pull request can be merged while that head is unreviewed, gate-critical changes included. Only a
+  later run (whole pull request once the anchor has left the lookup window) reviews it.
+
+Status: approved (maintainer, 2026-11-16, issue #753; the accepted residual by the maintainer after PR #755's review)
 
 ## R10. An anchor the pull request could have influenced does not force a full review
 
