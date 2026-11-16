@@ -48,7 +48,7 @@ select = ["E", "F", "I", "UP", "B"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
-testpaths = ["tests/marketplace_ci", "tests/reviewer_eval", "plugins/analysis-kit/tests", "plugins/session-kit/tests", "plugins/decision-kit/tests", "plugins/quality-kit/tests"]
+testpaths = ["tests/marketplace_ci", "tests/reviewer_eval", "plugins/analysis-kit/tests", "plugins/session-kit/tests", "plugins/decision-kit/tests", "plugins/quality-kit/tests", "plugins/promptlibrary-kit/scripts/plib_test_catalog_validate.py"]
 # coverage.yml deselects these: tracing slows the measured code past the bound (4 failed on PR #746).
 markers = ["timing: asserts a wall-clock bound on CPU work"]
 
@@ -57,8 +57,8 @@ markers = ["timing: asserts a wall-clock bound on CPU work"]
 # under .temp/coverage/, which .gitignore covers. patch = subprocess measures the scripts the tests start
 # as subprocesses (91 % versus 89 % without it, 2026-11-15).
 [tool.coverage.run]
-source = ["scripts", "plugins/analysis-kit", "plugins/session-kit", "plugins/decision-kit", "plugins/quality-kit"]
-omit = ["*/tests/*", "*/smoke_test.py"]
+source = ["scripts", "plugins/analysis-kit", "plugins/session-kit", "plugins/decision-kit", "plugins/quality-kit", "plugins/promptlibrary-kit"]
+omit = ["*/tests/*", "*/smoke_test.py", "*/plib_test_*.py", "*/plib_smoke_common.py"]
 data_file = ".temp/coverage/.coverage"
 parallel = true
 patch = ["subprocess"]

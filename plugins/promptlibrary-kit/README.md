@@ -132,8 +132,8 @@ verification hashes that cover prompt text only.
 
 ## Known limitations
 
-- The catalog-path tests have run on Windows only. Linux and macOS behavior is designed for but unverified,
-  and the three file-mode tests are skipped on Windows, so they have not run at all yet.
+- The validator tests run on Windows locally and on Linux (Ubuntu) in the repository's CI, which also runs
+  the three file-mode tests that Windows skips. macOS behavior is designed for but unverified.
 - Live runs on 2026-10-14 loaded the plugin with `--plugin-dir`, not from a marketplace install. A headless
   pass ran `prompt-retrieval` and the `prompt-reviewer` agent; `prompt-execution` refused at its approval
   question, which a headless session cannot ask. An interactive pass then ran `prompt-execution` (Cancel, and
