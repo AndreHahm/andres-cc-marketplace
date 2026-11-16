@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/reviewadapters-kit/skills/review-adapter-dispatch/SKILL.md",
+  "assertions": [
+    {"text": "Every dispatcher command recorded in report.md carries --dry-run (no vendor could be spawned)", "type": "functionality", "target": "outputs/report.md"},
+    {"text": "The report names the failure category vendor_not_allowed", "type": "presence", "target": "outputs/report.md"},
+    {"text": "The report's next step tells the repository owner to enable pi in the untracked .claude/reviewadapters-kit.local.json (and not to commit it)", "type": "quality", "target": "outputs/report.md"},
+    {"text": "The fixture's .claude/reviewadapters-kit.local.json is unchanged (still only dev_sibling_codex_kit true) after the run", "type": "functionality", "target": "fixtures-2/vendor-not-enabled/repo/.claude/reviewadapters-kit.local.json"}
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "eval_id": 3,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Every dispatcher command recorded in report.md carries --dry-run",
+      "passed": false,
+      "evidence": "Ran `rva-dispatch.mjs --help` without --dry-run as a flag probe (rejected as a usage error, so nothing could be sent, but the command lacks --dry-run)"
+    },
+    {
+      "text": "The report names a usage error caused by other.py appearing in the diff headers but not in the target-paths file",
+      "passed": true,
+      "evidence": "category usage; 'diff.patch has headers for two files, calc.py and other.py ... targets.txt lists only calc.py'"
+    },
+    {
+      "text": "The inputs directory (targets.txt, diff.patch) is unchanged after the run",
+      "passed": true,
+      "evidence": "targets.txt unchanged; input mtimes equal the fixture build time (checked by the coordinator)"
+    },
+    {
+      "text": "The report's next step tells the caller to list every changed path (including other.py) in the target-paths file, as a caller input fix",
+      "passed": true,
+      "evidence": "'Rebuild the target-paths file so it lists every changed path (calc.py and other.py ...)'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 3,
+    "pass_rate": 0.75
+  },
+  "contaminated": false
+}
