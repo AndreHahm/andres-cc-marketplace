@@ -34,6 +34,36 @@
       "note": "Claude delta advisory: marketplace version bumped to 1.0.0-alpha.4 in 91d41e20",
       "pr": 750,
       "recorded_at": "2026-11-16T10:04:45+00:00"
+    },
+    {
+      "disposition": "declined",
+      "finding": "claude-delta-0b5fc6a4-info",
+      "line": 207,
+      "note": "no new exposure: the run tree is already the export of tracked and non-ignored files",
+      "path": "plugins/quality-kit/scripts/qlty-mutation-run.py",
+      "pr": 750,
+      "recorded_at": "2026-11-16T10:55:28+00:00",
+      "rule": "security"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "claude-delta-0b5fc6a4-major",
+      "line": 62,
+      "note": "recommended environment command is now CI's build-free uv sync form; tested sync and a mutation run in a fresh export",
+      "path": "plugins/quality-kit/agents/mutation-tester.md",
+      "pr": 750,
+      "recorded_at": "2026-11-16T10:55:28+00:00",
+      "rule": "security"
+    },
+    {
+      "disposition": "declined",
+      "finding": "claude-delta-0b5fc6a4-minor",
+      "line": 14,
+      "note": "by design: R6 requires bare Bash in an agent; the status plus content-fingerprint check is the documented control",
+      "path": "plugins/quality-kit/agents/mutation-tester.md",
+      "pr": 750,
+      "recorded_at": "2026-11-16T10:55:28+00:00",
+      "rule": "security"
     }
   ]
 }

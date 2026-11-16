@@ -27,7 +27,8 @@ survivor matters. The caller decides that with the user.
 - **Selection:** either `--module <path or stem>` (from the module list file) or `--source <path>` with
   `--tests <paths...>`.
 - **Environment command:** how to install the project's test dependencies in the export (for example
-  `uv sync --group dev`). If the prompt names none, stop and ask the caller for it; do not guess.
+  `uv sync --locked --group dev --no-build`, which runs no package's build code). If the prompt names none, stop
+  and ask the caller for it; do not guess.
 - **Survivor diffs:** how many survivors to show (default 20).
 
 If any input is missing or a path fails its check below, stop and report which; do not improvise. Every
