@@ -2,8 +2,9 @@
 // (instructions, changed-file list, diff) and no tools: a vendor that can read files can read anything
 // the OS user can, and a diff is untrusted text that may ask it to. Each adapter builds a fixed argument
 // list; the caller-influenced values are the model (charset-checked by the dispatcher, and placed only
-// as the value of --model) and the review content itself, which travels as one prompt argument (agy) or
-// in a file the dispatcher wrote into its private run directory (pi, devin). See the dispatch skill's
+// as the value of --model) and the review content itself, which travels in a file the dispatcher wrote
+// into its private run directory: named on the command line (pi, devin) or fed as stdin (agy), never as
+// an argument other local users could read. See the dispatch skill's
 // references/vendors.md for the probe evidence behind every flag.
 import fs from "node:fs";
 import path from "node:path";
@@ -88,6 +89,9 @@ function pick(names, extra = {}) {
   return { ...env, ...extra };
 }
 
+// U+2028 and U+2029, built from code points so no escape sequence sits in this source.
+const UNICODE_LINE_BREAKS = new RegExp(`[${String.fromCharCode(0x2028, 0x2029)}]`, "g");
+
 function writePromptFile(files, text) {
   fs.writeFileSync(files.promptFile, text, { mode: 0o600 });
 }
@@ -161,31 +165,51 @@ export const VENDORS = {
     binary: "agy",
     refuseUnprobed: true,
     recipient: "Google (Antigravity)",
-    reach: "agy gets the diff inline and every tool is refused in headless mode, so it reads no file itself; the prompt, diff included, is a command-line argument that other local users can read while agy runs (unless /proc is mounted with hidepid)",
+    reach: "agy gets the diff inline, on standard input from a private file, and every tool is refused in headless mode, so it reads no file itself",
+    // The prompt file is the vendor's stdin (rva-run.mjs), not an argument.
+    stdin: true,
     env() {
       return pick([...BASE_ENV, "GEMINI_API_KEY", "GOOGLE_API_KEY", "GOOGLE_APPLICATION_CREDENTIALS", "GOOGLE_CLOUD_PROJECT"]);
     },
     invocation({ model, files, timeoutMs, content }) {
+      // agy 1.5.9 reads stdin only as stream-json: one line {"event":"user","message":{"content":...}}.
+      // That input format requires stream-json output too. -p needs a value, so it gets an empty one.
+      const message = { event: "user", message: { content: buildPrompt(content, "Return findings, verdict and inspection_limits.") } };
+      // JSON.stringify leaves the Unicode line and paragraph separators raw; a reader that splits on them
+      // would end the line inside the diff, so they are escaped too (still the same JSON value).
+      const line = JSON.stringify(message).replace(UNICODE_LINE_BREAKS, (c) => `\\u${c.charCodeAt(0).toString(16)}`);
+      fs.writeFileSync(files.promptFile, `${line}\n`, { mode: 0o600 });
       return [
-        "-p", buildPrompt(content, "Return findings, verdict and inspection_limits."),
+        "--input-format", "stream-json",
+        "--output-format", "stream-json",
         "--mode", "plan",
         "--sandbox",
-        "--output-format", "json",
         "--json-schema", files.schemaFile,
         "--print-timeout", `${Math.max(1, Math.floor(timeoutMs / 1000) - 5)}s`,
-        "--model", model
+        "--model", model,
+        "-p="
       ];
     },
+    // stream-json output is one JSON event per line; the run's outcome is the last "result" event.
     extract(run) {
-      let parsed;
-      try {
-        parsed = JSON.parse(run.stdout);
-      } catch {
-        return { error: "invalid_json" };
+      let result;
+      let unparsable = false;
+      for (const line of run.stdout.split("\n")) {
+        if (!line.trim()) continue;
+        let event;
+        try {
+          event = JSON.parse(line);
+        } catch {
+          unparsable = true;
+          continue;
+        }
+        if (event && typeof event === "object" && event.event === "result") result = event.result;
       }
-      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return { error: "invalid_json" };
-      if (parsed.structured_output && typeof parsed.structured_output === "object") return { value: parsed.structured_output };
-      if (Array.isArray(parsed.denied_actions) && parsed.denied_actions.length > 0) return { error: "tool_denied" };
+      if (result === undefined) return { error: unparsable ? "invalid_json" : "missing_final_message" };
+      if (!result || typeof result !== "object" || Array.isArray(result)) return { error: "invalid_json" };
+      // Only a finished run counts: output from an errored or cut-off turn may be partial.
+      if (result.status === "SUCCESS" && result.structured_output && typeof result.structured_output === "object") return { value: result.structured_output };
+      if (Array.isArray(result.denied_actions) && result.denied_actions.length > 0) return { error: "tool_denied" };
       return { error: "missing_final_message" };
     }
   }

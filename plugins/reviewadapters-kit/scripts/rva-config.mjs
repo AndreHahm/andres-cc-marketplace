@@ -20,25 +20,66 @@ function readJson(file) {
   return JSON.parse(fs.readFileSync(file, "utf8"));
 }
 
-class LocalFileRefused extends Error {}
+export class LocalFileRefused extends Error {}
+
+const NOT_PRIVATE = "the local file or its .claude directory is not owned by you, or is writable by others, so it cannot enable anything";
+const FILE_FLAGS = fs.constants.O_RDONLY | fs.constants.O_NONBLOCK | (fs.constants.O_NOFOLLOW ?? 0);
+
+// Open the file inside the .claude directory that was checked, not whatever the path names a moment
+// later: the directory is opened (never through a symlink) and checked on its handle, and on Linux the
+// file is opened through that handle (/proc/self/fd/<n>/<name>, the equivalent of openat). Elsewhere the
+// file is opened by path and the path must still name the checked directory afterwards; a swap there and
+// back between the two steps is not caught. The options exist for the tests only: afterDirCheck runs
+// between the directory check and the file open, and byPath forces the non-Linux path.
+export function openInCheckedDir(file, { afterDirCheck, byPath = false } = {}) {
+  const dir = path.dirname(file);
+  let dirFd;
+  try {
+    dirFd = fs.openSync(dir, fs.constants.O_RDONLY | (fs.constants.O_DIRECTORY ?? 0) | (fs.constants.O_NOFOLLOW ?? 0));
+  } catch {
+    throw new LocalFileRefused("the .claude directory cannot be opened (a symbolic link, or unreadable), so the local file cannot enable anything");
+  }
+  try {
+    const dirStat = fs.fstatSync(dirFd);
+    if (!dirStat.isDirectory() || !ownedAndPrivate(dirStat)) throw new LocalFileRefused(NOT_PRIVATE);
+    const viaHandle = `/proc/self/fd/${dirFd}`;
+    const useHandle = !byPath && process.platform === "linux" && fs.existsSync(viaHandle);
+    afterDirCheck?.();
+    let fd;
+    try {
+      fd = fs.openSync(useHandle ? path.join(viaHandle, path.basename(file)) : file, FILE_FLAGS);
+    } catch {
+      throw new LocalFileRefused("the local file cannot be opened (a symbolic link, or unreadable), so it cannot enable anything");
+    }
+    if (!useHandle) {
+      let same = false;
+      try {
+        const now = fs.lstatSync(dir);
+        same = now.dev === dirStat.dev && now.ino === dirStat.ino;
+      } catch {
+        // The directory is gone: not the one that was checked.
+      }
+      if (!same) {
+        fs.closeSync(fd);
+        throw new LocalFileRefused("the .claude directory changed while the local file was opened, so it cannot enable anything");
+      }
+    }
+    return fd;
+  } finally {
+    fs.closeSync(dirFd);
+  }
+}
 
 // The local file is opened once, without following a final symlink or blocking on a FIFO, and checked
 // on the open handle, so it cannot be swapped between the check and the read. It enables egress, so it
 // and its .claude directory must belong to the current user and be writable by nobody else, the same
 // rule the dispatcher's input files and codex-kit's files follow.
 function readLocalJson(file) {
-  let fd;
-  try {
-    fd = fs.openSync(file, fs.constants.O_RDONLY | fs.constants.O_NONBLOCK | (fs.constants.O_NOFOLLOW ?? 0));
-  } catch {
-    throw new LocalFileRefused("the local file cannot be opened (a symbolic link, or unreadable), so it cannot enable anything");
-  }
+  const fd = openInCheckedDir(file);
   try {
     const stat = fs.fstatSync(fd);
     if (!stat.isFile() || stat.size > 64 * 1024) throw new LocalFileRefused("the local file is not a regular file of at most 64 KiB, so it cannot enable anything");
-    if (!ownedAndPrivate(stat) || !ownedAndPrivate(fs.statSync(path.dirname(file)))) {
-      throw new LocalFileRefused("the local file or its .claude directory is not owned by you, or is writable by others, so it cannot enable anything");
-    }
+    if (!ownedAndPrivate(stat)) throw new LocalFileRefused(NOT_PRIVATE);
     return JSON.parse(fs.readFileSync(fd, "utf8"));
   } finally {
     fs.closeSync(fd);

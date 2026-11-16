@@ -3,9 +3,8 @@
 // Importing a module runs its code, so the location is a trust decision. The installed copy comes
 // first: the installPath recorded under the key "codex-kit@andres-cc-marketplace" in
 // ~/.claude/plugins/installed_plugins.json, and only when that path is absolute. A sibling codex-kit
-// next to this plugin (a marketplace checkout's plugins/ directory, and only when this plugin really
-// sits in one) is used only when the caller passes
-// devSibling, which the dispatcher sets from the untracked local file: in a checkout under review, the
+// next to this plugin (only when this plugin really is a marketplace checkout's
+// plugins/reviewadapters-kit) is used only when the caller passes devSibling, which the dispatcher sets from the untracked local file: in a checkout under review, the
 // sibling is the reviewed branch's own code. No environment variable can redirect the import. Before
 // importing, every directory from codex-kit's root down to each imported file, and the file itself, must
 // be owned by the current user and not writable by group or others. On Windows, where these mode bits
@@ -37,10 +36,12 @@ function candidateRoots(devSibling) {
   } catch {
     // No registry, or unreadable: only the opted-in sibling, if any, remains.
   }
-  // Only from a real marketplace checkout's plugins/ directory: from a copy elsewhere (this repository's
-  // .claude/ mirror, for example) the "sibling" would be a path no plugin occupies, which only planted
-  // content could fill.
-  if (devSibling && path.basename(path.dirname(PLUGIN_ROOT)) === "plugins") roots.push(path.resolve(PLUGIN_ROOT, "..", "codex-kit"));
+  // Only from a real marketplace checkout, plugins/reviewadapters-kit: from a copy elsewhere (this
+  // repository's .claude/ mirror, for example, even inside a checkout whose own directory is named
+  // plugins) the "sibling" would be a path no plugin occupies, which only planted content could fill.
+  if (devSibling && path.basename(PLUGIN_ROOT) === "reviewadapters-kit" && path.basename(path.dirname(PLUGIN_ROOT)) === "plugins") {
+    roots.push(path.resolve(PLUGIN_ROOT, "..", "codex-kit"));
+  }
   return roots;
 }
 
@@ -126,6 +127,6 @@ export async function loadCodexKit({ devSibling = false } = {}) {
     return { api, ownershipChecked: process.platform !== "win32" };
   }
   throw new CodexKitUnavailable(devSibling
-    ? "codex-kit was not found in installed_plugins.json or next to this plugin (a sibling is used only when this plugin sits in a plugins/ directory)"
+    ? "codex-kit was not found in installed_plugins.json or next to this plugin (a sibling is used only when this plugin is plugins/reviewadapters-kit in a checkout)"
     : "codex-kit is not installed from andres-cc-marketplace (a sibling checkout is used only with dev_sibling_codex_kit in the untracked local file)");
 }
