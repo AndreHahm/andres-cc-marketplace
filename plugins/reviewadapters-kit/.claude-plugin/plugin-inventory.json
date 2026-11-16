@@ -1,0 +1,92 @@
+{
+  "components": [
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_6d1efcb1",
+      "name": "review-adapter-dispatch",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/review-adapter-dispatch"
+          ],
+          "name": "review-adapter-dispatch",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-11-16",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/review-adapter-dispatch",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/review-adapter-dispatch"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-11-16",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "command"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_2b83dbd1",
+      "name": "rva-review-diff",
+      "naming_history": [
+        {
+          "evidence": [
+            "commands/rva-review-diff.md"
+          ],
+          "name": "rva-review-diff",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-11-16",
+          "valid_to": null
+        }
+      ],
+      "path": "commands/rva-review-diff.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "commands/rva-review-diff.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-11-16",
+          "valid_to": null
+        }
+      ],
+      "type": "command"
+    }
+  ],
+  "extensions": {},
+  "plugin_id": "plugin_17d33804",
+  "plugin_name": "reviewadapters-kit",
+  "prefix": "rva",
+  "schema_version": "1.0.0",
+  "updated_on": "2026-11-16"
+}
