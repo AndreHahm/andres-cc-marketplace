@@ -18,6 +18,8 @@ All notable changes to this plugin are documented here.
   outside the run tree, such as a package symlinked in from a sibling checkout, and a run in a tree that already
   holds `mutants/`, whose old verdicts mutmut would keep. It starts pytest and mutmut as
   the `python3` in the running interpreter's own folder, and stops when that folder has none (run it from a venv).
+  Those processes get an allowlisted environment, so a credential held in an environment variable does not reach
+  the selected tests (files the user can read still can).
 - `scripts/qlty-mutation-parse.py`: summarizes a run from mutmut's `.meta` files and refuses one whose counts
   disagree with `mutmut-cicd-stats.json` or that holds an exit code outside mutmut 3.8.1's table.
 
