@@ -14,7 +14,8 @@ All notable changes to this plugin are documented here.
   unchanged.
 - `scripts/qlty-mutation-run.py`: checks a green baseline, writes mutmut's configuration to a temporary
   `setup.cfg` in the run tree, runs mutmut and exits with mutmut's own status; `--show` prints survivor diffs and
-  `--list-modules` reads a `.github/mutation-modules.yml` list.
+  `--list-modules` reads a `.github/mutation-modules.yml` list. It refuses a module or test path that resolves
+  outside the run tree, such as a package symlinked in from a sibling checkout.
 - `scripts/qlty-mutation-parse.py`: summarizes a run from mutmut's `.meta` files and refuses one whose counts
   disagree with `mutmut-cicd-stats.json` or that holds an exit code outside mutmut 3.8.1's table.
 

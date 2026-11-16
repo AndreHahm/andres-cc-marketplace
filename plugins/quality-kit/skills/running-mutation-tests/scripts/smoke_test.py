@@ -285,6 +285,27 @@ def check_run(run) -> None:
         check("symlinked mutants/ refused", False)
     except run.InputError:
         check("symlinked mutants/ refused", True)
+    (link_root / "mutants").unlink()
+    elsewhere = SCRATCH / "elsewhere"
+    elsewhere.mkdir()
+    (elsewhere / "out.py").write_text("X = 2\n", encoding="utf-8")
+    (elsewhere / "test_out.py").write_text("def test_y():\n    pass\n", encoding="utf-8")
+    (link_root / "scripts" / "pkg" / "out.py").symlink_to(elsewhere / "out.py")
+    (link_root / "tests" / "test_out.py").symlink_to(elsewhere / "test_out.py")
+    (link_root / "tests2").symlink_to(elsewhere)
+    (link_root / "tests" / "test_in.py").symlink_to(link_root / "tests" / "test_mod.py")
+    for name, module, tests in (
+        ("module", "scripts/pkg/out.py", ["tests/test_mod.py"]),
+        ("test", "scripts/pkg/mod.py", ["tests/test_out.py"]),
+        ("test under a linked directory", "scripts/pkg/mod.py", ["tests2/test_out.py"]),
+    ):
+        try:
+            run.check_root(link_root, module, tests)
+            check(f"{name} symlinked outside the root refused", False)
+        except run.InputError as exc:
+            check(f"{name} symlinked outside the root refused", "outside" in str(exc), str(exc))
+    run.check_root(link_root, "scripts/pkg/mod.py", ["tests/test_mod.py", "tests/test_in.py"])
+    check("plain paths and a link inside the root still accepted", True)
     for bad in ("tests/-p.py", "tests/a\nb.py", "-x"):
         try:
             run.checked_relative(bad, "x")
