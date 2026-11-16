@@ -1,0 +1,8 @@
+{
+  "timeout_ms": 600000,
+  "vendors": {
+    "agy": { "enabled": false, "model": "gemini-4-argon-high" },
+    "pi": { "enabled": false, "model": "nvidia/nvidia/nemotron-3-ultra-550b-a55b" },
+    "devin": { "enabled": false, "model": "swe-2-medium" }
+  }
+}
