@@ -32,7 +32,9 @@ survivor matters. The caller decides that with the user.
 
 If any input is missing or a path fails its check below, stop and report which; do not improvise. Every
 module and test path must match `^[A-Za-z0-9_./-]{1,200}$` with no `..` segment and no leading `-`; refuse any
-other. Single-quote every substituted path in a command.
+other. The repository root, the scratch directory and the two script paths must be absolute and contain no
+single quote (`'`) and no control character; refuse any other. Single-quote every substituted path in a
+command: inside single quotes nothing else is interpreted.
 
 ## Procedure
 
@@ -44,8 +46,9 @@ mutmut's.
    paths) and must be absent or empty. The scripts must exist.
 2. **Record the repository's state:** `git -C <root> status --porcelain=v1 -z` (keep the output).
 3. **Export the working tree** (create `<scratch>` first with `mkdir -p`). This is the one pipeline, so it
-   runs under `pipefail` and fails on any stage:
-   `bash -o pipefail -c "git -C '<root>' ls-files -z -co --exclude-standard | tar -C '<root>' --null -T - -cf - | tar -x -C '<scratch>'"`
+   runs under `pipefail` and fails on any stage. The script text is fixed; the two paths are passed as
+   arguments `$1` and `$2`, never written into the script:
+   `bash -o pipefail -c 'git -C "$1" ls-files -z -co --exclude-standard | tar -C "$1" --null -T - -cf - | tar -x -C "$2"' export '<root>' '<scratch>'`
    A non-zero status means the export is incomplete: stop and report it with tar's message, and do not
    run anything in the export. A tracked file deleted in the working tree fails it too ("Cannot stat"):
    report that file, so the user restores the file or commits the deletion. Then
@@ -61,7 +64,9 @@ mutmut's.
    (the module path is the mutated file, such as `scripts/x/y.py`: the caller passes it). An exit
    status of 2 means the result could not be reconciled with mutmut's totals: report that and no score.
 7. **Diffs:** for up to the requested number of survivors (in the parser's order), one call:
-   `uv --directory <scratch> run --no-sync --with mutmut==3.8.1 --with pyyaml==6.0.3 python -B <run script> --root <scratch> <selection> --show <key> [<key>...]`.
+   `uv --directory <scratch> run --no-sync --with mutmut==3.8.1 --with pyyaml==6.0.3 python -B <run script> --root <scratch> <selection> --show '<key>' ['<key>'...]`.
+   The keys come from the parser's output, so single-quote each one, and leave out (and report) any key that
+   contains a single quote, whitespace or a control character; the runner checks the rest of a key's shape.
 8. **Check the repository:** run step 2's command again and compare. If anything differs, say so first in the
    report: the run was supposed to touch nothing there. This check sees tracked and untracked files only, not
    ignored paths (`.venv/`, caches) or anything outside the repository; say so in the report.
