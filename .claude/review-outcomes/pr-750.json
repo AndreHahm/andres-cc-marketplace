@@ -30,6 +30,16 @@
     },
     {
       "disposition": "fixed",
+      "finding": "4584700279",
+      "line": 63,
+      "note": "build-free install command recommended (559eaceb); agent, skill and CHANGELOG now say the install keeps the full environment and the allowlist covers only pytest and mutmut",
+      "path": "plugins/quality-kit/agents/mutation-tester.md",
+      "pr": 750,
+      "recorded_at": "2026-11-16T11:07:35+00:00",
+      "rule": "security"
+    },
+    {
+      "disposition": "fixed",
       "finding": "6912877926",
       "note": "Claude delta advisory: marketplace version bumped to 1.0.0-alpha.4 in 91d41e20",
       "pr": 750,

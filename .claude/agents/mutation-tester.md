@@ -61,7 +61,9 @@ mutmut's.
    `git -C '<scratch>' init -q` and `git -C '<scratch>' add -A` (tests that read git state need an index;
    never commit).
 4. **Install dependencies** in the export with the environment command, run with `--directory '<scratch>'` (or
-   its tool's equivalent), never in the repository root.
+   its tool's equivalent), never in the repository root. The install runs with this agent's full environment
+   (a private package index may need its credentials), not the runner's allowlist, so a build-free command
+   matters: it keeps any package's build code from running here.
 5. **Run:** `uv --directory '<scratch>' run --no-sync --with mutmut==3.8.1 --with pyyaml==6.0.3 python -B '<run script>' --root '<scratch>' <selection>`.
    Its exit status is mutmut's own (`0` finished, whatever survived), `4` for a red baseline (no mutation
    run), `2` or `3` for input or setup problems. On any non-zero status, skip to step 8 and report it with the
