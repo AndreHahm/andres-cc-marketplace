@@ -44,27 +44,27 @@ mutmut's.
 
 1. **Check the paths.** The scratch directory must not lie inside the repository root (compare resolved
    paths) and must be absent or empty. The scripts must exist.
-2. **Record the repository's state:** `git -C <root> status --porcelain=v1 -z` (keep the output).
-3. **Export the working tree** (create `<scratch>` first with `mkdir -p`). This is the one pipeline, so it
+2. **Record the repository's state:** `git -C '<root>' status --porcelain=v1 -z` (keep the output).
+3. **Export the working tree** (create it first: `mkdir -p '<scratch>'`). This is the one pipeline, so it
    runs under `pipefail` and fails on any stage. The script text is fixed; the two paths are passed as
    arguments `$1` and `$2`, never written into the script:
    `bash -o pipefail -c 'git -C "$1" ls-files -z -co --exclude-standard | tar -C "$1" --null -T - -cf - | tar -x -C "$2"' export '<root>' '<scratch>'`
    A non-zero status means the export is incomplete: stop and report it with tar's message, and do not
    run anything in the export. A tracked file deleted in the working tree fails it too ("Cannot stat"):
    report that file, so the user restores the file or commits the deletion. Then
-   `git -C <scratch> init -q` and `git -C <scratch> add -A` (tests that read git state need an index;
+   `git -C '<scratch>' init -q` and `git -C '<scratch>' add -A` (tests that read git state need an index;
    never commit).
-4. **Install dependencies** in the export with the environment command, run with `--directory <scratch>` (or
+4. **Install dependencies** in the export with the environment command, run with `--directory '<scratch>'` (or
    its tool's equivalent), never in the repository root.
-5. **Run:** `uv --directory <scratch> run --no-sync --with mutmut==3.8.1 --with pyyaml==6.0.3 python -B <run script> --root <scratch> <selection>`.
+5. **Run:** `uv --directory '<scratch>' run --no-sync --with mutmut==3.8.1 --with pyyaml==6.0.3 python -B '<run script>' --root '<scratch>' <selection>`.
    Its exit status is mutmut's own (`0` finished, whatever survived), `4` for a red baseline (no mutation
    run), `2` or `3` for input or setup problems. On any non-zero status, skip to step 8 and report it with the
    last 40 lines of output.
-6. **Summarize:** `python3 -B <parse script> --mutants <scratch>/mutants --module <module path> --label <module> --format json`
+6. **Summarize:** `python3 -B '<parse script>' --mutants '<scratch>/mutants' --module <module path> --label <module> --format json`
    (the module path is the mutated file, such as `scripts/x/y.py`: the caller passes it). An exit
    status of 2 means the result could not be reconciled with mutmut's totals: report that and no score.
 7. **Diffs:** for up to the requested number of survivors (in the parser's order), one call:
-   `uv --directory <scratch> run --no-sync --with mutmut==3.8.1 --with pyyaml==6.0.3 python -B <run script> --root <scratch> <selection> --show '<key>' ['<key>'...]`.
+   `uv --directory '<scratch>' run --no-sync --with mutmut==3.8.1 --with pyyaml==6.0.3 python -B '<run script>' --root '<scratch>' <selection> --show '<key>' ['<key>'...]`.
    The keys come from the parser's output, so single-quote each one, and leave out (and report) any key that
    contains a single quote, whitespace or a control character; the runner checks the rest of a key's shape.
 8. **Check the repository:** run step 2's command again and compare. If anything differs, say so first in the
