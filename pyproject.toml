@@ -70,3 +70,9 @@ include_namespace_packages = true
 
 [tool.ty.environment]
 extra-paths = ["plugins/analysis-kit/scripts", "plugins/session-kit/scripts", "plugins/session-kit/skills/session-handoff/scripts", "plugins/session-kit/skills/session-recover/scripts", "plugins/workledger-kit/scripts"]
+
+[tool.uv]
+# Use the OS certificate store, so uv downloads work where HTTPS is intercepted
+# (uv's bundled roots fail with `invalid peer certificate: UnknownIssuer`; #749).
+# `system-certs` needs uv >= 0.11; older uv rejects the whole [tool.uv] section.
+system-certs = true

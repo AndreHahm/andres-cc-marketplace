@@ -47,7 +47,7 @@ repos:
   # uv - Lock and sync dependencies
   - repo: https://github.com/astral-sh/uv-pre-commit
     # uv version.
-    rev: 0.9.7
+    rev: 0.13.9
     hooks:
       - id: uv-lock
         name: "⚙️ uv · Lock dependencies"
