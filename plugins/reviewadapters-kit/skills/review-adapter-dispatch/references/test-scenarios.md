@@ -1,7 +1,7 @@
 # Dispatch Test Scenarios
 
-Concrete scenarios behind the `review-adapter-dispatch` contract. The 43 tests in
-`tests/rva-dispatch.test.mjs` cover these 34 scenarios against fake vendor binaries; no real vendor is
+Concrete scenarios behind the `review-adapter-dispatch` contract. The 45 tests in
+`tests/rva-dispatch.test.mjs` cover these 36 scenarios against fake vendor binaries; no real vendor is
 called.
 
 1. Vendor not in the local allow-list, or a pi `--model` that is neither the configured model nor listed
@@ -86,3 +86,9 @@ called.
     temp directory, for a prepare run and a cleanup run alike.
 34. `--cleanup` removes a prepared directory only with the token its own prepare run printed: another
     run's token, a malformed token or no token is refused and the directory is kept.
+35. An input file (instructions, diff or target paths) named like a key or a credentials file
+    (`id_rsa`, `credentials.json`, an uppercase `ID_ED25519_SK`, `id_rsa_work`, `.ppk`, `auth.json`,
+    `hosts.yml`, `.envrc`), or a link with an ordinary name to such a file, is refused as `usage` before
+    it is read, even with `--secret-paths-confirmed`; no vendor is spawned. A `.pub` key is not refused.
+36. An input file inside `~/.ssh` (or another listed key or credentials directory under the home
+    directory) is refused as `usage`, whatever its name.
