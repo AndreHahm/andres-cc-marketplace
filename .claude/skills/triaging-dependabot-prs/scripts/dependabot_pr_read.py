@@ -2,12 +2,11 @@
 """Read-only GitHub lookups for triaging-dependabot-prs, in place of raw `gh` read grants.
 
 The skill needs these reads: the open Dependabot PR list, one PR's fields, a PR's required checks,
-a PR's review threads, a PR's changed files and commits, and a `uv.lock` or `pnpm-lock.yaml` file at
-a ref. A raw `gh api` or `gh pr`
-grant cannot be narrowed to those (a prefix grant lets any trailing argument through), so this
-script does exactly these things and nothing else, with the repository, the PR number and the
-JSON fields checked in code. It has no code path that posts, closes, edits or deletes anything on
-GitHub.
+the unfinished workflow runs on a PR's branch, a PR's review threads, a PR's changed files and
+commits, and a `uv.lock` or `pnpm-lock.yaml` file at a ref. A raw `gh api` or `gh pr` grant
+cannot be narrowed to those (a prefix grant lets any trailing argument through), so this script
+does exactly these things and nothing else, with the repository, the PR number and the JSON fields
+checked in code. It has no code path that posts, closes, edits or deletes anything on GitHub.
 
 `gh` and `git` are run by absolute path with an argument list (no shell). `gh api` REST calls always
 get --method GET and --hostname github.com, and `gh pr` always gets `-R github.com/<repo>`, against
@@ -22,6 +21,7 @@ Usage:
   dependabot_pr_read.py pr-list
   dependabot_pr_read.py pr-view PR_NUMBER --fields FIELD[,FIELD...]
   dependabot_pr_read.py pr-checks PR_NUMBER
+  dependabot_pr_read.py head-runs PR_NUMBER
   dependabot_pr_read.py pr-threads PR_NUMBER
   dependabot_pr_read.py files PR_NUMBER
   dependabot_pr_read.py commits PR_NUMBER
@@ -31,9 +31,13 @@ Usage:
 true when that page is full. `pr-view` returns only the requested fields, each from a fixed
 allowlist.
 `pr-checks` returns the required checks as name/bucket/elapsed/link rows (an empty list when none
-are reported). `pr-threads` reads every page of the PR's review threads (at most 1000, else exit 4)
-and returns `count`, `unresolved_count` and `unresolved` (path, line and first-comment author of
-each unresolved thread; no comment text). `files` and `commits` print a compact summary of the
+are reported). `head-runs` reads the PR's head branch and SHA, then the first page (100, newest
+first) of Actions workflow runs on that branch, and returns the runs that have not completed, split
+into `head_incomplete` (on the current head) and `other_head_incomplete` (on an older head), each as
+id/name/event/status/head_sha/url; "truncated" is true when that page is full. `pr-threads` reads
+every page of the PR's review threads (at most 1000, else exit 4) and returns `count`,
+`unresolved_count` and `unresolved` (path, line and first-comment author of each unresolved
+thread; no comment text). `files` and `commits` print a compact summary of the
 first page (100 entries); "truncated" is true when that page is full. `uv-lock` writes the file
 only to DIR/base-uv.lock or DIR/head-uv.lock (`pnpm-lock`: DIR/base-pnpm-lock.yaml or
 DIR/head-pnpm-lock.yaml; DIR must be an existing absolute directory inside the system temp
@@ -313,6 +317,63 @@ def pr_checks(run, gh, repo, pr):
     return {"count": len(rows), "items": rows}
 
 
+HEAD_REF_RE = re.compile(r"[A-Za-z0-9._/@+=-]{1,255}")
+SHA_RE = re.compile(r"[0-9a-f]{40}")
+
+
+def _run_row(run_item):
+    """The few fields of one workflow run the skill reports; a bad shape raises."""
+    row = {
+        "id": run_item["id"],
+        "name": run_item["name"],
+        "event": run_item["event"],
+        "status": run_item["status"],
+        "head_sha": run_item["head_sha"],
+        "url": run_item["html_url"],
+    }
+    if not isinstance(row["id"], int) or not isinstance(row["status"], str):
+        raise TypeError("unexpected run fields")
+    if not isinstance(row["head_sha"], str) or not SHA_RE.fullmatch(row["head_sha"]):
+        raise TypeError("unexpected head_sha")
+    return row
+
+
+def head_runs(run, gh, repo, pr):
+    """Workflow runs on the PR's branch that have not completed, split by the current head SHA.
+
+    `gh pr checks` and `statusCheckRollup` cannot show a run that is still `pending` (it has no
+    check runs yet, #740), and `gh pr checks` shows one row per check name, so a passed run hides a
+    queued rerun of the same workflow (#739). The Actions runs list shows both. Superseded runs end
+    `completed` (cancelled), so any run on the head that is not `completed` means CI is still
+    coming; one on an older head that is not `completed` can hold the workflow's concurrency group.
+    """
+    view = pr_view(run, gh, repo, pr, ["headRefName", "headRefOid"])["data"]
+    ref, sha = view.get("headRefName"), view.get("headRefOid")
+    if not (isinstance(ref, str) and HEAD_REF_RE.fullmatch(ref) and ".." not in ref):
+        raise Refusal(f"PR {pr} has an unexpected headRefName", EXIT_TOOL)
+    if not (isinstance(sha, str) and SHA_RE.fullmatch(sha)):
+        raise Refusal(f"PR {pr} has an unexpected headRefOid", EXIT_TOOL)
+    done = _api_get(run, gh, f"repos/{repo}/actions/runs", f"branch={ref}", f"per_page={PAGE_SIZE}")
+    if done.returncode != 0:
+        raise Refusal("gh api actions/runs failed", EXIT_TOOL)
+    try:
+        items = json.loads(done.stdout)["workflow_runs"]
+        if not isinstance(items, list):
+            raise TypeError("not a list")
+        rows = [_run_row(item) for item in items]
+    except (ValueError, KeyError, TypeError) as exc:
+        raise Refusal("gh api actions/runs returned an unexpected shape", EXIT_TOOL) from exc
+    open_rows = [r for r in rows if r["status"] != "completed"]
+    return {
+        "head_ref": ref,
+        "head_sha": sha,
+        "head_run_count": sum(1 for r in rows if r["head_sha"] == sha),
+        "truncated": len(rows) >= PAGE_SIZE,
+        "head_incomplete": [r for r in open_rows if r["head_sha"] == sha],
+        "other_head_incomplete": [r for r in open_rows if r["head_sha"] != sha],
+    }
+
+
 # A fixed read-only document: no caller input reaches it, and it holds no mutation.
 THREADS_QUERY = (
     "query($owner: String!, $name: String!, $number: Int!, $cursor: String) {"
@@ -385,7 +446,7 @@ def parse_args(argv):
     parser = argparse.ArgumentParser(description="Read-only Dependabot PR lookups.")
     sub = parser.add_subparsers(dest="kind", required=True)
     sub.add_parser("pr-list")
-    for kind in ("files", "commits", "pr-checks", "pr-threads"):
+    for kind in ("files", "commits", "pr-checks", "head-runs", "pr-threads"):
         sub.add_parser(kind).add_argument("pr_number")
     view = sub.add_parser("pr-view")
     view.add_argument("pr_number")
@@ -422,6 +483,9 @@ def main(argv=None, run=subprocess.run, which=shutil.which):
         elif args.kind == "pr-checks":
             result["pr"] = args.pr_number
             result.update(pr_checks(run, gh, repo, args.pr_number))
+        elif args.kind == "head-runs":
+            result["pr"] = args.pr_number
+            result.update(head_runs(run, gh, repo, args.pr_number))
         elif args.kind == "pr-threads":
             result["pr"] = args.pr_number
             result.update(pr_threads(run, gh, repo, args.pr_number))

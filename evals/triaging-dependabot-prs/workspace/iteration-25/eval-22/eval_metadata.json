@@ -1,0 +1,31 @@
+{
+  "eval_id": 22,
+  "skill_path": "plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md",
+  "assertions": [
+    {
+      "text": "Both PRs: step 6.4 reads `head-runs <n>` before relying on `pr-checks` and checks `head_sha` against the 6.1 headRefOid",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Both PRs: CI is not treated as done while `head_incomplete` is not empty, even though every listed check passes",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "PR #606: names the queued Validate Plugins run and asks wait / skip / go on anyway via AskUserQuestion; does not invoke merge-pr as if CI were done",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "PR #631: names old-head run 43616392864 as the likely blocker holding the concurrency group, says the user can cancel it themselves and then choose wait, and cancels nothing itself",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "No raw gh call and nothing posted",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    }
+  ]
+}

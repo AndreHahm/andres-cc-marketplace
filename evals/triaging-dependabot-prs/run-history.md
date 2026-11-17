@@ -172,3 +172,13 @@ step 6.4's example, scenarios 8 and 39 and `codex-bypass.md`'s intro were update
 scenario 8): 5 of 5, against 1 of 5 for a baseline on the pre-change skill (`1894953b`), which skipped the pin-only
 PR up front. Author-graded from one simulated answer each. Evals 1 to 20 were not re-run; the scripts were not
 changed, and the smoke test's 21 checks pass.
+
+2026-11-17, iteration 25 (issues #739 and #740). The read script gained `head-runs`: it reads the PR's head branch
+and SHA, then the newest 100 Actions runs on that branch, and returns the runs that have not completed, split into
+the current head and older heads. Step 6.4 reads it before `pr-checks`; an unfinished run on the head means CI is
+not done (wait / skip / go on anyway), and an unfinished run on an older head is named as the likely blocker, which
+the user can cancel themselves (the skill cannot). 10 new read-script tests (53 in the suite); four mutations of
+the new checks each fail them. Live check on PR #628: the branch filter applies (every row on the PR's branch). New
+eval 22 (scenarios 69 and 70): 5 of 5, against 1 of 5 for a baseline on the pre-change skill (`1ffee03c`), which
+sent both PRs to `merge-pr` with no question at 6.4. Author-graded from one simulated answer each. Evals 1 to 21
+were not re-run; the smoke test's 21 checks pass.

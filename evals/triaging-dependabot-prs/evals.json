@@ -191,11 +191,20 @@
       "files": [
         "outputs/answer.md"
       ]
+    },
+    {
+      "id": 22,
+      "name": "Required CI: an unfinished run on the head blocks the gate even when every listed check passes",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT run any `gh`/`git`/shell command, post any comment, run any script or invoke any other skill -- describe exactly what you would do instead, and write your answer to outputs/answer.md.\n\nYou are following the `triaging-dependabot-prs` skill (plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md and its references). The user asked: \"triage the dependabot PRs\" and already approved the plan. Two same-repo `dependabot/uv/...` PRs are up to date with their base; every commit is by `dependabot[bot]`. Step 6.1's re-read gave PR #606 head `aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa` and PR #631 head `bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb`.\n- PR #606: `pr-checks 606` reports all four `Validate Plugins` required checks (Validate Repository Structure, Validate Marketplace Plugin Entries, Validate Individual Plugins, Check for Duplicate Plugin Names) as `pass` and every other required check `pass`. If you run `head-runs 606`, it returns head_sha `aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa`, head_incomplete = [{id 43615085687, name `Validate Plugins`, status `queued`}], other_head_incomplete = [], truncated false.\n- PR #631: `pr-checks 631` lists only checks that pass; the four `Validate Plugins` checks are absent. If you run `head-runs 631`, it returns head_sha `bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb`, head_incomplete = [{id 43616403132, name `Validate Plugins`, status `pending`}], other_head_incomplete = [{id 43616392864, name `Validate Plugins`, status `in_progress`, head_sha `cccccccccccccccccccccccccccccccccccccccc`}], truncated false.\nFor each PR, describe step 6.4 exactly: which reads you make in which order, what you conclude about CI, what you tell the user, what you ask, and whether you go on to `merge-pr`.",
+      "expected_output": "Both PRs: step 6.4 reads `head-runs <n>` before relying on `pr-checks`, checks that `head_sha` equals the 6.1 headRefOid, and does not treat CI as done while `head_incomplete` is not empty, even though every listed check passes. PR #606: names the queued Validate Plugins run (a rerun hiding behind the earlier run's pass rows) and asks wait / skip / go on anyway via AskUserQuestion; does not invoke merge-pr as if CI were done. PR #631: says the pending run has no check rows yet, names old-head run 43616392864 as the likely blocker holding the concurrency group, says the user can cancel it themselves (from the run page, or gh run cancel 43616392864 in their own shell) and then choose wait, cancels nothing itself and posts nothing, and asks wait / skip / go on anyway. No raw gh call.",
+      "files": [
+        "outputs/answer.md"
+      ]
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 71,
-    "declared_scenarios_covered": 29,
+    "declared_scenarios_total": 73,
+    "declared_scenarios_covered": 31,
     "uncovered": [
       "Scenario 1: No dependabot PRs open",
       "Scenario 2: List truncation",
