@@ -269,6 +269,7 @@ async function dispatch(options, runDir) {
   const instructions = readRegularFile(instructionFile, "--instruction-file");
   const diff = readRegularFile(path.resolve(repoRoot, options["diff-file"]), "--diff-file");
   if (diff.trim() === "") throw usage("--diff-file is empty: no reviewable changes");
+  if (instructions.trim() === "") throw usage("--instruction-file is empty: no reviewer instructions");
   if (diff.includes("\0") || instructions.includes("\0")) throw usage("--diff-file or --instruction-file contains a NUL byte");
   const targetPaths = readTargetPaths(readRegularFile(path.resolve(repoRoot, options["target-paths-file"]), "--target-paths-file"), api, repoRoot);
   if (targetPaths.some((entry) => api.isWithin(fs.realpathSync(instructionFile), path.resolve(repoRoot, entry)))) {

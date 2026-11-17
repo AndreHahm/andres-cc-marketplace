@@ -14,6 +14,9 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+// rva-config.mjs imports ownedAndPrivate from this file; the cycle is safe because neither module calls
+// the other's functions while loading.
+import { isInside } from "./rva-config.mjs";
 
 const PLUGIN_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const BRIDGE = "skills/codex-review-bridge/scripts/bridge-invoke.mjs";
@@ -78,26 +81,36 @@ export function ownedAndPrivate(stat, privateGid = privateGroupGid()) {
   return (stat.mode & 0o020) === 0 || (privateGid !== null && stat.gid === privateGid);
 }
 
-function checkOwnership(root, file) {
-  if (process.platform === "win32") return;
+export const OUTSIDE_ROOT = "resolves outside the root";
+
+// Checks a file and every directory from it up to root (real paths): each must be owned by the current
+// user and not writable by group or others (group write allowed for the user's private group). Returns
+// what is wrong ("is not owned by the current user", ...) or null when all are private. Throws when a path
+// cannot be resolved. Used for codex-kit's imported files and for prepare's reviewer instructions file.
+export function ownedTreeProblem(root, file) {
+  if (process.platform === "win32") return null;
   const uid = process.getuid();
   const privateGid = privateGroupGid();
   const realRoot = fs.realpathSync(root);
   const realFile = fs.realpathSync(file);
-  if (realFile !== realRoot && !realFile.startsWith(realRoot + path.sep)) {
-    throw new CodexKitUnavailable("an imported file resolves outside codex-kit's root");
-  }
+  if (!isInside(realFile, realRoot)) return OUTSIDE_ROOT;
   let current = realFile;
   for (;;) {
     const stat = fs.statSync(current);
-    if (stat.uid !== uid) throw new CodexKitUnavailable("a codex-kit path is not owned by the current user");
-    if ((stat.mode & 0o002) !== 0) throw new CodexKitUnavailable("a codex-kit path is writable by others");
+    if (stat.uid !== uid) return "is not owned by the current user";
+    if ((stat.mode & 0o002) !== 0) return "is writable by others";
     if ((stat.mode & 0o020) !== 0 && (privateGid === null || stat.gid !== privateGid)) {
-      throw new CodexKitUnavailable("a codex-kit path is writable by a group other than the user's private group");
+      return "is writable by a group other than the user's private group";
     }
-    if (current === realRoot) return;
+    if (current === realRoot) return null;
     current = path.dirname(current);
   }
+}
+
+function checkOwnership(root, file) {
+  const problem = ownedTreeProblem(root, file);
+  if (problem === OUTSIDE_ROOT) throw new CodexKitUnavailable("an imported file resolves outside codex-kit's root");
+  if (problem) throw new CodexKitUnavailable(`a codex-kit path ${problem}`);
 }
 
 export async function loadCodexKit({ devSibling = false } = {}) {

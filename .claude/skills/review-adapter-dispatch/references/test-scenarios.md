@@ -1,7 +1,7 @@
 # Dispatch Test Scenarios
 
-Concrete scenarios behind the `review-adapter-dispatch` contract. The 46 tests in
-`tests/rva-dispatch.test.mjs` cover these 37 scenarios against fake vendor binaries; no real vendor is
+Concrete scenarios behind the `review-adapter-dispatch` contract. The 50 tests in
+`tests/rva-dispatch.test.mjs` cover these 40 scenarios against fake vendor binaries; no real vendor is
 called.
 
 1. Vendor not in the local allow-list, or a pi `--model` that is neither the configured model nor listed
@@ -95,3 +95,9 @@ called.
 37. A changed `hosts.yml`, `auth.json`, `.ppk` or `id_ed25519_sk` (the dispatcher's own additions to
     codex-kit's list) needs `--secret-paths-confirmed` and is listed in prepare's `secret_paths`; a
     changed `.pub` key does not.
+38. `rva-prepare.mjs` with a `TMPDIR` that other users can write to and that has no sticky bit refuses,
+    for a prepare run (creating nothing there) and a cleanup run (the directory is kept); with the sticky
+    bit both succeed.
+39. `rva-prepare.mjs` refuses reviewer instructions when the `assets` directory or the plugin root above
+    it is writable by others (the same walk as codex-kit's import check); private directories pass.
+40. An empty or whitespace-only `--instruction-file` → usage error, like an empty diff.

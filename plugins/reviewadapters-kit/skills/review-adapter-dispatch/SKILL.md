@@ -66,7 +66,7 @@ flag is a usage error.
 - `--instruction-file` — the reviewer's instruction text. It must come from outside the reviewed
   change (for example the merge-base), for the same reason `codex-review-bridge` gives: a change must not
   rewrite the instructions that judge it. The dispatcher only rejects a path inside a target path; where
-  the text comes from is the caller's responsibility.
+  the text comes from is the caller's responsibility. Empty (or whitespace only) is a usage error.
 - `--diff-file` — the diff to review, in `git diff` form with `a/` and `b/` prefixes. Read whole, never
   executed. Empty is a usage error. Every path its headers name (`diff --git`, `---`/`+++`,
   `rename`/`copy from`/`to`) must be in the target list; a quoted header path is a usage error.
@@ -209,10 +209,10 @@ tracked-local-file scenario is not in the eval set; it stays covered by scenario
 `references/test-scenarios.md`.
 
 **Smoke test:** `scripts/smoke_test.mjs` checks the frontmatter, the named references, the six root
-scripts, the shipped settings (three vendors, all off, 600 000 ms), the command's two Bash grants, and
+scripts, the shipped settings (three vendors, all off, 600 000 ms), the command's five Bash grants (the two scripts, plus step 1's exact `pwd`, `pwd -P` and `cd` grants), and
 that the dispatcher with no flags returns a JSON usage error. It spawns no vendor.
 
-**Last dated run record:** 2026-11-17, `node --test tests/` 46/46 passing after the PR review rounds 1 to 5 fixes (marker lines, path containment at `/`, the fsmonitor and `GIT_*` hardening,
+**Last dated run record:** 2026-11-17, `node --test tests/` 50/50 passing after the issue #765 hardening (sticky temp directory, private directories above the instructions file, empty `--instruction-file`); before that 46/46 after the PR review rounds 1 to 5 fixes (marker lines, path containment at `/`, the fsmonitor and `GIT_*` hardening,
 stdout truncation, `GIT_*` scrubbing, the in-checkout plugin refusal, the effective timeout); earlier the same day 35/35 after the Windows refusal, the version-probe and git-resolution fixes;
 2026-11-16, 30/30 after agy moved to stdin input; live check earlier the same day, one run per vendor on the planted-bug fixture (all three found it,
 agy still with argv input), plus a canary-file injection probe on pi and devin (neither read the file).
@@ -220,7 +220,7 @@ agy's stdin input was then probed live with a dummy prompt only, not re-run on t
 baseline (`evals/review-adapter-dispatch/workspace/iteration-1/benchmark.json`); `smoke_test.mjs` passing
 on the plugin copy.
 
-**Concrete scenarios:** the 46 tests in `tests/rva-dispatch.test.mjs` cover 37 scenarios against fake
+**Concrete scenarios:** the 50 tests in `tests/rva-dispatch.test.mjs` cover 40 scenarios against fake
 vendor binaries (no real vendor is called); the scenarios are listed in
 [references/test-scenarios.md](references/test-scenarios.md).
 

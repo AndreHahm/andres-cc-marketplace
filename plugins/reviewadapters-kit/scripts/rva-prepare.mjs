@@ -17,7 +17,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { loadCodexKit, CodexKitUnavailable, ownedAndPrivate } from "./rva-codex-kit.mjs";
+import { loadCodexKit, CodexKitUnavailable, ownedAndPrivate, ownedTreeProblem, OUTSIDE_ROOT } from "./rva-codex-kit.mjs";
 import { devSiblingOptIn, findBinary, gitEnv, GIT_SAFE_OPTIONS, isInside, isSecretName, realPath, enclosingRepoRoot } from "./rva-config.mjs";
 
 const PLUGIN_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -41,6 +41,20 @@ function fail(detail, code = 1) {
   return code;
 }
 
+// The temp directory must belong to this user or root: its owner can always rename the prepared directory
+// away and put their own in its place, sticky bit or not. One other users can write to also needs the
+// sticky bit, or any of them could do the same (or delete it before cleanup). Group write for the user's
+// own private group does not count as other users. Mode bits only: an ACL entry granting write access
+// is not seen (the same limit as ownedAndPrivate). True when the directory is unsafe.
+function unsafeTempDir(tmp) {
+  const stat = fs.statSync(tmp);
+  if (stat.uid !== process.getuid() && stat.uid !== 0) return true;
+  const othersCanWrite = (stat.mode & 0o002) !== 0 || ((stat.mode & 0o020) !== 0 && !ownedAndPrivate(stat));
+  return othersCanWrite && (stat.mode & 0o1000) === 0;
+}
+
+const UNSAFE_TEMP = "the temp directory belongs to another user, or is writable by other users and has no sticky bit; set TMPDIR to a private directory";
+
 function git(gitBin, repo, args) {
   return execFileSync(gitBin, [...GIT_SAFE_OPTIONS, "-C", repo, ...args], { encoding: "utf8", env: gitEnv(), maxBuffer: 64 * 1024 * 1024, timeout: 60_000 });
 }
@@ -60,6 +74,7 @@ function cleanup(dir, token) {
   } catch {
     return fail("the directory does not exist");
   }
+  if (unsafeTempDir(tmp)) return fail(UNSAFE_TEMP);
   if (path.dirname(real) !== tmp || !path.basename(real).startsWith(PREFIX) || !stat.isDirectory() || stat.uid !== process.getuid()) {
     return fail("refusing to remove a directory this script did not create");
   }
@@ -122,6 +137,17 @@ async function prepare(cwd, range) {
   if (isInside(realPath(PLUGIN_ROOT), repo) || isInside(instructionsReal, repo)) {
     return fail("this plugin runs from inside the repository under review, so its reviewer instructions could be part of the change; run the command from an installed copy of the plugin");
   }
+  // Every directory from the file up to the plugin root must be private too (the same walk as codex-kit's
+  // import check): otherwise another user could swap one of them between this check and the open below.
+  // Directories above the plugin root are not checked: whoever can write those controls these scripts too.
+  let treeProblem;
+  try {
+    treeProblem = ownedTreeProblem(realPath(PLUGIN_ROOT), instructionsReal);
+  } catch {
+    return fail("the plugin's reviewer instructions file could not be read");
+  }
+  if (treeProblem === OUTSIDE_ROOT) return fail("the plugin's reviewer instructions file resolves outside the plugin root");
+  if (treeProblem) return fail(`the plugin's reviewer instructions file, or a directory above it up to the plugin root, ${treeProblem}`);
   // Read once, from one descriptor opened without following a link, and only from a regular file owned
   // by this user that nobody else can write (group write only for the user's private group, the same
   // rule as codex-kit's files), so the checked file is the one copied.
@@ -156,6 +182,7 @@ async function prepare(cwd, range) {
   if (SHELL_UNSAFE.test(repo) || SHELL_UNSAFE.test(tmp)) {
     return fail("the repository path or the temp directory contains a quote, $, backtick, backslash or newline");
   }
+  if (unsafeTempDir(tmp)) return fail(UNSAFE_TEMP);
   let api;
   try {
     ({ api } = await loadCodexKit({ devSibling: devSiblingOptIn(repo) }));
