@@ -367,8 +367,10 @@ def check_run(run) -> None:
     planted = {
         "QLTY_SMOKE_TOKEN": "s3cr3t",
         "PYTHON_SMOKE_TOKEN": "s3cr3t",
+        "PYTHON_SMOKE_INDEX_URL": "https://u:pw@example.invalid/simple",
         "LC_SMOKE": "x",
-        "PYTHONSMOKE": "1",
+        "LC_ALL": "C.UTF-8",
+        "PYTHONHASHSEED": "0",
         "HOME": "/h",
     }
     saved_env = {name: os.environ.get(name) for name in planted}
@@ -377,9 +379,13 @@ def check_run(run) -> None:
         child = run.python_env() or {}
         check("secret variable not passed to tests", "QLTY_SMOKE_TOKEN" not in child)
         check("secret-like PYTHON* name not passed to tests", "PYTHON_SMOKE_TOKEN" not in child)
+        check("unlisted PYTHON* name not passed to tests", "PYTHON_SMOKE_INDEX_URL" not in child)
+        check("unlisted LC_* name not passed to tests", "LC_SMOKE" not in child)
         check(
-            "HOME, LC_* and PYTHON* passed to tests",
-            child.get("HOME") == "/h" and "LC_SMOKE" in child and "PYTHONSMOKE" in child,
+            "HOME, a listed LC_* and a listed PYTHON* name passed to tests",
+            child.get("HOME") == "/h"
+            and child.get("LC_ALL") == "C.UTF-8"
+            and child.get("PYTHONHASHSEED") == "0",
         )
     finally:
         for name, value in saved_env.items():
@@ -416,7 +422,12 @@ def check_skill() -> None:
     check("Edit and Write pre-approved", "Edit" in grants and "Write" in grants)
     check(
         "writes gated on the user's approval of the exact text",
-        "only after the user approved its exact text" in text,
+        "after the user approved its exact text in Step 4" in text
+        and "after the user\napproved its exact text in Step 5" in text,
+    )
+    check(
+        "a module is added to the weekly list only after a finished run",
+        "## Step 5: Add to the weekly run" in text and "runner status\nwas `0`" in text,
     )
 
 
