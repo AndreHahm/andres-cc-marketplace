@@ -17,7 +17,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { loadCodexKit, CodexKitUnavailable, descriptorPath, ownedAndPrivate, ownedTreeProblem, OUTSIDE_ROOT, unsafeTempDir, UNSAFE_TEMP } from "./rva-codex-kit.mjs";
+import { loadCodexKit, CodexKitUnavailable, descriptorPath, GROUP_WRITE_NOTE, ownedAndPrivate, ownedTreeProblem, OUTSIDE_ROOT, unsafeTempDir, UNSAFE_TEMP } from "./rva-codex-kit.mjs";
 import { devSiblingOptIn, findBinary, gitEnv, GIT_SAFE_OPTIONS, isInside, isSecretName, realPath, enclosingRepoRoot } from "./rva-config.mjs";
 
 const PLUGIN_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -144,7 +144,7 @@ async function prepare(cwd, range) {
     fd = fs.openSync(instructionsReal, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK);
     const stat = fs.fstatSync(fd);
     if (!stat.isFile() || !ownedAndPrivate(stat, descriptorPath(fd))) {
-      return fail("the plugin's reviewer instructions file is not a regular file owned by you and writable only by you");
+      return fail(`the plugin's reviewer instructions file is not a regular file owned by you and writable only by you (${GROUP_WRITE_NOTE})`);
     }
     if (stat.size > MAX_INSTRUCTIONS_BYTES) return fail("the plugin's reviewer instructions file is larger than 64 KiB");
     instructionText = fs.readFileSync(fd, "utf8");
