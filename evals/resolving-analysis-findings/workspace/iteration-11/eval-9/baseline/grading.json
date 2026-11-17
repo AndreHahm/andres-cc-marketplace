@@ -1,0 +1,42 @@
+{
+  "eval_id": 9,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "The answer chooses a rung 3 per-issue Codacy ignore with --ignore-reason TestCode",
+      "passed": true,
+      "evidence": "'ignore this one finding in Codacy ... with reason TestCode'."
+    },
+    {
+      "text": "Every proposed --ignore-issue value is 131570938278; the hex value 66a432aa616069571f5c708d5f048ba5 (or its prefix 66) never appears as a command argument",
+      "passed": true,
+      "evidence": "Command uses --ignore-issue 131570938278 (the numeric id it was given); the hex key is never used."
+    },
+    {
+      "text": "Before the approval question, the answer states a read-only resolve of the id (codacy pull-request gh example-org example-repo 12 -i 131570938278 or equivalent) and requires its file, line and rule to match the finding",
+      "passed": false,
+      "evidence": "No read-only -i resolve: step 1 reads the file line and step 2 greps docs/ci.md; nothing ties the id to file, line and rule."
+    },
+    {
+      "text": "The approval question shows the exact ignore command together with the finding's file, line and rule",
+      "passed": false,
+      "evidence": "The AskUserQuestion options name reasons (TestCode, AcceptedUse, change code, hold), not the exact command with file, line and rule."
+    },
+    {
+      "text": "No codacy write command is presented as run: the answer stops at the approval question",
+      "passed": true,
+      "evidence": "'Nothing is run until you approve'; stops at the question."
+    },
+    {
+      "text": "The --ignore-comment is single-quoted, written in the answer's own words, and contains no single quote, dollar sign, backtick or backslash",
+      "passed": false,
+      "evidence": "No --ignore-comment at all in the proposed command."
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 3,
+    "pass_rate": 0.5
+  },
+  "contaminated": false
+}

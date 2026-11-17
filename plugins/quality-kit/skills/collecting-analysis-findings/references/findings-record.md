@@ -1,6 +1,7 @@
 # Findings Record
 
-One provider-neutral record. `scripts/collect_codacy.py` writes it for Codacy (schema `1.0.0`) and
+One provider-neutral record. `scripts/collect_codacy.py` writes it for Codacy (schema `2.0.0`: `issue_id` became the numeric `resultDataId`
+and `issue_key`, `source.reported_new_issues` and `source.possibly_truncated` were added, issue #760) and
 `scripts/collect_sonar.py` for SonarQube Cloud (schema `1.1.0`, which adds `source.quality_gate` and `findings[].impacts`); any future adapter
 must write the same shape so `resolving-analysis-findings` reads every provider the same way.
 
@@ -8,14 +9,15 @@ Abridged example (one finding shown; `groups` and `counts` cover all findings in
 
 ```json
 {
-  "schema_version": "1.0.0",
+  "schema_version": "2.0.0",
   "provider": "codacy",
   "source": {"kind": "pr", "repository": "owner/repository", "pull_request": 579,
-             "pr_status": "Closed", "head_commit_sha": "4aa1689...", "is_analysing": false},
+             "pr_status": "Closed", "head_commit_sha": "4aa1689...", "is_analysing": false,
+             "reported_new_issues": 3, "possibly_truncated": false},
   "findings": [{
     "provider": "codacy", "tool": "Bandit", "rule": "Bandit_B603", "severity": "Warning",
     "category": "Security", "subcategory": null, "file": "scripts/tool.py", "line": 77,
-    "issue_id": "f8d268ee...", "message": "subprocess call (B603)", "state": "new",
+    "issue_id": "131570938278", "issue_key": "f8d268ee...", "message": "subprocess call (B603)", "state": "new",
     "delta_type": "Added", "ignored": false, "ignore_reason": null, "ignore_comment": null
   }],
   "groups": [{"rule": "Bandit_B603", "file": "scripts/tool.py", "count": 2}],
@@ -30,6 +32,7 @@ Abridged example (one finding shown; `groups` and `counts` cover all findings in
 | `source.kind` | `pr`, `repo` (default-branch issue list) or `ignored` (issues already ignored) | never |
 | `source.repository`, `pull_request`, `head_commit_sha`, `is_analysing` | The PR, the head Codacy recorded for it, and whether analysis is running. `is_analysing` is null when the provider does not say (Sonar: a head mismatch shows a running analysis instead). For Sonar, `repository` holds the project key, on every source kind, and a `repo` source read with `--branch` also has `branch` (absent means the default branch) | **Key absent** (not null) for `repo` and `ignored`, except `repository`, which Sonar keeps for every kind |
 | `source.analysis_date`, `snapshot_consistent` | Sonar `pr` only: the analysis the gate came from, and whether a status read after the issue list named the same analysis (`true`), a newer one (`false`, re-collect), or was not run (`null`) | Key absent for Codacy and for Sonar `repo` and `ignored` |
+| `source.reported_new_issues`, `possibly_truncated` | Codacy `pr` only: Codacy's own count of new issues, and whether the returned list is shorter than it. True means the record is missing findings: say so in the report | Key absent for Sonar and for Codacy `repo` and `ignored` |
 | `source.pr_status` | The PR's state (`Open`, `Closed`...) | Key absent for `repo` and `ignored`; null for a `pr` source that omits it, as Sonar does |
 | `source.quality_gate` | The gate status at the analyzed head (`OK`, `ERROR`...), verbatim. Added in `1.1.0` | Key absent for Codacy and for `repo` and `ignored` |
 | `findings[].tool` | The engine that raised it (`Bandit`, `Semgrep`, `Lizard`...) | Null for `repo` and `ignored`, which carry no tool, and always for Sonar, which names none |
@@ -39,7 +42,8 @@ Abridged example (one finding shown; `groups` and `counts` cover all findings in
 | `findings[].impacts` | Sonar's impacts, `[{software_quality, severity}]`, verbatim. Added in `1.1.0`, because `severity` alone can understate a finding (a `MAJOR` smell can have a `HIGH` impact) | Key absent for Codacy; an empty list when Sonar gives none |
 | `findings[].file`, `message` | Path and text, verbatim | never |
 | `findings[].line` | Line number | Null when the provider gives none |
-| `findings[].issue_id` | The id the ignore command takes | Null when the provider gives none (always the case for Codacy's `repo`; Sonar always gives one) |
+| `findings[].issue_id` | The id the ignore command takes. Codacy: the `resultDataId`, as a string of digits (`^[1-9][0-9]{0,19}$`); Sonar: the issue key | Null for Codacy's `repo` (not verified as an ignore target) and `ignored` (the list carries no `resultDataId`); Sonar always gives one |
+| `findings[].issue_key` | Codacy's hex `issueId`, verbatim, for matching an `ignored` entry to a PR finding. Never passed to a command | Key absent for Sonar; null for Codacy's `repo` |
 | `findings[].state` | `new` (introduced by the PR), `existing` (`repo` and `ignored`) or `potential` | never |
 | `findings[].delta_type` | The provider's change marker for a PR issue (`Added`) | Null for `repo` and `ignored`, when the provider omits it, and always for Sonar |
 | `findings[].ignored` | True for the `ignored` list only | never |

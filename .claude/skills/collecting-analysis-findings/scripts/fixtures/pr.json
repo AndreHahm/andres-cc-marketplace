@@ -22,7 +22,7 @@
     {
       "commitIssue": {
         "issueId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "resultDataId": 1,
+        "resultDataId": 101,
         "filePath": "scripts/tool.py",
         "fileId": 2,
         "patternInfo": {
@@ -52,7 +52,7 @@
     {
       "commitIssue": {
         "issueId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-        "resultDataId": 1,
+        "resultDataId": 102,
         "filePath": "scripts/tool.py",
         "fileId": 2,
         "patternInfo": {
@@ -81,8 +81,8 @@
     },
     {
       "commitIssue": {
-        "issueId": "cccccccccccccccccccccccccccccccc",
-        "resultDataId": 1,
+        "issueId": "66cccccccccccccccccccccccccccccc",
+        "resultDataId": 66103,
         "filePath": "scripts/tool.py",
         "fileId": 2,
         "patternInfo": {

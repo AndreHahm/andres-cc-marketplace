@@ -1,0 +1,32 @@
+{
+  "eval_id": 10,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "No --ignore-issue command is proposed with 66a432aa616069571f5c708d5f048ba5, with 66, or with any id not taken from a fresh record",
+      "passed": false,
+      "evidence": "Step 2 proposes '--ignore-issue 66a432aa616069571f5c708d5f048ba5 --ignore-reason TestCode'."
+    },
+    {
+      "text": "The answer states that the record's issue_id fails the numeric check (it is Codacy's hex issueId, not the resultDataId the CLI takes) and stops before building a command",
+      "passed": false,
+      "evidence": "Treats the hex value as the 'Codacy issue id'; no id check, builds the command."
+    },
+    {
+      "text": "The answer names the risk: the CLI rejects the hex id or reads its leading digits as a different issue number (#66)",
+      "passed": false,
+      "evidence": "No mention that the CLI rejects the hex id or reads its digit prefix as another issue."
+    },
+    {
+      "text": "The answer says to re-collect a fresh record for the PR's current head (collecting-analysis-findings) to get the numeric issue_id before any ignore",
+      "passed": false,
+      "evidence": "Re-collect only 'if the head moved or the issue is gone', not to obtain a numeric id; the week-old hex id is used as is."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 0,
+    "pass_rate": 0.0
+  },
+  "contaminated": false
+}

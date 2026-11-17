@@ -118,7 +118,8 @@ read and normalize in one piped command (3-4), check the analysis is current (5)
    older head or is still running: say so, and do not present the counts as current. A closed PR keeps
    describing the head it closed on. Sonar gives no running flag, so `is_analysing` is null, which is not
    "finished": there, the SHA comparison alone decides. Its gate and issue reads are separate, so a re-analysis of the same head between them can pair the earlier gate with the later issue list, which the SHA check cannot see. `source.snapshot_consistent` true means the third read found the same analysis; false means a newer one landed: re-collect. Null means the third read did not run: say the gate and the counts may come from two analyses.
-6. **Report.** `Read` the record file, then give counts per rule and file, the currency verdict, the path of the record file and, for a PR, its `url` from step 1 (`resolving-analysis-findings` takes the owner and repository from it). Show the
+6. **Report.** `Read` the record file, then give counts per rule and file, the currency verdict, whether a Codacy PR
+   record is `source.possibly_truncated` (if so, say the counts are incomplete and give `source.reported_new_issues`), the path of the record file and, for a PR, its `url` from step 1 (`resolving-analysis-findings` takes the owner and repository from it). Show the
    full record only when asked; it is long. A message for a secret-detection rule can contain the flagged
    value: keep the record in the scratchpad, and never reproduce such a message or value in the report. Give
    only the rule, file and line, and say the value is withheld.
@@ -170,7 +171,12 @@ Works without the external `codacy-skills` plugin and does not call it.
 - **The same finding appears under two engines** (for example `Bandit_B603` and `Prospector_bandit`), so
   totals double. Group by rule before comparing against a count someone quoted.
 - **A repository issue list has no issue id and no tool name** (`issue_id` and `tool` are null there). The
-  ignore flag takes an id from a PR's issues or from the ignored list.
+  ignore flag takes an id from a PR's issues only: the ignored list has no `resultDataId` either, so match an
+  ignored entry to a PR finding by `issue_key` (issue #760).
+- **Codacy's hex `issueId` is not the ignore id.** `--ignore-issue` takes the numeric `resultDataId`, which the
+  record carries as `issue_id`; the hex value is `issue_key` and never goes into a command.
+- **A Codacy PR list can be cut off.** The PR command has no paging flag; `source.possibly_truncated` says when
+  the list is shorter than Codacy's own count.
 - **Issue ids and line numbers move when code changes.** Treat an old id as a pointer to re-check, not a
   stable key.
 - **Sonar's `--severities` flag takes other names than its responses** in this project's MQR mode, and `MINOR`
@@ -188,7 +194,10 @@ one-way dependency with `resolving-analysis-findings`.
 Eval evidence (`evals/collecting-analysis-findings/evals.json`, Codacy evals 1 to 4 and Sonar evals 5 and 6) is in
 `references/testing-scenarios.md`.
 
-**Last dated run record:** 2026-11-09, eval 5 re-run (iteration 5, with skill, 8 of 8), and `scripts/smoke_test.py` passed, including the `qlty-sonar-read.py` checks
+**Last dated run record:** 2026-11-17 (issue #760), `scripts/smoke_test.py` passed with the `resultDataId`,
+`issue_key` and truncation checks, and the adapter was run by hand against PR #759's real `pr` output and the real
+`ignored` list; an `issue_id` from that record resolved with the read-only `codacy pull-request ... -i <id>`. No eval
+was re-run. 2026-11-09, eval 5 re-run (iteration 5, with skill, 8 of 8), and `scripts/smoke_test.py` passed, including the `qlty-sonar-read.py` checks
 against a stub `sonar`; every wrapper form was also run live against SonarQube Cloud for PR 673, and its output piped
 into `collect_sonar.py`. 2026-10-17, `scripts/smoke_test.py`, 60 of 60 checks passed. The adapter was also
 run by hand against this repository's real Cloud CLI output for a PR, the repository list and the ignored list;

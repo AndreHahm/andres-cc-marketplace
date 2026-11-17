@@ -2,6 +2,17 @@
 
 All notable changes to this plugin are documented here.
 
+## [Unreleased]
+
+### Fixed
+- Codacy ignores used the hex `issueId`, which `--ignore-issue` rejects, or, when it starts with digits, reads by
+  that numeric prefix as a different issue (issue #760). The Codacy findings record (schema `2.0.0`) now carries
+  the numeric `resultDataId` as `issue_id` and the hex id as `issue_key`, for matching only.
+  `resolving-analysis-findings` checks a Codacy `issue_id` against `^[1-9][0-9]{0,19}$` before building a command.
+- `collect_codacy.py` gave no warning when `codacy pull-request` returned fewer issues than its own
+  `pullRequest.newIssues` count (100 of 150 on PR #759). The record now has `source.reported_new_issues` and
+  `source.possibly_truncated`, the adapter warns on stderr, and the report says so.
+
 ## [1.0.0-alpha.4] - 2026-11-15
 
 ### Added

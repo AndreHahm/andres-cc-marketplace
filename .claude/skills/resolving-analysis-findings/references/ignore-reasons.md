@@ -5,19 +5,25 @@ in `SKILL.md`'s Decision rights first.
 
 Verified 2026-10-17 against `codacy pull-request --help`: the flags `--ignore-issue`, `--ignore-reason`
 (default `AcceptedUse`), `--ignore-comment`, `--unignore-issue`, `-F`/`--ignore-all-false-positives` ("with
-reason FalsePositive"), `--reanalyze` and `--reanalyze-and-wait` exist as described below. Not verified: running any of them, and
-whether an ignore can target a repository-list finding.
+reason FalsePositive"), `--reanalyze` and `--reanalyze-and-wait` exist as described below. Per issue #760
+(2026-11-17, PR #759), seven `--ignore-issue` runs with the numeric `resultDataId` succeeded, and the hex `issueId`
+failed: one starting with a letter is refused (`--ignore-issue must be a number`), one starting with digits is read
+by that prefix as another issue number. Not verified: `--unignore-issue` runs, and whether an ignore can target a
+repository-list finding.
 
 ## Command
 
 ```text
 codacy pull-request <provider> <org> <repo> <number> \
-  --ignore-issue <issueId> --ignore-reason <reason> --ignore-comment '<comment>'
+  --ignore-issue <issue_id> --ignore-reason <reason> --ignore-comment '<comment>'
 ```
 
-`<issueId>` comes from the findings record (`issue_id`). A repository-level list carries none, so take the id
-from the PR's own analysis. `--ignore-reason` defaults to `AcceptedUse` when omitted: always pass it
-explicitly. `--unignore-issue <issueId>` reverses an ignore.
+Before the approval, resolve the id read-only with `codacy pull-request <provider> <org> <repo> <number> -i <issue_id>`
+and stop unless its file, line and rule match the finding (SKILL.md's Decision rights).
+`<issue_id>` comes from the findings record (`issue_id`, Codacy's numeric `resultDataId`), never from
+`issue_key` (the hex `issueId`). A repository-level list and the ignored list carry none, so take the id from the
+PR's own fresh record; match an ignored entry to it by `issue_key`. `--ignore-reason` defaults to `AcceptedUse`
+when omitted: always pass it explicitly. `--unignore-issue <issue_id>` reverses an ignore.
 
 `-F`/`--ignore-all-false-positives` ignores every issue Codacy marks as a potential false positive in the PR
 with reason `FalsePositive`. This skill never runs it: the findings record cannot say which issues the flag
@@ -25,7 +31,7 @@ would cover, so the exact command is handed to the user instead.
 
 The comment is single-quoted and written by you from what the code does, using only letters, digits, spaces and
 `. , : ; ( ) / _ -`. It starts with a letter or digit, so it can never be read as a flag, never contains `'`,
-`$`, a backtick or a backslash, and is never copied from a provider message or a source line. `<issueId>` must match `^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$`; stop otherwise.
+`$`, a backtick or a backslash, and is never copied from a provider message or a source line. `<issue_id>` must match `^[1-9][0-9]{0,19}$`; stop otherwise.
 
 ## Reasons
 
@@ -59,7 +65,7 @@ sonar api post /api/issues/do_transition -d '{"issue":"<issue_id>","transition":
 | `reopen` | Reverses either | `issueStatus: OPEN`, `resolution: null` |
 
 `comment` is an optional API parameter; here it is required, under the same character rules as Codacy's comment
-above, so it cannot break the JSON. `<issue_id>` must match the same pattern. Comments stay in the issue's history after a
+above, so it cannot break the JSON. `<issue_id>` (a Sonar issue key) must match `^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$`. Comments stay in the issue's history after a
 reopen. Never `/api/issues/bulk_change`: a bulk change is handed over, like rung 5.
 
 ## Audit
