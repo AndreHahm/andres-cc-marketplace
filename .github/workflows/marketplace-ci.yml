@@ -424,6 +424,16 @@ jobs:
             echo "::error::no plugins/*/tests/*.test.mjs file found -- refusing to report a pass with nothing tested"
             exit 1
           fi
+          # node --test reads each argument as a glob pattern, so a name holding a glob character
+          # would run whatever it matches instead of that file.
+          for f in "${files[@]}"; do
+            case "$f" in
+              *[][*?{}!]*)
+                echo "::error::test file name contains a glob character: $f"
+                exit 1
+                ;;
+            esac
+          done
           printf 'Running %s\n' "${files[@]}"
           node --test -- "${files[@]}"
 
