@@ -1,7 +1,7 @@
 # Dispatch Test Scenarios
 
-Concrete scenarios behind the `review-adapter-dispatch` contract. The 53 tests in
-`tests/rva-dispatch.test.mjs` cover these 43 scenarios against fake vendor binaries; no real vendor is
+Concrete scenarios behind the `review-adapter-dispatch` contract. The 56 tests in
+`tests/rva-dispatch.test.mjs` cover these 46 scenarios against fake vendor binaries; no real vendor is
 called.
 
 1. Vendor not in the local allow-list, or a pi `--model` that is neither the configured model nor listed
@@ -109,3 +109,13 @@ called.
     group, GNU coreutils `ls` (any other `ls` fails closed), `setfacl` or ACL support.
 43. Outside Linux (the platform overridden to `darwin` in-process), group write is refused even for the
     private group, because an ACL cannot be ruled out there; a path without group write still passes.
+44. A second `/etc/group` line with the user's private gid (with or without members, or repeating the
+    user's own name) removes the private-group exception; one line with no members keeps it. Read from
+    fixture files.
+45. A root-owned temp directory with mode `0770` whose group is the user's private group is safe on Linux
+    without an extended ACL; another group, no private group, or another non-root owner is unsafe.
+    Checked on a synthetic stat; skipped without Linux and GNU coreutils `ls`.
+46. A private temp directory under a directory other users can write to without the sticky bit is
+    refused by prepare (nothing created there) and by the dispatcher (`unsafe_temp_dir`); with the sticky
+    bit on that parent both succeed. The check takes only a resolved path: a symbolic link to that same
+    directory is unsafe.

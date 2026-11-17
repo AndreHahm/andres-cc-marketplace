@@ -52,8 +52,13 @@ function main() {
     const command = fs.readFileSync(path.join(ROOT, "commands", "rva-review-diff.md"), "utf8");
     const grants = (field(frontmatter(command), "allowed-tools") ?? "").match(/Bash\([^)]*\)[^,]*/g) ?? [];
     const expected = [DISPATCH_GRANT, PREPARE_GRANT, ...STEP1_GRANTS];
-    const unexpected = grants.map((grant) => grant.trim()).filter((grant) => !expected.includes(grant));
-    if (grants.length !== expected.length || unexpected.length > 0) errors.push(`rva-review-diff.md: unexpected Bash grants ${JSON.stringify(unexpected)}`);
+    const trimmed = grants.map((grant) => grant.trim());
+    const unexpected = trimmed.filter((grant) => !expected.includes(grant));
+    const missing = expected.filter((grant) => !trimmed.includes(grant));
+    const duplicated = trimmed.filter((grant, i) => trimmed.indexOf(grant) !== i);
+    if (unexpected.length > 0) errors.push(`rva-review-diff.md: unexpected Bash grants ${JSON.stringify(unexpected)}`);
+    if (missing.length > 0) errors.push(`rva-review-diff.md: missing Bash grants ${JSON.stringify(missing)}`);
+    if (duplicated.length > 0) errors.push(`rva-review-diff.md: duplicated Bash grants ${JSON.stringify(duplicated)}`);
 
     const run = spawnSync(process.execPath, [path.join(ROOT, "scripts", "rva-dispatch.mjs")], { encoding: "utf8", timeout: 30000 });
     let output;

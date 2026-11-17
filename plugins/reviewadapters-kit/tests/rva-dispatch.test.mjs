@@ -918,6 +918,65 @@ test("outside Linux, group write is refused even for the private group; a mode-p
   }
 });
 
+// Linux grants a supplementary group by gid from every /etc/group line naming the user, so a second line
+// with the private gid must be refused, not only the first one read (PR #772 review).
+test("a second /etc/group line with the private gid removes the private-group exception", { skip: process.platform === "win32" }, async () => {
+  const { privateGroupGid: fromFiles } = await import(path.join(PLUGIN, "scripts", "rva-codex-kit.mjs"));
+  const dir = tempDir("rva-test-groups-");
+  const user = os.userInfo().username;
+  const gid = process.getgid();
+  const passwd = path.join(dir, "passwd");
+  const group = path.join(dir, "group");
+  fs.writeFileSync(passwd, `${user}:x:${process.getuid()}:${gid}::/home/${user}:/bin/sh\n`);
+  fs.writeFileSync(group, `${user}:x:${gid}:\n`);
+  assert.equal(fromFiles({ passwd, group }), gid);
+  for (const extra of [`other:x:${gid}:bob\n`, `other:x:${gid}:\n`, `${user}:x:${gid}:\n`]) {
+    fs.writeFileSync(group, `${user}:x:${gid}:\n${extra}`);
+    assert.equal(fromFiles({ passwd, group }), null, extra);
+  }
+});
+
+// A root-owned directory writable only by root and the user's private group is as safe as a user-owned
+// one (PR #772 review). Needs Linux and GNU coreutils ls to rule out an ACL on the real directory passed
+// as the ACL path; the stat is synthetic, so no root-owned directory is needed.
+test("a root-owned temp directory writable by the private group is accepted; another group is not", { skip: process.platform !== "linux" || !findGnuLs() ? "needs Linux and GNU coreutils ls" : false }, async () => {
+  const { unsafeDirStat } = await import(path.join(PLUGIN, "scripts", "rva-codex-kit.mjs"));
+  const dir = tempDir("rva-test-rootdir-");
+  const stat = { uid: 0, gid: 4242, mode: 0o40770 };
+  assert.equal(unsafeDirStat(stat, dir, 4242), false);
+  assert.equal(unsafeDirStat({ ...stat, gid: 4243 }, dir, 4242), true);
+  assert.equal(unsafeDirStat(stat, dir, null), true);
+  assert.equal(unsafeDirStat({ ...stat, uid: process.getuid() + 1, mode: 0o40700 }, dir, 4242), true, "another owner");
+});
+
+// The writers of a directory above the temp directory can rename it away and put their own in its place,
+// so the whole path is checked, not the temp directory alone (PR #772 review).
+test("prepare and the dispatcher refuse a private temp directory under a directory others can write to without the sticky bit", async () => {
+  const repo = changedRepo();
+  const shared = tempDir("rva-test-tmp-");
+  const inner = path.join(shared, "inner");
+  fs.mkdirSync(inner, { mode: 0o700 });
+  fs.chmodSync(shared, 0o777);
+  const refused = runNode(PREPARE, ["--cwd", repo], { env: { TMPDIR: inner } });
+  assert.equal(refused.out.ok, false, JSON.stringify(refused.out));
+  assert.match(refused.out.detail, /or a directory above it/);
+  assert.deepEqual(fs.readdirSync(inner), [], "prepare created a directory under an unsafe parent");
+  const f = fixture();
+  const dispatched = dispatch(f, "pi", ["--dry-run"], {}, { env: { TMPDIR: inner } });
+  assert.equal(dispatched.out.category, "unsafe_temp_dir", JSON.stringify(dispatched.out));
+  fs.chmodSync(shared, 0o1777);
+  const prepared = runNode(PREPARE, ["--cwd", repo], { env: { TMPDIR: inner } }).out;
+  assert.equal(prepared.ok, true, JSON.stringify(prepared));
+  created.push(prepared.dir);
+  assert.equal(dispatch(f, "pi", ["--dry-run"], {}, { env: { TMPDIR: inner } }).out.ok, true);
+  // A path that is not resolved could hold a link someone else repoints after the check: refused outright.
+  const { unsafeTempDir } = await import(path.join(PLUGIN, "scripts", "rva-codex-kit.mjs"));
+  const link = path.join(tempDir("rva-test-link-"), "tmp-link");
+  fs.symlinkSync(inner, link);
+  assert.equal(unsafeTempDir(inner), false);
+  assert.equal(unsafeTempDir(link), true);
+});
+
 test("an empty --instruction-file is a usage error, like an empty diff (issue #765)", () => {
   const f = fixture();
   for (const body of ["", " \n\n"]) {

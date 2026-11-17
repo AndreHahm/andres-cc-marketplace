@@ -52,21 +52,28 @@ function candidateRoots(devSibling) {
 
 // Group write is harmless when the group is the user's own private group (umask 002 systems, where
 // every checkout is group-writable): same name as the user, the user's primary gid, no other members
-// listed in /etc/group, and no other account in /etc/passwd with it as its primary gid. Anything else,
-// including a group /etc/group does not list (LDAP), fails closed.
-export function privateGroupGid() {
+// listed in /etc/group, and no other account in /etc/passwd with it as its primary gid. Every /etc/group
+// line is read: a second line with the same gid is refused, whatever it lists, since Linux grants a
+// supplementary group by gid from every line naming a user. Anything else, including a group /etc/group
+// does not list (LDAP), fails closed. Other NSS sources (LDAP, sssd) are not read, so a member they add
+// to a gid /etc/group also lists is not seen. `files` exists for the tests.
+export function privateGroupGid(files = { passwd: "/etc/passwd", group: "/etc/group" }) {
   if (process.platform === "win32") return null;
   try {
     const gid = process.getgid();
     const user = os.userInfo().username;
-    const sharers = fs.readFileSync("/etc/passwd", "utf8").split("\n")
+    const sharers = fs.readFileSync(files.passwd, "utf8").split("\n")
       .map((line) => line.split(":"))
       .filter((fields) => fields.length > 3 && Number(fields[3]) === gid && fields[0] !== user);
     if (sharers.length > 0) return null;
-    for (const line of fs.readFileSync("/etc/group", "utf8").split("\n")) {
+    let found = false;
+    for (const line of fs.readFileSync(files.group, "utf8").split("\n")) {
       const [name, , id, members] = line.split(":");
-      if (Number(id) === gid) return name === user && !members?.trim() ? gid : null;
+      if (Number(id) !== gid) continue;
+      if (found || name !== user || members?.trim()) return null;
+      found = true;
     }
+    return found ? gid : null;
   } catch {
     // Unreadable /etc/passwd or /etc/group: no private-group exception.
   }
@@ -125,32 +132,51 @@ export function descriptorPath(fd) {
 // True when a path is owned by the current user and writable by nobody else (group write allowed only
 // for the user's private group, and then only on Linux without an extended ACL). `aclPath` names the
 // same file or directory as `stat` (descriptorPath(fd) for an fstat); without it on Linux, group write
-// is refused. Used for codex-kit's files, the dispatcher's input files and the temp directory.
+// is refused. Used for codex-kit's files, the dispatcher's input files and the local config file.
 export function ownedAndPrivate(stat, aclPath, privateGid = privateGroupGid()) {
   if (process.platform === "win32") return true;
   if (stat.uid !== process.getuid()) return false;
   if ((stat.mode & 0o002) !== 0) return false;
   if ((stat.mode & 0o020) === 0) return true;
+  return groupWriteIsPrivate(stat, aclPath, privateGid);
+}
+
+// True when the group that can write a path is the user's private group, on Linux, with no extended ACL.
+// Independent of the path's owner, so a root-owned directory can use it too.
+function groupWriteIsPrivate(stat, aclPath, privateGid) {
   return privateGid !== null && stat.gid === privateGid && !mayHaveExtendedAcl(aclPath);
 }
 
-// The temp directory must belong to this user or root: its owner can always rename a directory created
-// there away and put their own in its place, sticky bit or not. One other users can write to also needs
-// the sticky bit, or any of them could do the same (or delete it before cleanup). Group write for the
-// user's own private group does not count as other users (see ownedAndPrivate for the ACL limits).
-// True when the directory is unsafe. Used by prepare, cleanup and the dispatcher's run directory.
-export function unsafeTempDir(tmp) {
-  const stat = fs.statSync(tmp);
+// One directory on the temp directory's path: it must belong to this user or root, since its owner can
+// always rename an entry in it away and put their own in its place, sticky bit or not. One other users
+// can write to also needs the sticky bit, or any of them could do the same (or delete it before cleanup);
+// the sticky bit is enough because every entry on the way down belongs to this user or root. Group write
+// for the user's own private group does not count as other users (see ownedAndPrivate for the ACL limits).
+// True when the directory is unsafe.
+export function unsafeDirStat(stat, aclPath, privateGid = privateGroupGid()) {
   if (stat.uid !== process.getuid() && stat.uid !== 0) return true;
-  const othersCanWrite = (stat.mode & 0o002) !== 0 || ((stat.mode & 0o020) !== 0 && !ownedAndPrivate(stat, tmp));
+  const othersCanWrite = (stat.mode & 0o002) !== 0 || ((stat.mode & 0o020) !== 0 && !groupWriteIsPrivate(stat, aclPath, privateGid));
   return othersCanWrite && (stat.mode & 0o1000) === 0;
+}
+
+// True when the temp directory, or any directory above it, fails unsafeDirStat. `tmp` must be the
+// resolved path the caller then uses (fs.realpathSync), so no symbolic link on it can be pointed elsewhere
+// after the check; a path that is not resolved counts as unsafe. Used by prepare, cleanup and the
+// dispatcher's run directory.
+export function unsafeTempDir(tmp) {
+  if (fs.realpathSync(tmp) !== tmp) return true;
+  const privateGid = privateGroupGid();
+  for (let dir = tmp; ; dir = path.dirname(dir)) {
+    if (unsafeDirStat(fs.statSync(dir), dir, privateGid)) return true;
+    if (path.dirname(dir) === dir) return false;
+  }
 }
 
 // Appended to the refusals that rest on ownedAndPrivate, which only says yes or no: group write is the
 // usual surprise, and an ACL or a missing GNU coreutils ls is otherwise invisible in the message.
 export const GROUP_WRITE_NOTE = "group write counts too, unless the group is your private group, on Linux, and GNU coreutils ls shows no extended ACL";
 
-export const UNSAFE_TEMP = `the temp directory belongs to another user, or is writable by other users and has no sticky bit; set TMPDIR to a private directory (${GROUP_WRITE_NOTE})`;
+export const UNSAFE_TEMP = `the temp directory, or a directory above it, belongs to another user, or is writable by other users and has no sticky bit; set TMPDIR to a private directory (${GROUP_WRITE_NOTE})`;
 
 export const OUTSIDE_ROOT = "resolves outside the root";
 
