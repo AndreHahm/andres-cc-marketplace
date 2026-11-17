@@ -16,6 +16,60 @@ export const LOCAL_CONFIG_RELATIVE = ".claude/reviewadapters-kit.local.json";
 // A model never starts with "-", so it cannot be read as a flag by a vendor CLI.
 const MODEL_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._/:-]{0,127}$/;
 
+export function isInside(file, dir) {
+  return file === dir || file.startsWith(dir + path.sep);
+}
+
+// realpathSync.native returns the on-disk letter case, so an in-repo path cannot pass isInside on a
+// case-insensitive filesystem by differing only in case.
+export function realPath(file) {
+  return fs.realpathSync.native(file);
+}
+
+// A PATH entry that may be used: absolute (a relative one resolves against the working directory, which
+// can be the reviewed checkout) and neither literally nor after resolving symlinks inside untrustedRoot.
+function trustedEntry(dir, untrustedRoot) {
+  if (!dir || !path.isAbsolute(dir) || isInside(path.resolve(dir), untrustedRoot)) return false;
+  try {
+    return !isInside(realPath(dir), untrustedRoot);
+  } catch {
+    return false;
+  }
+}
+
+// The real path of the first executable named `binary` on a trusted PATH entry whose own real path lies
+// outside `untrustedRoot` (the reviewed checkout), so a changed file named like the binary never runs.
+// The real path is returned and run, so a symlink inside the checkout cannot be swapped in between.
+// Used for git and the vendor CLIs.
+export function findBinary(binary, untrustedRoot) {
+  for (const dir of (process.env.PATH ?? "").split(path.delimiter)) {
+    if (!trustedEntry(dir, untrustedRoot)) continue;
+    try {
+      const candidate = realPath(path.join(dir, binary));
+      fs.accessSync(candidate, fs.constants.X_OK);
+      if (fs.statSync(candidate).isFile() && !isInside(candidate, untrustedRoot)) return candidate;
+    } catch {
+      // Not here; keep looking.
+    }
+  }
+  return null;
+}
+
+// The PATH a vendor gets: only the trusted entries, so an interpreter its CLI starts (a
+// "#!/usr/bin/env node" script, say) is not found inside the reviewed checkout either.
+export function trustedPath(untrustedRoot) {
+  return (process.env.PATH ?? "").split(path.delimiter).filter((dir) => trustedEntry(dir, untrustedRoot)).join(path.delimiter);
+}
+
+// The nearest directory at or above `start` that holds a .git entry (a directory, or a file in a
+// worktree), found without running git: it is the root git must come from outside of.
+export function enclosingRepoRoot(start) {
+  for (let dir = start; ; dir = path.dirname(dir)) {
+    if (fs.existsSync(path.join(dir, ".git"))) return dir;
+    if (path.dirname(dir) === dir) return null;
+  }
+}
+
 function readJson(file) {
   return JSON.parse(fs.readFileSync(file, "utf8"));
 }
@@ -88,10 +142,13 @@ function readLocalJson(file) {
 
 // Tracked under any letter case: on a case-insensitive filesystem (macOS, Windows) a committed
 // ".claude/ReviewAdapters-Kit.local.json" opens under the lowercase name, while an exact pathspec would
-// call it untracked. Any git error cannot prove the file is untracked, so it counts as tracked.
+// call it untracked. Any git error, or no git outside the repository, cannot prove the file is untracked,
+// so it counts as tracked.
 function isTracked(repoRoot, relative) {
+  const git = findBinary("git", repoRoot);
+  if (!git) return true;
   try {
-    const out = execFileSync("git", ["-C", repoRoot, "ls-files", "-z", "--", `:(icase)${relative}`], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 10_000 });
+    const out = execFileSync(git, ["-C", repoRoot, "ls-files", "-z", "--", `:(icase)${relative}`], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 10_000 });
     return out.length > 0;
   } catch {
     return true;

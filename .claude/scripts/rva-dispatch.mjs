@@ -16,7 +16,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadCodexKit, CodexKitUnavailable, ownedAndPrivate } from "./rva-codex-kit.mjs";
-import { loadConfig, devSiblingOptIn, MODEL_PATTERN } from "./rva-config.mjs";
+import { loadConfig, devSiblingOptIn, MODEL_PATTERN, findBinary, isInside, realPath, trustedPath } from "./rva-config.mjs";
 import { runVendor, killActiveGroups } from "./rva-run.mjs";
 import { VENDORS, PROBED_VERSIONS } from "./rva-vendors.mjs";
 
@@ -166,34 +166,18 @@ export function diffHeaderPaths(diff) {
   return { paths: [...paths] };
 }
 
+// git is resolved like a vendor binary (findBinary): never from a relative PATH entry or from inside the
+// directory being reviewed, so a changed file named git in the checkout is never run. `dir` must already
+// hold a .git entry (checked by the caller without running git).
 function gitToplevel(dir) {
+  const git = findBinary("git", dir);
+  if (!git) return null;
   try {
-    return fs.realpathSync(execFileSync("git", ["-C", dir, "rev-parse", "--show-toplevel"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 10_000 }).trim());
+    const top = realPath(execFileSync(git, ["-C", dir, "rev-parse", "--show-toplevel"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 10_000 }).trim());
+    return isInside(git, top) ? null : top;
   } catch {
     return null;
   }
-}
-
-function onPath(binary, repoRoot) {
-  for (const dir of (process.env.PATH ?? "").split(path.delimiter)) {
-    // A relative entry (".", "bin") would resolve against the reviewed checkout.
-    if (!dir || !path.isAbsolute(dir)) continue;
-    const candidate = path.join(dir, binary);
-    try {
-      const stat = fs.statSync(candidate);
-      fs.accessSync(candidate, fs.constants.X_OK);
-      // A binary inside the reviewed checkout (an absolute bin/ on PATH, from direnv for example) is the
-      // reviewed branch's own code: refuse it rather than run it with the diff.
-      if (stat.isFile() && !isInside(fs.realpathSync(candidate), repoRoot)) return candidate;
-    } catch {
-      // Not here; keep looking.
-    }
-  }
-  return null;
-}
-
-function isInside(file, dir) {
-  return file === dir || file.startsWith(dir + path.sep);
 }
 
 function findingsSchema(api) {
@@ -214,7 +198,7 @@ async function cliVersion(binary, cwd, env, timeoutMs) {
   // The probe counts against the run's budget, so it never waits longer than that budget.
   const run = await runVendor({ command: binary, args: ["--version"], cwd, env, timeoutMs: Math.min(VERSION_TIMEOUT_MS, timeoutMs) });
   const line = (run.stdout || run.stderr).split("\n").find((l) => l.trim()) ?? "";
-  return /^[\w .()+:/-]{1,80}$/.test(line.trim()) ? line.trim() : "unknown";
+  return { version: /^[\w .()+:/-]{1,80}$/.test(line.trim()) ? line.trim() : "unknown", timedOut: run.timedOut };
 }
 
 async function dispatch(options, runDir) {
@@ -224,11 +208,14 @@ async function dispatch(options, runDir) {
 
   let cwdReal;
   try {
-    cwdReal = fs.realpathSync(options.cwd);
+    cwdReal = realPath(options.cwd);
   } catch {
     throw usage("--cwd does not exist");
   }
-  // The allow-list is read from --cwd, so --cwd must be a repository's own root, not any directory.
+  // The allow-list is read from --cwd, so --cwd must be a repository's own root, not any directory. A
+  // directory without .git is refused before any git runs: from a subdirectory, a git inside the
+  // repository but outside --cwd would otherwise be accepted.
+  if (!fs.existsSync(path.join(cwdReal, ".git"))) throw usage("--cwd must be the top-level directory of a git repository");
   const repoRoot = gitToplevel(cwdReal);
   if (repoRoot !== cwdReal) throw usage("--cwd must be the top-level directory of a git repository");
 
@@ -306,7 +293,9 @@ async function dispatch(options, runDir) {
   }
 
   const recipient = typeof vendor.recipient === "function" ? vendor.recipient(model) : vendor.recipient;
-  const binary = onPath(vendor.binary, repoRoot);
+  // A binary inside the reviewed checkout (an absolute bin/ on PATH, from direnv for example) is the
+  // reviewed branch's own code: refuse it rather than run it with the diff.
+  const binary = findBinary(vendor.binary, repoRoot);
   if (!binary) throw new Failure("cli_unavailable", `${vendor.binary} is not on PATH outside the reviewed repository`);
 
   if (options["dry-run"]) {
@@ -314,8 +303,13 @@ async function dispatch(options, runDir) {
   }
 
   const env = vendor.env(model);
+  // Only PATH entries outside the reviewed checkout, for whatever interpreter the vendor CLI starts.
+  env.PATH = trustedPath(repoRoot);
   const started = Date.now();
-  const version = await cliVersion(binary, runDir, env, timeoutMs);
+  const probe = await cliVersion(binary, runDir, env, timeoutMs);
+  // A probe that ran out of time is a timeout for every vendor, not an unknown version.
+  if (probe.timedOut) throw new Failure("timeout", `${vendor.binary} --version used the whole ${timeoutMs} ms budget; nothing was sent`);
+  const { version } = probe;
   // The first version-shaped token must equal the probed version, so 1.5.90, 11.5.9 or a newer CLI that
   // prints "2.0.0 (compat 1.5.9)" does not pass for the probed 1.5.9.
   const versionProbed = /\d+(?:\.\d+)+/.exec(version)?.[0] === PROBED_VERSIONS[vendorName];

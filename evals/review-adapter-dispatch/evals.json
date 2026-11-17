@@ -33,7 +33,7 @@
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 23,
+    "declared_scenarios_total": 25,
     "declared_scenarios_covered": 3,
     "uncovered": [
       "2 tracked local file (dropped: its fixture needed a git-tracked allow-list file, blocked by the auto-mode classifier)",
@@ -54,8 +54,10 @@
       "19 rva-prepare.mjs listing and refusals (deterministic; covered by the node tests)",
       "20 shipped models list ignored for pi (deterministic; covered by the node tests)",
       "21 .claude directory symlinked, writable by others, or swapped before the open (deterministic; covered by the node tests)",
-      "22 --version probe hangs with --timeout-ms below 15 s (deterministic; covered by the node tests)",
-      "23 Windows refused with unsupported_platform (deterministic; covered by the node tests)"
+      "22 --version probe hangs with --timeout-ms below 15 s, every vendor (deterministic; covered by the node tests)",
+      "23 Windows refused with unsupported_platform (deterministic; covered by the node tests)",
+      "24 a git in the reviewed checkout or behind a relative PATH entry is never run (deterministic; covered by the node tests)",
+      "25 a vendor's PATH holds no entry inside the reviewed checkout (deterministic; covered by the node tests)"
     ]
   }
 }

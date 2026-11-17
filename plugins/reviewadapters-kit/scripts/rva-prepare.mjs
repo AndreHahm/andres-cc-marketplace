@@ -17,7 +17,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadCodexKit, CodexKitUnavailable } from "./rva-codex-kit.mjs";
-import { devSiblingOptIn } from "./rva-config.mjs";
+import { devSiblingOptIn, findBinary, isInside, realPath, enclosingRepoRoot } from "./rva-config.mjs";
 
 const PLUGIN_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const PREFIX = "rva-prep-";
@@ -37,8 +37,8 @@ function fail(detail, code = 1) {
   return code;
 }
 
-function git(repo, args) {
-  return execFileSync("git", ["-C", repo, ...args], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: 60_000 });
+function git(gitBin, repo, args) {
+  return execFileSync(gitBin, ["-C", repo, ...args], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: 60_000 });
 }
 
 function cleanup(dir) {
@@ -60,18 +60,31 @@ function cleanup(dir) {
 
 async function prepare(cwd, range) {
   if (range !== undefined && (range.startsWith("-") || !RANGE_PATTERN.test(range))) return fail("the range is not a plain git range");
+  let cwdReal;
+  try {
+    cwdReal = realPath(cwd);
+  } catch {
+    return fail("--cwd does not exist");
+  }
+  // Never a git from a relative PATH entry or from inside the reviewed checkout (see findBinary). The
+  // checkout's root is found by its .git entry, without running git, since --cwd may be a subdirectory.
+  const untrustedRoot = enclosingRepoRoot(cwdReal);
+  if (!untrustedRoot) return fail("--cwd is not inside a git repository");
+  const gitBin = findBinary("git", untrustedRoot);
+  if (!gitBin) return fail("git is not on PATH outside the reviewed checkout");
   let repo;
   try {
-    repo = fs.realpathSync(git(cwd, ["rev-parse", "--show-toplevel"]).trim());
+    repo = realPath(git(gitBin, cwdReal, ["rev-parse", "--show-toplevel"]).trim());
   } catch {
     return fail("--cwd is not inside a git repository");
   }
+  if (isInside(gitBin, repo)) return fail("git is not on PATH outside the reviewed checkout");
   const rangeArgs = range === undefined ? ["HEAD"] : [range];
   let diff;
   let names;
   try {
-    diff = git(repo, ["diff", ...DIFF_OPTIONS, ...rangeArgs, "--"]);
-    names = git(repo, ["diff", "--name-only", "-z", "--no-renames", "--no-relative", ...rangeArgs, "--"]).split("\0").filter(Boolean);
+    diff = git(gitBin, repo, ["diff", ...DIFF_OPTIONS, ...rangeArgs, "--"]);
+    names = git(gitBin, repo, ["diff", "--name-only", "-z", "--no-renames", "--no-relative", ...rangeArgs, "--"]).split("\0").filter(Boolean);
   } catch {
     return fail("git could not produce the diff for that range");
   }

@@ -1,7 +1,7 @@
 # Dispatch Test Scenarios
 
-Concrete scenarios behind the `review-adapter-dispatch` contract. The 32 tests in
-`tests/rva-dispatch.test.mjs` cover these 23 scenarios against fake vendor binaries; no real vendor is
+Concrete scenarios behind the `review-adapter-dispatch` contract. The 34 tests in
+`tests/rva-dispatch.test.mjs` cover these 25 scenarios against fake vendor binaries; no real vendor is
 called.
 
 1. Vendor not in the local allow-list, or a pi `--model` that is neither the configured model nor listed
@@ -58,6 +58,11 @@ called.
     on Linux the file is still read from the checked directory; on the by-path fallback the swap is
     refused.
 22. A vendor whose `--version` hangs, with `--timeout-ms` below the probe's own 15 s limit → `timeout`
-    with "nothing was sent" within that budget; the vendor never gets the diff.
+    with "nothing was sent" within that budget, for pi, devin and agy alike (not
+    `unsupported_cli_version`); the vendor never gets the diff.
 23. The dispatcher on Windows (simulated by forcing `process.platform`), real run and dry run →
     `unsupported_platform`; no vendor is spawned.
+24. A file named `git` in the reviewed checkout, reachable through a relative `PATH` entry (`.`) or an
+    absolute `PATH` entry inside the checkout, is never run by the dispatcher or `rva-prepare.mjs`,
+    including with `--cwd` a subdirectory (the dispatcher refuses it with `usage` before running git).
+25. A vendor's `PATH` holds no entry inside the reviewed checkout.

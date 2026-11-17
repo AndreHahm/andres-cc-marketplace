@@ -5,7 +5,7 @@ uses the same shape with category `usage` and exit 1, and nothing has been sent.
 SIGHUP during a run prints `dispatcher_error` and exits 130, 143 or 129.
 
 `detail` is written by the dispatcher, with one exception: for `non_zero_exit` it ends with the last 500
-characters of the vendor's stderr, redacted with codex-kit's `redactSecrets` before it is shortened (a
+characters of the vendor's captured stderr (the first 16 MiB; past that, not the real end of the output), redacted with codex-kit's `redactSecrets` before it is shortened (a
 vendor killed by a signal reads "was killed by SIGKILL" rather than an exit code).
 That text comes from the vendor, may echo the model, and is untrusted like every envelope field.
 
