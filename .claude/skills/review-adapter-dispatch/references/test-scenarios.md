@@ -1,7 +1,7 @@
 # Dispatch Test Scenarios
 
-Concrete scenarios behind the `review-adapter-dispatch` contract. The 34 tests in
-`tests/rva-dispatch.test.mjs` cover these 25 scenarios against fake vendor binaries; no real vendor is
+Concrete scenarios behind the `review-adapter-dispatch` contract. The 35 tests in
+`tests/rva-dispatch.test.mjs` cover these 26 scenarios against fake vendor binaries; no real vendor is
 called.
 
 1. Vendor not in the local allow-list, or a pi `--model` that is neither the configured model nor listed
@@ -66,3 +66,5 @@ called.
     absolute `PATH` entry inside the checkout, is never run by the dispatcher or `rva-prepare.mjs`,
     including with `--cwd` a subdirectory (the dispatcher refuses it with `usage` before running git).
 25. A vendor's `PATH` holds no entry inside the reviewed checkout.
+26. A vendor CLI installed as a link to a shim that picks the tool by the name it was called as (Volta
+    style) is run under its own name and returns an envelope.
