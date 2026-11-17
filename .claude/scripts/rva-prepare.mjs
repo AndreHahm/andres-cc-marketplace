@@ -167,6 +167,9 @@ async function prepare(cwd, range) {
 }
 
 async function main(argv) {
+  // The dispatcher refuses Windows, and cleanup's ownership check needs a POSIX uid: refuse here too,
+  // before anything is created, so no prepared diff is left behind in temp storage.
+  if (process.platform === "win32") return fail("rva-review-diff runs on Linux and macOS only; nothing was prepared");
   if (argv.length === 2 && argv[0] === "--cleanup") return cleanup(argv[1]);
   if (argv[0] !== "--cwd" || argv[1] === undefined) return fail("usage: --cwd <dir> [--range <git-range>] | --cleanup <dir>");
   if (argv.length === 2) return prepare(argv[1], undefined);

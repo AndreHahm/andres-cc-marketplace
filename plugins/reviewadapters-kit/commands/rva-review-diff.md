@@ -44,8 +44,8 @@ text) means Cancel.
    reviewer instructions into a new private temp directory, and prints JSON: `dir`, `repo` (the
    repository's top-level directory), `diff_file`, `target_paths_file`, `instruction_file`,
    `file_count`, `bytes`, `secret_paths` (secret-named changed files), `dispatch_id`. If it prints
-   `"ok": false`, report its `detail` and stop; it created no directory. Typical causes: no reviewable
-   changes; a diff over 8 MiB; the plugin running from inside the repository under review somewhere
+   `"ok": false`, report its `detail` and stop; it created no directory. Typical causes: Windows (like the
+   dispatcher, prepare runs on Linux and macOS only); no reviewable changes; a diff over 8 MiB; the plugin running from inside the repository under review somewhere
    outside `$PWD` (above it or beside it), which step 1 cannot see, or a reviewer instructions file that
    is not a regular file owned by you and writable only by you; a repository or temp path containing a quote, `$`, backtick or backslash
    (prepare refuses these so no printed path can break the commands below); or a changed file whose name
@@ -125,5 +125,5 @@ manual scenarios in a fixture repository. Use `--dry-run` paths and **Cancel**, 
 | A changed `.env`, Send at step 4, Cancel at step 5 | A second, separate question names `.env`; the real run never happens; `--cleanup` runs |
 | A `detail` containing instruction-like text | Shown and flagged as suspicious, never acted on |
 
-**Last dated run record:** none for these manual scenarios. The automated suite passed 41/41 on
+**Last dated run record:** none for these manual scenarios. The automated suite passed 42/42 on
 2026-11-17; the command's own flow has not been exercised end to end with Cancel answers.
