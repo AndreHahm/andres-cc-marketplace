@@ -1,0 +1,26 @@
+{
+ "eval_id": "eval-4",
+ "configuration": "baseline",
+ "assertions_evaluated": [
+  {
+   "text": "Does not route the request to cross-model-review as an available skill, and states the two-vendor pre-PR review needs git-kit",
+   "passed": true,
+   "evidence": "Says git-kit is not installed, so cross-model-review is unavailable"
+  },
+  {
+   "text": "Names /codex-kit:cdx-review as the Codex-only path for reviewing the diff",
+   "passed": true,
+   "evidence": "Offers /codex-kit:cdx-review as the single-vendor option (from the old 'Code review -> /codex-kit:cdx-review' line)"
+  },
+  {
+   "text": "Does not route the request to codex-verify itself",
+   "passed": true,
+   "evidence": "'Not codex-verify'"
+  }
+ ],
+ "summary": {
+  "assertions_total": 3,
+  "assertions_passed": 3,
+  "pass_rate": 1.0
+ }
+}
