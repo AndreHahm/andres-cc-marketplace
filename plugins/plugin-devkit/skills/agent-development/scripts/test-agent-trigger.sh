@@ -474,13 +474,16 @@ def _parse_classifier_reply(text: str) -> bool:
     The reply is model output: it can be empty, prose with no JSON, or JSON without a boolean
     verdict. None of these is a "not triggered" answer, so each is reported as an error.
     """
-    match = re.search(r"\{.*\}", text, re.DOTALL)
-    try:
-        payload = json.loads(match.group(0) if match else text)
-    except json.JSONDecodeError:
-        payload = None
-    if isinstance(payload, dict) and isinstance(payload.get("triggered"), bool):
-        return payload["triggered"]
+    # Try a JSON value at each "{" in turn: a greedy {.*} match would also swallow any other
+    # braces in surrounding prose and fail to parse a verdict that is actually there.
+    decoder = json.JSONDecoder()
+    for start in (m.start() for m in re.finditer(r"\{", text)):
+        try:
+            payload, _ = decoder.raw_decode(text, start)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(payload, dict) and isinstance(payload.get("triggered"), bool):
+            return payload["triggered"]
     raw = " ".join(text.split())
     if not raw:
         raise ValueError("classifier reply was empty")

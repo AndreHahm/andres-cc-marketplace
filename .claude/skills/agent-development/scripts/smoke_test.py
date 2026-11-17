@@ -196,6 +196,10 @@ def check_trigger_script_classifier_reply_parsing():
         "bare JSON verdict is read": parse('{"triggered": true, "reason": "x"}') is True,
         "JSON inside prose is read": parse('Sure:\n{"triggered": false, "reason": "y"}\nDone.')
         is False,
+        "other braces in the prose do not hide the verdict": parse(
+            'The {agent} fits: {"triggered": true, "reason": "a {nested} word"} {end}'
+        )
+        is True,
         "empty reply is an error, not a crash": error_of("") == "classifier reply was empty",
         "prose reply quotes the raw text": "raw reply: 'The agent should trigger.'"
         in (error_of("The agent should\ntrigger.") or ""),
