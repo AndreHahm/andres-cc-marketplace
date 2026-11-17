@@ -58,7 +58,7 @@ on the working diff.
   exclude this skill: reviewing the diff before flipping it to ready is its purpose (see "When to Use").
 - **A Codex-only second opinion** (codex-kit, when installed): on Claude's own design, analysis
   or recommendation → `codex-peer-review`; on a plan or document → `codex-verify`. This skill is the two-vendor diff gate.
-  Tie-break: a diff, branch or PR named with no Codex-only ask comes here; asking Codex about a design,
+  Tie-break: a working diff or local branch with no Codex-only ask comes here; asking Codex about a design,
   analysis or document goes to the codex-kit skill, even with code changes attached.
 - **Recovering a stuck "Await Codex review" GitHub check** on an already-open PR — that's
   `codex-review-recovery`, a different domain (a GitHub-side CI signal gap) despite the
