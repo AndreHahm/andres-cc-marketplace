@@ -368,6 +368,7 @@ def check_run(run) -> None:
         "QLTY_SMOKE_TOKEN": "s3cr3t",
         "PYTHON_SMOKE_TOKEN": "s3cr3t",
         "PYTHON_SMOKE_INDEX_URL": "https://u:pw@example.invalid/simple",
+        "PYTHONPATH": "/elsewhere",
         "LC_SMOKE": "x",
         "LC_ALL": "C.UTF-8",
         "PYTHONHASHSEED": "0",
@@ -381,6 +382,7 @@ def check_run(run) -> None:
         check("secret-like PYTHON* name not passed to tests", "PYTHON_SMOKE_TOKEN" not in child)
         check("unlisted PYTHON* name not passed to tests", "PYTHON_SMOKE_INDEX_URL" not in child)
         check("unlisted LC_* name not passed to tests", "LC_SMOKE" not in child)
+        check("PYTHONPATH not passed to tests", "PYTHONPATH" not in child)
         check(
             "HOME, a listed LC_* and a listed PYTHON* name passed to tests",
             child.get("HOME") == "/h"
@@ -427,7 +429,8 @@ def check_skill() -> None:
     )
     check(
         "a module is added to the weekly list only after a finished run",
-        "## Step 5: Add to the weekly run" in text and "runner status\nwas `0`" in text,
+        "## Step 5: Add to the weekly run" in text
+        and "runner status was `0`" in " ".join(text.split()),
     )
 
 

@@ -68,14 +68,16 @@ KEY_NAME = re.compile(r"[^\sǁ]+")
 # The environment pytest and mutmut get (python_env): what an interpreter, a locale and a
 # temporary directory need, and nothing that usually holds a credential. Exact names only: a
 # prefix such as PYTHON or LC_ would also pass a third-party variable of any content (a package
-# index URL with a password in it, an LC_* value forwarded by ssh).
+# index URL with a password in it, an LC_* value forwarded by ssh). PYTHONPATH and PYTHONWARNINGS
+# stay out: both make the interpreter import modules named outside the run tree, and a PYTHONPATH
+# pointing at the original checkout could let the tests import its unmutated code.
 CHILD_ENV_NAMES = frozenset(
     {
         "HOME", "USER", "LOGNAME", "SHELL", "TERM", "LANG", "LANGUAGE", "TZ", "NO_COLOR",
         "TMPDIR", "TEMP", "TMP", "VIRTUAL_ENV", "SYSTEMROOT", "COMSPEC", "PATHEXT",
         "LC_ALL", "LC_CTYPE", "LC_COLLATE", "LC_MESSAGES", "LC_MONETARY", "LC_NUMERIC", "LC_TIME",
-        "PYTHONPATH", "PYTHONHASHSEED", "PYTHONDONTWRITEBYTECODE", "PYTHONUTF8",
-        "PYTHONIOENCODING", "PYTHONWARNINGS", "PYTHONUNBUFFERED",
+        "PYTHONHASHSEED", "PYTHONDONTWRITEBYTECODE", "PYTHONUTF8", "PYTHONIOENCODING",
+        "PYTHONUNBUFFERED",
     }
 )  # fmt: skip
 
