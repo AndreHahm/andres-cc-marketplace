@@ -769,13 +769,44 @@ def test_node_tests_job_is_wired_into_publish():
     assert "git ls-files -z -- ':(glob)plugins/*/tests/*.test.mjs'" in run
     assert 'node --test -- "${files[@]}"' in run
     assert '"${#files[@]}" -eq 0' in run
-    # a glob or extglob character in a name is refused, not expanded
-    assert r"*[][*?{}!\(\)\|]*)" in run
     assert "node-tests" in jobs["publish"]["needs"]
     (decide,) = [
         s for s in jobs["publish"]["steps"] if s.get("name") == "Determine final policy result"
     ]
     assert decide["env"]["NODE_TESTS_RESULT"] == "${{ needs.node-tests.result }}"
+
+
+@pytest.mark.parametrize(
+    "name, refused",
+    [
+        ("plugins/p/tests/ok-1_a.b.test.mjs", False),
+        ("plugins/p/tests/[b].test.mjs", True),
+        ("plugins/p/tests/b*.test.mjs", True),
+        ("plugins/p/tests/{b}.test.mjs", True),
+        ("plugins/p/tests/b!.test.mjs", True),
+        ("plugins/p/tests/@(b).test.mjs", True),
+        ("plugins/p/tests/x|y.test.mjs", True),
+        ("plugins/p/tests/bad\\case.test.mjs", True),
+    ],
+)
+def test_node_tests_guard_refuses_pattern_names(name, refused, tmp_path):
+    """#758: node --test reads each file argument as a glob pattern, so the job's
+    own guard loop must refuse a name it would expand, rewrite or skip."""
+    jobs = yaml.safe_load(_WORKFLOW.read_text(encoding="utf-8"))["jobs"]
+    (run,) = [
+        s["run"]
+        for s in jobs["node-tests"]["steps"]
+        if s.get("name") == "Run node --test on every plugin test file"
+    ]
+    loop = run[run.index('for f in "${files[@]}"') : run.index("printf 'Running")]
+    script = tmp_path / "guard.sh"
+    # The name goes through the environment: Git Bash on Windows globs argv.
+    script.write_text('files=("$GUARD_NAME")\n' + loop, encoding="utf-8", newline="\n")
+    env = {**os.environ, "GUARD_NAME": name}
+    result = subprocess.run(["bash", "-e", str(script)], env=env, capture_output=True, text=True)
+    assert (result.returncode != 0) is refused, result.stdout + result.stderr
+    if refused:
+        assert "glob character" in result.stdout
 
 
 def test_codex_review_skip_is_wired_fail_closed():
