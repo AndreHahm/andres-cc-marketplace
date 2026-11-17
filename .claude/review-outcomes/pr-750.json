@@ -74,6 +74,86 @@
       "pr": 750,
       "recorded_at": "2026-11-16T10:55:28+00:00",
       "rule": "security"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-43856476383-security-credential-pii-leakage",
+      "line": 247,
+      "note": "exact-name env allowlist, PYTHON and LC_ prefixes removed (d69a43ed); smoke checks for unlisted names, e2e run unchanged, security-reviewer pass",
+      "path": "plugins/quality-kit/scripts/qlty-mutation-run.py",
+      "pr": 750,
+      "recorded_at": "2026-11-17T06:21:18+00:00",
+      "rule": "credential-pii-leakage"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-43856476383-skill-activation-completeness",
+      "line": 9,
+      "note": "Step 5 adds a measured module to the weekly list after approval of the exact entry (d69a43ed); scenarios 9-10 added and run plan-only",
+      "path": "plugins/quality-kit/skills/running-mutation-tests/SKILL.md",
+      "pr": 750,
+      "recorded_at": "2026-11-17T06:21:18+00:00",
+      "rule": "activation-completeness"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "codex-43856476383-skill-size",
+      "line": 1,
+      "note": "R13 weak warning, informational; deferred to the PR 4 list on the user's choice",
+      "path": "plugins/quality-kit/skills/running-mutation-tests/SKILL.md",
+      "pr": 750,
+      "recorded_at": "2026-11-17T06:21:25+00:00",
+      "rule": "size"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-43856476383-skill-tool-scoping",
+      "line": 12,
+      "note": "redundant AskUserQuestion grant removed (d69a43ed)",
+      "path": "plugins/quality-kit/skills/running-mutation-tests/SKILL.md",
+      "pr": 750,
+      "recorded_at": "2026-11-17T06:21:18+00:00",
+      "rule": "tool-scoping"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-43856476383-skill-validation",
+      "line": 152,
+      "note": "scenarios 1 (live) and 2-10 (plan-only) run, run record updated (d69a43ed)",
+      "path": "plugins/quality-kit/skills/running-mutation-tests/SKILL.md",
+      "pr": 750,
+      "recorded_at": "2026-11-17T06:21:25+00:00",
+      "rule": "validation"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-43856476383-subagent-delegation-signal",
+      "line": 84,
+      "note": "section already existed (line 100, false positive); moved before Inputs on the user's choice (d69a43ed); trigger battery 4/4",
+      "path": "plugins/quality-kit/agents/mutation-tester.md",
+      "pr": 750,
+      "recorded_at": "2026-11-17T06:21:18+00:00",
+      "rule": "delegation-signal"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "codex-43856476383-subagent-prompt-quality",
+      "line": 17,
+      "note": "agent prompt length over the 3,000-char ideal, under the maximum; deferred to the PR 4 list on the user's choice",
+      "path": "plugins/quality-kit/agents/mutation-tester.md",
+      "pr": 750,
+      "recorded_at": "2026-11-17T06:21:25+00:00",
+      "rule": "prompt-quality"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-43856476383-subagent-real-world-testing",
+      "line": 17,
+      "note": "live dispatch on trust_boundary via a general-purpose agent following the agent file (not registered natively): 25/22/3, repo unchanged",
+      "path": "plugins/quality-kit/agents/mutation-tester.md",
+      "pr": 750,
+      "recorded_at": "2026-11-17T06:21:25+00:00",
+      "rule": "real-world-testing"
     }
   ]
 }
