@@ -68,15 +68,15 @@ EXPENSIVE_ACTIONS: list[dict[str, Any]] = [
         # This entry uses "bounded_pattern" (flag unless it matches) instead
         # of "expensive_mode_pattern" (flag only if it matches), and is checked
         # against the command alone, not the Bash description. The flag must
-        # appear exactly once, and `\b` keeps `--max-phrases 10` from counting
+        # appear exactly once ("bounded_flag", counted with str.count so the
+        # check stays linear), and `\b` keeps `--max-phrases 10` from counting
         # as 1. It is a heuristic (see module docstring): it doesn't parse the
         # shell command, so a chained command, a shell comment or a command
         # that only mentions the script (e.g. a grep) can still fool it.
         "tool_name": "Bash",
         "target_pattern": re.compile(r"test-agent-trigger\.sh"),
-        "bounded_pattern": re.compile(
-            r"\A(?!.*--max-phrases.*--max-phrases).*--max-phrases\s+1\b", re.DOTALL
-        ),
+        "bounded_flag": "--max-phrases",
+        "bounded_pattern": re.compile(r"--max-phrases\s+1\b"),
         "label": (
             "test-agent-trigger.sh invoked without --max-phrases 1 "
             "-- full battery, not the bounded one-phrase check (R26 Deep Test gate)"
@@ -136,7 +136,10 @@ def main():
             command = command if isinstance(command, str) else ""
             if not action["target_pattern"].search(command):
                 continue
-            expensive = not action["bounded_pattern"].search(command)
+            bounded = command.count(action["bounded_flag"]) == 1 and bool(
+                action["bounded_pattern"].search(command)
+            )
+            expensive = not bounded
         else:
             if not action["target_pattern"].search(serialized):
                 continue
