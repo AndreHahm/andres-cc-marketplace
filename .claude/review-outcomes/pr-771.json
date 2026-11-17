@@ -1,0 +1,54 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "ci-run-44119850767-1",
+      "line": 48,
+      "note": "Reciprocal routing pointers, not calls; each skill now states it never dispatches the target (8f934b82).",
+      "path": "plugins/codex-kit/skills/codex-peer-review/SKILL.md",
+      "pr": 771,
+      "recorded_at": "2026-11-17T16:16:26+00:00",
+      "rule": "bidirectional-dependency"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-run-44119850767-2",
+      "line": 43,
+      "note": "Same fix as ci-run-44119850767-1: codex-peer-review and codex-verify say they stop and never dispatch the target (8f934b82).",
+      "path": "plugins/codex-kit/skills/codex-peer-review/SKILL.md",
+      "pr": 771,
+      "recorded_at": "2026-11-17T16:16:26+00:00",
+      "rule": "bidirectional-dependency"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-run-44119850767-3",
+      "line": 17,
+      "note": "Same fix: codex-verify and cross-model-review now say their pointers are never dispatched (8f934b82).",
+      "path": "plugins/codex-kit/skills/codex-verify/SKILL.md",
+      "pr": 771,
+      "recorded_at": "2026-11-17T16:16:26+00:00",
+      "rule": "bidirectional-dependency"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-run-44119850767-4",
+      "line": 61,
+      "note": "Tie-break limited to pre-PR or pre-ready diffs in cross-model-review and codex-peer-review (8f934b82).",
+      "path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+      "pr": 771,
+      "recorded_at": "2026-11-17T16:16:27+00:00",
+      "rule": "routing-scope"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "claude-delta-d4c2700a-1",
+      "line": 6,
+      "note": "Restored the no-sandboxed-profile condition for the guardrails fallback in the description (8f934b82).",
+      "path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+      "pr": 771,
+      "recorded_at": "2026-11-17T16:16:27+00:00",
+      "rule": "description-condition"
+    }
+  ]
+}
