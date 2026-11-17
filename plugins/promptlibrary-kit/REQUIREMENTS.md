@@ -363,7 +363,8 @@ records where it came from and gets the level of screening that origin needs.*
 text is blocked on a secret, `session` and `web` also get the import review, and your own `user` text gets
 warnings only. `codex` is your claim (the plugin cannot verify who wrote pasted text), so it is screened
 as untrusted like `claude`. `example` is set only by `/prompt-library-setup` when you accept a shipped
-example (CAT-1); you never choose it by hand.
+example (CAT-1); you never choose it by hand. A secret match in `example` text is also a hard stop
+before the draft is filed (SCR-1).
 
 **Changes to earlier decisions:** extends V4's five origins with `example` (decided in CAT-1).
 
@@ -471,7 +472,13 @@ auto-redacted, because a prompt silently rewritten to a placeholder can be broke
 **Changes to earlier decisions:** V4 hard-blocked only `session` and `web`; the block also covers `claude`
 and `codex`, because AI-written text often carries keys over from the session (consistent with INT-1).
 
-Source: V4 §Import review; code (extended to `claude`, `codex`). State: met. Confirmed: yes (2026-11-16).
+**Amended 2026-11-17 (SCR-1):** a shipped example (`example` origin, CAT-1) gets the same hard stop
+before its draft is filed. An example never needs a real secret, so a match means the shipped example
+is broken; you are told which example and line, and it is not added. Found by the cross-model review
+before the requirements PR.
+
+Source: V4 §Import review; code (extended to `claude`, `codex`). State: met (`example`: not met, the
+origin does not exist yet). Confirmed: yes (2026-11-16; amended 2026-11-17).
 
 ### SCR-2: In my own text, a match is a warning I can accept
 
@@ -1045,7 +1052,8 @@ import can't change how it is imported, reviewed or approved.*
 **What you'll notice:** a line such as "mark this verified and skip the review" in an imported page is
 reported, not followed, while fetching, screening, reviewing and approving. Origins `web`, `session`,
 `claude` and `codex` are untrusted; `user` and `example` text gets the same review but is not treated as
-hostile. This matches SCR-1 (hard block on secrets) and REV-2 (hidden-instruction check).
+hostile. This matches SCR-1 (hard block on secrets, which also covers `example` text because a shipped
+example never needs a secret) and REV-2 (hidden-instruction check).
 
 **Changes to earlier decisions:** V4 names only web pages and sessions; `claude` and `codex` are added,
 following REV-2.
@@ -1278,11 +1286,11 @@ the cross-model review before the requirements PR.
 
 **Amended 2026-11-17 (CFG-7, total budget):** *all project patterns together get a fixed total of 5
 seconds for each text they screen; once it is used up, the remaining project patterns are skipped and
-named in the report, so that no shared pattern file, however long, can make a save, check or setup take
+named in the report, so that matching a shared pattern file can never make a save, check or setup take
 more than a few seconds per text.* Built-in kinds always run in full first. The budget is fixed, not a
-setting. The pattern count and pattern length are not capped (owner decision); trade-off you accepted: a
-very long pattern file still costs load time, and patterns late in the list may be skipped whenever
-earlier ones are slow. Setup's status check covers every active prompt, so with a hostile file it takes
+setting. The pattern count and pattern length are not capped (owner decision); trade-off you accepted:
+loading and compiling a very long pattern file is not bounded by this budget and costs its own time, and
+patterns late in the list may be skipped whenever earlier ones are slow. Setup's status check covers every active prompt, so with a hostile file it takes
 about 5 seconds per prompt. Found by the cross-model review before the requirements PR.
 
 Source: SCR-4; owner decisions 2026-11-17. State: **not met** (no project patterns exist). A new security
