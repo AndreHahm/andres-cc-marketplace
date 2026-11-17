@@ -7,6 +7,7 @@ logic of its own to simulate beyond the two scripts it shells out to (which own
 their own correctness)."""
 
 import json
+import os
 import pathlib
 import re
 import subprocess
@@ -210,7 +211,8 @@ def check_trigger_script_runs_untrusted_agent_safely():
         "hooks:\n  PreToolUse:\n    - command: touch pwned\n"
         "mcpServers:\n  evil:\n    command: sh\n"
         "permissionMode: bypassPermissions\ntools: [Read, Bash]\ncolor: blue\n"
-        '"hooks":\n  PreToolUse: []\n\'mcpServers\': {x: 1}\n<<: *base\n{permissionMode: bypassPermissions}\n'
+        "\"hooks\":\n  PreToolUse: []\n'mcpServers': {x: 1}\n"
+        "<<: *base\n{permissionMode: bypassPermissions}\n"
         "---\n# Body\nhooks: kept\n"
     )
     stripped = ns["_strip_privileged_frontmatter"](agent)
@@ -233,6 +235,73 @@ def check_trigger_script_runs_untrusted_agent_safely():
     return True, f"all {len(cases)} untrusted-agent cases pass"
 
 
+def check_trigger_script_max_phrases():
+    # Issue #776: plugin-lifecycle-upstream's Phase 7 relies on `--max-phrases 1` to test one
+    # auto-derived phrase instead of the whole list. Runs offline: every PATH directory holding a
+    # `claude` binary is dropped, so the script takes its classifier path, which is stubbed.
+    script = SKILL_DIR / "scripts" / "test-agent-trigger.sh"
+    if not script.is_file():
+        return True, "scripts/test-agent-trigger.sh not found (skip)"
+    agent = (
+        "---\nname: cap-agent\ndescription: Test agent\n---\n\n## When to invoke\n\n"
+        "- first phrase\n- second phrase\n- third phrase\n"
+    )
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_path = pathlib.Path(tmp)
+        agent_path = tmp_path / "cap-agent.md"
+        agent_path.write_text(agent, encoding="utf-8")
+        bin_dir = tmp_path / "bin"
+        bin_dir.mkdir()
+        (bin_dir / "python3").symlink_to(sys.executable)
+        stub = tmp_path / "stub_classifier.py"
+        stub.write_text("print('{\"triggered\": true}')\n", encoding="utf-8")
+        kept = [
+            d
+            for d in os.environ.get("PATH", "").split(os.pathsep)
+            if d and not (pathlib.Path(d) / "claude").exists()
+        ]
+        env = {
+            **os.environ,
+            "PATH": os.pathsep.join([str(bin_dir), *kept]),
+            "AGENT_TRIGGER_LLM_COMMAND": f"{sys.executable} {stub}",
+        }
+
+        def run(*extra):
+            return subprocess.run(
+                ["bash", str(script), str(agent_path), *extra],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                env=env,
+                check=False,
+            )
+
+        capped, uncapped, zero, missing, repeated = (
+            run("--max-phrases", "1"),
+            run(),
+            run("--max-phrases", "0"),
+            run("--max-phrases"),
+            run("--max-phrases", "1", "--max-phrases", "3"),
+        )
+    cases = {
+        "--max-phrases 1 tests only the first phrase": capped.returncode == 0
+        and "Summary: 1/1 passed" in capped.stdout
+        and "first phrase" in capped.stdout
+        and "second phrase" not in capped.stdout,
+        "no cap tests every phrase": uncapped.returncode == 0
+        and "Summary: 3/3 passed" in uncapped.stdout,
+        "--max-phrases 0 is rejected": zero.returncode == 1 and "positive integer" in zero.stdout,
+        "--max-phrases with no value is rejected": missing.returncode == 1
+        and "positive integer" in missing.stdout,
+        "a repeated --max-phrases is rejected": repeated.returncode == 1
+        and "more than once" in repeated.stdout,
+    }
+    failed = [name for name, ok in cases.items() if not ok]
+    if failed:
+        return False, "failed: " + ", ".join(failed) + f" | capped: {capped.stdout[-300:]!r}"
+    return True, f"all {len(cases)} --max-phrases cases pass"
+
+
 CHECKS = [
     check_validator_accepts_list_form_tools,
     check_frontmatter,
@@ -242,6 +311,7 @@ CHECKS = [
     check_frontmatter_fields_documented,
     check_trigger_script_detection_helpers,
     check_trigger_script_runs_untrusted_agent_safely,
+    check_trigger_script_max_phrases,
 ]
 
 

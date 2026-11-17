@@ -35,6 +35,7 @@ import json
 import re
 import sys
 from pathlib import Path
+from typing import Any
 
 # Only tail this many bytes of transcript.jsonl -- a session-long transcript
 # can grow into the tens of MB, and a full read_text() on every matching
@@ -43,7 +44,7 @@ from pathlib import Path
 # the CURRENT dispatch are always recent, so a tail is sufficient.
 TRANSCRIPT_TAIL_BYTES = 2_000_000
 
-EXPENSIVE_ACTIONS = [
+EXPENSIVE_ACTIONS: list[dict[str, Any]] = [
     {
         "tool_name": "Agent",
         "target_pattern": re.compile(r"human-doc-reviewer", re.IGNORECASE),
@@ -56,22 +57,26 @@ EXPENSIVE_ACTIONS = [
         # plugin-lifecycle-downstream's exhaustive Deep Test battery both
         # dispatch it this way, not via an Agent), so there is no descriptive
         # prose in tool_input to pattern-match against -- just a shell
-        # command line. The script's own auto-derive mode (no phrases-file
-        # argument) only ever emits "+" (should-trigger) phrases; there is no
-        # code path for it to produce "-" (should-not-trigger) cases. So an
-        # explicit phrases-file 2nd positional argument is the only way to
-        # get should-not-trigger coverage or a hand-curated exhaustive list --
-        # its presence is what actually distinguishes Deep Test's full
-        # battery from the bounded single-call auto-derive check, which never
-        # passes one. This is a heuristic (see module docstring): it doesn't
-        # parse the shell command, just checks token shape after the script
-        # name and can be fooled by unusual quoting or argument order.
+        # command line. Every phrase the script tests costs one or two model
+        # calls, and both auto-derive mode and an explicit phrases file run
+        # every phrase unless capped. The bounded Phase 7 check always passes
+        # `--max-phrases 1` (issue #776), so that flag is what distinguishes
+        # it from Deep Test's full battery: any call without it is flagged.
+        # This entry uses "bounded_pattern" (flag unless it matches) instead
+        # of "expensive_mode_pattern" (flag only if it matches), and is checked
+        # against the command alone, not the Bash description. The flag must
+        # appear exactly once, and `\b` keeps `--max-phrases 10` from counting
+        # as 1. It is a heuristic (see module docstring): it doesn't parse the
+        # shell command, so a chained command, a shell comment or a command
+        # that only mentions the script (e.g. a grep) can still fool it.
         "tool_name": "Bash",
         "target_pattern": re.compile(r"test-agent-trigger\.sh"),
-        "expensive_mode_pattern": re.compile(r"test-agent-trigger\.sh\s+\S+\s+(?!--timeout\b)\S+"),
+        "bounded_pattern": re.compile(
+            r"\A(?!.*--max-phrases.*--max-phrases).*--max-phrases\s+1\b", re.DOTALL
+        ),
         "label": (
-            "test-agent-trigger.sh invoked with an explicit phrases-file argument "
-            "-- full battery, not the bounded auto-derive check (R26 Deep Test gate)"
+            "test-agent-trigger.sh invoked without --max-phrases 1 "
+            "-- full battery, not the bounded one-phrase check (R26 Deep Test gate)"
         ),
     },
     {
@@ -123,9 +128,16 @@ def main():
     for action in EXPENSIVE_ACTIONS:
         if action["tool_name"] != tool_name:
             continue
-        if action["target_pattern"].search(serialized) and action["expensive_mode_pattern"].search(  # ty: ignore[unresolved-attribute]
-            serialized
-        ):
+        if not action["target_pattern"].search(serialized):
+            continue
+        if "bounded_pattern" in action:
+            command = tool_input.get("command") if isinstance(tool_input, dict) else None
+            expensive = not action["bounded_pattern"].search(
+                command if isinstance(command, str) else ""
+            )
+        else:
+            expensive = bool(action["expensive_mode_pattern"].search(serialized))
+        if expensive:
             matched_label = action["label"]
             break
 

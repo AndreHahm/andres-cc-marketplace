@@ -5,12 +5,25 @@ set -euo pipefail
 
 TIMEOUT_SECONDS=30
 OUTPUT_FORMAT="text"
+MAX_PHRASES=0
 POSITIONAL=()
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --timeout)
       TIMEOUT_SECONDS="$2"
+      shift 2
+      ;;
+    --max-phrases)
+      if [ "$MAX_PHRASES" != "0" ]; then
+        echo "ERROR: --max-phrases given more than once"
+        exit 1
+      fi
+      MAX_PHRASES="${2:-}"
+      if ! [[ "$MAX_PHRASES" =~ ^[1-9][0-9]*$ ]]; then
+        echo "ERROR: --max-phrases needs a positive integer, got: '$MAX_PHRASES'"
+        exit 1
+      fi
       shift 2
       ;;
     --json)
@@ -29,12 +42,15 @@ while [ $# -gt 0 ]; do
 done
 
 if [ "${#POSITIONAL[@]}" -lt 1 ]; then
-  echo "Usage: $0 <agent.md> [test-phrases-file] [--timeout N] [--json|--yaml]"
+  echo "Usage: $0 <agent.md> [test-phrases-file] [--timeout N] [--max-phrases N] [--json|--yaml]"
   echo ""
   echo "Phrase file format:"
   echo "  + phrase text   -> should trigger"
   echo "  - phrase text   -> should NOT trigger"
   echo "  plain text      -> defaults to should trigger"
+  echo ""
+  echo "--max-phrases N tests only the first N phrases (each phrase costs one or"
+  echo "two model calls). Without it, every phrase runs."
   echo ""
   echo "--json/--yaml emit one machine-readable result document instead of the"
   echo "default plain-text PASS/FAIL lines -- see agent-development's own"
@@ -150,7 +166,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-python3 - "$AGENT_FILE" "$PHRASES_FILE" "$TIMEOUT_SECONDS" "$OUTPUT_FORMAT" <<'PY'
+python3 - "$AGENT_FILE" "$PHRASES_FILE" "$TIMEOUT_SECONDS" "$OUTPUT_FORMAT" "$MAX_PHRASES" <<'PY'
 from __future__ import annotations
 
 import json
@@ -491,6 +507,7 @@ agent_path = Path(sys.argv[1]).resolve()
 phrases_path = Path(sys.argv[2]).resolve()
 timeout_seconds = int(sys.argv[3])
 output_format = sys.argv[4] if len(sys.argv) > 4 else "text"
+max_phrases = int(sys.argv[5]) if len(sys.argv) > 5 else 0  # 0 = no cap
 
 parsed = parse_agent_md(agent_path)
 frontmatter = parsed["frontmatter"]
@@ -505,6 +522,8 @@ for raw_line in phrases_path.read_text(encoding="utf-8").splitlines():
     parsed_line = parse_phrase_line(raw_line)
     if parsed_line is None:
         continue
+    if max_phrases and total >= max_phrases:
+        break
     expected, phrase = parsed_line
     total += 1
 
