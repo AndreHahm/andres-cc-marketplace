@@ -794,3 +794,63 @@ test("a vendor binary inside the reviewed repository is never run", () => {
   const r = spawnSync(process.execPath, [DISPATCH, ...args], { encoding: "utf8", env: { HOME: homeWithCodexKit(), PATH: `${inside}${path.delimiter}${only}` } });
   assert.equal(JSON.parse(r.stdout).category, "cli_unavailable");
 });
+
+// A repository with one committed file changed in the working tree, for prepare runs.
+function changedRepo() {
+  const repo = tempDir("rva-test-prep-");
+  execFileSync("git", ["init", "-q", repo]);
+  fs.writeFileSync(path.join(repo, "a.txt"), "one\n");
+  git(repo, "add", "a.txt");
+  git(repo, "commit", "-q", "-m", "init");
+  fs.writeFileSync(path.join(repo, "a.txt"), "two\n");
+  return repo;
+}
+
+test("prepare and cleanup refuse a temp directory others can write to without the sticky bit (issue #765)", () => {
+  const repo = changedRepo();
+  const shared = tempDir("rva-test-tmp-");
+  fs.chmodSync(shared, 0o777);
+  const refused = runNode(PREPARE, ["--cwd", repo], { env: { TMPDIR: shared } });
+  assert.equal(refused.out.ok, false, JSON.stringify(refused.out));
+  assert.match(refused.out.detail, /no sticky bit/);
+  assert.deepEqual(fs.readdirSync(shared), [], "prepare created a directory in an unsafe temp directory");
+  fs.chmodSync(shared, 0o1777);
+  const prepared = runNode(PREPARE, ["--cwd", repo], { env: { TMPDIR: shared } }).out;
+  assert.equal(prepared.ok, true, JSON.stringify(prepared));
+  fs.chmodSync(shared, 0o777);
+  const cleanup = runNode(PREPARE, ["--cleanup", prepared.dir, prepared.token], { env: { TMPDIR: shared } });
+  assert.match(cleanup.out.detail, /no sticky bit/);
+  assert.equal(fs.existsSync(prepared.dir), true);
+  fs.chmodSync(shared, 0o1777);
+  assert.equal(runNode(PREPARE, ["--cleanup", prepared.dir, prepared.token], { env: { TMPDIR: shared } }).out.ok, true);
+});
+
+test("prepare refuses reviewer instructions under a directory others can write to, up to the plugin root (issue #765)", () => {
+  const repo = changedRepo();
+  const copy = path.join(tempDir("rva-test-plugin-"), "reviewadapters-kit");
+  fs.cpSync(PLUGIN, copy, { recursive: true });
+  fs.chmodSync(copy, 0o700);
+  fs.chmodSync(path.join(copy, "assets"), 0o700);
+  fs.chmodSync(path.join(copy, "assets", "rva-review-instructions.md"), 0o600);
+  const script = path.join(copy, "scripts", "rva-prepare.mjs");
+  const ok = runNode(script, ["--cwd", repo]).out;
+  assert.equal(ok.ok, true, JSON.stringify(ok));
+  created.push(ok.dir);
+  for (const dir of [path.join(copy, "assets"), copy]) {
+    fs.chmodSync(dir, 0o707);
+    const r = runNode(script, ["--cwd", repo]).out;
+    assert.equal(r.ok, false, JSON.stringify(r));
+    assert.match(r.detail, /a directory above it up to the plugin root, is writable by others/);
+    fs.chmodSync(dir, 0o700);
+  }
+});
+
+test("an empty --instruction-file is a usage error, like an empty diff (issue #765)", () => {
+  const f = fixture();
+  for (const body of ["", " \n\n"]) {
+    fs.writeFileSync(path.join(f.inputs, "instr.md"), body);
+    const r = dispatch(f, "pi", ["--dry-run"]);
+    assert.equal(r.code, 1, JSON.stringify(r.out));
+    assert.match(r.out.detail, /--instruction-file is empty/);
+  }
+});

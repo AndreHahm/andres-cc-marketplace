@@ -11,6 +11,8 @@ const ROOT = path.resolve(SKILL, "..", "..");
 const SCRIPTS = ["rva-codex-kit.mjs", "rva-config.mjs", "rva-dispatch.mjs", "rva-prepare.mjs", "rva-run.mjs", "rva-vendors.mjs"];
 const DISPATCH_GRANT = 'Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/rva-dispatch.mjs":*)';
 const PREPARE_GRANT = 'Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/rva-prepare.mjs":*)';
+// Step 1's plugin-root check, granted exactly (no wildcard): `pwd; pwd -P; (cd -- "<root>" && pwd -P)`.
+const STEP1_GRANTS = ['Bash(pwd)', 'Bash(pwd -P)', 'Bash(cd -- "${CLAUDE_PLUGIN_ROOT}")'];
 
 function frontmatter(text) {
   const match = /^---\n([\s\S]*?)\n---\n/.exec(text);
@@ -49,8 +51,9 @@ function main() {
 
     const command = fs.readFileSync(path.join(ROOT, "commands", "rva-review-diff.md"), "utf8");
     const grants = (field(frontmatter(command), "allowed-tools") ?? "").match(/Bash\([^)]*\)[^,]*/g) ?? [];
-    const unexpected = grants.map((grant) => grant.trim()).filter((grant) => grant !== DISPATCH_GRANT && grant !== PREPARE_GRANT);
-    if (grants.length !== 2 || unexpected.length > 0) errors.push(`rva-review-diff.md: unexpected Bash grants ${JSON.stringify(unexpected)}`);
+    const expected = [DISPATCH_GRANT, PREPARE_GRANT, ...STEP1_GRANTS];
+    const unexpected = grants.map((grant) => grant.trim()).filter((grant) => !expected.includes(grant));
+    if (grants.length !== expected.length || unexpected.length > 0) errors.push(`rva-review-diff.md: unexpected Bash grants ${JSON.stringify(unexpected)}`);
 
     const run = spawnSync(process.execPath, [path.join(ROOT, "scripts", "rva-dispatch.mjs")], { encoding: "utf8", timeout: 30000 });
     let output;
