@@ -220,8 +220,13 @@ def check_rules(body: str) -> None:
     check("decision rights have rows for rungs 3, 4 and 5", all((rung3, rung4, rung5)))
     check(
         "decision rights name the other remote writes",
-        all(k in row("`--unignore-issue`") for k in ("--reanalyze", "--reanalyze-and-wait"))
+        "AskUserQuestion" in row("`--unignore-issue`")
+        and all(k in row("`--reanalyze`") for k in ("--reanalyze-and-wait", "AskUserQuestion"))
         and "`-F`" in row("Bulk flags"),
+    )
+    check(
+        "only --unignore-issue needs the issue-id match, not reanalysis",
+        "issue_key" in row("`--unignore-issue`") and "issue_key" not in row("`--reanalyze`"),
     )
     check(
         "rung 3 is a per-command approval for a remote write",
