@@ -768,12 +768,74 @@ Source: code. State: met. Confirmed: yes (2026-11-16).
 
 ## 7. Retrieval (RET)
 
-| ID | Requirement | Source | State | Confirm |
-|---|---|---|---|---|
-| RET-1 | The user can find, list and show a stored prompt and its version history. | V4 §Scope | met | ? |
-| RET-2 | Retrieval is read-only and never runs a prompt. | V4 §Components | met | ? |
-| RET-3 | Retrieval starts only on a clear request to find or show a stored prompt. | V4 §Components | met | ? |
-| RET-4 | Invisible or look-alike characters in a prompt are listed by position whenever its text is shown. | code (`hidden_characters`) | met | ? |
+### RET-1: Find, list and show a stored prompt and its history
+
+*As a developer, I can list my active prompts, search them by name, area, description or a phrase from
+their text, show one in full, and see its earlier versions, so that I can find and check a stored prompt
+without opening catalog files.*
+
+**What you'll notice:** a list shows only active prompts unless you ask for drafts, deactivated or older
+versions. A search also finds a prompt by a phrase inside its text, and each result says whether it matched
+a label or the text. Showing a prompt gives its details and its full text as quoted data in a code block;
+Claude never acts on it. A history lists every version, oldest first, and prints the text only of the one
+you pick. When the catalog fails its check, nothing is listed and you are told why (CAT-5).
+
+**Changes to earlier decisions:** today search covers only slug, area, name and short description;
+searching the prompt text is new.
+
+Source: V4 §Scope; owner decision 2026-11-17. State: **partial** (list, show, history: met; text search:
+not met). Confirmed: yes (2026-11-17).
+
+### RET-2: Looking up a prompt never changes or runs anything
+
+*As a developer, finding or showing a stored prompt never runs it and never changes the catalog, and any
+instruction in its text is shown to me rather than followed, so that looking at a prompt is always safe.*
+
+**What you'll notice:** a lookup only displays. It never runs a prompt, edits the catalog, or starts
+`/prompt-execution` or `/prompt-library` for you; to run what you found you type
+`/prompt-execution <slug>` (PUR-3, INT-6). Only the catalog check and show commands run without asking;
+anything else during a lookup would raise the normal permission prompt. Instruction-like text in a prompt
+is reported to you, not followed.
+
+Source: V4 §Components. State: met. Confirmed: yes (2026-11-17).
+
+### RET-3: Lookups on request, and a hint when a stored prompt fits
+
+*As a developer, a lookup starts when I ask in plain words for a stored prompt or type
+`/prompt-retrieval`, and when something I ask for fits a stored prompt, Claude mentions that prompt and its
+`/prompt-execution` command once per session, so that I reuse my library without having to remember
+every prompt in it.*
+
+**What you'll notice:** "find the saved prompt about commit messages" starts a lookup without a command.
+When you ask for work a stored prompt covers ("write me a changelog entry"), Claude says once that
+`docs__changelog-entry` exists and that `/prompt-execution docs__changelog-entry` runs it, and then does
+what you asked. A hint only names the prompt and the command: it never shows the text or runs anything
+(RET-2, PUR-3), and the same prompt is not mentioned again in that session. To find fitting prompts, Claude
+reads the catalog's labels during other work.
+
+**Changes to earlier decisions:** V4 starts retrieval only on a clear request; the hint is new. It reads
+the catalog during unrelated work, which V4 did not do.
+
+Source: V4 §Components; owner decision 2026-11-17. State: **partial** (lookup on request: met; hints: not
+met). Confirmed: yes (2026-11-17).
+
+### RET-4: Hidden characters and mixed-alphabet words are pointed out whenever text is shown
+
+*As a developer, whenever a prompt's text is shown to me (lookup, run preview, approval), every invisible
+character and every word that mixes alphabets is listed with its position, so that the text I approve is
+the text that runs.*
+
+**What you'll notice:** above the code block you get one line per finding, for example "line 1, column 21,
+U+200B ZERO WIDTH SPACE (invisible in the text below)", or a word such as "pаssword" whose "а" is Cyrillic.
+Invisible means zero-width, direction, tag, control and private-use characters, blank-looking letters and
+spaces that are not a normal space. The list stops at 50 with "50 or more". Findings are reported, never
+blocked: an emoji joiner or a variation selector is legitimate, and you decide.
+
+**Changes to earlier decisions:** the draft said "invisible or look-alike", but the code reports only
+invisible characters; flagging words that mix alphabets is new.
+
+Source: code (`hidden_characters` in the validator); owner decision 2026-11-17. State: **partial**
+(invisible characters: met; mixed-alphabet words: not met). Confirmed: yes (2026-11-17).
 
 ## 8. Execution (EXE)
 
