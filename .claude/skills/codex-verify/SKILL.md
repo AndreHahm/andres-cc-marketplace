@@ -58,8 +58,8 @@ For code review use `/codex-kit:cdx-review`. For research, use the `codex-resear
   uncertain step it is about to execute → decision-kit's `consulting-decision-model`, when decision-kit
   is installed. That check runs when Claude executes the step, separately from any verification the
   user asked for here. Without decision-kit, no installed skill makes it, and this skill still does not.
-- Code review → `/codex-kit:cdx-review`, or git-kit's `cross-model-review` (when git-kit is installed)
-  for a two-vendor review of the working diff before a PR. This skill verifies a document, not a diff.
+- Code review → `/codex-kit:cdx-review` (the user runs it; Claude cannot invoke it), or git-kit's
+  `cross-model-review` (when installed) for a two-vendor diff review before a PR. This verifies a document, not a diff.
 
 ## Execution Contract
 
@@ -415,7 +415,7 @@ For the full shared gotchas list, read
 - Open-ended investigation or research on a topic/document → `codex-research`
 - A full plan-validate-implement-review workflow that continues into code changes → `codex-plan-loop`
 - Locating/finding a session ID rather than resuming one → `codex-session-lookup`
-- "cross-model review this diff before I open the PR" → git-kit's `cross-model-review`, when git-kit is installed (without it, `/codex-kit:cdx-review`)
+- "cross-model review this diff before I open the PR" → git-kit's `cross-model-review`, when git-kit is installed (without it, the user can run `/codex-kit:cdx-review`)
 - Claude checking, unasked, one critical or uncertain step of a plan it is about to execute → decision-kit's `consulting-decision-model`, when decision-kit is installed (without it, no installed skill makes that check). "verify step 3 of plan.md", asked by the user, stays here; the execution-time check still runs separately
 
 **Concrete scenarios to check:**
@@ -426,7 +426,7 @@ For the full shared gotchas list, read
 5. A document containing a literal `</document>` string → the `sed` step neutralizes it to `(/document)` before appending; the document still gets sent (never refused/exited), and its line count is unchanged.
 
 **Current test coverage:**
-- `evals/codex-verify/evals.json` — 4 defined scenarios: eval-1 (blind-payload pattern, PASS/FAIL verdict with P1/P2 split), eval-2 (routing: a user-requested plan step stays here, a working diff goes to `cross-model-review`), eval-3 (an unasked execution-time step check goes to `consulting-decision-model` only when decision-kit is installed). eval-1 structurally graded 2026-08-12 (PASS — the blind-payload pattern, and the PASS/FAIL verdict with P1 blocking / P2 non-blocking split, both match the eval's `expected_output`); not a live empirical run. **Routing run, 2026-11-17:** `evals/codex-verify/workspace/iteration-2/`, evals 2-3 only, baseline = this text on `main` before the change: with_skill 6/6, baseline 6/6 (non-discriminating; the `main` body already carried the condition, so they guard against regression rather than measure an effect). Iteration 3 (same date) re-ran eval-2 `with_skill` only after the diff-vs-position criterion was reworded: 3/3. **Iteration 4 (2026-11-17)**, evals 2 and 4 after the git-kit-installed condition was added (eval-4: only codex-kit installed, a working-diff review request), baseline = the text at commit 2ba4964f, timing from harness usage: eval-2 3/3 vs 3/3, eval-4 3/3 vs 3/3 (non-discriminating: the earlier text already routed code review to `/codex-kit:cdx-review`).
+- `evals/codex-verify/evals.json` — 4 defined scenarios: eval-1 (blind-payload pattern, PASS/FAIL verdict with P1/P2 split), eval-2 (routing: a user-requested plan step stays here, a working diff goes to `cross-model-review`), eval-3 (an unasked execution-time step check goes to `consulting-decision-model` only when decision-kit is installed), eval-4 (a working-diff review with only codex-kit installed: the user can run `/codex-kit:cdx-review`). eval-1 structurally graded 2026-08-12 (PASS — the blind-payload pattern, and the PASS/FAIL verdict with P1 blocking / P2 non-blocking split, both match the eval's `expected_output`); not a live empirical run. **Routing run, 2026-11-17:** `evals/codex-verify/workspace/iteration-2/`, evals 2-3 only, baseline = this text on `main` before the change: with_skill 6/6, baseline 6/6 (non-discriminating; the `main` body already carried the condition, so they guard against regression rather than measure an effect). Iteration 3 (same date) re-ran eval-2 `with_skill` only after the diff-vs-position criterion was reworded: 3/3. **Iteration 4 (2026-11-17)**, evals 2 and 4 after the git-kit-installed condition was added (eval-4: only codex-kit installed, a working-diff review request), baseline = the text at commit 2ba4964f, timing from harness usage: eval-2 3/3 vs 3/3, eval-4 3/3 vs 3/3 (non-discriminating: the earlier text already routed code review to `/codex-kit:cdx-review`).
 - `scripts/smoke-tests/codex-verify-prompt-assembly.mjs` — mechanically verifies the payload-assembly heredoc (see `scripts/smoke-tests/cdx-README.md` for the full check list); does not exercise a real Codex call.
 
 **Quality gates:**
