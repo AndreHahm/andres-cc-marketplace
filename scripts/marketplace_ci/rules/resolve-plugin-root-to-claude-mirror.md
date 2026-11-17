@@ -10,7 +10,7 @@ empty or unset (skills load from the byte-identical `.claude/` mirror there, not
 
 An empty `CLAUDE_PLUGIN_ROOT` makes a documented `"${CLAUDE_PLUGIN_ROOT}/scripts/x.sh"` expand to `/scripts/x.sh`,
 which fails with exit 127. You MUST substitute the mirror root, `.claude/`, under the repo or worktree root (the
-session's primary working directory):
+session's primary working directory), except for a component whose own text forbids it (see below):
 
 - `${CLAUDE_PLUGIN_ROOT}/<dir>/...` → `"$PWD/.claude/<dir>/..."` for a mirrored component dir: `skills`, `agents`,
   `commands`, `hooks`, `rules`, `references` or `assets` (when the plugin has it).
@@ -22,6 +22,13 @@ session's primary working directory):
 Substitute the path only while executing a step of an already-dispatched skill, slash command, agent or rule.
 Never run a marker-writing helper such as `git-write-marker.sh` on its own to satisfy a guard outside the skill
 that owns it.
+
+Never substitute for a component whose own text explicitly forbids substituting a path inside the checkout; follow
+that component's own stop instead, and report it. As of 2026-11-17 the only one is reviewadapters-kit's
+`rva-review-diff` command (its step 1): it sends the diff and its reviewer instructions to a third party, and the
+mirror is part of the checkout under review, so the substituted scripts could be the reviewed branch's own code.
+The component's text is itself loaded from the mirror in that case, so a branch that deletes the prohibition also
+defeats this exception; the command's step 1 and this paragraph are guidance, not a boundary against that branch.
 
 Confirm the mirrored file exists first. Stop and report in either of two cases: the file is missing, or the
 substituted command is still denied. Never fall back to a different command or endpoint.
@@ -53,6 +60,11 @@ Rewriting the variable into the mirrored text was rejected: it would break the m
 `Marketplace mirror/export parity` job in `.github/workflows/marketplace-ci.yml` and `plugin-rulebook`'s R19
 in-development-mirror exception both depend on.
 
+2026-11-17: the exception for components that forbid substitution came from PR #759's review. A CI security
+reviewer rated Critical that `rva-review-diff` could send reviewer instructions taken from the checkout under
+review; a check inside its own script cannot help, because the substituted script is that checkout's code too.
+
 ## Enforcement
 
-Policy gate, no backing hook: the substitution is prose guidance for the session, not a check on the command.
+Policy gate, no backing hook: the substitution, and the exception for a component that forbids it, are prose
+guidance for the session, not a check on the command.
