@@ -88,7 +88,7 @@ already approved runs again without asking, until it expires.*
 | Setting | Maximum approval lifetime in days: only `30`, `60` or `90`; default `30`. Any other value is rejected, the default is used, and the fallback is reported. |
 | Storage | Both: the default in the plugin's tracked `promptlibrary-kit.settings.json`; a per-project override in the untracked `.claude/promptlibrary-kit.local.json`. A tracked copy may only shorten the lifetime, never lengthen it (same trust-boundary pattern as `git-kit`). |
 | Format | JSON, the same files as `catalog_root`. |
-| Approval store | An untracked project file (for example `.claude/promptlibrary-kit.approvals.local.json`): one entry per prompt with `internal_id`, text hash, executor (`claude`) and approval date. Per project and per machine, never committed; ignored entirely, and reported, if git tracks it. |
+| Approval store | An untracked project file (for example `.claude/promptlibrary-kit.approvals.local.json`): one entry per prompt with `internal_id`, the approval fingerprint (text, attachments and origin, CAT-2, SEC-4), executor (`claude`), approval date and an expiry date fixed when approved (a later lifetime change never extends it). Per project and per machine, never committed; ignored entirely, and reported, if git tracks it. |
 | Opt-in | Per approval: nothing is remembered unless you pick *Run and remember*. |
 
 **Changes to earlier decisions:** this replaces V4 Closed Item 2 and V4 §Execution 4 ("an approval of an
@@ -302,7 +302,8 @@ anything. If the catalog still ends up inconsistent:
   guide. The one repair it offers itself, after asking, is removing a leftover draft file from an
   interrupted save.
 - **One prompt changed since approval:** only that prompt is blocked; other prompts can still be added
-  and changed. The affected prompt can only be restored from git, never revised from its unapproved text
+  and changed. The affected prompt can only be restored from git or retired (see the amendment below), never
+revised from its unapproved text
   (that would turn an outside edit into an approved new version).
 - Nothing is ever repaired silently.
 
@@ -707,7 +708,8 @@ reviewed under today's rules, and I can always return to wording that worked.*
 or review. A revise creates a new draft version; when it is finalized, the old version becomes historical,
 and if the old one was inactive you choose whether the new one starts active or inactive. A historical
 version never runs again: to go back to v2's wording, you revise starting from v2's text, which becomes a
-new version (for example v4) after review and approval.
+new version (for example v4) after review and approval. A prompt blocked as changed since its approval can
+also be retired (CAT-6 amendment): a terminal state, never run again, kept in the history.
 
 Source: V4 §Lifecycle; code (revise from a chosen earlier version). State: met. Confirmed: yes
 (2026-11-16).
@@ -800,8 +802,8 @@ Source: code. State: met. Confirmed: yes (2026-11-16).
 their text, show one in full, and see its earlier versions, so that I can find and check a stored prompt
 without opening catalog files.*
 
-**What you'll notice:** a list shows only active prompts unless you ask for drafts, deactivated or older
-versions. A search also finds a prompt by a phrase inside its text, and each result says whether it matched
+**What you'll notice:** a list shows only active prompts unless you ask for drafts, deactivated, retired
+(CAT-6) or older versions. A search also finds a prompt by a phrase inside its text, and each result says whether it matched
 a label or the text. Showing a prompt gives its details and its full text as quoted data in a code block;
 Claude never acts on it. A history lists every version, oldest first, and prints the text only of the one
 you pick. When the catalog fails its check, nothing is listed and you are told why (CAT-5).
