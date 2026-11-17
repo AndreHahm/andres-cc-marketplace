@@ -76,6 +76,76 @@
       "note": "Test file drops GIT_* once at load, covering every git call; fixed in 6dd4c5f7.",
       "pr": 759,
       "recorded_at": "2026-11-17T10:53:04+00:00"
+    },
+    {
+      "disposition": "declined",
+      "finding": "coderabbit-body:759:command-to-skill",
+      "note": "Reverses the documented command-not-skill design; owner declined.",
+      "path": "plugins/reviewadapters-kit/commands/rva-review-diff.md",
+      "pr": 759,
+      "recorded_at": "2026-11-17T11:04:24+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "coderabbit-body:759:timeout-test",
+      "note": "Timeout test now checks the effective limit through agy's print-timeout; fixed in 6dd4c5f7.",
+      "path": "plugins/reviewadapters-kit/tests/rva-dispatch.test.mjs",
+      "pr": 759,
+      "recorded_at": "2026-11-17T11:04:25+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-delta:44061584371:instructions-source",
+      "note": "Command step 1 stops before any script for an in-checkout plugin root, plus an in-script check; fixed in 6dd4c5f7.",
+      "path": "plugins/reviewadapters-kit/scripts/rva-prepare.mjs",
+      "pr": 759,
+      "recorded_at": "2026-11-17T11:04:23+00:00",
+      "rule": "injection-surface"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-delta:44061584371:model-invocation",
+      "note": "Description no longer says components invoke the skill; fixed in 6dd4c5f7.",
+      "path": "plugins/reviewadapters-kit/skills/review-adapter-dispatch/SKILL.md",
+      "pr": 759,
+      "recorded_at": "2026-11-17T11:04:23+00:00",
+      "rule": "component-invocation"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-delta:44061584371:positive-trigger",
+      "note": "Testing and Validation names a concrete positive trigger; fixed in 6dd4c5f7.",
+      "path": "plugins/reviewadapters-kit/skills/review-adapter-dispatch/SKILL.md",
+      "pr": 759,
+      "recorded_at": "2026-11-17T11:04:24+00:00",
+      "rule": "plugin-rulebook-compliance"
+    },
+    {
+      "disposition": "declined",
+      "finding": "codex-delta:44061584371:r13-size",
+      "note": "Owner chose to leave the size warning: informational, under the 300-line soft limit.",
+      "path": "plugins/reviewadapters-kit/skills/review-adapter-dispatch/SKILL.md",
+      "pr": 759,
+      "recorded_at": "2026-11-17T11:04:24+00:00",
+      "rule": "R13"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-delta:44068502721:plugin-root-rule",
+      "note": "Dispatch skill gained the same plugin-root stop and the rule lists it; fixed in 97d962b5.",
+      "path": "scripts/marketplace_ci/rules/resolve-plugin-root-to-claude-mirror.md",
+      "pr": 759,
+      "recorded_at": "2026-11-17T11:04:22+00:00",
+      "rule": "security"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-delta:44068502721:prepare-windows",
+      "note": "Prepare refuses Windows before creating its temp directory; fixed in 97d962b5 with a test.",
+      "path": "plugins/reviewadapters-kit/scripts/rva-prepare.mjs",
+      "pr": 759,
+      "recorded_at": "2026-11-17T11:04:23+00:00",
+      "rule": "reliability"
     }
   ]
 }
