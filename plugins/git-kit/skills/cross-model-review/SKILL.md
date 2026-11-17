@@ -3,9 +3,9 @@ name: cross-model-review
 description: >-
   Reviews the current diff adversarially across two model vendors before a PR is created (draft or
   ready) or a draft is flipped to ready. Claude reviews natively; Codex independently
-  through codex-kit (codex-review-bridge, or codex-windows-guardrails as fallback). Both
+  through codex-kit (codex-review-bridge; codex-windows-guardrails if no sandboxed profile). Both
   cross-examine each other's findings (fresh-eyes persona, then challenger persona). Surfaces a
-  ranked, confidence-scored table and asks which findings to act on; never auto-applies fixes.
+  ranked, confidence-scored table, asks which findings to act on, and never applies fixes.
   It runs helper scripts and a Codex subprocess, with the permissions listed under Boundaries.
   Use for an adversarial review, a cross-model or second-opinion review of the working diff, a
   pre-PR gate, or high-confidence findings before opening or readying a PR. Not
@@ -57,8 +57,8 @@ on the working diff.
   calls `gh`; it only reviews the local working diff. An existing draft PR for this branch does **not**
   exclude this skill: reviewing the diff before flipping it to ready is its purpose (see "When to Use").
 - **A Codex-only second opinion** (codex-kit, when installed): on Claude's own design, analysis
-  or recommendation → `codex-peer-review`; on a plan or document → `codex-verify`. This skill is the two-vendor diff gate.
-  Tie-break: a working diff or local branch with no Codex-only ask comes here; asking Codex about a design,
+  or recommendation → `codex-peer-review`; on a plan or document → `codex-verify`. This skill is the two-vendor diff gate and never dispatches them.
+  Tie-break: a pre-PR or pre-ready working diff or local branch with no Codex-only ask comes here; asking Codex about a design,
   analysis or document goes to the codex-kit skill, even with code changes attached.
 - **Recovering a stuck "Await Codex review" GitHub check** on an already-open PR — that's
   `codex-review-recovery`, a different domain (a GitHub-side CI signal gap) despite the
