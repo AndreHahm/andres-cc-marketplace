@@ -1,0 +1,26 @@
+{
+  "eval_id": 31,
+  "skill_path": "plugins/plugin-devkit/skills/plugin-rulebook/SKILL.md",
+  "assertions": [
+    {
+      "text": "Reports the bare backticked `.github/mutation-modules.yml` as not a finding (skipped), not Critical",
+      "type": "functionality",
+      "target": "with_skill"
+    },
+    {
+      "text": "Reports the bare backticked `agents/mutation-tester.md` as not a finding (skipped), not Critical",
+      "type": "functionality",
+      "target": "with_skill"
+    },
+    {
+      "text": "Reports the markdown link to '../../../../docs/ci.md' as a Critical finding because it leaves the skill folder and lands outside plugin-root references/ or assets/",
+      "type": "functionality",
+      "target": "with_skill"
+    },
+    {
+      "text": "Reports the bare backticked `references/missing-guide.md` as ADVISORY, not Critical",
+      "type": "functionality",
+      "target": "with_skill"
+    }
+  ]
+}
