@@ -116,8 +116,8 @@ In the envelope, `provenance.provider` is the `recipient` label, `provenance.exe
    copy of the local file, or one not owned by the user or writable by others, is refused, and so is a
    pi `--model` the local file does not allow → `vendor_not_allowed`. See
    `references/trust-and-config.md`.
-3. **Secret-named paths.** If any target path or diff-header path matches codex-kit's secret-filename
-   patterns, the call is refused unless the caller passes `--secret-paths-confirmed` →
+3. **Secret-named paths.** If any target path or diff-header path has a secret-like name (codex-kit's
+   secret-filename patterns plus the dispatcher's additions listed below), the call is refused unless the caller passes `--secret-paths-confirmed` →
    `secret_paths_unconfirmed`. An interactive caller passes it only after its own extra confirmation
    naming the hit; an unattended caller only when its configuration says so. The three input files
    themselves (instructions, diff, target paths) are refused outright → `usage`, whatever the flag says,
@@ -212,7 +212,7 @@ tracked-local-file scenario is not in the eval set; it stays covered by scenario
 scripts, the shipped settings (three vendors, all off, 600 000 ms), the command's two Bash grants, and
 that the dispatcher with no flags returns a JSON usage error. It spawns no vendor.
 
-**Last dated run record:** 2026-11-17, `node --test tests/` 45/45 passing after the PR review rounds 1 to 4 fixes (marker lines, path containment at `/`, the fsmonitor and `GIT_*` hardening,
+**Last dated run record:** 2026-11-17, `node --test tests/` 46/46 passing after the PR review rounds 1 to 5 fixes (marker lines, path containment at `/`, the fsmonitor and `GIT_*` hardening,
 stdout truncation, `GIT_*` scrubbing, the in-checkout plugin refusal, the effective timeout); earlier the same day 35/35 after the Windows refusal, the version-probe and git-resolution fixes;
 2026-11-16, 30/30 after agy moved to stdin input; live check earlier the same day, one run per vendor on the planted-bug fixture (all three found it,
 agy still with argv input), plus a canary-file injection probe on pi and devin (neither read the file).
@@ -220,7 +220,7 @@ agy's stdin input was then probed live with a dummy prompt only, not re-run on t
 baseline (`evals/review-adapter-dispatch/workspace/iteration-1/benchmark.json`); `smoke_test.mjs` passing
 on the plugin copy.
 
-**Concrete scenarios:** the 45 tests in `tests/rva-dispatch.test.mjs` cover 36 scenarios against fake
+**Concrete scenarios:** the 46 tests in `tests/rva-dispatch.test.mjs` cover 37 scenarios against fake
 vendor binaries (no real vendor is called); the scenarios are listed in
 [references/test-scenarios.md](references/test-scenarios.md).
 
@@ -242,5 +242,5 @@ fixture with a planted bug.
 | `references/trust-and-config.md` | Shipped defaults, the local allow-list, the tracked-copy refusal, unattended use |
 | `references/typed-failures.md` | Failure categories this plugin adds to codex-kit's, and how to report each |
 | `references/codex-kit-locator.md` | How codex-kit's validator is found and checked before import |
-| `references/test-scenarios.md` | The 36 concrete scenarios the 45 node tests cover against fake vendors |
+| `references/test-scenarios.md` | The 37 concrete scenarios the 46 node tests cover against fake vendors |
 | `scripts/smoke_test.mjs` | Structural self-test; not part of the contract |

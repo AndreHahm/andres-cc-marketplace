@@ -16,7 +16,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadCodexKit, CodexKitUnavailable, ownedAndPrivate } from "./rva-codex-kit.mjs";
-import { loadConfig, devSiblingOptIn, MODEL_PATTERN, findBinary, gitEnv, GIT_SAFE_OPTIONS, isInside, realPath, trustedPath } from "./rva-config.mjs";
+import { loadConfig, devSiblingOptIn, MODEL_PATTERN, findBinary, gitEnv, GIT_SAFE_OPTIONS, isInside, isSecretName, realPath, trustedPath } from "./rva-config.mjs";
 import { runVendor, killActiveGroups } from "./rva-run.mjs";
 import { VENDORS, PROBED_VERSIONS } from "./rva-vendors.mjs";
 
@@ -28,9 +28,6 @@ const MAX_INPUT_FILE_BYTES = 8 * 1024 * 1024;
 // line any more (every vendor reads it from a file), so this is a backstop for a future adapter that does.
 const MAX_ARGUMENT_BYTES = 120_000;
 const VERSION_TIMEOUT_MS = 15_000;
-// Input-file names refused in addition to codex-kit's shared secret list, which misses these: SSH keys with
-// a suffix or a FIDO "_sk" (public ".pub" keys are allowed), PuTTY keys and CLI auth files.
-const LOCAL_SECRET_NAMES = [/^id_(rsa|dsa|ecdsa|ed25519)(_sk)?([._-].*)?$/i, /\.ppk$/i, /^auth\.json$/i, /^hosts\.ya?ml$/i, /^\.envrc$/i, /^\.pypirc$/i];
 // Directories under the home directory that hold keys and credentials; an input file is never read from them.
 const SECRET_DIRS = [".ssh", ".gnupg", ".aws", ".kube", ".docker", path.join(".config", "gh")];
 
@@ -248,7 +245,7 @@ async function dispatch(options, runDir) {
 
   const instructionFile = path.resolve(repoRoot, options["instruction-file"]);
   // The input files' content goes to the vendor, and the grant pre-approves any path, so a file is never
-  // read when its name matches codex-kit's secret list or LOCAL_SECRET_NAMES, or when its real path lies in
+  // read when its name is secret-like (isSecretName: codex-kit's list plus local additions), or when its real path lies in
   // one of SECRET_DIRS. No flag overrides this: a caller's own input files never need such a name or place.
   // A hard link or copy with an ordinary name elsewhere is not caught. The resolved name is checked as well
   // as the given one only as a second line next to readRegularFile's O_NOFOLLOW.
@@ -262,8 +259,7 @@ async function dispatch(options, runDir) {
     } catch {
       // A missing file is reported by the read below.
     }
-    const secretName = (name) => api.matchesSecretFilename(name, true) || (!/\.pub$/i.test(name) && LOCAL_SECRET_NAMES.some((pattern) => pattern.test(name)));
-    if (names.some(secretName)) {
+    if (names.some((name) => isSecretName(name, api))) {
       throw usage(`${flag} has a secret-like file name; an input file is never sent under such a name`);
     }
     if ([file, real].filter(Boolean).some((candidate) => secretDirs.some((dir) => isInside(candidate, dir) || isInsideReal(candidate, dir)))) {
@@ -312,7 +308,7 @@ async function dispatch(options, runDir) {
     timeoutMs = Math.min(requested, config.timeoutMs);
   }
 
-  const secretHits = [...new Set([...targetPaths, ...headers.paths])].filter((entry) => api.matchesSecretFilename(path.basename(entry), true));
+  const secretHits = [...new Set([...targetPaths, ...headers.paths])].filter((entry) => isSecretName(path.basename(entry), api));
   if (secretHits.length > 0 && !options["secret-paths-confirmed"]) {
     throw new Failure("secret_paths_unconfirmed", `${secretHits.length} changed path(s) have secret-like names; the caller must confirm before sending`);
   }

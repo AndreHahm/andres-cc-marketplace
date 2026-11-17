@@ -1,7 +1,7 @@
 # Dispatch Test Scenarios
 
-Concrete scenarios behind the `review-adapter-dispatch` contract. The 45 tests in
-`tests/rva-dispatch.test.mjs` cover these 36 scenarios against fake vendor binaries; no real vendor is
+Concrete scenarios behind the `review-adapter-dispatch` contract. The 46 tests in
+`tests/rva-dispatch.test.mjs` cover these 37 scenarios against fake vendor binaries; no real vendor is
 called.
 
 1. Vendor not in the local allow-list, or a pi `--model` that is neither the configured model nor listed
@@ -92,3 +92,6 @@ called.
     it is read, even with `--secret-paths-confirmed`; no vendor is spawned. A `.pub` key is not refused.
 36. An input file inside `~/.ssh` (or another listed key or credentials directory under the home
     directory) is refused as `usage`, whatever its name.
+37. A changed `hosts.yml`, `auth.json`, `.ppk` or `id_ed25519_sk` (the dispatcher's own additions to
+    codex-kit's list) needs `--secret-paths-confirmed` and is listed in prepare's `secret_paths`; a
+    changed `.pub` key does not.
