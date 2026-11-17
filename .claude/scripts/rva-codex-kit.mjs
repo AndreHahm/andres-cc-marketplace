@@ -5,7 +5,8 @@
 // ~/.claude/plugins/installed_plugins.json, and only when that path is absolute. A sibling codex-kit
 // next to this plugin (only when this plugin really is a marketplace checkout's
 // plugins/reviewadapters-kit) is used only when the caller passes devSibling, which the dispatcher sets from the untracked local file: in a checkout under review, the
-// sibling is the reviewed branch's own code. No environment variable can redirect the import. Before
+// sibling is the reviewed branch's own code. No variable of this plugin's own redirects the import, but
+// `~` is os.homedir(), which follows $HOME on POSIX: whoever sets HOME picks the registry read. Before
 // importing, every directory from codex-kit's root down to each imported file, and the file itself, must
 // be owned by the current user and not writable by group or others. On Windows, where these mode bits
 // mean nothing, the check is skipped and the caller records that.

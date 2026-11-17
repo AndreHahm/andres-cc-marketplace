@@ -87,6 +87,8 @@ export function runVendor({ command, args, cwd, env, timeoutMs, stdinFile }) {
         code,
         signal,
         timedOut,
+        // Output past the capture limit is dropped, so a cut-off stdout could hide the final result.
+        stdoutTruncated: outBytes > MAX_CAPTURE_BYTES,
         stdout: Buffer.concat(out).toString("utf8"),
         stderr: Buffer.concat(err).toString("utf8")
       });

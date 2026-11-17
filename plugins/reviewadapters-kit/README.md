@@ -72,7 +72,7 @@ findings.
 
 | Name | Type | Purpose |
 |---|---|---|
-| `review-adapter-dispatch` | Skill (not model-invoked) | Runs one optional reviewer model on a reviewer instruction file and a diff, with the diff inline and no tools, and returns codex-kit's validated findings envelope or a typed failure. Invoked by other components and CI scripts; never asks anything itself. |
+| `review-adapter-dispatch` | Skill (not model-invoked) | Runs one optional reviewer model on a reviewer instruction file and a diff, with the diff inline and no tools, and returns codex-kit's validated findings envelope or a typed failure. Other components and CI scripts run its dispatcher script directly; never asks anything itself. |
 | `rva-review-diff` | Command | Review a diff with one optional model (agy, pi or devin), after an egress confirmation. |
 
 Both run the shared entry point `scripts/rva-dispatch.mjs`; the command also runs `scripts/rva-prepare.mjs`
@@ -100,7 +100,7 @@ gates and output; `references/typed-failures.md` lists every failure type.
 ## Language
 
 **JavaScript** (Node.js ES modules, `.mjs`, no npm dependencies). New scripts in this plugin stay in
-JavaScript. Tests, from the repository root: `node --test plugins/reviewadapters-kit/tests/` (35 tests,
+JavaScript. Tests, from the repository root: `node --test plugins/reviewadapters-kit/tests/` (41 tests,
 verified on Node 26).
 
 When you change the shipped `reviewadapters-kit.settings.json` in this marketplace, copy it unchanged to

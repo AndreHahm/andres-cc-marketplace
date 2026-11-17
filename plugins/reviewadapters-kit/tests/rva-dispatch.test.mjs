@@ -10,11 +10,19 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+// Run from a git hook, GIT_DIR or GIT_INDEX_FILE would point every git call here (and in the scripts
+// under test) at the developer's real repository instead of a temporary fixture, so `git add -f` and
+// `git commit` could change it. Dropping every GIT_* variable once covers all of them.
+for (const name of Object.keys(process.env)) {
+  if (name.startsWith("GIT_")) delete process.env[name];
+}
+
 const PLUGIN = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const CODEX_KIT = fs.realpathSync(path.resolve(PLUGIN, "..", "codex-kit"));
 const DISPATCH = path.join(PLUGIN, "scripts", "rva-dispatch.mjs");
 const { diffHeaderPaths } = await import(DISPATCH);
-const { openInCheckedDir, LocalFileRefused } = await import(path.join(PLUGIN, "scripts", "rva-config.mjs"));
+const { openInCheckedDir, LocalFileRefused, isInside, gitEnv } = await import(path.join(PLUGIN, "scripts", "rva-config.mjs"));
+const { extractMarked } = await import(path.join(PLUGIN, "scripts", "rva-vendors.mjs"));
 const SHIPPED_TIMEOUT = JSON.parse(fs.readFileSync(path.join(PLUGIN, "reviewadapters-kit.settings.json"), "utf8")).timeout_ms;
 const PREPARE = path.join(PLUGIN, "scripts", "rva-prepare.mjs");
 const GOOD = JSON.stringify({
@@ -80,6 +88,7 @@ case "$FAKE_MODE" in
   sleep) sh -c 'echo $$ > "$FAKE_PIDFILE"; sleep 60' & sleep 60 ;;
   fail) echo "boom" >&2; exit 3 ;;
   helper) sleep 60 & printf '%s\\n' "$FAKE_OUT"; exit 0 ;;
+  flood) printf '%s\\n' "$FAKE_OUT"; head -c 17000000 /dev/zero | tr '\\000' 'x'; echo ;;
   *) printf '%s\\n' "$FAKE_OUT" ;;
 esac
 `;
@@ -280,6 +289,37 @@ test("pi and devin envelopes are extracted from the last marked block and valida
   }
 });
 
+test("only whole marker lines count, so a finding that quotes the marker text still parses", () => {
+  const body = JSON.stringify({ evidence: "the parser looks for FINDINGS BEGIN and FINDINGS END" });
+  assert.deepEqual(extractMarked(`banner\nFINDINGS BEGIN\n${body}\nFINDINGS END\n`).value, JSON.parse(body));
+  assert.equal(extractMarked(`text FINDINGS BEGIN\n${body}\nFINDINGS END`).error, "missing_final_message");
+});
+
+test("a vendor stdout past the capture limit is missing_final_message, not an earlier block", () => {
+  const r = dispatch(fixture(), "pi", [], { FAKE_OUT: marked(GOOD), FAKE_MODE: "flood" });
+  assert.equal(r.out.category, "missing_final_message", JSON.stringify(r.out));
+  assert.match(r.out.detail, /more than 16 MiB/);
+});
+
+test("an inherited GIT_DIR or GIT_INDEX_FILE cannot make a tracked local file look untracked", () => {
+  const f = fixture();
+  execFileSync("git", ["-C", f.repo, "add", "-f", ".claude/reviewadapters-kit.local.json"]);
+  const other = tempDir("rva-test-other-");
+  execFileSync("git", ["init", "-q", other]);
+  for (const env of [{ GIT_DIR: path.join(other, ".git") }, { GIT_INDEX_FILE: path.join(other, "empty-index") }]) {
+    const r = dispatch(f, "pi", ["--dry-run"], {}, { env });
+    assert.equal(r.out.category, "vendor_not_allowed", `${JSON.stringify(env)}: ${JSON.stringify(r.out)}`);
+  }
+});
+
+test("prepare refuses to run from a plugin inside the repository under review", () => {
+  // This plugin sits inside the checkout that holds this test, so reviewing that checkout must refuse:
+  // the diff under review could have changed the reviewer instructions.
+  const r = runNode(PREPARE, ["--cwd", PLUGIN]);
+  assert.equal(r.out.ok, false, JSON.stringify(r.out));
+  assert.match(r.out.detail, /inside the repository under review/);
+});
+
 test("missing, malformed and out-of-scope output become typed failures", () => {
   const f = fixture();
   assert.equal(dispatch(f, "pi", [], { FAKE_OUT: "no markers" }).out.category, "missing_final_message");
@@ -436,6 +476,35 @@ test("the dispatcher runs from a plugin path with a space and a non-ASCII charac
   assert.equal(r.out?.dryRun, true, r.raw.stdout + r.raw.stderr);
 });
 
+test("isInside holds for a repository at the filesystem root, and git variables are dropped in any letter case", () => {
+  assert.equal(isInside("/srv/x", "/"), true);
+  assert.equal(isInside("/a", "/a"), true);
+  assert.equal(isInside("/a/b", "/a"), true);
+  assert.equal(isInside("/ab", "/a"), false);
+  assert.equal(isInside("/b", "/a"), false);
+  process.env.Git_Dir = "/elsewhere";
+  try {
+    assert.equal(Object.hasOwn(gitEnv(), "Git_Dir"), false);
+  } finally {
+    delete process.env.Git_Dir;
+  }
+});
+
+test("prepare runs no fsmonitor hook from the reviewed repository's config", () => {
+  const repo = tempDir("rva-test-fsmon-");
+  execFileSync("git", ["init", "-q", repo]);
+  fs.writeFileSync(path.join(repo, "a.txt"), "one\n");
+  git(repo, "add", "a.txt");
+  git(repo, "commit", "-q", "-m", "init");
+  fs.writeFileSync(path.join(repo, "a.txt"), "two\n");
+  const ran = path.join(tempDir("rva-test-fsmon-out-"), "ran");
+  git(repo, "config", "core.fsmonitor", `touch ${ran}; false`);
+  const r = runNode(PREPARE, ["--cwd", repo]);
+  assert.equal(r.out.ok, true, JSON.stringify(r.out));
+  created.push(r.out.dir);
+  assert.equal(fs.existsSync(ran), false, "the repository's fsmonitor hook ran");
+});
+
 test("prepare lists deleted files and both rename sides, and refuses unsupported names", () => {
   const repo = tempDir("rva-test-prep-");
   execFileSync("git", ["init", "-q", repo]);
@@ -512,8 +581,19 @@ test("an unprobed version is noted for pi and refused for devin and agy unless t
 });
 
 test("a timeout above the configured limit is clamped to it, not raised", () => {
-  const r = dispatch(fixture(), "pi", ["--timeout-ms", String(SHIPPED_TIMEOUT + 1), "--dry-run"]);
-  assert.equal(r.out.dryRun, true, JSON.stringify(r.out));
+  // agy carries the effective timeout on its command line (--print-timeout, seconds minus a 5 s margin),
+  // so the dry run's command shows which limit took effect.
+  const printTimeout = (r) => {
+    assert.equal(r.out.dryRun, true, JSON.stringify(r.out));
+    return r.out.command[r.out.command.indexOf("--print-timeout") + 1];
+  };
+  const seconds = (ms) => `${Math.max(1, Math.floor(ms / 1000) - 5)}s`;
+  const above = dispatch(fixture(), "agy", ["--timeout-ms", String(SHIPPED_TIMEOUT + 1), "--dry-run"]);
+  assert.equal(printTimeout(above), seconds(SHIPPED_TIMEOUT));
+  // A local timeout_ms below the shipped limit takes effect; one above it does not raise the limit.
+  const lower = SHIPPED_TIMEOUT - 100_000;
+  assert.equal(printTimeout(dispatch(fixture({ local: { timeout_ms: lower } }), "agy", ["--dry-run"])), seconds(lower));
+  assert.equal(printTimeout(dispatch(fixture({ local: { timeout_ms: SHIPPED_TIMEOUT * 2 } }), "agy", ["--dry-run"])), seconds(SHIPPED_TIMEOUT));
 });
 
 test("a --version probe that hangs is a timeout for every vendor, within a budget below the probe's own 15 s", () => {

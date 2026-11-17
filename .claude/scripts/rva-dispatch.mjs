@@ -16,7 +16,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadCodexKit, CodexKitUnavailable, ownedAndPrivate } from "./rva-codex-kit.mjs";
-import { loadConfig, devSiblingOptIn, MODEL_PATTERN, findBinary, isInside, realPath, trustedPath } from "./rva-config.mjs";
+import { loadConfig, devSiblingOptIn, MODEL_PATTERN, findBinary, gitEnv, GIT_SAFE_OPTIONS, isInside, realPath, trustedPath } from "./rva-config.mjs";
 import { runVendor, killActiveGroups } from "./rva-run.mjs";
 import { VENDORS, PROBED_VERSIONS } from "./rva-vendors.mjs";
 
@@ -174,7 +174,7 @@ function gitToplevel(dir) {
   const git = findBinary("git", dir);
   if (!git) return null;
   try {
-    const top = realPath(execFileSync(git, ["-C", dir, "rev-parse", "--show-toplevel"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 10_000 }).trim());
+    const top = realPath(execFileSync(git, [...GIT_SAFE_OPTIONS, "-C", dir, "rev-parse", "--show-toplevel"], { encoding: "utf8", env: gitEnv(), stdio: ["ignore", "pipe", "ignore"], timeout: 10_000 }).trim());
     return isInside(realPath(git), top) ? null : top;
   } catch {
     return null;
@@ -332,6 +332,8 @@ async function dispatch(options, runDir) {
     throw new Failure("non_zero_exit", `${vendorName} ${how}: ${api.redactSecrets(run.stderr).slice(-500)}`);
   }
 
+  // A stdout past the capture limit is cut off: its last marked block may be an earlier one, not the final result.
+  if (run.stdoutTruncated) throw new Failure("missing_final_message", `${vendorName} wrote more than 16 MiB to stdout, so its final result may be cut off; the diff was already sent`);
   const extracted = vendor.extract(run);
   if (extracted.error === "tool_denied") throw new Failure("tool_denied", `${vendorName} tried a refused tool and returned no findings; the diff was already sent`);
   if (extracted.error) throw new Failure(extracted.error, `${vendorName} returned no usable findings block`);

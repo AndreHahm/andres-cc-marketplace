@@ -16,8 +16,11 @@ export const LOCAL_CONFIG_RELATIVE = ".claude/reviewadapters-kit.local.json";
 // A model never starts with "-", so it cannot be read as a flag by a vendor CLI.
 const MODEL_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._/:-]{0,127}$/;
 
+// path.relative, not a prefix test: a prefix of dir + "/" never matches when dir is the filesystem root
+// ("/" + "/" is "//"), so a repository at "/" (a container's) would contain nothing.
 export function isInside(file, dir) {
-  return file === dir || file.startsWith(dir + path.sep);
+  const rel = path.relative(dir, file);
+  return rel === "" || (rel.split(path.sep)[0] !== ".." && !path.isAbsolute(rel));
 }
 
 // realpathSync.native returns the on-disk letter case, so an in-repo path cannot pass isInside on a
@@ -36,6 +39,18 @@ function trustedEntry(dir, untrustedRoot) {
     return false;
   }
 }
+
+// The environment for every git call: the caller's, minus every GIT_* variable (compared without letter
+// case, as Windows names are). `-C <dir>` does not override GIT_DIR, GIT_WORK_TREE or GIT_INDEX_FILE (a
+// git hook sets them), and GIT_CONFIG_* can inject configuration, so an inherited one could point a call
+// at another repository or index.
+export function gitEnv() {
+  return Object.fromEntries(Object.entries(process.env).filter(([name]) => !name.toUpperCase().startsWith("GIT_")));
+}
+
+// Leading options for every git call: no fsmonitor hook from the repository's own config runs while git
+// refreshes the index.
+export const GIT_SAFE_OPTIONS = ["-c", "core.fsmonitor=false"];
 
 // The first executable named `binary` on a trusted PATH entry whose real path lies outside
 // `untrustedRoot` (the reviewed checkout), so a changed file named like the binary never runs. The PATH
@@ -151,7 +166,7 @@ function isTracked(repoRoot, relative) {
   const git = findBinary("git", repoRoot);
   if (!git) return true;
   try {
-    const out = execFileSync(git, ["-C", repoRoot, "ls-files", "-z", "--", `:(icase)${relative}`], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 10_000 });
+    const out = execFileSync(git, [...GIT_SAFE_OPTIONS, "-C", repoRoot, "ls-files", "-z", "--", `:(icase)${relative}`], { encoding: "utf8", env: gitEnv(), stdio: ["ignore", "pipe", "ignore"], timeout: 10_000 });
     return out.length > 0;
   } catch {
     return true;

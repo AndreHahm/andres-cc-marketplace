@@ -60,14 +60,16 @@ export function buildPrompt({ instructions, diff, targetPaths }, closing) {
   ].join("\n\n");
 }
 
-// Pull the JSON between the markers out of free text. The last marked block wins, so a banner or an
-// echoed instruction earlier in the output cannot supply the result.
+// Pull the JSON between the markers out of free text. Only a line that is exactly a marker counts, so a
+// finding that quotes the marker text inside its JSON does not cut the block short. The last marked block
+// wins, so a banner or an echoed instruction earlier in the output cannot supply the result.
 export function extractMarked(text) {
-  const end = text.lastIndexOf(END);
+  const lines = text.split(/\r?\n/).map((line) => line.trim());
+  const end = lines.lastIndexOf(END);
   if (end === -1) return { error: "missing_final_message" };
-  const begin = text.lastIndexOf(BEGIN, end);
+  const begin = lines.lastIndexOf(BEGIN, end);
   if (begin === -1) return { error: "missing_final_message" };
-  const body = text.slice(begin + BEGIN.length, end).trim();
+  const body = lines.slice(begin + 1, end).join("\n").trim();
   try {
     return { value: JSON.parse(body) };
   } catch {

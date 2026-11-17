@@ -16,8 +16,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { loadCodexKit, CodexKitUnavailable } from "./rva-codex-kit.mjs";
-import { devSiblingOptIn, findBinary, isInside, realPath, enclosingRepoRoot } from "./rva-config.mjs";
+import { loadCodexKit, CodexKitUnavailable, ownedAndPrivate } from "./rva-codex-kit.mjs";
+import { devSiblingOptIn, findBinary, gitEnv, GIT_SAFE_OPTIONS, isInside, realPath, enclosingRepoRoot } from "./rva-config.mjs";
 
 const PLUGIN_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const PREFIX = "rva-prep-";
@@ -30,6 +30,7 @@ const DIFF_OPTIONS = ["--no-color", "--no-ext-diff", "--no-textconv", "--no-rena
 // could end the quote or expand there is refused before anything is created.
 const SHELL_UNSAFE = /["$`\\\n\r]/;
 const MAX_DIFF_BYTES = 8 * 1024 * 1024;
+const MAX_INSTRUCTIONS_BYTES = 64 * 1024;
 const RANGE_PATTERN = new RegExp(`^${REF}(\\.{2,3}${REF})?$`);
 
 function fail(detail, code = 1) {
@@ -38,7 +39,7 @@ function fail(detail, code = 1) {
 }
 
 function git(gitBin, repo, args) {
-  return execFileSync(gitBin, ["-C", repo, ...args], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: 60_000 });
+  return execFileSync(gitBin, [...GIT_SAFE_OPTIONS, "-C", repo, ...args], { encoding: "utf8", env: gitEnv(), maxBuffer: 64 * 1024 * 1024, timeout: 60_000 });
 }
 
 function cleanup(dir) {
@@ -79,6 +80,39 @@ async function prepare(cwd, range) {
     return fail("--cwd is not inside a git repository");
   }
   if (isInside(realPath(gitBin), repo)) return fail("git is not on PATH outside the reviewed checkout");
+  // The reviewer instructions go ahead of the fixed data-only sentence, so they must not come from the
+  // checkout under review. The command's step 1 refuses, before any script runs, an empty plugin root or
+  // one under $PWD. An in-repository root elsewhere (above $PWD or beside it) is covered only by this check,
+  // and only while this script is unchanged: a branch that rewrites it can drop the check.
+  const instructions = path.join(PLUGIN_ROOT, "assets", "rva-review-instructions.md");
+  let instructionsReal;
+  try {
+    instructionsReal = realPath(instructions);
+  } catch {
+    return fail("the plugin's reviewer instructions file is missing");
+  }
+  if (isInside(realPath(PLUGIN_ROOT), repo) || isInside(instructionsReal, repo)) {
+    return fail("this plugin runs from inside the repository under review, so its reviewer instructions could be part of the change; run the command from an installed copy of the plugin");
+  }
+  // Read once, from one descriptor opened without following a link, and only from a regular file owned
+  // by this user that nobody else can write (group write only for the user's private group, the same
+  // rule as codex-kit's files), so the checked file is the one copied.
+  let instructionText;
+  let fd;
+  try {
+    // O_NONBLOCK: opening a FIFO would otherwise wait for a writer before the regular-file check runs.
+    fd = fs.openSync(instructionsReal, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK);
+    const stat = fs.fstatSync(fd);
+    if (!stat.isFile() || !ownedAndPrivate(stat)) {
+      return fail("the plugin's reviewer instructions file is not a regular file owned by you and writable only by you");
+    }
+    if (stat.size > MAX_INSTRUCTIONS_BYTES) return fail("the plugin's reviewer instructions file is larger than 64 KiB");
+    instructionText = fs.readFileSync(fd, "utf8");
+  } catch {
+    return fail("the plugin's reviewer instructions file could not be read");
+  } finally {
+    if (fd !== undefined) fs.closeSync(fd);
+  }
   const rangeArgs = range === undefined ? ["HEAD"] : [range];
   let diff;
   let names;
@@ -123,8 +157,7 @@ async function prepare(cwd, range) {
     fs.chmodSync(dir, 0o700);
     fs.writeFileSync(out.diff_file, diff, { mode: 0o600 });
     fs.writeFileSync(out.target_paths_file, `${names.join("\n")}\n`, { mode: 0o600 });
-    fs.copyFileSync(path.join(PLUGIN_ROOT, "assets", "rva-review-instructions.md"), out.instruction_file);
-    fs.chmodSync(out.instruction_file, 0o600);
+    fs.writeFileSync(out.instruction_file, instructionText, { mode: 0o600 });
   } catch {
     fs.rmSync(dir, { recursive: true, force: true });
     return fail("could not write the prepared files");
