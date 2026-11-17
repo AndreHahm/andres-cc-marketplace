@@ -1,7 +1,7 @@
 # promptlibrary-kit — User Requirements
 
-**Status:** DRAFT. Candidate requirements, not yet confirmed by the owner. Each area is confirmed,
-changed or dropped one at a time; until then nothing here overrides concept V4.
+**Status:** CONFIRMED (owner review 2026-11-16 to 2026-11-17). Where this document and concept V4 differ,
+this document wins; V4 stays the design history.
 
 **Sources:** concept V4 (`2026-10-02`, the design source), concept V5 (`2026-10-14`, status only, no
 design change), the plugin on `main` at 51fc2b13, and the unmerged branch
@@ -25,8 +25,6 @@ can change without changing the requirement.
 
 **Format (decided 2026-11-16):** each requirement is a user story ("As a ..., I can ..., so that ...")
 followed by "What you'll notice", the visible behavior and its trade-offs for a person using the plugin.
-Requirements still in the older table form below have not been reviewed yet; each is rewritten when it is
-reviewed.
 
 ## 1. Purpose and users (PUR)
 
@@ -1368,17 +1366,18 @@ Source: V4 §Extension Seams; LIF-5; owner decision 2026-11-17. State: deferred.
 
 ## 13. Behavior in code that V4 never stated (CODE)
 
-Listed so each is either promoted to a requirement above or recorded as an implementation detail.
+Each is either covered by a confirmed requirement above or recorded as an implementation detail (resolved
+with the owner, 2026-11-17).
 
-| ID | Behavior | Where | Proposed home |
+| ID | Behavior | Where | Resolution |
 |---|---|---|---|
-| CODE-1 | Catalog may not sit in `.git`, `.github` or Claude Code config folders | validator `FORBIDDEN_ROOTS` | CAT-7 |
-| CODE-2 | Hidden-character reporting in every text display and approval | validator, all three skills | RET-4 |
-| CODE-3 | Secret screen also blocks `claude` and `codex` text, and re-screens at every later step | validator | SCR-1, SCR-3 |
-| CODE-4 | Email screen with git-remote and example-domain exemptions | branch | SCR-5 |
-| CODE-5 | `review-path` record-path gate for the reviewer | branch | REV-6 (mechanism) |
-| CODE-6 | Atomic writes and rollback of a partly failed status move | validator | CAT-6 |
-| CODE-7 | `discard-orphan` repair offer for an orphan from an interrupted draft | prompt-library step 1 | CAT-6 / LIF-8 |
-| CODE-8 | `--expect-sha256` binding an approval to the shown text | validator | LIF-7 |
-| CODE-9 | Input files read only from the catalog or the system temp directory | validator | SEC-5 |
-| CODE-10 | Shared token-shape list with `analysis-kit` (`plib-token-shapes.json`) | scripts | SCR-4 |
+| CODE-1 | Catalog may not sit in `.git`, `.github` or Claude Code config folders | validator `FORBIDDEN_ROOTS` | Covered by CAT-7 |
+| CODE-2 | Hidden-character reporting in every text display and approval | validator, all three skills | Covered by RET-4 |
+| CODE-3 | Secret screen also blocks `claude` and `codex` text, and re-screens at every later step | validator | Covered by SCR-1, SCR-3 |
+| CODE-4 | Email screen with git-remote and example-domain exemptions | branch | Covered by SCR-5 |
+| CODE-5 | `review-path` record-path gate for the reviewer | branch | Mechanism of REV-6 |
+| CODE-6 | Atomic writes and rollback of a partly failed status move | validator | Covered by CAT-6 |
+| CODE-7 | `discard-orphan` repair offer for an orphan from an interrupted draft | prompt-library step 1 | Covered by CAT-6, LIF-8 |
+| CODE-8 | `--expect-sha256` binding an approval to the shown text | validator | Mechanism of LIF-7 |
+| CODE-9 | Input files read only from the catalog or the system temp directory | validator | Implementation detail (supports SEC-5, CFG-3) |
+| CODE-10 | Shared token-shape list with `analysis-kit` (`plib-token-shapes.json`) | scripts | Mechanism of SCR-4 |
