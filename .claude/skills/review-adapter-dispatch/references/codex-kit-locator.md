@@ -18,8 +18,10 @@ codex-kit's `scripts/lib/`. Importing a module runs its code, so where it comes 
    for developing this marketplace itself, on a branch the developer trusts. The same tracked-copy
    refusal as for vendors applies (`references/trust-and-config.md`).
 
-No environment variable can point the import elsewhere: a variable is easier to set by accident, or by
-another tool, than a file in one of these places.
+No variable of this plugin's own can point the import elsewhere: a variable is easier to set by accident,
+or by another tool, than a file in one of these places. `~` is `os.homedir()`, which follows `$HOME` on
+POSIX, so whoever sets `HOME` picks which `installed_plugins.json` is read; the ownership checks below
+still limit what can be imported.
 
 ## Checks before import
 

@@ -4,9 +4,9 @@ description: >-
   Runs one optional reviewer model (Antigravity agy, Pi pi, or Devin devin)
   on a reviewer instruction file and a diff, with the diff inline and no tools,
   and returns codex-kit's validated findings envelope or a typed failure.
-  Invoked by other components (cross-model-review, other review pipelines, CI
-  scripts), never directly by a user in conversation and never asking
-  anything itself. For Codex itself, see codex-kit's codex-review-bridge; for
+  Documents the dispatcher script that other components run (cross-model-review,
+  other review pipelines, CI scripts); Claude never loads it on its own, and it
+  never asks anything itself. For Codex itself, see codex-kit's codex-review-bridge; for
   a user-run single review, see the rva-review-diff command.
 allowed-tools: Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/rva-dispatch.mjs":*)
 disable-model-invocation: true
@@ -167,9 +167,12 @@ replacing its config, pi loading user extensions) is recorded with its evidence 
 
 ## Testing & Validation
 
-**Verify this skill activates on:** nothing conversational (`disable-model-invocation: true`). It is
-invoked by other components. The `rva-review-diff` command runs the same dispatcher script directly and
-does not invoke this skill.
+**Verify this skill activates on:**
+- `/reviewadapters-kit:review-adapter-dispatch` typed by a user who wants the dispatcher contract loaded,
+  the only way it loads (`disable-model-invocation: true` keeps Claude and the Skill tool from loading it).
+
+Callers never load it: a review pipeline or CI script runs `rva-dispatch.mjs` with the flags documented
+here, and the `rva-review-diff` command runs the same script directly.
 
 **Verify it does NOT activate on:**
 - "review my diff with pi" typed in conversation → the `rva-review-diff` command (it confirms egress)
@@ -189,14 +192,15 @@ tracked-local-file scenario is not in the eval set; it stays covered by scenario
 scripts, the shipped settings (three vendors, all off, 600 000 ms), the command's two Bash grants, and
 that the dispatcher with no flags returns a JSON usage error. It spawns no vendor.
 
-**Last dated run record:** 2026-11-17, `node --test tests/` 35/35 passing after the Windows refusal, the version-probe and git-resolution fixes;
+**Last dated run record:** 2026-11-17, `node --test tests/` 41/41 passing after the PR review round 1 fixes (marker lines, path containment at `/`, the fsmonitor and `GIT_*` hardening,
+stdout truncation, `GIT_*` scrubbing, the in-checkout plugin refusal, the effective timeout); earlier the same day 35/35 after the Windows refusal, the version-probe and git-resolution fixes;
 2026-11-16, 30/30 after agy moved to stdin input; live check earlier the same day, one run per vendor on the planted-bug fixture (all three found it,
 agy still with argv input), plus a canary-file injection probe on pi and devin (neither read the file).
 agy's stdin input was then probed live with a dummy prompt only, not re-run on the fixture. Same day: evals iteration-1, 12/12 assertions with the skill vs 9/12
 baseline (`evals/review-adapter-dispatch/workspace/iteration-1/benchmark.json`); `smoke_test.mjs` passing
 on the plugin copy.
 
-**Concrete scenarios:** the 35 tests in `tests/rva-dispatch.test.mjs` cover 26 scenarios against fake
+**Concrete scenarios:** the 41 tests in `tests/rva-dispatch.test.mjs` cover 32 scenarios against fake
 vendor binaries (no real vendor is called); the scenarios are listed in
 [references/test-scenarios.md](references/test-scenarios.md).
 
@@ -218,5 +222,5 @@ fixture with a planted bug.
 | `references/trust-and-config.md` | Shipped defaults, the local allow-list, the tracked-copy refusal, unattended use |
 | `references/typed-failures.md` | Failure categories this plugin adds to codex-kit's, and how to report each |
 | `references/codex-kit-locator.md` | How codex-kit's validator is found and checked before import |
-| `references/test-scenarios.md` | The 26 concrete scenarios the 35 node tests cover against fake vendors |
+| `references/test-scenarios.md` | The 32 concrete scenarios the 41 node tests cover against fake vendors |
 | `scripts/smoke_test.mjs` | Structural self-test; not part of the contract |

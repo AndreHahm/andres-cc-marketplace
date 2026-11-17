@@ -35,7 +35,8 @@ For the reused categories, `cli_unavailable` and `unsupported_cli_version` mean 
 `non_zero_exit`, `missing_final_message`, `invalid_json`,
 `schema_validation_failure` and `semantic_validation_failure` mean the diff was sent. `timeout` means it
 was sent, except when its detail says "nothing was sent" (the `--version` probe used the whole budget):
-a caller reads `detail`, not only the category.
+a caller reads `detail`, not only the category. `missing_final_message` also covers a vendor stdout over
+the 16 MiB capture limit, whose end, and so its final result, was dropped.
 
 ## Reporting
 

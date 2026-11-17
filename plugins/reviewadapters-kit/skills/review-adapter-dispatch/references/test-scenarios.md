@@ -1,7 +1,7 @@
 # Dispatch Test Scenarios
 
-Concrete scenarios behind the `review-adapter-dispatch` contract. The 35 tests in
-`tests/rva-dispatch.test.mjs` cover these 26 scenarios against fake vendor binaries; no real vendor is
+Concrete scenarios behind the `review-adapter-dispatch` contract. The 41 tests in
+`tests/rva-dispatch.test.mjs` cover these 32 scenarios against fake vendor binaries; no real vendor is
 called.
 
 1. Vendor not in the local allow-list, or a pi `--model` that is neither the configured model nor listed
@@ -68,3 +68,17 @@ called.
 25. A vendor's `PATH` holds no entry inside the reviewed checkout.
 26. A vendor CLI installed as a link to a shim that picks the tool by the name it was called as (Volta
     style) is run under its own name and returns an envelope.
+27. A finding whose text quotes the marker words still parses: only a line that is exactly a marker
+    counts, and marker text inside a longer line is not a marker.
+28. A vendor that writes more than the 16 MiB stdout capture limit after a marked block →
+    `missing_final_message` ("more than 16 MiB"), never that earlier block.
+29. A caller environment with `GIT_DIR` or `GIT_INDEX_FILE` pointing elsewhere cannot make a git-tracked
+    local file look untracked → `vendor_not_allowed`.
+30. `rva-prepare.mjs` run from a plugin inside the repository under review refuses, since the diff could
+    have changed the reviewer instructions; the effective timeout (agy's `--print-timeout`) is the shipped
+    limit for a larger request, a smaller local `timeout_ms` takes effect, and a larger one does not raise it.
+31. Path containment holds for a repository at the filesystem root (`/`), where a prefix test would
+    contain nothing, and a git variable in another letter case (`Git_Dir`) is dropped from git's
+    environment too.
+32. `rva-prepare.mjs` runs no `core.fsmonitor` hook from the reviewed repository's own config while git
+    builds the diff.
