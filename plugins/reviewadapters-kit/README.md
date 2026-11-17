@@ -94,13 +94,17 @@ gates and output; `references/typed-failures.md` lists every failure type.
 - **Mechanical gates** before anything is sent: the allow-list, a check for secret-named paths (refused
   unless the caller confirmed them), a size cap and a timeout that kills the whole process group. The
   secret check looks at file names only; it does not scan the diff's content for secrets.
+- **The egress confirmation is model-enforced.** The command and the skill pre-approve the dispatcher
+  with any arguments, so no permission prompt stands between Claude and a dispatch. The command's
+  "Send this diff?" question is a step Claude follows, not a permission check, and a vendor's output or
+  a diff that steers Claude could in principle skip it. Enable only vendors you accept receiving a diff.
 - The validated envelope uses the same schema as codex-kit's `codex-review-bridge`, so a caller handles
   every vendor the same way.
 
 ## Language
 
 **JavaScript** (Node.js ES modules, `.mjs`, no npm dependencies). New scripts in this plugin stay in
-JavaScript. Tests, from the repository root: `node --test plugins/reviewadapters-kit/tests/` (42 tests,
+JavaScript. Tests, from the repository root: `node --test plugins/reviewadapters-kit/tests/` (43 tests,
 verified on Node 26).
 
 When you change the shipped `reviewadapters-kit.settings.json` in this marketplace, copy it unchanged to

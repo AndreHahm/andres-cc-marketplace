@@ -665,6 +665,27 @@ test("a vendor gets only PATH entries outside the reviewed checkout", () => {
   assert.equal(vendorPath.slice(5).split(path.delimiter).some((d) => d.startsWith(f.repo)), false, vendorPath);
 });
 
+test("cleanup removes only the directory whose token matches the run that created it", () => {
+  const repo = tempDir("rva-test-clean-");
+  execFileSync("git", ["init", "-q", repo]);
+  fs.writeFileSync(path.join(repo, "a.txt"), "one\n");
+  git(repo, "add", "a.txt");
+  git(repo, "commit", "-q", "-m", "init");
+  fs.writeFileSync(path.join(repo, "a.txt"), "two\n");
+  const first = runNode(PREPARE, ["--cwd", repo]).out;
+  const second = runNode(PREPARE, ["--cwd", repo]).out;
+  created.push(first.dir, second.dir);
+  assert.match(first.token, /^[0-9a-f]{32}$/);
+  for (const token of [second.token, "not-a-token", "0".repeat(32)]) {
+    const refused = runNode(PREPARE, ["--cleanup", first.dir, token]);
+    assert.equal(refused.out.ok, false, `${token}: ${JSON.stringify(refused.out)}`);
+    assert.equal(fs.existsSync(first.dir), true, "another run's directory was removed");
+  }
+  assert.equal(runNode(PREPARE, ["--cleanup", first.dir]).out.ok, false, "cleanup without a token ran");
+  assert.equal(runNode(PREPARE, ["--cleanup", first.dir, first.token]).out.ok, true);
+  assert.equal(fs.existsSync(first.dir), false);
+});
+
 test("prepare refuses Windows before creating a temp directory, cleanup included", () => {
   const forceWin32 = "data:text/javascript,Object.defineProperty(process,'platform',{value:'win32'})";
   const before = new Set(fs.readdirSync(os.tmpdir()).filter((name) => name.startsWith("rva-prep-")));

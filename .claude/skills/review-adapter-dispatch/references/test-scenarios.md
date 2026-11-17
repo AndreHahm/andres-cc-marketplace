@@ -1,7 +1,7 @@
 # Dispatch Test Scenarios
 
-Concrete scenarios behind the `review-adapter-dispatch` contract. The 42 tests in
-`tests/rva-dispatch.test.mjs` cover these 33 scenarios against fake vendor binaries; no real vendor is
+Concrete scenarios behind the `review-adapter-dispatch` contract. The 43 tests in
+`tests/rva-dispatch.test.mjs` cover these 34 scenarios against fake vendor binaries; no real vendor is
 called.
 
 1. Vendor not in the local allow-list, or a pi `--model` that is neither the configured model nor listed
@@ -84,3 +84,5 @@ called.
     builds the diff.
 33. `rva-prepare.mjs` on Windows (simulated by forcing `process.platform`) refuses before creating a
     temp directory, for a prepare run and a cleanup run alike.
+34. `--cleanup` removes a prepared directory only with the token its own prepare run printed: another
+    run's token, a malformed token or no token is refused and the directory is kept.

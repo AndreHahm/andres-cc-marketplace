@@ -2,7 +2,7 @@
 // Prepare the input for one rva-review-diff run, or clean it up afterwards.
 //
 //   rva-prepare.mjs --cwd <dir> [--range <git-range>]   -> JSON with the files rva-dispatch.mjs needs
-//   rva-prepare.mjs --cleanup <dir>                     -> removes a directory this script created
+//   rva-prepare.mjs --cleanup <dir> <token>             -> removes the directory that run created
 //
 // Runs git with fixed argument lists only, so the command needs no general git or Write grant. The
 // diff covers tracked changes (staged and unstaged against HEAD, or the given range); untracked files
@@ -12,6 +12,7 @@
 // would otherwise travel without being listed. The reviewer instructions come from this plugin's own
 // assets, never from the repository under review.
 import { execFileSync } from "node:child_process";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -31,6 +32,8 @@ const DIFF_OPTIONS = ["--no-color", "--no-ext-diff", "--no-textconv", "--no-rena
 const SHELL_UNSAFE = /["$`\\\n\r]/;
 const MAX_DIFF_BYTES = 8 * 1024 * 1024;
 const MAX_INSTRUCTIONS_BYTES = 64 * 1024;
+const TOKEN_FILE = ".rva-cleanup-token";
+const TOKEN_PATTERN = /^[0-9a-f]{32}$/;
 const RANGE_PATTERN = new RegExp(`^${REF}(\\.{2,3}${REF})?$`);
 
 function fail(detail, code = 1) {
@@ -42,17 +45,42 @@ function git(gitBin, repo, args) {
   return execFileSync(gitBin, [...GIT_SAFE_OPTIONS, "-C", repo, ...args], { encoding: "utf8", env: gitEnv(), maxBuffer: 64 * 1024 * 1024, timeout: 60_000 });
 }
 
-function cleanup(dir) {
+// Removes only the directory one prepare run created: besides the location, prefix and owner checks, its
+// token file must hold the token that run printed, so another run's directory is not removed without that
+// run's token. A guard against mistakes, not against a process of the same user that can read the token file.
+function cleanup(dir, token) {
+  if (!TOKEN_PATTERN.test(token)) return fail("the cleanup token is not the one prepare printed");
   let real;
+  let tmp;
+  let stat;
   try {
     real = fs.realpathSync(dir);
+    tmp = fs.realpathSync(os.tmpdir());
+    stat = fs.lstatSync(real);
   } catch {
     return fail("the directory does not exist");
   }
-  const tmp = fs.realpathSync(os.tmpdir());
-  const stat = fs.lstatSync(real);
   if (path.dirname(real) !== tmp || !path.basename(real).startsWith(PREFIX) || !stat.isDirectory() || stat.uid !== process.getuid()) {
     return fail("refusing to remove a directory this script did not create");
+  }
+  let stored;
+  let fd;
+  try {
+    fd = fs.openSync(path.join(real, TOKEN_FILE), fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK);
+    const tokenStat = fs.fstatSync(fd);
+    if (!tokenStat.isFile() || tokenStat.uid !== process.getuid() || tokenStat.size !== token.length) {
+      return fail("refusing to remove a directory this run did not create");
+    }
+    // Raw bytes, never decoded: decoding could change the length and make the comparison throw.
+    stored = fs.readFileSync(fd);
+  } catch {
+    return fail("refusing to remove a directory this run did not create");
+  } finally {
+    if (fd !== undefined) fs.closeSync(fd);
+  }
+  const expected = Buffer.from(token);
+  if (stored.length !== expected.length || !crypto.timingSafeEqual(stored, expected)) {
+    return fail("refusing to remove a directory this run did not create");
   }
   fs.rmSync(real, { recursive: true, force: true });
   process.stdout.write(`${JSON.stringify({ ok: true, removed: real })}\n`);
@@ -151,13 +179,15 @@ async function prepare(cwd, range) {
     file_count: names.length,
     bytes: Buffer.byteLength(diff),
     secret_paths: secretPaths,
-    dispatch_id: `rva-${Date.now().toString(36)}`
+    dispatch_id: `rva-${Date.now().toString(36)}`,
+    token: crypto.randomBytes(16).toString("hex")
   };
   try {
     fs.chmodSync(dir, 0o700);
-    fs.writeFileSync(out.diff_file, diff, { mode: 0o600 });
-    fs.writeFileSync(out.target_paths_file, `${names.join("\n")}\n`, { mode: 0o600 });
-    fs.writeFileSync(out.instruction_file, instructionText, { mode: 0o600 });
+    fs.writeFileSync(path.join(dir, TOKEN_FILE), out.token, { flag: "wx", mode: 0o600 });
+    fs.writeFileSync(out.diff_file, diff, { flag: "wx", mode: 0o600 });
+    fs.writeFileSync(out.target_paths_file, `${names.join("\n")}\n`, { flag: "wx", mode: 0o600 });
+    fs.writeFileSync(out.instruction_file, instructionText, { flag: "wx", mode: 0o600 });
   } catch {
     fs.rmSync(dir, { recursive: true, force: true });
     return fail("could not write the prepared files");
@@ -170,11 +200,12 @@ async function main(argv) {
   // The dispatcher refuses Windows, and cleanup's ownership check needs a POSIX uid: refuse here too,
   // before anything is created, so no prepared diff is left behind in temp storage.
   if (process.platform === "win32") return fail("rva-review-diff runs on Linux and macOS only; nothing was prepared");
-  if (argv.length === 2 && argv[0] === "--cleanup") return cleanup(argv[1]);
-  if (argv[0] !== "--cwd" || argv[1] === undefined) return fail("usage: --cwd <dir> [--range <git-range>] | --cleanup <dir>");
+  const usage = "usage: --cwd <dir> [--range <git-range>] | --cleanup <dir> <token>";
+  if (argv.length === 3 && argv[0] === "--cleanup") return cleanup(argv[1], argv[2]);
+  if (argv[0] !== "--cwd" || argv[1] === undefined) return fail(usage);
   if (argv.length === 2) return prepare(argv[1], undefined);
   if (argv.length === 4 && argv[2] === "--range") return prepare(argv[1], argv[3]);
-  return fail("usage: --cwd <dir> [--range <git-range>] | --cleanup <dir>");
+  return fail(usage);
 }
 
 main(process.argv.slice(2)).then((code) => {
