@@ -1,0 +1,22 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "6957396981-1",
+      "line": 59,
+      "note": "Claude delta review Minor: stale Phase-5 name in the test-agent-trigger comment; fixed in d9f815d6 (Phase 7).",
+      "path": "plugins/plugin-devkit/hooks/pdk-r26-expensive-action-check.py",
+      "pr": 778,
+      "recorded_at": "2026-11-17T18:52:00+00:00"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "6957396981-2",
+      "line": 78,
+      "note": "Claude delta review Informational: the bounded check flags every uncapped call by design (issue 776); heuristic limits disclosed in the PR body.",
+      "path": "plugins/plugin-devkit/hooks/pdk-r26-expensive-action-check.py",
+      "pr": 778,
+      "recorded_at": "2026-11-17T18:52:00+00:00"
+    }
+  ]
+}
