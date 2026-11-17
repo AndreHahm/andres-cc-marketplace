@@ -9,7 +9,8 @@ All notable changes to this plugin are documented here.
   test selection, an isolated run, the score explained, and a proposed test or `# pragma: no mutate  # reason: ...`
   for each survivor, written only after the user approves it. A mutant that no selected test ran is reported as
   not measured, never as a survivor. After a finished run of a module not yet in `.github/mutation-modules.yml`,
-  it offers to append that module with the selection that ran, after the user approves the exact entry.
+  it offers to append that module with the selection that ran (or to update a listed module's entry after a
+  widened selection), after the user approves the exact entry.
 - `agents/mutation-tester.md`, the plugin's first agent: copies the working tree (tracked and untracked files) to
   a scratch directory outside the repository, runs the runner and parser there, and confirms the repository is
   unchanged.
@@ -19,7 +20,7 @@ All notable changes to this plugin are documented here.
   outside the run tree, such as a package symlinked in from a sibling checkout, and a run in a tree that already
   holds `mutants/`, whose old verdicts mutmut would keep. It starts pytest and mutmut as
   the `python3` in the running interpreter's own folder, and stops when that folder has none (run it from a venv).
-  Those processes get an allowlisted environment of exact variable names (no `PYTHON*` or `LC_*` prefix), so a credential held in an environment variable does not reach
+  Those processes get an allowlisted environment of exact variable names (no `PYTHON*` or `LC_*` prefix, no `PYTHONPATH`), so a credential held in an environment variable does not reach
   the selected tests (files the user can read still can). The dependency install before the run is not covered:
   it keeps the full environment, so the skill recommends a build-free install command.
 - `scripts/qlty-mutation-parse.py`: summarizes a run from mutmut's `.meta` files and refuses one whose counts
