@@ -78,7 +78,7 @@ async function prepare(cwd, range) {
   } catch {
     return fail("--cwd is not inside a git repository");
   }
-  if (isInside(gitBin, repo)) return fail("git is not on PATH outside the reviewed checkout");
+  if (isInside(realPath(gitBin), repo)) return fail("git is not on PATH outside the reviewed checkout");
   const rangeArgs = range === undefined ? ["HEAD"] : [range];
   let diff;
   let names;

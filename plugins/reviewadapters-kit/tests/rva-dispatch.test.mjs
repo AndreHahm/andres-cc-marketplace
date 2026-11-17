@@ -555,6 +555,24 @@ test("a git inside the reviewed checkout, or behind a relative PATH entry, is ne
   assert.equal(fs.existsSync(marker), false, "a planted git was run");
 });
 
+test("a vendor installed as a link to a shim that picks the tool by its name still runs", () => {
+  // Volta-style: every tool is a link to one shim that reads the name it was called as.
+  const f = fixture();
+  const dir = tempDir("rva-test-shim-");
+  const out = marked(GOOD).replace(/'/g, "'\\''");
+  fs.writeFileSync(path.join(dir, "shim"), `#!/bin/sh
+case "$(basename "$0")" in
+  pi) ;;
+  *) echo "called as $(basename "$0"), not as a tool" >&2; exit 9 ;;
+esac
+if [ "$1" = "--version" ]; then echo "fake 1.0"; exit 0; fi
+printf '%s\\n' '${out}'
+`, { mode: 0o755 });
+  fs.symlinkSync(path.join(dir, "shim"), path.join(dir, "pi"));
+  const r = dispatch(f, "pi", [], {}, { pathPrefix: dir });
+  assert.ok(Array.isArray(r.out.findings), JSON.stringify(r.out));
+});
+
 test("a vendor gets only PATH entries outside the reviewed checkout", () => {
   const f = fixture();
   const inside = path.join(f.repo, "bin");

@@ -37,17 +37,20 @@ function trustedEntry(dir, untrustedRoot) {
   }
 }
 
-// The real path of the first executable named `binary` on a trusted PATH entry whose own real path lies
-// outside `untrustedRoot` (the reviewed checkout), so a changed file named like the binary never runs.
-// The real path is returned and run, so a symlink inside the checkout cannot be swapped in between.
+// The first executable named `binary` on a trusted PATH entry whose real path lies outside
+// `untrustedRoot` (the reviewed checkout), so a changed file named like the binary never runs. The PATH
+// path itself is returned and run, not its real path: a shim that picks the tool by the name it was
+// called as (Volta links every tool to one volta-shim) would break under its real name. Its directory is
+// a trusted entry, outside the checkout, so the checkout cannot swap the link.
 // Used for git and the vendor CLIs.
 export function findBinary(binary, untrustedRoot) {
   for (const dir of (process.env.PATH ?? "").split(path.delimiter)) {
     if (!trustedEntry(dir, untrustedRoot)) continue;
+    const candidate = path.join(dir, binary);
     try {
-      const candidate = realPath(path.join(dir, binary));
-      fs.accessSync(candidate, fs.constants.X_OK);
-      if (fs.statSync(candidate).isFile() && !isInside(candidate, untrustedRoot)) return candidate;
+      const target = realPath(candidate);
+      fs.accessSync(target, fs.constants.X_OK);
+      if (fs.statSync(target).isFile() && !isInside(target, untrustedRoot)) return candidate;
     } catch {
       // Not here; keep looking.
     }

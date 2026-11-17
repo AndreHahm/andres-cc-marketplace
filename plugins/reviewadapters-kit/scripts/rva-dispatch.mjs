@@ -174,7 +174,7 @@ function gitToplevel(dir) {
   if (!git) return null;
   try {
     const top = realPath(execFileSync(git, ["-C", dir, "rev-parse", "--show-toplevel"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 10_000 }).trim());
-    return isInside(git, top) ? null : top;
+    return isInside(realPath(git), top) ? null : top;
   } catch {
     return null;
   }
