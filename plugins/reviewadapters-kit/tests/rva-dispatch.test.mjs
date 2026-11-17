@@ -381,6 +381,16 @@ test("prepare refuses to run from a plugin inside the repository under review", 
   assert.match(r.out.detail, /inside the repository under review/);
 });
 
+test("the dispatcher refuses to run from a plugin inside the repository under review", () => {
+  // The skill's path calls the dispatcher without prepare, so it needs the same refusal (issue #762).
+  const checkout = fs.realpathSync.native(execFileSync("git", ["-C", PLUGIN, "rev-parse", "--show-toplevel"], { encoding: "utf8" }).trim());
+  const missing = path.join(checkout, "no-such-input");
+  const r = runNode(DISPATCH, ["--vendor", "pi", "--reviewer-type", "t", "--dispatch-id", "d1", "--instruction-file", missing,
+    "--diff-file", missing, "--target-paths-file", missing, "--cwd", checkout, "--dry-run"]);
+  assert.equal(r.out.category, "usage", JSON.stringify(r.out));
+  assert.match(r.out.detail, /inside the repository under review/);
+});
+
 test("missing, malformed and out-of-scope output become typed failures", () => {
   const f = fixture();
   assert.equal(dispatch(f, "pi", [], { FAKE_OUT: "no markers" }).out.category, "missing_final_message");

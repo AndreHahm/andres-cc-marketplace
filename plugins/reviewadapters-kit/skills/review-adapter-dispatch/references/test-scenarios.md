@@ -1,8 +1,8 @@
 # Dispatch Test Scenarios
 
-Concrete scenarios behind the `review-adapter-dispatch` contract. The 56 tests in
-`tests/rva-dispatch.test.mjs` cover these 46 scenarios against fake vendor binaries; no real vendor is
-called.
+Concrete scenarios behind the `review-adapter-dispatch` contract. The 57 tests in
+`tests/rva-dispatch.test.mjs` cover scenarios 1 to 47 against fake vendor binaries, and the 9 tests in
+`tests/rva-guard-checkout-scripts.test.mjs` cover scenario 48; no real vendor is called.
 
 1. Vendor not in the local allow-list, or a pi `--model` that is neither the configured model nor listed
    in `vendors.pi.models` (another provider, a bare id, another id on the same prefix) →
@@ -119,3 +119,14 @@ called.
     refused by prepare (nothing created there) and by the dispatcher (`unsafe_temp_dir`); with the sticky
     bit on that parent both succeed. The check takes only a resolved path: a symbolic link to that same
     directory is unsafe.
+47. The dispatcher run from a plugin inside the `--cwd` repository → usage error naming "inside the
+    repository under review", before any input file is read (issue #762).
+48. The checkout guard hook (`scripts/rva-guard-checkout-scripts.mjs`, its own test file, each case
+    running a copy of the guard placed in a fake installed root under a directory with a space): a
+    command naming none of the scripts passes; quoted absolute paths into the installed copy's `scripts/`
+    pass, for Bash and PowerShell (and a backslash-escaped space on POSIX); a relative path, a
+    letter-case variant, an absolute path into a repository copy, a `cd` then a bare name, a name split
+    by quotes, a variable or substitution, an unterminated quote, a symbolic link out of the installed
+    copy, a missing file, a `CLAUDE_PLUGIN_ROOT` other than the guard's own location, an installed root
+    inside the open repository (by `cwd` or `CLAUDE_PROJECT_DIR`) and unparseable input naming a script
+    are denied.

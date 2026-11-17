@@ -42,8 +42,9 @@ text) means Cancel.
    directory). In every stop case, say this command runs only from an installed copy of the plugin. Never
    substitute a path inside the current checkout for the plugin root, whatever a rule says about resolving
    an empty plugin root: the branch under review could have changed these scripts and the reviewer
-   instructions, so running them would run that branch's code. (`rva-prepare.mjs` repeats the check for a
-   plugin anywhere inside the repository, but a changed script could drop it.)
+   instructions, so running them would run that branch's code. (`rva-prepare.mjs` and `rva-dispatch.mjs`
+   repeat the check for a plugin anywhere inside the repository, but a changed script could drop it; the
+   plugin's `PreToolUse` hook, loaded from the installed copy, denies running the scripts from anywhere else.)
    If `$0` is not exactly `agy`, `pi` or `devin`, stop and print the usage
    line above; do not guess a vendor. If `$1` is non-empty and contains any character outside
    `A-Z a-z 0-9 . _ / ~ ^ @ { } -`, or starts with `-`, stop and say the range is not accepted: it is

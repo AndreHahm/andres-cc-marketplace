@@ -75,6 +75,7 @@ findings.
 |---|---|---|
 | `review-adapter-dispatch` | Skill (not model-invoked) | Runs one optional reviewer model on a reviewer instruction file and a diff, with the diff inline and no tools, and returns codex-kit's validated findings envelope or a typed failure. Other components and CI scripts run its dispatcher script directly; never asks anything itself. |
 | `rva-review-diff` | Command | Review a diff with one optional model (agy, pi or devin), after an egress confirmation. |
+| `rva-guard-checkout-scripts` | Hook (`PreToolUse`, Bash and PowerShell) | Denies a Bash or PowerShell command that names one of this plugin's scripts anywhere but the installed copy's `scripts/` directory. See "Running from a checkout". |
 
 Both run the shared entry point `scripts/rva-dispatch.mjs`; the command also runs `scripts/rva-prepare.mjs`
 to write the diff and its inputs into a private temporary directory, and to clean it up. The skill's `SKILL.md` documents its flags,
@@ -102,17 +103,72 @@ gates and output; `references/typed-failures.md` lists every failure type.
 - The validated envelope uses the same schema as codex-kit's `codex-review-bridge`, so a caller handles
   every vendor the same way.
 
+## Running from a checkout
+
+The plugin runs only from an installed copy. A copy inside the repository you review (a `.claude/`
+mirror, or `plugins/` in this marketplace's own checkout) could be the reviewed change's own code, and it
+would run with your vendor login. This marketplace no longer mirrors the plugin into `.claude/`
+(issue #762). Three checks enforce it:
+
+- **The hook** (`hooks/hooks.json`) loads from the installed copy in the plugin cache, outside any
+  checkout, and denies a Bash or PowerShell command naming `rva-prepare.mjs`, `rva-dispatch.mjs` or the
+  other scripts (in any letter case) unless every such word is a literal absolute path into the installed
+  copy's `scripts/`. It takes that copy from its own location, never from an environment variable, and
+  also denies when the copy itself lies inside the repository the session has open (as with
+  `--plugin-dir` pointed at a checkout). Use Read or Grep, not Bash, to look at a copy. When you work on
+  this plugin with it installed, the hook also denies `git add` or `git diff` on a script by file name:
+  name the directory instead (`git add plugins/reviewadapters-kit/scripts/`), or disable the plugin.
+- **`rva-prepare.mjs` and `rva-dispatch.mjs`** refuse when their own plugin root lies inside the
+  repository under review.
+- **The command's step 1 and the skill** stop on an empty plugin root or one inside the checkout.
+
+Only the hook sits outside the checkout. Its limits:
+
+- **The installed copy is only as trusted as its source at install or update time.** If you added this
+  marketplace from a local directory, installing or updating while an unreviewed branch is checked out
+  there copies that branch's scripts, the hook included, into the cache. Install from a clean clone or a
+  pinned ref.
+- It reads the command text with POSIX-shell quoting, so a command that builds a script name at run time
+  is not seen, and only the Bash and PowerShell tools are covered.
+- It checks the script's path, not the rest of the command line: `node --import <file>`, `NODE_OPTIONS`
+  or a project `settings.json` `env` block can still load other code into the installed script.
+- A plugin copy in another worktree of the same repository (for example the main checkout, seen from a
+  worktree inside it) is not recognized as part of the open repository.
+- It is registered with `onError: "warn"`, so a hook that fails to start (no `node`, a timeout) lets the
+  command through with a warning.
+- A checkout you open already controls its own `CLAUDE.md`, rules, project hooks and `settings.json`,
+  which no plugin can override.
+
+**Without installing the plugin**, add the same hook at user level, outside every checkout, in
+`~/.claude/settings.json`, pointing at a copy you trust (not one inside a repository you review; quote
+the path if it contains a space). The guard then allows only that copy's scripts:
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node /path/to/trusted/reviewadapters-kit/scripts/rva-guard-checkout-scripts.mjs",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
 ## Language
 
 **JavaScript** (Node.js ES modules, `.mjs`, no npm dependencies). New scripts in this plugin stay in
 JavaScript. Tests, from the repository root, on Linux or macOS:
-`node --test plugins/reviewadapters-kit/tests/*.test.mjs` (56 tests, verified on Node 24). Name the files:
+`node --test plugins/reviewadapters-kit/tests/*.test.mjs` (66 tests, verified on Node 24). Name the files:
 on Node 22 and 24, `node --test` on the directory path fails. The `Plugin Node tests` CI job runs them on
-every pull request. The suite does not load on Windows (#770).
-
-When you change the shipped `reviewadapters-kit.settings.json` in this marketplace, copy it unchanged to
-`.claude/reviewadapters-kit.settings.json` at the repository root as well. The mirrored scripts in
-`.claude/scripts/` read that copy, and the mirror sync does not update it.
+every pull request. Most tests refuse or skip on Windows.
 
 ## Known limitations
 
