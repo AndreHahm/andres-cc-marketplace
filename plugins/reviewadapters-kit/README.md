@@ -100,7 +100,7 @@ gates and output; `references/typed-failures.md` lists every failure type.
 ## Language
 
 **JavaScript** (Node.js ES modules, `.mjs`, no npm dependencies). New scripts in this plugin stay in
-JavaScript. Tests, from the repository root: `node --test plugins/reviewadapters-kit/tests/` (30 tests,
+JavaScript. Tests, from the repository root: `node --test plugins/reviewadapters-kit/tests/` (32 tests,
 verified on Node 26).
 
 When you change the shipped `reviewadapters-kit.settings.json` in this marketplace, copy it unchanged to
@@ -110,7 +110,8 @@ When you change the shipped `reviewadapters-kit.settings.json` in this marketpla
 ## Known limitations
 
 - **POSIX only.** Process-group cleanup and the file ownership checks need Linux or macOS. Windows is not
-  supported.
+  supported: the dispatcher refuses to run there (`unsupported_platform`) before anything is written or
+  sent.
 - Open minor findings, accepted for this release:
   - The secret-path check matches file names, not a secret-looking directory segment.
   - The diff is not checked against the `--cwd` repository's own `git diff`.

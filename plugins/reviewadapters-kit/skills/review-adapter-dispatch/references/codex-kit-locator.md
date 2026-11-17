@@ -38,8 +38,8 @@ such as `cdx-process.mjs` and `cdx-token-shapes.json`):
 Directories above codex-kit's root are not checked. A candidate whose files are missing is skipped;
 a candidate that fails a check stops the search (it does not fall through to the next one). Any failure
 → `codex_kit_unavailable`, with the failing check named and the path omitted. On Windows, where these
-POSIX bits do not apply, the check is reported as skipped in `inspection_limits` of every envelope from
-that run.
+POSIX bits do not apply, the check is skipped; the dispatcher itself refuses to run there
+(`unsupported_platform`), so no envelope is ever produced on Windows.
 
 ## Version
 

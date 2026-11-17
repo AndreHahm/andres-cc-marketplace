@@ -1,7 +1,7 @@
 # Dispatch Test Scenarios
 
-Concrete scenarios behind the `review-adapter-dispatch` contract. The 30 tests in
-`tests/rva-dispatch.test.mjs` cover these 21 scenarios against fake vendor binaries; no real vendor is
+Concrete scenarios behind the `review-adapter-dispatch` contract. The 32 tests in
+`tests/rva-dispatch.test.mjs` cover these 23 scenarios against fake vendor binaries; no real vendor is
 called.
 
 1. Vendor not in the local allow-list, or a pi `--model` that is neither the configured model nor listed
@@ -57,3 +57,7 @@ called.
     `.claude` directory swapped for another private one between the directory check and the file open:
     on Linux the file is still read from the checked directory; on the by-path fallback the swap is
     refused.
+22. A vendor whose `--version` hangs, with `--timeout-ms` below the probe's own 15 s limit → `timeout`
+    with "nothing was sent" within that budget; the vendor never gets the diff.
+23. The dispatcher on Windows (simulated by forcing `process.platform`), real run and dry run →
+    `unsupported_platform`; no vendor is spawned.
