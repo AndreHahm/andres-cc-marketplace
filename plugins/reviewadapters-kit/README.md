@@ -42,7 +42,8 @@ Every vendor is off in the shipped `reviewadapters-kit.settings.json`. Enable on
   (`vendor_not_allowed`). A tracked file can be changed by anyone with write access, including by the
   change under review. The check ignores case, and any git error counts as tracked.
 - **The file must stay private.** It and its `.claude` directory must be owned by you and not writable by
-  others (group write is allowed only for a private group that only you belong to); otherwise every vendor is refused.
+  others (group write is allowed only for a private group that only you belong to, on Linux, when GNU coreutils
+  `ls` shows no extended ACL); otherwise every vendor is refused.
 - The local file can also lower `timeout_ms` (shipped: 600000) and pin a `model` per vendor. A higher
   timeout is ignored. For pi, the model's first segment picks the provider that receives the diff, so
   pin `vendors.pi.model` locally if you do not want the provider to follow the shipped default.

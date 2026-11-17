@@ -35,7 +35,10 @@ such as `cdx-process.mjs` and `cdx-token-shapes.json`):
   gid, named like the user, with no members listed in `/etc/group` and no other account in `/etc/passwd`
   using it as its primary gid. On a umask-002 system every checkout is group-writable this way, and
   refusing it would make the plugin unusable there. A group that `/etc/group` does not list (for example
-  from LDAP) gets no exception.
+  from LDAP) gets no exception. The exception applies on Linux only, and only when GNU coreutils `ls`
+  shows no extended ACL on the path (an ACL can grant write through the group bits). Elsewhere, on a host
+  without GNU coreutils `ls`, or with an ACL, group write is refused. A macOS ACL on a path without group
+  write is not checked.
 
 Directories above codex-kit's root are not checked. A candidate whose files are missing is skipped;
 a candidate that fails a check stops the search (it does not fall through to the next one). Any failure

@@ -32,7 +32,10 @@ text) means Cancel.
    stays in `$PWD`), a relative one could be looked up through `CDPATH` and still resolves against `$PWD`
    in the steps below, and those characters could break out of the quoted command. Otherwise run
    `pwd; pwd -P; (cd -- "${CLAUDE_PLUGIN_ROOT}" && pwd -P)` (shell builtins only; the subshell leaves the
-   working directory unchanged; its three parts are pre-approved exactly, with no wildcard). It prints `$PWD`, `$PWD` with symbolic links resolved, and the plugin root with
+   working directory unchanged; its three parts are granted exactly, with no wildcard; a permission prompt
+   is still possible, because Claude Code does not document whether a grant matches inside a subshell or
+   whether `${CLAUDE_PLUGIN_ROOT}` is substituted in a command's grants, and a denial stops here, before
+   anything is sent). It prints `$PWD`, `$PWD` with symbolic links resolved, and the plugin root with
    symbolic links resolved. Stop if the third line is missing (the root does not exist), or if the plugin root, as
    written or resolved, is `$PWD` or a directory under `$PWD`, as written or resolved, comparing the paths
    without regard to letter case (a case-insensitive filesystem treats a case variant as the same
