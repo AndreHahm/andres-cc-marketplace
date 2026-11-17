@@ -247,7 +247,7 @@ longer rather than having it cut, so that prompts stay focused and anything bigg
 **What you'll notice:** pasting, importing or consolidating more than 50 non-blank lines gets a request to
 condense it; nothing is truncated silently. The reviewer reports an over-length prompt as Major and the
 checker refuses to file it. Attachments (CAT-2) do not count toward the 50 lines; they have their own
-size limit (value still open, see CAT-2), and are still reviewed, fingerprinted and previewed.
+size limit (CFG-6), and are still reviewed, fingerprinted and previewed.
 
 Source: V4 §Record Model, §Intake Sources. State: met (attachment size limit: not met). Confirmed: yes
 (2026-11-16).
@@ -491,7 +491,7 @@ an internal host) are caught only after you add them as project patterns; a patt
 broad can block too much.
 
 **Changes to earlier decisions:** adds project-specific patterns, which V4 and the code do not have; where
-they are stored and in what format is decided in Area 10 (CFG).
+they are stored and in what format is decided in CFG-7.
 
 Source: V4 §Import review; code (URL credentials, credential lines, shared `plib-token-shapes.json`); owner
 decision 2026-11-16. State: **partial** (built-in categories: met; project patterns: not met). Confirmed:
@@ -1066,13 +1066,148 @@ decision 2026-11-17. State: **not met** (original gates unverified; new gates no
 
 ## 10. Configuration and paths (CFG)
 
-| ID | Requirement | Source | State | Confirm |
-|---|---|---|---|---|
-| CFG-1 | One setting: the catalog root path, default `.claude/prompts/`, overridable per project in an untracked local file. | V4 §Configuration | met | ? |
-| CFG-2 | A tracked override is ignored and reported (so a repository cannot redirect the catalog). | V4 §Path trust boundary | met | ? |
-| CFG-3 | The catalog root can never resolve outside the project root, whatever the path form (`..`, absolute, links, junctions, case, drive letters, UNC, 8.3 names). | V4 §Path trust boundary | met | ? |
-| CFG-4 | An invalid override falls back to the default and is reported. | V4 §Path trust boundary | met | ? |
-| CFG-5 | The validator runs isolated from the project's own Python environment and settings. | code (`uv run --isolated`) | met | ? |
+### CFG-1: Choose where my catalog lives
+
+*As a developer, my prompt catalog lives at `.claude/prompts/` in my project unless I set another path in
+my untracked `.claude/promptlibrary-kit.local.json`, and setup shows me which path is in use and where it
+came from, so that I can put the catalog where my project keeps such files without anyone else's
+repository deciding it for me.*
+
+**What you'll notice:** the default ships in the plugin's tracked `promptlibrary-kit.settings.json`, which
+you never edit. Your override is `catalog_root` in the local file, which also holds your approval lifetime
+(PUR-3); it is per project and per machine and never committed, so a teammate who has not set the same path
+sees the default location, not yours. Setup and its status report (PUR-6) show the path in use and whether
+it came from the default, your local file or a fallback after a rejected value. The checker's `--root`
+option exists for tests only; the skills never pass it, and it obeys the same path rules (CFG-3).
+
+**Changes to earlier decisions:** the draft said "one setting"; PUR-3 added the approval lifetime, and the
+attachment size limit (CAT-2, CAT-3) and project screen patterns (SCR-4) get their own CFG requirements.
+CFG-1 now covers the catalog root only.
+
+Source: V4 §Configuration; code (`resolve_root`); owner decision 2026-11-17. State: met (showing the source
+in setup: not met, PUR-6). Confirmed: yes (2026-11-17).
+
+### CFG-2: A tracked local settings file cannot move the catalog (dropped)
+
+Dropped by the owner on 2026-11-17 as a hypothetical case: a `*.local.*` file is never tracked, and PUR-6's
+setup keeps it git-ignored. No separate requirement is kept. The check stays in the code: a tracked
+local file, or one reached through a link, has its `catalog_root` ignored, with a warning and a fail-closed
+answer when git cannot tell. PUR-3's tracked-copy rules for the approval lifetime and the approvals file
+also stay unchanged.
+
+Source: V4 §Path trust boundary; code (`_is_tracked`, `_via_link`). State: met (as an implementation
+detail). Confirmed: dropped (2026-11-17).
+
+### CFG-3: My catalog stays inside my project, however the path is written
+
+*As a developer, my catalog (and every attached file) always resolves inside my project, whatever form the
+path takes (`..`, absolute, another drive, network path, link, junction, case, 8.3 short name), so that a
+setting can never make the plugin read or write prompts somewhere else on my machine.*
+
+**What you'll notice:** a catalog path that ends up outside the project root is refused, the default is
+used and you are told why (CFG-4). Folder names with a trailing dot or space, or a colon, are refused
+because Windows would read them as another folder. The project root is git's top-level folder (else the
+working directory), and the catalog cannot be the project root itself. Sharing one catalog across
+repositories stays DEF-1's job.
+
+Source: V4 §Path trust boundary; code (`check_catalog_path`, `contained`); owner decision 2026-11-17.
+State: met for the catalog (tests cover `..`, links, case, UNC, the root itself and trailing dots or
+colons; junctions, 8.3 names and other drives are handled by the resolved-path comparison but untested:
+add tests); attachments not met (CAT-2). Confirmed: yes (2026-11-17).
+
+### CFG-4: A bad catalog path falls back to the default, and I'm told
+
+*As a developer, if my catalog path setting is unusable, the plugin uses the default location, tells me
+why in every skill before I confirm any change, and stops with the reasons if no location works, so that a
+typo never sends the plugin somewhere unexpected without my knowing.*
+
+**What you'll notice:** the order is your local `catalog_root`, then the plugin default; each rejection is
+reported with its reason, and setup's status names the source as a fallback (CFG-1, PUR-6). If no value
+works, the plugin stops with every reason and never guesses another folder. Trade-off you accepted: after
+a typo, a change goes into the default catalog, so you can end up with prompts in two folders if you
+ignore the warning. An invalid approval lifetime is handled the same way (PUR-3).
+
+Source: V4 §Path trust boundary; code (`resolve_root`); owner decision 2026-11-17. State: **partial**
+(fallback and the stop: met; only `prompt-retrieval` is told to show the warnings, `prompt-library` and
+`prompt-execution` are not). Confirmed: yes (2026-11-17).
+
+### CFG-5: The checker isn't affected by my project's Python setup
+
+*As a developer, the plugin's checker and hook run the same way in every project, unaffected by my
+project's Python files, virtual environment, uv settings or Python environment variables, so that nothing
+in a repository can change how my prompts are checked.*
+
+**What you'll notice:** only `uv` on your PATH is needed (PUR-4); your `pyproject.toml`, `.venv` and uv
+config are ignored, and nothing is installed from your package index. Each call starts a fresh environment
+with the standard library only (QA-4), which costs a small delay.
+
+**Changes to earlier decisions:** extends the isolation to Python's own import path (Python's `-I` mode on
+the checker call) and to the PUR-4 hook, whose `python3`/`python` fallback tiers
+(`.claude/rules/require-python-hook-interpreter-fallback.md`) must run isolated too.
+
+Source: code (`uv run --isolated --no-project --no-config`; README records a non-isolated form once picking
+up a repository `.venv`); owner decision 2026-11-17. State: **partial** (uv isolation: met; Python `-I`
+and whether `PYTHONPATH` reaches the checker: not met, unverified; hook: not built, PUR-4). Confirmed: yes
+(2026-11-17).
+
+### CFG-6: Attached files have a size limit I can set per project
+
+*As a developer, all files attached to one prompt together are at most 32 KB by default, a limit I can set
+per project to 16, 32 or 64 KB, checked when I attach, review and run, and never cut off silently, so that
+what I approve stays readable and each run loads a predictable amount into my session.*
+
+**What you'll notice:** an attachment that would exceed the limit is refused before review, with the sizes
+named; attach a focused excerpt or make a skill (PUR-1). A file that grows past the limit, or a limit you
+lower later, makes the prompt unrunnable until the attachments are shortened or detached; nothing is cut
+off. Everything attached is shown in full in the review and the first-run preview (EXE-3) and loaded at
+every run, which is why there is a cap. Setup's status shows the limit and where it came from (PUR-6).
+
+**Settings (decided 2026-11-17, per `.claude/rules/ask-before-config-decisions.md`):**
+
+| Item | Decision |
+|---|---|
+| Setting | `attachment_max_kb`, the total for all of one prompt's attachments: only `16`, `32` or `64`; default `32`. Any other value is rejected, the default is used, and the fallback is reported (CFG-4). No separate per-file limit. |
+| Storage | Both: the default in the plugin's tracked `promptlibrary-kit.settings.json`; a per-project override in the untracked `.claude/promptlibrary-kit.local.json`. A tracked copy may only lower it (the PUR-3 pattern). |
+| Format | JSON, the same files as `catalog_root`. |
+
+**Changes to earlier decisions:** settles the attachment size limit CAT-2 and CAT-3 left open; the owner
+chose a setting over a fixed limit.
+
+Source: CAT-2, CAT-3; owner decision 2026-11-17. State: **not met** (attachments are not loaded yet, CAT-2).
+Confirmed: yes (2026-11-17).
+
+### CFG-7: My team's own secret formats are screened too
+
+*As a developer, I can add secret patterns (a name and a regular expression each) for my project in a
+shared, committed `.claude/promptlibrary-kit.screen.json` and in my own untracked
+`.claude/promptlibrary-kit.local.json`, and the screen applies both together with the built-in kinds,
+skipping and reporting any unusable pattern, so that my team's own token formats are caught for everyone
+and my private ones for me, while a pattern can only add catches, never remove one.*
+
+**What you'll notice:** a project pattern is used exactly like a built-in kind: on the prompt text and its
+attachments when a prompt is saved (a hard stop for imported and AI-written text, SCR-1; a warning for
+your own, SCR-2), again at every later step (SCR-3), and by setup's status check, which lists active
+prompts matching a newly added project pattern (SCR-3). Match messages show the pattern's name, never the
+matched text. Patterns are not used at run time and never change a prompt. A pattern that comes with a
+cloned repository can block too much but cannot let anything through. Setup's status (PUR-6) shows how many
+patterns came from each source. Trade-off you accepted: a committed pattern applies to you without asking,
+and a badly written one can block prompts or slow the screen until it is fixed; review the shared file
+like code.
+
+**Settings (decided 2026-11-17, per `.claude/rules/ask-before-config-decisions.md`):**
+
+| Item | Decision |
+|---|---|
+| Setting | Additional secret patterns, each `{"name": ..., "pattern": ...}`, the shape of the built-in `plib-token-shapes.json`. A pattern with an invalid regular expression, no name, or a name a built-in kind already uses is skipped and reported; the rest of the screen still runs. |
+| Storage | Both, combined: a shared, git-tracked project file `.claude/promptlibrary-kit.screen.json` (`{"version": 1, "patterns": [...]}`), and a `screen_patterns` list in the untracked `.claude/promptlibrary-kit.local.json`. No tracked-copy restriction: patterns only add catches. |
+| Format | JSON (backslashes doubled, no comments). |
+
+**Changes to earlier decisions:** settles SCR-4's open storage and format. The owner re-confirmed keeping
+project patterns when asked whether to drop them (2026-11-17). SCR-3's status flag, written for patterns a
+plugin update adds, also covers newly added project patterns.
+
+Source: SCR-4; owner decisions 2026-11-17. State: **not met** (no project patterns exist). A new security
+gate (SEC-6): `security-reviewer` before its first commit. Confirmed: yes (2026-11-17).
 
 ## 11. Platform and quality (QA)
 
