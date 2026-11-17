@@ -478,12 +478,21 @@ def _parse_classifier_reply(text: str) -> bool:
     # other braces in surrounding prose and fail to parse a verdict that is actually there. A "{"
     # that does not decode opens a level until its "}", and an object that decodes is skipped as a
     # whole, so a "triggered" nested in another object, complete or truncated, is never the verdict.
+    # Inside an open level, braces within double-quoted strings do not count.
     decoder = json.JSONDecoder()
     depth = 0
+    in_string = False
     pos = 0
     while pos < len(text):
         char = text[pos]
-        if char == "}":
+        if in_string:
+            if char == "\\":
+                pos += 1
+            elif char == '"':
+                in_string = False
+        elif char == '"' and depth > 0:
+            in_string = True
+        elif char == "}":
             depth = max(depth - 1, 0)
         elif char == "{":
             if depth == 0:

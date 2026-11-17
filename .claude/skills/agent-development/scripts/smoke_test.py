@@ -210,6 +210,10 @@ def check_trigger_script_classifier_reply_parsing():
             '{"metadata": {"triggered": true}'
         )
         is not None,
+        "brace in a string of a truncated object is an error": error_of(
+            '{"r": "}", "m": {"triggered": true}'
+        )
+        is not None,
         "verdict inside a string value is an error": error_of(
             '{"reason": "{\\"triggered\\": true}"}'
         )
