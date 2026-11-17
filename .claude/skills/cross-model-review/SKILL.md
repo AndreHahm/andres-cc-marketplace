@@ -11,7 +11,7 @@ description: >-
   pre-PR gate, or high-confidence findings before opening or readying a PR. Not
   `collaborating-on-a-pr`'s reviewer actions, nor `codex-review-recovery`'s stuck-check recovery, nor
   `handling-review-findings`'s triage of posted PR findings — it never touches GitHub state. Not a
-  Codex-only opinion on a design or document (`codex-peer-review`, `codex-verify`).
+  Codex-only opinion on a design or document (`codex-peer-review`, `codex-verify`, if installed).
 allowed-tools: ["Bash(git rev-parse:*)", "Bash(git merge-base:*)", "Bash(git ls-files:*)", "Bash(mktemp:*)", "Bash(date:*)", "Bash(printf:*)", "Bash(grep:*)", "Bash(echo:*)", "Bash(realpath:*)", "Bash(test:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-copy-index.sh:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-intent-add.sh:*)", "Bash(umask:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-write-run-file.sh:*)", "Bash(node plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope-run.sh:*)", "Read", "Grep", "Glob", "AskUserQuestion"]
 ---
 
@@ -56,8 +56,8 @@ on the working diff.
   reviewing a PR's already-pushed remote state** — that's `collaborating-on-a-pr`. This skill never
   calls `gh`; it only reviews the local working diff. An existing draft PR for this branch does **not**
   exclude this skill: reviewing the diff before flipping it to ready is its purpose (see "When to Use").
-- **A Codex-only second opinion**: on Claude's own design, analysis or recommendation → codex-kit's
-  `codex-peer-review`; on a plan or document file → `codex-verify`. This skill is the two-vendor diff gate.
+- **A Codex-only second opinion** (codex-kit, when installed): on Claude's own design, analysis
+  or recommendation → `codex-peer-review`; on a plan or document → `codex-verify`. This skill is the two-vendor diff gate.
   Tie-break: a diff, branch or PR named with no Codex-only ask comes here; asking Codex about a design,
   analysis or document goes to the codex-kit skill, even with code changes attached.
 - **Recovering a stuck "Await Codex review" GitHub check** on an already-open PR — that's
