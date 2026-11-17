@@ -119,7 +119,13 @@ In the envelope, `provenance.provider` is the `recipient` label, `provenance.exe
 3. **Secret-named paths.** If any target path or diff-header path matches codex-kit's secret-filename
    patterns, the call is refused unless the caller passes `--secret-paths-confirmed` →
    `secret_paths_unconfirmed`. An interactive caller passes it only after its own extra confirmation
-   naming the hit; an unattended caller only when its configuration says so.
+   naming the hit; an unattended caller only when its configuration says so. The three input files
+   themselves (instructions, diff, target paths) are refused outright → `usage`, whatever the flag says,
+   because their content goes to the vendor: when a name matches codex-kit's secret list (exact key and
+   dotfile names, `.key`/`.pem`/`.p12`/`.pfx`/`.jks`, and any name containing secret, credential, password
+   or token) or the dispatcher's own additions (suffixed and `_sk` SSH keys, `.ppk`, `auth.json`,
+   `hosts.yml`, `.envrc`, `.pypirc`), or when the real path lies under `~/.ssh`, `~/.gnupg`, `~/.aws`,
+   `~/.kube`, `~/.docker` or `~/.config/gh`. Name a caller's input files accordingly.
 4. **Size.** No single argument may exceed 120 000 bytes (Linux caps one argument at 128 KiB) →
    `input_too_large`. Every vendor reads the review from a private file (agy as stdin), so this is a
    backstop; in practice only the 8 MiB input-file limit applies.
@@ -133,7 +139,10 @@ dispatcher with any arguments, `--secret-paths-confirmed` and any input files in
 skill is loaded a dispatch runs without a permission prompt. Confirming the egress is the caller's job
 and is enforced only by the caller following its own steps (for `rva-review-diff`, its `AskUserQuestion`
 steps), not by a permission check. A deliberate trade-off: the input files are fresh temporary paths on
-every run, so a grant listing exact arguments could not match a real call.
+every run, so a grant listing exact arguments could not match a real call. Its reach: any file you own
+that nobody else can write could be passed as an input file and sent. Gate 3 stops only the names and
+directories it lists; a secret under another name or elsewhere (a hard link or copy, a `.kube`-style
+config outside the listed directories) still passes.
 
 ## What runs
 
@@ -203,7 +212,7 @@ tracked-local-file scenario is not in the eval set; it stays covered by scenario
 scripts, the shipped settings (three vendors, all off, 600 000 ms), the command's two Bash grants, and
 that the dispatcher with no flags returns a JSON usage error. It spawns no vendor.
 
-**Last dated run record:** 2026-11-17, `node --test tests/` 43/43 passing after the PR review rounds 1 to 3 fixes (marker lines, path containment at `/`, the fsmonitor and `GIT_*` hardening,
+**Last dated run record:** 2026-11-17, `node --test tests/` 45/45 passing after the PR review rounds 1 to 4 fixes (marker lines, path containment at `/`, the fsmonitor and `GIT_*` hardening,
 stdout truncation, `GIT_*` scrubbing, the in-checkout plugin refusal, the effective timeout); earlier the same day 35/35 after the Windows refusal, the version-probe and git-resolution fixes;
 2026-11-16, 30/30 after agy moved to stdin input; live check earlier the same day, one run per vendor on the planted-bug fixture (all three found it,
 agy still with argv input), plus a canary-file injection probe on pi and devin (neither read the file).
@@ -211,7 +220,7 @@ agy's stdin input was then probed live with a dummy prompt only, not re-run on t
 baseline (`evals/review-adapter-dispatch/workspace/iteration-1/benchmark.json`); `smoke_test.mjs` passing
 on the plugin copy.
 
-**Concrete scenarios:** the 43 tests in `tests/rva-dispatch.test.mjs` cover 34 scenarios against fake
+**Concrete scenarios:** the 45 tests in `tests/rva-dispatch.test.mjs` cover 36 scenarios against fake
 vendor binaries (no real vendor is called); the scenarios are listed in
 [references/test-scenarios.md](references/test-scenarios.md).
 
@@ -233,5 +242,5 @@ fixture with a planted bug.
 | `references/trust-and-config.md` | Shipped defaults, the local allow-list, the tracked-copy refusal, unattended use |
 | `references/typed-failures.md` | Failure categories this plugin adds to codex-kit's, and how to report each |
 | `references/codex-kit-locator.md` | How codex-kit's validator is found and checked before import |
-| `references/test-scenarios.md` | The 34 concrete scenarios the 43 node tests cover against fake vendors |
+| `references/test-scenarios.md` | The 36 concrete scenarios the 45 node tests cover against fake vendors |
 | `scripts/smoke_test.mjs` | Structural self-test; not part of the contract |

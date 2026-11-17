@@ -189,6 +189,49 @@ test("an instruction file inside a target path is a usage error", () => {
   assert.match(r.out.detail, /inside a target path/);
 });
 
+test("an input file with a secret-like name is refused before it is read, even with the confirmation flag", () => {
+  const f = fixture();
+  // codex-kit's list (id_rsa, credentials.json), the dispatcher's own additions and an uppercase name.
+  for (const name of ["id_rsa", "credentials.json", "ID_ED25519_SK", "id_rsa_work", "putty.ppk", "auth.json", "hosts.yml", ".envrc"]) {
+    const file = path.join(f.inputs, name);
+    fs.writeFileSync(file, "Review it.\n", { mode: 0o600 });
+    fs.chmodSync(file, 0o600);
+    const record = path.join(f.inputs, `${name}.args`);
+    const r = dispatch(f, "pi", ["--secret-paths-confirmed"], { FAKE_ARGS: record }, { instruction: file });
+    assert.equal(r.out.category, "usage", `${name}: ${JSON.stringify(r.out)}`);
+    assert.match(r.out.detail, /secret-like file name/);
+    assert.equal(fs.existsSync(record), false, `${name}: a vendor was spawned`);
+  }
+  // A public key is not a secret.
+  const pub = path.join(f.inputs, "id_ed25519.pub");
+  fs.writeFileSync(pub, "Review it.\n", { mode: 0o600 });
+  fs.chmodSync(pub, 0o600);
+  assert.doesNotMatch(JSON.stringify(dispatch(f, "pi", ["--dry-run"], {}, { instruction: pub }).out), /secret-like/);
+  // The diff and target-paths files are checked the same way, and so is the target of a link to a secret.
+  const args = (instr, diff, targets) => ["--vendor", "pi", "--reviewer-type", "t", "--dispatch-id", "d1", "--instruction-file", instr,
+    "--diff-file", diff, "--target-paths-file", targets, "--cwd", f.repo, "--dry-run"];
+  const secretDiff = path.join(f.inputs, "secret.patch");
+  fs.copyFileSync(path.join(f.inputs, "diff.patch"), secretDiff);
+  fs.chmodSync(secretDiff, 0o600);
+  assert.equal(runNode(DISPATCH, args(path.join(f.inputs, "instr.md"), secretDiff, path.join(f.inputs, "changed.txt"))).out.category, "usage");
+  const link = path.join(f.inputs, "notes.md");
+  fs.symlinkSync(path.join(f.inputs, "id_rsa"), link);
+  assert.equal(runNode(DISPATCH, args(path.join(f.inputs, "instr.md"), path.join(f.inputs, "diff.patch"), link)).out.category, "usage");
+});
+
+test("an input file inside a key or credentials directory under the home directory is refused", () => {
+  const f = fixture();
+  const home = homeWithCodexKit();
+  const sshDir = path.join(home, ".ssh");
+  fs.mkdirSync(sshDir, { mode: 0o700 });
+  const file = path.join(sshDir, "notes.md");
+  fs.writeFileSync(file, "Review it.\n", { mode: 0o600 });
+  fs.chmodSync(file, 0o600);
+  const r = dispatch(f, "pi", ["--dry-run"], {}, { instruction: file, home });
+  assert.equal(r.out.category, "usage", JSON.stringify(r.out));
+  assert.match(r.out.detail, /key or credentials directory/);
+});
+
 test("input files writable by others, and a --cwd below the repository root, are usage errors", () => {
   const f = fixture();
   fs.chmodSync(path.join(f.inputs, "diff.patch"), 0o666);

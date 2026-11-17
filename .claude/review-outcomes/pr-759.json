@@ -93,6 +93,30 @@
     },
     {
       "disposition": "fixed",
+      "finding": "4599057121",
+      "note": "Input files refused by secret-like name or under home key directories, no override; the grant's file reach is documented.",
+      "pr": 759,
+      "recorded_at": "2026-11-17T11:57:01+00:00"
+    },
+    {
+      "disposition": "declined",
+      "finding": "claude-delta:3d571979:egress-content",
+      "note": "Informational: the confirmation names files and size; the diff itself is what the user asked to review.",
+      "path": "plugins/reviewadapters-kit/commands/rva-review-diff.md",
+      "pr": 759,
+      "recorded_at": "2026-11-17T11:52:27+00:00"
+    },
+    {
+      "disposition": "declined",
+      "finding": "claude-delta:3d571979:pi-token",
+      "note": "R23 compares whole extracted names, so pi whitelists only the exact name pi.",
+      "path": ".claude/plugin-rulebook.config.json",
+      "pr": 759,
+      "recorded_at": "2026-11-17T11:52:26+00:00",
+      "rule": "R23"
+    },
+    {
+      "disposition": "fixed",
       "finding": "claude-delta:fa4c6398:dated-exemption-list",
       "note": "Exemption list made generic, no date; fixed in 83872f81.",
       "path": ".claude/rules/resolve-plugin-root-to-claude-mirror.md",
@@ -212,6 +236,33 @@
       "path": ".claude/rules/resolve-plugin-root-to-claude-mirror.md",
       "pr": 759,
       "recorded_at": "2026-11-17T11:34:45+00:00",
+      "rule": "compactness"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-delta:44075518444:instruction-file-reach",
+      "note": "Input files refused by secret-like name (codex-kit list plus local key and auth names) or under home key directories; residual documented.",
+      "path": "plugins/reviewadapters-kit/skills/review-adapter-dispatch/SKILL.md",
+      "pr": 759,
+      "recorded_at": "2026-11-17T11:57:01+00:00",
+      "rule": "injection-surface"
+    },
+    {
+      "disposition": "declined",
+      "finding": "codex-delta:44075518444:r13-size",
+      "note": "Owner keeps the size warning: informational, under the 300-line soft limit.",
+      "path": "plugins/reviewadapters-kit/skills/review-adapter-dispatch/SKILL.md",
+      "pr": 759,
+      "recorded_at": "2026-11-17T11:52:27+00:00",
+      "rule": "R13"
+    },
+    {
+      "disposition": "declined",
+      "finding": "codex-delta:44075518444:rule-length",
+      "note": "Informational length note, declined again by the owner.",
+      "path": "scripts/marketplace_ci/rules/resolve-plugin-root-to-claude-mirror.md",
+      "pr": 759,
+      "recorded_at": "2026-11-17T11:52:26+00:00",
       "rule": "compactness"
     }
   ]
