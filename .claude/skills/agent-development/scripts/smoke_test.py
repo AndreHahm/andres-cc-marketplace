@@ -206,6 +206,10 @@ def check_trigger_script_classifier_reply_parsing():
         "non-boolean verdict is an error": error_of('{"triggered": "false"}') is not None,
         "missing verdict is an error": error_of('{"reason": "z"}') is not None,
         "nested verdict is an error": error_of('{"metadata": {"triggered": false}}') is not None,
+        "nested verdict in a truncated object is an error": error_of(
+            '{"metadata": {"triggered": true}'
+        )
+        is not None,
         "verdict inside a string value is an error": error_of(
             '{"reason": "{\\"triggered\\": true}"}'
         )
