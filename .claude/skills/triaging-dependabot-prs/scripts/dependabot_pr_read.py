@@ -2,11 +2,11 @@
 """Read-only GitHub lookups for triaging-dependabot-prs, in place of raw `gh` read grants.
 
 The skill needs these reads: the open Dependabot PR list, one PR's fields, a PR's required checks,
-the unfinished workflow runs on a PR's branch, a PR's review threads, a PR's changed files and
-commits, and a `uv.lock` or `pnpm-lock.yaml` file at a ref. A raw `gh api` or `gh pr` grant
-cannot be narrowed to those (a prefix grant lets any trailing argument through), so this script
-does exactly these things and nothing else, with the repository, the PR number and the JSON fields
-checked in code. It has no code path that posts, closes, edits or deletes anything on GitHub.
+the unfinished workflow runs on a PR's head and branch, a PR's review threads, a PR's changed
+files and commits, and a `uv.lock` or `pnpm-lock.yaml` file at a ref. A raw `gh api` or `gh pr`
+grant cannot be narrowed to those (a prefix grant lets any trailing argument through), so this
+script does exactly these things and nothing else, with the repository, the PR number and the JSON
+fields checked in code. It has no code path that posts, closes, edits or deletes anything on GitHub.
 
 `gh` and `git` are run by absolute path with an argument list (no shell). `gh api` REST calls always
 get --method GET and --hostname github.com, and `gh pr` always gets `-R github.com/<repo>`, against
@@ -35,7 +35,9 @@ are reported). `head-runs` reads the PR's head branch and SHA, then the first pa
 workflow runs for that SHA and the first page (newest first) for that branch, and returns the runs
 that have not completed as `head_incomplete` (on the current head) and `other_head_incomplete` (on
 an older head of the branch), each as id/name/event/status/head_sha/url; `head_run_count` is the
-head's total and "truncated" is true when the head has more runs than its page. `pr-threads` reads
+head's total, "truncated" is true when the head has more runs than its page, and
+"other_heads_truncated" is true when the branch has more runs than its page (so
+`other_head_incomplete` may be missing older runs). `pr-threads` reads
 every page of the PR's review threads (at most 1000, else exit 4) and returns `count`,
 `unresolved_count` and `unresolved` (path, line and first-comment author of each unresolved
 thread; no comment text). `files` and `commits` print a compact summary of the
@@ -375,7 +377,7 @@ def head_runs(run, gh, repo, pr):
     head_total, head_rows = _runs_page(run, gh, repo, f"head_sha={sha}")
     if any(r["head_sha"] != sha for r in head_rows):
         raise Refusal("gh api actions/runs returned a run for another head SHA", EXIT_TOOL)
-    _, branch_rows = _runs_page(run, gh, repo, f"branch={ref}")
+    branch_total, branch_rows = _runs_page(run, gh, repo, f"branch={ref}")
     return {
         "head_ref": ref,
         "head_sha": sha,
@@ -385,6 +387,7 @@ def head_runs(run, gh, repo, pr):
         "other_head_incomplete": [
             r for r in branch_rows if r["head_sha"] != sha and r["status"] != "completed"
         ],
+        "other_heads_truncated": branch_total > len(branch_rows),
     }
 
 
