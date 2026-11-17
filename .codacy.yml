@@ -162,6 +162,17 @@
 # beside them are NOT excluded: qlty-sonar-read.py carries its own inline nosec reasons. Same
 # whole-path/whole-engine tradeoff: secret detection is also off for these files, which hold only
 # synthetic placeholders such as dev@example.com.
+#
+# reviewadapters-kit's persisted smoke test
+# (plugins/reviewadapters-kit/skills/*/scripts/smoke_test.mjs) and its eval
+# fixture builder (evals/review-adapter-dispatch/make-fixtures.mjs) are test
+# code, the same shape as the context-kit and quality-kit smoke-test entries
+# above (PR #759): every flagged call reads or writes a path built from the
+# file's own directory or a fresh mkdtempSync directory, or builds a RegExp
+# from a constant, never external input (ESLint security/xss rules and
+# Semgrep's non-literal fs filename). The plugin's production scripts are
+# NOT excluded. Same whole-path/whole-engine tradeoff: secret detection is
+# also off for these two files, which hold only synthetic fixture data.
 exclude_paths:
   - "plugins/codex-kit/scripts/smoke-tests/**"
   - "plugins/**/tests/**"
@@ -180,3 +191,5 @@ exclude_paths:
   - "plugins/workledger-kit/scripts/wlgr_test_*.py"
   - "plugins/workmanagement-kit/scripts/wmgt_test_*.py"
   - "plugins/workmanagement-kit/skills/notion-knowledge-management/hooks/test_guard_notion_bootstrap.py"
+  - "plugins/reviewadapters-kit/skills/*/scripts/smoke_test.mjs"
+  - "evals/review-adapter-dispatch/make-fixtures.mjs"

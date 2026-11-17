@@ -41,7 +41,7 @@ function main() {
 
     const settings = JSON.parse(fs.readFileSync(path.join(ROOT, "reviewadapters-kit.settings.json"), "utf8"));
     if (settings.timeout_ms !== 600000) errors.push("settings: timeout_ms is not 600000");
-    const vendors = Object.keys(settings.vendors ?? {}).sort().join(",");
+    const vendors = Object.keys(settings.vendors ?? {}).sort((a, b) => a.localeCompare(b)).join(",");
     if (vendors !== "agy,devin,pi") errors.push(`settings: vendors are ${vendors}`);
     for (const [name, vendor] of Object.entries(settings.vendors ?? {})) {
       if (vendor.enabled !== false) errors.push(`settings: ${name} is not disabled`);
