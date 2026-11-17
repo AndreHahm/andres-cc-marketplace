@@ -8,7 +8,7 @@ description: >-
   scripts), never directly by a user in conversation and never asking
   anything itself. For Codex itself, see codex-kit's codex-review-bridge; for
   a user-run single review, see the rva-review-diff command.
-allowed-tools: Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/rva-dispatch.mjs":*), Read
+allowed-tools: Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/rva-dispatch.mjs":*)
 disable-model-invocation: true
 ---
 
