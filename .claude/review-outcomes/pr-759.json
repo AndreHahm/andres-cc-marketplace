@@ -79,6 +79,28 @@
     },
     {
       "disposition": "declined",
+      "finding": "4598736058",
+      "note": "Grant kept by owner choice; model-enforced egress confirmation documented in 83872f81.",
+      "pr": 759,
+      "recorded_at": "2026-11-17T11:34:43+00:00"
+    },
+    {
+      "disposition": "declined",
+      "finding": "4598736228",
+      "note": "Grant kept by owner choice; model-enforced egress confirmation documented in 83872f81.",
+      "pr": 759,
+      "recorded_at": "2026-11-17T11:34:44+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "claude-delta:fa4c6398:dated-exemption-list",
+      "note": "Exemption list made generic, no date; fixed in 83872f81.",
+      "path": ".claude/rules/resolve-plugin-root-to-claude-mirror.md",
+      "pr": 759,
+      "recorded_at": "2026-11-17T11:34:45+00:00"
+    },
+    {
+      "disposition": "declined",
       "finding": "coderabbit-body:759:command-to-skill",
       "note": "Reverses the documented command-not-skill design; owner declined.",
       "path": "plugins/reviewadapters-kit/commands/rva-review-diff.md",
@@ -146,6 +168,51 @@
       "pr": 759,
       "recorded_at": "2026-11-17T11:04:23+00:00",
       "rule": "reliability"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-delta:44070768314:cleanup-token",
+      "note": "Cleanup needs the token its own prepare run printed; fixed in 83872f81 with a test.",
+      "path": "plugins/reviewadapters-kit/scripts/rva-prepare.mjs",
+      "pr": 759,
+      "recorded_at": "2026-11-17T11:34:42+00:00",
+      "rule": "permission-risk"
+    },
+    {
+      "disposition": "declined",
+      "finding": "codex-delta:44070768314:r13-size",
+      "note": "Owner keeps the size warning: informational, under the 300-line soft limit.",
+      "path": "plugins/reviewadapters-kit/skills/review-adapter-dispatch/SKILL.md",
+      "pr": 759,
+      "recorded_at": "2026-11-17T11:34:44+00:00",
+      "rule": "R13"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-delta:44070768314:r23-pi",
+      "note": "pi added to the repository's R23 whitelist in 83872f81.",
+      "path": "plugins/reviewadapters-kit/skills/review-adapter-dispatch/SKILL.md",
+      "pr": 759,
+      "recorded_at": "2026-11-17T11:34:44+00:00",
+      "rule": "R23"
+    },
+    {
+      "disposition": "declined",
+      "finding": "codex-delta:44070768314:rule-guard",
+      "note": "Limit already disclosed in the rule; a mechanical guard outside the checkout is issue 762.",
+      "path": ".claude/rules/resolve-plugin-root-to-claude-mirror.md",
+      "pr": 759,
+      "recorded_at": "2026-11-17T11:34:43+00:00",
+      "rule": "security/enforcement"
+    },
+    {
+      "disposition": "declined",
+      "finding": "codex-delta:44070768314:rule-length",
+      "note": "Informational length note; the exemption list was shortened to generic wording instead.",
+      "path": ".claude/rules/resolve-plugin-root-to-claude-mirror.md",
+      "pr": 759,
+      "recorded_at": "2026-11-17T11:34:45+00:00",
+      "rule": "compactness"
     }
   ]
 }
