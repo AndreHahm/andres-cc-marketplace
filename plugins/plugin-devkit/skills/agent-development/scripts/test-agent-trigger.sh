@@ -253,6 +253,19 @@ def parse_agent_md(agent_file: Path) -> dict[str, object]:
     return {"frontmatter": frontmatter, "system_prompt": body}
 
 
+def _quote_for_report(text: str, limit: int = 300) -> str:
+    """Quote external text (a model reply, a provider's stderr) for an error message.
+
+    Whitespace is collapsed, the text is cut to `limit` characters, and ascii() escapes control and
+    non-ASCII characters, so the message stays one short line that any stdout encoding can print.
+    Nothing is redacted: only the length is bounded.
+    """
+    flat = " ".join(text.split())
+    if len(flat) > limit:
+        flat = flat[:limit] + "..."
+    return ascii(flat)
+
+
 def run_with_fallback(prompt: str, *, system_prompt: str, timeout: int, **_kwargs) -> LLMResult:
     command_text = os.environ.get("AGENT_TRIGGER_LLM_COMMAND") or os.environ.get("LLM_RUNNER_COMMAND")
     if command_text:
@@ -302,8 +315,8 @@ def run_with_fallback(prompt: str, *, system_prompt: str, timeout: int, **_kwarg
             shutil.rmtree(scratch_dir, ignore_errors=True)
 
     if completed.returncode != 0:
-        stderr = (completed.stderr or "").strip()
-        raise LLMProviderError(f"LLM command exited with status {completed.returncode}: {stderr}")
+        stderr = _quote_for_report(completed.stderr or "")
+        raise LLMProviderError(f"LLM command exited with status {completed.returncode}: stderr {stderr}")
 
     return LLMResult((completed.stdout or "").strip(), provider)
 
@@ -508,13 +521,9 @@ def _parse_classifier_reply(text: str) -> bool:
             else:
                 depth += 1
         pos += 1
-    raw = " ".join(text.split())
-    if not raw:
+    if not text.strip():
         raise ValueError("classifier reply was empty")
-    if len(raw) > 300:
-        raw = raw[:300] + "..."
-    # repr() keeps the quoted reply on one line and escapes any control characters in it.
-    raise ValueError(f"classifier reply has no JSON verdict; raw reply: {raw!r}")
+    raise ValueError(f"classifier reply has no JSON verdict; raw reply: {_quote_for_report(text)}")
 
 
 def run_semantic_fallback(agent_name: str, description: str, phrase: str, timeout_seconds: int) -> tuple[bool, str]:
