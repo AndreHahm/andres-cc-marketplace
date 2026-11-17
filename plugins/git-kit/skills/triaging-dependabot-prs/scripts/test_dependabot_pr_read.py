@@ -419,19 +419,43 @@ def workflow_run(run_id, status, head_sha=SHA, name="Validate Plugins"):
     }
 
 
-def runs_json(*runs):
-    return json.dumps({"total_count": len(runs), "workflow_runs": list(runs)})
+def runs_json(*runs, total=None):
+    return json.dumps(
+        {"total_count": len(runs) if total is None else total, "workflow_runs": list(runs)}
+    )
 
 
 def head_view(ref=HEAD_REF, sha=SHA):
     return json.dumps({"headRefName": ref, "headRefOid": sha})
 
 
-class HeadRuns(unittest.TestCase):
-    """head-runs (#739, #740): unfinished workflow runs on the PR's branch, split by head SHA."""
+class RunsFake(FakeRun):
+    """FakeRun whose `gh api` answer depends on the query: the head-SHA page or the branch page."""
 
-    def test_reads_the_head_then_one_pinned_get_of_the_branch_runs(self):
-        fake = FakeRun(pr_stdout=head_view(), api_stdout=runs_json(workflow_run(1, "completed")))
+    def __init__(self, head=(), branch=None, head_total=None, pr_stdout=None, **kwargs):
+        super().__init__(pr_stdout=head_view() if pr_stdout is None else pr_stdout, **kwargs)
+        self.head_stdout = runs_json(*head, total=head_total)
+        self.branch_stdout = runs_json(*(head if branch is None else branch))
+
+    def __call__(self, argv, **kwargs):
+        if argv[1:2] == ["api"]:
+            by_sha = any(a.startswith("head_sha=") for a in argv)
+            self.api_stdout = self.head_stdout if by_sha else self.branch_stdout
+        return super().__call__(argv, **kwargs)
+
+
+def api_get(endpoint, *fields):
+    argv = [GH, "api", "--hostname", "github.com", "--method", "GET", endpoint]
+    for field in fields:
+        argv += ["-f", field]
+    return argv
+
+
+class HeadRuns(unittest.TestCase):
+    """head-runs (#739, #740): unfinished runs on the PR's head SHA and on older heads."""
+
+    def test_reads_the_head_then_pinned_gets_by_sha_and_by_branch(self):
+        fake = RunsFake(head=[workflow_run(1, "completed")])
         code, out = run_main(["head-runs", "631"], fake)
         self.assertEqual(code, 0, out)
         self.assertEqual(
@@ -447,20 +471,12 @@ class HeadRuns(unittest.TestCase):
                 f"github.com/{REPO}",
             ],
         )
+        runs = f"repos/{REPO}/actions/runs"
         self.assertEqual(
-            fake.api_calls()[0][0],
+            [c[0] for c in fake.api_calls()],
             [
-                GH,
-                "api",
-                "--hostname",
-                "github.com",
-                "--method",
-                "GET",
-                f"repos/{REPO}/actions/runs",
-                "-f",
-                f"branch={HEAD_REF}",
-                "-f",
-                "per_page=100",
+                api_get(runs, f"head_sha={SHA}", "per_page=100"),
+                api_get(runs, f"branch={HEAD_REF}", "per_page=100"),
             ],
         )
         self.assertEqual((out["head_ref"], out["head_sha"]), (HEAD_REF, SHA))
@@ -470,30 +486,35 @@ class HeadRuns(unittest.TestCase):
 
     def test_a_queued_rerun_after_a_passed_run_is_incomplete(self):
         # #739: gh pr checks showed `pass` from run A while run B on the same head was queued.
-        runs = runs_json(workflow_run(2, "queued"), workflow_run(1, "completed"))
-        code, out = run_main(["head-runs", "606"], FakeRun(pr_stdout=head_view(), api_stdout=runs))
+        fake = RunsFake(head=[workflow_run(2, "queued"), workflow_run(1, "completed")])
+        code, out = run_main(["head-runs", "606"], fake)
         self.assertEqual(code, 0, out)
-        self.assertEqual([r["id"] for r in out["head_incomplete"]], [2])
         self.assertEqual(
-            out["head_incomplete"][0],
-            {
-                "id": 2,
-                "name": "Validate Plugins",
-                "event": "pull_request",
-                "status": "queued",
-                "head_sha": SHA,
-                "url": f"https://github.com/{REPO}/actions/runs/2",
-            },
+            out["head_incomplete"],
+            [
+                {
+                    "id": 2,
+                    "name": "Validate Plugins",
+                    "event": "pull_request",
+                    "status": "queued",
+                    "head_sha": SHA,
+                    "url": f"https://github.com/{REPO}/actions/runs/2",
+                }
+            ],
         )
 
     def test_a_pending_head_run_and_a_hung_old_head_run_are_both_reported(self):
         # #740: the new head's run is pending behind an old-head run that never finished.
-        runs = runs_json(
-            workflow_run(3, "pending"),
-            workflow_run(2, "in_progress", head_sha=OLD_SHA),
-            workflow_run(1, "completed", head_sha=OLD_SHA),
+        pending = workflow_run(3, "pending")
+        fake = RunsFake(
+            head=[pending],
+            branch=[
+                pending,
+                workflow_run(2, "in_progress", head_sha=OLD_SHA),
+                workflow_run(1, "completed", head_sha=OLD_SHA),
+            ],
         )
-        code, out = run_main(["head-runs", "631"], FakeRun(pr_stdout=head_view(), api_stdout=runs))
+        code, out = run_main(["head-runs", "631"], fake)
         self.assertEqual(code, 0, out)
         self.assertEqual([r["id"] for r in out["head_incomplete"]], [3])
         self.assertEqual([r["id"] for r in out["other_head_incomplete"]], [2])
@@ -502,16 +523,31 @@ class HeadRuns(unittest.TestCase):
 
     def test_every_status_other_than_completed_counts_as_incomplete(self):
         statuses = ("queued", "in_progress", "requested", "waiting", "pending", "action_required")
-        runs = runs_json(*(workflow_run(i + 1, s) for i, s in enumerate(statuses)))
-        code, out = run_main(["head-runs", "1"], FakeRun(pr_stdout=head_view(), api_stdout=runs))
+        fake = RunsFake(head=[workflow_run(i + 1, s) for i, s in enumerate(statuses)])
+        code, out = run_main(["head-runs", "1"], fake)
         self.assertEqual(code, 0, out)
         self.assertEqual([r["status"] for r in out["head_incomplete"]], list(statuses))
 
-    def test_full_page_is_truncated(self):
-        runs = runs_json(*(workflow_run(i + 1, "completed") for i in range(100)))
-        code, out = run_main(["head-runs", "1"], FakeRun(pr_stdout=head_view(), api_stdout=runs))
+    def test_truncated_is_about_the_head_not_older_heads_filling_the_branch_page(self):
+        # Older heads' runs fill the branch page on a long-lived branch; that is not truncation.
+        head = [workflow_run(201, "completed"), workflow_run(200, "completed")]
+        old = [workflow_run(i, "completed", head_sha=OLD_SHA) for i in range(1, 99)]
+        code, out = run_main(["head-runs", "1"], RunsFake(head=head, branch=head + old))
+        self.assertEqual(code, 0, out)
+        self.assertFalse(out["truncated"])
+        self.assertEqual(out["head_run_count"], 2)
+        # The head itself has more runs than its page holds: truncated, and counted in full.
+        page = [workflow_run(i + 1, "completed") for i in range(100)]
+        code, out = run_main(["head-runs", "1"], RunsFake(head=page, head_total=150))
         self.assertEqual(code, 0, out)
         self.assertTrue(out["truncated"])
+        self.assertEqual(out["head_run_count"], 150)
+
+    def test_a_head_page_row_for_another_sha_is_a_tool_error(self):
+        fake = RunsFake(head=[workflow_run(1, "completed", head_sha=OLD_SHA)])
+        code, out = run_main(["head-runs", "1"], fake)
+        self.assertEqual(code, 4, out)
+        self.assertIn("another head SHA", out["refused"])
 
     def test_bad_head_fields_are_tool_errors_before_the_runs_call(self):
         for view in (
@@ -523,7 +559,7 @@ class HeadRuns(unittest.TestCase):
             json.dumps({"headRefName": HEAD_REF}),
         ):
             with self.subTest(view=view):
-                fake = FakeRun(pr_stdout=view, api_stdout=runs_json())
+                fake = RunsFake(pr_stdout=view)
                 code, out = run_main(["head-runs", "1"], fake)
                 self.assertEqual(code, 4, out)
                 self.assertEqual(fake.api_calls(), [])
@@ -531,32 +567,41 @@ class HeadRuns(unittest.TestCase):
     def test_failures_and_bad_shapes_are_tool_errors(self):
         bad_run = workflow_run(1, "queued")
         del bad_run["html_url"]
-        for fake in (
-            FakeRun(pr_stdout=head_view(), api_rc=1),
-            FakeRun(pr_stdout=head_view(), api_stdout="nope"),
-            FakeRun(pr_stdout=head_view(), api_stdout="[]"),
-            FakeRun(pr_stdout=head_view(), api_stdout=json.dumps({"workflow_runs": {}})),
-            FakeRun(pr_stdout=head_view(), api_stdout=runs_json(bad_run)),
-            FakeRun(pr_stdout=head_view(), api_stdout=runs_json(workflow_run("1", "queued"))),
-            FakeRun(pr_stdout=head_view(), api_stdout=runs_json(workflow_run(1, None))),
-            FakeRun(pr_stdout=head_view(), api_stdout=runs_json(workflow_run(1, "queued", "x"))),
-            FakeRun(pr_rc=1),
-        ):
+        bad_pages = (
+            "nope",
+            "[]",
+            json.dumps({"workflow_runs": []}),
+            json.dumps({"total_count": True, "workflow_runs": []}),
+            json.dumps({"total_count": 0, "workflow_runs": {}}),
+            runs_json(bad_run),
+            runs_json(workflow_run("1", "queued")),
+            runs_json(workflow_run(1, None)),
+            runs_json(workflow_run(1, "queued", "x")),
+        )
+        for page in bad_pages:
+            for which in ("head", "branch"):
+                with self.subTest(page=page, which=which):
+                    fake = RunsFake(head=[workflow_run(1, "completed")])
+                    setattr(fake, f"{which}_stdout", page)
+                    code, out = run_main(["head-runs", "1"], fake)
+                    self.assertEqual(code, 4, out)
+                    self.assertFalse(out["ok"])
+        for fake in (RunsFake(api_rc=1), RunsFake(pr_rc=1)):
             code, out = run_main(["head-runs", "1"], fake)
             self.assertEqual(code, 4, out)
-            self.assertFalse(out["ok"])
 
     def test_bad_pr_numbers_are_refused_before_any_call(self):
         for bad in ("0", "01", "$(id)", "1/../2", ""):
-            fake = FakeRun()
+            fake = RunsFake()
             code, out = run_main(["head-runs", bad], fake)
             self.assertEqual(code, 2, (bad, out))
             self.assertEqual(fake.calls, [])
 
     def test_no_call_can_write(self):
         forbidden = {"POST", "PUT", "PATCH", "DELETE", "--input", "-F", "--field", "cancel"}
-        fake = FakeRun(pr_stdout=head_view(), api_stdout=runs_json(workflow_run(1, "queued")))
+        fake = RunsFake(head=[workflow_run(1, "queued")])
         run_main(["head-runs", "5"], fake)
+        self.assertEqual(len(fake.api_calls()), 2)
         for call, kwargs in fake.calls:
             self.assertFalse(forbidden & set(call), call)
             self.assertNotIn("shell", kwargs)

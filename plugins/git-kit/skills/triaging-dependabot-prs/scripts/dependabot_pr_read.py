@@ -31,10 +31,11 @@ Usage:
 true when that page is full. `pr-view` returns only the requested fields, each from a fixed
 allowlist.
 `pr-checks` returns the required checks as name/bucket/elapsed/link rows (an empty list when none
-are reported). `head-runs` reads the PR's head branch and SHA, then the first page (100, newest
-first) of Actions workflow runs on that branch, and returns the runs that have not completed, split
-into `head_incomplete` (on the current head) and `other_head_incomplete` (on an older head), each as
-id/name/event/status/head_sha/url; "truncated" is true when that page is full. `pr-threads` reads
+are reported). `head-runs` reads the PR's head branch and SHA, then the first page (100) of Actions
+workflow runs for that SHA and the first page (newest first) for that branch, and returns the runs
+that have not completed as `head_incomplete` (on the current head) and `other_head_incomplete` (on
+an older head of the branch), each as id/name/event/status/head_sha/url; `head_run_count` is the
+head's total and "truncated" is true when the head has more runs than its page. `pr-threads` reads
 every page of the PR's review threads (at most 1000, else exit 4) and returns `count`,
 `unresolved_count` and `unresolved` (path, line and first-comment author of each unresolved
 thread; no comment text). `files` and `commits` print a compact summary of the
@@ -338,14 +339,32 @@ def _run_row(run_item):
     return row
 
 
+def _runs_page(run, gh, repo, query):
+    """One page of Actions workflow runs for `query` (branch= or head_sha=): total and rows."""
+    done = _api_get(run, gh, f"repos/{repo}/actions/runs", query, f"per_page={PAGE_SIZE}")
+    if done.returncode != 0:
+        raise Refusal("gh api actions/runs failed", EXIT_TOOL)
+    try:
+        data = json.loads(done.stdout)
+        items, total = data["workflow_runs"], data["total_count"]
+        if not isinstance(items, list) or not isinstance(total, int) or isinstance(total, bool):
+            raise TypeError("unexpected page")
+        rows = [_run_row(item) for item in items]
+    except (ValueError, KeyError, TypeError) as exc:
+        raise Refusal("gh api actions/runs returned an unexpected shape", EXIT_TOOL) from exc
+    return total, rows
+
+
 def head_runs(run, gh, repo, pr):
-    """Workflow runs on the PR's branch that have not completed, split by the current head SHA.
+    """Workflow runs on the PR's head SHA, and older heads of its branch, that have not completed.
 
     `gh pr checks` and `statusCheckRollup` cannot show a run that is still `pending` (it has no
     check runs yet, #740), and `gh pr checks` shows one row per check name, so a passed run hides a
     queued rerun of the same workflow (#739). The Actions runs list shows both. Superseded runs end
     `completed` (cancelled), so any run on the head that is not `completed` means CI is still
     coming; one on an older head that is not `completed` can hold the workflow's concurrency group.
+    The head's runs are read by SHA, so `truncated` is about the head alone: older heads' runs
+    filling the branch page do not set it, and a head run left off the page is not missed silently.
     """
     view = pr_view(run, gh, repo, pr, ["headRefName", "headRefOid"])["data"]
     ref, sha = view.get("headRefName"), view.get("headRefOid")
@@ -353,24 +372,19 @@ def head_runs(run, gh, repo, pr):
         raise Refusal(f"PR {pr} has an unexpected headRefName", EXIT_TOOL)
     if not (isinstance(sha, str) and SHA_RE.fullmatch(sha)):
         raise Refusal(f"PR {pr} has an unexpected headRefOid", EXIT_TOOL)
-    done = _api_get(run, gh, f"repos/{repo}/actions/runs", f"branch={ref}", f"per_page={PAGE_SIZE}")
-    if done.returncode != 0:
-        raise Refusal("gh api actions/runs failed", EXIT_TOOL)
-    try:
-        items = json.loads(done.stdout)["workflow_runs"]
-        if not isinstance(items, list):
-            raise TypeError("not a list")
-        rows = [_run_row(item) for item in items]
-    except (ValueError, KeyError, TypeError) as exc:
-        raise Refusal("gh api actions/runs returned an unexpected shape", EXIT_TOOL) from exc
-    open_rows = [r for r in rows if r["status"] != "completed"]
+    head_total, head_rows = _runs_page(run, gh, repo, f"head_sha={sha}")
+    if any(r["head_sha"] != sha for r in head_rows):
+        raise Refusal("gh api actions/runs returned a run for another head SHA", EXIT_TOOL)
+    _, branch_rows = _runs_page(run, gh, repo, f"branch={ref}")
     return {
         "head_ref": ref,
         "head_sha": sha,
-        "head_run_count": sum(1 for r in rows if r["head_sha"] == sha),
-        "truncated": len(rows) >= PAGE_SIZE,
-        "head_incomplete": [r for r in open_rows if r["head_sha"] == sha],
-        "other_head_incomplete": [r for r in open_rows if r["head_sha"] != sha],
+        "head_run_count": head_total,
+        "truncated": head_total > len(head_rows),
+        "head_incomplete": [r for r in head_rows if r["status"] != "completed"],
+        "other_head_incomplete": [
+            r for r in branch_rows if r["head_sha"] != sha and r["status"] != "completed"
+        ],
     }
 
 
