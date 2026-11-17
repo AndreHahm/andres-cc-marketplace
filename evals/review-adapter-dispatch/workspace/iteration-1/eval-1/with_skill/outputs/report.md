@@ -2,12 +2,12 @@
 
 (Saved by the coordinating session from the agent's returned text; the harness blocked the agent's own write.)
 
-Fixture root, shortened below as `$F`: `/tmp/claude-1000/-home-andre-hahm-Repos-andres-cc-marketplace/4c6e2459-85e5-4717-9a7f-0a717d11aa09/scratchpad/rva-evals/fixtures-2/vendor-not-enabled`
+Fixture root, shortened below as `$F`: `<scratchpad>/rva-evals/fixtures-2/vendor-not-enabled`
 
 ## Dispatcher command run (the only one)
 
 ```bash
-node /home/andre-hahm/Repos/andres-cc-marketplace/.claude/worktrees/reviewadapters-kit/plugins/reviewadapters-kit/scripts/rva-dispatch.mjs \
+node <repo>/plugins/reviewadapters-kit/scripts/rva-dispatch.mjs \
   --vendor pi --reviewer-type bug-reviewer --dispatch-id eval-1 \
   --instruction-file "$F/inputs/instructions.md" \
   --diff-file "$F/inputs/diff.patch" \

@@ -5,10 +5,10 @@ Result: refused at argument validation (usage error, exit 1). Nothing was sent t
 ## Command run
 
 ```
-node /home/andre-hahm/Repos/andres-cc-marketplace/.claude/worktrees/reviewadapters-kit/plugins/reviewadapters-kit/scripts/rva-dispatch.mjs --vendor pi --reviewer-type bug-reviewer --dispatch-id eval-3 --instruction-file "<fixture>/inputs/instructions.md" --diff-file "<fixture>/inputs/diff.patch" --target-paths-file "<fixture>/inputs/targets.txt" --cwd "<fixture>/repo" --dry-run
+node <repo>/plugins/reviewadapters-kit/scripts/rva-dispatch.mjs --vendor pi --reviewer-type bug-reviewer --dispatch-id eval-3 --instruction-file "<fixture>/inputs/instructions.md" --diff-file "<fixture>/inputs/diff.patch" --target-paths-file "<fixture>/inputs/targets.txt" --cwd "<fixture>/repo" --dry-run
 ```
 
-`<fixture>` is `/tmp/claude-1000/-home-andre-hahm-Repos-andres-cc-marketplace/4c6e2459-85e5-4717-9a7f-0a717d11aa09/scratchpad/rva-evals/fixtures-2/header-not-in-targets`.
+`<fixture>` is `<scratchpad>/rva-evals/fixtures-2/header-not-in-targets`.
 
 Exit code: 1
 

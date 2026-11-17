@@ -7,7 +7,7 @@ The dispatcher refused the pi dispatch at gate 2 (vendor allow-list). Nothing wa
 ## Dispatcher command run
 
 ```
-node /home/andre-hahm/Repos/andres-cc-marketplace/.claude/worktrees/reviewadapters-kit/plugins/reviewadapters-kit/scripts/rva-dispatch.mjs --vendor pi --reviewer-type bug-reviewer --dispatch-id eval-1 --instruction-file /tmp/claude-1000/-home-andre-hahm-Repos-andres-cc-marketplace/4c6e2459-85e5-4717-9a7f-0a717d11aa09/scratchpad/rva-evals/fixtures-2/vendor-not-enabled/inputs/instructions.md --diff-file /tmp/claude-1000/-home-andre-hahm-Repos-andres-cc-marketplace/4c6e2459-85e5-4717-9a7f-0a717d11aa09/scratchpad/rva-evals/fixtures-2/vendor-not-enabled/inputs/diff.patch --target-paths-file /tmp/claude-1000/-home-andre-hahm-Repos-andres-cc-marketplace/4c6e2459-85e5-4717-9a7f-0a717d11aa09/scratchpad/rva-evals/fixtures-2/vendor-not-enabled/inputs/targets.txt --cwd /tmp/claude-1000/-home-andre-hahm-Repos-andres-cc-marketplace/4c6e2459-85e5-4717-9a7f-0a717d11aa09/scratchpad/rva-evals/fixtures-2/vendor-not-enabled/repo --dry-run
+node <repo>/plugins/reviewadapters-kit/scripts/rva-dispatch.mjs --vendor pi --reviewer-type bug-reviewer --dispatch-id eval-1 --instruction-file <scratchpad>/rva-evals/fixtures-2/vendor-not-enabled/inputs/instructions.md --diff-file <scratchpad>/rva-evals/fixtures-2/vendor-not-enabled/inputs/diff.patch --target-paths-file <scratchpad>/rva-evals/fixtures-2/vendor-not-enabled/inputs/targets.txt --cwd <scratchpad>/rva-evals/fixtures-2/vendor-not-enabled/repo --dry-run
 ```
 
 Exit code: 2
