@@ -24,7 +24,7 @@ version and the local file does not set `allow_unprobed_version` for it; an unpr
 | Category | When | Sent to the vendor? |
 |---|---|---|
 | `unsupported_platform` | The dispatcher runs on Windows, where its timeout cannot kill the vendor's process group; checked before the run directory is created | No |
-| `unsafe_temp_dir` | The temp directory belongs to another user (not root), or other users can write to it and it has no sticky bit; checked before the run directory is created | No |
+| `unsafe_temp_dir` | The temp directory, or a directory above it on its resolved path, belongs to another user (not root), or other users can write to it and it has no sticky bit; checked before the run directory is created. Only mode bits are read: a macOS ACL that grants write without them is not seen (see `codex-kit-locator.md`) | No |
 | `codex_kit_unavailable` | codex-kit is not installed (or opted in as a sibling), or fails the ownership checks | No |
 | `vendor_not_allowed` | Vendor not enabled in the untracked local file; the local file is tracked, or not owned by the user, or writable by others; or a pi `--model` that is neither the configured model nor listed in the local file's `vendors.pi.models` | No |
 | `secret_paths_unconfirmed` | A secret-named target or diff-header path without `--secret-paths-confirmed` | No |

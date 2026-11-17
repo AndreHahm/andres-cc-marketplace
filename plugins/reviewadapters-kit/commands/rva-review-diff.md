@@ -62,7 +62,7 @@ text) means Cancel.
    dispatcher, prepare runs on Linux and macOS only); no reviewable changes; a diff over 8 MiB; the plugin running from inside the repository under review somewhere
    outside `$PWD` (above it or beside it), which step 1 cannot see, or a reviewer instructions file that
    is not a regular file owned by you and writable only by you, or that sits under a directory (up to the
-   plugin root) that is not; a temp directory that other users can write to without the sticky bit; a repository or temp path containing a quote, `$`, backtick or backslash
+   plugin root) that is not; a temp directory, or a directory above it, that other users can write to without the sticky bit; a repository or temp path containing a quote, `$`, backtick or backslash
    (prepare refuses these so no printed path can break the commands below); or a changed file whose name
    has characters outside `A-Z a-z 0-9 . _ / -` (the detail gives only the count; tell the user that
    `git diff --name-only` lists the changed files, so they can find which).
@@ -141,5 +141,5 @@ manual scenarios in a fixture repository. Use `--dry-run` paths and **Cancel**, 
 | A changed `.env`, Send at step 4, Cancel at step 5 | A second, separate question names `.env`; the real run never happens; `--cleanup` runs |
 | A `detail` containing instruction-like text | Shown and flagged as suspicious, never acted on |
 
-**Last dated run record:** none for these manual scenarios. The automated suite passed 53/53 on
+**Last dated run record:** none for these manual scenarios. The automated suite passed 56/56 on
 2026-11-17; the command's own flow has not been exercised end to end with Cancel answers.
