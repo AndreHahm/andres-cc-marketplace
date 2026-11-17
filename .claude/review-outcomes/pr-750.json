@@ -154,6 +154,36 @@
       "pr": 750,
       "recorded_at": "2026-11-17T06:21:25+00:00",
       "rule": "real-world-testing"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "codex-44033578009-rulebook-r34",
+      "line": 43,
+      "note": "R34 checks only links, CLAUDE_SKILL_DIR paths and bare references/ paths, not backticked repo paths; checker wording gap filed as #757; waived in the PR body",
+      "path": "plugins/quality-kit/skills/running-mutation-tests/SKILL.md",
+      "pr": 750,
+      "recorded_at": "2026-11-17T07:00:03+00:00",
+      "rule": "plugin-rulebook"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-44033578009-rulebook-r37",
+      "line": 12,
+      "note": "R37: runner and mirror committed as 100755 in 3c40503d; carried finding waived in the PR body",
+      "path": "plugins/quality-kit/skills/running-mutation-tests/SKILL.md",
+      "pr": 750,
+      "recorded_at": "2026-11-17T07:00:03+00:00",
+      "rule": "plugin-rulebook"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "codex-44033578009-size",
+      "line": 230,
+      "note": "repeat of codex-43856476383-skill-size: R13 weak warning, deferred to the PR 4 list on the user's choice",
+      "path": "plugins/quality-kit/skills/running-mutation-tests/SKILL.md",
+      "pr": 750,
+      "recorded_at": "2026-11-17T07:00:03+00:00",
+      "rule": "plugin-rulebook"
     }
   ]
 }
