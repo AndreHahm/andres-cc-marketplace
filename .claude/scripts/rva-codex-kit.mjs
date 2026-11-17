@@ -80,12 +80,14 @@ export function privateGroupGid() {
 // context only), and only with GNU coreutils' ls: busybox's prints no marker at all, and others are not
 // verified, so any other ls counts as an ACL. A missing ls, an error or unexpected output counts as an ACL
 // too (fail closed). The mask argument holds for POSIX ACLs only: NFSv4, CIFS and FUSE permissions do not
-// follow the mode bits, here or in the other mode-bit checks. macOS ACLs can grant write whatever the mode
-// bits say and are not checked; Windows is refused before any of these checks.
+// follow the mode bits, here or in the other mode-bit checks. Outside Linux an ACL is never ruled out, so
+// the private-group exception is Linux only. macOS ACLs can grant write whatever the mode bits say, so one
+// on a path without group write is still not seen; Windows is refused before any of these checks.
 const LS_BINARIES = ["/usr/bin/ls", "/bin/ls"];
 let gnuLs;
 
-function findGnuLs() {
+// The GNU coreutils ls the ACL check reads, or null when there is none (the tests skip on null).
+export function findGnuLs() {
   if (gnuLs !== undefined) return gnuLs;
   gnuLs = null;
   for (const bin of LS_BINARIES) {
@@ -102,7 +104,7 @@ function findGnuLs() {
 }
 
 function mayHaveExtendedAcl(file) {
-  if (process.platform !== "linux") return false;
+  if (process.platform !== "linux") return true;
   if (file === undefined) return true;
   const ls = findGnuLs();
   if (!ls) return true;
@@ -121,7 +123,7 @@ export function descriptorPath(fd) {
 }
 
 // True when a path is owned by the current user and writable by nobody else (group write allowed only
-// for the user's private group, and then only without an extended ACL on Linux). `aclPath` names the
+// for the user's private group, and then only on Linux without an extended ACL). `aclPath` names the
 // same file or directory as `stat` (descriptorPath(fd) for an fstat); without it on Linux, group write
 // is refused. Used for codex-kit's files, the dispatcher's input files and the temp directory.
 export function ownedAndPrivate(stat, aclPath, privateGid = privateGroupGid()) {
@@ -144,7 +146,11 @@ export function unsafeTempDir(tmp) {
   return othersCanWrite && (stat.mode & 0o1000) === 0;
 }
 
-export const UNSAFE_TEMP = "the temp directory belongs to another user, or is writable by other users and has no sticky bit; set TMPDIR to a private directory";
+// Appended to the refusals that rest on ownedAndPrivate, which only says yes or no: group write is the
+// usual surprise, and an ACL or a missing GNU coreutils ls is otherwise invisible in the message.
+export const GROUP_WRITE_NOTE = "group write counts too, unless the group is your private group, on Linux, and GNU coreutils ls shows no extended ACL";
+
+export const UNSAFE_TEMP = `the temp directory belongs to another user, or is writable by other users and has no sticky bit; set TMPDIR to a private directory (${GROUP_WRITE_NOTE})`;
 
 export const OUTSIDE_ROOT = "resolves outside the root";
 
@@ -167,7 +173,9 @@ export function ownedTreeProblem(root, file) {
     if ((stat.mode & 0o020) !== 0 && (privateGid === null || stat.gid !== privateGid)) {
       return "is writable by a group other than the user's private group";
     }
-    if ((stat.mode & 0o020) !== 0 && mayHaveExtendedAcl(current)) return "is group-writable and has an ACL";
+    if ((stat.mode & 0o020) !== 0 && mayHaveExtendedAcl(current)) {
+      return "is group-writable, and an extended ACL cannot be ruled out (it has one, there is no GNU coreutils ls, or this is not Linux)";
+    }
     if (current === realRoot) return null;
     current = path.dirname(current);
   }

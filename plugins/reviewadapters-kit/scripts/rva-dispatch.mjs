@@ -15,7 +15,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { loadCodexKit, CodexKitUnavailable, descriptorPath, ownedAndPrivate, unsafeTempDir, UNSAFE_TEMP } from "./rva-codex-kit.mjs";
+import { loadCodexKit, CodexKitUnavailable, descriptorPath, GROUP_WRITE_NOTE, ownedAndPrivate, unsafeTempDir, UNSAFE_TEMP } from "./rva-codex-kit.mjs";
 import { loadConfig, devSiblingOptIn, MODEL_PATTERN, findBinary, gitEnv, GIT_SAFE_OPTIONS, isInside, isSecretName, realPath, trustedPath } from "./rva-config.mjs";
 import { runVendor, killActiveGroups } from "./rva-run.mjs";
 import { VENDORS, PROBED_VERSIONS } from "./rva-vendors.mjs";
@@ -92,7 +92,7 @@ function readRegularFile(file, label) {
     if (stat.size > MAX_INPUT_FILE_BYTES) throw usage(`${label} is larger than 8 MiB`);
     const dir = path.dirname(fs.realpathSync(file));
     if (!ownedAndPrivate(stat, descriptorPath(fd)) || !ownedAndPrivate(fs.statSync(dir), dir)) {
-      throw usage(`${label} or its directory is not owned by you, or is writable by others`);
+      throw usage(`${label} or its directory is not owned by you, or is writable by others (${GROUP_WRITE_NOTE})`);
     }
     const buffer = Buffer.alloc(stat.size);
     let read = 0;

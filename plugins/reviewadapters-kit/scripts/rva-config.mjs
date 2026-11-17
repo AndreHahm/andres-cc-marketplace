@@ -9,7 +9,7 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { descriptorPath, ownedAndPrivate } from "./rva-codex-kit.mjs";
+import { descriptorPath, GROUP_WRITE_NOTE, ownedAndPrivate } from "./rva-codex-kit.mjs";
 
 const PLUGIN_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 export const LOCAL_CONFIG_RELATIVE = ".claude/reviewadapters-kit.local.json";
@@ -105,7 +105,9 @@ function readJson(file) {
 
 export class LocalFileRefused extends Error {}
 
-const NOT_PRIVATE = "the local file or its .claude directory is not owned by you, or is writable by others, so it cannot enable anything";
+// Built when used, not at load: this module and rva-codex-kit.mjs import each other, so GROUP_WRITE_NOTE
+// may not be initialized yet while this one loads.
+const notPrivate = () => `the local file or its .claude directory is not owned by you, or is writable by others (${GROUP_WRITE_NOTE}), so it cannot enable anything`;
 const FILE_FLAGS = fs.constants.O_RDONLY | fs.constants.O_NONBLOCK | (fs.constants.O_NOFOLLOW ?? 0);
 
 // Open the file inside the .claude directory that was checked, not whatever the path names a moment
@@ -124,7 +126,7 @@ export function openInCheckedDir(file, { afterDirCheck, byPath = false } = {}) {
   }
   try {
     const dirStat = fs.fstatSync(dirFd);
-    if (!dirStat.isDirectory() || !ownedAndPrivate(dirStat, descriptorPath(dirFd))) throw new LocalFileRefused(NOT_PRIVATE);
+    if (!dirStat.isDirectory() || !ownedAndPrivate(dirStat, descriptorPath(dirFd))) throw new LocalFileRefused(notPrivate());
     const viaHandle = `/proc/self/fd/${dirFd}`;
     const useHandle = !byPath && process.platform === "linux" && fs.existsSync(viaHandle);
     afterDirCheck?.();
@@ -162,7 +164,7 @@ function readLocalJson(file) {
   try {
     const stat = fs.fstatSync(fd);
     if (!stat.isFile() || stat.size > 64 * 1024) throw new LocalFileRefused("the local file is not a regular file of at most 64 KiB, so it cannot enable anything");
-    if (!ownedAndPrivate(stat, descriptorPath(fd))) throw new LocalFileRefused(NOT_PRIVATE);
+    if (!ownedAndPrivate(stat, descriptorPath(fd))) throw new LocalFileRefused(notPrivate());
     return JSON.parse(fs.readFileSync(fd, "utf8"));
   } finally {
     fs.closeSync(fd);

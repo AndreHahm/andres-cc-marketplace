@@ -852,7 +852,8 @@ test("the dispatcher refuses a temp directory others can write to without the st
   const refused = dispatch(f, "pi", ["--dry-run"], {}, { env: { TMPDIR: shared } });
   assert.equal(refused.code, 2, JSON.stringify(refused.out));
   assert.equal(refused.out.category, "unsafe_temp_dir");
-  assert.match(refused.out.detail, /no sticky bit; set TMPDIR to a private directory; nothing was sent/);
+  assert.match(refused.out.detail, /no sticky bit; set TMPDIR to a private directory \(group write counts too/);
+  assert.match(refused.out.detail, /\); nothing was sent$/);
   assert.deepEqual(fs.readdirSync(shared), [], "the dispatcher created a run directory in an unsafe temp directory");
   fs.chmodSync(shared, 0o1777);
   const ok = dispatch(f, "pi", ["--dry-run"], {}, { env: { TMPDIR: shared } });
@@ -860,8 +861,9 @@ test("the dispatcher refuses a temp directory others can write to without the st
 });
 
 // Group write for the user's private group is allowed only without an extended ACL (Linux). Needs a
-// private group, setfacl and a filesystem with ACL support; skipped otherwise.
-const { privateGroupGid } = await import(path.join(PLUGIN, "scripts", "rva-codex-kit.mjs"));
+// private group, GNU coreutils ls (any other ls fails closed, so the accepted case would be refused),
+// setfacl and a filesystem with ACL support; skipped otherwise.
+const { findGnuLs, privateGroupGid } = await import(path.join(PLUGIN, "scripts", "rva-codex-kit.mjs"));
 function setAcl(target) {
   try {
     execFileSync("setfacl", ["-m", "u:nobody:rw", target], { stdio: "ignore" });
@@ -870,7 +872,7 @@ function setAcl(target) {
     return false;
   }
 }
-const aclSkip = process.platform !== "linux" || privateGroupGid() === null ? "needs Linux and a private primary group" : false;
+const aclSkip = process.platform !== "linux" || privateGroupGid() === null || !findGnuLs() ? "needs Linux, a private primary group and GNU coreutils ls" : false;
 
 test("group write for the private group is refused when the path has an extended ACL (m4)", { skip: aclSkip }, (t) => {
   const f = fixture();
@@ -881,6 +883,7 @@ test("group write for the private group is refused when the path has an extended
   const r = dispatch(f, "pi", ["--dry-run"]);
   assert.equal(r.code, 1, JSON.stringify(r.out));
   assert.match(r.out.detail, /--instruction-file or its directory is not owned by you, or is writable by others/);
+  assert.match(r.out.detail, /on Linux, and GNU coreutils ls shows no extended ACL/, "the refusal names the ACL condition");
 
   const repo = changedRepo();
   const copy = path.join(tempDir("rva-test-plugin-"), "reviewadapters-kit");
@@ -896,7 +899,23 @@ test("group write for the private group is refused when the path has an extended
   assert.equal(setAcl(assets), true);
   const refused = runNode(script, ["--cwd", repo]).out;
   assert.equal(refused.ok, false, JSON.stringify(refused));
-  assert.match(refused.detail, /a directory above it up to the plugin root, is group-writable and has an ACL/);
+  assert.match(refused.detail, /a directory above it up to the plugin root, is group-writable, and an extended ACL cannot be ruled out/);
+});
+
+// macOS ACLs grant write whatever the mode bits say and are not read, so outside Linux the private-group
+// exception is never granted. Checked in-process with the platform overridden; the gid is passed in, so
+// no private group is needed on the test machine.
+test("outside Linux, group write is refused even for the private group; a mode-private path still passes", { skip: process.platform === "win32" }, async () => {
+  const { ownedAndPrivate } = await import(path.join(PLUGIN, "scripts", "rva-codex-kit.mjs"));
+  const stat = { uid: process.getuid(), gid: 4242, mode: 0o100660 };
+  const original = Object.getOwnPropertyDescriptor(process, "platform");
+  try {
+    Object.defineProperty(process, "platform", { value: "darwin" });
+    assert.equal(ownedAndPrivate(stat, "/nonexistent", 4242), false);
+    assert.equal(ownedAndPrivate({ ...stat, mode: 0o100600 }, "/nonexistent", 4242), true);
+  } finally {
+    Object.defineProperty(process, "platform", original);
+  }
 });
 
 test("an empty --instruction-file is a usage error, like an empty diff (issue #765)", () => {

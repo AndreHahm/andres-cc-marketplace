@@ -104,7 +104,7 @@ gates and output; `references/typed-failures.md` lists every failure type.
 ## Language
 
 **JavaScript** (Node.js ES modules, `.mjs`, no npm dependencies). New scripts in this plugin stay in
-JavaScript. Tests, from the repository root: `node --test plugins/reviewadapters-kit/tests/` (52 tests,
+JavaScript. Tests, from the repository root: `node --test plugins/reviewadapters-kit/tests/` (53 tests,
 verified on Node 26).
 
 When you change the shipped `reviewadapters-kit.settings.json` in this marketplace, copy it unchanged to

@@ -1,7 +1,7 @@
 # Dispatch Test Scenarios
 
-Concrete scenarios behind the `review-adapter-dispatch` contract. The 52 tests in
-`tests/rva-dispatch.test.mjs` cover these 42 scenarios against fake vendor binaries; no real vendor is
+Concrete scenarios behind the `review-adapter-dispatch` contract. The 53 tests in
+`tests/rva-dispatch.test.mjs` cover these 43 scenarios against fake vendor binaries; no real vendor is
 called.
 
 1. Vendor not in the local allow-list, or a pi `--model` that is neither the configured model nor listed
@@ -104,5 +104,8 @@ called.
 41. The dispatcher with a `TMPDIR` that other users can write to and that has no sticky bit →
     `unsafe_temp_dir`, with no run directory created there; with the sticky bit the dry run succeeds.
 42. On Linux with a private primary group: a group-writable input file is accepted without an extended
-    ACL and refused (usage) with one; prepare refuses reviewer instructions whose group-writable `assets`
-    directory has an extended ACL. Skipped without a private group, `setfacl` or ACL support.
+    ACL and refused (usage) with one, and the refusal names that condition; prepare refuses reviewer
+    instructions whose group-writable `assets` directory has an extended ACL. Skipped without a private
+    group, GNU coreutils `ls` (any other `ls` fails closed), `setfacl` or ACL support.
+43. Outside Linux (the platform overridden to `darwin` in-process), group write is refused even for the
+    private group, because an ACL cannot be ruled out there; a path without group write still passes.

@@ -212,7 +212,7 @@ tracked-local-file scenario is not in the eval set; it stays covered by scenario
 scripts, the shipped settings (three vendors, all off, 600 000 ms), the command's five Bash grants (the two scripts, plus step 1's exact `pwd`, `pwd -P` and `cd` grants), and
 that the dispatcher with no flags returns a JSON usage error. It spawns no vendor.
 
-**Last dated run record:** 2026-11-17, `node --test tests/` 52/52 passing after the issue #765 hardening (sticky temp directory for prepare, cleanup and the dispatcher, private directories above the instructions file, empty `--instruction-file`, no extended ACL behind the private-group exception on Linux); before that 46/46 after the PR review rounds 1 to 5 fixes (marker lines, path containment at `/`, the fsmonitor and `GIT_*` hardening,
+**Last dated run record:** 2026-11-17, `node --test tests/` 53/53 passing after the issue #765 hardening (sticky temp directory for prepare, cleanup and the dispatcher, private directories above the instructions file, empty `--instruction-file`, the private-group exception on Linux only and without an extended ACL, refusals that name that condition); before that 46/46 after the PR review rounds 1 to 5 fixes (marker lines, path containment at `/`, the fsmonitor and `GIT_*` hardening,
 stdout truncation, `GIT_*` scrubbing, the in-checkout plugin refusal, the effective timeout); earlier the same day 35/35 after the Windows refusal, the version-probe and git-resolution fixes;
 2026-11-16, 30/30 after agy moved to stdin input; live check earlier the same day, one run per vendor on the planted-bug fixture (all three found it,
 agy still with argv input), plus a canary-file injection probe on pi and devin (neither read the file).
@@ -220,7 +220,7 @@ agy's stdin input was then probed live with a dummy prompt only, not re-run on t
 baseline (`evals/review-adapter-dispatch/workspace/iteration-1/benchmark.json`); `smoke_test.mjs` passing
 on the plugin copy.
 
-**Concrete scenarios:** the 52 tests in `tests/rva-dispatch.test.mjs` cover 42 scenarios against fake
+**Concrete scenarios:** the 53 tests in `tests/rva-dispatch.test.mjs` cover 43 scenarios against fake
 vendor binaries (no real vendor is called); the scenarios are listed in
 [references/test-scenarios.md](references/test-scenarios.md).
 
@@ -242,5 +242,5 @@ fixture with a planted bug.
 | `references/trust-and-config.md` | Shipped defaults, the local allow-list, the tracked-copy refusal, unattended use |
 | `references/typed-failures.md` | Failure categories this plugin adds to codex-kit's, and how to report each |
 | `references/codex-kit-locator.md` | How codex-kit's validator is found and checked before import |
-| `references/test-scenarios.md` | The 42 concrete scenarios the 52 node tests cover against fake vendors |
+| `references/test-scenarios.md` | The 43 concrete scenarios the 53 node tests cover against fake vendors |
 | `scripts/smoke_test.mjs` | Structural self-test; not part of the contract |
