@@ -1,0 +1,21 @@
+{
+ "eval_id": "eval-2",
+ "skill_path": "plugins/codex-kit/skills/codex-peer-review/SKILL.md",
+ "assertions": [
+  {
+   "text": "Routes 'have codex sanity-check the caching approach you just proposed' to codex-peer-review",
+   "type": "functionality",
+   "target": "response text"
+  },
+  {
+   "text": "Routes 'get a second-opinion review of my working diff before I open the PR' to cross-model-review, not codex-peer-review",
+   "type": "functionality",
+   "target": "response text"
+  },
+  {
+   "text": "Cites a distinguishing criterion from the skill text (a Codex-only check of Claude's own position vs. a two-vendor pre-PR review of the working diff) rather than only naming the target",
+   "type": "functionality",
+   "target": "response text"
+  }
+ ]
+}

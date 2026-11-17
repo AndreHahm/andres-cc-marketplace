@@ -1,0 +1,26 @@
+{
+ "eval_id": "eval-2",
+ "configuration": "with_skill",
+ "assertions_evaluated": [
+  {
+   "text": "Routes 'have codex sanity-check the caching approach you just proposed' to codex-peer-review",
+   "passed": true,
+   "evidence": "Request 1 -> codex-peer-review"
+  },
+  {
+   "text": "Routes 'get a second-opinion review of my working diff before I open the PR' to cross-model-review, not codex-peer-review",
+   "passed": true,
+   "evidence": "Request 2 -> cross-model-review"
+  },
+  {
+   "text": "Cites a distinguishing criterion from the skill text (a Codex-only check of Claude's own position vs. a two-vendor pre-PR review of the working diff) rather than only naming the target",
+   "passed": true,
+   "evidence": "Cites the position-vs-diff criterion and the tie-break"
+  }
+ ],
+ "summary": {
+  "assertions_total": 3,
+  "assertions_passed": 3,
+  "pass_rate": 1.0
+ }
+}
