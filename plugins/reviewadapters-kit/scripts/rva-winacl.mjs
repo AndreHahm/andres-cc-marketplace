@@ -23,7 +23,13 @@ const CREATOR_OWNER = "S-1-3-0";
 const OWNER_RIGHTS = "S-1-3-4";
 const TRUSTED_OTHERS = new Set([SYSTEM, ADMINISTRATORS, TRUSTED_INSTALLER, CREATOR_OWNER, OWNER_RIGHTS]);
 const TRUSTED_OWNERS = new Set([SYSTEM, ADMINISTRATORS, TRUSTED_INSTALLER]);
-const SID_PATTERN = /^S-1-\d+(-\d+)+$/;
+
+// A SID in string form, S-1-<authority>-<sub>[-<sub>...]: at least two numeric parts after S-1. Checked part by
+// part rather than with a repeated group, so no pattern can backtrack.
+function isSid(value) {
+  const parts = value.split("-");
+  return parts.length >= 4 && parts[0] === "S" && parts[1] === "1" && parts.slice(2).every((part) => /^\d+$/.test(part));
+}
 
 // Rights that let a holder change a file's content, metadata or permissions, or remove or replace it:
 // write data / add file, append data / add subdirectory, write extended attributes, delete child, write
@@ -120,14 +126,14 @@ export function readAcls(paths) {
 export function parseAclOutput(text) {
   const lines = text.split(/\r?\n/).filter((line) => line !== "");
   const head = /^ME (\S+)$/.exec(lines[0] ?? "");
-  if (!head || !SID_PATTERN.test(head[1])) throw new Error("the ACL check returned unexpected output");
+  if (!head || !isSid(head[1])) throw new Error("the ACL check returned unexpected output");
   const items = [];
   for (const line of lines.slice(1)) {
     const fields = line.split(" ");
     if (fields[0] === "ITEM") {
       if (fields.length === 2 && fields[1] === "ERROR") {
         items.push({ error: true });
-      } else if (fields.length === 3 && SID_PATTERN.test(fields[1]) && (fields[2] === "0" || fields[2] === "1")) {
+      } else if (fields.length === 3 && isSid(fields[1]) && (fields[2] === "0" || fields[2] === "1")) {
         // A null DACL grants everyone everything.
         items.push(fields[2] === "1" ? { error: true } : { owner: fields[1], rules: [] });
       } else {
@@ -140,7 +146,7 @@ export function parseAclOutput(text) {
     if (item.error) continue;
     const [, qualifier, callback, sid, mask, flags] = fields;
     const valid = fields.length === 6 && (qualifier === "0" || qualifier === "1") && callback === "0"
-      && SID_PATTERN.test(sid) && /^-?\d+$/.test(mask) && /^\d+$/.test(flags);
+      && isSid(sid) && /^-?\d+$/.test(mask) && /^\d+$/.test(flags);
     if (!valid) {
       // A callback (conditional) entry, an audit or object entry, or anything malformed: fail closed.
       items[items.length - 1] = { error: true };

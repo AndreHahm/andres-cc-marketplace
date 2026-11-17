@@ -15,11 +15,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const SCRIPT_NAMES = ["rva-prepare.mjs", "rva-dispatch.mjs", "rva-run.mjs", "rva-config.mjs", "rva-codex-kit.mjs", "rva-vendors.mjs", "rva-winacl.mjs"];
-// A name counts only as a whole path segment's end: "rva-dispatch.test.mjs" does not match. Case-insensitive,
-// since macOS and Windows filesystems are.
-const NAME_SOURCE = `(?<![A-Za-z0-9_.-])(?:${SCRIPT_NAMES.map((n) => n.replace(/[.]/g, "\\.")).join("|")})(?![A-Za-z0-9_.-])`;
-const NAME_PATTERN = new RegExp(NAME_SOURCE, "i");
+// The plugin's scripts: rva-prepare, rva-dispatch, rva-run, rva-config, rva-codex-kit, rva-vendors and
+// rva-winacl (.mjs). A name counts only as a whole path segment's end: "rva-dispatch.test.mjs" does not match.
+// Case-insensitive, since macOS and Windows filesystems are. A literal, so no pattern is built at run time.
+const NAME_PATTERN = /(?<![A-Za-z0-9_.-])rva-(?:prepare|dispatch|run|config|codex-kit|vendors|winacl)\.mjs(?![A-Za-z0-9_.-])/i;
 const WORD_BREAK = /[\s;&|<>()]/;
 const PLUGIN_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -61,39 +60,44 @@ export function shellWords(command) {
     dynamic = false;
     started = false;
   };
-  for (let i = 0; i < command.length; i += 1) {
+  // `i` is the next character to read; every branch below advances it past what it consumed.
+  let i = 0;
+  while (i < command.length) {
     const ch = command[i];
     if (ch === "'") {
       const end = command.indexOf("'", i + 1);
       if (end === -1) return null;
       text += command.slice(i + 1, end);
       started = true;
-      i = end;
+      i = end + 1;
     } else if (ch === '"') {
       started = true;
       let j = i + 1;
-      for (; j < command.length && command[j] !== '"'; j += 1) {
+      while (j < command.length && command[j] !== '"') {
         // Inside double quotes a backslash escapes only $ ` " \ and a newline, as in POSIX shells.
         if (command[j] === "\\" && j + 1 < command.length && "$`\"\\\n".includes(command[j + 1])) {
-          j += 1;
-          text += command[j];
+          text += command[j + 1];
+          j += 2;
         } else {
           if (command[j] === "$" || command[j] === "`") dynamic = true;
           text += command[j];
+          j += 1;
         }
       }
       if (j >= command.length) return null;
-      i = j;
+      i = j + 1;
     } else if (ch === "\\") {
       if (i + 1 < command.length) text += command[i + 1];
       started = true;
-      i += 1;
+      i += 2;
     } else if (WORD_BREAK.test(ch)) {
       flush();
+      i += 1;
     } else {
       if (ch === "$" || ch === "`") dynamic = true;
       text += ch;
       started = true;
+      i += 1;
     }
   }
   flush();
