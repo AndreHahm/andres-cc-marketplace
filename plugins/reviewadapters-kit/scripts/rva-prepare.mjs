@@ -17,7 +17,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { loadCodexKit, CodexKitUnavailable, ownedAndPrivate, ownedTreeProblem, OUTSIDE_ROOT } from "./rva-codex-kit.mjs";
+import { loadCodexKit, CodexKitUnavailable, descriptorPath, ownedAndPrivate, ownedTreeProblem, OUTSIDE_ROOT, unsafeTempDir, UNSAFE_TEMP } from "./rva-codex-kit.mjs";
 import { devSiblingOptIn, findBinary, gitEnv, GIT_SAFE_OPTIONS, isInside, isSecretName, realPath, enclosingRepoRoot } from "./rva-config.mjs";
 
 const PLUGIN_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -40,20 +40,6 @@ function fail(detail, code = 1) {
   process.stdout.write(`${JSON.stringify({ ok: false, detail })}\n`);
   return code;
 }
-
-// The temp directory must belong to this user or root: its owner can always rename the prepared directory
-// away and put their own in its place, sticky bit or not. One other users can write to also needs the
-// sticky bit, or any of them could do the same (or delete it before cleanup). Group write for the user's
-// own private group does not count as other users. Mode bits only: an ACL entry granting write access
-// is not seen (the same limit as ownedAndPrivate). True when the directory is unsafe.
-function unsafeTempDir(tmp) {
-  const stat = fs.statSync(tmp);
-  if (stat.uid !== process.getuid() && stat.uid !== 0) return true;
-  const othersCanWrite = (stat.mode & 0o002) !== 0 || ((stat.mode & 0o020) !== 0 && !ownedAndPrivate(stat));
-  return othersCanWrite && (stat.mode & 0o1000) === 0;
-}
-
-const UNSAFE_TEMP = "the temp directory belongs to another user, or is writable by other users and has no sticky bit; set TMPDIR to a private directory";
 
 function git(gitBin, repo, args) {
   return execFileSync(gitBin, [...GIT_SAFE_OPTIONS, "-C", repo, ...args], { encoding: "utf8", env: gitEnv(), maxBuffer: 64 * 1024 * 1024, timeout: 60_000 });
@@ -157,7 +143,7 @@ async function prepare(cwd, range) {
     // O_NONBLOCK: opening a FIFO would otherwise wait for a writer before the regular-file check runs.
     fd = fs.openSync(instructionsReal, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK);
     const stat = fs.fstatSync(fd);
-    if (!stat.isFile() || !ownedAndPrivate(stat)) {
+    if (!stat.isFile() || !ownedAndPrivate(stat, descriptorPath(fd))) {
       return fail("the plugin's reviewer instructions file is not a regular file owned by you and writable only by you");
     }
     if (stat.size > MAX_INSTRUCTIONS_BYTES) return fail("the plugin's reviewer instructions file is larger than 64 KiB");

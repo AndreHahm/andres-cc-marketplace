@@ -9,7 +9,7 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { ownedAndPrivate } from "./rva-codex-kit.mjs";
+import { descriptorPath, ownedAndPrivate } from "./rva-codex-kit.mjs";
 
 const PLUGIN_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 export const LOCAL_CONFIG_RELATIVE = ".claude/reviewadapters-kit.local.json";
@@ -124,7 +124,7 @@ export function openInCheckedDir(file, { afterDirCheck, byPath = false } = {}) {
   }
   try {
     const dirStat = fs.fstatSync(dirFd);
-    if (!dirStat.isDirectory() || !ownedAndPrivate(dirStat)) throw new LocalFileRefused(NOT_PRIVATE);
+    if (!dirStat.isDirectory() || !ownedAndPrivate(dirStat, descriptorPath(dirFd))) throw new LocalFileRefused(NOT_PRIVATE);
     const viaHandle = `/proc/self/fd/${dirFd}`;
     const useHandle = !byPath && process.platform === "linux" && fs.existsSync(viaHandle);
     afterDirCheck?.();
@@ -162,7 +162,7 @@ function readLocalJson(file) {
   try {
     const stat = fs.fstatSync(fd);
     if (!stat.isFile() || stat.size > 64 * 1024) throw new LocalFileRefused("the local file is not a regular file of at most 64 KiB, so it cannot enable anything");
-    if (!ownedAndPrivate(stat)) throw new LocalFileRefused(NOT_PRIVATE);
+    if (!ownedAndPrivate(stat, descriptorPath(fd))) throw new LocalFileRefused(NOT_PRIVATE);
     return JSON.parse(fs.readFileSync(fd, "utf8"));
   } finally {
     fs.closeSync(fd);
