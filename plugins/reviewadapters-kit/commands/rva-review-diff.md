@@ -92,7 +92,8 @@ Do not fix any finding. This command only reports; the user decides what to chan
 This flow sends repository content to a third party only after a user typed it, with positional
 arguments (`$0` vendor, `$1` range), so it is a command with `disable-model-invocation: true`. A skill
 would add a context-matching description for an egress action. The plugin's one skill,
-`review-adapter-dispatch`, is the programmatic contract that this command and other components call.
+`review-adapter-dispatch`, documents the dispatcher contract for other components. This command does not
+call the skill: it runs the same `rva-dispatch.mjs` itself, under its own grant.
 
 ## Testing & Validation
 

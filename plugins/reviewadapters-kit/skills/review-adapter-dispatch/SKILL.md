@@ -167,8 +167,9 @@ replacing its config, pi loading user extensions) is recorded with its evidence 
 
 ## Testing & Validation
 
-**Verify this skill activates on:** nothing conversational. It is invoked by other components and the
-`rva-review-diff` command (`disable-model-invocation: true`).
+**Verify this skill activates on:** nothing conversational (`disable-model-invocation: true`). It is
+invoked by other components. The `rva-review-diff` command runs the same dispatcher script directly and
+does not invoke this skill.
 
 **Verify it does NOT activate on:**
 - "review my diff with pi" typed in conversation → the `rva-review-diff` command (it confirms egress)
