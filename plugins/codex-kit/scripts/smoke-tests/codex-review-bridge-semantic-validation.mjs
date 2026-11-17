@@ -307,5 +307,42 @@ console.log("\n=== Codex's P1 finding: fail closed when every finding is dropped
   );
 }
 
+console.log("\n=== Issue #761: a citation of a file the diff deletes, listed exactly as a target path, is kept ===");
+{
+  // The deleted file is a declared target path but no longer exists on disk.
+  const deletedTargets = [...targetPaths, "removed.py", "skill-a/old-name.md"];
+  const envelope = baseEnvelope([
+    { id: "X1", location: "removed.py:1", components: ["skill-a/old-name.md"] }
+  ]);
+  const result = semanticallyValidate(envelope, { targetPaths: deletedTargets, dispatchId: "smoke-test", reviewerType: "dependency-reviewer", repoRoot });
+  check("a finding whose location is a deleted, exactly listed target path validates", result.ok, JSON.stringify(result));
+  check(
+    "the finding and its deleted-file components[] entry both survive",
+    envelope.findings.length === 1 && envelope.findings[0].components.length === 1,
+    JSON.stringify(envelope.findings)
+  );
+  check("no drop is recorded", (envelope.inspection_limits ?? []).length === 0, JSON.stringify(envelope.inspection_limits));
+}
+{
+  // The deleted-file case must not open a hole: a nonexistent file under a
+  // directory target, never declared on its own, is still dropped.
+  const envelope = baseEnvelope([
+    { id: "X2", location: "skill-a/NEVER-EXISTED.md:3" },
+    { id: "X3", location: "removed.py:1" }
+  ]);
+  const result = semanticallyValidate(envelope, { targetPaths: [...targetPaths, "removed.py"], dispatchId: "smoke-test", reviewerType: "dependency-reviewer", repoRoot });
+  check(
+    "a nonexistent file under a directory target is still dropped while the deleted target survives",
+    result.ok && envelope.findings.length === 1 && envelope.findings[0].id === "X3",
+    JSON.stringify(envelope.findings)
+  );
+}
+{
+  // A deleted path that is not a declared target stays out of scope.
+  const envelope = baseEnvelope([{ id: "X4", location: "removed.py:1" }]);
+  const result = semanticallyValidate(envelope, { targetPaths, dispatchId: "smoke-test", reviewerType: "dependency-reviewer", repoRoot });
+  check("a nonexistent path that is not a declared target still fails closed", !result.ok, JSON.stringify(result));
+}
+
 console.log(`\n=== Results: ${pass} passed, ${fail} failed ===`);
 process.exit(fail > 0 ? 1 : 0);

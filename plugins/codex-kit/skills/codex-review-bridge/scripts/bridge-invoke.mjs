@@ -258,7 +258,17 @@ export function locateInSemanticScope(targetPaths, location, repoRoot) {
   if (!targetPaths.some((p) => isWithin(absolute, path.resolve(repoRoot, p)))) {
     return false;
   }
-  return fs.existsSync(absolute);
+  if (fs.existsSync(absolute)) {
+    return true;
+  }
+  // A file the reviewed diff deletes no longer exists on disk, but it is part
+  // of the change under review: callers list deleted files and both sides of
+  // a rename as target paths on purpose (issue #761). Accept a missing path
+  // only when it equals a declared entry exactly, so a nonexistent file under
+  // a directory target is still dropped as a hallucinated citation. Same
+  // win32-only case folding as isWithin().
+  const fold = (value) => (process.platform === "win32" ? value.toLowerCase() : value);
+  return targetPaths.some((p) => fold(path.resolve(repoRoot, p)) === fold(absolute));
 }
 
 // Total-sandbox-failure detection (issue #78): codex-exec.mjs's own close

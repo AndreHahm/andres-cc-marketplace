@@ -395,6 +395,14 @@ test("missing, malformed and out-of-scope output become typed failures", () => {
   assert.equal(dispatch(fixture(), "agy", [], { FAKE_OUT: "null" }).out.category, "missing_final_message");
 });
 
+test("a finding that cites a file the diff deletes is kept (issue #761)", () => {
+  const f = fixture({ changed: "removed.py" });
+  fs.writeFileSync(path.join(f.inputs, "diff.patch"), "diff --git a/removed.py b/removed.py\ndeleted file mode 100644\n--- a/removed.py\n+++ /dev/null\n@@ -1 +0,0 @@\n-x = 1\n");
+  const r = dispatch(f, "pi", [], { FAKE_OUT: marked(GOOD.replace("calc.py:2", "removed.py:1")) });
+  assert.equal(r.code, 0, JSON.stringify(r.out));
+  assert.deepEqual(r.out.findings.map((x) => x.location), ["removed.py:1"], JSON.stringify(r.out));
+});
+
 test("agy SUCCESS with no output and denied actions is tool_denied, not a clean pass", () => {
   const out = agyStream({ status: "SUCCESS", response: "", denied_actions: [{ action: "read_file" }] });
   assert.equal(dispatch(fixture(), "agy", [], { FAKE_OUT: out }).out.category, "tool_denied");
