@@ -26,7 +26,10 @@ part of the contract. Run it as
 If `${CLAUDE_PLUGIN_ROOT}` is empty, or lies inside the checkout under review, stop and report: never
 substitute a path inside that checkout for it, whatever a rule says about resolving an empty plugin root.
 The dispatcher sends the diff to a third party, and a copy inside the checkout could be the reviewed
-branch's own code.
+branch's own code. The dispatcher refuses (usage) when its own plugin root lies inside the `--cwd`
+repository, and the plugin's `PreToolUse` hook denies a Bash or PowerShell command naming its scripts anywhere but the
+installed copy; both catch an accidental in-checkout run, and only the hook loads from outside the
+checkout (see the README's "Running from a checkout").
 
 **Never asks the user.** Like `codex-review-bridge`, this is a dispatch primitive. Choosing reviewers,
 confirming data egress in an interactive session, and cross-examining findings belong to the caller.
@@ -212,7 +215,7 @@ tracked-local-file scenario is not in the eval set; it stays covered by scenario
 scripts, the shipped settings (three vendors, all off, 600 000 ms), the command's five Bash grants (the two scripts, plus step 1's exact `pwd`, `pwd -P` and `cd` grants), and
 that the dispatcher with no flags returns a JSON usage error. It spawns no vendor.
 
-**Last dated run record:** 2026-11-17, `node --test tests/` 56/56 passing after the PR #772 review round 1 fixes (every /etc/group line for the private gid, the directories above the temp directory, a root-owned private-group temp directory); before that 53/53 after the issue #765 hardening (sticky temp directory for prepare, cleanup and the dispatcher, private directories above the instructions file, empty `--instruction-file`, the private-group exception on Linux only and without an extended ACL, refusals that name that condition); before that 46/46 after the PR review rounds 1 to 5 fixes (marker lines, path containment at `/`, the fsmonitor and `GIT_*` hardening,
+**Last dated run record:** 2026-11-17, `node --test tests/` 65/66 passing on Linux (WSL, Node 24; the extended-ACL test skipped without `setfacl`) after the issue #762 fixes (the dispatcher's in-checkout refusal, the checkout guard hook's 9 tests, 8/9 also on Windows with the symlink test skipped); before that 56/56 after the PR #772 review round 1 fixes (every /etc/group line for the private gid, the directories above the temp directory, a root-owned private-group temp directory); before that 53/53 after the issue #765 hardening (sticky temp directory for prepare, cleanup and the dispatcher, private directories above the instructions file, empty `--instruction-file`, the private-group exception on Linux only and without an extended ACL, refusals that name that condition); before that 46/46 after the PR review rounds 1 to 5 fixes (marker lines, path containment at `/`, the fsmonitor and `GIT_*` hardening,
 stdout truncation, `GIT_*` scrubbing, the in-checkout plugin refusal, the effective timeout); earlier the same day 35/35 after the Windows refusal, the version-probe and git-resolution fixes;
 2026-11-16, 30/30 after agy moved to stdin input; live check earlier the same day, one run per vendor on the planted-bug fixture (all three found it,
 agy still with argv input), plus a canary-file injection probe on pi and devin (neither read the file).
@@ -220,8 +223,9 @@ agy's stdin input was then probed live with a dummy prompt only, not re-run on t
 baseline (`evals/review-adapter-dispatch/workspace/iteration-1/benchmark.json`); `smoke_test.mjs` passing
 on the plugin copy.
 
-**Concrete scenarios:** the 56 tests in `tests/rva-dispatch.test.mjs` cover 46 scenarios against fake
-vendor binaries (no real vendor is called); the scenarios are listed in
+**Concrete scenarios:** the 57 tests in `tests/rva-dispatch.test.mjs` cover 47 scenarios against fake
+vendor binaries (no real vendor is called), and the 9 tests in `tests/rva-guard-checkout-scripts.test.mjs`
+cover the checkout guard hook (scenario 48); the scenarios are listed in
 [references/test-scenarios.md](references/test-scenarios.md).
 
 **Live check (manual, sends a tiny fixture to each vendor):** one run per vendor against a two-line

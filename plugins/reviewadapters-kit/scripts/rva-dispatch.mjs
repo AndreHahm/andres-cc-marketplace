@@ -29,7 +29,8 @@ const MAX_INPUT_FILE_BYTES = 8 * 1024 * 1024;
 const MAX_ARGUMENT_BYTES = 120_000;
 const VERSION_TIMEOUT_MS = 15_000;
 // Directories under the home directory that hold keys and credentials; an input file is never read from them.
-const SECRET_DIRS = [".ssh", ".gnupg", ".aws", ".kube", ".docker", path.join(".config", "gh")];
+const PLUGIN_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const SECRET_DIRS =[".ssh", ".gnupg", ".aws", ".kube", ".docker", path.join(".config", "gh")];
 
 // isInside against a directory's real path, for a home directory reached through a symbolic link.
 function isInsideReal(file, dir) {
@@ -231,6 +232,13 @@ async function dispatch(options, runDir) {
   if (!fs.existsSync(path.join(cwdReal, ".git"))) throw usage("--cwd must be the top-level directory of a git repository");
   const repoRoot = gitToplevel(cwdReal);
   if (repoRoot !== cwdReal) throw usage("--cwd must be the top-level directory of a git repository");
+  // The same refusal as rva-prepare.mjs's: a dispatcher inside the repository under review could be the
+  // change's own code (issue #762). The skill's path never runs prepare, so this is its only check. It
+  // catches an accidental in-checkout run; a branch that rewrites this script can drop it, which is why
+  // the plugin also ships a PreToolUse hook that loads from the installed copy.
+  if (isInside(realPath(PLUGIN_ROOT), repoRoot)) {
+    throw usage("this plugin runs from inside the repository under review, so its scripts could be part of the change; run it from an installed copy of the plugin");
+  }
 
   let loaded;
   try {
