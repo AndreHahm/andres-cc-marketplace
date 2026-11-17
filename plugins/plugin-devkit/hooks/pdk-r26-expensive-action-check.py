@@ -56,7 +56,7 @@ EXPENSIVE_ACTIONS: list[dict[str, Any]] = [
     },
     {
         # test-agent-trigger.sh is called directly via a scoped Bash tool now
-        # (plugin-lifecycle-upstream's bounded Phase-5 check and
+        # (plugin-lifecycle-upstream's bounded Phase 7 check and
         # plugin-lifecycle-downstream's exhaustive Deep Test battery both
         # dispatch it this way, not via an Agent), so there is no descriptive
         # prose in tool_input to pattern-match against -- just a shell
