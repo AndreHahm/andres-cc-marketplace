@@ -175,6 +175,43 @@ def check_trigger_script_detection_helpers():
     return True, f"all {len(cases)} detection-helper cases pass"
 
 
+def check_trigger_script_classifier_reply_parsing():
+    script = SKILL_DIR / "scripts" / "test-agent-trigger.sh"
+    if not script.is_file():
+        return True, "scripts/test-agent-trigger.sh not found (skip)"
+    body = script.read_text(encoding="utf-8").split("<<'PY'\n")[-1].split("\nPY\n", 1)[0]
+    ns = {}
+    exec(body.split("agent_path = Path(sys.argv[1])", 1)[0], ns)
+    parse = ns["_parse_classifier_reply"]
+
+    def error_of(text):
+        try:
+            parse(text)
+        except ValueError as exc:
+            return str(exc)
+        return None
+
+    long_prose = "I think the agent fits. " * 30
+    cases = {
+        "bare JSON verdict is read": parse('{"triggered": true, "reason": "x"}') is True,
+        "JSON inside prose is read": parse('Sure:\n{"triggered": false, "reason": "y"}\nDone.')
+        is False,
+        "empty reply is an error, not a crash": error_of("") == "classifier reply was empty",
+        "prose reply quotes the raw text": "raw reply: 'The agent should trigger.'"
+        in (error_of("The agent should\ntrigger.") or ""),
+        "non-boolean verdict is an error": error_of('{"triggered": "false"}') is not None,
+        "missing verdict is an error": error_of('{"reason": "z"}') is not None,
+        "long raw reply is truncated": (error_of(long_prose) or "").endswith("...'"),
+        "control characters are escaped": "\\x1b" in (error_of("\x1b[31mred") or ""),
+        "structured results carry the error": '"error": error_text' in body
+        and "error: {error_yaml}" in body,
+    }
+    failed = [name for name, ok in cases.items() if not ok]
+    if failed:
+        return False, "failed: " + ", ".join(failed)
+    return True, f"all {len(cases)} classifier-reply cases pass"
+
+
 def check_validator_accepts_list_form_tools():
     agent = (
         "---\nname: list-agent\n"
@@ -310,6 +347,7 @@ CHECKS = [
     check_reference_table_files_exist,
     check_frontmatter_fields_documented,
     check_trigger_script_detection_helpers,
+    check_trigger_script_classifier_reply_parsing,
     check_trigger_script_runs_untrusted_agent_safely,
     check_trigger_script_max_phrases,
 ]
