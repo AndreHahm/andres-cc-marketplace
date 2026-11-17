@@ -474,20 +474,31 @@ def _parse_classifier_reply(text: str) -> bool:
     The reply is model output: it can be empty, prose with no JSON, or JSON without a boolean
     verdict. None of these is a "not triggered" answer, so each is reported as an error.
     """
-    # Try a JSON value at each "{" in turn: a greedy {.*} match would also swallow any other
-    # braces in surrounding prose and fail to parse a verdict that is actually there. A "{" inside
-    # an object that already decoded is skipped, so a nested "triggered" is never the verdict.
+    # Try a JSON value at each top-level "{" in turn: a greedy {.*} match would also swallow any
+    # other braces in surrounding prose and fail to parse a verdict that is actually there. A "{"
+    # that does not decode opens a level until its "}", and an object that decodes is skipped as a
+    # whole, so a "triggered" nested in another object, complete or truncated, is never the verdict.
     decoder = json.JSONDecoder()
-    decoded_until = 0
-    for start in (m.start() for m in re.finditer(r"\{", text)):
-        if start < decoded_until:
-            continue
-        try:
-            payload, decoded_until = decoder.raw_decode(text, start)
-        except json.JSONDecodeError:
-            continue
-        if isinstance(payload, dict) and isinstance(payload.get("triggered"), bool):
-            return payload["triggered"]
+    depth = 0
+    pos = 0
+    while pos < len(text):
+        char = text[pos]
+        if char == "}":
+            depth = max(depth - 1, 0)
+        elif char == "{":
+            if depth == 0:
+                try:
+                    payload, end = decoder.raw_decode(text, pos)
+                except json.JSONDecodeError:
+                    depth = 1
+                else:
+                    if isinstance(payload, dict) and isinstance(payload.get("triggered"), bool):
+                        return payload["triggered"]
+                    pos = end
+                    continue
+            else:
+                depth += 1
+        pos += 1
     raw = " ".join(text.split())
     if not raw:
         raise ValueError("classifier reply was empty")
