@@ -8,6 +8,14 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { enclosingRepoRoot, findBinary } from "../../plugins/reviewadapters-kit/scripts/rva-config.mjs";
+
+// git from a PATH entry outside this checkout, the same way the dispatcher resolves it.
+const CHECKOUT = enclosingRepoRoot(path.dirname(fileURLToPath(import.meta.url)));
+if (!CHECKOUT) throw new Error("this script must run from inside its checkout");
+const GIT = findBinary("git", CHECKOUT);
+if (!GIT) throw new Error("git not found on PATH outside this checkout");
 
 const CALC_DIFF = "diff --git a/calc.py b/calc.py\n--- a/calc.py\n+++ b/calc.py\n@@ -1,2 +1,2 @@\n def add(a, b):\n-    return a + b\n+    return a - b\n";
 const PEM_DIFF = "diff --git a/deploy.pem b/deploy.pem\nnew file mode 100644\n--- /dev/null\n+++ b/deploy.pem\n@@ -0,0 +1 @@\n+placeholder, not a key\n";
@@ -38,7 +46,7 @@ for (const [name, spec] of Object.entries(FIXTURES)) {
   privateDir(base);
   const repo = path.join(base, "repo");
   privateDir(repo);
-  execFileSync("git", ["init", "-q", repo]);
+  execFileSync(GIT, ["init", "-q", repo]);
   privateDir(path.join(repo, ".claude"));
   privateFile(path.join(repo, ".claude", "reviewadapters-kit.local.json"), `${JSON.stringify(spec.local)}\n`);
   const inputs = path.join(base, "inputs");

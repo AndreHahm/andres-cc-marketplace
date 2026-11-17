@@ -151,7 +151,8 @@ export function diffHeaderPaths(diff) {
     if (line.startsWith("diff --git ")) return { error: "a diff --git header has a quoted or unparsable path" };
     match = /^(?:---|\+\+\+) (.*)$/.exec(line);
     if (match) {
-      const value = match[1].replace(/\t.*$/, "");
+      const tab = match[1].indexOf("\t");
+      const value = tab === -1 ? match[1] : match[1].slice(0, tab);
       if (value === "/dev/null") continue;
       const side = /^[ab]\/(.+)$/.exec(value);
       if (!side) return { error: "a ---/+++ header path has no a/ or b/ prefix" };
@@ -312,7 +313,7 @@ async function dispatch(options, runDir) {
   const { version } = probe;
   // The first version-shaped token must equal the probed version, so 1.5.90, 11.5.9 or a newer CLI that
   // prints "2.0.0 (compat 1.5.9)" does not pass for the probed 1.5.9.
-  const versionProbed = /\d+(?:\.\d+)+/.exec(version)?.[0] === PROBED_VERSIONS[vendorName];
+  const versionProbed = /(?<!\d)\d+(?:\.\d+)+/.exec(version)?.[0] === PROBED_VERSIONS[vendorName];
   // devin's isolation is a list of denied tool names and agy's rests on its headless refusal: a newer
   // version may add a tool neither covers, so it is refused before the diff is sent unless the local file
   // allows it. pi runs with --no-tools, so an unprobed pi only gets a note.
@@ -411,7 +412,15 @@ function isMainModule() {
 }
 
 if (isMainModule()) {
-  main(process.argv.slice(2)).then((code) => {
-    process.exitCode = code;
-  });
+  main(process.argv.slice(2)).then(
+    (code) => {
+      process.exitCode = code;
+    },
+    () => {
+      // main() catches every failure itself; this covers a throw from its own cleanup.
+      const failure = new Failure("dispatcher_error", "the dispatcher failed while cleaning up");
+      printFailure(failure);
+      process.exitCode = failure.exitCode;
+    }
+  );
 }
