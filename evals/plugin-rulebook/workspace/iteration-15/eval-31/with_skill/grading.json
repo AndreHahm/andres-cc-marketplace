@@ -1,0 +1,31 @@
+{
+  "eval_id": 31,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Reports the bare backticked `.github/mutation-modules.yml` as not a finding (skipped), not Critical",
+      "passed": true,
+      "evidence": "Row 1: 'No | None | R34 only resolves bare backticked references/<file>.md. .github/... is explicitly outside what R34 checks'"
+    },
+    {
+      "text": "Reports the bare backticked `agents/mutation-tester.md` as not a finding (skipped), not Critical",
+      "passed": true,
+      "evidence": "Row 2: 'No | None | Same rule: agents/... is explicitly outside R34's bare-backtick check'"
+    },
+    {
+      "text": "Reports the markdown link to '../../../../docs/ci.md' as a Critical finding because it leaves the skill folder and lands outside plugin-root references/ or assets/",
+      "passed": true,
+      "evidence": "Row 3: 'Yes | Critical | ... it leaves the skill folder and lands in docs/, which is never allowed. The correct plugin-root target would be ../../references/...'"
+    },
+    {
+      "text": "Reports the bare backticked `references/missing-guide.md` as ADVISORY, not Critical",
+      "passed": true,
+      "evidence": "Row 4: 'Yes | ADVISORY | ... absent from demo-skill's own references/ folder. It is ADVISORY, not Critical'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}
