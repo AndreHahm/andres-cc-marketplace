@@ -475,11 +475,15 @@ def _parse_classifier_reply(text: str) -> bool:
     verdict. None of these is a "not triggered" answer, so each is reported as an error.
     """
     # Try a JSON value at each "{" in turn: a greedy {.*} match would also swallow any other
-    # braces in surrounding prose and fail to parse a verdict that is actually there.
+    # braces in surrounding prose and fail to parse a verdict that is actually there. A "{" inside
+    # an object that already decoded is skipped, so a nested "triggered" is never the verdict.
     decoder = json.JSONDecoder()
+    decoded_until = 0
     for start in (m.start() for m in re.finditer(r"\{", text)):
+        if start < decoded_until:
+            continue
         try:
-            payload, _ = decoder.raw_decode(text, start)
+            payload, decoded_until = decoder.raw_decode(text, start)
         except json.JSONDecodeError:
             continue
         if isinstance(payload, dict) and isinstance(payload.get("triggered"), bool):

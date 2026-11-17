@@ -205,6 +205,11 @@ def check_trigger_script_classifier_reply_parsing():
         in (error_of("The agent should\ntrigger.") or ""),
         "non-boolean verdict is an error": error_of('{"triggered": "false"}') is not None,
         "missing verdict is an error": error_of('{"reason": "z"}') is not None,
+        "nested verdict is an error": error_of('{"metadata": {"triggered": false}}') is not None,
+        "verdict inside a string value is an error": error_of(
+            '{"reason": "{\\"triggered\\": true}"}'
+        )
+        is not None,
         "long raw reply is truncated": (error_of(long_prose) or "").endswith("...'"),
         "control characters are escaped": "\\x1b" in (error_of("\x1b[31mred") or ""),
         "structured results carry the error": '"error": error_text' in body
