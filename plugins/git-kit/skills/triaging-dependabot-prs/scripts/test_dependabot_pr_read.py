@@ -432,10 +432,12 @@ def head_view(ref=HEAD_REF, sha=SHA):
 class RunsFake(FakeRun):
     """FakeRun whose `gh api` answer depends on the query: the head-SHA page or the branch page."""
 
-    def __init__(self, head=(), branch=None, head_total=None, pr_stdout=None, **kwargs):
+    def __init__(
+        self, head=(), branch=None, head_total=None, branch_total=None, pr_stdout=None, **kwargs
+    ):
         super().__init__(pr_stdout=head_view() if pr_stdout is None else pr_stdout, **kwargs)
         self.head_stdout = runs_json(*head, total=head_total)
-        self.branch_stdout = runs_json(*(head if branch is None else branch))
+        self.branch_stdout = runs_json(*(head if branch is None else branch), total=branch_total)
 
     def __call__(self, argv, **kwargs):
         if argv[1:2] == ["api"]:
@@ -542,6 +544,19 @@ class HeadRuns(unittest.TestCase):
         self.assertEqual(code, 0, out)
         self.assertTrue(out["truncated"])
         self.assertEqual(out["head_run_count"], 150)
+
+    def test_other_heads_truncated_when_the_branch_has_more_runs_than_its_page(self):
+        # An older head's hung run can sit past the branch page; say the list may be incomplete.
+        head = [workflow_run(300, "pending")]
+        branch = head + [workflow_run(i, "completed", head_sha=OLD_SHA) for i in range(1, 100)]
+        fake = RunsFake(head=head, branch=branch, branch_total=140)
+        code, out = run_main(["head-runs", "1"], fake)
+        self.assertEqual(code, 0, out)
+        self.assertTrue(out["other_heads_truncated"])
+        self.assertEqual(out["other_head_incomplete"], [])
+        self.assertFalse(out["truncated"])
+        code, out = run_main(["head-runs", "1"], RunsFake(head=head, branch=branch))
+        self.assertFalse(out["other_heads_truncated"])
 
     def test_a_head_page_row_for_another_sha_is_a_tool_error(self):
         fake = RunsFake(head=[workflow_run(1, "completed", head_sha=OLD_SHA)])
