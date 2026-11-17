@@ -1,0 +1,32 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4599218224",
+      "line": 66,
+      "note": "eval 9 expected_output now names --issue; fixed in 7801443a",
+      "path": "evals/resolving-analysis-findings/evals.json",
+      "pr": 763,
+      "recorded_at": "2026-11-17T12:13:26+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4599300919",
+      "line": 74,
+      "note": "exit-2 table row joined onto one line; fixed in 7801443a",
+      "path": "plugins/quality-kit/skills/collecting-analysis-findings/references/codacy-adapter.md",
+      "pr": 763,
+      "recorded_at": "2026-11-17T12:13:26+00:00",
+      "rule": "MD056"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4599300934",
+      "line": 185,
+      "note": "reanalyze split into its own row; id match kept for --unignore-issue only; fixed in 7801443a",
+      "path": "plugins/quality-kit/skills/resolving-analysis-findings/SKILL.md",
+      "pr": 763,
+      "recorded_at": "2026-11-17T12:13:26+00:00"
+    }
+  ]
+}
