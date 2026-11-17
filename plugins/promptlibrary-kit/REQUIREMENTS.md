@@ -1236,14 +1236,14 @@ prompts matching a newly added project pattern (SCR-3). Match messages show the 
 matched text. Patterns are not used at run time and never change a prompt. A pattern that comes with a
 cloned repository can block too much but cannot let anything through. Setup's status (PUR-6) shows how many
 patterns came from each source. Trade-off you accepted: a committed pattern applies to you without asking,
-and a badly written one can block prompts or slow the screen until it is fixed; review the shared file
-like code.
+and a badly written one can block prompts until it is fixed; review the shared file like code. A pattern
+that runs out of time is skipped and reported (amendment below).
 
 **Settings (decided 2026-11-17, per `.claude/rules/ask-before-config-decisions.md`):**
 
 | Item | Decision |
 |---|---|
-| Setting | Additional secret patterns, each `{"name": ..., "pattern": ...}`, the shape of the built-in `plib-token-shapes.json`. A pattern with an invalid regular expression, no name, or a name a built-in kind already uses is skipped and reported; the rest of the screen still runs. |
+| Setting | Additional secret patterns, each `{"name": ..., "pattern": ...}`, the shape of the built-in `plib-token-shapes.json`. A pattern with an invalid regular expression, no name, or a name a built-in kind already uses, or one that runs out of time (amendment below), is skipped and reported; the rest of the screen still runs. |
 | Storage | Both, combined: a shared, git-tracked project file `.claude/promptlibrary-kit.screen.json` (`{"version": 1, "patterns": [...]}`), and a `screen_patterns` list in the untracked `.claude/promptlibrary-kit.local.json`. No tracked-copy restriction: patterns only add catches. |
 | Format | JSON (backslashes doubled, no comments). |
 
@@ -1251,8 +1251,19 @@ like code.
 project patterns when asked whether to drop them (2026-11-17). SCR-3's status flag, written for patterns a
 plugin update adds, also covers newly added project patterns.
 
+**Amended 2026-11-17 (CFG-7):** *each project pattern gets a fixed time limit of 1 second every time it
+screens text, and a pattern that runs out of time is skipped and reported like an invalid one, so that a
+badly written or hostile shared pattern can never hang saving, checking or setup.* Built-in kinds and the
+other patterns still run; setup's status (PUR-6) lists the skipped pattern until it is fixed. The limit is
+fixed, not a setting, and built-in kinds are not limited. Trade-off you accepted: while a pattern is
+skipped, the text it should catch is not caught by it. Mechanism note: Python's standard regex engine
+cannot be stopped inside a thread, so project patterns run in a separate worker process (standard library
+only, QA-4), adding a small delay to each screen that uses them; the delay is not measured yet. Found by
+the cross-model review before the requirements PR.
+
 Source: SCR-4; owner decisions 2026-11-17. State: **not met** (no project patterns exist). A new security
-gate (SEC-6): `security-reviewer` before its first commit. Confirmed: yes (2026-11-17).
+gate (SEC-6): `security-reviewer` before its first commit. Confirmed: yes (2026-11-17; amended
+2026-11-17).
 
 ## 11. Platform and quality (QA)
 
@@ -1311,7 +1322,7 @@ third-party code and its files are easy to recognize.*
 
 **What you'll notice:** nothing to install beyond `uv` (CFG-5), no dependency supply chain, nothing that
 breaks when a package index is unreachable. Trade-off you accepted: no ready-made libraries, so a YAML
-parser or a regex engine with timeouts (relevant to CFG-7's slow-pattern risk) is hand-written or done
+parser or a regex engine with timeouts (CFG-7 bounds its project patterns with a worker process instead) is hand-written or done
 without.
 
 **Changes to earlier decisions:** drops the draft's alternative `promptlib` prefix, which no file uses.
