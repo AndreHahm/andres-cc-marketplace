@@ -855,6 +855,25 @@ invisible characters; flagging words that mix alphabets is new.
 Source: code (`hidden_characters` in the validator); owner decision 2026-11-17. State: **partial**
 (invisible characters: met; mixed-alphabet words: not met). Confirmed: yes (2026-11-17).
 
+### RET-5: See which active prompts need my approval soon
+
+*As a developer, I can ask for a list of my active prompts that have no valid approval (never remembered,
+expired, voided by a change or forgotten, each with its reason) and of those whose remembered approval
+expires within the next 7 days, without anything being renewed or run, so that I can renew the prompts I
+rely on before they start asking again.*
+
+**What you'll notice:** `/prompt-retrieval approvals` lists active prompts in two groups, each line with
+name, version and the reason or expiry date. It is read-only like every lookup (RET-2) and runs only when
+you type it (PUR-4). It shows this machine's approvals file (PUR-3), never a teammate's. The 7-day window
+is fixed, not a setting. To renew, run the prompt and pick *Run and remember* again.
+
+**Changes to earlier decisions:** `prompt-retrieval` gains one new read-only checker subcommand that reads
+the approvals file; today it may only run `validate` and `show`. PUR-6's status report keeps its own
+approvals summary.
+
+Source: owner decision 2026-11-17. State: **not met** (no remembered approvals exist yet, PUR-3).
+Confirmed: yes (2026-11-17).
+
 ## 8. Execution (EXE)
 
 ### EXE-1: Only you can start a run
