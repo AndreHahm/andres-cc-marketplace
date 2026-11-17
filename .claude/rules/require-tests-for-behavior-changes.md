@@ -6,7 +6,7 @@ Per component type, any of these count — pick whichever fits the change, don't
 
 - **Skill, behavior-critical or frequently relied on**: a `skill-tester` blind-comparison eval run, persisted to the git-tracked `evals/<skill-name>/` directory at the repo root.
 - **Skill, most other cases**: a documented "Testing & Validation" section in the SKILL.md itself — concrete scenarios, pass/fail criteria, a quality-gates checklist. Not automated, but concrete and checkable by re-reading it against the change.
-- **Agent**: `agent-development/scripts/test-agent-trigger.sh`'s trigger-phrase battery — lighter than a `skill-tester` eval, but neither free nor deterministic: each phrase starts a real `claude -p` session, plus a second model call when that session doesn't delegate, so it costs tokens and its results can vary between runs.
+- **Agent**: `agent-development/scripts/test-agent-trigger.sh`'s trigger-phrase battery — lighter than a `skill-tester` eval, but neither free nor deterministic: each phrase makes one or two model calls (a nested `claude -p` session when the `claude` CLI is available, then a classifier call when that session is unavailable, times out or doesn't delegate), so it costs tokens and its results can vary between runs.
 - **Deterministic scripts/code** (a `scripts/*.py`/`.sh` file's own logic): direct execution against fixtures/known-good output — not blind agent testing.
 
 ## When a test is required
