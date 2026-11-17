@@ -1,0 +1,14 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "6949901239",
+      "line": 134,
+      "note": "PUR-6 sat before PUR-5; moved the section unchanged in ce711d39, every area now in ID order",
+      "path": "plugins/promptlibrary-kit/REQUIREMENTS.md",
+      "pr": 768,
+      "recorded_at": "2026-11-17T14:02:59+00:00",
+      "rule": "claude-delta-review"
+    }
+  ]
+}
