@@ -225,6 +225,8 @@ it, and its attached files are loaded with it when it runs.*
     first-run preview, and **fingerprinted together with the prompt text**: if an attached file changes,
     the prompt counts as changed. Its approvals, including remembered ones (PUR-3), are void and it goes
     back through review and approval as a new version (CAT-6, attachments amendment).
+  - At a run, each attached file is read once, and exactly that checked content is previewed and loaded
+    (EXE-2, attachments amendment).
   - Trade-off you accepted: editing a file that several prompts attach (for example a style guide)
     re-triggers review and approval for each of them.
 
@@ -675,7 +677,8 @@ reviewer an absolute record path and nothing bounds it. On the security-bundle b
 `review-path` checks the path (inside the catalog, a listed record, no link on the way) and the agent
 re-checks it, but a link swapped in between the check and the read still escapes. Passing the record's
 text and metadata inline (no file read left to steer) satisfies REV-6 only if the attachments' content is
-passed too; extending `review-path` to attachments must also close the swap gap. Either way, REV-1 to
+passed too; extending `review-path` to attachments must also close the swap gap, with the same single
+read of each attachment that EXE-2's attachments amendment requires for a run. Either way, REV-1 to
 REV-6 and CAT-2 must hold together.
 
 Source: code + branch; owner decision 2026-11-16. State: **partial** (single-record review: met without a
@@ -894,16 +897,23 @@ expires within the next 7 days, without anything being renewed or run, so that I
 rely on before they start asking again.*
 
 **What you'll notice:** `/prompt-retrieval approvals` lists active prompts in two groups, each line with
-name, version and the reason or expiry date. It is read-only like every lookup (RET-2) and runs only when
-you type it (PUR-4). It shows this machine's approvals file (PUR-3), never a teammate's. The 7-day window
+name, version and the reason or expiry date. It is read-only like every lookup (RET-2) and, like any
+lookup (RET-3), also starts when you ask in plain words ("which of my prompts expire soon?"). It shows this
+machine's approvals file (PUR-3), never a teammate's. The 7-day window
 is fixed, not a setting. To renew, run the prompt and pick *Run and remember* again.
 
 **Changes to earlier decisions:** `prompt-retrieval` gains one new read-only checker subcommand that reads
 the approvals file; today it may only run `validate` and `show`. PUR-6's status report keeps its own
 approvals summary.
 
+**Amended 2026-11-17 (RET-5):** *I can see which prompts need approval soon by asking in plain words or by
+typing `/prompt-retrieval approvals`, so that I don't have to remember a subcommand to check my library.*
+This replaces "runs only when you type it", which the cited PUR-4 did not support and which only the
+skill's instructions could have enforced; the listing stays read-only. Found by the cross-model review
+before the requirements PR was marked ready.
+
 Source: owner decision 2026-11-17. State: **not met** (no remembered approvals exist yet, PUR-3).
-Confirmed: yes (2026-11-17).
+Confirmed: yes (2026-11-17; amended 2026-11-17).
 
 ## 8. Execution (EXE)
 
@@ -933,8 +943,18 @@ a change in between stops the run there (EXE-5). A changed prompt blocks only it
 restored from git or retired, or, when only an attached file changed, reviewed as a new version (CAT-6);
 other prompts stay runnable in later runs.
 
+**Amended 2026-11-17 (EXE-2, attachments):** *the attached files that load into a run are exactly the
+content whose fingerprint was just checked, read once and then previewed and loaded from that one read, so
+that a file changed on disk at the last moment can never slip unapproved content into an approved run.*
+A file that changes while it is read stops the run before any attachment content reaches the session,
+naming the file; the next run shows "attachment changed since approval" (CAT-6). The first-run preview
+(EXE-3) and the reviewer's read of attachments (REV-6) use the same single read. Mechanism note: the
+plugin, not Claude's own file reading, supplies the attachment content to the session. Found by the
+cross-model review before the requirements PR was marked ready.
+
 Source: V4 §Execution 2. State: **partial** (refusal and no partial run: met; a changed prompt blocking
-only itself: not met, today it makes the whole catalog unavailable). Confirmed: yes (2026-11-17).
+only itself: not met, today it makes the whole catalog unavailable; single-read attachment binding: not
+met, CAT-2). Confirmed: yes (2026-11-17; amended 2026-11-17).
 
 ### EXE-3: What you see before a prompt runs
 
