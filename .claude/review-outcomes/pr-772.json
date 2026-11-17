@@ -1,0 +1,64 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4602146326",
+      "line": 146,
+      "note": "Group-write predicate split from the owner check; fixed in d04dfe92",
+      "path": "plugins/reviewadapters-kit/scripts/rva-codex-kit.mjs",
+      "pr": 772,
+      "recorded_at": "2026-11-17T16:21:52+00:00",
+      "rule": "devin:root-owned-private-group-tmp"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4602260845",
+      "line": 56,
+      "note": "Grants compared as sets with missing and duplicate checks; fixed in d04dfe92",
+      "path": "plugins/reviewadapters-kit/skills/review-adapter-dispatch/scripts/smoke_test.mjs",
+      "pr": 772,
+      "recorded_at": "2026-11-17T16:21:52+00:00",
+      "rule": "coderabbit:grant-set-check"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-44120141380-security-permission-risk-134",
+      "line": 134,
+      "note": "privateGroupGid reads every /etc/group line and refuses a second line with the gid; fixed in d04dfe92",
+      "path": "plugins/reviewadapters-kit/scripts/rva-codex-kit.mjs",
+      "pr": 772,
+      "recorded_at": "2026-11-17T16:21:52+00:00",
+      "rule": "permission-risk"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-44120141380-skill-security-142",
+      "line": 142,
+      "note": "unsafeTempDir walks every directory above the resolved temp path and refuses an unresolved path; fixed in d04dfe92",
+      "path": "plugins/reviewadapters-kit/scripts/rva-codex-kit.mjs",
+      "pr": 772,
+      "recorded_at": "2026-11-17T16:21:53+00:00",
+      "rule": "security"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "cr-7f83b1c91366eb909c4cefff",
+      "line": 27,
+      "note": "unsafe_temp_dir row states only mode bits are read and a macOS ACL is not seen; fixed in d04dfe92",
+      "path": "plugins/reviewadapters-kit/skills/review-adapter-dispatch/references/typed-failures.md",
+      "pr": 772,
+      "recorded_at": "2026-11-17T16:21:53+00:00",
+      "rule": "coderabbit:temp-dir-acl-doc"
+    },
+    {
+      "disposition": "declined",
+      "finding": "cr-8d5e9338a14e8f46bc902be5",
+      "line": 39,
+      "note": "Out of this PR's scope: the step 1 PWD comparison predates it (PR 759); narrower case of open issue 762",
+      "path": "plugins/reviewadapters-kit/commands/rva-review-diff.md",
+      "pr": 772,
+      "recorded_at": "2026-11-17T16:21:53+00:00",
+      "rule": "coderabbit:step1-repo-root"
+    }
+  ]
+}
