@@ -50,7 +50,7 @@ uppercase `-I` is the bulk ignore. Both raise the same permission prompt: read i
   message, patternInfo: {id, category, severityLevel, ...}, toolInfo: {name}, commitInfo: {sha, ...}}, deltaType}],
   potentialIssues: [], files: [...]}`. The top-level `newIssues` is the list; the number inside
   `pullRequest` is only a count, which the truncation check above compares with the list.
-  `resultDataId` (an integer) is the `#id` on the CLI's issue cards and the id `--ignore-issue` and `-i` take;
+  `resultDataId` (an integer) is the `#id` on the CLI's issue cards and the id `--ignore-issue` and `--issue` take;
   `issueId` (32 hex characters) is not. The CLI reads a hex id that starts with digits by its numeric prefix
   (`66a432aa…` became `#66`), so passing it could target an unrelated issue (issue #760).
 - **`repo`:** `{issues: [{patternInfo: {id, severityLevel, category, subCategory}, message, filePath,
@@ -69,9 +69,7 @@ it does not fit: a potential entry without one makes the whole PR read exit 2.
 |---|---|---|
 | 0 | Record written | The record on stdout, or with `--output` a one-line summary on stdout and the record in the file |
 | 1 | Stdout could not be written, because the reader left early or the write failed: treat the output as incomplete. With `--output`, the file is written and only the summary line was lost |
-| 2 | The input is unreadable, is outside a scratchpad directory you own, is not a regular file, is larger than 32 MiB, is not valid JSON, is nested too deeply, has an `issueId` that is not a plain identifier (`^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$`), has a PR issue whose
-`resultDataId` is not an integer from 1 to 20 digits, has a PR count `pullRequest.newIssues` that is not a
-non-negative integer, or is not a shape above; or the command line is invalid (a bad `--kind`, `--group-by` or `--format`); or `--output` is refused (not inside a directory named `scratchpad`, on POSIX one that you do not own or that others can write to, inside a folder containing `.git`, a symlink that leaves the scratchpad, a directory, or in a directory that does not exist) | Message on stderr, nothing on stdout, no output file created or changed |
+| 2 | The input is unreadable, is outside a scratchpad directory you own, is not a regular file, is larger than 32 MiB, is not valid JSON, is nested too deeply, has an `issueId` that is not a plain identifier (`^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$`), has a PR issue whose `resultDataId` is not an integer from 1 to 20 digits, has a PR count `pullRequest.newIssues` that is not a non-negative integer, or is not a shape above; or the command line is invalid (a bad `--kind`, `--group-by` or `--format`); or `--output` is refused (not inside a directory named `scratchpad`, on POSIX one that you do not own or that others can write to, inside a folder containing `.git`, a symlink that leaves the scratchpad, a directory, or in a directory that does not exist) | Message on stderr, nothing on stdout, no output file created or changed |
 
 With `--output` the script writes a private temporary file and replaces the target only after the whole record is
 built, so a failed run does not create or modify the output file; an older file at the same path survives.

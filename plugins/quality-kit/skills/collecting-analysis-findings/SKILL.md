@@ -196,7 +196,7 @@ Eval evidence (`evals/collecting-analysis-findings/evals.json`, Codacy evals 1 t
 
 **Last dated run record:** 2026-11-17 (issue #760), `scripts/smoke_test.py` passed with the `resultDataId`,
 `issue_key` and truncation checks, and the adapter was run by hand against PR #759's real `pr` output and the real
-`ignored` list; an `issue_id` from that record resolved with the read-only `codacy pull-request ... -i <id>`. No eval
+`ignored` list; an `issue_id` from that record resolved with the read-only `codacy pull-request ... --issue <id>` (run as `-i`, which `codacy pull-request --help` lists as the short form of the same option). No eval
 was re-run. 2026-11-09, eval 5 re-run (iteration 5, with skill, 8 of 8), and `scripts/smoke_test.py` passed, including the `qlty-sonar-read.py` checks
 against a stub `sonar`; every wrapper form was also run live against SonarQube Cloud for PR 673, and its output piped
 into `collect_sonar.py`. 2026-10-17, `scripts/smoke_test.py`, 60 of 60 checks passed. The adapter was also
