@@ -1,0 +1,27 @@
+{
+ "eval_id": "eval-5",
+ "configuration": "with_skill",
+ "assertions_evaluated": [
+  {
+   "text": "Routes (a), the already-open PR #123, to neither codex-peer-review nor cross-model-review",
+   "passed": true,
+   "evidence": "(a) -> neither"
+  },
+  {
+   "text": "Routes (b), the working diff before a PR, to cross-model-review",
+   "passed": true,
+   "evidence": "(b) -> cross-model-review"
+  },
+  {
+   "text": "Cites the working-diff or local-branch criterion from the skill text to separate (a) from (b)",
+   "passed": true,
+   "evidence": "Quotes the pre-PR or pre-ready working diff or local branch tie-break to separate (a) from (b)"
+  }
+ ],
+ "summary": {
+  "assertions_total": 3,
+  "assertions_passed": 3,
+  "pass_rate": 1.0
+ },
+ "note": "Run 2026-11-17 against the worktree text after the PR #771 round-1 fix (tie-break narrowed to a pre-PR or pre-ready diff). The 'routing for the caller' line was reworded after this run; the tie-break the assertions test was not."
+}

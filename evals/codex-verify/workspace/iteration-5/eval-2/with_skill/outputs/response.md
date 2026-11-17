@@ -1,0 +1,2 @@
+1. "verify the rollback step in docs/deploy-plan.md before I run it" -> codex-verify. Quoted: "A plan, document or single plan step the user asks to have verified stays here, even a critical step Claude will execute later." Not consulting-decision-model: that is "Claude's own check, with no user request to verify it".
+2. "cross-model review this diff before I open the PR" -> cross-model-review. Quoted: "A pre-PR two-vendor diff review goes to git-kit's cross-model-review, if installed." and "This verifies a document, not a diff."

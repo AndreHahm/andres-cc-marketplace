@@ -1,0 +1,27 @@
+{
+ "eval_id": "eval-2",
+ "configuration": "with_skill",
+ "assertions_evaluated": [
+  {
+   "text": "Routes 'have codex sanity-check the caching approach you just proposed' to codex-peer-review",
+   "passed": true,
+   "evidence": "Request 1 -> codex-peer-review"
+  },
+  {
+   "text": "Routes 'get a second-opinion review of my working diff before I open the PR' to cross-model-review, not codex-peer-review",
+   "passed": true,
+   "evidence": "Request 2 -> cross-model-review"
+  },
+  {
+   "text": "Cites a distinguishing criterion from the skill text (a Codex-only check of Claude's own position vs. a two-vendor pre-PR review of the working diff) rather than only naming the target",
+   "passed": true,
+   "evidence": "Cites Claude's not-yet-presented position vs. the two-vendor pre-PR gate on the working diff, quoting the tie-break"
+  }
+ ],
+ "summary": {
+  "assertions_total": 3,
+  "assertions_passed": 3,
+  "pass_rate": 1.0
+ },
+ "note": "Run 2026-11-17 against the worktree text after the PR #771 round-1 fix (tie-break narrowed to a pre-PR or pre-ready diff). The 'routing for the caller' line was reworded after this run; the tie-break the assertions test was not."
+}

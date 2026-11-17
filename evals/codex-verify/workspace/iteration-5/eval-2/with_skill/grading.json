@@ -1,0 +1,27 @@
+{
+ "eval_id": "eval-2",
+ "configuration": "with_skill",
+ "assertions_evaluated": [
+  {
+   "text": "Routes 'verify the rollback step in docs/deploy-plan.md before I run it' to codex-verify",
+   "passed": true,
+   "evidence": "Request 1 -> codex-verify"
+  },
+  {
+   "text": "Routes 'cross-model review this diff before I open the PR' to cross-model-review, not codex-verify",
+   "passed": true,
+   "evidence": "Request 2 -> cross-model-review"
+  },
+  {
+   "text": "Cites a distinguishing criterion from the skill text (a user-requested document/step vs. a diff)",
+   "passed": true,
+   "evidence": "Cites a user-requested document step vs. a diff ('This verifies a document, not a diff.')"
+  }
+ ],
+ "summary": {
+  "assertions_total": 3,
+  "assertions_passed": 3,
+  "pass_rate": 1.0
+ },
+ "note": "Run 2026-11-17 against the worktree text after the PR #771 round-1 fix (tie-break narrowed to a pre-PR or pre-ready diff). The 'routing for the caller' line was reworded after this run; the tie-break the assertions test was not."
+}
