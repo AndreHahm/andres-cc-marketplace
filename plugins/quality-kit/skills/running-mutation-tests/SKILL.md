@@ -9,7 +9,7 @@ description: >-
   "add a module to the weekly mutation run". Not for line coverage (using-codecov) or review findings
   posted on a PR (handling-review-findings); it never gates a merge.
 argument-hint: (optional) a module path or file stem, or "list"
-allowed-tools: Read, Glob, Edit, Write, AskUserQuestion, Agent, Bash(uv run --no-project --no-config --with pyyaml==6.0.3 python -I "${CLAUDE_PLUGIN_ROOT}/scripts/qlty-mutation-run.py" --list-modules:*)
+allowed-tools: Read, Glob, Edit, Write, Agent, Bash(uv run --no-project --no-config --with pyyaml==6.0.3 python -I "${CLAUDE_PLUGIN_ROOT}/scripts/qlty-mutation-run.py" --list-modules:*)
 ---
 
 # Running Mutation Tests
@@ -32,12 +32,14 @@ something to follow.
 1. Pick the module and its test selection (Step 1).
 2. Dispatch `mutation-tester` (Step 2) and read its digest.
 3. Explain the result (Step 3), then go through survivors with the user (Step 4).
+4. After a finished run of a module not yet in the list, offer to add it to the weekly run (Step 5).
 
 ## When to Use
 
 - Measuring a module's test strength, or re-measuring after tests changed.
 - Understanding one survivor: what changed, why no test noticed, what would catch it.
-- Adding a module to the repository's weekly run (`.github/mutation-modules.yml`): measure it here first.
+- Adding a module to the repository's weekly run (`.github/mutation-modules.yml`): it is measured first
+  (Steps 1-3), then added with the selection that ran (Step 5).
 
 ## When NOT to Use
 
@@ -111,12 +113,39 @@ read the diff and the function, then propose one outcome via `AskUserQuestion`:
 `references/survivor-outcomes.md` has how to tell them apart and what a good reason looks like. After
 approved changes, offer one re-run (Step 2) to confirm the targeted mutants are now killed.
 
+## Step 5: Add to the weekly run
+
+Only for a module that is not in `.github/mutation-modules.yml` yet, and only after a run whose runner status
+was `0` and whose parser produced a score: the list's own rule is that a module is added only after a real run
+with its selection. Offer it once per module per session, after Step 3 and any survivors the user chose to
+go through in Step 4; if a test written in Step 4 changed the selection's tests, offer the Step 4 re-run first
+so the score shown is current. When the user asked to add the module but the run did not finish with a score,
+say that it is not added and why. If the repository has no `.github/mutation-modules.yml`, say so and stop:
+this skill does not create the file or a workflow.
+
+1. Show the exact entry to append under `modules:`: the module path and the test files that ran (the
+   selection confirmed in Step 1, every path already checked there), and nothing else. Show the score and
+   the "not measured" count beside it, not in it:
+
+   ```yaml
+     - module: scripts/marketplace_ci/foo.py
+       tests:
+         - tests/marketplace_ci/test_foo.py
+   ```
+
+2. Ask via `AskUserQuestion` (Add / Don't add). Add it with `Edit` only on Add; change no other line.
+3. Run the list command from Step 1 again and confirm the module appears in its output. If the command fails
+   or the module is missing, say so and show the edited lines; do not retry with a different edit.
+
+The weekly workflow (`.github/workflows/mutation-testing.yml`) picks the entry up on its next run; the change
+still goes through the user's normal commit and review.
+
 ## Boundaries
 
 Pre-approved: listing the module list file, `Read`, `Glob`, `Edit`, `Write`, asking the user, and dispatching
 `mutation-tester`, which runs the runner and the parser itself. `Edit` and `Write` are used only for a test or a
-pragma, and only after the user approved its exact text in Step 4: that approval is the gate, so the write itself
-does not prompt again. mutmut and PyYAML come from `uv run --with`, pinned by version
+pragma after the user approved its exact text in Step 4, and `Edit` for a module-list entry after the user
+approved its exact text in Step 5: that approval is the gate, so the write itself does not prompt again. mutmut and PyYAML come from `uv run --with`, pinned by version
 (mutmut 3.8.1, the version the runner's and parser's exit-code tables were checked against). The agent's
 export lives outside the repository, and nothing here deletes files.
 
@@ -129,8 +158,9 @@ export lives outside the repository, and nothing here deletes files.
 - **`# pragma: no cover` lines are never mutated** either: mutmut 3.8.1 skips coverage-excluded code, so it
   shows up in no count.
 - **A pipeline hides mutmut's status.** Read the runner's own exit status, never `... | tail`'s.
-- **Tests get a reduced environment.** The runner passes pytest and mutmut only `PATH`, `HOME`, the locale,
-  temporary-directory and `PYTHON*` variables and a few like them, so a token held in an environment variable
+- **Tests get a reduced environment.** The runner passes pytest and mutmut only `PATH` and the variables named
+  exactly in its `CHILD_ENV_NAMES` (`HOME`, the standard locale and temporary-directory names, a few Python
+  ones such as `PYTHONPATH`; never a prefix), so a token held in an environment variable
   does not reach the selected tests (files the user can read, such as `~/.netrc`, still can). A test that needs
   another variable fails the baseline (exit 4); say so rather than reporting the tests as broken. The allowlist
   covers only pytest and mutmut, not the dependency install (Step 2's environment command), which keeps the full
@@ -149,13 +179,17 @@ the scenarios in `references/testing-scenarios.md`.
 
 **Last dated run record:** 2026-11-15: the runner and parser ran end to end on `trust_boundary` in a working
 tree copy (25 mutants, 22 killed, 3 survived; `--show` printed the diff; the worktree stayed clean), and the
-parser reproduced all six modules' measured counts (design record, Evidence). The scenarios have not been run
-yet.
+parser reproduced all six modules' measured counts (design record, Evidence). 2026-11-17: scenario 1 ran live
+(a `sonnet` general-purpose agent following `mutation-tester.md`, since the agent was not registered in that
+session: 25 / 22 / 3, 0.88, the three diffs shown, the repository fingerprint unchanged), and scenarios 2-10
+ran plan-only with simulated answers: all passed, scenarios 5 and 9 with gaps in the wording, which were
+fixed for Step 5.
 
 **Verify this skill activates on:**
 - "run mutation tests on pr_policy"
 - "how strong are the tests for validators.py"
 - "why did this mutant survive"
+- "add token_shapes to the weekly mutation run"
 
 **Verify it does NOT activate on:**
 - "what's the patch coverage on this PR" (`using-codecov`)
@@ -164,6 +198,8 @@ yet.
 **Quality gates:**
 - [ ] No `mutation-tester` dispatch happens before the user confirmed the module and its test selection
 - [ ] No test and no pragma is written without the user approving its exact text
+- [ ] A module is added to the weekly list only after a run with that selection that ended with runner
+  status `0` and a parser score, and the user approving the exact entry
 - [ ] "Not measured" mutants are never reported as survivors or test gaps
 - [ ] A red baseline or a non-zero runner status stops the flow with the reason
 - [ ] The run happens only in the agent's export outside the repository
