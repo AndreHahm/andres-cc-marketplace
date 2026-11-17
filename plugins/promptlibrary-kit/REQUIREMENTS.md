@@ -1275,8 +1275,8 @@ project patterns when asked whether to drop them (2026-11-17). SCR-3's status fl
 plugin update adds, also covers newly added project patterns.
 
 **Amended 2026-11-17 (CFG-7):** *each project pattern gets a fixed time limit of 1 second every time it
-screens text, and a pattern that runs out of time is skipped and reported like an invalid one, so that a
-badly written or hostile shared pattern can never hang saving, checking or setup.* Built-in kinds and the
+screens text, and a pattern that runs out of time is skipped and reported like an invalid one, so that
+matching a badly written or hostile shared pattern can never hang saving, checking or setup.* Built-in kinds and the
 other patterns still run; setup's status (PUR-6) lists the skipped pattern until it is fixed. The limit is
 fixed, not a setting, and built-in kinds are not limited. Trade-off you accepted: while a pattern is
 skipped, the text it should catch is not caught by it. Mechanism note: Python's standard regex engine
