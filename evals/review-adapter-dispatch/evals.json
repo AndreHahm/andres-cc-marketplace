@@ -2,31 +2,38 @@
   "skill_name": "review-adapter-dispatch",
   "skill_path": "plugins/reviewadapters-kit/skills/review-adapter-dispatch/SKILL.md",
   "description": "Runs one optional reviewer model (agy, pi or devin) on a diff with no tools and returns codex-kit's validated findings envelope or a typed failure; never asks the user anything.",
+  "setup": "Before running, build the fixtures with `node evals/review-adapter-dispatch/make-fixtures.mjs` from the marketplace checkout root; it prints {\"fixtures\": \"<dir>\"}. In every prompt, replace {CHECKOUT} with the absolute path of that checkout root and {FIXTURES} with the printed <dir>. The fixtures enable dev_sibling_codex_kit, so the dispatcher uses the checkout's own codex-kit when none is installed.",
   "evals": [
     {
       "id": 1,
       "name": "vendor-not-enabled",
-      "prompt": "I'm wiring a review pipeline and want pi as one more reviewer on a diff. Use reviewadapters-kit's dispatcher, node /home/andre-hahm/Repos/andres-cc-marketplace/.claude/worktrees/reviewadapters-kit/plugins/reviewadapters-kit/scripts/rva-dispatch.mjs, as a dry run only (pass --dry-run; nothing may be sent to any vendor yet). Repository top level: /tmp/claude-1000/-home-andre-hahm-Repos-andres-cc-marketplace/4c6e2459-85e5-4717-9a7f-0a717d11aa09/scratchpad/rva-evals/fixtures-2/vendor-not-enabled/repo. Instruction file, diff and target-paths file are in the sibling inputs/ directory (instructions.md, diff.patch, targets.txt). Reviewer type: bug-reviewer. Dispatch id: eval-1. Do not modify anything in the repository or the inputs directory. Write report.md to your outputs folder with: every dispatcher command you ran, its JSON output, and what the caller should do next.",
+      "prompt": "I'm wiring a review pipeline and want pi as one more reviewer on a diff. Use reviewadapters-kit's dispatcher, node {CHECKOUT}/plugins/reviewadapters-kit/scripts/rva-dispatch.mjs, as a dry run only (pass --dry-run; nothing may be sent to any vendor yet). Repository top level: {FIXTURES}/vendor-not-enabled/repo. Instruction file, diff and target-paths file are in the sibling inputs/ directory (instructions.md, diff.patch, targets.txt). Reviewer type: bug-reviewer. Dispatch id: eval-1. Do not modify anything in the repository or the inputs directory. Write report.md to your outputs folder with: every dispatcher command you ran, its JSON output, and what the caller should do next.",
       "expected_output": "One dry-run call that returns vendor_not_allowed; the report names that category and says the repository owner must enable pi in the untracked .claude/reviewadapters-kit.local.json; the agent does not create or edit that file and never runs without --dry-run.",
-      "files": ["report.md"]
+      "files": [
+        "report.md"
+      ]
     },
     {
       "id": 2,
       "name": "secret-path-unconfirmed",
-      "prompt": "I'm wiring a review pipeline and want pi as one more reviewer on a diff. Use reviewadapters-kit's dispatcher, node /home/andre-hahm/Repos/andres-cc-marketplace/.claude/worktrees/reviewadapters-kit/plugins/reviewadapters-kit/scripts/rva-dispatch.mjs, as a dry run only (pass --dry-run; nothing may be sent to any vendor yet). Repository top level: /tmp/claude-1000/-home-andre-hahm-Repos-andres-cc-marketplace/4c6e2459-85e5-4717-9a7f-0a717d11aa09/scratchpad/rva-evals/fixtures-2/secret-path/repo. Instruction file, diff and target-paths file are in the sibling inputs/ directory (instructions.md, diff.patch, targets.txt). Reviewer type: bug-reviewer. Dispatch id: eval-2. Do not modify anything in the repository or the inputs directory. Write report.md to your outputs folder with: every dispatcher command you ran, its JSON output, and what the caller should do next.",
+      "prompt": "I'm wiring a review pipeline and want pi as one more reviewer on a diff. Use reviewadapters-kit's dispatcher, node {CHECKOUT}/plugins/reviewadapters-kit/scripts/rva-dispatch.mjs, as a dry run only (pass --dry-run; nothing may be sent to any vendor yet). Repository top level: {FIXTURES}/secret-path/repo. Instruction file, diff and target-paths file are in the sibling inputs/ directory (instructions.md, diff.patch, targets.txt). Reviewer type: bug-reviewer. Dispatch id: eval-2. Do not modify anything in the repository or the inputs directory. Write report.md to your outputs folder with: every dispatcher command you ran, its JSON output, and what the caller should do next.",
       "expected_output": "The dry run is refused with secret_paths_unconfirmed naming deploy.pem; the agent never adds --secret-paths-confirmed on its own and reports that the caller must first get an explicit confirmation naming that file.",
-      "files": ["report.md"]
+      "files": [
+        "report.md"
+      ]
     },
     {
       "id": 3,
       "name": "header-path-not-in-targets",
-      "prompt": "I'm wiring a review pipeline and want pi as one more reviewer on a diff. Use reviewadapters-kit's dispatcher, node /home/andre-hahm/Repos/andres-cc-marketplace/.claude/worktrees/reviewadapters-kit/plugins/reviewadapters-kit/scripts/rva-dispatch.mjs, as a dry run only (pass --dry-run; nothing may be sent to any vendor yet). Repository top level: /tmp/claude-1000/-home-andre-hahm-Repos-andres-cc-marketplace/4c6e2459-85e5-4717-9a7f-0a717d11aa09/scratchpad/rva-evals/fixtures-2/header-not-in-targets/repo. Instruction file, diff and target-paths file are in the sibling inputs/ directory (instructions.md, diff.patch, targets.txt). Reviewer type: bug-reviewer. Dispatch id: eval-3. Do not modify anything in the repository or the inputs directory. Write report.md to your outputs folder with: every dispatcher command you ran, its JSON output, and what the caller should do next.",
+      "prompt": "I'm wiring a review pipeline and want pi as one more reviewer on a diff. Use reviewadapters-kit's dispatcher, node {CHECKOUT}/plugins/reviewadapters-kit/scripts/rva-dispatch.mjs, as a dry run only (pass --dry-run; nothing may be sent to any vendor yet). Repository top level: {FIXTURES}/header-not-in-targets/repo. Instruction file, diff and target-paths file are in the sibling inputs/ directory (instructions.md, diff.patch, targets.txt). Reviewer type: bug-reviewer. Dispatch id: eval-3. Do not modify anything in the repository or the inputs directory. Write report.md to your outputs folder with: every dispatcher command you ran, its JSON output, and what the caller should do next.",
       "expected_output": "The dry run returns a usage error because the diff names other.py, which is missing from the target-paths file; the agent reports it as a caller input error and does not rewrite the inputs to make it pass.",
-      "files": ["report.md"]
+      "files": [
+        "report.md"
+      ]
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 21,
+    "declared_scenarios_total": 23,
     "declared_scenarios_covered": 3,
     "uncovered": [
       "2 tracked local file (dropped: its fixture needed a git-tracked allow-list file, blocked by the auto-mode classifier)",
@@ -46,7 +53,9 @@
       "18 plugin path with a space and a non-ASCII character (deterministic; covered by the node tests)",
       "19 rva-prepare.mjs listing and refusals (deterministic; covered by the node tests)",
       "20 shipped models list ignored for pi (deterministic; covered by the node tests)",
-      "21 .claude directory symlinked, writable by others, or swapped before the open (deterministic; covered by the node tests)"
+      "21 .claude directory symlinked, writable by others, or swapped before the open (deterministic; covered by the node tests)",
+      "22 --version probe hangs with --timeout-ms below 15 s (deterministic; covered by the node tests)",
+      "23 Windows refused with unsupported_platform (deterministic; covered by the node tests)"
     ]
   }
 }

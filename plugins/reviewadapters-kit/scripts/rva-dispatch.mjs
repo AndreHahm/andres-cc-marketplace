@@ -4,6 +4,7 @@
 // { ok: false, category, detail } (exit 2). A usage error prints the same failure shape with category
 // "usage" and exits 1.
 //
+// Linux and macOS only: on Windows it refuses with "unsupported_platform" before writing anything.
 // Gates, in order, before anything is sent: codex-kit present and safe to import; vendor enabled in the
 // untracked local file (and, for pi, a caller --model the local file allows); secret-named paths
 // (target list and diff headers) confirmed by the caller; no single argument over the size cap; vendor CLI
@@ -209,8 +210,9 @@ function summarizeArgs(args) {
   return args.map((arg) => (arg.length > 200 ? `<${Buffer.byteLength(arg)} bytes>` : arg));
 }
 
-async function cliVersion(binary, cwd, env) {
-  const run = await runVendor({ command: binary, args: ["--version"], cwd, env, timeoutMs: VERSION_TIMEOUT_MS });
+async function cliVersion(binary, cwd, env, timeoutMs) {
+  // The probe counts against the run's budget, so it never waits longer than that budget.
+  const run = await runVendor({ command: binary, args: ["--version"], cwd, env, timeoutMs: Math.min(VERSION_TIMEOUT_MS, timeoutMs) });
   const line = (run.stdout || run.stderr).split("\n").find((l) => l.trim()) ?? "";
   return /^[\w .()+:/-]{1,80}$/.test(line.trim()) ? line.trim() : "unknown";
 }
@@ -237,7 +239,7 @@ async function dispatch(options, runDir) {
     if (error instanceof CodexKitUnavailable) throw new Failure("codex_kit_unavailable", error.message);
     throw new Failure("codex_kit_unavailable", "codex-kit could not be imported");
   }
-  const { api, ownershipChecked } = loaded;
+  const { api } = loaded;
 
   if (!api.isValidToken(options["reviewer-type"])) throw usage("--reviewer-type must match [A-Za-z0-9._-]{1,64}");
   if (!api.isValidToken(options["dispatch-id"])) throw usage("--dispatch-id must match [A-Za-z0-9._-]{1,64}");
@@ -313,7 +315,7 @@ async function dispatch(options, runDir) {
 
   const env = vendor.env(model);
   const started = Date.now();
-  const version = await cliVersion(binary, runDir, env);
+  const version = await cliVersion(binary, runDir, env, timeoutMs);
   // The first version-shaped token must equal the probed version, so 1.5.90, 11.5.9 or a newer CLI that
   // prints "2.0.0 (compat 1.5.9)" does not pass for the probed 1.5.9.
   const versionProbed = /\d+(?:\.\d+)+/.exec(version)?.[0] === PROBED_VERSIONS[vendorName];
@@ -357,7 +359,6 @@ async function dispatch(options, runDir) {
     verdict: extracted.value.verdict,
     inspection_limits: [...extracted.value.inspection_limits]
   };
-  if (!ownershipChecked) envelope.inspection_limits.push("codex-kit's ownership check was skipped on this platform");
   if (!versionProbed) {
     envelope.inspection_limits.push(`${vendorName} version "${version}" differs from the probed ${PROBED_VERSIONS[vendorName]}; its isolation flags were not re-verified`);
   }
@@ -387,6 +388,9 @@ export async function main(argv) {
   for (const signal of signals) process.once(signal, onSignal);
   try {
     const options = parseArgs(argv);
+    // The timeout kills the vendor's process group, which Windows does not have: a hung vendor would never
+    // be stopped. Refuse before anything is written or sent.
+    if (process.platform === "win32") throw new Failure("unsupported_platform", "the dispatcher runs on Linux and macOS only (its timeout needs POSIX process groups); nothing was sent");
     runDir = fs.mkdtempSync(path.join(os.tmpdir(), "rva-run-"));
     fs.chmodSync(runDir, 0o700);
     const result = await dispatch(options, runDir);

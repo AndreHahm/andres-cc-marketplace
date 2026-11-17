@@ -128,7 +128,8 @@ Each vendor gets one prompt (the instructions, a fixed data-only sentence, the c
 diff) from a `0600` file in a private run directory, never as a command-line argument, and runs so that
 it reads no file itself: `pi --no-tools`; `devin` with every tool denied by name; `agy` in headless plan
 mode with `--sandbox`. That isolation holds for the probed CLI versions and was checked live, not by the
-tests. The environment is reduced and the whole process group is killed at the timeout (POSIX only).
+tests. The environment is reduced and the whole process group is killed at the timeout. Linux and macOS only:
+on Windows the dispatcher refuses with `unsupported_platform` before writing or sending anything.
 Flags, environment and probe evidence per vendor: `references/vendors.md`.
 
 The model returns only `findings`, `verdict` and `inspection_limits`. The adapter builds `dispatch` and
@@ -175,7 +176,8 @@ replacing its config, pi loading user extensions) is recorded with its evidence 
 **Evals:** the contract itself is a deterministic script, tested by direct execution (below). The evals
 at `evals/review-adapter-dispatch/` check how a caller agent handles the dispatcher's refusals: 3
 dry-run-only scenarios (vendor not enabled, secret-named path without confirmation, a diff path missing
-from the target list), with the skill and without it. Neither arm ever confirmed egress or edited an
+from the target list), with the skill and without it. Their fixtures are rebuilt by
+`evals/review-adapter-dispatch/make-fixtures.mjs` (see the `setup` key in `evals.json`). Neither arm ever confirmed egress or edited an
 input; the only difference was that each baseline probed the dispatcher once without `--dry-run`. A
 tracked-local-file scenario is not in the eval set; it stays covered by scenario 2 in
 `references/test-scenarios.md`.
@@ -184,14 +186,14 @@ tracked-local-file scenario is not in the eval set; it stays covered by scenario
 scripts, the shipped settings (three vendors, all off, 600 000 ms), the command's two Bash grants, and
 that the dispatcher with no flags returns a JSON usage error. It spawns no vendor.
 
-**Last dated run record:** 2026-11-16, `node --test tests/` 30/30 passing after agy moved to stdin
-input; live check earlier the same day, one run per vendor on the planted-bug fixture (all three found it,
+**Last dated run record:** 2026-11-17, `node --test tests/` 32/32 passing after the Windows refusal
+and the version-probe budget fix; 2026-11-16, 30/30 after agy moved to stdin input; live check earlier the same day, one run per vendor on the planted-bug fixture (all three found it,
 agy still with argv input), plus a canary-file injection probe on pi and devin (neither read the file).
 agy's stdin input was then probed live with a dummy prompt only, not re-run on the fixture. Same day: evals iteration-1, 12/12 assertions with the skill vs 9/12
 baseline (`evals/review-adapter-dispatch/workspace/iteration-1/benchmark.json`); `smoke_test.mjs` passing
 on the plugin copy.
 
-**Concrete scenarios:** the 30 tests in `tests/rva-dispatch.test.mjs` cover 21 scenarios against fake
+**Concrete scenarios:** the 32 tests in `tests/rva-dispatch.test.mjs` cover 23 scenarios against fake
 vendor binaries (no real vendor is called); the scenarios are listed in
 [references/test-scenarios.md](references/test-scenarios.md).
 
@@ -213,5 +215,5 @@ fixture with a planted bug.
 | `references/trust-and-config.md` | Shipped defaults, the local allow-list, the tracked-copy refusal, unattended use |
 | `references/typed-failures.md` | Failure categories this plugin adds to codex-kit's, and how to report each |
 | `references/codex-kit-locator.md` | How codex-kit's validator is found and checked before import |
-| `references/test-scenarios.md` | The 21 concrete scenarios the 30 node tests cover against fake vendors |
+| `references/test-scenarios.md` | The 23 concrete scenarios the 32 node tests cover against fake vendors |
 | `scripts/smoke_test.mjs` | Structural self-test; not part of the contract |

@@ -74,7 +74,7 @@ function fixture({ enable = ["pi", "devin", "agy"], changed = "calc.py", local =
 function fakeBin() {
   const dir = tempDir("rva-test-bin-");
   const script = `#!/bin/sh
-if [ "$1" = "--version" ]; then echo "fake 1.0"; exit 0; fi
+if [ "$1" = "--version" ]; then if [ -n "$FAKE_VERSION_SLEEP" ]; then sleep "$FAKE_VERSION_SLEEP"; fi; echo "fake 1.0"; exit 0; fi
 if [ -n "$FAKE_ARGS" ]; then printf '%s\\n' "$@" > "$FAKE_ARGS"; env > "$FAKE_ARGS.env"; cat > "$FAKE_ARGS.stdin"; fi
 case "$FAKE_MODE" in
   sleep) sh -c 'echo $$ > "$FAKE_PIDFILE"; sleep 60' & sleep 60 ;;
@@ -510,6 +510,33 @@ test("an unprobed version is noted for pi and refused for devin and agy unless t
 test("a timeout above the configured limit is clamped to it, not raised", () => {
   const r = dispatch(fixture(), "pi", ["--timeout-ms", String(SHIPPED_TIMEOUT + 1), "--dry-run"]);
   assert.equal(r.out.dryRun, true, JSON.stringify(r.out));
+});
+
+test("a --version probe that hangs never outlasts a timeout below the probe's own 15 s limit", () => {
+  const f = fixture();
+  const record = path.join(f.inputs, "slow-version.args");
+  const started = Date.now();
+  const r = dispatch(f, "pi", ["--timeout-ms", "1000"], { FAKE_VERSION_SLEEP: "30", FAKE_ARGS: record, FAKE_OUT: marked(GOOD) });
+  const elapsed = Date.now() - started;
+  assert.equal(r.out.category, "timeout", JSON.stringify(r.out));
+  assert.match(r.out.detail, /nothing was sent/);
+  assert.equal(fs.existsSync(record), false, "the vendor was spawned with the diff");
+  assert.ok(elapsed < 10_000, `the dispatcher took ${elapsed} ms for a 1000 ms budget`);
+});
+
+test("Windows is refused before anything is written or sent, dry run included", () => {
+  const f = fixture();
+  const forceWin32 = "data:text/javascript,Object.defineProperty(process,'platform',{value:'win32'})";
+  const args = ["--vendor", "pi", "--reviewer-type", "t", "--dispatch-id", "d1", "--instruction-file", path.join(f.inputs, "instr.md"),
+    "--diff-file", path.join(f.inputs, "diff.patch"), "--target-paths-file", path.join(f.inputs, "changed.txt"), "--cwd", f.repo];
+  for (const extra of [[], ["--dry-run"]]) {
+    const record = path.join(f.inputs, `win32${extra.length}.args`);
+    const bin = fakeBin();
+    const r = spawnSync(process.execPath, ["--import", forceWin32, DISPATCH, ...args, ...extra], { encoding: "utf8", env: { ...process.env, HOME: homeWithCodexKit(), PATH: `${bin}${path.delimiter}${process.env.PATH}`, FAKE_ARGS: record } });
+    assert.equal(r.status, 2, r.stderr);
+    assert.equal(JSON.parse(r.stdout.trim()).category, "unsupported_platform");
+    assert.equal(fs.existsSync(record), false, "a vendor was spawned on win32");
+  }
 });
 
 test("a vendor binary inside the reviewed repository is never run", () => {

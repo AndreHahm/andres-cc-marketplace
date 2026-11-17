@@ -7,8 +7,8 @@ model (charset-checked, never starting with `-`, placed only as the value of `--
 content, which travels in a `0600` file the dispatcher writes to its private `0700` run directory: named
 on the command line for pi and devin, fed as stdin for agy. No review content is ever a command-line
 argument, which other local users could read from `ps`. Every run uses that directory as its working
-directory, gets a reduced environment, and is killed with its whole process group at the timeout (POSIX
-only).
+directory, gets a reduced environment, and is killed with its whole process group at the timeout (Linux
+and macOS; on Windows the dispatcher refuses to run, `unsupported_platform`).
 
 ## Common to all three
 
@@ -30,7 +30,8 @@ only).
   separate executions of the same binary, so a CLI that updates itself in between would run unprobed;
   whether agy or devin self-update was not checked. Re-probe after an upgrade, because each of these CLIs
   has changed flags between minor versions. The version is read with a bare `<cli> --version`, under the reduced environment but
-  without the isolation flags below; it runs before anything is sent and inside the time budget.
+  without the isolation flags below; it runs before anything is sent and inside the time budget (its own
+  15 s limit is lowered to the run's timeout when that is shorter).
 
 ## pi
 
