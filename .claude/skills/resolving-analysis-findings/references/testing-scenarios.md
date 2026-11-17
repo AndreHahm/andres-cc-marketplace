@@ -30,7 +30,10 @@ whether Codacy honors an inline suppression, which only a push and a Cloud re-ch
 `issue_id`) separates the arms on the read-only `-i` resolve, the file, line and rule in the approval question, and the
 comment. Eval 10 (a week-old record whose `issue_id` is the hex `issueId`): the baseline built
 `--ignore-issue 66a432aa…`, the issue #760 failure, while the with-skill run refused the id and re-collected for the
-numeric one. Token and timing figures are the agents' own estimates. No Codacy command was run.
+numeric one. Token and timing figures are the agents' own estimates. No Codacy command was run. After the
+cross-model review switched the read-only resolve to the long `--issue` flag, evals 9 and 10 were re-run with skill
+only (iteration 12, eval 9's resolve assertion tightened to require `--issue`): 10 of 10, and neither answer used
+`-i` or `-I`.
 
 **Last dated run record:** 2026-11-07: `scripts/smoke_test.py` passed inside the marketplace repository with
 `read_pr_head.py` run against a fake `gh` and once live, and `security-reviewer` and `scripts-reviewer` ran on the

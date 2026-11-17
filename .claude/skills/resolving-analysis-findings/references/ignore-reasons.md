@@ -18,8 +18,8 @@ codacy pull-request <provider> <org> <repo> <number> \
   --ignore-issue <issue_id> --ignore-reason <reason> --ignore-comment '<comment>'
 ```
 
-Before the approval, resolve the id read-only with `codacy pull-request <provider> <org> <repo> <number> -i <issue_id>`
-and stop unless its file, line and rule match the finding (SKILL.md's Decision rights).
+Before the approval, resolve the id read-only with `codacy pull-request <provider> <org> <repo> <number> --issue <issue_id>`
+(the long form only: the short `-I` on this command is `--ignore-issue`, a remote write) and stop unless its file, line and rule match the finding (SKILL.md's Decision rights).
 `<issue_id>` comes from the findings record (`issue_id`, Codacy's numeric `resultDataId`), never from
 `issue_key` (the hex `issueId`). A repository-level list and the ignored list carry none, so take the id from the
 PR's own fresh record; match an ignored entry to it by `issue_key`. `--ignore-reason` defaults to `AcceptedUse`
