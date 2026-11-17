@@ -396,6 +396,37 @@ jobs:
       - run: uv run --no-sync --no-build pytest -q plugins/decision-kit/tests
         shell: bash
 
+  node-tests:
+    name: Plugin Node tests (node --test)
+    # Every plugins/*/tests/*.test.mjs file, discovered from git so a new plugin's suite runs without
+    # editing this job (#758). Linux only: the reviewadapters-kit suite does not load on Windows (#770).
+    # publish needs this job and fails closed on any result but success. No kill-switch restore or
+    # check: the job holds no secrets, and publish's own kill-switch check still blocks the merge.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # ratchet:actions/setup-node@v7.1.0
+        with:
+          node-version: "24"
+      # The files are passed explicitly: node --test on a directory path fails on Node 22 and 24.
+      # Zero files fails too, so a broken pattern cannot pass silently. :(glob) keeps each * within one
+      # directory level, so a fixture under tests/ is not run as a suite.
+      - name: Run node --test on every plugin test file
+        run: |
+          set -euo pipefail
+          mapfile -d '' files < <(git ls-files -z -- ':(glob)plugins/*/tests/*.test.mjs')
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "::error::no plugins/*/tests/*.test.mjs file found -- refusing to report a pass with nothing tested"
+            exit 1
+          fi
+          printf 'Running %s\n' "${files[@]}"
+          node --test -- "${files[@]}"
+
   marketplace-parity:
     name: Marketplace mirror/export parity
     runs-on: ubuntu-latest
@@ -1734,7 +1765,7 @@ jobs:
 
   publish:
     name: Publish Codex policy result
-    needs: [compute-scope, codex-review, prefix-permanence, hygiene, python-quality, marketplace-parity]
+    needs: [compute-scope, codex-review, prefix-permanence, hygiene, python-quality, marketplace-parity, node-tests]
     # Always runs for a same-repo PR (fork-unsupported owns the fork case
     # and already fails explicitly, independently of this job) -- a
     # security review found the earlier `needs.codex-review.result !=
@@ -1758,7 +1789,9 @@ jobs:
     # round 9. `hygiene`, `python-quality` and `marketplace-parity` (the
     # rest of codex-review's own `needs`) are direct dependencies and
     # checked below for the same reason; a Codex review finding on this
-    # job's `needs` list prompted that addition.
+    # job's `needs` list prompted that addition. `node-tests` (#758) is a
+    # direct dependency for a different reason: it is not one of
+    # codex-review's needs, so this job is the only place it is enforced.
     if: always() && github.event.pull_request.head.repo.fork == false
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -2139,6 +2172,7 @@ jobs:
           SKIP_PYTHON_QUALITY: ${{ needs.hygiene.outputs.skip_python_quality }}
           SKIP_CODEX_REVIEW: ${{ needs.hygiene.outputs.skip_codex_review }}
           MARKETPLACE_PARITY_RESULT: ${{ needs.marketplace-parity.result }}
+          NODE_TESTS_RESULT: ${{ needs.node-tests.result }}
         run: |
           # hygiene, python-quality and marketplace-parity are the other
           # deterministic gates codex-review itself needs. Any of them
@@ -2163,7 +2197,9 @@ jobs:
             echo "python-quality skipped: verified dependabot PR changing only package.json/pnpm-lock.yaml"
             PYTHON_QUALITY_RESULT="success"
           fi
-          for gate in "hygiene:$HYGIENE_RESULT" "python-quality:$PYTHON_QUALITY_RESULT" "marketplace-parity:$MARKETPLACE_PARITY_RESULT"; do
+          # node-tests (#758) is not one of codex-review's needs; it is checked
+          # here with them because the bypass below must not skip it either.
+          for gate in "hygiene:$HYGIENE_RESULT" "python-quality:$PYTHON_QUALITY_RESULT" "marketplace-parity:$MARKETPLACE_PARITY_RESULT" "node-tests:$NODE_TESTS_RESULT"; do
             if [ "${gate#*:}" != "success" ]; then
               echo "${gate%%:*} did not succeed (result: ${gate#*:}) -- failing closed."
               exit 1

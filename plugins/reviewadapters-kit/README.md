@@ -105,8 +105,10 @@ gates and output; `references/typed-failures.md` lists every failure type.
 ## Language
 
 **JavaScript** (Node.js ES modules, `.mjs`, no npm dependencies). New scripts in this plugin stay in
-JavaScript. Tests, from the repository root: `node --test plugins/reviewadapters-kit/tests/` (56 tests,
-verified on Node 26).
+JavaScript. Tests, from the repository root, on Linux or macOS:
+`node --test plugins/reviewadapters-kit/tests/*.test.mjs` (56 tests, verified on Node 24). Name the files:
+on Node 22 and 24, `node --test` on the directory path fails. The `Plugin Node tests` CI job runs them on
+every pull request. The suite does not load on Windows (#770).
 
 When you change the shipped `reviewadapters-kit.settings.json` in this marketplace, copy it unchanged to
 `.claude/reviewadapters-kit.settings.json` at the repository root as well. The mirrored scripts in

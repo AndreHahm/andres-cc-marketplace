@@ -573,6 +573,7 @@ _GATES = {
     "SKIP_PYTHON_QUALITY": "false",
     "SKIP_CODEX_REVIEW": "false",
     "MARKETPLACE_PARITY_RESULT": "success",
+    "NODE_TESTS_RESULT": "success",
     "PREFIX_PERMANENCE_RESULT": "success",
     "SCOPE_RESULT": "success",
     "BYPASSED": "false",
@@ -702,6 +703,25 @@ _PQ_SKIP_DEPENDABOT = {**_PQ_SKIP_BYPASSED, "BYPASSED": "false", "SKIP_CODEX_REV
             {**_DEPENDABOT, "MARKETPLACE_PARITY_RESULT": "failure"},
             False,
         ),
+        ("#758 failed node-tests", {"NODE_TESTS_RESULT": "failure"}, False),
+        ("#758 skipped node-tests", {"NODE_TESTS_RESULT": "skipped"}, False),
+        ("#758 cancelled node-tests", {"NODE_TESTS_RESULT": "cancelled"}, False),
+        ("#758 node-tests result missing", {"NODE_TESTS_RESULT": ""}, False),
+        (
+            "#758 the Codex bypass does not clear a failed node-tests",
+            {"NODE_TESTS_RESULT": "failure", "BYPASSED": "true"},
+            False,
+        ),
+        (
+            "#758 a bypass-eligible scope does not clear a failed node-tests",
+            {**_ELIGIBLE, "NODE_TESTS_RESULT": "failure"},
+            False,
+        ),
+        (
+            "#758 the dependabot skip does not clear a failed node-tests",
+            {**_DEPENDABOT, "NODE_TESTS_RESULT": "failure"},
+            False,
+        ),
     ],
 )
 def test_publish_decision(case, overrides, passes, tmp_path):
@@ -732,6 +752,28 @@ def test_python_quality_skip_is_wired_fail_closed():
     # the bootstrap branch for a base check-pr without the flag fails closed
     assert 'echo "skip_python_quality=false" >> "$GITHUB_OUTPUT"' in step["run"]
     assert "hygiene" in jobs["publish"]["needs"]
+
+
+def test_node_tests_job_is_wired_into_publish():
+    """#758: node-tests always runs, discovers its files from git, and publish
+    needs it and reads its result."""
+    jobs = yaml.safe_load(_WORKFLOW.read_text(encoding="utf-8"))["jobs"]
+    node = jobs["node-tests"]
+    assert "if" not in node
+    assert "needs" not in node
+    (run,) = [
+        s["run"]
+        for s in node["steps"]
+        if s.get("name") == "Run node --test on every plugin test file"
+    ]
+    assert "git ls-files -z -- ':(glob)plugins/*/tests/*.test.mjs'" in run
+    assert 'node --test -- "${files[@]}"' in run
+    assert '"${#files[@]}" -eq 0' in run
+    assert "node-tests" in jobs["publish"]["needs"]
+    (decide,) = [
+        s for s in jobs["publish"]["steps"] if s.get("name") == "Determine final policy result"
+    ]
+    assert decide["env"]["NODE_TESTS_RESULT"] == "${{ needs.node-tests.result }}"
 
 
 def test_codex_review_skip_is_wired_fail_closed():
