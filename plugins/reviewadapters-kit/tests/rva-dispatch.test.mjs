@@ -167,6 +167,24 @@ test("a secret-named target path needs --secret-paths-confirmed", () => {
   assert.equal(dispatch(f, "pi").out.category, "secret_paths_unconfirmed");
   const dry = dispatch(f, "pi", ["--secret-paths-confirmed", "--dry-run"]);
   assert.equal(dry.out.dryRun, true);
+  // The dispatcher's own additions to codex-kit's list apply to changed files too; a public key does not.
+  for (const changed of ["hosts.yml", "auth.json", "putty.ppk", "id_ed25519_sk"]) {
+    assert.equal(dispatch(fixture({ changed }), "pi", ["--dry-run"]).out.category, "secret_paths_unconfirmed", changed);
+  }
+  assert.equal(dispatch(fixture({ changed: "id_ed25519.pub" }), "pi", ["--dry-run"]).out.dryRun, true);
+});
+
+test("prepare lists the dispatcher's own secret-like names in secret_paths", () => {
+  const repo = tempDir("rva-test-secretnames-");
+  execFileSync("git", ["init", "-q", repo]);
+  fs.writeFileSync(path.join(repo, "hosts.yml"), "a: 1\n");
+  git(repo, "add", "hosts.yml");
+  git(repo, "commit", "-q", "-m", "init");
+  fs.writeFileSync(path.join(repo, "hosts.yml"), "a: 2\n");
+  const r = runNode(PREPARE, ["--cwd", repo]);
+  assert.equal(r.out.ok, true, JSON.stringify(r.out));
+  created.push(r.out.dir);
+  assert.deepEqual(r.out.secret_paths, ["hosts.yml"]);
 });
 
 test("a diff header naming a file missing from the target list is refused", () => {

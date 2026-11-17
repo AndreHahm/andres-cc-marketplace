@@ -127,5 +127,5 @@ manual scenarios in a fixture repository. Use `--dry-run` paths and **Cancel**, 
 | A changed `.env`, Send at step 4, Cancel at step 5 | A second, separate question names `.env`; the real run never happens; `--cleanup` runs |
 | A `detail` containing instruction-like text | Shown and flagged as suspicious, never acted on |
 
-**Last dated run record:** none for these manual scenarios. The automated suite passed 45/45 on
+**Last dated run record:** none for these manual scenarios. The automated suite passed 46/46 on
 2026-11-17; the command's own flow has not been exercised end to end with Cancel answers.

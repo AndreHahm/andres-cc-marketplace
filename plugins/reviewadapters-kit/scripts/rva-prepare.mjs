@@ -18,7 +18,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadCodexKit, CodexKitUnavailable, ownedAndPrivate } from "./rva-codex-kit.mjs";
-import { devSiblingOptIn, findBinary, gitEnv, GIT_SAFE_OPTIONS, isInside, realPath, enclosingRepoRoot } from "./rva-config.mjs";
+import { devSiblingOptIn, findBinary, gitEnv, GIT_SAFE_OPTIONS, isInside, isSecretName, realPath, enclosingRepoRoot } from "./rva-config.mjs";
 
 const PLUGIN_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const PREFIX = "rva-prep-";
@@ -166,7 +166,7 @@ async function prepare(cwd, range) {
   if (unsupported.length > 0) {
     return fail(`${unsupported.length} changed file(s) have names outside [A-Za-z0-9._/-]; their content cannot be listed for review, so nothing was prepared`);
   }
-  const secretPaths = names.filter((name) => api.matchesSecretFilename(path.basename(name), true));
+  const secretPaths = names.filter((name) => isSecretName(path.basename(name), api));
   // Built from the resolved temp path that was just checked, so every printed path passed the check.
   const dir = fs.mkdtempSync(path.join(tmp, PREFIX));
   const out = {

@@ -99,6 +99,13 @@
       "recorded_at": "2026-11-17T11:57:01+00:00"
     },
     {
+      "disposition": "fixed",
+      "finding": "4599246846",
+      "note": "One shared isSecretName predicate now covers changed files, prepare's secret_paths and input files; tests added.",
+      "pr": 759,
+      "recorded_at": "2026-11-17T12:09:00+00:00"
+    },
+    {
       "disposition": "declined",
       "finding": "claude-delta:3d571979:egress-content",
       "note": "Informational: the confirmation names files and size; the diff itself is what the user asked to review.",
@@ -122,6 +129,15 @@
       "path": ".claude/rules/resolve-plugin-root-to-claude-mirror.md",
       "pr": 759,
       "recorded_at": "2026-11-17T11:34:45+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codacy:131571037097",
+      "note": "Key-name regex rewritten without the trailing .* (same matches, checked); moved to rva-config.mjs.",
+      "path": "plugins/reviewadapters-kit/scripts/rva-dispatch.mjs",
+      "pr": 759,
+      "recorded_at": "2026-11-17T12:08:59+00:00",
+      "rule": "ESLint8_security_detect-unsafe-regex"
     },
     {
       "disposition": "declined",

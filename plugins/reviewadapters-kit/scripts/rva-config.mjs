@@ -48,6 +48,17 @@ export function gitEnv() {
   return Object.fromEntries(Object.entries(process.env).filter(([name]) => !name.toUpperCase().startsWith("GIT_")));
 }
 
+// Secret-like file names this plugin adds to codex-kit's shared list, which misses them: SSH keys with a
+// suffix or a FIDO "_sk" (a separator, then anything, needs no ".*"), PuTTY keys and CLI auth files.
+const LOCAL_SECRET_NAMES = [/^id_(rsa|dsa|ecdsa|ed25519)(_sk)?([._-]|$)/i, /\.ppk$/i, /^auth\.json$/i, /^hosts\.ya?ml$/i, /^\.envrc$/i, /^\.pypirc$/i];
+
+// One predicate for every secret-name check (changed files, prepare's secret_paths, the dispatcher's input
+// files): codex-kit's list or a local addition. A public key (".pub") is not a secret.
+export function isSecretName(name, api) {
+  if (api.matchesSecretFilename(name, true)) return true;
+  return !/\.pub$/i.test(name) && LOCAL_SECRET_NAMES.some((pattern) => pattern.test(name));
+}
+
 // Leading options for every git call: no fsmonitor hook from the repository's own config runs while git
 // refreshes the index.
 export const GIT_SAFE_OPTIONS = ["-c", "core.fsmonitor=false"];
