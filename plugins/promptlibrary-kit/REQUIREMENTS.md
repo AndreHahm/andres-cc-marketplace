@@ -224,7 +224,7 @@ it, and its attached files are loaded with it when it runs.*
   - Their content is screened for secrets like the prompt text, shown in the review and in the
     first-run preview, and **fingerprinted together with the prompt text**: if an attached file changes,
     the prompt counts as changed. Its approvals, including remembered ones (PUR-3), are void and it goes
-    back through review and approval.
+    back through review and approval as a new version (CAT-6, attachments amendment).
   - Trade-off you accepted: editing a file that several prompts attach (for example a style guide)
     re-triggers review and approval for each of them.
 
@@ -302,9 +302,10 @@ anything. If the catalog still ends up inconsistent:
   guide. The one repair it offers itself, after asking, is removing a leftover draft file from an
   interrupted save.
 - **One prompt changed since approval:** only that prompt is blocked; other prompts can still be added
-  and changed. The affected prompt can only be restored from git or retired (see the amendment below), never
-revised from its unapproved text
-  (that would turn an outside edit into an approved new version).
+  and changed. If its text or origin changed, it can only be restored from git or retired (see the
+  amendment below), never revised from its unapproved text (that would turn an outside edit into an
+  approved new version). If only an attached file changed, it can instead be reviewed with the new
+  attachment content as a new version (second amendment below).
 - Nothing is ever repaired silently.
 
 **Changes to earlier decisions:** V4 §Interrupted updates and today's code refuse every change while any
@@ -319,8 +320,20 @@ remembered approvals end, it leaves the normal lists but stays in the history, a
 (CAT-4); to keep the wording, copy it into a new prompt with a new slug and full review. Restoring from git
 stays the first suggestion. Found by the cross-model review before the requirements PR.
 
+**Amended 2026-11-17 (CAT-6, attachments):** *when only an attached file changed since a prompt's
+approval, I can revise the prompt to take the new file content: the approved prompt text stays as it
+was, and the new attachment content goes through screening, review and my approval as a new version,
+so that editing a shared style guide never strands my prompts while an outside edit to a prompt's own
+text or origin never becomes approved text.* The prompt shows "attachment changed since approval" and
+`/prompt-library` offers *Review the new attachment*, showing the attachment diff; each attaching prompt
+gets its own review and approve-and-activate question (CAT-2's accepted trade-off, LIF-6). An attachment
+that grew past the CFG-6 limit takes the same path once shortened or detached. If the text or origin
+changed as well, the stricter rule wins: restore from git or retire. Found by the cross-model review
+before the requirements PR.
+
 Source: V4 §Interrupted updates; code (atomic writes, rollback, orphan removal); owner decision
-2026-11-16. State: **partial** (structural handling met; per-prompt blocking and retire not met).
+2026-11-16. State: **partial** (structural handling met; per-prompt blocking, retire and attachment
+review not met).
 Confirmed: yes (2026-11-16; amended 2026-11-17).
 
 ### CAT-7: A stored prompt can never become a standing instruction
@@ -910,7 +923,8 @@ a sequence with a step missing.*
 **What you'll notice:** a draft, a deactivated or older version, or a hand-edited prompt is refused with
 its reason, and then no prompt of that run starts. The text is checked again right before each prompt;
 a change in between stops the run there (EXE-5). A changed prompt blocks only itself and can only be
-restored from git or retired (CAT-6); other prompts stay runnable in later runs.
+restored from git or retired, or, when only an attached file changed, reviewed as a new version (CAT-6);
+other prompts stay runnable in later runs.
 
 Source: V4 §Execution 2. State: **partial** (refusal and no partial run: met; a changed prompt blocking
 only itself: not met, today it makes the whole catalog unavailable). Confirmed: yes (2026-11-17).
@@ -1237,13 +1251,14 @@ matched text. Patterns are not used at run time and never change a prompt. A pat
 cloned repository can block too much but cannot let anything through. Setup's status (PUR-6) shows how many
 patterns came from each source. Trade-off you accepted: a committed pattern applies to you without asking,
 and a badly written one can block prompts until it is fixed; review the shared file like code. A pattern
-that runs out of time is skipped and reported (amendment below).
+that runs out of time, or any left when the total time budget is used up, is skipped and reported
+(amendments below).
 
 **Settings (decided 2026-11-17, per `.claude/rules/ask-before-config-decisions.md`):**
 
 | Item | Decision |
 |---|---|
-| Setting | Additional secret patterns, each `{"name": ..., "pattern": ...}`, the shape of the built-in `plib-token-shapes.json`. A pattern with an invalid regular expression, no name, or a name a built-in kind already uses, or one that runs out of time (amendment below), is skipped and reported; the rest of the screen still runs. |
+| Setting | Additional secret patterns, each `{"name": ..., "pattern": ...}`, the shape of the built-in `plib-token-shapes.json`. A pattern with an invalid regular expression, no name, or a name a built-in kind already uses, or one that runs out of time or is reached after the total time budget is used up (amendments below), is skipped and reported; the rest of the screen still runs. |
 | Storage | Both, combined: a shared, git-tracked project file `.claude/promptlibrary-kit.screen.json` (`{"version": 1, "patterns": [...]}`), and a `screen_patterns` list in the untracked `.claude/promptlibrary-kit.local.json`. No tracked-copy restriction: patterns only add catches. |
 | Format | JSON (backslashes doubled, no comments). |
 
@@ -1260,6 +1275,15 @@ skipped, the text it should catch is not caught by it. Mechanism note: Python's 
 cannot be stopped inside a thread, so project patterns run in a separate worker process (standard library
 only, QA-4), adding a small delay to each screen that uses them; the delay is not measured yet. Found by
 the cross-model review before the requirements PR.
+
+**Amended 2026-11-17 (CFG-7, total budget):** *all project patterns together get a fixed total of 5
+seconds for each text they screen; once it is used up, the remaining project patterns are skipped and
+named in the report, so that no shared pattern file, however long, can make a save, check or setup take
+more than a few seconds per text.* Built-in kinds always run in full first. The budget is fixed, not a
+setting. The pattern count and pattern length are not capped (owner decision); trade-off you accepted: a
+very long pattern file still costs load time, and patterns late in the list may be skipped whenever
+earlier ones are slow. Setup's status check covers every active prompt, so with a hostile file it takes
+about 5 seconds per prompt. Found by the cross-model review before the requirements PR.
 
 Source: SCR-4; owner decisions 2026-11-17. State: **not met** (no project patterns exist). A new security
 gate (SEC-6): `security-reviewer` before its first commit. Confirmed: yes (2026-11-17; amended
