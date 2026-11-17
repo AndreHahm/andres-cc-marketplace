@@ -129,7 +129,11 @@ Only the hook sits outside the checkout. Its limits:
   there copies that branch's scripts, the hook included, into the cache. Install from a clean clone or a
   pinned ref.
 - It reads the command text with POSIX-shell quoting, so a command that builds a script name at run time
-  is not seen, and only the Bash and PowerShell tools are covered.
+  is not seen, and only the Bash and PowerShell tools are covered. That includes every form the shell
+  expands before the program starts: a glob or brace pattern (`node .claude/scripts/rva-dis*.mjs`,
+  `rva-{dispatch,x}.mjs`), a `cd` then `node *`, such a pattern inside a `bash -c` or `eval` string, and
+  `$'...'` quoting. The guard catches an accidental run from a checkout, not a command written to evade it; a
+  text check cannot model shell expansion reliably.
 - It checks the script's path, not the rest of the command line: `node --import <file>`, `NODE_OPTIONS`
   or a project `settings.json` `env` block can still load other code into the installed script.
 - A plugin copy in another worktree of the same repository (for example the main checkout, seen from a
