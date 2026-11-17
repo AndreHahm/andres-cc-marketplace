@@ -192,6 +192,25 @@ def check_trigger_script_classifier_reply_parsing():
         return None
 
     long_prose = "I think the agent fits. " * 30
+
+    def provider_error(stderr_chars):
+        # A provider that fails with a long stderr; the error must stay short and ASCII.
+        script = f"import sys; sys.stderr.write({stderr_chars!r} * 2000); sys.exit(3)"
+        saved = os.environ.get("AGENT_TRIGGER_LLM_COMMAND")
+        os.environ["AGENT_TRIGGER_LLM_COMMAND"] = f"{sys.executable} -c {script!r}"
+        try:
+            ns["run_with_fallback"]("p", system_prompt="s", timeout=30)
+        except ns["LLMProviderError"] as exc:
+            return str(exc)
+        finally:
+            if saved is None:
+                os.environ.pop("AGENT_TRIGGER_LLM_COMMAND", None)
+            else:
+                os.environ["AGENT_TRIGGER_LLM_COMMAND"] = saved
+        return ""
+
+    stderr_error = provider_error("x")
+    non_ascii_stderr_error = provider_error("é")
     cases = {
         "bare JSON verdict is read": parse('{"triggered": true, "reason": "x"}') is True,
         "JSON inside prose is read": parse('Sure:\n{"triggered": false, "reason": "y"}\nDone.')
@@ -227,6 +246,11 @@ def check_trigger_script_classifier_reply_parsing():
         is not None,
         "long raw reply is truncated": (error_of(long_prose) or "").endswith("...'"),
         "control characters are escaped": "\\x1b" in (error_of("\x1b[31mred") or ""),
+        "non-ASCII reply text is escaped": (error_of("café ✓") or "x").isascii()
+        and "\\xe9" in (error_of("café") or ""),
+        "provider stderr is capped": 0 < len(stderr_error) < 400 and stderr_error.endswith("...'"),
+        "non-ASCII provider stderr is escaped": non_ascii_stderr_error.isascii()
+        and "\\xe9" in non_ascii_stderr_error,
         "structured results carry the error": '"error": error_text' in body
         and "error: {error_yaml}" in body,
     }
