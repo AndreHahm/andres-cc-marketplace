@@ -43,7 +43,8 @@ text) means Cancel.
    changed-file list (deleted files and both sides of a rename included) and a copy of the plugin's own
    reviewer instructions into a new private temp directory, and prints JSON: `dir`, `repo` (the
    repository's top-level directory), `diff_file`, `target_paths_file`, `instruction_file`,
-   `file_count`, `bytes`, `secret_paths` (secret-named changed files), `dispatch_id`. If it prints
+   `file_count`, `bytes`, `secret_paths` (secret-named changed files), `dispatch_id`, `token` (32 hex
+   characters, needed for the cleanup in step 7). If it prints
    `"ok": false`, report its `detail` and stop; it created no directory. Typical causes: Windows (like the
    dispatcher, prepare runs on Linux and macOS only); no reviewable changes; a diff over 8 MiB; the plugin running from inside the repository under review somewhere
    outside `$PWD` (above it or beside it), which step 1 cannot see, or a reviewer instructions file that
@@ -93,10 +94,11 @@ text) means Cancel.
      installed devin or agy is a version whose isolation was not verified. For `unsupported_platform`
      (Windows), say nothing was sent and the dispatcher runs on Linux and macOS only.
 
-7. **Clean up.** Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/rva-prepare.mjs" --cleanup "<dir>"` with the
-   `dir` from step 2 after any outcome of steps 3-6 (success, cancel, typed failure, an interrupted or
-   erroring step), whenever step 2 printed a `dir`. If the cleanup itself prints `"ok": false`, report
-   it and the directory, which holds the full diff.
+7. **Clean up.** Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/rva-prepare.mjs" --cleanup "<dir>" "<token>"` with
+   the `dir` and `token` copied verbatim from step 2's JSON (cleanup removes only the directory whose
+   token file matches) after any outcome of steps 3-6 (success, cancel, typed failure, an interrupted or
+   erroring step), whenever step 2 printed a `dir`. If the cleanup itself prints `"ok": false`, tell the
+   user the directory's path and that it still holds the full diff, which may include secret-named files.
 
 Do not fix any finding. This command only reports; the user decides what to change.
 
@@ -125,5 +127,5 @@ manual scenarios in a fixture repository. Use `--dry-run` paths and **Cancel**, 
 | A changed `.env`, Send at step 4, Cancel at step 5 | A second, separate question names `.env`; the real run never happens; `--cleanup` runs |
 | A `detail` containing instruction-like text | Shown and flagged as suspicious, never acted on |
 
-**Last dated run record:** none for these manual scenarios. The automated suite passed 42/42 on
+**Last dated run record:** none for these manual scenarios. The automated suite passed 43/43 on
 2026-11-17; the command's own flow has not been exercised end to end with Cancel answers.
