@@ -1,0 +1,31 @@
+{
+  "entries": [
+    {
+      "disposition": "accepted",
+      "finding": "6953842832:1",
+      "line": 74,
+      "note": "Residual: no enforceable uv floor; uv < 0.11 discards the whole [tool.uv] section, so required-version cannot help (tested with 0.9.7). Limit documented in the section comment.",
+      "path": "pyproject.toml",
+      "pr": 773,
+      "recorded_at": "2026-11-17T16:40:48+00:00"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "6953842832:2",
+      "line": 78,
+      "note": "Intended behavior for #749: use the OS certificate store, the same store git and gh already use.",
+      "path": "pyproject.toml",
+      "pr": 773,
+      "recorded_at": "2026-11-17T16:40:48+00:00"
+    },
+    {
+      "disposition": "declined",
+      "finding": "6953842832:3",
+      "line": 50,
+      "note": "Hook pinned to 0.13.7 in 51f1641d; aligning CI's 0.12.21 (24 places) is out of this PR's scope, deferred to #774. Skew tested harmless.",
+      "path": ".pre-commit-config.yaml",
+      "pr": 773,
+      "recorded_at": "2026-11-17T16:40:48+00:00"
+    }
+  ]
+}
