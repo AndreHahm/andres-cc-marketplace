@@ -468,6 +468,28 @@ def run_claude_native(agent_file: Path, agent_name: str, phrase: str, timeout_se
         shutil.rmtree(temp_dir, ignore_errors=True)
 
 
+def _parse_classifier_reply(text: str) -> bool:
+    """Return the reply's boolean "triggered" verdict, or raise ValueError quoting the raw reply.
+
+    The reply is model output: it can be empty, prose with no JSON, or JSON without a boolean
+    verdict. None of these is a "not triggered" answer, so each is reported as an error.
+    """
+    match = re.search(r"\{.*\}", text, re.DOTALL)
+    try:
+        payload = json.loads(match.group(0) if match else text)
+    except json.JSONDecodeError:
+        payload = None
+    if isinstance(payload, dict) and isinstance(payload.get("triggered"), bool):
+        return payload["triggered"]
+    raw = " ".join(text.split())
+    if not raw:
+        raise ValueError("classifier reply was empty")
+    if len(raw) > 300:
+        raw = raw[:300] + "..."
+    # repr() keeps the quoted reply on one line and escapes any control characters in it.
+    raise ValueError(f"classifier reply has no JSON verdict; raw reply: {raw!r}")
+
+
 def run_semantic_fallback(agent_name: str, description: str, phrase: str, timeout_seconds: int) -> tuple[bool, str]:
     system_prompt = (
         "You are a routing evaluator. Decide whether the provided agent should "
@@ -498,9 +520,7 @@ Trigger the agent only if the request is clearly within scope.
         providers=("codex", "gemini", "qwen"),
         cwd=Path.cwd(),
     )
-    match = re.search(r"\{.*\}", result.text, re.DOTALL)
-    payload = json.loads(match.group(0) if match else result.text)
-    return bool(payload.get("triggered", False)), result.provider
+    return _parse_classifier_reply(result.text), result.provider
 
 
 agent_path = Path(sys.argv[1]).resolve()
@@ -561,6 +581,7 @@ for raw_line in phrases_path.read_text(encoding="utf-8").splitlines():
                 "actual": actual,
                 "status": status,
                 "mode": mode,
+                "error": error_text,
             }
         )
 
@@ -588,9 +609,13 @@ else:  # yaml -- hand-formatted, no pyyaml dependency for this simple shape
     ]
     for r in results:
         phrase_escaped = str(r["phrase"]).replace('"', '\\"')
+        # json.dumps gives a double-quoted scalar YAML also reads, with quotes, backslashes and
+        # control characters escaped; ensure_ascii=False avoids \u surrogate pairs YAML may reject.
+        error_yaml = "null" if r["error"] is None else json.dumps(r["error"], ensure_ascii=False)
         lines.append(
             f'  - {{phrase: "{phrase_escaped}", expected: {str(r["expected"]).lower()}, '
-            f'actual: {"null" if r["actual"] is None else str(r["actual"]).lower()}, status: {r["status"]}, mode: {r["mode"]}}}'
+            f'actual: {"null" if r["actual"] is None else str(r["actual"]).lower()}, status: {r["status"]}, mode: {r["mode"]}, '
+            f"error: {error_yaml}}}"
         )
     print("\n".join(lines))
 
