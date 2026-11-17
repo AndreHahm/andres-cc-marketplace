@@ -1,7 +1,7 @@
 # Dispatch Test Scenarios
 
-Concrete scenarios behind the `review-adapter-dispatch` contract. The 41 tests in
-`tests/rva-dispatch.test.mjs` cover these 32 scenarios against fake vendor binaries; no real vendor is
+Concrete scenarios behind the `review-adapter-dispatch` contract. The 42 tests in
+`tests/rva-dispatch.test.mjs` cover these 33 scenarios against fake vendor binaries; no real vendor is
 called.
 
 1. Vendor not in the local allow-list, or a pi `--model` that is neither the configured model nor listed
@@ -82,3 +82,5 @@ called.
     environment too.
 32. `rva-prepare.mjs` runs no `core.fsmonitor` hook from the reviewed repository's own config while git
     builds the diff.
+33. `rva-prepare.mjs` on Windows (simulated by forcing `process.platform`) refuses before creating a
+    temp directory, for a prepare run and a cleanup run alike.

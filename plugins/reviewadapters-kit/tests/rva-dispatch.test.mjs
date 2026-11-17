@@ -665,6 +665,18 @@ test("a vendor gets only PATH entries outside the reviewed checkout", () => {
   assert.equal(vendorPath.slice(5).split(path.delimiter).some((d) => d.startsWith(f.repo)), false, vendorPath);
 });
 
+test("prepare refuses Windows before creating a temp directory, cleanup included", () => {
+  const forceWin32 = "data:text/javascript,Object.defineProperty(process,'platform',{value:'win32'})";
+  const before = new Set(fs.readdirSync(os.tmpdir()).filter((name) => name.startsWith("rva-prep-")));
+  for (const args of [["--cwd", PLUGIN], ["--cleanup", os.tmpdir()]]) {
+    const r = spawnSync(process.execPath, ["--import", forceWin32, PREPARE, ...args], { encoding: "utf8" });
+    assert.equal(JSON.parse(r.stdout.trim()).ok, false, r.stderr);
+    assert.match(r.stdout, /Linux and macOS only/);
+  }
+  const after = fs.readdirSync(os.tmpdir()).filter((name) => name.startsWith("rva-prep-") && !before.has(name));
+  assert.deepEqual(after, [], "prepare created a temp directory on win32");
+});
+
 test("Windows is refused before anything is written or sent, dry run included", () => {
   const f = fixture();
   const forceWin32 = "data:text/javascript,Object.defineProperty(process,'platform',{value:'win32'})";

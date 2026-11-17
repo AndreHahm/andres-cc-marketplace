@@ -24,9 +24,10 @@ Never run a marker-writing helper such as `git-write-marker.sh` on its own to sa
 that owns it.
 
 Never substitute for a component whose own text explicitly forbids substituting a path inside the checkout; follow
-that component's own stop instead, and report it. As of 2026-11-17 the only one is reviewadapters-kit's
-`rva-review-diff` command (its step 1): it sends the diff and its reviewer instructions to a third party, and the
-mirror is part of the checkout under review, so the substituted scripts could be the reviewed branch's own code.
+that component's own stop instead, and report it. As of 2026-11-17 these are reviewadapters-kit's
+`rva-review-diff` command (its step 1) and its `review-adapter-dispatch` skill (where it says how to run
+`rva-dispatch.mjs`): both send the diff to a third party, and the mirror is part of the checkout under review, so
+the substituted scripts could be the reviewed branch's own code.
 The component's text is itself loaded from the mirror in that case, so a branch that deletes the prohibition also
 defeats this exception; the command's step 1 and this paragraph are guidance, not a boundary against that branch.
 
