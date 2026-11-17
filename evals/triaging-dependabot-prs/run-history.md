@@ -177,8 +177,16 @@ changed, and the smoke test's 21 checks pass.
 and SHA, then the newest 100 Actions runs on that branch, and returns the runs that have not completed, split into
 the current head and older heads. Step 6.4 reads it before `pr-checks`; an unfinished run on the head means CI is
 not done (wait / skip / go on anyway), and an unfinished run on an older head is named as the likely blocker, which
-the user can cancel themselves (the skill cannot). 10 new read-script tests (53 in the suite); four mutations of
+the user can cancel themselves (the skill cannot). 10 new read-script tests (54 in the suite); nine mutations of
 the new checks each fail them. Live check on PR #628: the branch filter applies (every row on the PR's branch). New
 eval 22 (scenarios 69 and 70): 5 of 5, against 1 of 5 for a baseline on the pre-change skill (`1ffee03c`), which
 sent both PRs to `merge-pr` with no question at 6.4. Author-graded from one simulated answer each. Evals 1 to 21
 were not re-run; the smoke test's 21 checks pass.
+
+Same day, after the pre-PR cross-model review (Claude and Codex). Codex found, and Claude confirmed with a narrower
+scope, that `truncated` measured the whole branch page: on PR #628 it was true with only 20 runs on the head, so the
+flag was noise, and a head with more than 100 runs could lose an unfinished run off the page. `head-runs` now reads
+the head's runs with the `head_sha` filter (`truncated` compares its `total_count` with the page, and step 6.4 treats
+it as not finished) and reads the branch only to name older-head blockers; live on PR #628 `truncated` is now false.
+One new test, and five mutations of the fix each fail the suite. A third finding (the gate also waits on non-required
+workflows) was disputed by Codex and left unchanged. Eval 22 was not re-run: the fix does not change its scenario.
