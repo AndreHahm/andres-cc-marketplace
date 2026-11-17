@@ -1,0 +1,13 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4604264531",
+      "line": 432,
+      "note": "Backslash names are silently skipped by node --test; guard now refuses them (c366d129), verified on Node 24 Linux.",
+      "path": ".github/workflows/marketplace-ci.yml",
+      "pr": 777,
+      "recorded_at": "2026-11-17T19:12:15+00:00"
+    }
+  ]
+}
