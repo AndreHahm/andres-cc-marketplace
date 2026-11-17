@@ -474,11 +474,11 @@ def _parse_classifier_reply(text: str) -> bool:
     The reply is model output: it can be empty, prose with no JSON, or JSON without a boolean
     verdict. None of these is a "not triggered" answer, so each is reported as an error.
     """
-    # Try a JSON value at each top-level "{" in turn: a greedy {.*} match would also swallow any
-    # other braces in surrounding prose and fail to parse a verdict that is actually there. A "{"
-    # that does not decode opens a level until its "}", and an object that decodes is skipped as a
-    # whole, so a "triggered" nested in another object, complete or truncated, is never the verdict.
-    # Inside an open level, braces within double-quoted strings do not count.
+    # Try a JSON value at each top-level "{" or "[" in turn: a greedy {.*} match would also swallow
+    # any other braces in surrounding prose and fail to parse a verdict that is actually there. A
+    # "{" or "[" that does not decode opens a level until a closing "}" or "]", and a value that
+    # decodes is skipped as a whole, so a "triggered" nested in an object or array, complete or
+    # truncated, is never the verdict. Inside an open level, brackets within strings do not count.
     decoder = json.JSONDecoder()
     depth = 0
     in_string = False
@@ -492,9 +492,9 @@ def _parse_classifier_reply(text: str) -> bool:
                 in_string = False
         elif char == '"' and depth > 0:
             in_string = True
-        elif char == "}":
+        elif char in "}]":
             depth = max(depth - 1, 0)
-        elif char == "{":
+        elif char in "{[":
             if depth == 0:
                 try:
                     payload, end = decoder.raw_decode(text, pos)
