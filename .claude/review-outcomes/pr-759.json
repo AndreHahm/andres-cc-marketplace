@@ -1,0 +1,81 @@
+{
+  "entries": [
+    {
+      "disposition": "accepted",
+      "finding": "4598064503",
+      "note": "Real gap in codex-kit's shared validator, out of this PR's scope; filed as issue 761.",
+      "pr": 759,
+      "recorded_at": "2026-11-17T10:53:05+00:00"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "4598067447",
+      "note": "Real gap in codex-kit's shared validator, out of this PR's scope; filed as issue 761.",
+      "pr": 759,
+      "recorded_at": "2026-11-17T10:53:05+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4598067651",
+      "note": "Marker lines matched whole-line only; fixed in 6dd4c5f7 with a new test.",
+      "pr": 759,
+      "recorded_at": "2026-11-17T10:52:55+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4598228103",
+      "note": "Command step 6 pins the dry-run model; fixed in 6dd4c5f7.",
+      "pr": 759,
+      "recorded_at": "2026-11-17T10:52:55+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4598228107",
+      "note": "HOME claim corrected in the comment and locator reference; fixed in 6dd4c5f7.",
+      "pr": 759,
+      "recorded_at": "2026-11-17T10:52:56+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4598228117",
+      "note": "Shared gitEnv drops GIT_* and fsmonitor is off for every git call; fixed in 6dd4c5f7 with tests.",
+      "pr": 759,
+      "recorded_at": "2026-11-17T10:52:56+00:00"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "4598228131",
+      "note": "Real gap in codex-kit's shared validator, out of this PR's scope; filed as issue 761.",
+      "pr": 759,
+      "recorded_at": "2026-11-17T10:53:05+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4598228143",
+      "note": "Shared gitEnv drops GIT_* and fsmonitor is off for every git call; fixed in 6dd4c5f7 with tests.",
+      "pr": 759,
+      "recorded_at": "2026-11-17T10:53:04+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4598228164",
+      "note": "Truncated stdout becomes missing_final_message; fixed in 6dd4c5f7 with a test.",
+      "pr": 759,
+      "recorded_at": "2026-11-17T10:52:56+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4598228173",
+      "note": "Marker lines matched whole-line only; fixed in 6dd4c5f7 with a new test.",
+      "pr": 759,
+      "recorded_at": "2026-11-17T10:52:55+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4598228182",
+      "note": "Test file drops GIT_* once at load, covering every git call; fixed in 6dd4c5f7.",
+      "pr": 759,
+      "recorded_at": "2026-11-17T10:53:04+00:00"
+    }
+  ]
+}
