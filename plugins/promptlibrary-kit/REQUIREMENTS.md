@@ -910,7 +910,7 @@ a sequence with a step missing.*
 **What you'll notice:** a draft, a deactivated or older version, or a hand-edited prompt is refused with
 its reason, and then no prompt of that run starts. The text is checked again right before each prompt;
 a change in between stops the run there (EXE-5). A changed prompt blocks only itself and can only be
-restored (CAT-5); other prompts keep running.
+restored from git or retired (CAT-6); other prompts keep running.
 
 Source: V4 §Execution 2. State: **partial** (refusal and no partial run: met; a changed prompt blocking
 only itself: not met, today it makes the whole catalog unavailable). Confirmed: yes (2026-11-17).
@@ -943,7 +943,8 @@ order or place I didn't choose.*
 
 **What you'll notice:** the question names the prompts in order, each with a short fingerprint, and the
 executor (Claude). Asking in your answer for a different set or order runs nothing; you are told to type a
-new command, which gets its own preview and question. A remembered approval belongs to one prompt version
+new command, which gets its own preview and question. An interrupted run may continue with the rest of
+the same approved sequence, in the same order (EXE-5). A remembered approval belongs to one prompt version
 and runs it without asking in any command you type, in the order you typed (EXE-1). An approval for Claude
 does not cover another executor (DEF).
 
