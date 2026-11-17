@@ -845,6 +845,60 @@ test("prepare refuses reviewer instructions under a directory others can write t
   }
 });
 
+test("the dispatcher refuses a temp directory others can write to without the sticky bit, before creating its run directory", () => {
+  const f = fixture();
+  const shared = tempDir("rva-test-tmp-");
+  fs.chmodSync(shared, 0o777);
+  const refused = dispatch(f, "pi", ["--dry-run"], {}, { env: { TMPDIR: shared } });
+  assert.equal(refused.code, 2, JSON.stringify(refused.out));
+  assert.equal(refused.out.category, "unsafe_temp_dir");
+  assert.match(refused.out.detail, /no sticky bit; set TMPDIR to a private directory; nothing was sent/);
+  assert.deepEqual(fs.readdirSync(shared), [], "the dispatcher created a run directory in an unsafe temp directory");
+  fs.chmodSync(shared, 0o1777);
+  const ok = dispatch(f, "pi", ["--dry-run"], {}, { env: { TMPDIR: shared } });
+  assert.equal(ok.out.ok, true, JSON.stringify(ok.out));
+});
+
+// Group write for the user's private group is allowed only without an extended ACL (Linux). Needs a
+// private group, setfacl and a filesystem with ACL support; skipped otherwise.
+const { privateGroupGid } = await import(path.join(PLUGIN, "scripts", "rva-codex-kit.mjs"));
+function setAcl(target) {
+  try {
+    execFileSync("setfacl", ["-m", "u:nobody:rw", target], { stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+const aclSkip = process.platform !== "linux" || privateGroupGid() === null ? "needs Linux and a private primary group" : false;
+
+test("group write for the private group is refused when the path has an extended ACL (m4)", { skip: aclSkip }, (t) => {
+  const f = fixture();
+  const instr = path.join(f.inputs, "instr.md");
+  fs.chmodSync(instr, 0o660);
+  assert.equal(dispatch(f, "pi", ["--dry-run"]).out.ok, true, "a private-group-writable file without an ACL is accepted");
+  if (!setAcl(instr)) return t.skip("setfacl is missing or the filesystem has no ACL support");
+  const r = dispatch(f, "pi", ["--dry-run"]);
+  assert.equal(r.code, 1, JSON.stringify(r.out));
+  assert.match(r.out.detail, /--instruction-file or its directory is not owned by you, or is writable by others/);
+
+  const repo = changedRepo();
+  const copy = path.join(tempDir("rva-test-plugin-"), "reviewadapters-kit");
+  fs.cpSync(PLUGIN, copy, { recursive: true });
+  fs.chmodSync(copy, 0o700);
+  const assets = path.join(copy, "assets");
+  fs.chmodSync(assets, 0o770);
+  fs.chmodSync(path.join(assets, "rva-review-instructions.md"), 0o600);
+  const script = path.join(copy, "scripts", "rva-prepare.mjs");
+  const ok = runNode(script, ["--cwd", repo]).out;
+  assert.equal(ok.ok, true, JSON.stringify(ok));
+  created.push(ok.dir);
+  assert.equal(setAcl(assets), true);
+  const refused = runNode(script, ["--cwd", repo]).out;
+  assert.equal(refused.ok, false, JSON.stringify(refused));
+  assert.match(refused.detail, /a directory above it up to the plugin root, is group-writable and has an ACL/);
+});
+
 test("an empty --instruction-file is a usage error, like an empty diff (issue #765)", () => {
   const f = fixture();
   for (const body of ["", " \n\n"]) {

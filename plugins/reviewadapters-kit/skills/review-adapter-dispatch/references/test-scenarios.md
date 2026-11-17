@@ -1,7 +1,7 @@
 # Dispatch Test Scenarios
 
-Concrete scenarios behind the `review-adapter-dispatch` contract. The 50 tests in
-`tests/rva-dispatch.test.mjs` cover these 40 scenarios against fake vendor binaries; no real vendor is
+Concrete scenarios behind the `review-adapter-dispatch` contract. The 52 tests in
+`tests/rva-dispatch.test.mjs` cover these 42 scenarios against fake vendor binaries; no real vendor is
 called.
 
 1. Vendor not in the local allow-list, or a pi `--model` that is neither the configured model nor listed
@@ -101,3 +101,8 @@ called.
 39. `rva-prepare.mjs` refuses reviewer instructions when the `assets` directory or the plugin root above
     it is writable by others (the same walk as codex-kit's import check); private directories pass.
 40. An empty or whitespace-only `--instruction-file` → usage error, like an empty diff.
+41. The dispatcher with a `TMPDIR` that other users can write to and that has no sticky bit →
+    `unsafe_temp_dir`, with no run directory created there; with the sticky bit the dry run succeeds.
+42. On Linux with a private primary group: a group-writable input file is accepted without an extended
+    ACL and refused (usage) with one; prepare refuses reviewer instructions whose group-writable `assets`
+    directory has an extended ACL. Skipped without a private group, `setfacl` or ACL support.

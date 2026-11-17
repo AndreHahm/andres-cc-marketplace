@@ -15,7 +15,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { loadCodexKit, CodexKitUnavailable, ownedAndPrivate } from "./rva-codex-kit.mjs";
+import { loadCodexKit, CodexKitUnavailable, descriptorPath, ownedAndPrivate, unsafeTempDir, UNSAFE_TEMP } from "./rva-codex-kit.mjs";
 import { loadConfig, devSiblingOptIn, MODEL_PATTERN, findBinary, gitEnv, GIT_SAFE_OPTIONS, isInside, isSecretName, realPath, trustedPath } from "./rva-config.mjs";
 import { runVendor, killActiveGroups } from "./rva-run.mjs";
 import { VENDORS, PROBED_VERSIONS } from "./rva-vendors.mjs";
@@ -90,7 +90,8 @@ function readRegularFile(file, label) {
     const stat = fs.fstatSync(fd);
     if (!stat.isFile()) throw usage(`${label} is not a regular file`);
     if (stat.size > MAX_INPUT_FILE_BYTES) throw usage(`${label} is larger than 8 MiB`);
-    if (!ownedAndPrivate(stat) || !ownedAndPrivate(fs.statSync(path.dirname(fs.realpathSync(file))))) {
+    const dir = path.dirname(fs.realpathSync(file));
+    if (!ownedAndPrivate(stat, descriptorPath(fd)) || !ownedAndPrivate(fs.statSync(dir), dir)) {
       throw usage(`${label} or its directory is not owned by you, or is writable by others`);
     }
     const buffer = Buffer.alloc(stat.size);
@@ -422,7 +423,11 @@ export async function main(argv) {
     // The timeout kills the vendor's process group, which Windows does not have: a hung vendor would never
     // be stopped. Refuse before anything is written or sent.
     if (process.platform === "win32") throw new Failure("unsupported_platform", "the dispatcher runs on Linux and macOS only (its timeout needs POSIX process groups); nothing was sent");
-    runDir = fs.mkdtempSync(path.join(os.tmpdir(), "rva-run-"));
+    // The same temp-directory check as prepare's: another user who can rename the run directory could
+    // swap in their own before the vendor reads or writes it.
+    const tmp = fs.realpathSync(os.tmpdir());
+    if (unsafeTempDir(tmp)) throw new Failure("unsafe_temp_dir", `${UNSAFE_TEMP}; nothing was sent`);
+    runDir = fs.mkdtempSync(path.join(tmp, "rva-run-"));
     fs.chmodSync(runDir, 0o700);
     const result = await dispatch(options, runDir);
     process.stdout.write(`${JSON.stringify(result)}\n`);
