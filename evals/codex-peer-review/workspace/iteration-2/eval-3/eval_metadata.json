@@ -1,0 +1,21 @@
+{
+ "eval_id": "eval-3",
+ "skill_path": "plugins/codex-kit/skills/codex-peer-review/SKILL.md",
+ "assertions": [
+  {
+   "text": "For decision-kit installed, names decision-kit's consulting-decision-model as the skill that checks the unasked action",
+   "type": "functionality",
+   "target": "response text"
+  },
+  {
+   "text": "For decision-kit not installed, states that no installed skill makes that check",
+   "type": "functionality",
+   "target": "response text"
+  },
+  {
+   "text": "Does not route the unasked check to codex-peer-review in either case",
+   "type": "functionality",
+   "target": "response text"
+  }
+ ]
+}

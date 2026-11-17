@@ -1,0 +1,62 @@
+{
+  "skill_name": "codex-peer-review",
+  "iteration": 2,
+  "timestamp": "2026-11-17T14:42:20+01:00",
+  "evals": [
+    {
+      "eval_id": 2,
+      "with_skill": {
+        "pass_rate": 1.0,
+        "assertions_passed": 3,
+        "assertions_total": 3,
+        "avg_tokens": 32000,
+        "avg_duration_ms": 60000
+      },
+      "baseline": {
+        "pass_rate": 1.0,
+        "assertions_passed": 3,
+        "assertions_total": 3,
+        "avg_tokens": 32000,
+        "avg_duration_ms": 45000
+      },
+      "delta": {
+        "pass_rate": 0.0,
+        "tokens": 0,
+        "duration_ms": 15000
+      }
+    },
+    {
+      "eval_id": 3,
+      "with_skill": {
+        "pass_rate": 1.0,
+        "assertions_passed": 3,
+        "assertions_total": 3,
+        "avg_tokens": 9000,
+        "avg_duration_ms": 30000
+      },
+      "baseline": {
+        "pass_rate": 1.0,
+        "assertions_passed": 3,
+        "assertions_total": 3,
+        "avg_tokens": 9000,
+        "avg_duration_ms": 30000
+      },
+      "delta": {
+        "pass_rate": 0.0,
+        "tokens": 0,
+        "duration_ms": 0
+      }
+    }
+  ],
+  "summary": {
+    "with_skill_avg_pass_rate": 1.0,
+    "baseline_avg_pass_rate": 1.0,
+    "improvement": 0.0,
+    "avg_tokens_with_skill": 20500,
+    "avg_tokens_baseline": 20500,
+    "token_cost": 0,
+    "avg_duration_ms_with_skill": 45000,
+    "avg_duration_ms_baseline": 37500,
+    "duration_cost_ms": 7500
+  }
+}

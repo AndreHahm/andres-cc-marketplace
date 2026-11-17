@@ -1,0 +1,26 @@
+{
+ "eval_id": "eval-3",
+ "configuration": "baseline",
+ "assertions_evaluated": [
+  {
+   "text": "For decision-kit installed, names decision-kit's consulting-decision-model as the skill that checks the unasked step",
+   "passed": true,
+   "evidence": "(a) consulting-decision-model, quoting the When NOT to Use body"
+  },
+  {
+   "text": "For decision-kit not installed, states that no installed skill makes that check",
+   "passed": true,
+   "evidence": "(b) 'Without decision-kit, no installed skill makes it'"
+  },
+  {
+   "text": "Does not route the unasked check to codex-verify in either case",
+   "passed": true,
+   "evidence": "codex-verify excluded in both cases"
+  }
+ ],
+ "summary": {
+  "assertions_total": 3,
+  "assertions_passed": 3,
+  "pass_rate": 1.0
+ }
+}

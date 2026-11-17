@@ -2,17 +2,16 @@
 name: cross-model-review
 description: >-
   Reviews the current diff adversarially across two model vendors before a PR is created (draft or
-  ready) or a draft PR is flipped to ready-to-merge. Claude reviews natively; Codex reviews independently
-  through codex-kit (codex-review-bridge, falling back to codex-windows-guardrails when no
-  sandboxed profile is available). Both cross-examine each other's findings (fresh-eyes
-  persona, then challenger persona).
-  Surfaces a ranked, confidence-scored table and asks which findings to act on; never auto-applies
-  fixes. It runs helper scripts and a Codex subprocess, with the permissions listed under Boundaries.
-  Use for an adversarial review, a cross-model or second-opinion review, a
+  ready) or a draft is flipped to ready. Claude reviews natively; Codex independently
+  through codex-kit (codex-review-bridge, or codex-windows-guardrails as fallback). Both
+  cross-examine each other's findings (fresh-eyes persona, then challenger persona). Surfaces a
+  ranked, confidence-scored table and asks which findings to act on; never auto-applies fixes.
+  It runs helper scripts and a Codex subprocess, with the permissions listed under Boundaries.
+  Use for an adversarial review, a cross-model or second-opinion review of the working diff, a
   pre-PR gate, or high-confidence findings before opening or readying a PR. Not
   `collaborating-on-a-pr`'s reviewer actions, nor `codex-review-recovery`'s stuck-check recovery, nor
-  `handling-review-findings`'s triage of findings already posted to an open PR — this skill never
-  posts to or touches GitHub state.
+  `handling-review-findings`'s triage of posted PR findings — it never touches GitHub state. Not a
+  Codex-only opinion on a design or document (`codex-peer-review`, `codex-verify`).
 allowed-tools: ["Bash(git rev-parse:*)", "Bash(git merge-base:*)", "Bash(git ls-files:*)", "Bash(mktemp:*)", "Bash(date:*)", "Bash(printf:*)", "Bash(grep:*)", "Bash(echo:*)", "Bash(realpath:*)", "Bash(test:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-copy-index.sh:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-intent-add.sh:*)", "Bash(umask:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-write-run-file.sh:*)", "Bash(node plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope-run.sh:*)", "Read", "Grep", "Glob", "AskUserQuestion"]
 ---
 
@@ -55,18 +54,19 @@ on the working diff.
 
 - **Posting an actual GitHub review** (comments, approve, request changes) on an existing PR, **or
   reviewing a PR's already-pushed remote state** — that's `collaborating-on-a-pr`. This skill never
-  calls `gh`; it only reviews the local working diff. A draft PR already existing for this branch
-  does **not** exclude this skill — reviewing the local diff before flipping that draft to ready is
-  this skill's own documented purpose (see "When to Use").
+  calls `gh`; it only reviews the local working diff. An existing draft PR for this branch does **not**
+  exclude this skill: reviewing the diff before flipping it to ready is its purpose (see "When to Use").
+- **A Codex-only second opinion**: on Claude's own design, analysis or recommendation → codex-kit's
+  `codex-peer-review`; on a plan or document file → `codex-verify`. This skill is the two-vendor diff gate.
+  Tie-break: a diff, branch or PR named with no Codex-only ask comes here; asking Codex about a design,
+  analysis or document goes to the codex-kit skill, even with code changes attached.
 - **Recovering a stuck "Await Codex review" GitHub check** on an already-open PR — that's
   `codex-review-recovery`, a different domain (a GitHub-side CI signal gap) despite the
   Codex-adjacent name.
-- **Applying fixes** — this skill never applies one; route any accepted finding through the
-  normal edit/commit flow afterward.
+- **Applying fixes** — never; route any accepted finding through the normal edit/commit flow.
 - **Triaging findings already posted to an open PR by an external reviewer** (Codex, Devin, CodeRabbit,
-  a human) — that's `handling-review-findings`'s job. This skill only ever reviews the local working
-  diff *before* a PR exists or before a draft is flipped to ready; once a finding is posted against an
-  actual open PR, it's out of this skill's domain regardless of who or what posted it.
+  a human) — that's `handling-review-findings`'s job. This skill only reviews the local diff before a
+  PR exists or a draft is flipped to ready; a finding posted on an open PR is out of its domain.
 - **Checking one critical, security-relevant or uncertain action Claude is about to execute**, even a
   plan step: decision-kit's `consulting-decision-model` if installed. This skill reviews a diff, never one decision.
 
@@ -476,12 +476,12 @@ See `references/deliberately-not-done.md` (extracted per plugin-rulebook's R13 l
 - "the Codex check is stuck, it already finished on the dashboard" → `codex-review-recovery`
 - "apply the fixes from the last review" → not this skill's job; it never edits code itself
 - "check this decision before you run that command" (one action, no diff) → decision-kit's `consulting-decision-model`, if installed
+- "get a codex second opinion on this design" → `codex-peer-review`; "verify plan.md" → `codex-verify`
 
 **Concrete scenarios to check, and quality gates:** see
-`references/testing-scenarios.md` — extracted per plugin-rulebook's R13 line-count threshold; the
-37 numbered scenarios and full quality-gate checklist live there, covering every behavior described
-above (single-model mode, `$MERGE_BASE` diff containment, dispatcher-trust matching, reviewer
-identity, closing-tag neutralization, partial-failure preservation, scoped review, and more).
+`references/testing-scenarios.md` (extracted per R13): 37 numbered scenarios and the quality-gate
+checklist, covering single-model mode, `$MERGE_BASE` containment, dispatcher trust, reviewer identity,
+closing-tag neutralization, partial-failure preservation, scoped review and more.
 `scripts/preflight_fixtures_test.py` runs the Preflight chain, planner step included, against scratch
 repositories.
 
