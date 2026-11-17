@@ -408,9 +408,10 @@ def run_claude_native(agent_file: Path, agent_name: str, phrase: str, timeout_se
         )
 
         # The phrase goes over stdin, never as an argv element: a phrase starting with `-`
-        # would be parsed as a CLI option. `--tools` is an allowlist (delegation needs only
-        # Agent; Read lets the child look at files), and `--strict-mcp-config` keeps every
-        # MCP server out.
+        # would be parsed as a CLI option. `--tools` is an allowlist holding only Agent, the
+        # one tool delegation needs: a subagent the child delegates to inherits these tools,
+        # so granting Read would let the untrusted definition under test read local files.
+        # `--strict-mcp-config` keeps every MCP server out.
         cmd = [
             "claude",
             "-p",
@@ -419,7 +420,7 @@ def run_claude_native(agent_file: Path, agent_name: str, phrase: str, timeout_se
             "--include-partial-messages",
             "--verbose",
             "--tools",
-            "Agent,Read",
+            "Agent",
             "--strict-mcp-config",
             "--append-system-prompt",
             "Do not invoke unrelated skills. Only delegate when the local project agent clearly matches "
