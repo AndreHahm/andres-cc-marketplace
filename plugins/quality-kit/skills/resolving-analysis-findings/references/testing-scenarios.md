@@ -25,6 +25,13 @@ whether Codacy honors an inline suppression, which only a push and a Cloud re-ch
 
 **Sonar re-run after the review fixes:** evals 5, 6 and 7 with skill only (baselines do not read this file), and new eval 8 for the impact rule in both arms, 2026-11-07 (iteration 8): with skill 19 of 19 assertions; eval 8 baseline 2 of 5. Evals 7 and 8 were then repeated three more times each (iteration 9), read for behavior only: eval 7 never asked and eval 8 always asked, 8 of 8. The classification of a framework-required name did not hold steady: eval 7 chose `AcceptedUse` 4 of 4, and eval 8 split 2 and 2 with `FalsePositive`, so the rung 3 fallback differs by run. The "Sonar mechanisms" section then gained a tie-break for framework-required names; iteration 10, 2 runs of eval 7 and 4 of eval 8, chose `AcceptedUse` 6 of 6 with the same ask-or-decide result, and one run still hedged its fallback as `falsepositive` or `accept`.
 
+**Codacy ignore id (issue #760):** new evals 9 and 10 for rung 3, Full Pipeline, one run per arm, 2026-11-17
+(iteration 11): with skill 10 of 10 assertions, baseline 3 of 10. Eval 9 (a fresh record with a numeric
+`issue_id`) separates the arms on the read-only `-i` resolve, the file, line and rule in the approval question, and the
+comment. Eval 10 (a week-old record whose `issue_id` is the hex `issueId`): the baseline built
+`--ignore-issue 66a432aa…`, the issue #760 failure, while the with-skill run refused the id and re-collected for the
+numeric one. Token and timing figures are the agents' own estimates. No Codacy command was run.
+
 **Last dated run record:** 2026-11-07: `scripts/smoke_test.py` passed inside the marketplace repository with
 `read_pr_head.py` run against a fake `gh` and once live, and `security-reviewer` and `scripts-reviewer` ran on the
 script. Earlier, 2026-10-17: `scripts/smoke_test.py` 38 of 38 checks passed inside the marketplace

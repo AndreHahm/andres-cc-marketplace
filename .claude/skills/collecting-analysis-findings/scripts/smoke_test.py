@@ -101,6 +101,21 @@ def check_adapter() -> None:
         record.get("source", {}).get("head_commit_sha") == "2" * 40
         and record.get("source", {}).get("pull_request") == 7,
     )
+    check("pr fixture: Codacy record is schema 2.0.0", record.get("schema_version") == "2.0.0")
+    pr_findings = record.get("findings") or []
+    check(
+        "pr fixture: issue_id is resultDataId as digits, never the hex issueId (issue #760)",
+        [f.get("issue_id") for f in pr_findings] == ["101", "102", "66103"],
+    )
+    check(
+        "pr fixture: hex issueId is kept as issue_key for matching",
+        [f.get("issue_key") for f in pr_findings][2] == "66" + "c" * 30,
+    )
+    check(
+        "pr fixture: a complete list is not marked truncated",
+        record.get("source", {}).get("possibly_truncated") is False
+        and record.get("source", {}).get("reported_new_issues") == 3,
+    )
     top = (record.get("groups") or [{}])[0]
     check(
         "pr fixture: groups by rule and file",
@@ -126,6 +141,10 @@ def check_adapter() -> None:
 
     code, out, _ = run_main(adapter, "--kind", "ignored", "--input", str(FIXTURES / "ignored.json"))
     ignored = json.loads(out)["findings"][0]
+    check(
+        "ignored fixture: no resultDataId, so issue_id is null and issue_key carries the hex id",
+        ignored["issue_id"] is None and ignored["issue_key"] == "d" * 32,
+    )
     check(
         "ignored fixture: reason and comment carried",
         ignored["ignored"] is True
@@ -310,6 +329,41 @@ def check_adapter_variants(adapter) -> None:
     bad_id["newIssues"][0]["commitIssue"]["issueId"] = "-F"
     code, out, _ = run_main(adapter, "--kind", "pr", "--input", "-", stdin=json.dumps(bad_id))
     check("an issueId starting with a dash fails closed", code == 2 and out == "")
+    for label, value in (
+        ("missing", None),
+        ("a hex string", "66a432aa616069571f5c708d5f048ba5"),
+        ("a digit string", "101"),
+        ("a boolean", True),
+        ("zero", 0),
+        ("negative", -1),
+        ("over 20 digits", 10**20),
+    ):
+        bad_rid = json.loads(json.dumps(pr))
+        issue = bad_rid["newIssues"][0]["commitIssue"]
+        if value is None:
+            del issue["resultDataId"]
+        else:
+            issue["resultDataId"] = value
+        code, out, _ = run_main(adapter, "--kind", "pr", "--input", "-", stdin=json.dumps(bad_rid))
+        check(f"a resultDataId that is {label} fails closed", code == 2 and out == "")
+    short = json.loads(json.dumps(pr))
+    short["pullRequest"]["newIssues"] = 150
+    code, out, err = run_main(adapter, "--kind", "pr", "--input", "-", stdin=json.dumps(short))
+    record = json.loads(out) if code == 0 else {}
+    check(
+        "a list shorter than pullRequest.newIssues is marked possibly truncated, with a warning",
+        code == 0
+        and record["source"]["possibly_truncated"] is True
+        and record["source"]["reported_new_issues"] == 150
+        and "possibly truncated" in err,
+    )
+    code, out, _ = run_main(
+        adapter, "--kind", "pr", "--input", "-", "--format", "table", stdin=json.dumps(short)
+    )
+    check("the table output names the truncation", code == 0 and "possibly truncated" in out)
+    short["pullRequest"]["newIssues"] = "150"
+    code, out, _ = run_main(adapter, "--kind", "pr", "--input", "-", stdin=json.dumps(short))
+    check("a pullRequest.newIssues that is not an integer fails closed", code == 2 and out == "")
     code, out, err = run_main(adapter, "--kind", "pr", "--input", str(FIXTURES))
     check(
         "a directory as --input fails closed",

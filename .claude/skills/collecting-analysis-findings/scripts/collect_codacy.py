@@ -33,12 +33,13 @@ except ImportError:
 else:
     getuid = _os_getuid
 
-SCHEMA_VERSION = "1.0.0"
+SCHEMA_VERSION = "2.0.0"
 PROVIDER = "codacy"
 EXIT_BAD_INPUT = 2
 EXIT_STDOUT_FAILED = 1
 MAX_INPUT_BYTES = 32 * 1024 * 1024
 ISSUE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
+MAX_RESULT_DATA_ID = 10**20 - 1  # 20 digits, the cap resolving-analysis-findings checks
 GROUP_KEYS = {"rule": ("rule",), "file": ("file",), "rule,file": ("rule", "file")}
 
 
@@ -69,11 +70,22 @@ def _str(container: dict[str, Any], key: str, where: str, *, required: bool = Tr
     return value
 
 
-def _issue_id(container: dict[str, Any], where: str) -> str | None:
+def _issue_key(container: dict[str, Any], where: str) -> str | None:
+    """Codacy's hex `issueId`: kept for matching only, never passed to a command."""
     value = _str(container, "issueId", where, required=False)
     if value is not None and not ISSUE_ID.fullmatch(value):
         raise ShapeError(f"{where}.issueId: not a plain identifier (letters, digits, - and _ only)")
     return value
+
+
+def _result_data_id(container: dict[str, Any], where: str) -> str:
+    """The integer `resultDataId`, the id `--ignore-issue` takes, as a string of digits."""
+    value = container.get("resultDataId")
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ShapeError(f"{where}.resultDataId: expected an integer, got {type(value).__name__}")
+    if not 1 <= value <= MAX_RESULT_DATA_ID:
+        raise ShapeError(f"{where}.resultDataId: out of range")
+    return str(value)
 
 
 def _line(container: dict[str, Any], where: str) -> int | None:
@@ -93,6 +105,7 @@ def _finding(
     tool: str | None,
     delta_type: str | None = None,
     ignored: bool = False,
+    issue_id: str | None = None,
 ) -> dict[str, Any]:
     pattern = _obj(issue.get("patternInfo"), f"{where}.patternInfo")
     return {
@@ -104,7 +117,8 @@ def _finding(
         "subcategory": _str(pattern, "subCategory", f"{where}.patternInfo", required=False),
         "file": _str(issue, "filePath", where),
         "line": _line(issue, where),
-        "issue_id": _issue_id(issue, where),
+        "issue_id": issue_id,
+        "issue_key": _issue_key(issue, where),
         "message": _str(issue, "message", where),
         "state": state,
         "delta_type": delta_type,
@@ -124,9 +138,15 @@ def _pr_findings(items: list[Any], where: str, state: str) -> list[dict[str, Any
             _obj(tool_info, f"{where}[{index}].toolInfo"), "name", f"{where}[{index}].toolInfo"
         )
         delta = _str(entry, "deltaType", f"{where}[{index}]", required=False)
+        issue_where = f"{where}[{index}].commitIssue"
         findings.append(
             _finding(
-                issue, f"{where}[{index}].commitIssue", state=state, tool=tool, delta_type=delta
+                issue,
+                issue_where,
+                state=state,
+                tool=tool,
+                delta_type=delta,
+                issue_id=_result_data_id(issue, issue_where),
             )
         )
     return findings
@@ -143,6 +163,10 @@ def parse_pull_request(data: Any) -> tuple[dict[str, Any], list[dict[str, Any]]]
     analysing = summary.get("isAnalysing")
     if not isinstance(analysing, bool):
         raise ShapeError("pullRequest.isAnalysing: expected a boolean")
+    reported = summary.get("newIssues")
+    if isinstance(reported, bool) or not isinstance(reported, int) or reported < 0:
+        raise ShapeError("pullRequest.newIssues: expected a non-negative integer count")
+    new_issues = _list(root.get("newIssues"), "newIssues")
     source = {
         "kind": "pr",
         "repository": f"{_str(owner, 'name', 'owner')}/"
@@ -151,8 +175,11 @@ def parse_pull_request(data: Any) -> tuple[dict[str, Any], list[dict[str, Any]]]
         "pr_status": _str(pr, "status", "pullRequest.pullRequest", required=False),
         "head_commit_sha": _str(pr, "headCommitSha", "pullRequest.pullRequest"),
         "is_analysing": analysing,
+        # The PR read has no paging flag: a list shorter than Codacy's own count was cut off
+        "reported_new_issues": reported,
+        "possibly_truncated": len(new_issues) < reported,
     }
-    findings = _pr_findings(_list(root.get("newIssues"), "newIssues"), "newIssues", "new")
+    findings = _pr_findings(new_issues, "newIssues", "new")
     findings += _pr_findings(
         _list(root.get("potentialIssues"), "potentialIssues"), "potentialIssues", "potential"
     )
@@ -230,8 +257,21 @@ def _printable(value: Any) -> str:
     )
 
 
+def truncation_note(record: dict[str, Any]) -> str | None:
+    source = record["source"]
+    if not source.get("possibly_truncated"):
+        return None
+    return (
+        f"possibly truncated: Codacy counts {source['reported_new_issues']} new issue(s) "
+        "for this PR, more than its list returned"
+    )
+
+
 def render_table(record: dict[str, Any]) -> str:
     lines = [f"{record['counts']['total']} finding(s) from {record['provider']}"]
+    note = truncation_note(record)
+    if note is not None:
+        lines.append(note)
     for row in record["groups"]:
         label = "  ".join(_printable(value) for key, value in row.items() if key != "count")
         lines.append(f"{row['count']:>5}  {label}")
@@ -391,6 +431,9 @@ def main(argv: list[str] | None = None) -> int:
     except ShapeError as exc:
         print(f"collect_codacy: {exc}", file=sys.stderr)
         return EXIT_BAD_INPUT
+    note = truncation_note(record)
+    if note is not None:
+        print(f"collect_codacy: warning: {note}", file=sys.stderr)
     text = render_table(record) if args.format == "table" else json.dumps(record, indent=2)
     if out_path is not None:
         try:
@@ -401,6 +444,8 @@ def main(argv: list[str] | None = None) -> int:
             print(f"collect_codacy: {exc}", file=sys.stderr)
             return EXIT_BAD_INPUT
         summary = f"{record['counts']['total']} finding(s) written to {out_path.name}"
+        if note is not None:
+            summary += f" ({note})"
         return _print_stdout(summary, "collect_codacy")
     reconfigure = getattr(sys.stdout, "reconfigure", None)
     if args.format == "table" and callable(reconfigure):

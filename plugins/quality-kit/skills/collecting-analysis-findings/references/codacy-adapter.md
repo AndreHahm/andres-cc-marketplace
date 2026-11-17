@@ -1,7 +1,8 @@
 # Codacy Adapter
 
 Verified 2026-10-17 against the Codacy Cloud CLI (`codacy`, whose help prints `codacy-cloud-cli`) and this
-repository's real output. Re-check the shapes below before trusting them after a CLI update.
+repository's real output; the ids and the PR truncation check re-verified 2026-11-17 with CLI 1.14.1 (issue
+#760). Re-check the shapes below before trusting them after a CLI update.
 
 ## Read commands (the only forms this skill runs)
 
@@ -20,6 +21,11 @@ truncated while the record's `counts.total` looks complete. If `counts.total` is
 possibly truncated and compare it with the filtered total from the overview row above
 (`-O`, same filters) before reporting counts, and say in the report that the record is possibly truncated. Checked 2026-10-17 against `codacy issues --help`; the
 truncation itself was not reproduced, because no list here exceeds the cap.
+
+The PR command has no paging or limit flag. On PR #759 its JSON listed 100 entries in `newIssues` while
+`pullRequest.newIssues` counted 150 (issue #760). The adapter compares the two: when the list is shorter, it sets
+`source.possibly_truncated` to true, prints a warning on stderr and adds the note to the `--output` summary line
+and the table. Say in the report that the record is possibly truncated and give Codacy's own count.
 
 `<provider>` is `gh` for GitHub. `-s` filters by severity and `-c` by category. The Cloud CLI is the
 authority: GitHub's check annotations show only a capped subset of what Codacy reports.
@@ -40,18 +46,22 @@ uppercase `-I` is the bulk ignore. Both raise the same permission prompt: read i
 ## Input shapes
 
 - **`pr`:** `{pullRequest: {pullRequest: {repository, number, status, owner: {name}, headCommitSha, ...},
-  isAnalysing, newIssues: <count>, ...}, newIssues: [{commitIssue: {issueId, filePath, lineNumber, message,
-  patternInfo: {id, category, severityLevel, ...}, toolInfo: {name}, commitInfo: {sha, ...}}, deltaType}],
+  isAnalysing, newIssues: <count>, ...}, newIssues: [{commitIssue: {issueId, resultDataId, filePath, lineNumber,
+  message, patternInfo: {id, category, severityLevel, ...}, toolInfo: {name}, commitInfo: {sha, ...}}, deltaType}],
   potentialIssues: [], files: [...]}`. The top-level `newIssues` is the list; the number inside
-  `pullRequest` is only a count.
+  `pullRequest` is only a count, which the truncation check above compares with the list.
+  `resultDataId` (an integer) is the `#id` on the CLI's issue cards and the id `--ignore-issue` and `-i` take;
+  `issueId` (32 hex characters) is not. The CLI reads a hex id that starts with digits by its numeric prefix
+  (`66a432aa…` became `#66`), so passing it could target an unrelated issue (issue #760).
 - **`repo`:** `{issues: [{patternInfo: {id, severityLevel, category, subCategory}, message, filePath,
   lineNumber, lineText, resultDataId}]}`. No `issueId`, no `toolInfo`.
 - **`ignored`:** `{ignoredIssues: [{issueId, reason, comment, ignoredByName, ignoredTimestamp, patternInfo,
-  message, filePath, lineNumber, lineText}]}`. `reason` is one of `AcceptedUse`, `FalsePositive`,
+  message, filePath, lineNumber, lineText}]}`. No `resultDataId`. `reason` is one of `AcceptedUse`, `FalsePositive`,
   `NotExploitable`, `TestCode`, `ExternalCode`.
 
 Not verified: the shape of a non-empty `potentialIssues` entry (it was empty when checked). The adapter maps
-it like a `newIssues` entry with `state: potential` and fails closed if it does not fit.
+it like a `newIssues` entry with `state: potential`, including the required `resultDataId`, and fails closed if
+it does not fit: a potential entry without one makes the whole PR read exit 2.
 
 ## Exit codes of `collect_codacy.py`
 
@@ -59,7 +69,9 @@ it like a `newIssues` entry with `state: potential` and fails closed if it does 
 |---|---|---|
 | 0 | Record written | The record on stdout, or with `--output` a one-line summary on stdout and the record in the file |
 | 1 | Stdout could not be written, because the reader left early or the write failed: treat the output as incomplete. With `--output`, the file is written and only the summary line was lost |
-| 2 | The input is unreadable, is outside a scratchpad directory you own, is not a regular file, is larger than 32 MiB, is not valid JSON, is nested too deeply, has an `issueId` that is not a plain identifier (`^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$`), or is not a shape above; or the command line is invalid (a bad `--kind`, `--group-by` or `--format`); or `--output` is refused (not inside a directory named `scratchpad`, on POSIX one that you do not own or that others can write to, inside a folder containing `.git`, a symlink that leaves the scratchpad, a directory, or in a directory that does not exist) | Message on stderr, nothing on stdout, no output file created or changed |
+| 2 | The input is unreadable, is outside a scratchpad directory you own, is not a regular file, is larger than 32 MiB, is not valid JSON, is nested too deeply, has an `issueId` that is not a plain identifier (`^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$`), has a PR issue whose
+`resultDataId` is not an integer from 1 to 20 digits, has a PR count `pullRequest.newIssues` that is not a
+non-negative integer, or is not a shape above; or the command line is invalid (a bad `--kind`, `--group-by` or `--format`); or `--output` is refused (not inside a directory named `scratchpad`, on POSIX one that you do not own or that others can write to, inside a folder containing `.git`, a symlink that leaves the scratchpad, a directory, or in a directory that does not exist) | Message on stderr, nothing on stdout, no output file created or changed |
 
 With `--output` the script writes a private temporary file and replaces the target only after the whole record is
 built, so a failed run does not create or modify the output file; an older file at the same path survives.

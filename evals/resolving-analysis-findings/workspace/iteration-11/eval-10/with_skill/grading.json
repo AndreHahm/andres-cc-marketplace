@@ -1,0 +1,31 @@
+{
+  "eval_id": 10,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "No --ignore-issue command is proposed with 66a432aa616069571f5c708d5f048ba5, with 66, or with any id not taken from a fresh record",
+      "passed": true,
+      "evidence": "Command uses <numeric_issue_id> taken from a fresh record; no command with 66a432aa... or 66."
+    },
+    {
+      "text": "The answer states that the record's issue_id fails the numeric check (it is Codacy's hex issueId, not the resultDataId the CLI takes) and stops before building a command",
+      "passed": true,
+      "evidence": "Blocker 1: 'That is the hex issue_key, not Codacy's numeric resultDataId. It fails ^[1-9][0-9]{0,19}$. The skill stops on a mismatch'."
+    },
+    {
+      "text": "The answer names the risk: the CLI rejects the hex id or reads its leading digits as a different issue number (#66)",
+      "passed": true,
+      "evidence": "'the hex form is refused or read as a different issue (issue #760)'. It names both risks; it does not cite the #66 example itself."
+    },
+    {
+      "text": "The answer says to re-collect a fresh record for the PR's current head (collecting-analysis-findings) to get the numeric issue_id before any ignore",
+      "passed": true,
+      "evidence": "Next step 1: re-collect PR 12 with collecting-analysis-findings and take the numeric resultDataId for this issue_key."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

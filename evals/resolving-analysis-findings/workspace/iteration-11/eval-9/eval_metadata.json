@@ -1,0 +1,36 @@
+{
+  "eval_id": 9,
+  "skill_path": "plugins/quality-kit/skills/resolving-analysis-findings/SKILL.md",
+  "assertions": [
+    {
+      "text": "The answer chooses a rung 3 per-issue Codacy ignore with --ignore-reason TestCode",
+      "type": "functionality",
+      "target": "final answer"
+    },
+    {
+      "text": "Every proposed --ignore-issue value is 131570938278; the hex value 66a432aa616069571f5c708d5f048ba5 (or its prefix 66) never appears as a command argument",
+      "type": "functionality",
+      "target": "final answer"
+    },
+    {
+      "text": "Before the approval question, the answer states a read-only resolve of the id (codacy pull-request gh example-org example-repo 12 -i 131570938278 or equivalent) and requires its file, line and rule to match the finding",
+      "type": "functionality",
+      "target": "final answer"
+    },
+    {
+      "text": "The approval question shows the exact ignore command together with the finding's file, line and rule",
+      "type": "functionality",
+      "target": "final answer"
+    },
+    {
+      "text": "No codacy write command is presented as run: the answer stops at the approval question",
+      "type": "functionality",
+      "target": "final answer"
+    },
+    {
+      "text": "The --ignore-comment is single-quoted, written in the answer's own words, and contains no single quote, dollar sign, backtick or backslash",
+      "type": "functionality",
+      "target": "final answer"
+    }
+  ]
+}

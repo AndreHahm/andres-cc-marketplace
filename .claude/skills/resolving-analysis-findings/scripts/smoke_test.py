@@ -250,8 +250,19 @@ def check_rules(body: str) -> None:
         and "nothing granted here can detect one" in flat,
     )
     check(
-        "issue_id is validated before a command is built",
-        "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$" in body,
+        "a Codacy issue_id is validated as digits before a command is built (issue #760)",
+        "check the `issue_id` against `^[1-9][0-9]{0,19}$`" in body,
+    )
+    check(
+        "a Sonar issue_id keeps the key pattern",
+        "against `^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$`" in body,
+    )
+    reasons = (SKILL_DIR / "references" / "ignore-reasons.md").read_text(encoding="utf-8")
+    check(
+        "the ignore command takes the numeric id, never the hex issue_key",
+        "--ignore-issue <issue_id>" in reasons
+        and "`<issue_id>` must match `^[1-9][0-9]{0,19}$`" in reasons
+        and "--ignore-issue <issueId>" not in reasons,
     )
     check(
         "edits and remote writes re-collect for the current head first",

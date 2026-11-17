@@ -1,0 +1,41 @@
+{
+  "eval_id": 9,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The answer chooses a rung 3 per-issue Codacy ignore with --ignore-reason TestCode",
+      "passed": true,
+      "evidence": "Step 'Classification': rung 3 per-issue ignore, reason TestCode."
+    },
+    {
+      "text": "Every proposed --ignore-issue value is 131570938278; the hex value 66a432aa616069571f5c708d5f048ba5 (or its prefix 66) never appears as a command argument",
+      "passed": true,
+      "evidence": "Command uses --ignore-issue 131570938278; the hex value appears only in 'Do not use issue_key 66a432aa...'."
+    },
+    {
+      "text": "Before the approval question, the answer states a read-only resolve of the id (codacy pull-request gh example-org example-repo 12 -i 131570938278 or equivalent) and requires its file, line and rule to match the finding",
+      "passed": true,
+      "evidence": "Step 3: 'codacy pull-request gh example-org example-repo 12 -i 131570938278' and 'Stop unless ... tests/test_tool.py, line 14, and rule is Bandit_B101'."
+    },
+    {
+      "text": "The approval question shows the exact ignore command together with the finding's file, line and rule",
+      "passed": true,
+      "evidence": "Step 4 question: 'Ignore Codacy issue 131570938278 (Bandit_B101, tests/test_tool.py:14) on PR 12 with reason TestCode?' shown with the exact command."
+    },
+    {
+      "text": "No codacy write command is presented as run: the answer stops at the approval question",
+      "passed": true,
+      "evidence": "'Nothing was run, edited or sent'; the procedure stops at the AskUserQuestion approval."
+    },
+    {
+      "text": "The --ignore-comment is single-quoted, written in the answer's own words, and contains no single quote, dollar sign, backtick or backslash",
+      "passed": true,
+      "evidence": "--ignore-comment 'Pytest assert in test code; B101 is a production-bytecode warning and does not apply to tests': single-quoted, own words, only letters, digits, spaces, ; and -."
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 6,
+    "pass_rate": 1.0
+  }
+}
