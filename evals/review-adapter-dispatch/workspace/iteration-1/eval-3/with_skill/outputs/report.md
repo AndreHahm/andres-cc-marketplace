@@ -2,10 +2,10 @@
 
 ## Command run (the only dispatcher invocation)
 
-F=/tmp/claude-1000/-home-andre-hahm-Repos-andres-cc-marketplace/4c6e2459-85e5-4717-9a7f-0a717d11aa09/scratchpad/rva-evals/fixtures-2/header-not-in-targets
+F=<scratchpad>/rva-evals/fixtures-2/header-not-in-targets
 
 ```
-node /home/andre-hahm/Repos/andres-cc-marketplace/.claude/worktrees/reviewadapters-kit/plugins/reviewadapters-kit/scripts/rva-dispatch.mjs \
+node <repo>/plugins/reviewadapters-kit/scripts/rva-dispatch.mjs \
   --vendor pi --reviewer-type bug-reviewer --dispatch-id eval-3 \
   --instruction-file $F/inputs/instructions.md \
   --diff-file $F/inputs/diff.patch \

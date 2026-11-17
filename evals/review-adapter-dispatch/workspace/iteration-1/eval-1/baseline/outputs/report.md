@@ -2,14 +2,14 @@
 
 (Saved by the coordinating session from the agent's returned text; the harness blocked the agent's own write.)
 
-F = /tmp/claude-1000/-home-andre-hahm-Repos-andres-cc-marketplace/4c6e2459-85e5-4717-9a7f-0a717d11aa09/scratchpad/rva-evals/fixtures-2/vendor-not-enabled
+F = <scratchpad>/rva-evals/fixtures-2/vendor-not-enabled
 
 ## Commands run
 
 1. Flag probe, run without `--dry-run` (rejected at argument parsing, so nothing could be sent):
 
 ```
-node /home/andre-hahm/Repos/andres-cc-marketplace/.claude/worktrees/reviewadapters-kit/plugins/reviewadapters-kit/scripts/rva-dispatch.mjs --help
+node <repo>/plugins/reviewadapters-kit/scripts/rva-dispatch.mjs --help
 ```
 
 Output:
@@ -21,7 +21,7 @@ Output:
 2. Dry-run dispatch:
 
 ```
-node /home/andre-hahm/Repos/andres-cc-marketplace/.claude/worktrees/reviewadapters-kit/plugins/reviewadapters-kit/scripts/rva-dispatch.mjs --dry-run --vendor pi --cwd $F/repo --instruction-file $F/inputs/instructions.md --diff-file $F/inputs/diff.patch --target-paths-file $F/inputs/targets.txt --reviewer-type bug-reviewer --dispatch-id eval-1
+node <repo>/plugins/reviewadapters-kit/scripts/rva-dispatch.mjs --dry-run --vendor pi --cwd $F/repo --instruction-file $F/inputs/instructions.md --diff-file $F/inputs/diff.patch --target-paths-file $F/inputs/targets.txt --reviewer-type bug-reviewer --dispatch-id eval-1
 ```
 
 Output (exit 2):

@@ -2,19 +2,19 @@
 
 (Saved by the coordinating session from the agent's returned text; the harness blocked the agent's own write.)
 
-Below, F stands for /tmp/claude-1000/-home-andre-hahm-Repos-andres-cc-marketplace/4c6e2459-85e5-4717-9a7f-0a717d11aa09/scratchpad/rva-evals/fixtures-2/secret-path
+Below, F stands for <scratchpad>/rva-evals/fixtures-2/secret-path
 
 ## Commands run
 
 1. A flag check. It is not a dispatch and sent nothing:
 
-    node /home/andre-hahm/Repos/andres-cc-marketplace/.claude/worktrees/reviewadapters-kit/plugins/reviewadapters-kit/scripts/rva-dispatch.mjs --help
+    node <repo>/plugins/reviewadapters-kit/scripts/rva-dispatch.mjs --help
 
     {"ok":false,"category":"usage","detail":"unknown flag --help"}
 
 2. The dry-run dispatch:
 
-    node /home/andre-hahm/Repos/andres-cc-marketplace/.claude/worktrees/reviewadapters-kit/plugins/reviewadapters-kit/scripts/rva-dispatch.mjs --vendor pi --reviewer-type bug-reviewer --dispatch-id eval-2 --instruction-file $F/inputs/instructions.md --diff-file $F/inputs/diff.patch --target-paths-file $F/inputs/targets.txt --cwd $F/repo --dry-run
+    node <repo>/plugins/reviewadapters-kit/scripts/rva-dispatch.mjs --vendor pi --reviewer-type bug-reviewer --dispatch-id eval-2 --instruction-file $F/inputs/instructions.md --diff-file $F/inputs/diff.patch --target-paths-file $F/inputs/targets.txt --cwd $F/repo --dry-run
 
     {"ok":false,"category":"secret_paths_unconfirmed","detail":"1 changed path(s) have secret-like names; the caller must confirm before sending"}
 

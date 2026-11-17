@@ -3,8 +3,8 @@
 ## Commands run
 
 Paths:
-- `B=/tmp/claude-1000/-home-andre-hahm-Repos-andres-cc-marketplace--claude-worktrees-reviewadapters-kit/982113d3-7e64-4432-842f-3bcafc4fd855/scratchpad/rva-evals2/vendor-not-enabled`
-- `D=/home/andre-hahm/Repos/andres-cc-marketplace/.claude/worktrees/reviewadapters-kit/plugins/reviewadapters-kit/scripts/rva-dispatch.mjs`
+- `B=<scratchpad>/rva-evals2/vendor-not-enabled`
+- `D=<repo>/plugins/reviewadapters-kit/scripts/rva-dispatch.mjs`
 
 ### 1. Flag discovery (not a dispatch)
 

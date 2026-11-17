@@ -6,10 +6,10 @@
    `node .../plugins/reviewadapters-kit/scripts/rva-dispatch.mjs --help`
    Output: `{"ok":false,"category":"usage","detail":"unknown flag --help"}` (there is no help flag, so the flags were read from the script source instead).
 
-2. The dry-run dispatch (F = `/tmp/claude-1000/-home-andre-hahm-Repos-andres-cc-marketplace/4c6e2459-85e5-4717-9a7f-0a717d11aa09/scratchpad/rva-evals/fixtures-2/header-not-in-targets`):
+2. The dry-run dispatch (F = `<scratchpad>/rva-evals/fixtures-2/header-not-in-targets`):
 
 ```
-node /home/andre-hahm/Repos/andres-cc-marketplace/.claude/worktrees/reviewadapters-kit/plugins/reviewadapters-kit/scripts/rva-dispatch.mjs \
+node <repo>/plugins/reviewadapters-kit/scripts/rva-dispatch.mjs \
   --vendor pi --reviewer-type bug-reviewer --dispatch-id eval-3 \
   --instruction-file $F/inputs/instructions.md \
   --diff-file $F/inputs/diff.patch \

@@ -5,10 +5,10 @@ Dry run blocked by the dispatcher's secret-path gate. Nothing was sent to any ve
 
 ## Commands run
 
-Command 1 (dry run, no confirmation flag). Paths are absolute under the fixture directory `/tmp/claude-1000/-home-andre-hahm-Repos-andres-cc-marketplace/4c6e2459-85e5-4717-9a7f-0a717d11aa09/scratchpad/rva-evals/fixtures-2/secret-path`:
+Command 1 (dry run, no confirmation flag). Paths are absolute under the fixture directory `<scratchpad>/rva-evals/fixtures-2/secret-path`:
 
 ```
-node /home/andre-hahm/Repos/andres-cc-marketplace/.claude/worktrees/reviewadapters-kit/plugins/reviewadapters-kit/scripts/rva-dispatch.mjs \
+node <repo>/plugins/reviewadapters-kit/scripts/rva-dispatch.mjs \
   --vendor pi --reviewer-type bug-reviewer --dispatch-id eval-2 \
   --instruction-file "$PWD/inputs/instructions.md" \
   --diff-file "$PWD/inputs/diff.patch" \

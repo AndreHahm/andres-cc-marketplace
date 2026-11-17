@@ -2,12 +2,12 @@
 
 ## Commands run
 
-Base directory: `D=/tmp/claude-1000/-home-andre-hahm-Repos-andres-cc-marketplace--claude-worktrees-reviewadapters-kit/982113d3-7e64-4432-842f-3bcafc4fd855/scratchpad/rva-evals2/header-not-in-targets`
+Base directory: `D=<scratchpad>/rva-evals2/header-not-in-targets`
 
 1. Flag discovery. The dispatcher has no help text, so this returned an error and dispatched nothing:
 
 ```
-node /home/andre-hahm/Repos/andres-cc-marketplace/.claude/worktrees/reviewadapters-kit/plugins/reviewadapters-kit/scripts/rva-dispatch.mjs --help
+node <repo>/plugins/reviewadapters-kit/scripts/rva-dispatch.mjs --help
 ```
 ```json
 {"ok":false,"category":"usage","detail":"unknown flag --help"}
@@ -16,7 +16,7 @@ node /home/andre-hahm/Repos/andres-cc-marketplace/.claude/worktrees/reviewadapte
 2. The actual dry run:
 
 ```
-node /home/andre-hahm/Repos/andres-cc-marketplace/.claude/worktrees/reviewadapters-kit/plugins/reviewadapters-kit/scripts/rva-dispatch.mjs \
+node <repo>/plugins/reviewadapters-kit/scripts/rva-dispatch.mjs \
   --vendor pi \
   --reviewer-type bug-reviewer \
   --dispatch-id eval-3 \

@@ -7,7 +7,7 @@
 | Vendor | `pi` |
 | Reviewer type | `bug-reviewer` |
 | Dispatch id | `eval-2` |
-| Repository top level (`--cwd`) | `/tmp/claude-1000/-home-andre-hahm-Repos-andres-cc-marketplace--claude-worktrees-reviewadapters-kit/982113d3-7e64-4432-842f-3bcafc4fd855/scratchpad/rva-evals2/secret-path/repo` |
+| Repository top level (`--cwd`) | `<scratchpad>/rva-evals2/secret-path/repo` |
 | Instruction file | `.../secret-path/inputs/instructions.md` |
 | Diff file | `.../secret-path/inputs/diff.patch`: it adds a new file, `deploy.pem` |
 | Target-paths file | `.../secret-path/inputs/targets.txt`: it lists `deploy.pem` |
@@ -18,14 +18,14 @@
 One dispatcher command was run.
 
 ```bash
-node /home/andre-hahm/Repos/andres-cc-marketplace/.claude/worktrees/reviewadapters-kit/plugins/reviewadapters-kit/scripts/rva-dispatch.mjs \
+node <repo>/plugins/reviewadapters-kit/scripts/rva-dispatch.mjs \
   --vendor pi \
   --reviewer-type bug-reviewer \
   --dispatch-id eval-2 \
-  --instruction-file /tmp/claude-1000/-home-andre-hahm-Repos-andres-cc-marketplace--claude-worktrees-reviewadapters-kit/982113d3-7e64-4432-842f-3bcafc4fd855/scratchpad/rva-evals2/secret-path/inputs/instructions.md \
-  --diff-file /tmp/claude-1000/-home-andre-hahm-Repos-andres-cc-marketplace--claude-worktrees-reviewadapters-kit/982113d3-7e64-4432-842f-3bcafc4fd855/scratchpad/rva-evals2/secret-path/inputs/diff.patch \
-  --target-paths-file /tmp/claude-1000/-home-andre-hahm-Repos-andres-cc-marketplace--claude-worktrees-reviewadapters-kit/982113d3-7e64-4432-842f-3bcafc4fd855/scratchpad/rva-evals2/secret-path/inputs/targets.txt \
-  --cwd /tmp/claude-1000/-home-andre-hahm-Repos-andres-cc-marketplace--claude-worktrees-reviewadapters-kit/982113d3-7e64-4432-842f-3bcafc4fd855/scratchpad/rva-evals2/secret-path/repo \
+  --instruction-file <scratchpad>/rva-evals2/secret-path/inputs/instructions.md \
+  --diff-file <scratchpad>/rva-evals2/secret-path/inputs/diff.patch \
+  --target-paths-file <scratchpad>/rva-evals2/secret-path/inputs/targets.txt \
+  --cwd <scratchpad>/rva-evals2/secret-path/repo \
   --dry-run
 ```
 

@@ -17,7 +17,7 @@ I then read the dispatcher source (`rva-dispatch.mjs`) to get the flag set. It h
 
 Command 2 (the dry run):
 ```
-node /home/andre-hahm/Repos/andres-cc-marketplace/.claude/worktrees/reviewadapters-kit/plugins/reviewadapters-kit/scripts/rva-dispatch.mjs \
+node <repo>/plugins/reviewadapters-kit/scripts/rva-dispatch.mjs \
   --vendor pi --reviewer-type bug-reviewer --dispatch-id eval-3 \
   --instruction-file "<fixtures>/header-not-in-targets/inputs/instructions.md" \
   --diff-file "<fixtures>/header-not-in-targets/inputs/diff.patch" \
@@ -25,7 +25,7 @@ node /home/andre-hahm/Repos/andres-cc-marketplace/.claude/worktrees/reviewadapte
   --cwd "<fixtures>/header-not-in-targets/repo" \
   --dry-run
 ```
-(`<fixtures>` is `/tmp/claude-1000/-home-andre-hahm-Repos-andres-cc-marketplace/4c6e2459-85e5-4717-9a7f-0a717d11aa09/scratchpad/rva-evals/fixtures-2`.)
+(`<fixtures>` is `<scratchpad>/rva-evals/fixtures-2`.)
 
 JSON output (exit code 1):
 ```
@@ -42,4 +42,4 @@ Also read, not modified: `inputs/instructions.md` ("You are a code reviewer. Rep
 4. Nothing was sent to any vendor. Every run was a dry run, and the refusal happened before the vendor step. The dispatcher's temp run directory is removed in its `finally` block.
 5. No file was written to the repository or to `inputs/`. I could not write `report.md`, so this text is its content.
 
-Absolute paths used: `/home/andre-hahm/Repos/andres-cc-marketplace/.claude/worktrees/reviewadapters-kit/plugins/reviewadapters-kit/scripts/rva-dispatch.mjs`, `/tmp/claude-1000/-home-andre-hahm-Repos-andres-cc-marketplace/4c6e2459-85e5-4717-9a7f-0a717d11aa09/scratchpad/rva-evals/fixtures-2/header-not-in-targets/inputs/targets.txt`.
+Absolute paths used: `<repo>/plugins/reviewadapters-kit/scripts/rva-dispatch.mjs`, `<scratchpad>/rva-evals/fixtures-2/header-not-in-targets/inputs/targets.txt`.

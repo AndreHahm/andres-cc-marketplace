@@ -18,9 +18,9 @@ node plugins/reviewadapters-kit/scripts/rva-dispatch.mjs \
   --dry-run
 ```
 
-`<fixtures>` is `/tmp/claude-1000/-home-andre-hahm-Repos-andres-cc-marketplace/4c6e2459-85e5-4717-9a7f-0a717d11aa09/scratchpad/rva-evals/fixtures-2/vendor-not-enabled`.
+`<fixtures>` is `<scratchpad>/rva-evals/fixtures-2/vendor-not-enabled`.
 
-The command was run from `/home/andre-hahm/Repos/andres-cc-marketplace/.claude/worktrees/reviewadapters-kit`.
+The command was run from `<repo>`.
 
 Exit code: 2
 

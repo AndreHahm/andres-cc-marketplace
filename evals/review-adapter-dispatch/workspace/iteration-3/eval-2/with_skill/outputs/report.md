@@ -11,12 +11,12 @@ Read-only checks came first: I read `SKILL.md` and its references (`vendors.md`,
 Dispatcher command, the only one run:
 
 ```
-node /home/andre-hahm/Repos/andres-cc-marketplace/.claude/worktrees/reviewadapters-kit/plugins/reviewadapters-kit/scripts/rva-dispatch.mjs \
+node <repo>/plugins/reviewadapters-kit/scripts/rva-dispatch.mjs \
   --vendor pi --reviewer-type bug-reviewer --dispatch-id eval-2 \
-  --instruction-file /tmp/claude-1000/-home-andre-hahm-Repos-andres-cc-marketplace/4c6e2459-85e5-4717-9a7f-0a717d11aa09/scratchpad/rva-evals/fixtures-2/secret-path/inputs/instructions.md \
-  --diff-file /tmp/claude-1000/-home-andre-hahm-Repos-andres-cc-marketplace/4c6e2459-85e5-4717-9a7f-0a717d11aa09/scratchpad/rva-evals/fixtures-2/secret-path/inputs/diff.patch \
-  --target-paths-file /tmp/claude-1000/-home-andre-hahm-Repos-andres-cc-marketplace/4c6e2459-85e5-4717-9a7f-0a717d11aa09/scratchpad/rva-evals/fixtures-2/secret-path/inputs/targets.txt \
-  --cwd /tmp/claude-1000/-home-andre-hahm-Repos-andres-cc-marketplace/4c6e2459-85e5-4717-9a7f-0a717d11aa09/scratchpad/rva-evals/fixtures-2/secret-path/repo \
+  --instruction-file <scratchpad>/rva-evals/fixtures-2/secret-path/inputs/instructions.md \
+  --diff-file <scratchpad>/rva-evals/fixtures-2/secret-path/inputs/diff.patch \
+  --target-paths-file <scratchpad>/rva-evals/fixtures-2/secret-path/inputs/targets.txt \
+  --cwd <scratchpad>/rva-evals/fixtures-2/secret-path/repo \
   --dry-run
 ```
 
