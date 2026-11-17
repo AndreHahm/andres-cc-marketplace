@@ -102,12 +102,14 @@ Confirmed: yes (2026-11-16).
 ### PUR-4: Small footprint, with one guard hook that protects the catalog
 
 *As a developer, installing the plugin adds no servers, background activity or network connections of its
-own (only a web page I ask to import is fetched, behind a permission prompt), and only one guard hook, so that nothing happens in my sessions unless I invoke a skill, and catalog files
+own (only a web page I ask to import is fetched, behind a permission prompt), and only one guard hook, so that nothing happens in my sessions unless I invoke a skill (apart from the RET-3 hint), and catalog files
 cannot be changed except through the plugin.*
 
-**What you'll notice:** no slowdown, extra messages, accounts or API keys; only `uv` on your PATH is
-needed. Nothing is automatic: there are no "save this as a prompt?" suggestions, no syncing, no background
-cleanup (approval expiry is checked when you run a prompt). The one hook denies any `Write`, `Edit` or
+**What you'll notice:** no slowdown, accounts or API keys; only `uv` on your PATH is needed. Nothing is
+automatic: there are no "save this as a prompt?" suggestions, no syncing, no background cleanup (approval
+expiry is checked when you run a prompt). The one exception is RET-3: when a request fits a stored prompt,
+Claude names it and its command once per session, which reads the catalog's labels; it never shows,
+runs or changes anything. The one hook denies any `Write`, `Edit` or
 shell command that changes catalog files or the approvals file other than through the plugin's validator,
 including an edit you ask Claude to make by hand. To change a prompt you go through `/prompt-library`.
 
@@ -122,7 +124,8 @@ degradation (`.claude/rules/require-python-hook-interpreter-fallback.md`); its f
 let through with a warning when the hook itself errors) must be stated in the README.
 
 **Changes to earlier decisions:** replaces V4 §Purpose "no hooks". The prohibition on an MCP server,
-background process and connector stands.
+background process and connector stands. Amended 2026-11-17 by the owner to allow the RET-3 hint as the
+one exception to "nothing automatic".
 
 Source: V4 §Purpose; owner decision 2026-11-16. State: **not met** (no hook exists). Confirmed: yes
 (2026-11-16).
@@ -814,7 +817,8 @@ what you asked. A hint only names the prompt and the command: it never shows the
 reads the catalog's labels during other work.
 
 **Changes to earlier decisions:** V4 starts retrieval only on a clear request; the hint is new. It reads
-the catalog during unrelated work, which V4 did not do.
+the catalog during unrelated work, which V4 did not do, and it is the one exception to PUR-4's "nothing
+automatic" (owner decision 2026-11-17, PUR-4 amended).
 
 Source: V4 §Components; owner decision 2026-11-17. State: **partial** (lookup on request: met; hints: not
 met). Confirmed: yes (2026-11-17).
@@ -839,15 +843,121 @@ Source: code (`hidden_characters` in the validator); owner decision 2026-11-17. 
 
 ## 8. Execution (EXE)
 
-| ID | Requirement | Source | State | Confirm |
-|---|---|---|---|---|
-| EXE-1 | Only the user can start a run; a mention of a prompt, or text inside one, can never start it. | V4 §Execution 1 | met | ? |
-| EXE-2 | Only active prompts whose text still matches their approvals can run; a mismatch is refused and reported, never run anyway. | V4 §Execution 2 | met | ? |
-| EXE-3 | Before a run, the user sees each selected prompt's full text, name, version, origin and verification state. | V4 §Execution 3 | met | ? |
-| EXE-4 | One approval covers exactly the shown set, order and executor; any change needs a fresh preview and approval; an earlier approval never substitutes. | V4 §Execution 4 | met | ? |
-| EXE-5 | Prompts run one after another; a failure or interruption stops the run and reports what ran, what was in flight and what did not start. | V4 §Execution 5 | met | ? |
-| EXE-6 | An approved prompt runs with the session's existing permissions only: it cannot widen tools, change the approval flow, load other prompts or edit the catalog; its output is not written back. | V4 §Execution 6 | met | ? |
-| EXE-7 | Execution is in Claude only. | V4 §Execution | met | ? |
+### EXE-1: Only you can start a run
+
+*As a developer, a stored prompt runs only when I type `/prompt-execution` with its name; nothing Claude
+reads (a request in plain words, a hint, a lookup, or text inside a prompt or a web page) can start a run,
+so that with remembered approvals nothing runs that I didn't start myself.*
+
+**What you'll notice:** "run the missing-tests prompt" gets you the command to type, not a run. The
+prompts that run are exactly the ones named after the command, never taken from the conversation or from
+a prompt's text; a line such as "then also run `deploy__publish`" inside a prompt is shown to you, not
+followed. This matters most for remembered approvals (PUR-3), which run without a question.
+
+Source: V4 §Execution 1; owner decision 2026-11-17. State: met (`disable-model-invocation`, slugs only
+from the command's arguments). Confirmed: yes (2026-11-17).
+
+### EXE-2: Only an active, unchanged prompt can run
+
+*As a developer, a run starts only if every prompt I named is active and unchanged since its approval;
+otherwise nothing runs and I'm told which prompt was refused and why, so that I never run edited text, or
+a sequence with a step missing.*
+
+**What you'll notice:** a draft, a deactivated or older version, or a hand-edited prompt is refused with
+its reason, and then no prompt of that run starts. The text is checked again right before each prompt;
+a change in between stops the run there (EXE-5). A changed prompt blocks only itself and can only be
+restored (CAT-5); other prompts keep running.
+
+Source: V4 §Execution 2. State: **partial** (refusal and no partial run: met; a changed prompt blocking
+only itself: not met, today it makes the whole catalog unavailable). Confirmed: yes (2026-11-17).
+
+### EXE-3: What you see before a prompt runs
+
+*As a developer, before a run I see, for every prompt without a valid remembered approval, its name,
+version, origin, verification state, prerequisites, boundaries, hidden characters, full text and the full
+content of its attached files, and for a remembered one a line with its version and approval dates, so
+that I always know exactly what will run.*
+
+**What you'll notice:** a new or changed prompt gets the full preview, attachments included and never
+summarized; a long attachment makes a long preview (its size limit is open, CFG). A remembered prompt gets
+one line, for example "`review__missing-tests` v3, approved 2026-11-10, expires 2026-12-10", and no
+preview (PUR-3). Prerequisites and boundaries are shown, not checked (CAT-2); hidden characters are listed
+per RET-4.
+
+**Changes to earlier decisions:** V4 shows the full text before every run; remembered approvals (PUR-3)
+replace that with the one-line notice, and attachments (CAT-2) join the preview.
+
+Source: V4 §Execution 3; PUR-3, CAT-2, RET-4. State: **partial** (full preview of text: met; attachment
+content and the remembered-run notice: not met). Confirmed: yes (2026-11-17).
+
+### EXE-4: What one approval covers
+
+*As a developer, an approval I give covers exactly the prompts, order and executor shown in its question,
+and a remembered approval covers one unchanged prompt in any run I type, so that nothing runs in a set,
+order or place I didn't choose.*
+
+**What you'll notice:** the question names the prompts in order, each with a short fingerprint, and the
+executor (Claude). Asking in your answer for a different set or order runs nothing; you are told to type a
+new command, which gets its own preview and question. A remembered approval belongs to one prompt version
+and runs it without asking in any command you type, in the order you typed (EXE-1). An approval for Claude
+does not cover another executor (DEF).
+
+**Changes to earlier decisions:** V4 says an earlier approval never substitutes; remembered approvals
+(PUR-3) are the one exception, and they are per prompt, not per set or order.
+
+Source: V4 §Execution 4; PUR-3; owner decision 2026-11-17. State: **partial** (per-question binding: met;
+remembered approvals: not met). Confirmed: yes (2026-11-17).
+
+### EXE-5: Prompts run one after another; a failure stops the rest, an interruption asks
+
+*As a developer, the prompts in a run go one after another in the order I typed; if one fails, the run
+stops and I'm told what ran, what was in progress and what didn't start, and if I interrupt one, I'm asked
+whether to continue with the remaining prompts, so that a later step never builds on a failed one and an
+interruption of mine doesn't force me to retype the rest.*
+
+**What you'll notice:** prompts never run in parallel. A prompt fails when it errors or Claude cannot
+complete it; the run then stops with the three lists, and nothing retries on its own. When you interrupt a
+prompt (Esc), you get *Continue with the remaining prompts* (named) or *Stop*. The interrupted prompt
+counts as not completed and is not restarted; the remaining ones are still covered by your approval and
+are checked again right before each runs (EXE-2).
+
+**Changes to earlier decisions:** V4 stops the run on an interruption too; asking to continue is new.
+
+Implementation note: an Esc interruption ends Claude's turn, so the question may only appear with your
+next message; not verified.
+
+Source: V4 §Execution 5; owner decision 2026-11-17. State: **partial** (stop on failure with report: met;
+continue question after an interruption: not met). Confirmed: yes (2026-11-17).
+
+### EXE-6: An approved prompt gets no extra powers
+
+*As a developer, an approved prompt runs with exactly the authority of a request I typed: it can't add
+permissions or tools, change the approval flow, start or load other prompts, or change the catalog, and
+its output isn't written back, so that approving a prompt never approves anything beyond its own text.*
+
+**What you'll notice:** permission prompts, CLAUDE.md and project rules apply as if you had typed the
+text. A line asking to edit a catalog prompt is blocked by the PUR-4 hook, and one asking to start another
+prompt is refused (EXE-1); you are told about both. Attached files (CAT-2) load as context; they are files,
+not prompts. Only the prompt text is the request; name, prerequisites, boundaries and references are
+information. Output stays in the conversation. A prompt that needs its own tool grants or other prompts is
+a skill (PUR-1).
+
+Source: V4 §Execution 6. State: met (the hook-based block of catalog edits: not met, PUR-4). Confirmed:
+yes (2026-11-17).
+
+### EXE-7: Prompts run only in an interactive Claude session
+
+*As a developer, stored prompts run only in an interactive Claude session I'm watching, never headless, on
+a schedule or in Codex (until DEF-2 adds Codex with its own approval), so that someone is always there to
+see a run and answer its questions.*
+
+**What you'll notice:** `claude -p "/prompt-execution …"`, CI jobs and scheduled runs are refused, even for
+a prompt with a remembered approval (PUR-3). In Codex you can look a prompt up in Claude and paste its text
+yourself; running it there waits for DEF-2.
+
+Source: V4 §Execution; PUR-3. State: Codex: met (no Codex executor exists); headless refusal: **not
+verified** (a headless run cannot answer the approval question, but an explicit refusal, needed once
+remembered runs skip that question, does not exist). Confirmed: yes (2026-11-17).
 
 ## 9. Trust and safety (SEC)
 
