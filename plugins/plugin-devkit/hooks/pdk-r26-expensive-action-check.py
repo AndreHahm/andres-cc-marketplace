@@ -31,6 +31,9 @@
 # re-confirmed for "Bash" when the test-agent-trigger.sh signature below was
 # moved from an Agent dispatch to a direct scoped-Bash call).
 
+# Postponed annotations keep `list[...]` below importable on Python 3.8 (requires-python above).
+from __future__ import annotations
+
 import json
 import re
 import sys
@@ -128,14 +131,15 @@ def main():
     for action in EXPENSIVE_ACTIONS:
         if action["tool_name"] != tool_name:
             continue
-        if not action["target_pattern"].search(serialized):
-            continue
         if "bounded_pattern" in action:
             command = tool_input.get("command") if isinstance(tool_input, dict) else None
-            expensive = not action["bounded_pattern"].search(
-                command if isinstance(command, str) else ""
-            )
+            command = command if isinstance(command, str) else ""
+            if not action["target_pattern"].search(command):
+                continue
+            expensive = not action["bounded_pattern"].search(command)
         else:
+            if not action["target_pattern"].search(serialized):
+                continue
             expensive = bool(action["expensive_mode_pattern"].search(serialized))
         if expensive:
             matched_label = action["label"]
