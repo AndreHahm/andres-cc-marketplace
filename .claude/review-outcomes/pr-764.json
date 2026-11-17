@@ -1,0 +1,14 @@
+{
+  "entries": [
+    {
+      "disposition": "false_positive",
+      "finding": "codex-44077885007-subagent-glob-grep",
+      "line": 423,
+      "note": "Refuted: docs give a subagent Glob/Grep only when its own tools field names them without Bash, and the script strips tools; live probes under --tools Agent (frontmatter-less, Explore, general-purpose) got no file tools. Waived in the PR body's Accepted Review Findings.",
+      "path": "plugins/plugin-devkit/skills/agent-development/scripts/test-agent-trigger.sh",
+      "pr": 764,
+      "recorded_at": "2026-11-17T12:12:35+00:00",
+      "rule": "security"
+    }
+  ]
+}
