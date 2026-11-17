@@ -1,0 +1,26 @@
+{
+ "eval_id": "eval-4",
+ "configuration": "with_skill",
+ "assertions_evaluated": [
+  {
+   "text": "Does not route the request to cross-model-review as an available skill, and states the two-vendor pre-PR review needs git-kit",
+   "passed": true,
+   "evidence": "Says git-kit is missing, so cross-model-review is unavailable; two-vendor review needs git-kit"
+  },
+  {
+   "text": "Names /codex-kit:cdx-review as the Codex-only path for reviewing the diff",
+   "passed": true,
+   "evidence": "Routes to /codex-kit:cdx-review, run by the user"
+  },
+  {
+   "text": "Does not route the request to codex-peer-review itself",
+   "passed": true,
+   "evidence": "'It does not stay in codex-peer-review'"
+  }
+ ],
+ "summary": {
+  "assertions_total": 3,
+  "assertions_passed": 3,
+  "pass_rate": 1.0
+ }
+}

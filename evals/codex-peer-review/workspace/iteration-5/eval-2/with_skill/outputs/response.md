@@ -1,0 +1,8 @@
+# Routing
+
+| # | Request | Skill | Why |
+|---|---------|-------|-----|
+| 1 | "have codex sanity-check the caching approach you just proposed" | **codex-peer-review** | The request names Codex explicitly and asks it to check a design that Claude formed itself, the caching approach. That is the skill's core case: validating Claude's own analysis, design or recommendation against Codex. It is not a written plan or document file (`codex-verify`). It is not one critical action or choice Claude is about to execute (`consulting-decision-model`). It is not a pre-PR review of a working diff (`cross-model-review`). The tie-break says a Codex question about a design stays here, even when code changes are attached. Because Codex is named explicitly, the ambiguous-model check does not fire. |
+| 2 | "get a second-opinion review of my working diff before I open the PR" | **cross-model-review** | The request is a review of the working diff, used as a gate before a PR is created, and it asks for no Codex-only check of a Claude position. The skill's "When NOT to Use" list sends this case to git-kit's `cross-model-review`, a two-vendor review in which Claude and Codex each review the diff and then challenge each other's findings. The skill's Testing section also lists "second-opinion review of this diff before I open the PR" as a request that should go to `cross-model-review`. This route applies when git-kit is installed. Without git-kit, the user can run `/codex-kit:cdx-review` for a Codex-only review. Claude cannot invoke that command itself. |
+
+**Summary:** request 1 goes to `codex-peer-review` and request 2 goes to `cross-model-review`. Neither request routes to `codex-verify` or `consulting-decision-model`.
