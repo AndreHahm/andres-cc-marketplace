@@ -1,0 +1,21 @@
+{
+ "eval_id": "eval-2",
+ "skill_path": "plugins/codex-kit/skills/codex-verify/SKILL.md",
+ "assertions": [
+  {
+   "text": "Routes 'verify the rollback step in docs/deploy-plan.md before I run it' to codex-verify",
+   "type": "functionality",
+   "target": "response text"
+  },
+  {
+   "text": "Routes 'cross-model review this diff before I open the PR' to cross-model-review, not codex-verify",
+   "type": "functionality",
+   "target": "response text"
+  },
+  {
+   "text": "Cites a distinguishing criterion from the skill text (a user-requested document/step vs. a diff)",
+   "type": "functionality",
+   "target": "response text"
+  }
+ ]
+}

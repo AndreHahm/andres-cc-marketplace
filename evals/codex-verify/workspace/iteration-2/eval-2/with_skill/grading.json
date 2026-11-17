@@ -1,0 +1,26 @@
+{
+ "eval_id": "eval-2",
+ "configuration": "with_skill",
+ "assertions_evaluated": [
+  {
+   "text": "Routes 'verify the rollback step in docs/deploy-plan.md before I run it' to codex-verify",
+   "passed": true,
+   "evidence": "Routes the rollback-step request to codex-verify"
+  },
+  {
+   "text": "Routes 'cross-model review this diff before I open the PR' to cross-model-review, not codex-verify",
+   "passed": true,
+   "evidence": "Routes the diff request to cross-model-review, citing codex-verify's new exclusion line"
+  },
+  {
+   "text": "Cites a distinguishing criterion from the skill text (a user-requested document/step vs. a diff)",
+   "passed": true,
+   "evidence": "Cites user-requested step vs. Claude's unasked check, and document vs. diff"
+  }
+ ],
+ "summary": {
+  "assertions_total": 3,
+  "assertions_passed": 3,
+  "pass_rate": 1.0
+ }
+}
