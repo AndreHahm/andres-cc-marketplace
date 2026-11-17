@@ -179,10 +179,10 @@ name: the paired names returned identical counts. A finding shows whichever name
 | Rung 1, any severity | Decided and disclosed; the count must be proven to drop |
 | Rung 2 on `Minor` or `Info` outside the `Security` category, or on `Minor`, `Info`, `Warning` or `Medium` for a shape `docs/ci.md` records as accepted (`git` through `subprocess`) | Decided and disclosed, with the reason written in the comment |
 | Rung 2 on any other finding (`Critical`, `Error`, `High`, a `Security` finding or a `Warning`/`Medium` finding outside an accepted shape, or a name not listed here) | `AskUserQuestion`, once per finding or per named group (a local edit, no remote write) |
-| Rung 3, any severity | `AskUserQuestion` per command: one command, its exact text, reason and comment per approval, after the fresh re-collect in step 1. It is always a remote write. Before asking, resolve the id read-only with `codacy pull-request gh <org> <repo> <pr> -i <issue_id>` (one prompt) and stop unless its file, line and rule match the finding; the question shows that file, line and rule next to the number. Before running the approved command, re-read the head with `python3 -I ${CLAUDE_PLUGIN_ROOT}/skills/resolving-analysis-findings/scripts/read_pr_head.py <owner/repo> <pr>`; if it moved since the re-collect, re-collect and ask again; on any non-zero exit, stop |
+| Rung 3, any severity | `AskUserQuestion` per command: one command, its exact text, reason and comment per approval, after the fresh re-collect in step 1. It is always a remote write. Before asking, resolve the id read-only with `codacy pull-request gh <org> <repo> <pr> --issue <issue_id>` (one prompt; always the long form, because the short `-I` on this command is `--ignore-issue`) and stop unless its file, line and rule match the finding; the question shows that file, line and rule next to the number. Before running the approved command, re-read the head with `python3 -I ${CLAUDE_PLUGIN_ROOT}/skills/resolving-analysis-findings/scripts/read_pr_head.py <owner/repo> <pr>`; if it moved since the re-collect, re-collect and ask again; on any non-zero exit, stop |
 | Rung 4: any `.codacy.yml` change | `AskUserQuestion`, showing the exact diff and what the path stops being scanned for |
 | Rung 5, or any quality-gate change | Not run here: give the user the exact change, or point to `codacy-skills:configure-codacy` |
-| `--unignore-issue`, `--reanalyze`, `--reanalyze-and-wait` | Remote writes: `AskUserQuestion` each time, showing the exact command. Not verified: that `--unignore-issue` takes the same numeric id as rung 3, and that an ignored issue still appears in a fresh PR record. Take the id from a fresh PR record (match the ignored entry by `issue_key`), resolve it read-only with `-i` as in rung 3, and stop unless file, line and rule match; with no match, hand the user the situation instead of guessing an id |
+| `--unignore-issue`, `--reanalyze`, `--reanalyze-and-wait` | Remote writes: `AskUserQuestion` each time, showing the exact command. Not verified: that `--unignore-issue` takes the same numeric id as rung 3, and that an ignored issue still appears in a fresh PR record. Take the id from a fresh PR record (match the ignored entry by `issue_key`), resolve it read-only with `--issue` as in rung 3, and stop unless file, line and rule match; with no match, hand the user the situation instead of guessing an id |
 | Bulk flags (`-F` on `codacy pull-request`; `--ignore` on `codacy issues`) | Not run here, like rung 5: the record cannot say which issues the flag would cover, and a bulk ignore can hide real findings, across the PR (`-F`) or the filtered repository list (`--ignore`), so hand the user the exact command. Never with `-y` |
 
 An approval covers the command it showed. A changed finding set or a changed reason needs a new approval.
@@ -294,7 +294,8 @@ file is checked against are in `references/testing-scenarios.md`.
 
 **Last dated run record:** 2026-11-17: `scripts/smoke_test.py` passed after the Codacy id fix (issue #760: the
 numeric `resultDataId` pattern for `--ignore-issue`), and new evals 9 and 10 (iteration 11) passed 10 of 10 with the
-skill against 3 of 10 for the baseline. 2026-11-09: `scripts/smoke_test.py` passed after the Sonar re-collect, Verify and
+skill against 3 of 10 for the baseline; after the switch to the long `--issue` flag, iteration 12 (with skill only)
+passed 10 of 10 again. 2026-11-09: `scripts/smoke_test.py` passed after the Sonar re-collect, Verify and
 `issue-state` wrapper changes; no eval was re-run for them. Earlier records are in `references/testing-scenarios.md`.
 
 **Verify this skill activates on:**
@@ -330,5 +331,5 @@ skill against 3 of 10 for the baseline. 2026-11-09: `scripts/smoke_test.py` pass
 | `references/author-checklist.md` | Checklist for new scripts that run `git` or another command; use it when adding a script (it points to `docs/ci.md` for the `git` rationale) |
 | `references/testing-scenarios.md` | Eval evidence, run history and the scenarios this skill is checked against |
 | `scripts/read_pr_head.py` | Prints one PR's head SHA for the rung 3 re-check |
-| `scripts/smoke_test.py` | This skill's persisted smoke test (77 checks inside the marketplace repository; repository-dependent checks are skipped elsewhere) |
+| `scripts/smoke_test.py` | This skill's persisted smoke test (78 checks inside the marketplace repository; repository-dependent checks are skipped elsewhere) |
 | `collecting-analysis-findings` skill | Source of the findings record this skill reads |

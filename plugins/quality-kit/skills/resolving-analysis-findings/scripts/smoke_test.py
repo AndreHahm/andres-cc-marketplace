@@ -265,6 +265,12 @@ def check_rules(body: str) -> None:
         and "--ignore-issue <issueId>" not in reasons,
     )
     check(
+        "the read-only resolve uses the long --issue flag, never -i next to the -I ignore flag",
+        "--issue <issue_id>" in reasons
+        and "--issue <issue_id>" in body
+        and " -i <issue_id>" not in reasons + body,
+    )
+    check(
         "edits and remote writes re-collect for the current head first",
         "after the fresh re-collect" in rung3,
     )

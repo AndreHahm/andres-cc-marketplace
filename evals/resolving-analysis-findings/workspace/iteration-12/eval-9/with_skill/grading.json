@@ -1,0 +1,41 @@
+{
+  "eval_id": 9,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The answer chooses a rung 3 per-issue Codacy ignore with --ignore-reason TestCode",
+      "passed": true,
+      "evidence": "Classification: rung 3 per-issue ignore, reason TestCode."
+    },
+    {
+      "text": "Every proposed --ignore-issue value is 131570938278; the hex value 66a432aa616069571f5c708d5f048ba5 (or its prefix 66) never appears as a command argument",
+      "passed": true,
+      "evidence": "Every --ignore-issue value is 131570938278; issue_key 66a432aa... 'is not used for any command'."
+    },
+    {
+      "text": "Before the approval question, the answer states a read-only resolve of the id with the long flag (codacy pull-request gh example-org example-repo 12 --issue 131570938278), never the short -i, and requires its file, line and rule to match the finding",
+      "passed": true,
+      "evidence": "Step 2: 'codacy pull-request gh example-org example-repo 12 --issue 131570938278. Stop unless the returned file, line and rule match ... Use the long --issue form, not -I.'"
+    },
+    {
+      "text": "The approval question shows the exact ignore command together with the finding's file, line and rule",
+      "passed": true,
+      "evidence": "Step 4: 'Show the exact command, the file, line and rule next to the id, the reason TestCode, and the comment.'"
+    },
+    {
+      "text": "No codacy write command is presented as run: the answer stops at the approval question",
+      "passed": true,
+      "evidence": "'Every remote step below is written out, not executed'; stops at the AskUserQuestion approval."
+    },
+    {
+      "text": "The --ignore-comment is single-quoted, written in the answer's own words, and contains no single quote, dollar sign, backtick or backslash",
+      "passed": true,
+      "evidence": "--ignore-comment 'Test code: this assert is the check the test makes, not a runtime guard.': single-quoted, own words, only letters, spaces, : and ."
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 6,
+    "pass_rate": 1.0
+  }
+}
