@@ -131,6 +131,27 @@ one exception to "nothing automatic".
 Source: V4 §Purpose; owner decision 2026-11-16. State: **not met** (no hook exists). Confirmed: yes
 (2026-11-16).
 
+### PUR-5: Local library now; Notion becomes the main library later
+
+*As a developer, I can use the whole prompt library in my own project with no account, credentials or
+external service today; once Notion support arrives, Notion becomes the main library for its configured
+scope and my project keeps a checked-in copy, so that prompts can later be shared beyond one repository.*
+
+**What you'll notice now:** the library is a folder of text files in your repository; no login, API key or
+service, and it works offline. Committed prompts are shared with teammates through git, with history, and
+are readable by anyone who can read the repository. There is no library outside git and no way to share a
+prompt with another repository except copying it.
+
+**What you'll notice once Notion support arrives (DEF-3):** for prompts in Notion's configured scope,
+Notion is the source of truth and the project's catalog becomes a checked-in snapshot of it. Reading and
+running prompts from that snapshot still works offline; adding or changing such a prompt needs Notion
+access (through `workmanagement-kit`). A sync you start yourself shows the file changes for you to apply;
+it never writes local changes back to Notion and never silently overwrites a local edit.
+
+Source: V4 §Authority and Trust Model, §Wave 1; owner decision 2026-11-16 (confirms V4's Wave 1 direction:
+Notion authoritative, not an optional add-on). State: met now; Notion part deferred and blocked (#267).
+Confirmed: yes (2026-11-16).
+
 ### PUR-6: Set the plugin up after installing it
 
 *As a developer who just installed the plugin, I can run one setup skill that checks what the plugin
@@ -154,27 +175,6 @@ still offers to create one (V4 behavior, kept as a fallback).
 Source: owner decision 2026-11-16. State: **not met** (no setup skill exists). Confirmed: yes
 (2026-11-16). Name checked against `plugin-rulebook/references/naming-conventions.md` (skill: noun
 phrase).
-
-### PUR-5: Local library now; Notion becomes the main library later
-
-*As a developer, I can use the whole prompt library in my own project with no account, credentials or
-external service today; once Notion support arrives, Notion becomes the main library for its configured
-scope and my project keeps a checked-in copy, so that prompts can later be shared beyond one repository.*
-
-**What you'll notice now:** the library is a folder of text files in your repository; no login, API key or
-service, and it works offline. Committed prompts are shared with teammates through git, with history, and
-are readable by anyone who can read the repository. There is no library outside git and no way to share a
-prompt with another repository except copying it.
-
-**What you'll notice once Notion support arrives (DEF-3):** for prompts in Notion's configured scope,
-Notion is the source of truth and the project's catalog becomes a checked-in snapshot of it. Reading and
-running prompts from that snapshot still works offline; adding or changing such a prompt needs Notion
-access (through `workmanagement-kit`). A sync you start yourself shows the file changes for you to apply;
-it never writes local changes back to Notion and never silently overwrites a local edit.
-
-Source: V4 §Authority and Trust Model, §Wave 1; owner decision 2026-11-16 (confirms V4's Wave 1 direction:
-Notion authoritative, not an optional add-on). State: met now; Notion part deferred and blocked (#267).
-Confirmed: yes (2026-11-16).
 
 ## 2. Catalog and records (CAT)
 
