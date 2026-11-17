@@ -55,6 +55,9 @@ instructions, secrets, provenance, scope). Changing even one word later voids th
 again, and an active prompt gets a new version. This applies to every origin, including text you typed
 yourself (a lighter path for your own text was considered and declined).
 
+**Amended 2026-11-17 (DEF-3):** one exception, once Notion support arrives: a change you accept in a Notion
+sync becomes active without this review and approval; you still see its full text before its first run.
+
 Source: V4 §Purpose, §Verification and Optimization. State: met. Confirmed: yes (2026-11-16).
 
 ### PUR-3: Run saved prompts by name, with approvals I can choose to remember
@@ -344,6 +347,9 @@ example (CAT-1); you never choose it by hand.
 
 **Changes to earlier decisions:** extends V4's five origins with `example` (decided in CAT-1).
 
+**Amended 2026-11-17 (DEF-3):** once Notion support arrives, a seventh origin, `notion`, set only by
+`/prompt-sync` (never chosen by hand); a secret in it is a hard stop, as for `session` and `web`.
+
 Source: V4 §Intake Sources; owner decision 2026-11-16. State: **partial** (five origins: met; `example`:
 not met). Confirmed: yes (2026-11-16).
 
@@ -358,6 +364,9 @@ as a draft, reviewed, you approve its exact text, and it becomes active. If you 
 the session or say "not yet"), it stays a draft: retrieval lists it only when you ask for non-active
 records, it cannot run, and `/prompt-library activate <slug>` picks up where you left off. No intake path
 (paste, session, web or example) skips the draft state.
+
+**Amended 2026-11-17 (DEF-3):** one exception, once Notion support arrives: a change you accept in a Notion
+sync becomes active directly, without a draft step.
 
 Source: V4 §Intake Sources. State: met. Confirmed: yes (2026-11-16).
 
@@ -548,6 +557,9 @@ cannot be started, the add or revise stops with the prompt saved as a draft; `/p
 **Changes to earlier decisions:** removes the current "continue without a review" choice after a failed
 reviewer dispatch, so PUR-2 holds without exception.
 
+**Amended 2026-11-17 (DEF-3):** one exception, once Notion support arrives: a change you accept in a Notion
+sync is not reviewed before it becomes active; it is still screened for secrets.
+
 Source: V4 §Quality review; owner decision 2026-11-16. State: **partial** (review and acknowledgment: met;
 no-review-no-activation: not met, the skill offers to continue without a review). Confirmed: yes
 (2026-11-16).
@@ -655,6 +667,9 @@ have not seen can ever be activated, without asking me twice for the same text.*
 and a list of invisible characters (line, column, name) if there are any, and answer one question. That
 yes records the quality approval and, for `session` and `web`, the import approval, both bound to that
 fingerprint. Activation refuses if any required approval does not match the current content.
+
+**Amended 2026-11-17 (DEF-3):** one exception, once Notion support arrives: accepting a change in a Notion
+sync activates it; the run approval (PUR-3, EXE-3) still shows its full text before its first run.
 
 Source: V4 §Verification record; code. State: **partial** (text: met; attachments in the fingerprint: not
 met, CAT-2). Confirmed: yes (2026-11-16).
@@ -1276,12 +1291,80 @@ PUR-4). Confirmed: yes (2026-11-17).
 
 ## 12. Deferred (planned later, must stay possible) (DEF)
 
-| ID | Requirement | Source | State | Confirm |
-|---|---|---|---|---|
-| DEF-1 | General (cross-repository) prompts, as a second catalog with `scope: general`, without changing the record format or hashes. | V4 §Deferred, §Extension Seams | deferred | ? |
-| DEF-2 | Codex execution, as a second executor needing its own approval. | V4 §Deferred, §Extension Seams | deferred | ? |
-| DEF-3 | Notion as the authority for a configured scope, with a user-invoked `prompt-sync` that never silently overwrites tracked files. Blocked until `workmanagement-kit` publishes the four-part contract (#267). | V4 §Wave 1; V5 §3 | deferred, blocked | ? |
-| DEF-4 | How several catalogs combine (precedence, slug conflicts) is deliberately not designed yet. | V4 §Extension Seams | deferred | ? |
+### DEF-1: General prompts I can use in every repository (later)
+
+*As a developer, I can later keep prompts that serve every repository in a separate general catalog
+(`scope: general`), with the same record format, fingerprints, review and approvals as my project prompts
+and no attached files, so that adding general prompts never forces a change to my existing project
+prompts.*
+
+**What you'll notice:** nothing today; every prompt is a project prompt (PUR-5). Once it arrives, general
+prompts go through the same review, screening and approvals. They carry no attachments, because attached
+files are project files (CAT-2) and loading different files per repository would break LIF-7. How the two
+catalogs combine is DEF-4's open question. A general catalog sits outside the project, which CFG-3 forbids
+for project catalogs, so its location rules and security review (SEC-6) are designed with the feature.
+
+**Changes to earlier decisions:** V4's "without changing the record format or hashes" now means the
+fingerprints as extended by CAT-2 (attachments) and SEC-4 (origin); general prompts are limited to no
+attachments.
+
+Source: V4 §Deferred, §Extension Seams; owner decision 2026-11-17. State: deferred. Confirmed: yes
+(2026-11-17).
+
+### DEF-2: Running stored prompts in Codex (later)
+
+*As a developer, I can later run stored prompts in Codex too, approved separately for Codex (once or
+remembered), only in an interactive Codex session I'm watching, and with every approval for every executor
+ending when the prompt changes, so that approving a prompt for Claude never lets it run somewhere else.*
+
+**What you'll notice:** nothing today; Codex cannot run stored prompts (EXE-7). Once it arrives, each
+prompt needs its own Codex approval, remembered approvals are kept per executor (EXE-4, PUR-3), runs are
+interactive only (EXE-7) with no extra powers (EXE-6), and a text change ends the approvals for every
+executor. Trade-off you accepted: a prompt used in both places is approved twice.
+
+Source: V4 §Deferred, §Extension Seams; EXE-4, EXE-7; owner decision 2026-11-17. State: deferred.
+Confirmed: yes (2026-11-17).
+
+### DEF-3: Notion as the main library for its scope (later)
+
+*As a developer, once Notion support arrives, I can start a sync that shows me every change from Notion's
+configured scope and applies only what I accept; an accepted change becomes the active version without a
+separate review or activation approval, is still screened for secrets, and is shown in full before its
+first run in my session, never writing back to Notion and never silently overwriting a local edit, so that
+a team can share prompts through Notion without approving every edit twice.*
+
+**What you'll notice:** nothing today (blocked on #267). Once it arrives: `/prompt-sync` is user-invoked
+and lists each change next to your current version; accepting it is the approval. A secret in synced text
+is a hard stop (SCR-1); origin is recorded as `notion`. Because the text changed, its next run shows the
+full text and asks *Run once / Run and remember* (PUR-3, EXE-3), and remembered approvals for the old text
+end (LIF-2). Trade-off you accepted: anyone who can edit the Notion page decides what becomes active; you
+see each change in the sync and again in full before its first run, but no reviewer checks it.
+
+**Changes to earlier decisions:** adds a Notion-sync exception to PUR-2, REV-1, LIF-1 and INT-2, and a
+seventh origin `notion` to INT-1 (amendment notes there); the run approval is unchanged. The owner chose this over synced changes arriving as untrusted
+drafts.
+
+Source: V4 §Wave 1; V5 §3; PUR-5; owner decision 2026-11-17. State: deferred, blocked (#267). Confirmed:
+yes (2026-11-17).
+
+### DEF-4: Two catalogs never make a name ambiguous (later)
+
+*As a developer, once I have more than one catalog, a prompt name found in more than one of them never
+silently picks one: nothing runs until I choose, and each approval belongs to one catalog's prompt, so
+that adding a catalog can never change which text a name runs.*
+
+**What you'll notice:** nothing today. Once general prompts exist (DEF-1), a name found in one catalog runs
+as usual; a name found in both runs nothing and shows where each comes from; lookups mark each entry with
+its catalog. Notion prompts sync into the project catalog (DEF-3) and add no third catalog. Still open,
+designed with DEF-1: whether one catalog may take precedence, how a command names a catalog, and whether a
+conflict is blocked when a prompt is saved. Trade-off you accepted: a conflict blocks the run until you
+resolve it.
+
+**Changes to earlier decisions:** narrows V4's "deliberately not designed" by one fixed point, taken from
+LIF-5.
+
+Source: V4 §Extension Seams; LIF-5; owner decision 2026-11-17. State: deferred. Confirmed: yes
+(2026-11-17).
 
 ## 13. Behavior in code that V4 never stated (CODE)
 
