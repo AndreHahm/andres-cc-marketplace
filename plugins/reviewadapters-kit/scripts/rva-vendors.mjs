@@ -82,9 +82,21 @@ export function extractMarked(text) {
 // XDG_RUNTIME_DIR is left out: it points at the session's sockets (D-Bus, keyring, often the SSH or GPG
 // agent), which a tool-less review does not need.
 const BASE_ENV = ["PATH", "HOME", "USER", "LOGNAME", "LANG", "TERM", "TMPDIR", "XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_CACHE_HOME", "XDG_STATE_HOME"];
+// What a Windows CLI needs to start and find its own login under the profile (issue #770). Windows names
+// are compared without letter case. PATH is never copied: the dispatcher sets it to the trusted entries
+// only, and a second, differently cased Path would let the caller's full one through.
+const WINDOWS_ENV = ["SystemRoot", "SystemDrive", "windir", "USERPROFILE", "HOMEDRIVE", "HOMEPATH", "APPDATA", "LOCALAPPDATA", "TEMP", "TMP", "USERNAME", "USERDOMAIN", "PATHEXT", "ProgramData", "ProgramFiles", "ProgramFiles(x86)", "ProgramW6432", "CommonProgramFiles", "PROCESSOR_ARCHITECTURE", "NUMBER_OF_PROCESSORS", "OS"];
 
 function pick(names, extra = {}) {
   const env = {};
+  if (process.platform === "win32") {
+    const wanted = new Set([...names, ...WINDOWS_ENV].map((name) => name.toUpperCase()));
+    wanted.delete("PATH");
+    for (const [name, value] of Object.entries(process.env)) {
+      if (wanted.has(name.toUpperCase()) || name.toUpperCase().startsWith("LC_")) env[name] = value;
+    }
+    return { ...env, ...extra };
+  }
   for (const [name, value] of Object.entries(process.env)) {
     if (names.includes(name) || name.startsWith("LC_")) env[name] = value;
   }

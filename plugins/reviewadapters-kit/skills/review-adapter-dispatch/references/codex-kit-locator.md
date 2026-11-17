@@ -43,8 +43,9 @@ such as `cdx-process.mjs` and `cdx-token-shapes.json`):
 Directories above codex-kit's root are not checked. A candidate whose files are missing is skipped;
 a candidate that fails a check stops the search (it does not fall through to the next one). Any failure
 → `codex_kit_unavailable`, with the failing check named and the path omitted. On Windows, where these
-POSIX bits do not apply, the check is skipped; the dispatcher itself refuses to run there
-(`unsupported_platform`), so no envelope is ever produced on Windows.
+POSIX bits do not apply, the same walk reads each path's owner and DACL instead (`scripts/rva-winacl.mjs`,
+issue #770): owned by the current user, and no allow rule giving any account but the user, SYSTEM,
+Administrators or TrustedInstaller the right to write, delete or change permissions.
 
 ## Version
 

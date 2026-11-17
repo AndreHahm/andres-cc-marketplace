@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 
 const SKILL = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const ROOT = path.resolve(SKILL, "..", "..");
-const SCRIPTS = ["rva-codex-kit.mjs", "rva-config.mjs", "rva-dispatch.mjs", "rva-prepare.mjs", "rva-run.mjs", "rva-vendors.mjs", "rva-guard-checkout-scripts.mjs"];
+const SCRIPTS = ["rva-codex-kit.mjs", "rva-config.mjs", "rva-dispatch.mjs", "rva-prepare.mjs", "rva-run.mjs", "rva-vendors.mjs", "rva-guard-checkout-scripts.mjs", "rva-winacl.mjs"];
 const DISPATCH_GRANT = 'Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/rva-dispatch.mjs":*)';
 const PREPARE_GRANT = 'Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/rva-prepare.mjs":*)';
 // Step 1's plugin-root check, granted exactly (no wildcard): `pwd; pwd -P; (cd -- "<root>" && pwd -P)`.

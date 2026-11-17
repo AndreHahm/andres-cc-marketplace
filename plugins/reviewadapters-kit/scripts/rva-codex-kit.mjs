@@ -8,8 +8,8 @@
 // sibling is the reviewed branch's own code. No variable of this plugin's own redirects the import, but
 // `~` is os.homedir(), which follows $HOME on POSIX: whoever sets HOME picks the registry read. Before
 // importing, every directory from codex-kit's root down to each imported file, and the file itself, must
-// be owned by the current user and not writable by group or others. On Windows, where these mode bits
-// mean nothing, the check is skipped and the caller records that.
+// be owned by the current user and not writable by group or others. On Windows the same rule is read
+// from each path's owner and DACL instead (rva-winacl.mjs).
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
@@ -18,6 +18,9 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 // rva-config.mjs imports ownedAndPrivate from this file; the cycle is safe because neither module calls
 // the other's functions while loading.
 import { isInside } from "./rva-config.mjs";
+import { aclProblem, ancestorProblem, ancestors, readAcls, currentUserSid, REPLACE_RIGHTS, WRITE_RIGHTS } from "./rva-winacl.mjs";
+
+const WINDOWS = process.platform === "win32";
 
 const PLUGIN_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const BRIDGE = "skills/codex-review-bridge/scripts/bridge-invoke.mjs";
@@ -89,7 +92,7 @@ export function privateGroupGid(files = { passwd: "/etc/passwd", group: "/etc/gr
 // too (fail closed). The mask argument holds for POSIX ACLs only: NFSv4, CIFS and FUSE permissions do not
 // follow the mode bits, here or in the other mode-bit checks. Outside Linux an ACL is never ruled out, so
 // the private-group exception is Linux only. macOS ACLs can grant write whatever the mode bits say, so one
-// on a path without group write is still not seen; Windows is refused before any of these checks.
+// on a path without group write is still not seen. Windows reads owners and DACLs instead (rva-winacl.mjs).
 const LS_BINARIES = ["/usr/bin/ls", "/bin/ls"];
 let gnuLs;
 
@@ -124,9 +127,60 @@ function mayHaveExtendedAcl(file) {
   }
 }
 
-// A path naming what an open descriptor refers to, for the ACL check above (Linux only, where it runs).
-export function descriptorPath(fd) {
-  return `/proc/${process.pid}/fd/${fd}`;
+// A path naming what an open descriptor refers to, for the ACL checks: on Linux the descriptor itself
+// (/proc), on Windows the real path it was opened from, which ownedAndPrivate then ties back to the
+// descriptor's file id.
+export function descriptorPath(fd, file) {
+  return WINDOWS ? file : `/proc/${process.pid}/fd/${fd}`;
+}
+
+// On Windows: true when `file` still names the file `stat` describes (same volume and file id). A file
+// id of 0 (a filesystem that reports none) never matches. The DACL is read by path, so this only ties
+// path and handle together because ancestorProblem has made sure no other account can rename or replace
+// an entry on the way down to the file.
+// The creation time is compared too: Node reports the 64-bit file id as a JavaScript number, which can
+// round two ids above 2^53 to the same value.
+function sameFile(stat, file) {
+  if (!stat.ino) return false;
+  try {
+    const now = fs.statSync(file);
+    return now.dev === stat.dev && now.ino === stat.ino && now.birthtimeMs === stat.birthtimeMs;
+  } catch {
+    return false;
+  }
+}
+
+// On Windows: owned by the current user, no other account but SYSTEM, Administrators and TrustedInstaller
+// holds a right to write, delete or re-permission it, and no directory above it lets another account
+// rename or replace an entry (rva-winacl.mjs). With nobody else able to change the file or swap the path,
+// a DACL read by path, or cached from earlier in this run, is the one of the handle. Fails closed when an
+// ACL cannot be read.
+function windowsPrivate(stat, file) {
+  if (!file || !sameFile(stat, file)) return false;
+  try {
+    const real = fs.realpathSync.native(file);
+    const [info] = readAcls([real]);
+    if (aclProblem(info, currentUserSid()) !== null || ancestorProblem(real) !== null) return false;
+    // The checks above describe `real`; `file` may run through a junction another account can repoint.
+    // `real` now has stable directories above it, so the handle must be the file it names.
+    return sameFile(stat, real);
+  } catch {
+    return false;
+  }
+}
+
+// True when a path belongs to the current user: its uid on POSIX, its owner SID on Windows (`file` is the
+// path `stat` came from). Used by prepare's cleanup.
+export function ownedByCurrentUser(stat, file) {
+  if (!WINDOWS) return stat.uid === process.getuid();
+  if (!file || !sameFile(stat, file)) return false;
+  try {
+    const real = fs.realpathSync.native(file);
+    const [info] = readAcls([real]);
+    return !info.error && info.owner === currentUserSid() && sameFile(stat, real);
+  } catch {
+    return false;
+  }
 }
 
 // True when a path is owned by the current user and writable by nobody else (group write allowed only
@@ -134,7 +188,7 @@ export function descriptorPath(fd) {
 // same file or directory as `stat` (descriptorPath(fd) for an fstat); without it on Linux, group write
 // is refused. Used for codex-kit's files, the dispatcher's input files and the local config file.
 export function ownedAndPrivate(stat, aclPath, privateGid = privateGroupGid()) {
-  if (process.platform === "win32") return true;
+  if (WINDOWS) return windowsPrivate(stat, aclPath);
   if (stat.uid !== process.getuid()) return false;
   if ((stat.mode & 0o002) !== 0) return false;
   if ((stat.mode & 0o020) === 0) return true;
@@ -165,6 +219,7 @@ export function unsafeDirStat(stat, aclPath, privateGid = privateGroupGid()) {
 // dispatcher's run directory.
 export function unsafeTempDir(tmp) {
   if (fs.realpathSync(tmp) !== tmp) return true;
+  if (WINDOWS) return unsafeWindowsTempDir(tmp);
   const privateGid = privateGroupGid();
   for (let dir = tmp; ; dir = path.dirname(dir)) {
     if (unsafeDirStat(fs.statSync(dir), dir, privateGid)) return true;
@@ -172,11 +227,35 @@ export function unsafeTempDir(tmp) {
   }
 }
 
+// Windows has no sticky bit, so the temp directory itself must be private, inheritable rules included
+// (whatever is created in it inherits them), and owned by the user, SYSTEM, Administrators or
+// TrustedInstaller. A directory above it may let others add entries (C:\ lets Authenticated Users) but
+// not delete, rename or re-permission one. Any ACL that cannot be read counts as unsafe.
+function unsafeWindowsTempDir(tmp) {
+  const chain = [];
+  for (let dir = tmp; ; dir = path.dirname(dir)) {
+    chain.push(dir);
+    if (path.dirname(dir) === dir) break;
+  }
+  try {
+    const infos = readAcls(chain);
+    const me = currentUserSid();
+    if (aclProblem(infos[0], me, { owner: "trusted", rights: WRITE_RIGHTS, inheritable: true })) return true;
+    return infos.slice(1).some((info) => aclProblem(info, me, { owner: "trusted", rights: REPLACE_RIGHTS }) !== null);
+  } catch {
+    return true;
+  }
+}
+
 // Appended to the refusals that rest on ownedAndPrivate, which only says yes or no: group write is the
 // usual surprise, and an ACL or a missing GNU coreutils ls is otherwise invisible in the message.
-export const GROUP_WRITE_NOTE = "group write counts too, unless the group is your private group, on Linux, and GNU coreutils ls shows no extended ACL";
+export const GROUP_WRITE_NOTE = WINDOWS
+  ? "on Windows, an allow rule giving any account but you, SYSTEM, Administrators or TrustedInstaller the right to write, delete or change permissions counts"
+  : "group write counts too, unless the group is your private group, on Linux, and GNU coreutils ls shows no extended ACL";
 
-export const UNSAFE_TEMP = `the temp directory, or a directory above it, belongs to another user, or is writable by other users and has no sticky bit; set TMPDIR to a private directory (${GROUP_WRITE_NOTE})`;
+export const UNSAFE_TEMP = WINDOWS
+  ? `the temp directory is not private to you, or a directory above it lets another account delete, rename or re-permission its entries; set TMP and TEMP to a private directory (${GROUP_WRITE_NOTE}; the README shows the icacls commands)`
+  : `the temp directory, or a directory above it, belongs to another user, or is writable by other users and has no sticky bit; set TMPDIR to a private directory (${GROUP_WRITE_NOTE})`;
 
 export const OUTSIDE_ROOT = "resolves outside the root";
 
@@ -185,7 +264,7 @@ export const OUTSIDE_ROOT = "resolves outside the root";
 // what is wrong ("is not owned by the current user", ...) or null when all are private. Throws when a path
 // cannot be resolved. Used for codex-kit's imported files and for prepare's reviewer instructions file.
 export function ownedTreeProblem(root, file) {
-  if (process.platform === "win32") return null;
+  if (WINDOWS) return windowsTreeProblem(root, file);
   const uid = process.getuid();
   const privateGid = privateGroupGid();
   const realRoot = fs.realpathSync(root);
@@ -207,6 +286,45 @@ export function ownedTreeProblem(root, file) {
   }
 }
 
+// The Windows form of ownedTreeProblem: the same walk, read from owners and DACLs in one batch.
+function windowsTreeProblem(root, file) {
+  const realRoot = fs.realpathSync(root);
+  const realFile = fs.realpathSync(file);
+  if (!isInside(realFile, realRoot)) return OUTSIDE_ROOT;
+  const chain = [];
+  for (let current = realFile; ; current = path.dirname(current)) {
+    chain.push(current);
+    if (current === realRoot) break;
+  }
+  const infos = readAcls(chain);
+  const me = currentUserSid();
+  for (const info of infos) {
+    const problem = aclProblem(info, me);
+    if (problem) return problem;
+  }
+  // Above the root too: on Windows a directory another account may rename or replace an entry in would
+  // let it swap the whole tree between this walk and the read.
+  return ancestorProblem(realRoot, me);
+}
+
+// On Windows, read every ACL the walks below need in one PowerShell call rather than one per file.
+function prefetchTrees(root, files) {
+  try {
+    const realRoot = fs.realpathSync(root);
+    const all = new Set();
+    for (const file of files) {
+      for (let current = fs.realpathSync(file); isInside(current, realRoot); current = path.dirname(current)) {
+        all.add(current);
+        if (current === realRoot) break;
+      }
+    }
+    for (const dir of ancestors(realRoot)) all.add(dir);
+    readAcls([...all]);
+  } catch {
+    // checkOwnership reads and reports each path itself.
+  }
+}
+
 function checkOwnership(root, file) {
   const problem = ownedTreeProblem(root, file);
   if (problem === OUTSIDE_ROOT) throw new CodexKitUnavailable("an imported file resolves outside codex-kit's root");
@@ -221,9 +339,9 @@ export async function loadCodexKit({ devSibling = false } = {}) {
     // cdx-token-shapes.json), so every file in each imported file's directory is checked, not only the
     // three entry points.
     const dirs = new Set(files.map((file) => path.dirname(file)));
-    for (const dir of dirs) {
-      for (const name of fs.readdirSync(dir)) checkOwnership(root, path.join(dir, name));
-    }
+    const checked = [...dirs].flatMap((dir) => fs.readdirSync(dir).map((name) => path.join(dir, name)));
+    if (WINDOWS) prefetchTrees(root, checked);
+    for (const file of checked) checkOwnership(root, file);
     const [bridge, exec, secrets] = await Promise.all(files.map((file) => import(pathToFileURL(fs.realpathSync(file)).href)));
     const api = {
       ENVELOPE_SCHEMA: bridge.ENVELOPE_SCHEMA,
@@ -238,7 +356,7 @@ export async function loadCodexKit({ devSibling = false } = {}) {
     };
     const missing = Object.entries(api).filter(([, value]) => value === undefined).map(([name]) => name);
     if (missing.length > 0) throw new CodexKitUnavailable(`codex-kit does not export: ${missing.join(", ")}`);
-    return { api, ownershipChecked: process.platform !== "win32" };
+    return { api, ownershipChecked: true };
   }
   throw new CodexKitUnavailable(devSibling
     ? "codex-kit was not found in installed_plugins.json or next to this plugin (a sibling is used only when this plugin is plugins/reviewadapters-kit in a checkout)"

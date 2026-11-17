@@ -4,7 +4,8 @@
 // { ok: false, category, detail } (exit 2). A usage error prints the same failure shape with category
 // "usage" and exits 1.
 //
-// Linux and macOS only: on Windows it refuses with "unsupported_platform" before writing anything.
+// Linux, macOS and Windows; on Windows the ownership checks read DACLs and the timeout kills the vendor's
+// process tree (issue #770).
 // Gates, in order, before anything is sent: codex-kit present and safe to import; vendor enabled in the
 // untracked local file (and, for pi, a caller --model the local file allows); secret-named paths
 // (target list and diff headers) confirmed by the caller; no single argument over the size cap; vendor CLI
@@ -16,8 +17,9 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadCodexKit, CodexKitUnavailable, descriptorPath, GROUP_WRITE_NOTE, ownedAndPrivate, unsafeTempDir, UNSAFE_TEMP } from "./rva-codex-kit.mjs";
-import { loadConfig, devSiblingOptIn, MODEL_PATTERN, findBinary, gitEnv, GIT_SAFE_OPTIONS, isInside, isSecretName, realPath, trustedPath } from "./rva-config.mjs";
+import { loadConfig, devSiblingOptIn, MODEL_PATTERN, findBinary, gitEnv, GIT_SAFE_OPTIONS, isInside, isSecretName, onlyShimFound, realPath, trustedPath, windowsNoFollow } from "./rva-config.mjs";
 import { runVendor, killActiveGroups } from "./rva-run.mjs";
+import { makePrivateDir } from "./rva-winacl.mjs";
 import { VENDORS, PROBED_VERSIONS } from "./rva-vendors.mjs";
 
 const VALUE_FLAGS = new Set(["vendor", "reviewer-type", "dispatch-id", "instruction-file", "diff-file", "target-paths-file", "cwd", "model", "timeout-ms"]);
@@ -88,11 +90,16 @@ function readRegularFile(file, label) {
     throw usage(`${label} cannot be opened (missing, or a symbolic link)`);
   }
   try {
+    try {
+      windowsNoFollow(file, fd);
+    } catch {
+      throw usage(`${label} cannot be opened (missing, or a symbolic link)`);
+    }
     const stat = fs.fstatSync(fd);
     if (!stat.isFile()) throw usage(`${label} is not a regular file`);
     if (stat.size > MAX_INPUT_FILE_BYTES) throw usage(`${label} is larger than 8 MiB`);
     const dir = path.dirname(fs.realpathSync(file));
-    if (!ownedAndPrivate(stat, descriptorPath(fd)) || !ownedAndPrivate(fs.statSync(dir), dir)) {
+    if (!ownedAndPrivate(stat, descriptorPath(fd, file)) || !ownedAndPrivate(fs.statSync(dir), dir)) {
       throw usage(`${label} or its directory is not owned by you, or is writable by others (${GROUP_WRITE_NOTE})`);
     }
     const buffer = Buffer.alloc(stat.size);
@@ -340,7 +347,10 @@ async function dispatch(options, runDir) {
   // A binary inside the reviewed checkout (an absolute bin/ on PATH, from direnv for example) is the
   // reviewed branch's own code: refuse it rather than run it with the diff.
   const binary = findBinary(vendor.binary, repoRoot);
-  if (!binary) throw new Failure("cli_unavailable", `${vendor.binary} is not on PATH outside the reviewed repository`);
+  if (!binary) {
+    const shim = onlyShimFound(vendor.binary, repoRoot) ? ` (only a ${vendor.binary}.cmd or .bat shim was found, and on Windows a vendor runs only from an .exe; see the README)` : "";
+    throw new Failure("cli_unavailable", `${vendor.binary} is not on PATH outside the reviewed repository${shim}`);
+  }
 
   if (options["dry-run"]) {
     return { ok: true, dryRun: true, vendor: vendorName, recipient, model, reach: vendor.reach, command: [vendor.binary, ...summarizeArgs(args)] };
@@ -428,15 +438,13 @@ export async function main(argv) {
   for (const signal of signals) process.once(signal, onSignal);
   try {
     const options = parseArgs(argv);
-    // The timeout kills the vendor's process group, which Windows does not have: a hung vendor would never
-    // be stopped. Refuse before anything is written or sent.
-    if (process.platform === "win32") throw new Failure("unsupported_platform", "the dispatcher runs on Linux and macOS only (its timeout needs POSIX process groups); nothing was sent");
     // The same temp-directory check as prepare's: another user who can rename the run directory could
     // swap in their own before the vendor reads or writes it.
     const tmp = fs.realpathSync(os.tmpdir());
     if (unsafeTempDir(tmp)) throw new Failure("unsafe_temp_dir", `${UNSAFE_TEMP}; nothing was sent`);
     runDir = fs.mkdtempSync(path.join(tmp, "rva-run-"));
-    fs.chmodSync(runDir, 0o700);
+    // A protected DACL on Windows, where chmod does not change who can read the prompt (rva-winacl.mjs).
+    makePrivateDir(runDir);
     const result = await dispatch(options, runDir);
     process.stdout.write(`${JSON.stringify(result)}\n`);
     return 0;

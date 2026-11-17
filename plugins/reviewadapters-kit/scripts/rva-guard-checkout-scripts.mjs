@@ -15,7 +15,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const SCRIPT_NAMES = ["rva-prepare.mjs", "rva-dispatch.mjs", "rva-run.mjs", "rva-config.mjs", "rva-codex-kit.mjs", "rva-vendors.mjs"];
+const SCRIPT_NAMES = ["rva-prepare.mjs", "rva-dispatch.mjs", "rva-run.mjs", "rva-config.mjs", "rva-codex-kit.mjs", "rva-vendors.mjs", "rva-winacl.mjs"];
 // A name counts only as a whole path segment's end: "rva-dispatch.test.mjs" does not match. Case-insensitive,
 // since macOS and Windows filesystems are.
 const NAME_SOURCE = `(?<![A-Za-z0-9_.-])(?:${SCRIPT_NAMES.map((n) => n.replace(/[.]/g, "\\.")).join("|")})(?![A-Za-z0-9_.-])`;

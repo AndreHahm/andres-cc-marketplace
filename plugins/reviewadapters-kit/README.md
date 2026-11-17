@@ -165,16 +165,66 @@ the path if it contains a space). The guard then allows only that copy's scripts
 ## Language
 
 **JavaScript** (Node.js ES modules, `.mjs`, no npm dependencies). New scripts in this plugin stay in
-JavaScript. Tests, from the repository root, on Linux or macOS:
-`node --test plugins/reviewadapters-kit/tests/*.test.mjs` (66 tests, verified on Node 24). Name the files:
-on Node 22 and 24, `node --test` on the directory path fails. The `Plugin Node tests` CI job runs them on
-every pull request. Most tests refuse or skip on Windows.
+JavaScript. Tests, from the repository root: `node --test "plugins/reviewadapters-kit/tests/*.test.mjs"`
+(75 tests: 67 pass and 8 skip on Linux with Node 24; on Windows, Node 22, 17 pass and 58 skip, since the
+POSIX fixtures skip there and `tests/rva-windows.test.mjs` covers Windows). Name the files: on Node 22 and
+24, `node --test` on the directory path fails. The `Plugin Node tests` CI job runs them on every pull
+request.
+
+## Windows
+
+Supported since issue #770, with the same rules read from Windows' own mechanisms:
+
+- **Privacy checks read owners and DACLs** through Windows PowerShell from `%SystemRoot%\System32` (never
+  from `PATH`), run from `%SystemRoot%` with only `SystemRoot`, `windir` and the system module path in its
+  environment, and with plain .NET calls on the raw security descriptor. A path passes when you own it and
+  no allow entry gives any account but you, SYSTEM, Administrators or TrustedInstaller (or CREATOR OWNER
+  and OWNER RIGHTS, which stand for the owner) the right to write, delete or change its permissions.
+  AppContainer capability SIDs count as other accounts, deny entries are not subtracted, and an ACL that
+  cannot be read, a missing DACL or a conditional entry fails closed.
+- **Every directory above a checked file** must be owned by you, SYSTEM, Administrators or
+  TrustedInstaller and let no other account delete, rename or re-permission an entry. The DACL is read by
+  path, not from the open handle, and this is what keeps another account from swapping the path between
+  the check and the read.
+- **The temp directory must be private**, inheritable entries included, since Windows has no sticky bit;
+  it and the directories above it may belong to you, SYSTEM, Administrators or TrustedInstaller, and the
+  directories above it may let others add entries, not delete, rename or re-permission them. Each run
+  directory then gets a protected DACL (you, SYSTEM and Administrators, nothing inherited) before anything
+  is written into it, since `chmod` does not change who can read a file on Windows. A default
+  `%TEMP%` often grants other accounts access (sandbox users, AppContainer capabilities), and then every
+  run stops with `unsafe_temp_dir`. Create a private directory directly under your profile and point
+  `TMP` and `TEMP` at it for Claude Code (a directory under `%LOCALAPPDATA%` fails as well when an
+  AppContainer has full control of `%LOCALAPPDATA%`):
+
+  ```bat
+  mkdir "%USERPROFILE%\rva-tmp"
+  icacls "%USERPROFILE%\rva-tmp" /inheritance:r /grant:r "%USERNAME%:(OI)(CI)F" "*S-1-5-18:(OI)(CI)F" "*S-1-5-32-544:(OI)(CI)F"
+  ```
+
+- **The local allow-list and its `.claude` directory** follow the same rule. A repository outside your
+  profile (under `C:\Dev`, say) usually inherits Modify for Authenticated Users, so the file enables
+  nothing until its directory is made private the same way (`icacls "<repo>\.claude" /inheritance:r
+  /grant:r ...`, as above).
+- **Vendors run only from an `.exe` or `.com`.** npm installs a CLI as a `.cmd` shim, which only runs
+  through `cmd.exe`, whose quoting and `%VAR%` expansion this plugin does not trust with an argument
+  list: such a vendor fails with `cli_unavailable` naming the shim. agy and devin ship as `.exe`.
+- **The timeout kills the vendor's process tree** with `taskkill /T /F`. After a normal exit, the processes
+  the vendor started and left running are ended too, found by their parent's process id and a start
+  time between the vendor's start and exit; one that re-parented itself is not found, and a process that
+  reuses a helper's id between the query and the kill would be killed in its place.
+- **No `O_NOFOLLOW`:** after a file is opened, its path must not be a link and must name the same file
+  (volume and file id) as the handle, so a link swapped in and back is caught. A junction in a directory
+  above is not, as on POSIX. A filesystem that reports no file id (0) is refused; on ReFS, whose file ids
+  are 128-bit, uniqueness of the 64-bit id Node reads is not verified.
+- **The environment is trusted** as on POSIX: `SystemRoot` (which must be a drive path equal to `windir`),
+  `USERPROFILE` (where codex-kit's plugin registry is read, the role `HOME` plays on POSIX) and `TMP`/`TEMP`
+  (checked as above) come from whatever started Claude Code.
+- **Step 1 of the command** runs in Git Bash, the Bash tool on Windows, and compares a `C:\...` plugin root
+  in the `/c/...` form `pwd` prints. Prepare prints paths with forward slashes.
 
 ## Known limitations
 
-- **POSIX only.** Process-group cleanup and the file ownership checks need Linux or macOS. Windows is not
-  supported: the dispatcher refuses to run there (`unsupported_platform`) before anything is written or
-  sent.
+- **Windows** is supported with the limits in "Windows" above.
 - **PATH inside the reviewed checkout.** `git` and the vendor CLIs are never taken from a relative `PATH`
   entry or from inside the checkout, and vendors get only the other entries. The `node` that runs the
   scripts is found by your shell before any check runs, so keep `PATH` free of entries inside a

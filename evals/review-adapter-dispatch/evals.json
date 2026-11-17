@@ -55,7 +55,7 @@
       "20 shipped models list ignored for pi (deterministic; covered by the node tests)",
       "21 .claude directory symlinked, writable by others, or swapped before the open (deterministic; covered by the node tests)",
       "22 --version probe hangs with --timeout-ms below 15 s, every vendor (deterministic; covered by the node tests)",
-      "23 Windows refused with unsupported_platform (deterministic; covered by the node tests)",
+      "23 forced win32 without Windows PowerShell fails closed with unsafe_temp_dir; Windows itself is covered live by tests/rva-windows.test.mjs, scenario 49 (deterministic; covered by the node tests)",
       "24 a git in the reviewed checkout or behind a relative PATH entry is never run (deterministic; covered by the node tests)",
       "25 a vendor's PATH holds no entry inside the reviewed checkout (deterministic; covered by the node tests)",
       "26 a vendor CLI linked to a name-dispatching shim runs under its own name (deterministic; covered by the node tests)"
