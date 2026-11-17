@@ -310,9 +310,17 @@ anything. If the catalog still ends up inconsistent:
 validation problem exists. This keeps that for structural problems and narrows it to the one prompt for a
 fingerprint mismatch.
 
+**Amended 2026-11-17 (CAT-6):** *a prompt blocked because it changed since its approval can be restored from
+git when git has a copy, or retired after I confirm, so that an outside edit never becomes approved text and
+a prompt I can't restore never stays stuck in my library.* `/prompt-library` offers *Retire* for such a
+prompt, showing slug, version and the reason and asking once. A retired prompt never runs again, its
+remembered approvals end, it leaves the normal lists but stays in the history, and its slug stays taken
+(CAT-4); to keep the wording, copy it into a new prompt with a new slug and full review. Restoring from git
+stays the first suggestion. Found by the cross-model review before the requirements PR.
+
 Source: V4 §Interrupted updates; code (atomic writes, rollback, orphan removal); owner decision
-2026-11-16. State: **partial** (structural handling met; per-prompt blocking not met). Confirmed: yes
-(2026-11-16).
+2026-11-16. State: **partial** (structural handling met; per-prompt blocking and retire not met).
+Confirmed: yes (2026-11-16; amended 2026-11-17).
 
 ### CAT-7: A stored prompt can never become a standing instruction
 
@@ -513,8 +521,9 @@ end up in my library.*
 
 **What you'll notice:** a colleague's address carried over from a transcript stops the draft (SCR-1) or
 warns you in your own text (SCR-2); you replace it, for example with "the on-call owner". A git remote
-(`git@github.com:org/repo.git`) and reserved example addresses (`example.com`, `.net`, `.org`, and the
-`.example`, `.test`, `.invalid`, `.localhost` endings) pass. The trade-off: a prompt that really needs a
+(`git@github.com:org/repo.git`) and reserved example addresses (`example.com`, `example.net`,
+`example.org`, and the `.example`, `.test`, `.invalid`, `.localhost` endings) pass; other `.net` and `.org`
+addresses are screened. The trade-off: a prompt that really needs a
 team mailbox cannot be saved from session or AI text; you rephrase it or write that part as your own text.
 
 Source: branch (ad706e64, 7df79b46); owner decision 2026-11-16. State: **branch** (only on the unmerged
@@ -912,7 +921,8 @@ content of its attached files, and for a remembered one a line with its version 
 that I always know exactly what will run.*
 
 **What you'll notice:** a new or changed prompt gets the full preview, attachments included and never
-summarized; a long attachment makes a long preview (its size limit is open, CFG). A remembered prompt gets
+summarized; a long attachment makes a long preview (at most the CFG-6 limit, 32 KB by default). A
+remembered prompt gets
 one line, for example "`review__missing-tests` v3, approved 2026-11-10, expires 2026-12-10", and no
 preview (PUR-3). Prerequisites and boundaries are shown, not checked (CAT-2); hidden characters are listed
 per RET-4.
