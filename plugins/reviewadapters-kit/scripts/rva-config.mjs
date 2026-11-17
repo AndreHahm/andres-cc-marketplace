@@ -68,20 +68,46 @@ export const GIT_SAFE_OPTIONS = ["-c", "core.fsmonitor=false"];
 // path itself is returned and run, not its real path: a shim that picks the tool by the name it was
 // called as (Volta links every tool to one volta-shim) would break under its real name. Its directory is
 // a trusted entry, outside the checkout, so the checkout cannot swap the link.
-// Used for git and the vendor CLIs.
+// Used for git and the vendor CLIs. On Windows only `binary`.exe or .com is taken: a .cmd or .bat shim
+// (what npm installs) can only run through cmd.exe, whose quoting and %VAR% expansion this plugin does
+// not trust with an argument list, so it is never run (issue #770).
 export function findBinary(binary, untrustedRoot) {
+  const names = process.platform === "win32" ? [`${binary}.exe`, `${binary}.com`] : [binary];
   for (const dir of (process.env.PATH ?? "").split(path.delimiter)) {
     if (!trustedEntry(dir, untrustedRoot)) continue;
-    const candidate = path.join(dir, binary);
-    try {
-      const target = realPath(candidate);
-      fs.accessSync(target, fs.constants.X_OK);
-      if (fs.statSync(target).isFile() && !isInside(target, untrustedRoot)) return candidate;
-    } catch {
-      // Not here; keep looking.
+    for (const name of names) {
+      const candidate = path.join(dir, name);
+      try {
+        const target = realPath(candidate);
+        fs.accessSync(target, fs.constants.X_OK);
+        if (fs.statSync(target).isFile() && !isInside(target, untrustedRoot)) return candidate;
+      } catch {
+        // Not here; keep looking.
+      }
     }
   }
   return null;
+}
+
+// On Windows, true when a trusted PATH entry holds only a .cmd or .bat shim for `binary`: the reason
+// findBinary found nothing, worth naming in the failure.
+export function onlyShimFound(binary, untrustedRoot) {
+  if (process.platform !== "win32") return false;
+  return (process.env.PATH ?? "").split(path.delimiter).some((dir) => trustedEntry(dir, untrustedRoot)
+    && [".cmd", ".bat"].some((ext) => fs.existsSync(path.join(dir, `${binary}${ext}`))));
+}
+
+// Windows has no O_NOFOLLOW: after the open, the path must not be a symbolic link or junction, and the
+// handle must be the file the path names (same volume and file id, never 0). A link that was there at the
+// open and swapped back since still leaves the handle on another file id, so it is caught. A junction in
+// a directory above is not, as with O_NOFOLLOW on POSIX. Throws when a check fails; a no-op elsewhere.
+export function windowsNoFollow(file, fd) {
+  if (process.platform !== "win32") return;
+  // BigInt: Node's number form of a 64-bit file id can round two ids above 2^53 to the same value.
+  const link = fs.lstatSync(file, { bigint: true });
+  if (link.isSymbolicLink()) throw new Error("a symbolic link or junction");
+  const opened = fs.fstatSync(fd, { bigint: true });
+  if (!opened.ino || opened.dev !== link.dev || opened.ino !== link.ino) throw new Error("the path changed while it was opened");
 }
 
 // The PATH a vendor gets: only the trusted entries, so an interpreter its CLI starts (a
@@ -125,8 +151,13 @@ export function openInCheckedDir(file, { afterDirCheck, byPath = false } = {}) {
     throw new LocalFileRefused("the .claude directory cannot be opened (a symbolic link, or unreadable), so the local file cannot enable anything");
   }
   try {
+    try {
+      windowsNoFollow(dir, dirFd);
+    } catch {
+      throw new LocalFileRefused("the .claude directory cannot be opened (a symbolic link, or unreadable), so the local file cannot enable anything");
+    }
     const dirStat = fs.fstatSync(dirFd);
-    if (!dirStat.isDirectory() || !ownedAndPrivate(dirStat, descriptorPath(dirFd))) throw new LocalFileRefused(notPrivate());
+    if (!dirStat.isDirectory() || !ownedAndPrivate(dirStat, descriptorPath(dirFd, dir))) throw new LocalFileRefused(notPrivate());
     const viaHandle = `/proc/self/fd/${dirFd}`;
     const useHandle = !byPath && process.platform === "linux" && fs.existsSync(viaHandle);
     afterDirCheck?.();
@@ -134,6 +165,12 @@ export function openInCheckedDir(file, { afterDirCheck, byPath = false } = {}) {
     try {
       fd = fs.openSync(useHandle ? path.join(viaHandle, path.basename(file)) : file, FILE_FLAGS);
     } catch {
+      throw new LocalFileRefused("the local file cannot be opened (a symbolic link, or unreadable), so it cannot enable anything");
+    }
+    try {
+      windowsNoFollow(file, fd);
+    } catch {
+      fs.closeSync(fd);
       throw new LocalFileRefused("the local file cannot be opened (a symbolic link, or unreadable), so it cannot enable anything");
     }
     if (!useHandle) {
@@ -164,7 +201,7 @@ function readLocalJson(file) {
   try {
     const stat = fs.fstatSync(fd);
     if (!stat.isFile() || stat.size > 64 * 1024) throw new LocalFileRefused("the local file is not a regular file of at most 64 KiB, so it cannot enable anything");
-    if (!ownedAndPrivate(stat, descriptorPath(fd))) throw new LocalFileRefused(notPrivate());
+    if (!ownedAndPrivate(stat, descriptorPath(fd, file))) throw new LocalFileRefused(notPrivate());
     return JSON.parse(fs.readFileSync(fd, "utf8"));
   } finally {
     fs.closeSync(fd);

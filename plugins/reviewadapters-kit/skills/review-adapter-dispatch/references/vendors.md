@@ -7,8 +7,9 @@ model (charset-checked, never starting with `-`, placed only as the value of `--
 content, which travels in a `0600` file the dispatcher writes to its private `0700` run directory: named
 on the command line for pi and devin, fed as stdin for agy. No review content is ever a command-line
 argument, which other local users could read from `ps`. Every run uses that directory as its working
-directory, gets a reduced environment, and is killed with its whole process group at the timeout (Linux
-and macOS; on Windows the dispatcher refuses to run, `unsupported_platform`).
+directory, gets a reduced environment, and is killed with its whole process group at the timeout (on
+Windows, its process tree, with `taskkill /T /F`; issue #770). On Windows only an `.exe` or `.com` vendor
+runs: a `.cmd` or `.bat` shim, which npm installs, is refused (`cli_unavailable`).
 
 ## Common to all three
 
@@ -19,7 +20,9 @@ and macOS; on Windows the dispatcher refuses to run, `unsupported_platform`).
 - **Environment.** `PATH` (only its absolute entries outside the reviewed checkout, so an interpreter
   the CLI starts is not found there), `HOME`, `USER`, `LOGNAME`, `LANG`, `LC_*`, `TERM`, `TMPDIR` and the
   `XDG_*_HOME` variables, plus the vendor's own auth variables listed below when they are set (pi also
-  gets `PI_OFFLINE=1`). Nothing else from the caller's environment is passed; `XDG_RUNTIME_DIR` is left
+  gets `PI_OFFLINE=1`). On Windows also `SystemRoot`, `USERPROFILE`, `APPDATA`, `LOCALAPPDATA`, `TEMP`,
+  `TMP` and the other variables a Windows CLI needs to start (listed in `scripts/rva-vendors.mjs`), matched
+  without letter case, never a second `Path`. Nothing else from the caller's environment is passed; `XDG_RUNTIME_DIR` is left
   out because it points at the session's sockets (D-Bus, keyring, often the SSH or GPG agent). On the
   probe machine all three CLIs kept their credentials in files under `HOME`, not in variables; a CLI that
   instead reads them from a keyring over D-Bus would now fail authentication (not re-checked live).
@@ -84,7 +87,8 @@ devin -p --prompt-file <run-dir>/prompt.md --config <run-dir>/devin-config.json 
 - **Output:** stdout may start with a login banner; take the JSON between the `FINDINGS` markers. The
   `--export` trace is read after the run: without `final_metrics` the envelope gets an
   `inspection_limits` note that the run may have ended early. Devin can stay alive after finishing, so
-  the process group is killed once the leader has exited.
+  the process group is killed once the leader has exited (on Windows, the processes the leader started
+  that are still running, each with its own tree).
 - **Trust prompt:** print mode cannot show it and fails in an untrusted directory, hence
   `--respect-workspace-trust false`; the working directory is the private run directory.
 

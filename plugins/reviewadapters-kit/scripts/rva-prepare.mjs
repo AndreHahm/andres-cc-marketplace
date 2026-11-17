@@ -17,8 +17,9 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { loadCodexKit, CodexKitUnavailable, descriptorPath, GROUP_WRITE_NOTE, ownedAndPrivate, ownedTreeProblem, OUTSIDE_ROOT, unsafeTempDir, UNSAFE_TEMP } from "./rva-codex-kit.mjs";
-import { devSiblingOptIn, findBinary, gitEnv, GIT_SAFE_OPTIONS, isInside, isSecretName, realPath, enclosingRepoRoot } from "./rva-config.mjs";
+import { loadCodexKit, CodexKitUnavailable, descriptorPath, GROUP_WRITE_NOTE, ownedAndPrivate, ownedByCurrentUser, ownedTreeProblem, OUTSIDE_ROOT, unsafeTempDir, UNSAFE_TEMP } from "./rva-codex-kit.mjs";
+import { devSiblingOptIn, findBinary, gitEnv, GIT_SAFE_OPTIONS, isInside, isSecretName, realPath, enclosingRepoRoot, windowsNoFollow } from "./rva-config.mjs";
+import { makePrivateDir } from "./rva-winacl.mjs";
 
 const PLUGIN_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const PREFIX = "rva-prep-";
@@ -28,8 +29,11 @@ const REF = "[A-Za-z0-9._/~^@{}-]+";
 // diff.mnemonicPrefix or diff.relative say.
 const DIFF_OPTIONS = ["--no-color", "--no-ext-diff", "--no-textconv", "--no-renames", "--no-relative", "--submodule=short", "--src-prefix=a/", "--dst-prefix=b/"];
 // The command interpolates the printed paths into shell commands inside double quotes, so a path that
-// could end the quote or expand there is refused before anything is created.
+// could end the quote or expand there is refused before anything is created. On Windows the paths are
+// printed with forward slashes (C:/Users/...), which Node and Git Bash both accept, so a backslash, which
+// escapes the next character inside double quotes, never reaches the shell.
 const SHELL_UNSAFE = /["$`\\\n\r]/;
+const shown = (file) => (process.platform === "win32" ? file.replace(/\\/g, "/") : file);
 const MAX_DIFF_BYTES = 8 * 1024 * 1024;
 const MAX_INSTRUCTIONS_BYTES = 64 * 1024;
 const TOKEN_FILE = ".rva-cleanup-token";
@@ -61,15 +65,17 @@ function cleanup(dir, token) {
     return fail("the directory does not exist");
   }
   if (unsafeTempDir(tmp)) return fail(UNSAFE_TEMP);
-  if (path.dirname(real) !== tmp || !path.basename(real).startsWith(PREFIX) || !stat.isDirectory() || stat.uid !== process.getuid()) {
+  if (path.dirname(real) !== tmp || !path.basename(real).startsWith(PREFIX) || !stat.isDirectory() || !ownedByCurrentUser(stat, real)) {
     return fail("refusing to remove a directory this script did not create");
   }
   let stored;
   let fd;
   try {
-    fd = fs.openSync(path.join(real, TOKEN_FILE), fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK);
+    const tokenPath = path.join(real, TOKEN_FILE);
+    fd = fs.openSync(tokenPath, fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW ?? 0) | fs.constants.O_NONBLOCK);
+    windowsNoFollow(tokenPath, fd);
     const tokenStat = fs.fstatSync(fd);
-    if (!tokenStat.isFile() || tokenStat.uid !== process.getuid() || tokenStat.size !== token.length) {
+    if (!tokenStat.isFile() || !ownedByCurrentUser(tokenStat, tokenPath) || tokenStat.size !== token.length) {
       return fail("refusing to remove a directory this run did not create");
     }
     // Raw bytes, never decoded: decoding could change the length and make the comparison throw.
@@ -141,9 +147,10 @@ async function prepare(cwd, range) {
   let fd;
   try {
     // O_NONBLOCK: opening a FIFO would otherwise wait for a writer before the regular-file check runs.
-    fd = fs.openSync(instructionsReal, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK);
+    fd = fs.openSync(instructionsReal, fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW ?? 0) | fs.constants.O_NONBLOCK);
+    windowsNoFollow(instructionsReal, fd);
     const stat = fs.fstatSync(fd);
-    if (!stat.isFile() || !ownedAndPrivate(stat, descriptorPath(fd))) {
+    if (!stat.isFile() || !ownedAndPrivate(stat, descriptorPath(fd, instructionsReal))) {
       return fail(`the plugin's reviewer instructions file is not a regular file owned by you and writable only by you (${GROUP_WRITE_NOTE})`);
     }
     if (stat.size > MAX_INSTRUCTIONS_BYTES) return fail("the plugin's reviewer instructions file is larger than 64 KiB");
@@ -165,7 +172,7 @@ async function prepare(cwd, range) {
   if (diff.trim() === "" || names.length === 0) return fail("no reviewable changes: the diff is empty");
   if (Buffer.byteLength(diff) > MAX_DIFF_BYTES) return fail("the diff is larger than 8 MiB, the dispatcher's input limit");
   const tmp = fs.realpathSync(os.tmpdir());
-  if (SHELL_UNSAFE.test(repo) || SHELL_UNSAFE.test(tmp)) {
+  if (SHELL_UNSAFE.test(shown(repo)) || SHELL_UNSAFE.test(shown(tmp))) {
     return fail("the repository path or the temp directory contains a quote, $, backtick, backslash or newline");
   }
   if (unsafeTempDir(tmp)) return fail(UNSAFE_TEMP);
@@ -196,7 +203,9 @@ async function prepare(cwd, range) {
     token: crypto.randomBytes(16).toString("hex")
   };
   try {
-    fs.chmodSync(dir, 0o700);
+    // chmod 0700 on POSIX; on Windows, where chmod does not touch the DACL, a protected DACL for the
+    // user, SYSTEM and Administrators, so other accounts cannot read the diff (rva-winacl.mjs).
+    makePrivateDir(dir);
     fs.writeFileSync(path.join(dir, TOKEN_FILE), out.token, { flag: "wx", mode: 0o600 });
     fs.writeFileSync(out.diff_file, diff, { flag: "wx", mode: 0o600 });
     fs.writeFileSync(out.target_paths_file, `${names.join("\n")}\n`, { flag: "wx", mode: 0o600 });
@@ -205,14 +214,12 @@ async function prepare(cwd, range) {
     fs.rmSync(dir, { recursive: true, force: true });
     return fail("could not write the prepared files");
   }
+  for (const key of ["dir", "repo", "diff_file", "target_paths_file", "instruction_file"]) out[key] = shown(out[key]);
   process.stdout.write(`${JSON.stringify(out)}\n`);
   return 0;
 }
 
 async function main(argv) {
-  // The dispatcher refuses Windows, and cleanup's ownership check needs a POSIX uid: refuse here too,
-  // before anything is created, so no prepared diff is left behind in temp storage.
-  if (process.platform === "win32") return fail("rva-review-diff runs on Linux and macOS only; nothing was prepared");
   const usage = "usage: --cwd <dir> [--range <git-range>] | --cleanup <dir> <token>";
   if (argv.length === 3 && argv[0] === "--cleanup") return cleanup(argv[1], argv[2]);
   if (argv[0] !== "--cwd" || argv[1] === undefined) return fail(usage);

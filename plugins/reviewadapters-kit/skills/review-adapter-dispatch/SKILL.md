@@ -153,8 +153,9 @@ Each vendor gets one prompt (the instructions, a fixed data-only sentence, the c
 diff) from a `0600` file in a private run directory, never as a command-line argument, and runs so that
 it reads no file itself: `pi --no-tools`; `devin` with every tool denied by name; `agy` in headless plan
 mode with `--sandbox`. That isolation holds for the probed CLI versions and was checked live, not by the
-tests. The environment is reduced and the whole process group is killed at the timeout. Linux and macOS only:
-on Windows the dispatcher refuses with `unsupported_platform` before writing or sending anything.
+tests. The environment is reduced and the whole process group is killed at the timeout. On Windows the
+process tree is killed instead, ownership is read from DACLs, and only an `.exe` or `.com` vendor runs
+(issue #770; README, "Windows").
 Flags, environment and probe evidence per vendor: `references/vendors.md`.
 
 The model returns only `findings`, `verdict` and `inspection_limits`. The adapter builds `dispatch` and
@@ -215,7 +216,7 @@ tracked-local-file scenario is not in the eval set; it stays covered by scenario
 scripts, the shipped settings (three vendors, all off, 600 000 ms), the command's five Bash grants (the two scripts, plus step 1's exact `pwd`, `pwd -P` and `cd` grants), and
 that the dispatcher with no flags returns a JSON usage error. It spawns no vendor.
 
-**Last dated run record:** 2026-11-17, `node --test tests/` 65/66 passing on Linux (WSL, Node 24; the extended-ACL test skipped without `setfacl`) after the issue #762 fixes (the dispatcher's in-checkout refusal, the checkout guard hook's 9 tests, 8/9 also on Windows with the symlink test skipped); before that 56/56 after the PR #772 review round 1 fixes (every /etc/group line for the private gid, the directories above the temp directory, a root-owned private-group temp directory); before that 53/53 after the issue #765 hardening (sticky temp directory for prepare, cleanup and the dispatcher, private directories above the instructions file, empty `--instruction-file`, the private-group exception on Linux only and without an extended ACL, refusals that name that condition); before that 46/46 after the PR review rounds 1 to 5 fixes (marker lines, path containment at `/`, the fsmonitor and `GIT_*` hardening,
+**Last dated run record:** 2026-11-17, `node --test "tests/*.test.mjs"` after the issue #770 Windows support: 67 pass and 8 skip of 75 on Linux (WSL, Node 24), 17 pass and 58 skip on Windows 11 (Node 22; the POSIX fixtures skip there, `tests/rva-windows.test.mjs` runs live against real DACLs, `taskkill` and an end-to-end prepare, dry run and cleanup); before that 65/66 passing on Linux (WSL, Node 24; the extended-ACL test skipped without `setfacl`) after the issue #762 fixes (the dispatcher's in-checkout refusal, the checkout guard hook's 9 tests, 8/9 also on Windows with the symlink test skipped); before that 56/56 after the PR #772 review round 1 fixes (every /etc/group line for the private gid, the directories above the temp directory, a root-owned private-group temp directory); before that 53/53 after the issue #765 hardening (sticky temp directory for prepare, cleanup and the dispatcher, private directories above the instructions file, empty `--instruction-file`, the private-group exception on Linux only and without an extended ACL, refusals that name that condition); before that 46/46 after the PR review rounds 1 to 5 fixes (marker lines, path containment at `/`, the fsmonitor and `GIT_*` hardening,
 stdout truncation, `GIT_*` scrubbing, the in-checkout plugin refusal, the effective timeout); earlier the same day 35/35 after the Windows refusal, the version-probe and git-resolution fixes;
 2026-11-16, 30/30 after agy moved to stdin input; live check earlier the same day, one run per vendor on the planted-bug fixture (all three found it,
 agy still with argv input), plus a canary-file injection probe on pi and devin (neither read the file).
@@ -225,7 +226,7 @@ on the plugin copy.
 
 **Concrete scenarios:** the 57 tests in `tests/rva-dispatch.test.mjs` cover 47 scenarios against fake
 vendor binaries (no real vendor is called), and the 9 tests in `tests/rva-guard-checkout-scripts.test.mjs`
-cover the checkout guard hook (scenario 48); the scenarios are listed in
+cover the checkout guard hook (scenario 48), and the 9 tests in `tests/rva-windows.test.mjs` cover Windows (scenario 49); the scenarios are listed in
 [references/test-scenarios.md](references/test-scenarios.md).
 
 **Live check (manual, sends a tiny fixture to each vendor):** one run per vendor against a two-line

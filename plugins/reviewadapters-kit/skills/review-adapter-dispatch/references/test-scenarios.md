@@ -2,7 +2,8 @@
 
 Concrete scenarios behind the `review-adapter-dispatch` contract. The 57 tests in
 `tests/rva-dispatch.test.mjs` cover scenarios 1 to 47 against fake vendor binaries, and the 9 tests in
-`tests/rva-guard-checkout-scripts.test.mjs` cover scenario 48; no real vendor is called.
+`tests/rva-guard-checkout-scripts.test.mjs` cover scenario 48, and the 9 tests in
+`tests/rva-windows.test.mjs` cover scenario 49; no real vendor is called.
 
 1. Vendor not in the local allow-list, or a pi `--model` that is neither the configured model nor listed
    in `vendors.pi.models` (another provider, a bare id, another id on the same prefix) →
@@ -60,8 +61,9 @@ Concrete scenarios behind the `review-adapter-dispatch` contract. The 57 tests i
 22. A vendor whose `--version` hangs, with `--timeout-ms` below the probe's own 15 s limit → `timeout`
     with "nothing was sent" within that budget, for pi, devin and agy alike (not
     `unsupported_cli_version`); the vendor never gets the diff.
-23. The dispatcher on Windows (simulated by forcing `process.platform`), real run and dry run →
-    `unsupported_platform`; no vendor is spawned.
+23. The dispatcher with `process.platform` forced to `win32` on a machine without Windows PowerShell,
+    real run and dry run → `unsafe_temp_dir` (the DACL check cannot run, so it fails closed); no vendor is
+    spawned.
 24. A file named `git` in the reviewed checkout, reachable through a relative `PATH` entry (`.`) or an
     absolute `PATH` entry inside the checkout, is never run by the dispatcher or `rva-prepare.mjs`,
     including with `--cwd` a subdirectory (the dispatcher refuses it with `usage` before running git).
@@ -82,8 +84,8 @@ Concrete scenarios behind the `review-adapter-dispatch` contract. The 57 tests i
     environment too.
 32. `rva-prepare.mjs` runs no `core.fsmonitor` hook from the reviewed repository's own config while git
     builds the diff.
-33. `rva-prepare.mjs` on Windows (simulated by forcing `process.platform`) refuses before creating a
-    temp directory, for a prepare run and a cleanup run alike.
+33. `rva-prepare.mjs` with `process.platform` forced to `win32` on a machine without Windows PowerShell
+    refuses before creating a temp directory.
 34. `--cleanup` removes a prepared directory only with the token its own prepare run printed: another
     run's token, a malformed token or no token is refused and the directory is kept.
 35. An input file (instructions, diff or target paths) named like a key or a credentials file
@@ -130,3 +132,16 @@ Concrete scenarios behind the `review-adapter-dispatch` contract. The 57 tests i
     copy, a missing file, a `CLAUDE_PLUGIN_ROOT` other than the guard's own location, an installed root
     inside the open repository (by `cwd` or `CLAUDE_PROJECT_DIR`) and unparseable input naming a script
     are denied.
+49. Windows (issue #770, `tests/rva-windows.test.mjs`): the DACL rule on synthetic ACLs, on every platform
+    (owner, trusted principals, write versus read rights, AppContainer SIDs, deny rules not subtracted,
+    inherit-only rules counted only where entries are created, adding entries allowed above the temp
+    directory, an unreadable ACL failing closed), and the strict ACL output parser (a missing DACL, a
+    callback or other entry type, a bad SID or mask fail that item; a garbled output throws). On Windows
+    only, against real ACLs set with `icacls`: a private temp directory passes and fails once Everyone may
+    modify it; a private file passes and fails once Authenticated Users may modify it, or once Everyone may
+    delete entries in the directory above it (a path swap); a run directory under one Users may read keeps
+    only the user, SYSTEM and Administrators after makePrivateDir; the binary lookup takes `.exe` and names a `.cmd` shim; a
+    timed-out vendor and its helper are killed (the run returns well before either would end), and a helper
+    a finished vendor left is ended; prepare, a dry-run dispatch and cleanup succeed from a private
+    installed copy with forward-slash paths, prepare refuses a temp directory Everyone may modify, and a
+    local file Authenticated Users may modify enables nothing (`vendor_not_allowed`).

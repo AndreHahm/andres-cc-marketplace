@@ -2,13 +2,13 @@
 // is called. Every run gets a temporary HOME whose installed_plugins.json points at this checkout's
 // codex-kit, so the tests never import a codex-kit installed on the machine.
 // Run: node --test plugins/reviewadapters-kit/tests/
-import { test, after } from "node:test";
+import { test as nodeTest, after } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 // Run from a git hook, GIT_DIR or GIT_INDEX_FILE would point every git call here (and in the scripts
 // under test) at the developer's real repository instead of a temporary fixture, so `git add -f` and
@@ -20,9 +20,9 @@ for (const name of Object.keys(process.env)) {
 const PLUGIN = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const CODEX_KIT = fs.realpathSync(path.resolve(PLUGIN, "..", "codex-kit"));
 const DISPATCH = path.join(PLUGIN, "scripts", "rva-dispatch.mjs");
-const { diffHeaderPaths } = await import(DISPATCH);
-const { openInCheckedDir, LocalFileRefused, isInside, gitEnv } = await import(path.join(PLUGIN, "scripts", "rva-config.mjs"));
-const { extractMarked } = await import(path.join(PLUGIN, "scripts", "rva-vendors.mjs"));
+const { diffHeaderPaths } = await import(pathToFileURL(DISPATCH).href);
+const { openInCheckedDir, LocalFileRefused, isInside, gitEnv } = await import(pathToFileURL(path.join(PLUGIN, "scripts", "rva-config.mjs")).href);
+const { extractMarked } = await import(pathToFileURL(path.join(PLUGIN, "scripts", "rva-vendors.mjs")).href);
 const SHIPPED_TIMEOUT = JSON.parse(fs.readFileSync(path.join(PLUGIN, "reviewadapters-kit.settings.json"), "utf8")).timeout_ms;
 const PREPARE = path.join(PLUGIN, "scripts", "rva-prepare.mjs");
 const GOOD = JSON.stringify({
@@ -31,6 +31,14 @@ const GOOD = JSON.stringify({
   inspection_limits: []
 });
 const DIFF = "diff --git a/calc.py b/calc.py\n--- a/calc.py\n+++ b/calc.py\n@@ -1,2 +1,2 @@\n def add(a, b):\n-    return a + b\n+    return a - b\n";
+
+// Every fixture here is POSIX: fake vendors are /bin/sh scripts and privacy comes from chmod. On Windows
+// these tests are skipped; tests/rva-windows.test.mjs covers the Windows paths (issue #770).
+const POSIX_FIXTURES = process.platform === "win32" && "POSIX fixtures (sh fake vendors, chmod); see rva-windows.test.mjs";
+function test(name, options, fn) {
+  if (typeof options === "function") return nodeTest(name, { skip: POSIX_FIXTURES }, options);
+  return nodeTest(name, { ...options, skip: POSIX_FIXTURES || options.skip }, fn);
+}
 
 const created = [];
 after(() => {
@@ -765,19 +773,21 @@ test("cleanup removes only the directory whose token matches the run that create
   assert.equal(fs.existsSync(first.dir), false);
 });
 
-test("prepare refuses Windows before creating a temp directory, cleanup included", () => {
+// The Windows checks read DACLs through Windows PowerShell; where it cannot run (here, forcing win32 on a
+// POSIX machine, which has no %SystemRoot%), every check fails closed before anything is created or sent.
+test("with win32 forced and no PowerShell, prepare refuses before creating a temp directory", () => {
   const forceWin32 = "data:text/javascript,Object.defineProperty(process,'platform',{value:'win32'})";
   const before = new Set(fs.readdirSync(os.tmpdir()).filter((name) => name.startsWith("rva-prep-")));
-  for (const args of [["--cwd", PLUGIN], ["--cleanup", os.tmpdir()]]) {
-    const r = spawnSync(process.execPath, ["--import", forceWin32, PREPARE, ...args], { encoding: "utf8" });
-    assert.equal(JSON.parse(r.stdout.trim()).ok, false, r.stderr);
-    assert.match(r.stdout, /Linux and macOS only/);
-  }
+  // A forced win32 makes os.tmpdir() read TEMP, so it is set to the real temp directory.
+  const env = { ...process.env, TEMP: os.tmpdir() };
+  delete env.SystemRoot;
+  const r = spawnSync(process.execPath, ["--import", forceWin32, PREPARE, "--cwd", PLUGIN], { encoding: "utf8", env });
+  assert.equal(JSON.parse(r.stdout.trim()).ok, false, r.stderr);
   const after = fs.readdirSync(os.tmpdir()).filter((name) => name.startsWith("rva-prep-") && !before.has(name));
-  assert.deepEqual(after, [], "prepare created a temp directory on win32");
+  assert.deepEqual(after, [], "prepare created a temp directory");
 });
 
-test("Windows is refused before anything is written or sent, dry run included", () => {
+test("with win32 forced and no PowerShell, the dispatcher sends nothing, dry run included", () => {
   const f = fixture();
   const forceWin32 = "data:text/javascript,Object.defineProperty(process,'platform',{value:'win32'})";
   const args = ["--vendor", "pi", "--reviewer-type", "t", "--dispatch-id", "d1", "--instruction-file", path.join(f.inputs, "instr.md"),
@@ -785,10 +795,13 @@ test("Windows is refused before anything is written or sent, dry run included", 
   for (const extra of [[], ["--dry-run"]]) {
     const record = path.join(f.inputs, `win32${extra.length}.args`);
     const bin = fakeBin();
-    const r = spawnSync(process.execPath, ["--import", forceWin32, DISPATCH, ...args, ...extra], { encoding: "utf8", env: { ...process.env, HOME: homeWithCodexKit(), PATH: `${bin}${path.delimiter}${process.env.PATH}`, FAKE_ARGS: record } });
-    assert.equal(r.status, 2, r.stderr);
-    assert.equal(JSON.parse(r.stdout.trim()).category, "unsupported_platform");
-    assert.equal(fs.existsSync(record), false, "a vendor was spawned on win32");
+    const env = { ...process.env, TEMP: os.tmpdir(), HOME: homeWithCodexKit(), PATH: `${bin}${path.delimiter}${process.env.PATH}`, FAKE_ARGS: record };
+    delete env.SystemRoot;
+    const r = spawnSync(process.execPath, ["--import", forceWin32, DISPATCH, ...args, ...extra], { encoding: "utf8", env });
+    const out = JSON.parse(r.stdout.trim());
+    assert.equal(out.ok, false, r.stdout);
+    assert.equal(out.category, "unsafe_temp_dir", r.stdout);
+    assert.equal(fs.existsSync(record), false, "a vendor was spawned");
   }
 });
 
@@ -873,7 +886,7 @@ test("the dispatcher refuses a temp directory others can write to without the st
 // Group write for the user's private group is allowed only without an extended ACL (Linux). Needs a
 // private group, GNU coreutils ls (any other ls fails closed, so the accepted case would be refused),
 // setfacl and a filesystem with ACL support; skipped otherwise.
-const { findGnuLs, privateGroupGid } = await import(path.join(PLUGIN, "scripts", "rva-codex-kit.mjs"));
+const { findGnuLs, privateGroupGid } = await import(pathToFileURL(path.join(PLUGIN, "scripts", "rva-codex-kit.mjs")).href);
 function setAcl(target) {
   try {
     execFileSync("setfacl", ["-m", "u:nobody:rw", target], { stdio: "ignore" });
@@ -916,7 +929,7 @@ test("group write for the private group is refused when the path has an extended
 // exception is never granted. Checked in-process with the platform overridden; the gid is passed in, so
 // no private group is needed on the test machine.
 test("outside Linux, group write is refused even for the private group; a mode-private path still passes", { skip: process.platform === "win32" }, async () => {
-  const { ownedAndPrivate } = await import(path.join(PLUGIN, "scripts", "rva-codex-kit.mjs"));
+  const { ownedAndPrivate } = await import(pathToFileURL(path.join(PLUGIN, "scripts", "rva-codex-kit.mjs")).href);
   const stat = { uid: process.getuid(), gid: 4242, mode: 0o100660 };
   const original = Object.getOwnPropertyDescriptor(process, "platform");
   try {
@@ -931,7 +944,7 @@ test("outside Linux, group write is refused even for the private group; a mode-p
 // Linux grants a supplementary group by gid from every /etc/group line naming the user, so a second line
 // with the private gid must be refused, not only the first one read (PR #772 review).
 test("a second /etc/group line with the private gid removes the private-group exception", { skip: process.platform === "win32" }, async () => {
-  const { privateGroupGid: fromFiles } = await import(path.join(PLUGIN, "scripts", "rva-codex-kit.mjs"));
+  const { privateGroupGid: fromFiles } = await import(pathToFileURL(path.join(PLUGIN, "scripts", "rva-codex-kit.mjs")).href);
   const dir = tempDir("rva-test-groups-");
   const user = os.userInfo().username;
   const gid = process.getgid();
@@ -950,7 +963,7 @@ test("a second /etc/group line with the private gid removes the private-group ex
 // one (PR #772 review). Needs Linux and GNU coreutils ls to rule out an ACL on the real directory passed
 // as the ACL path; the stat is synthetic, so no root-owned directory is needed.
 test("a root-owned temp directory writable by the private group is accepted; another group is not", { skip: process.platform !== "linux" || !findGnuLs() ? "needs Linux and GNU coreutils ls" : false }, async () => {
-  const { unsafeDirStat } = await import(path.join(PLUGIN, "scripts", "rva-codex-kit.mjs"));
+  const { unsafeDirStat } = await import(pathToFileURL(path.join(PLUGIN, "scripts", "rva-codex-kit.mjs")).href);
   const dir = tempDir("rva-test-rootdir-");
   const stat = { uid: 0, gid: 4242, mode: 0o40770 };
   assert.equal(unsafeDirStat(stat, dir, 4242), false);
@@ -980,7 +993,7 @@ test("prepare and the dispatcher refuse a private temp directory under a directo
   created.push(prepared.dir);
   assert.equal(dispatch(f, "pi", ["--dry-run"], {}, { env: { TMPDIR: inner } }).out.ok, true);
   // A path that is not resolved could hold a link someone else repoints after the check: refused outright.
-  const { unsafeTempDir } = await import(path.join(PLUGIN, "scripts", "rva-codex-kit.mjs"));
+  const { unsafeTempDir } = await import(pathToFileURL(path.join(PLUGIN, "scripts", "rva-codex-kit.mjs")).href);
   const link = path.join(tempDir("rva-test-link-"), "tmp-link");
   fs.symlinkSync(inner, link);
   assert.equal(unsafeTempDir(inner), false);
