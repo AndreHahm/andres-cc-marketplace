@@ -1,3 +1,5 @@
+> **Status: fixed.** Filed as #776; fixed by PR #778 (commit `cc37636b`), which makes Phase 7 call the script with `--max-phrases 1`. The sections below describe `main` before that fix.
+
 ## Summary
 plugin-lifecycle-upstream's Phase 7 agent check runs every auto-derived trigger phrase, which breaks the phase's own "bounded smoke check" contract
 
@@ -30,7 +32,7 @@ N/A
 **Medium** - Phase 7 spends unapproved nested LLM calls in what is documented as a quick gate, and the skill's stated contract disagrees with its own workflow. No functional break.
 
 ## Additional Context
-- Pre-existing: the script on `main` already ran every derived phrase. `design-a-plugin.md` described the call as using "a single representative phrase", which hid the mismatch. The #460 fix corrects that sentence, which made the conflict visible; both reviewers in that PR's cross-model review confirmed it (major, high confidence). It was left out of #460 by choice, to keep that PR scoped to the script and its wording.
+- Pre-existing: the script on `main` already ran every derived phrase. `design-a-plugin.md` described the call as using "a single representative phrase", which hid the mismatch. The #460 fix corrected that sentence, which made the conflict visible (after #778 landed, #460's branch took #778's text for that line instead); both reviewers in that PR's cross-model review confirmed it (major, high confidence). It was left out of #460 by choice, to keep that PR scoped to the script and its wording.
 - Options:
   1. Cap Phase 7 at one phrase, for example with a one-line temporary phrases file or a script option that limits auto-derive to one phrase. Note that the R26 backing hook (`pdk-r26-expensive-action-check.py`) treats a phrases-file argument as an expensive action, so its signature may need to change too.
   2. Relax the SKILL.md line 95 and line 284 contract, and add an explicit user gate before the per-phrase calls.
