@@ -1,0 +1,104 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "ci-codex-44174025564-plugin-rulebook-checker-500",
+      "line": 500,
+      "note": "Same defect as ci-codex-44174025564-skill-reviewer-497 (array-wrapped verdict). Fixed in 553d241a.",
+      "path": "plugins/plugin-devkit/skills/agent-development/scripts/test-agent-trigger.sh",
+      "pr": 780,
+      "recorded_at": "2026-11-17T21:42:24+00:00",
+      "rule": "correctness"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-codex-44174025564-skill-reviewer-497",
+      "line": 497,
+      "note": "A verdict object inside a top-level JSON array was accepted; brackets now count as levels and a decodable array is skipped. Fixed in 553d241a.",
+      "path": "plugins/plugin-devkit/skills/agent-development/scripts/test-agent-trigger.sh",
+      "pr": 780,
+      "recorded_at": "2026-11-17T21:42:24+00:00",
+      "rule": "correctness"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-codex-44176676547-security-reviewer-611",
+      "line": 611,
+      "note": "Provider stderr went unbounded into the error field of JSON/YAML output; now whitespace-collapsed, capped at 300 characters and ascii-escaped. Not redacted (disclosed in the PR). Fixed in f93f4d38.",
+      "path": "plugins/plugin-devkit/skills/agent-development/scripts/test-agent-trigger.sh",
+      "pr": 780,
+      "recorded_at": "2026-11-17T21:42:25+00:00",
+      "rule": "security"
+    },
+    {
+      "disposition": "declined",
+      "finding": "issuecomment-6960735786-4a177c7f-502",
+      "line": 502,
+      "note": "An unmatched brace in prose before the verdict yields an error. Accepted fail-safe trade-off: it cannot be told apart from a truncated outer object around a nested verdict. Declined by the user before the PR.",
+      "path": "plugins/plugin-devkit/skills/agent-development/scripts/test-agent-trigger.sh",
+      "pr": 780,
+      "recorded_at": "2026-11-17T21:42:26+00:00",
+      "rule": "correctness"
+    },
+    {
+      "disposition": "declined",
+      "finding": "issuecomment-6960735786-4a177c7f-517",
+      "line": 517,
+      "note": "Quoting the raw classifier reply is what issue 460 asked for; it is escaped, capped at 300 characters and labeled. Declined by the user as by design.",
+      "path": "plugins/plugin-devkit/skills/agent-development/scripts/test-agent-trigger.sh",
+      "pr": 780,
+      "recorded_at": "2026-11-17T21:42:25+00:00",
+      "rule": "security"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "issuecomment-6960735786-4a177c7f-skillmd-203",
+      "line": 203,
+      "note": "Informational note on a line outside this PR's diff; no action.",
+      "path": "plugins/plugin-devkit/skills/plugin-lifecycle-upstream/SKILL.md",
+      "pr": 780,
+      "recorded_at": "2026-11-17T21:42:27+00:00",
+      "rule": "informational"
+    },
+    {
+      "disposition": "declined",
+      "finding": "issuecomment-6960735786-553d241a-120",
+      "line": 120,
+      "note": "Repeat of issuecomment-6960735786-4a177c7f-502 (unmatched brace trade-off).",
+      "path": "plugins/plugin-devkit/skills/agent-development/scripts/test-agent-trigger.sh",
+      "pr": 780,
+      "recorded_at": "2026-11-17T21:42:26+00:00",
+      "rule": "correctness"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "issuecomment-6960735786-553d241a-599",
+      "line": 599,
+      "note": "Non-ASCII model text in error messages could fail to print on a non-UTF-8 stdout; error text is now ascii-escaped. Fixed in f93f4d38.",
+      "path": "plugins/plugin-devkit/skills/agent-development/scripts/test-agent-trigger.sh",
+      "pr": 780,
+      "recorded_at": "2026-11-17T21:42:25+00:00",
+      "rule": "correctness"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "issuecomment-6960735786-553d241a-smoke-61",
+      "line": 61,
+      "note": "The structured-output smoke case checks source text, not behavior; the error-path output was checked by hand on this branch. Accepted as informational.",
+      "path": "plugins/plugin-devkit/skills/agent-development/scripts/smoke_test.py",
+      "pr": 780,
+      "recorded_at": "2026-11-17T21:42:27+00:00",
+      "rule": "informational"
+    },
+    {
+      "disposition": "declined",
+      "finding": "issuecomment-6960735786-f93f4d38-515",
+      "line": 515,
+      "note": "Repeat of issuecomment-6960735786-4a177c7f-502; since 553d241a the same fail-safe trade-off covers an unmatched bracket.",
+      "path": "plugins/plugin-devkit/skills/agent-development/scripts/test-agent-trigger.sh",
+      "pr": 780,
+      "recorded_at": "2026-11-17T21:42:26+00:00",
+      "rule": "correctness"
+    }
+  ]
+}
