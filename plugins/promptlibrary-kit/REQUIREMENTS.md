@@ -279,7 +279,7 @@ handled differently:
 | Problem | Effect |
 |---|---|
 | **Structure:** the catalog index is unreadable or unsupported, a listed file is missing, an unlisted file sits where records live, version chains are inconsistent, a half-finished update | The whole catalog is unavailable for browsing and running; you are told what is wrong and how to recover. The plugin never guesses from loose files. |
-| **One prompt:** its text (or, per CAT-2, an attached file) no longer matches its approval fingerprint | Only that prompt is unavailable, shown as "changed since approval" with the reason; everything else keeps working. |
+| **One prompt:** its text, an attached file (CAT-2) or its origin (SEC-4) no longer matches its approval fingerprint | Only that prompt is unavailable, shown as "changed since approval" with the reason; everything else keeps working. |
 
 **Changes to earlier decisions:** V4 §Layout and today's code make any problem disable the whole catalog.
 This narrows that to structural problems. Management follows the same split (CAT-6).
@@ -580,8 +580,8 @@ description says, so that instructions picked up from outside text are caught wh
 
 **What you'll notice:** for `session` and `web` prompts the reviewer checks for injection-like text aimed
 at the agent (ignore rules, exfiltrate, call tools, fetch more, act outside the purpose), provenance
-(`source_ref` complete, license or attribution noted) and scope fit, and you approve the import review
-separately from the quality review. For `claude` and `codex` prompts the reviewer runs the same
+(`source_ref` complete, license or attribution noted) and scope fit, and your one approval of the exact
+content (LIF-1) also records the import approval, separately from the quality approval. For `claude` and `codex` prompts the reviewer runs the same
 hidden-instruction and scope-fit checks and reports them like any other finding (a hidden instruction is
 Critical); there is no separate import approval and no provenance check for them. Personal data is
 covered for every origin by SCR-6.
@@ -689,7 +689,7 @@ cancels its approvals, while a change of line endings alone does not, so that wh
 what I approved and a checkout on another operating system does not break my prompts.*
 
 **What you'll notice:** a typo fixed directly in the file makes the prompt count as changed: it is blocked
-on its own until restored (CAT-6), and a real change goes through revise, review and approval. Windows and
+on its own until restored or retired (CAT-6), and a real change goes through revise, review and approval. Windows and
 Unix line endings give the same fingerprint, so a checkout on another system keeps every approval.
 Whitespace and spelling changes are not exempt. Since SEC-4 (2026-11-17), a changed `origin` also
 cancels the approval.
@@ -910,7 +910,7 @@ a sequence with a step missing.*
 **What you'll notice:** a draft, a deactivated or older version, or a hand-edited prompt is refused with
 its reason, and then no prompt of that run starts. The text is checked again right before each prompt;
 a change in between stops the run there (EXE-5). A changed prompt blocks only itself and can only be
-restored from git or retired (CAT-6); other prompts keep running.
+restored from git or retired (CAT-6); other prompts stay runnable in later runs.
 
 Source: V4 §Execution 2. State: **partial** (refusal and no partial run: met; a changed prompt blocking
 only itself: not met, today it makes the whole catalog unavailable). Confirmed: yes (2026-11-17).
@@ -1067,7 +1067,7 @@ silently skipping the import checks.*
 **What you'll notice:** `origin` is never proof of where text came from: fetched text is locked to `web`
 or `session`, pasted text carries the origin you confirmed (INT-3). If an editor or a teammate's commit
 changes it, for example from `web` to `user`, the prompt counts as changed: it is blocked on its own until
-restored (CAT-6), like a hand-edited text (LIF-2). Inside Claude the PUR-4 hook already blocks such edits.
+restored or retired (CAT-6), like a hand-edited text (LIF-2). Inside Claude the PUR-4 hook already blocks such edits.
 
 **Changes to earlier decisions:** V4 and the README treat a hand-edited `origin` as outside the guarantees;
 it is now covered by the fingerprint. LIF-2's "any change cancels the approval" extends to `origin`. The
