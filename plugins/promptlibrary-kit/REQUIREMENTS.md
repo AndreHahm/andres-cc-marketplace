@@ -1211,12 +1211,68 @@ gate (SEC-6): `security-reviewer` before its first commit. Confirmed: yes (2026-
 
 ## 11. Platform and quality (QA)
 
-| ID | Requirement | Source | State | Confirm |
-|---|---|---|---|---|
-| QA-1 | Behaves the same on Linux, macOS and Windows 11, verified by tests on each. | V4 §Acceptance | partial (Windows local, Linux CI; macOS never run) | ? |
-| QA-2 | The plugin has been run live from an installed session, end to end. | V5 H1 | partial (`--plugin-dir` runs 2026-10-14; no marketplace install) | ? |
-| QA-3 | `prompt-reviewer` triggers as intended. | V5 H2 | not met (trigger-test tool crashes, #460) | ? |
-| QA-4 | Python, standard library only; scripts use the `plib`/`promptlib` prefix. | V4 §Plugin Conventions | met | ? |
+### QA-1: The plugin behaves the same on Linux, macOS and Windows 11
+
+*As a developer on Linux, macOS or Windows 11, the plugin behaves the same on my machine as on my
+teammates', verified by its tests running on all three systems in CI whenever the plugin changes, so that a
+prompt approved on one system is checked, fingerprinted and run the same way on another.*
+
+**What you'll notice:** the same prompt gets the same fingerprint, screen result and path decisions on any
+of the three systems; rules that exist for one system (Windows trailing-dot names in CFG-3, POSIX file
+permissions) are tested on that system. The tests run in CI for any PR touching `plugins/promptlibrary-kit/`,
+so the cost of macOS and Windows runners applies only when the plugin changes.
+
+Source: V4 §Acceptance; owner decision 2026-11-17. State: **partial** (Linux: in CI since 51fc2b13;
+Windows: local runs only, the Windows CI job covers other tests; macOS: never run). Confirmed: yes
+(2026-11-17).
+
+### QA-2: The plugin has really been run, end to end, before each release
+
+*As a developer, every release of the plugin has been run live, end to end, from a marketplace install
+(setup, add, review, activate, look up, run, including a remembered approval), with the run recorded, so
+that what I install has worked outside its development checkout.*
+
+**What you'll notice:** problems only an install shows (a wrong plugin path, a missing permission grant, a
+skill that does not load) are found before release, not by you. Trade-off you accepted: a live run takes a
+person about half an hour per release and cannot be fully automated, because the approval questions need a
+human.
+
+**Changes to earlier decisions:** V5 H1 asked for one live run; this makes it a per-release check from a
+marketplace install, not only from `--plugin-dir`.
+
+Source: V5 H1; owner decision 2026-11-17. State: **partial** (`--plugin-dir` runs 2026-10-14; no
+marketplace install, no per-release record). Confirmed: yes (2026-11-17).
+
+### QA-3: The reviewer is reached when it should be, and only then
+
+*As a developer, `/prompt-library` always reaches `prompt-reviewer` by name at its review step, and a
+direct request about a stored prompt reaches it too, while unrelated review requests never do, checked by a
+trigger test (or, while that tool is broken, a recorded dry run of the trigger phrases), so that every
+prompt is reviewed and the reviewer never takes over other work.*
+
+**What you'll notice:** inside `/prompt-library` the review always happens, because the skill calls the
+reviewer by name (what REV-1 relies on). Outside it, "review the stored prompt X" reaches the reviewer,
+while "review this PR" or a code review does not.
+
+Source: V5 H2; code (`prompt-library` step 7, `Agent(prompt-reviewer)` grant); owner decision 2026-11-17.
+State: **partial** (by-name call: met; description check: not met, the trigger-test tool crashes, #460).
+Confirmed: yes (2026-11-17).
+
+### QA-4: The plugin needs nothing but Python's standard library
+
+*As a developer, the plugin's scripts, including any future hook, use only Python's standard library and
+carry the `plib` prefix (apart from the standard `smoke_test.py` files), so that installing it brings in no
+third-party code and its files are easy to recognize.*
+
+**What you'll notice:** nothing to install beyond `uv` (CFG-5), no dependency supply chain, nothing that
+breaks when a package index is unreachable. Trade-off you accepted: no ready-made libraries, so a YAML
+parser or a regex engine with timeouts (relevant to CFG-7's slow-pattern risk) is hand-written or done
+without.
+
+**Changes to earlier decisions:** drops the draft's alternative `promptlib` prefix, which no file uses.
+
+Source: V4 §Plugin Conventions; README §Language; owner decision 2026-11-17. State: met (hook: not built,
+PUR-4). Confirmed: yes (2026-11-17).
 
 ## 12. Deferred (planned later, must stay possible) (DEF)
 
