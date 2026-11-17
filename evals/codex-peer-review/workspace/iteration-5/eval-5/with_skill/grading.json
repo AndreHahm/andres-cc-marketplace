@@ -1,0 +1,26 @@
+{
+ "eval_id": "eval-5",
+ "configuration": "with_skill",
+ "assertions_evaluated": [
+  {
+   "text": "Routes (a), the already-open PR #123, to neither codex-peer-review nor cross-model-review",
+   "passed": true,
+   "evidence": "(a) -> neither: not a Claude position, and not the pre-PR working-diff gate"
+  },
+  {
+   "text": "Routes (b), the working diff before a PR, to cross-model-review",
+   "passed": true,
+   "evidence": "(b) -> cross-model-review"
+  },
+  {
+   "text": "Cites the working-diff or local-branch criterion from the skill text to separate (a) from (b)",
+   "passed": true,
+   "evidence": "Cites 'a working diff or local branch with no Codex-only ask' and the pre-PR gate wording"
+  }
+ ],
+ "summary": {
+  "assertions_total": 3,
+  "assertions_passed": 3,
+  "pass_rate": 1.0
+ }
+}
