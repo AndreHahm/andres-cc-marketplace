@@ -89,8 +89,12 @@ esac
   return dir;
 }
 
-function runNode(script, args, { env = {}, home = homeWithCodexKit(), bin = fakeBin() } = {}) {
-  const run = spawnSync(process.execPath, [script, ...args], { encoding: "utf8", env: { ...process.env, HOME: home, PATH: `${bin}${path.delimiter}${process.env.PATH}`, ...env }, timeout: 60_000 });
+// pathPrefix adds entries before the fake vendors; `env` must not set PATH, or the real vendor CLIs on
+// the test machine could run.
+function runNode(script, args, { env = {}, home = homeWithCodexKit(), bin = fakeBin(), pathPrefix } = {}) {
+  assert.equal(Object.hasOwn(env, "PATH"), false, "use pathPrefix, never env.PATH");
+  const PATH = [pathPrefix, bin, process.env.PATH].filter(Boolean).join(path.delimiter);
+  const run = spawnSync(process.execPath, [script, ...args], { encoding: "utf8", env: { ...process.env, HOME: home, PATH, ...env }, timeout: 60_000 });
   const last = run.stdout.trim().split("\n").pop();
   return { code: run.status, out: last ? JSON.parse(last) : null, raw: run };
 }
@@ -512,16 +516,55 @@ test("a timeout above the configured limit is clamped to it, not raised", () => 
   assert.equal(r.out.dryRun, true, JSON.stringify(r.out));
 });
 
-test("a --version probe that hangs never outlasts a timeout below the probe's own 15 s limit", () => {
+test("a --version probe that hangs is a timeout for every vendor, within a budget below the probe's own 15 s", () => {
+  // No allow_unprobed_version: devin and agy would otherwise report the hung probe as an unprobed version.
+  const f = fixture({ unprobed: false });
+  for (const vendor of ["pi", "devin", "agy"]) {
+    const record = path.join(f.inputs, `${vendor}-slow-version.args`);
+    const started = Date.now();
+    const r = dispatch(f, vendor, ["--timeout-ms", "1000"], { FAKE_VERSION_SLEEP: "30", FAKE_ARGS: record, FAKE_OUT: marked(GOOD) });
+    const elapsed = Date.now() - started;
+    assert.equal(r.out.category, "timeout", `${vendor}: ${JSON.stringify(r.out)}`);
+    assert.match(r.out.detail, /nothing was sent/);
+    assert.equal(fs.existsSync(record), false, `${vendor} was spawned with the diff`);
+    assert.ok(elapsed < 10_000, `${vendor}: the dispatcher took ${elapsed} ms for a 1000 ms budget`);
+  }
+});
+
+test("a git inside the reviewed checkout, or behind a relative PATH entry, is never run", () => {
   const f = fixture();
-  const record = path.join(f.inputs, "slow-version.args");
-  const started = Date.now();
-  const r = dispatch(f, "pi", ["--timeout-ms", "1000"], { FAKE_VERSION_SLEEP: "30", FAKE_ARGS: record, FAKE_OUT: marked(GOOD) });
-  const elapsed = Date.now() - started;
-  assert.equal(r.out.category, "timeout", JSON.stringify(r.out));
-  assert.match(r.out.detail, /nothing was sent/);
-  assert.equal(fs.existsSync(record), false, "the vendor was spawned with the diff");
-  assert.ok(elapsed < 10_000, `the dispatcher took ${elapsed} ms for a 1000 ms budget`);
+  const marker = path.join(f.inputs, "planted-git-ran");
+  const planted = `#!/bin/sh\ntouch '${marker}'\nexit 1\n`;
+  fs.writeFileSync(path.join(f.repo, "git"), planted, { mode: 0o755 });
+  fs.mkdirSync(path.join(f.repo, "bin"));
+  fs.writeFileSync(path.join(f.repo, "bin", "git"), planted, { mode: 0o755 });
+  const bin = fakeBin();
+  const env = { ...process.env, HOME: homeWithCodexKit(), PATH: [".", path.join(f.repo, "bin"), bin, process.env.PATH].join(path.delimiter) };
+  const args = ["--vendor", "pi", "--reviewer-type", "t", "--dispatch-id", "d1", "--instruction-file", path.join(f.inputs, "instr.md"),
+    "--diff-file", path.join(f.inputs, "diff.patch"), "--target-paths-file", path.join(f.inputs, "changed.txt"), "--cwd", f.repo, "--dry-run"];
+  const r = spawnSync(process.execPath, [DISPATCH, ...args], { encoding: "utf8", cwd: f.repo, env });
+  assert.equal(JSON.parse(r.stdout.trim()).dryRun, true, r.stdout);
+  spawnSync(process.execPath, [PREPARE, "--cwd", f.repo], { encoding: "utf8", cwd: f.repo, env });
+  // From a subdirectory, the in-repository bin/ lies outside --cwd but inside the checkout.
+  const sub = path.join(f.repo, "sub");
+  fs.mkdirSync(sub);
+  const subArgs = args.map((a) => (a === f.repo ? sub : a));
+  const fromSub = spawnSync(process.execPath, [DISPATCH, ...subArgs], { encoding: "utf8", cwd: sub, env });
+  assert.equal(JSON.parse(fromSub.stdout.trim()).category, "usage", fromSub.stdout);
+  spawnSync(process.execPath, [PREPARE, "--cwd", sub], { encoding: "utf8", cwd: sub, env });
+  assert.equal(fs.existsSync(marker), false, "a planted git was run");
+});
+
+test("a vendor gets only PATH entries outside the reviewed checkout", () => {
+  const f = fixture();
+  const inside = path.join(f.repo, "bin");
+  fs.mkdirSync(inside);
+  const record = path.join(f.inputs, "path.args");
+  const r = dispatch(f, "pi", [], { FAKE_ARGS: record, FAKE_OUT: marked(GOOD) }, { pathPrefix: inside });
+  assert.ok(r.out.findings, JSON.stringify(r.out));
+  const vendorPath = fs.readFileSync(`${record}.env`, "utf8").split("\n").find((l) => l.startsWith("PATH=")) ?? "";
+  assert.ok(vendorPath.length > 5, "the vendor got no PATH");
+  assert.equal(vendorPath.slice(5).split(path.delimiter).some((d) => d.startsWith(f.repo)), false, vendorPath);
 });
 
 test("Windows is refused before anything is written or sent, dry run included", () => {
