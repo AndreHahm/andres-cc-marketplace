@@ -4,7 +4,7 @@ description: >-
   Validate Claude's own analysis, design, or recommendation against Codex
   before presenting it to the user. Not a proactive/automatic trigger. For a
   two-vendor review of the working diff before a PR, use git-kit's
-  cross-model-review instead. For
+  cross-model-review instead, when git-kit is installed. For
   verifying an existing written plan/document file, use codex-verify
   instead. For a full multi-phase plan-validate-implement-review workflow
   (not just validating an already-formed position), use codex-plan-loop
@@ -45,7 +45,8 @@ allowed-tools: ["Bash(node */codex-kit/scripts/codex-companion.mjs:*)", "AskUser
   `codex-plan-loop`.
 - Open-ended investigation of a topic with no Claude position to validate yet → `codex-research`.
 - A two-vendor review of the working diff as a gate before a PR is created or a draft is flipped to
-  ready → git-kit's `cross-model-review`. This skill is a Codex-only check of Claude's own position,
+  ready → git-kit's `cross-model-review`, when git-kit is installed (without it, `/codex-kit:cdx-review`
+  reviews the diff, Codex only). This skill is a Codex-only check of Claude's own position,
   which may cite code changes (`review --base`); it is not that pre-PR gate. Tie-break: asking Codex
   about a design, analysis or recommendation stays here, even with code changes attached; a diff,
   branch or PR named with no Codex-only ask goes to `cross-model-review`.
@@ -142,7 +143,7 @@ Never ask before Round 1 or Round 2 — only the escalation and final-output ste
 **Verify it does NOT activate on:**
 - Proactively, without an explicit request — this skill deliberately has no automatic trigger
 - Verifying an existing written plan/document file → `codex-verify`
-- "second-opinion review of this diff before I open the PR" → git-kit's `cross-model-review`
+- "second-opinion review of this diff before I open the PR" → git-kit's `cross-model-review`, when git-kit is installed (without it, `/codex-kit:cdx-review`)
 - Checking one critical, security-relevant or uncertain action Claude is about to execute → decision-kit's `consulting-decision-model`, when decision-kit is installed (without it, no installed skill makes that check)
 - "get a second opinion from antigravity/gemini/agy" → antigravity-kit's `antigravity` skill instead
   (Gemini/Antigravity/agy named, not Codex)
@@ -157,7 +158,7 @@ Never ask before Round 1 or Round 2 — only the escalation and final-output ste
 7. A request that explicitly names Gemini/Antigravity/agy but still reaches this skill (an activation-layer misroute) → stops and defers to `antigravity-kit:antigravity` unconditionally, regardless of whether the ambiguous-model check's own trigger condition matched.
 
 **Current test coverage:**
-- `evals/codex-peer-review/evals.json` — 3 defined scenarios: eval-1 (subagent dispatch, 2-round protocol, escalation path), eval-2 (routing: a position stays here, a working diff goes to `cross-model-review`), eval-3 (an unasked execution-time check goes to `consulting-decision-model` only when decision-kit is installed). **Routing run, 2026-11-17:** `evals/codex-peer-review/workspace/iteration-2/`, evals 2-3 only, baseline = this text on `main` before the change: with_skill 6/6, baseline 6/6 (non-discriminating; the `main` body already carried the condition, so they guard against regression rather than measure an effect). Iteration 3 (same date) re-ran eval-2 `with_skill` only after the diff-vs-position criterion was reworded: 3/3. Structurally graded 2026-08-12 (PASS — the mandatory subagent dispatch, Round 1/Round 2 headings, and the Escalation section all match the eval's `expected_output`). **Live empirical run, 2026-08-24:** `skill-tester` full baseline comparison against a real Codex backend — with-skill 2/2 assertions pass (real subagent dispatch, 2-round protocol with `--resume-last`, correct "Resolved Disagreement" classification with escalation-taxonomy reasoning), baseline 0/2 (no subagent dispatch, no round structure, no Codex integration at all); `grading.json`/`outputs/` on disk under `evals/codex-peer-review/workspace/iteration-1/eval-1/`.
+- `evals/codex-peer-review/evals.json` — 4 defined scenarios: eval-1 (subagent dispatch, 2-round protocol, escalation path), eval-2 (routing: a position stays here, a working diff goes to `cross-model-review`), eval-3 (an unasked execution-time check goes to `consulting-decision-model` only when decision-kit is installed). **Routing run, 2026-11-17:** `evals/codex-peer-review/workspace/iteration-2/`, evals 2-3 only, baseline = this text on `main` before the change: with_skill 6/6, baseline 6/6 (non-discriminating; the `main` body already carried the condition, so they guard against regression rather than measure an effect). Iteration 3 (same date) re-ran eval-2 `with_skill` only after the diff-vs-position criterion was reworded: 3/3. Structurally graded 2026-08-12 (PASS — the mandatory subagent dispatch, Round 1/Round 2 headings, and the Escalation section all match the eval's `expected_output`). **Live empirical run, 2026-08-24:** `skill-tester` full baseline comparison against a real Codex backend — with-skill 2/2 assertions pass (real subagent dispatch, 2-round protocol with `--resume-last`, correct "Resolved Disagreement" classification with escalation-taxonomy reasoning), baseline 0/2 (no subagent dispatch, no round structure, no Codex integration at all); `grading.json`/`outputs/` on disk under `evals/codex-peer-review/workspace/iteration-1/eval-1/`. **Iteration 4 (2026-11-17)**, evals 2 and 4 after the git-kit-installed condition was added (eval-4: only codex-kit installed, a working-diff review request), baseline = the text at commit 2ba4964f, timing from harness usage: eval-2 3/3 vs 3/3, eval-4 3/3 vs 2/3 (the baseline names no fallback; the change adds `/codex-kit:cdx-review`).
 - `scripts/smoke-tests/codex-peer-review-invariants.mjs` — this skill's own output isn't mechanically testable (it depends on Claude's own position and Codex's live response), but the SKILL.md text's safety-relevant invariants are: Round 1/Round 2/Escalation ordering, the never-ask-before-Round-1-or-2 gate, and the always-dispatch-via-subagent requirement. Not a live Codex-call test.
 
 **Quality gates:**
