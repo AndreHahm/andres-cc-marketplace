@@ -425,10 +425,11 @@ jobs:
             exit 1
           fi
           # node --test reads each argument as a glob pattern, so a name holding a glob character
-          # would run whatever it matches instead of that file.
+          # would run whatever it matches instead of that file. ( ) | cover extglob groups such
+          # as @(x), which node expands too.
           for f in "${files[@]}"; do
             case "$f" in
-              *[][*?{}!]*)
+              *[][*?{}!\(\)\|]*)
                 echo "::error::test file name contains a glob character: $f"
                 exit 1
                 ;;
