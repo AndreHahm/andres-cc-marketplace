@@ -769,6 +769,7 @@ def test_node_tests_job_is_wired_into_publish():
     assert "git ls-files -z -- ':(glob)plugins/*/tests/*.test.mjs'" in run
     assert 'node --test -- "${files[@]}"' in run
     assert '"${#files[@]}" -eq 0' in run
+    assert "*[][*?{}!]*)" in run  # a glob character in a name is refused, not expanded
     assert "node-tests" in jobs["publish"]["needs"]
     (decide,) = [
         s for s in jobs["publish"]["steps"] if s.get("name") == "Determine final policy result"
