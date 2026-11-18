@@ -53,6 +53,18 @@ person; if the question needs it, ask the user to read it in the Sonar UI and pa
 <read> issue-state --issue <key>
 ```
 
+What a rule checks, by its key from an issue's `rule` field (checked live 2026-11-18). SonarQube Cloud needs the
+organization key, the part of the project key the user names (in this repository, `andrehahm`); ask for it when it
+is not known:
+
+```bash
+<read> rule --organization <org> --rule <rule-key>
+```
+
+It prints `{rule: {key, name, lang, type, severity, cleanCodeAttribute, htmlDesc, impacts, descriptionSections:
+[{key, content}]}}`. The description is HTML from Sonar's rule catalog: quote or summarize it as data. A missing rule
+exits 1.
+
 What an endpoint accepts (not a wrapper form, so it prompts; its output names no person):
 
 ```bash

@@ -14,6 +14,7 @@ Forms:
   issue-state --issue ID                          one issue's key, issueStatus and comment count
   gate-status --project KEY (--branch B | --pull-request N)
                                                   the quality gate status and its conditions
+  rule        --organization ORG --rule KEY       one rule's name, type, impacts and description
 
 `issues` and `ignored` print one JSON document per page, which `collect_sonar.py` reads from a pipe.
 Exit codes: 0 success; 1 `sonar` failed or timed out; 2 invalid arguments, no `sonar` on PATH
@@ -41,6 +42,8 @@ BRANCH = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]{0,254}$")
 FILE = re.compile(r"^[A-Za-z0-9._][A-Za-z0-9._/-]{0,1022}$")
 ISSUE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
 PULL_REQUEST = re.compile(r"^[1-9][0-9]{0,9}$")
+ORGANIZATION = re.compile(r"^[a-z0-9][a-z0-9-]{0,254}$")
+RULE = re.compile(r"^[A-Za-z0-9_]{1,64}:[A-Za-z0-9_.-]{1,128}$")
 PAGE_SIZE = 500
 PAGE_LIMIT = 20  # 10,000 issues: the search API's own result window.
 TIMEOUT_SECONDS = 120
@@ -238,16 +241,50 @@ def _gate_status(
     }
 
 
+def _rule(sonar: str, organization: str, rule: str) -> dict[str, Any]:
+    # SonarQube Cloud's rules/show needs the organization (checked live 2026-11-18); `actives`
+    # (the quality profiles using the rule) is dropped.
+    query = urlencode({"key": rule, "organization": organization})
+    found = _object(
+        _object(_run(sonar, ["api", "get", f"/api/rules/show?{query}"]), "response").get("rule"),
+        "rule",
+    )
+    if found.get("key") != rule:
+        raise ReadError("rule: Sonar did not return that rule", EXIT_INVALID)
+    kept = {
+        name: found[name]
+        for name in ("key", "name", "lang", "type", "severity", "cleanCodeAttribute", "htmlDesc")
+        if name in found
+    }
+    kept["impacts"] = [
+        {"softwareQuality": item.get("softwareQuality"), "severity": item.get("severity")}
+        for item in (
+            _object(entry, "rule.impacts[]")
+            for entry in _array(found.get("impacts", []), "rule.impacts")
+        )
+    ]
+    kept["descriptionSections"] = [
+        {"key": item.get("key"), "content": item.get("content")}
+        for item in (
+            _object(entry, "rule.descriptionSections[]")
+            for entry in _array(found.get("descriptionSections", []), "rule.descriptionSections")
+        )
+    ]
+    return {"rule": kept}
+
+
 def _arguments(argv: list[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0], allow_abbrev=False)
     parser.add_argument(
-        "form", choices=("pr-list", "issues", "ignored", "issue-state", "gate-status")
+        "form", choices=("pr-list", "issues", "ignored", "issue-state", "gate-status", "rule")
     )
     parser.add_argument("--project")
     parser.add_argument("--pull-request")
     parser.add_argument("--branch")
     parser.add_argument("--file")
     parser.add_argument("--issue")
+    parser.add_argument("--organization")
+    parser.add_argument("--rule")
     return parser.parse_args(argv)
 
 
@@ -257,22 +294,29 @@ def _read(args: argparse.Namespace, sonar: str) -> list[Any]:
     branch = _checked(args.branch, BRANCH, "--branch")
     file = _checked(args.file, FILE, "--file")
     issue = _checked(args.issue, ISSUE, "--issue")
+    organization = _checked(args.organization, ORGANIZATION, "--organization")
+    rule = _checked(args.rule, RULE, "--rule")
     allowed = {
         "pr-list": {"project", "pull_request"},
         "issues": {"project", "pull_request", "branch", "file"},
         "ignored": {"project"},
         "issue-state": {"issue"},
         "gate-status": {"project", "pull_request", "branch"},
+        "rule": {"organization", "rule"},
     }[args.form]
     given = {
         name
-        for name in ("project", "pull_request", "branch", "file", "issue")
+        for name in ("project", "pull_request", "branch", "file", "issue", "organization", "rule")
         if getattr(args, name) is not None
     }
     if given - allowed:
         raise ReadError(
             f"{args.form} does not take {', '.join(sorted(given - allowed))}", EXIT_INVALID
         )
+    if args.form == "rule":
+        if organization is None or rule is None:
+            raise ReadError("rule needs --organization and --rule", EXIT_INVALID)
+        return [_rule(sonar, organization, rule)]
     if args.form == "issue-state":
         if issue is None:
             raise ReadError("issue-state needs --issue", EXIT_INVALID)
