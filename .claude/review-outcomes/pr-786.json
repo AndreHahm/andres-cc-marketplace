@@ -1,0 +1,24 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "IC_kwDOTi7e-s8AAAABn_qBoA-F1",
+      "line": 80,
+      "note": "Added a disclosure to the stdin-redirect bullet: grant matching for the redirect form is unverified, so the call may prompt; approve that one call only. Fixed in the commit that promotes this ledger.",
+      "path": "plugins/git-kit/skills/cross-model-review/references/codex-pass-assembly.md",
+      "pr": 786,
+      "recorded_at": "2026-11-18T12:56:44+00:00",
+      "rule": "claude-delta-review informational"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "IC_kwDOTi7e-s8AAAABn_qBoA-F2",
+      "line": 145,
+      "note": "Write-exception per-call approval limit is already disclosed in codex-pass-assembly.md and SKILL.md Boundaries; cited line 145 is the challenger-file assembly, unrelated.",
+      "path": "plugins/git-kit/skills/cross-model-review/references/codex-pass-assembly.md",
+      "pr": 786,
+      "recorded_at": "2026-11-18T12:54:33+00:00",
+      "rule": "claude-delta-review informational"
+    }
+  ]
+}
