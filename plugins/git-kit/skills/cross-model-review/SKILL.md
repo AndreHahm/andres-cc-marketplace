@@ -142,8 +142,8 @@ resolved `BASE`, `REPO_ROOT`, `RUN`, `DIFF_STR`, `DISPATCHER_TOUCHED`, `PLANNER_
 `TARGET_PATHS`, `UNTRACKED_FILES`, `INDEX_COPY_FAILED`, `INTENT_ADD_REFUSED`, and whether `$RUN/review.md`/`$RUN/refute.md`
 came out non-empty (step 5's fallback runs as a separate write-helper call afterward). From that point on, every `$VAR` reference here is shorthand for that literal, already-resolved
 value — substitute the concrete string into every later `Bash`/`Read` call; a separate tool call re-expanding
-`$RUN`/`$BASE` as a live variable won't see it. After `EnterWorktree` the chained call is refused; run it as a
-scratchpad script instead (`references/codex-pass-assembly.md`, "In an EnterWorktree session").
+`$RUN`/`$BASE` as a live variable won't see it. After `EnterWorktree` the chained call may be refused; if it is, run it
+as a scratchpad script instead (`references/codex-pass-assembly.md`, "In an EnterWorktree session").
 
 1. **Plan the scope and check the diff exists.** In this same chained call, run the review scope planner
    and send the diff to a file so its text stays out of context (details: `references/scoped-review.md`
@@ -440,7 +440,7 @@ the envelopes as needing review before they are shared. The same goes for `$RUN/
 ## Boundaries
 
 Deliberately not in `allowed-tools`, so each prompts: `git diff` and `git show` (both accept `--output=<file>`, a write
-to any path), the `export GIT_INDEX_FILE` / `export CODEX_KIT_REVIEW_*` lines (a grant cannot pin the value they set),
+to any path), the `export GIT_INDEX_FILE` / `CODEX_KIT_REVIEW_*` assignments, exported or prefixed (a grant cannot pin the value they set),
 the `guarded-dispatch.mjs` fallback (a grant would pre-approve a full-access dispatch), and, after `EnterWorktree` only,
 `Write` and `bash <scratchpad>/preflight.sh` (`Write` cannot be limited to a path; the script path varies, so its grant
 would be `Bash(bash:*)`, which also admits `bash -c` and any script; one approval covers every command in the script,
