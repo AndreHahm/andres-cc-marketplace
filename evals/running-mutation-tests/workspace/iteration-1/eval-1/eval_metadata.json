@@ -1,0 +1,26 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/quality-kit/skills/running-mutation-tests/SKILL.md",
+  "assertions": [
+    {
+      "text": "Shows trust_boundary's listed test selection (tests/marketplace_ci/test_workflow_trusted_restore.py)",
+      "type": "presence",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "Asks the user to confirm before any run is started or any agent is dispatched",
+      "type": "functionality",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "States that the run dispatches the mutation-tester agent and runs the selected tests once per mutant",
+      "type": "presence",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "Starts no run and dispatches no agent",
+      "type": "functionality",
+      "target": "outputs/ directory"
+    }
+  ]
+}

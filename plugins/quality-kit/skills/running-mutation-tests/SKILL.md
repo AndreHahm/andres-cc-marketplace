@@ -186,14 +186,16 @@ export lives outside the repository, and nothing here deletes files.
 
 ## Testing & Validation
 
-No `evals.json` yet: the decisions this skill makes (test gap or equivalent mutant) are always put to the user
-before any change, so the risk to cover is routing and the approval gates, which the scenarios check; a
-`skill-tester` eval is due once the skill has real survivor sessions to replay. Deterministic checks:
+Evals: `evals/running-mutation-tests/evals.json`, 7 plan-only scenarios with simulated digests (scenarios 1, 3, 5,
+8, 9, 10, 12 and the no-score case), Full Pipeline. Deterministic checks:
 `scripts/smoke_test.py` runs the parser against real mutmut 3.8.1 output (fixtures from
 the 2026-11-15 design runs) and checks the runner's input refusals offline. Routing and approval behavior:
 the scenarios in `references/testing-scenarios.md`.
 
-**Last dated run record:** 2026-11-15: the runner and parser ran end to end on `trust_boundary` in a working
+**Last dated run record:** 2026-11-18, `skill-tester` Full Pipeline: iteration 1 (evals 1-4) with skill 17 of 17
+assertions, baseline 15 of 17; iteration 2 (evals 5-7) with skill 10 of 10, baseline 8 of 10. The baselines missed
+the dispatch disclosure, the not-added rule and the exact weekly entry, and one offered to update the list anyway;
+token and time figures are the agents' own estimates (`workspace/iteration-*/benchmark.json`). 2026-11-15: the runner and parser ran end to end on `trust_boundary` in a working
 tree copy (25 mutants, 22 killed, 3 survived; `--show` printed the diff; the worktree stayed clean), and the
 parser reproduced all six modules' measured counts (design record, Evidence). 2026-11-17: scenario 1 ran live
 (a `sonnet` general-purpose agent following `mutation-tester.md`, since the agent was not registered in that

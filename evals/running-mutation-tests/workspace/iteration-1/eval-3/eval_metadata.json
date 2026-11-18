@@ -1,0 +1,26 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/quality-kit/skills/running-mutation-tests/SKILL.md",
+  "assertions": [
+    {
+      "text": "Proposes a concrete test with file, test name and an assertion that fails with the mutant (check=True removed, so a failing git diff is not raised) and passes without it",
+      "type": "quality",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "Shows the full text of the proposed test",
+      "type": "presence",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "Asks for approval before writing the test, and writes nothing",
+      "type": "functionality",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "Offers a re-run after the test is approved and written, to confirm the mutant is killed",
+      "type": "presence",
+      "target": "outputs/ directory"
+    }
+  ]
+}

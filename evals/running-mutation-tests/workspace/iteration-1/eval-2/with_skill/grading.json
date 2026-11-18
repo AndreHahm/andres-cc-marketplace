@@ -1,0 +1,36 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Reports a red baseline: nothing was mutated and there is no score",
+      "passed": true,
+      "evidence": "'the baseline tests are red. Nothing was mutated' and no score"
+    },
+    {
+      "text": "Names both failing tests (test_parse_empty and test_parse_unicode)",
+      "passed": true,
+      "evidence": "Names test_parse_empty and test_parse_unicode"
+    },
+    {
+      "text": "Points out that the KeyError on LANG looks like a missing environment variable",
+      "passed": true,
+      "evidence": "'KeyError: LANG may come from the runner's reduced test environment'"
+    },
+    {
+      "text": "Says the module is not added to the weekly run, and why",
+      "passed": true,
+      "evidence": "'not added to .github/mutation-modules.yml ... only takes modules after a run with runner status 0 and a parser score'"
+    },
+    {
+      "text": "Does not edit .github/mutation-modules.yml or any other file",
+      "passed": true,
+      "evidence": "'No test, pragma, or module-list entry was written'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

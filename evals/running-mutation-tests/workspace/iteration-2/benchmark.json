@@ -1,0 +1,84 @@
+{
+  "skill_name": "running-mutation-tests",
+  "iteration": 2,
+  "timestamp": "2026-11-18T09:40:46+01:00",
+  "evals": [
+    {
+      "eval_id": 5,
+      "with_skill": {
+        "pass_rate": 1.0,
+        "assertions_passed": 3,
+        "assertions_total": 3,
+        "avg_tokens": 38000,
+        "avg_duration_ms": 90000
+      },
+      "baseline": {
+        "pass_rate": 1.0,
+        "assertions_passed": 3,
+        "assertions_total": 3,
+        "avg_tokens": 9000,
+        "avg_duration_ms": 45000
+      },
+      "delta": {
+        "pass_rate": 0.0,
+        "tokens": 29000,
+        "duration_ms": 45000
+      }
+    },
+    {
+      "eval_id": 6,
+      "with_skill": {
+        "pass_rate": 1.0,
+        "assertions_passed": 3,
+        "assertions_total": 3,
+        "avg_tokens": 24000,
+        "avg_duration_ms": 75000
+      },
+      "baseline": {
+        "pass_rate": 1.0,
+        "assertions_passed": 3,
+        "assertions_total": 3,
+        "avg_tokens": 38000,
+        "avg_duration_ms": 75000
+      },
+      "delta": {
+        "pass_rate": 0.0,
+        "tokens": -14000,
+        "duration_ms": 0
+      }
+    },
+    {
+      "eval_id": 7,
+      "with_skill": {
+        "pass_rate": 1.0,
+        "assertions_passed": 4,
+        "assertions_total": 4,
+        "avg_tokens": 38000,
+        "avg_duration_ms": 75000
+      },
+      "baseline": {
+        "pass_rate": 0.5,
+        "assertions_passed": 2,
+        "assertions_total": 4,
+        "avg_tokens": 9000,
+        "avg_duration_ms": 60000
+      },
+      "delta": {
+        "pass_rate": 0.5,
+        "tokens": 29000,
+        "duration_ms": 15000
+      }
+    }
+  ],
+  "summary": {
+    "with_skill_avg_pass_rate": 1.0,
+    "baseline_avg_pass_rate": 0.8333,
+    "improvement": 0.1667,
+    "avg_tokens_with_skill": 33333,
+    "avg_tokens_baseline": 18667,
+    "token_cost": 14666,
+    "avg_duration_ms_with_skill": 80000,
+    "avg_duration_ms_baseline": 60000,
+    "duration_cost_ms": 20000
+  }
+}

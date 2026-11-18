@@ -1,0 +1,31 @@
+{
+  "eval_id": 7,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Shows the exact YAML entry to append: the module path and tests/marketplace_ci/test_prefix_check.py, nothing else",
+      "passed": true,
+      "evidence": "Shows '- module: scripts/marketplace_ci/prefix_check.py / tests: - tests/marketplace_ci/test_prefix_check.py'"
+    },
+    {
+      "text": "Shows the score and the not-measured count beside the entry, not inside it",
+      "passed": true,
+      "evidence": "'Beside it, not in it: score 93.8 %, 12 not measured'"
+    },
+    {
+      "text": "Asks for approval before editing .github/mutation-modules.yml",
+      "passed": true,
+      "evidence": "AskUserQuestion 'Add ...?' before any edit"
+    },
+    {
+      "text": "Edits no file",
+      "passed": true,
+      "evidence": "No file edited"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

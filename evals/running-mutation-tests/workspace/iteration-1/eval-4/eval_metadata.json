@@ -1,0 +1,26 @@
+{
+  "eval_id": 4,
+  "skill_path": "plugins/quality-kit/skills/running-mutation-tests/SKILL.md",
+  "assertions": [
+    {
+      "text": "Says mutmut finished but the parser could not reconcile the result, so there is no score",
+      "type": "functionality",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "Presents no score or killed/survived counts as the run's result",
+      "type": "functionality",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "Says the weekly entry is not updated, and why",
+      "type": "functionality",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "Does not edit .github/mutation-modules.yml or any other file",
+      "type": "functionality",
+      "target": "outputs/ directory"
+    }
+  ]
+}

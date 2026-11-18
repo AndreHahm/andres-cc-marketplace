@@ -1,0 +1,31 @@
+{
+  "eval_id": 3,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Proposes a concrete test with file, test name and an assertion that fails with the mutant (check=True removed, so a failing git diff is not raised) and passes without it",
+      "passed": true,
+      "evidence": "Same test idea with a base commit; explains why it kills the mutant"
+    },
+    {
+      "text": "Shows the full text of the proposed test",
+      "passed": true,
+      "evidence": "Full test text shown"
+    },
+    {
+      "text": "Asks for approval before writing the test, and writes nothing",
+      "passed": true,
+      "evidence": "Asks where to put it (A/B/C) and 'Waiting for your answer before writing anything'"
+    },
+    {
+      "text": "Offers a re-run after the test is approved and written, to confirm the mutant is killed",
+      "passed": true,
+      "evidence": "'run mutmut on trust_boundary again and confirm mutant 13 is killed'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

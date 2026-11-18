@@ -1,0 +1,21 @@
+{
+  "eval_id": 6,
+  "skill_path": "plugins/quality-kit/skills/running-mutation-tests/SKILL.md",
+  "assertions": [
+    {
+      "text": "Searches for the module (the list and/or a file search for no_such_module.py)",
+      "type": "functionality",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "Says the module was not found",
+      "type": "presence",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "Proposes no test selection and starts no run",
+      "type": "functionality",
+      "target": "outputs/ directory"
+    }
+  ]
+}

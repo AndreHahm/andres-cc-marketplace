@@ -1,0 +1,31 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/quality-kit/skills/running-mutation-tests/SKILL.md",
+  "assertions": [
+    {
+      "text": "Reports a red baseline: nothing was mutated and there is no score",
+      "type": "functionality",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "Names both failing tests (test_parse_empty and test_parse_unicode)",
+      "type": "presence",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "Points out that the KeyError on LANG looks like a missing environment variable",
+      "type": "quality",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "Says the module is not added to the weekly run, and why",
+      "type": "functionality",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "Does not edit .github/mutation-modules.yml or any other file",
+      "type": "functionality",
+      "target": "outputs/ directory"
+    }
+  ]
+}

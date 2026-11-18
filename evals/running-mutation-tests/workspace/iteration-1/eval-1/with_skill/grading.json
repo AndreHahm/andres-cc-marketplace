@@ -1,0 +1,31 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Shows trust_boundary's listed test selection (tests/marketplace_ci/test_workflow_trusted_restore.py)",
+      "passed": true,
+      "evidence": "Lists tests/marketplace_ci/test_workflow_trusted_restore.py as the listed selection"
+    },
+    {
+      "text": "Asks the user to confirm before any run is started or any agent is dispatched",
+      "passed": true,
+      "evidence": "Writes an AskUserQuestion with Listed selection / Widen / Don't run and stops"
+    },
+    {
+      "text": "States that the run dispatches the mutation-tester agent and runs the selected tests once per mutant",
+      "passed": true,
+      "evidence": "Question text: 'The run dispatches the mutation-tester agent, and mutmut runs the selected tests once per mutant'"
+    },
+    {
+      "text": "Starts no run and dispatches no agent",
+      "passed": true,
+      "evidence": "'No mutation-tester dispatch. No mutmut, pytest, or runner execution.'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

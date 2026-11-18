@@ -1,0 +1,31 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Shows trust_boundary's listed test selection (tests/marketplace_ci/test_workflow_trusted_restore.py)",
+      "passed": true,
+      "evidence": "Lists the registered selection test_workflow_trusted_restore.py"
+    },
+    {
+      "text": "Asks the user to confirm before any run is started or any agent is dispatched",
+      "passed": true,
+      "evidence": "Asks Option A/B/C and waits before running anything"
+    },
+    {
+      "text": "States that the run dispatches the mutation-tester agent and runs the selected tests once per mutant",
+      "passed": false,
+      "evidence": "Mentions running the runner/CI job, but never states that the run dispatches the mutation-tester agent or runs the tests once per mutant"
+    },
+    {
+      "text": "Starts no run and dispatches no agent",
+      "passed": true,
+      "evidence": "'I have not run any of these.'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 3,
+    "pass_rate": 0.75
+  }
+}

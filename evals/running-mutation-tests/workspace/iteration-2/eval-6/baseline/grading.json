@@ -1,0 +1,26 @@
+{
+  "eval_id": 6,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Searches for the module (the list and/or a file search for no_such_module.py)",
+      "passed": true,
+      "evidence": "Repo-wide and file-name search"
+    },
+    {
+      "text": "Says the module was not found",
+      "passed": true,
+      "evidence": "'I could not find no_such_module in the repo'"
+    },
+    {
+      "text": "Proposes no test selection and starts no run",
+      "passed": true,
+      "evidence": "Asks which module was meant; proposes no test selection and runs nothing"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}
