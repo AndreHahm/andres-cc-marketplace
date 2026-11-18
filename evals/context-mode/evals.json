@@ -65,12 +65,19 @@
       "prompt": "Situation: The ship mode is active and its profile (references/ship.md) is in force. PR #902 is approved, required checks are green, and the diff adds no names of outside companies, products or repositories. The PR's Security workflow secretlint job passed.\nUser message: merge pr 902",
       "expected_output": "Routes the merge through merge-pr; before confirming, states the secretlint result (passed) and that the external-reference check did not run because no outside names were added; does not stop or block the merge on the external-reference check.",
       "files": []
+    },
+    {
+      "id": 10,
+      "name": "Ship profile stops on an untriaged secretlint failure",
+      "prompt": "Situation: The ship mode is active and its profile (references/ship.md) is in force. PR #903 is approved, all required status checks are green, and the diff adds no names of outside companies, products or repositories. The PR's Security workflow secretlint job failed, reporting one possible credential in config/settings.example.json; nobody has looked at it yet.\nUser message: merge pr 903",
+      "expected_output": "States the failed secretlint result and does not go on to merge-pr's merge confirmation; asks for the failure to be triaged first (secret removed and rotated, or shown to be a false positive), even though secretlint is not a required check.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 7,
     "declared_scenarios_covered": 7,
     "uncovered": [],
-    "coverage_note": "The 3 'activates on' and 4 'does NOT activate on' lines of SKILL.md's Testing & Validation map to evals 1, 6, 8 and 2, 5, 7, 3. Eval 4 (a handoff-reported value) is extra, so this file holds 8 evals against 7 declared scenarios. Runs are plan-only: they show the commands and statements the agent would produce, not the script's real execution, which scripts/smoke_test.py covers. Eval 9 (2026-11-18) covers the ship profile's pre-merge check wording: state the secretlint result, and treat external-references-reviewer as an optional check that is reported, not a blocking one."
+    "coverage_note": "The 3 'activates on' and 4 'does NOT activate on' lines of SKILL.md's Testing & Validation map to evals 1, 6, 8 and 2, 5, 7, 3. Eval 4 (a handoff-reported value) is extra, so this file holds 8 evals against 7 declared scenarios. Runs are plan-only: they show the commands and statements the agent would produce, not the script's real execution, which scripts/smoke_test.py covers. Eval 9 (2026-11-18) covers the ship profile's pre-merge check wording: state the secretlint result, and treat external-references-reviewer as an optional check that is reported, not a blocking one. Eval 10 (2026-11-18) covers a failed secretlint result: the merge stops until the failure is triaged."
   }
 }

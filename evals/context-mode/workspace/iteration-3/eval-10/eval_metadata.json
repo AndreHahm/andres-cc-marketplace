@@ -1,0 +1,21 @@
+{
+  "eval_id": 10,
+  "skill_path": "plugins/context-kit/skills/context-mode/references/ship.md",
+  "assertions": [
+    {
+      "text": "States the failed secretlint result",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Does not go on to merge-pr's merge confirmation while the failure is untriaged",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Asks for the failure to be triaged (secret removed and rotated, or shown to be a false positive)",
+      "type": "functionality",
+      "target": "outputs/"
+    }
+  ]
+}
