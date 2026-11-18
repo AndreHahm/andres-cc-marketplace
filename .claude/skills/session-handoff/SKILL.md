@@ -118,6 +118,8 @@ python3 "${CLAUDE_PLUGIN_ROOT}/skills/session-handoff/scripts/validate_handoff.p
 
 Checks: no `[TODO: ...]` placeholders remaining, required sections present and populated, no
 potential secrets (API keys, passwords, tokens), referenced files exist, quality score (0-100).
+A reference containing `/` is always checked; a bare name such as `README.md` is checked only when its
+suffix is a known file extension, so code names like `os.geteuid` are not counted as missing files.
 
 **Do not finalize a handoff with secrets detected or a score below 70.**
 
@@ -232,8 +234,8 @@ chain, read the most recent handoff first, then reference predecessors as needed
 
 ## Testing & Validation
 
-Eval suite: `evals/session-handoff/` — 9 scenarios (create-handoff, load-and-check-staleness-first,
-resume-a-stale-handoff, three for the Context mode load step, and three for choosing the Context mode
+Eval suite: `evals/session-handoff/` — 12 scenarios (create-handoff, load-and-check-staleness-first,
+resume-a-stale-handoff, three for the Context mode load step, and six for choosing the Context mode
 value at create time), `skill-tester` Quick Workflow, all passed (evals 1-3 as a blind comparison). Eval 3 verified
 staleness is checked and reported before a stale document's content is loaded or acted on. The 4
 deterministic scripts in `scripts/` are additionally independently testable by direct execution against
