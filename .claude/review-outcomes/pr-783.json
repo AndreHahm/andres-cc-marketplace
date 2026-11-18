@@ -1,0 +1,68 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4610446192",
+      "note": "Windows exit grace keeps a children-only cleanup entry; child query date conversion fixed",
+      "path": "plugins/reviewadapters-kit/scripts/rva-run.mjs",
+      "pr": 783,
+      "recorded_at": "2026-11-18T09:21:32+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4610446412",
+      "note": "hook added to plugin-inventory.json via plan/apply",
+      "path": "plugins/reviewadapters-kit/hooks/hooks.json",
+      "pr": 783,
+      "recorded_at": "2026-11-18T09:21:32+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4610565524",
+      "note": "recovery steps cover the directories above .claude",
+      "path": "plugins/reviewadapters-kit/README.md",
+      "pr": 783,
+      "recorded_at": "2026-11-18T09:21:32+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4610565537",
+      "note": "root resolved once and used for checks and import",
+      "path": "plugins/reviewadapters-kit/scripts/rva-codex-kit.mjs",
+      "pr": 783,
+      "recorded_at": "2026-11-18T09:21:33+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4610565547",
+      "note": "guard basename added to NAME_PATTERN with a test",
+      "path": "plugins/reviewadapters-kit/scripts/rva-guard-checkout-scripts.mjs",
+      "pr": 783,
+      "recorded_at": "2026-11-18T09:21:33+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4610565582",
+      "note": "bounded give-up timer settles with killFailed",
+      "path": "plugins/reviewadapters-kit/scripts/rva-run.mjs",
+      "pr": 783,
+      "recorded_at": "2026-11-18T09:21:33+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4610565597",
+      "note": "no post-exit allowance; identity re-read before each kill",
+      "path": "plugins/reviewadapters-kit/scripts/rva-run.mjs",
+      "pr": 783,
+      "recorded_at": "2026-11-18T09:21:34+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4610565606",
+      "note": "fresh ACL read for the temp directory check",
+      "path": "plugins/reviewadapters-kit/scripts/rva-winacl.mjs",
+      "pr": 783,
+      "recorded_at": "2026-11-18T09:21:34+00:00"
+    }
+  ]
+}
