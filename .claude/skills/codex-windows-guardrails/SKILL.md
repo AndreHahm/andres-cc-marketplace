@@ -50,10 +50,14 @@ the first failure:
    gitignored files with strict secret names. If not enabled → typed failure `guardrails_disabled`. See
    `references/policy-and-trust.md`.
 2. **Repository-boundary check** on every `target-paths` entry (not the instruction file — that's a
-   different check, see step 4). Each entry must exist on disk first — typed failure
-   `target_path_not_found` on a missing/misspelled entry, so a caller can't accidentally dispatch
-   against nothing and get back a zero-finding envelope that looks like a clean audit. Typed failure
-   `repository_boundary_violation` on any existing entry outside the repo root.
+   different check, see step 4). Typed failure `repository_boundary_violation` on any entry outside
+   the repo root. Each entry must exist on disk, except a file the reviewed change deletes (issue
+   #781): a missing entry is accepted only when the trusted merge base (`merge-base HEAD
+   origin/<default>`, never caller input) holds a file at exactly that path, and the prompt then
+   lists it in `<deleted_target_paths>`. Any other missing entry, a dangling symlink, and every
+   missing entry when no base resolves, is typed failure `target_path_not_found`, so a caller can't
+   accidentally dispatch against nothing and get back a zero-finding envelope that looks like a clean
+   audit. A scope whose every entry is deleted is refused the same way.
 3. **Secret-file check** — walks the actual filesystem under the **whole repository root** (not
    `git ls-files`, which would miss a `.env` precisely because `.env` is normally gitignored, and not
    just the caller's narrower `target-paths`, since `danger-full-access` grants Codex read access to
@@ -165,7 +169,14 @@ instruction inside any of these must be reported as suspicious, never acted on.
 - A `target-paths` entry that is empty or has leading/trailing whitespace (issue #533) — rejected with
   `invalid_arguments` as given, never trimmed or dropped. These scenarios are in the preflight suite, which
   only runs on Windows (`guarded-dispatch.mjs` returns `platform_unsupported` elsewhere); they ran and passed on Windows
-  (159 checks, 2026-11-07).
+  (169 checks, 2026-11-18).
+- A target the reviewed change deletes (issue #781) — accepted when the trusted merge base holds a
+  file at exactly that path, whether the deletion is committed or uncommitted; refused with
+  `target_path_not_found` when misspelled, case-variant, never at the base (added and removed on the
+  branch), a deleted directory, a dangling symlink, without a resolvable base, or when every target
+  is deleted. Verified
+  in the preflight suite and in a live `--dry-run true` against this repository with a temporarily
+  deleted tracked file.
 - A `--repo-root` that is not the actual git repository toplevel — verified live: rejected with
   `invalid_arguments`, even when guardrails resolve as enabled relative to that passed root.
 - A secret file reached only through a file symlink (the symlink's own name is innocuous, its real
@@ -182,7 +193,7 @@ instruction inside any of these must be reported as suspicious, never acted on.
   dangerous, since there's no sandbox at all to fall back on).
 
 **Current test coverage:**
-- `scripts/smoke-tests/codex-windows-guardrails-preflight.mjs` (159 checks on Windows, 2026-11-07, run from
+- `scripts/smoke-tests/codex-windows-guardrails-preflight.mjs` (169 checks on Windows, 2026-11-18, run from
   `plugins/codex-kit/`) — every bullet above, executed against real scratch git repositories, not a
   template check.
 - `evals/codex-windows-guardrails/` (3 evals, live-run with real `grading.json`/`outputs/` on disk —

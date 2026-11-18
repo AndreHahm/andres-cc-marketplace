@@ -16,15 +16,31 @@ Typed failure category: `platform_unsupported`.
 
 ## 1. Repository-Boundary
 
-Every `target-paths` entry (not the instruction file — see check 3) must first exist on disk, then
-resolve inside the repository root:
+Every `target-paths` entry (not the instruction file — see check 3) must resolve inside the
+repository root and exist on disk, except a file the reviewed change deletes:
 
-- Reject a target-paths entry that doesn't exist (`fs.existsSync`) before doing anything else with
-  it. A misspelled or already-deleted target must not silently reach dispatch — `walkFiles`'s own
-  ENOENT-is-safe-to-skip handling (needed elsewhere for a legitimately-absent scratch instruction
-  file) would otherwise let a nonexistent target sail through both this check and the secret scan,
-  reaching a real `danger-full-access` run with nothing inspectable: a zero-finding envelope that
-  looks like a clean audit of nothing.
+- Reject a target-paths entry that doesn't exist. A misspelled target must not silently reach
+  dispatch — `walkFiles`'s own ENOENT-is-safe-to-skip handling (needed elsewhere for a
+  legitimately-absent scratch instruction file) would otherwise let a nonexistent target sail
+  through, reaching a real `danger-full-access` run with nothing inspectable: a zero-finding envelope
+  that looks like a clean audit of nothing.
+- **Deleted files (issue #781).** Callers list the old side of every change on purpose
+  (`scripts/marketplace_ci/review.py`'s `_changed_path_set`), so a PR that deletes a file always has a
+  missing target; the sandboxed bridge already accepts one (issue #761). A missing entry is accepted
+  only when nothing at all is at the path (`lstat`; a dangling symlink is refused with
+  `target_path_not_found`, as the earlier `fs.existsSync` check did) and the trusted merge base
+  (`resolveTrustedBase`: `merge-base HEAD origin/<default>`, never caller input; it is only as
+  trusted as the local `origin`, see `cdx-lintignore-base.mjs`'s known limitations) holds a file (a
+  blob) at exactly that repository-relative path (`git cat-file -t <base>:<path>`, an exact tree
+  lookup with no glob or case folding). A misspelled, case-variant or branch-only path, a deleted
+  directory, and every missing path when no base resolves are still refused. A scope whose every
+  entry is deleted is refused too: there is nothing on disk to review. The verified paths are listed
+  in the prompt's `<deleted_target_paths>` block, which holds paths only; a trusted line after the
+  restated trust boundary says they are missing from the working tree and present at the base. The
+  check does not consult HEAD or the index, so a file removed locally without the change deleting it
+  is described the same way. `semanticallyValidate` already keeps a finding that cites one exactly.
+  The secret scan is unaffected: it walks the whole repository root on disk, so a deleted file is not
+  scanned, and Codex (unsandboxed) can read its earlier content from git history as it already could.
 - Canonicalize via `fs.realpathSync`, resolving symlinks/junctions for every existing path
   component. For a not-yet-existing leaf, walk up to the nearest existing ancestor, canonicalize
   *that* (so an intermediate junction is still caught), then re-join the non-existent remainder —
@@ -36,8 +52,9 @@ resolve inside the repository root:
   wrongly treat two genuinely distinct directories as the same one on a case-sensitive filesystem.
 - Reject if the canonicalized path does not start with the canonicalized repository root.
 
-Typed failure category: `target_path_not_found` for a missing entry, `repository_boundary_violation`
-for an existing entry outside the root. Detail: the specific entry that failed (the caller's own
+Typed failure category: `target_path_not_found` for a missing entry that is not a verified deletion
+(or an all-deleted scope), `repository_boundary_violation` for an entry outside the root (checked
+first, for every entry). Detail: the specific entry that failed (the caller's own
 original argument, not necessarily its canonicalized form — useful for the caller to recognize which
 of its own inputs was rejected).
 

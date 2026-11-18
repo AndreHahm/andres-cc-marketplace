@@ -1715,5 +1715,147 @@ console.log("\n=== Qodo review finding 1: opt-in strict mode (scan_ignored_high_
   check("strict explicitly OFF behaves like the default: the ignored .env is skipped", passedScan(f.run()), JSON.stringify(f.last));
 }
 
+// --- issue #781: a target the reviewed change deletes ------------------------
+// A pass-through run uses target.md as the instruction file, so it stops at
+// instruction_containment_violation (proof the boundary check passed) and
+// never reaches a real Codex exec. Every run expected to be REFUSED uses an
+// instruction file outside the targets plus --dry-run true, so a regression
+// that wrongly lets it through still never launches a danger-full-access run.
+console.log("\n=== issue #781: a target deleted since the trusted merge base is accepted ===");
+{
+  const deletedFixture = (markBase = true) => {
+    const f = makeFixture();
+    writeFixtureFile(f.root, "removed.md", "old content");
+    f.commit("init");
+    if (markBase) f.markBase();
+    git(["rm", "-q", "removed.md"], f.root);
+    f.commit("delete removed.md");
+    return f;
+  };
+  const refused = (root, targets) =>
+    runDispatchRaw(root, targets, instructionFile, "smoke-781", ["--dry-run", "true"]);
+
+  const f = deletedFixture();
+  const accepted = runDispatch(f.root, "target.md,removed.md", path.join(f.root, "target.md"));
+  check(
+    "a committed deletion listed exactly as a target passes the boundary check (stops at the next gate)",
+    accepted.ok === false && accepted.category === "instruction_containment_violation",
+    JSON.stringify(accepted)
+  );
+
+  const misspelled = refused(f.root, "target.md,removd.md");
+  check(
+    "a misspelled missing target (no file at the base) is still refused with target_path_not_found",
+    misspelled.ok === false && misspelled.category === "target_path_not_found" && /removd\.md/.test(misspelled.detail),
+    JSON.stringify(misspelled)
+  );
+
+  const wrongCase = refused(f.root, "target.md,Removed.md");
+  check(
+    "a case-variant spelling of the deleted file is refused (the base lookup is exact, never case-folded)",
+    wrongCase.ok === false && wrongCase.category === "target_path_not_found",
+    JSON.stringify(wrongCase)
+  );
+
+  const allDeleted = refused(f.root, "removed.md");
+  check(
+    "a scope where every target is deleted is refused (nothing on disk to review)",
+    allDeleted.ok === false && allDeleted.category === "target_path_not_found" && /every target path is deleted/.test(allDeleted.detail),
+    JSON.stringify(allDeleted)
+  );
+
+  // The tag only adds prompt text; compare a dry run with and without the deleted target.
+  const withDeleted = runDispatchRaw(f.root, "target.md,removed.md", instructionFile, "smoke-781", ["--dry-run", "true"]);
+  const withoutDeleted = runDispatchRaw(f.root, "target.md", instructionFile, "smoke-781", ["--dry-run", "true"]);
+  if (withDeleted.category === "cli_unavailable" || withoutDeleted.category === "cli_unavailable") {
+    skipScenario("the prompt names the deleted target in <deleted_target_paths>", "codex CLI not on PATH, so no dry-run prompt is built");
+  } else {
+    const delta =
+      withDeleted.dryRun && withoutDeleted.dryRun ? withDeleted.wouldRun.promptLength - withoutDeleted.wouldRun.promptLength : -1;
+    check(
+      "the prompt grows by the <deleted_target_paths> note, not just the extra target entry",
+      delta > ",removed.md".length + 100,
+      JSON.stringify({ withDeleted, withoutDeleted }).slice(0, 400)
+    );
+  }
+
+  const uncommitted = makeFixture();
+  writeFixtureFile(uncommitted.root, "removed.md", "old content");
+  uncommitted.commit("init");
+  uncommitted.markBase();
+  fs.rmSync(path.join(uncommitted.root, "removed.md"));
+  const uncommittedRun = runDispatch(uncommitted.root, "target.md,removed.md", path.join(uncommitted.root, "target.md"));
+  check(
+    "an uncommitted working-tree deletion of a base file is accepted the same way",
+    uncommittedRun.ok === false && uncommittedRun.category === "instruction_containment_violation",
+    JSON.stringify(uncommittedRun)
+  );
+}
+
+console.log("\n=== issue #781: a missing target is still refused when the base cannot vouch for it ===");
+{
+  const noBase = makeFixture();
+  writeFixtureFile(noBase.root, "removed.md", "old content");
+  noBase.commit("init");
+  git(["rm", "-q", "removed.md"], noBase.root);
+  noBase.commit("delete removed.md");
+  const noBaseRun = runDispatchRaw(noBase.root, "target.md,removed.md", instructionFile, "smoke-781", ["--dry-run", "true"]);
+  check(
+    "without an origin base ref, a deleted target is refused (fails closed)",
+    noBaseRun.ok === false && noBaseRun.category === "target_path_not_found",
+    JSON.stringify(noBaseRun)
+  );
+
+  const branchOnly = makeFixture();
+  branchOnly.commit("init");
+  branchOnly.markBase();
+  writeFixtureFile(branchOnly.root, "added-then-removed.md", "branch-only");
+  branchOnly.commit("add on the branch");
+  git(["rm", "-q", "added-then-removed.md"], branchOnly.root);
+  branchOnly.commit("remove again");
+  const branchOnlyRun = runDispatchRaw(branchOnly.root, "target.md,added-then-removed.md", instructionFile, "smoke-781", ["--dry-run", "true"]);
+  check(
+    "a path that existed only on the branch, never at the base, is refused",
+    branchOnlyRun.ok === false && branchOnlyRun.category === "target_path_not_found",
+    JSON.stringify(branchOnlyRun)
+  );
+
+  const dirAtBase = makeFixture();
+  writeFixtureFile(path.join(dirAtBase.root, "olddir"), "a.md", "x");
+  dirAtBase.commit("init");
+  dirAtBase.markBase();
+  git(["rm", "-q", "-r", "olddir"], dirAtBase.root);
+  dirAtBase.commit("delete olddir");
+  const dirRun = runDispatchRaw(dirAtBase.root, "target.md,olddir", instructionFile, "smoke-781", ["--dry-run", "true"]);
+  check(
+    "a deleted DIRECTORY target is refused (only a file at the base qualifies)",
+    dirRun.ok === false && dirRun.category === "target_path_not_found",
+    JSON.stringify(dirRun)
+  );
+
+  // Security review M1: a dangling symlink at a base file's path is neither a
+  // deletion nor readable content, and must stay refused.
+  const dangling = makeFixture();
+  writeFixtureFile(dangling.root, "removed.md", "old content");
+  dangling.commit("init");
+  dangling.markBase();
+  fs.rmSync(path.join(dangling.root, "removed.md"));
+  let linked = false;
+  try {
+    fs.symlinkSync(path.join(dangling.root, "missing-target.md"), path.join(dangling.root, "removed.md"), "file");
+    linked = true;
+  } catch (e) {
+    skipScenario("a dangling symlink target is refused", `cannot create a file symlink in this environment (${e.code || e.message}); requires elevated privilege or Developer Mode on Windows`);
+  }
+  if (linked) {
+    const danglingRun = runDispatchRaw(dangling.root, "target.md,removed.md", instructionFile, "smoke-781", ["--dry-run", "true"]);
+    check(
+      "a dangling symlink at a base file's path is refused with target_path_not_found, not accepted as a deletion",
+      danglingRun.ok === false && danglingRun.category === "target_path_not_found" && /symlink/.test(danglingRun.detail),
+      JSON.stringify(danglingRun)
+    );
+  }
+}
+
 console.log(`\n=== Results: ${pass} passed, ${fail} failed, ${skip} skipped ===`);
 process.exit(fail > 0 ? 1 : 0);
