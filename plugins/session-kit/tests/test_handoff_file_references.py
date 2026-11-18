@@ -96,7 +96,7 @@ def test_resolve_reference_in_repo(repo: Path, ref: str, expected: str) -> None:
 
 def test_line_number_suffix_resolves(repo: Path) -> None:  # (g)
     content = "See `deep_file.py:123`."
-    existing, missing, _ = validate_handoff.check_file_references(content, str(repo))
+    existing, missing = validate_handoff.check_file_references(content, str(repo))
     assert existing == ["deep_file.py"]
     assert missing == []
 
@@ -112,7 +112,10 @@ def test_not_a_git_repo(tmp_path: Path) -> None:  # (j)
     root.mkdir()
     if validate_handoff.list_repo_files(str(root)) is not None:
         pytest.skip("tmp_path is inside a git repository on this machine")
-    assert validate_handoff.resolve_reference("deep_file.py", str(root), None) == "unverifiable"
+    # Without a repo file list a bare name can only be tried at the root, so a miss is a miss.
+    (root / "here.md").write_text("x")
+    assert validate_handoff.resolve_reference("here.md", str(root), None) == "verified"
+    assert validate_handoff.resolve_reference("deep_file.py", str(root), None) == "missing"
     assert validate_handoff.resolve_reference("plugins/x/nope.py", str(root), None) == "missing"
 
 

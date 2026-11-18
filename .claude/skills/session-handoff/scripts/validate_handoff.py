@@ -154,13 +154,13 @@ def list_repo_files(base_path: str) -> list[str] | None:
 def resolve_reference(
     ref: str, base_path: str, repo_files: list[str] | None, extra_dirs: tuple[str, ...] = ()
 ) -> str:
-    """Classify one file reference as "verified", "missing" or "unverifiable".
+    """Classify one file reference as "verified" or "missing".
 
     A reference is tried as written (relative to base_path, then to each of extra_dirs), then
     matched against the repo's file list: a bare name matches any file with that name, and a
     partial path matches the end of a path on a "/" boundary (so "rulebook/SKILL.md" never
-    matches "plugin-rulebook/SKILL.md"). Outside a git repo a bare name can't be searched for
-    and is "unverifiable"; a path with "/" that doesn't exist is still "missing".
+    matches "plugin-rulebook/SKILL.md"). Outside a git repo there is no list, so a reference
+    not found as written is "missing".
     """
     ref = ref.removeprefix("./")
     # A leading "/" is filtered by the caller; a "../" segment must not walk outside base_path,
@@ -177,7 +177,7 @@ def resolve_reference(
         if candidate.exists():
             return "verified"
     if repo_files is None:
-        return "missing" if "/" in ref else "unverifiable"
+        return "missing"
     # The list includes index entries, so a tracked file deleted but not yet staged is still in
     # it: a match counts only if that file exists on disk now.
     suffix = "/" + ref
@@ -189,8 +189,8 @@ def resolve_reference(
 
 def check_file_references(
     content: str, base_path: str, extra_dirs: tuple[str, ...] = ()
-) -> tuple[list[str], list[str], list[str]]:
-    """Check if referenced files exist. Returns (existing, missing, unverifiable)."""
+) -> tuple[list[str], list[str]]:
+    """Check if referenced files exist. Returns (existing, missing)."""
     # Extract file paths from content (look for common patterns)
     # Pattern 1: | path/to/file | in tables
     # Pattern 2: `path/to/file` in code
@@ -222,19 +222,15 @@ def check_file_references(
 
     existing = []
     missing = []
-    unverifiable = []
     repo_files = list_repo_files(base_path) if found_files else None
 
     for filepath in sorted(found_files):
-        status = resolve_reference(filepath, base_path, repo_files, extra_dirs)
-        if status == "verified":
+        if resolve_reference(filepath, base_path, repo_files, extra_dirs) == "verified":
             existing.append(filepath)
-        elif status == "missing":
-            missing.append(filepath)
         else:
-            unverifiable.append(filepath)
+            missing.append(filepath)
 
-    return existing, missing, unverifiable
+    return existing, missing
 
 
 def calculate_quality_score(
@@ -310,7 +306,7 @@ def validate_handoff(filepath: str) -> dict:
     secrets_found = scan_for_secrets(content)
     # The handoff's own directory is also tried, so a bare reference to a sibling handoff
     # (gitignored, so absent from the repo file list) resolves.
-    existing_files, missing_files, unverifiable_files = check_file_references(
+    existing_files, missing_files = check_file_references(
         content, str(base_path), extra_dirs=(str(path.parent),)
     )
 
@@ -337,7 +333,6 @@ def validate_handoff(filepath: str) -> dict:
         "secrets_found": secrets_found,
         "files_verified": len(existing_files),
         "files_missing": missing_files[:5],  # Limit output
-        "files_unverifiable": unverifiable_files[:5],
     }
 
 
@@ -385,13 +380,6 @@ def print_report(result: dict):
             print(f"       - {f}")
     else:
         print(f"\n[INFO] {result['files_verified']} file reference(s) verified")
-    if result.get("files_unverifiable"):
-        print(
-            f"\n[INFO] {len(result['files_unverifiable'])} bare file name(s) not checked "
-            "(not a git repository):"
-        )
-        for f in result["files_unverifiable"]:
-            print(f"       - {f}")
 
     # Recommended sections
     if result["missing_recommended"]:
