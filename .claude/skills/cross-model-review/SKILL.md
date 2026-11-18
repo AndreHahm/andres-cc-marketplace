@@ -29,11 +29,11 @@ via a raw `codex exec`.
 **This skill has no `Write` grant** (it cannot be limited to a path). Every file the model authors goes
 through `scripts/git-review-write-run-file.sh` (`references/codex-pass-assembly.md`, "Writing a run
 file") into `$RUN`, this skill's scratch dir; Preflight's `git` redirects write fixed names there. Never write to any path inside
-the repository itself, and never to `.claude/codex-windows-guardrails.local.json` in particular —
-this skill never enables that override on the user's behalf (see "Deliberately NOT done"). The one
-deliberate exception is `git add -N` (Inputs section, below) — and even that never touches the
-repository's real index: it runs against a throwaway `GIT_INDEX_FILE`, so no state from this skill's
-run persists anywhere the user's own later `git add`/`git commit` could see it.
+the repository itself, and never to `.claude/codex-windows-guardrails.local.json` in particular — this skill never
+enables that override on the user's behalf (see "Deliberately NOT done"). The one deliberate exception is `git add -N`
+(Inputs section, below) — and even that never touches the repository's real index: it runs against a throwaway
+`GIT_INDEX_FILE`, so no state from this skill's run persists anywhere the user's own later `git add`/`git commit` could
+see it. After `EnterWorktree`, an isolation-check refusal allows `Write` to the session scratchpad only (`references/codex-pass-assembly.md`).
 
 ## Quick Start
 
@@ -137,14 +137,13 @@ same `$MERGE_BASE`, never `$BASE...HEAD` — and all run *after* `git add -N`, s
 ## Preflight
 
 **Bash tool calls do not share shell state — only the working directory persists between them.** Run
-steps 1-6 below as a single chained Bash invocation (`&&` between them, one tool call), ending with
-an `echo` of the resolved `BASE`, `REPO_ROOT`, `RUN`, `DIFF_STR`,
-`DISPATCHER_TOUCHED`, `PLANNER_TOUCHED`, `PLAN_FAILED`, `DIFF_STATUS`, the manifest path,
-`TARGET_PATHS`, `UNTRACKED_FILES`, `INDEX_COPY_FAILED`, `INTENT_ADD_REFUSED`, and whether
-`$RUN/review.md`/`$RUN/refute.md` came out non-empty (step 5's fallback runs as a separate write-helper
-call afterward). From that point on, every `$VAR` reference here is shorthand for that
-literal, already-resolved value — substitute the concrete string into every later `Bash`/`Read`
-call; a separate tool call re-expanding `$RUN`/`$BASE` as a live variable won't see it.
+steps 1-6 below as a single chained Bash invocation (`&&` between them, one tool call), ending with an `echo` of the
+resolved `BASE`, `REPO_ROOT`, `RUN`, `DIFF_STR`, `DISPATCHER_TOUCHED`, `PLANNER_TOUCHED`, `PLAN_FAILED`, `DIFF_STATUS`, the manifest path,
+`TARGET_PATHS`, `UNTRACKED_FILES`, `INDEX_COPY_FAILED`, `INTENT_ADD_REFUSED`, and whether `$RUN/review.md`/`$RUN/refute.md`
+came out non-empty (step 5's fallback runs as a separate write-helper call afterward). From that point on, every `$VAR` reference here is shorthand for that literal, already-resolved
+value — substitute the concrete string into every later `Bash`/`Read` call; a separate tool call re-expanding
+`$RUN`/`$BASE` as a live variable won't see it. After `EnterWorktree` the chained call is refused; run it as a
+scratchpad script instead (`references/codex-pass-assembly.md`, "In an EnterWorktree session").
 
 1. **Plan the scope and check the diff exists.** In this same chained call, run the review scope planner
    and send the diff to a file so its text stays out of context (details: `references/scoped-review.md`
@@ -433,21 +432,22 @@ End by asking which findings, if any, to fix. **Do not edit code until the user 
 Convergence between the models is not correctness — the job here is to surface a ranked,
 cross-examined list, not to declare the diff clean.
 
-`$RUN` is not deleted after this — both models' findings JSON, which may quote diff content, persist
-under the OS temp directory until cleaned up. This skill has no scoped delete capability; say so rather
-than implying cleanup, and treat the envelopes as needing review before they are shared. The same goes
-for `$RUN/full.diff` (a full copy of the diff, including uncommitted content), the manifests, the
-`diffs-*` folders and the instruction files. The throwaway `$GIT_INDEX_FILE` is likewise left in place; `umask 077` (Inputs section) keeps it user-readable-only.
+`$RUN` is not deleted after this — both models' findings JSON, which may quote diff content, persist under the OS temp
+directory until cleaned up. This skill has no scoped delete capability; say so rather than implying cleanup, and treat
+the envelopes as needing review before they are shared. The same goes for `$RUN/full.diff` (a full copy of the diff, including uncommitted content), the manifests, the
+`diffs-*` folders and the instruction files, and, after `EnterWorktree`, the scratchpad's `preflight.sh` and stdin files. The throwaway `$GIT_INDEX_FILE` is likewise left in place; `umask 077` (Inputs section) keeps it user-readable-only.
 
 ## Boundaries
 
-Deliberately not in `allowed-tools`, so each prompts: `git diff` and `git show` (both accept
-`--output=<file>`, a write to any path), the `export GIT_INDEX_FILE` / `export CODEX_KIT_REVIEW_*` lines
-(a grant cannot pin the value they set) and the `guarded-dispatch.mjs` fallback (a grant would
-pre-approve a full-access dispatch). `git add -N` runs only through `scripts/git-review-intent-add.sh`.
-These prompt unless your own settings or permission mode already allow them. For `git diff` and `git show`
-the reason is a shared prefix: any prefix rule for them also admits `--output`. Approve each run once and
-do not add a persistent allow rule for them.
+Deliberately not in `allowed-tools`, so each prompts: `git diff` and `git show` (both accept `--output=<file>`, a write
+to any path), the `export GIT_INDEX_FILE` / `export CODEX_KIT_REVIEW_*` lines (a grant cannot pin the value they set),
+the `guarded-dispatch.mjs` fallback (a grant would pre-approve a full-access dispatch), and, after `EnterWorktree` only,
+`Write` and `bash <scratchpad>/preflight.sh` (`Write` cannot be limited to a path; the script path varies, so its grant
+would be `Bash(bash:*)`, which also admits `bash -c` and any script; one approval covers every command in the script,
+and the scratchpad `Write` may not prompt at all). `git add -N` runs only through `scripts/git-review-intent-add.sh`.
+These prompt unless your own settings or permission mode already allow them. For `git diff`, `git show` and `bash` the
+reason is a shared prefix: any prefix rule for them also admits `--output` or `-c`. Approve each run once and do not
+add a persistent allow rule for them; approve `Write` for the single call only, never for the session.
 
 ## Deliberately NOT done
 
@@ -479,7 +479,7 @@ See `references/deliberately-not-done.md` (extracted per plugin-rulebook's R13 l
 - "get a codex second opinion on this design" → `codex-peer-review`; "verify plan.md" → `codex-verify`
 
 **Concrete scenarios to check, and quality gates:** see
-`references/testing-scenarios.md` (extracted per R13): 37 numbered scenarios and the quality-gate
+`references/testing-scenarios.md` (extracted per R13): 38 numbered scenarios and the quality-gate
 checklist, covering single-model mode, `$MERGE_BASE` containment, dispatcher trust, reviewer identity,
 closing-tag neutralization, partial-failure preservation, scoped review and more.
 `scripts/preflight_fixtures_test.py` runs the Preflight chain, planner step included, against scratch

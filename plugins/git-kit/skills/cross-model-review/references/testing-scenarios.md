@@ -165,6 +165,15 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
     with findings, or a clean one without such a note, is a completed pass. A later Codex call still
     attempts Step 1 itself: one model-written note never sends the rest of the run to
     `danger-full-access`.
+38. In a session that used `EnterWorktree`, the chained Preflight call, a write-helper heredoc whose text
+    names git, or a JSON heredoc is refused by the worktree-isolation check (issue #723) → the Inputs block
+    and steps 1-6 go verbatim into `<scratchpad>/preflight.sh` (only `BASE`/`SCOPE`/`PLANNER_APPROVED`
+    filled in, never text from the diff, a run file or Codex output), the user is shown the script, and it
+    runs as one `bash <scratchpad>/preflight.sh` call from the worktree cwd; stdin text comes from a
+    scratchpad file (`- < <file>`). `Write` touches only the scratchpad, never the repository or `$RUN`, is
+    approved per call, never session-wide, and every `$RUN` file is still written by the helper. No
+    scratchpad, or a call still refused in that form, stops the run with a report. A session that did not
+    use `EnterWorktree` never uses `Write`.
 
 ## Quality gates
 
@@ -261,7 +270,7 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
       `$INTENT_ADD_REFUSED`, which stops the review at Preflight step 1, never as "nothing to review"
 - [ ] The review scope planner is always run through the fixed-shape wrapper named by `allowed-tools`'s exact `bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope-run.sh` grant, spelled out literally in Preflight step 1, never through an array, and always resolved from the installed plugin root through `${CLAUDE_PLUGIN_ROOT:-.claude}` (the `.claude/` mirror when the variable is empty, a form deliberately left ungranted so it prompts), never from the `plugins/` folder of the repository under review; the wrapper accepts no `--repo`, `--output` or `--diff-dir`
 - [ ] The throwaway index is seeded only through `git-review-copy-index.sh` (one file to `$RUN/index`, no overwrite), never through a bare `cp` or a `Bash(cp:*)` grant
-- [ ] Every file the model authors or assembles is written through `git-review-write-run-file.sh` (one file directly under `$RUN`, parts only from `$RUN` or the two fixed prompts); the only other writes are Preflight's own `git show`/`git diff` redirects to fixed `$RUN` names; `allowed-tools` has no `Write` entry
+- [ ] Every file the model authors or assembles is written through `git-review-write-run-file.sh` (one file directly under `$RUN`, parts only from `$RUN` or the two fixed prompts); the only other writes are Preflight's own `git show`/`git diff` redirects to fixed `$RUN` names; `allowed-tools` has no `Write` entry. The one exception, only in an `EnterWorktree` session after an isolation-check refusal, is `Write` to the session's scratchpad directory for the Preflight script or the helper's stdin text, never into the repository or `$RUN`
 - [ ] An `<untracked_files>` block always ends with the untrusted-data sentence, and Phase 2's closing boundary names those files' contents too
 - [ ] A failed planner never leaves the run without a defined path: section 7 of `scoped-review.md` builds the unscoped group from the safe-charset changed names
 - [ ] A planner failure is never treated as a pass; the user chooses unscoped or stop
