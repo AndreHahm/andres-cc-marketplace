@@ -301,7 +301,11 @@ def check_rules(body: str) -> None:
 
 
 def check_sonar(body: str) -> None:
-    section = body.split("## Sonar mechanisms", 1)[1].split("## Real or false positive", 1)[0]
+    section = (SKILL_DIR / "references" / "sonar-mechanisms.md").read_text(encoding="utf-8")
+    check(
+        "SKILL.md sends a sonar record to its mechanisms reference",
+        "read `references/sonar-mechanisms.md` before step 1" in " ".join(body.split()),
+    )
     check(
         "a provider switch keeps one provider per run",
         "**One provider per run.**" in body and "never edits `.codacy.yml`" in body,

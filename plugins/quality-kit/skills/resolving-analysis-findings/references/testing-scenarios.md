@@ -35,6 +35,11 @@ cross-model review switched the read-only resolve to the long `--issue` flag, ev
 only (iteration 12, eval 9's resolve assertion tightened to require `--issue`): 10 of 10, and neither answer used
 `-i` or `-I`.
 
+**Smoke-test records moved here from SKILL.md (2026-11-18):** 2026-11-17: `scripts/smoke_test.py` passed after
+the Codacy id fix (issue #760). 2026-11-09: it passed after the Sonar re-collect, Verify and `issue-state` wrapper
+changes; no eval was re-run for them. 2026-11-18: it passed after the "Sonar mechanisms" section moved to
+`references/sonar-mechanisms.md` (text moved, not changed) and the local-scan section was shortened to its gates.
+
 **Last dated run record:** 2026-11-07: `scripts/smoke_test.py` passed inside the marketplace repository with
 `read_pr_head.py` run against a fake `gh` and once live, and `security-reviewer` and `scripts-reviewer` ran on the
 script. Earlier, 2026-10-17: `scripts/smoke_test.py` 38 of 38 checks passed inside the marketplace

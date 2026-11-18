@@ -8,8 +8,9 @@ Verified 2026-10-17 against `codacy pull-request --help`: the flags `--ignore-is
 reason FalsePositive"), `--reanalyze` and `--reanalyze-and-wait` exist as described below. Per issue #760
 (2026-11-17, PR #759), seven `--ignore-issue` runs with the numeric `resultDataId` succeeded, and the hex `issueId`
 failed: one starting with a letter is refused (`--ignore-issue must be a number`), one starting with digits is read
-by that prefix as another issue number. Not verified: `--unignore-issue` runs, and whether an ignore can target a
-repository-list finding.
+by that prefix as another issue number. A live `--reanalyze` on merged PR #763 succeeded on 2026-11-18 (Cloud CLI
+1.14.1, exit 0, "Reanalysis requested successfully"). Not verified: `--reanalyze-and-wait` and `--unignore-issue`
+runs, and whether an ignore can target a repository-list finding.
 
 ## Command
 
