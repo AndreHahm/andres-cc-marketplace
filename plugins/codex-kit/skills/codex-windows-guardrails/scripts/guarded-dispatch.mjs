@@ -186,6 +186,25 @@ function diskState(absolutePath) {
   }
 }
 
+// Cross-model review F1: lstat on a path under a dangling directory symlink
+// reports ENOENT, so diskState alone calls it "absent". Walk the ancestors
+// between the target and the repository root and return the first one that
+// is a dangling symlink, so the caller refuses that target like a dangling
+// leaf; null when there is none. It walks the canonicalized entry (the nearest
+// existing ancestor resolved, the missing remainder re-joined) and stops by
+// containment, not string length, so a caller spelling such as an 8.3 short
+// name cannot shorten or skip the walk (security review m1).
+function danglingAncestor(canonicalEntry, canonicalRoot) {
+  let dir = path.dirname(canonicalEntry);
+  while (isInsideRoot(dir, canonicalRoot) && !canonicalPathsEqual(dir, canonicalRoot)) {
+    if (diskState(dir) === "dangling") return dir;
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return null;
+}
+
 // Issue #781: returns the repository-relative POSIX path when the trusted
 // merge base holds a file (a blob) at exactly that path, else null. `base`
 // comes from resolveTrustedBase (merge-base of HEAD with origin's default
@@ -249,6 +268,9 @@ function checkRepositoryBoundary(targetPaths, repoRoot) {
       return { failure: typedFailure("target_path_not_found", `target path is a symlink whose target does not exist: ${entry}`) };
     }
     if (state === "absent") {
+      if (danglingAncestor(canonicalEntry, canonicalRoot) !== null) {
+        return { failure: typedFailure("target_path_not_found", `target path is under a symlink whose target does not exist: ${entry}`) };
+      }
       if (base === undefined) base = resolveTrustedBase(canonicalRoot);
       const basePath = fileAtBase(canonicalRoot, base, canonicalEntry);
       if (basePath === null) {

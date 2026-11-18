@@ -27,8 +27,9 @@ repository root and exist on disk, except a file the reviewed change deletes:
 - **Deleted files (issue #781).** Callers list the old side of every change on purpose
   (`scripts/marketplace_ci/review.py`'s `_changed_path_set`), so a PR that deletes a file always has a
   missing target; the sandboxed bridge already accepts one (issue #761). A missing entry is accepted
-  only when nothing at all is at the path (`lstat`; a dangling symlink is refused with
-  `target_path_not_found`, as the earlier `fs.existsSync` check did) and the trusted merge base
+  only when nothing at all is at the path (`lstat`; a dangling symlink at the path, or at any
+  directory between the repository root and the path, is refused with `target_path_not_found`, as
+  the earlier `fs.existsSync` check did) and the trusted merge base
   (`resolveTrustedBase`: `merge-base HEAD origin/<default>`, never caller input; it is only as
   trusted as the local `origin`, see `cdx-lintignore-base.mjs`'s known limitations) holds a file (a
   blob) at exactly that repository-relative path (`git cat-file -t <base>:<path>`, an exact tree
