@@ -1,0 +1,31 @@
+{
+  "eval_id": 24,
+  "skill_path": "plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md",
+  "assertions": [
+    {
+      "text": "6.1 sees the head differs from the SHA step 3 assessed, re-fetches the base and head lockfiles and re-runs `assess --head-lock` before 6.4 instead of reusing step 3's false signal",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Reads adds_vulnerable_package null for the new head and names why (one unparsed entry), never calling the added packages clean",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "6.4: with one Dependency review row pass and one pending, the worst row decides: names the pending row and asks wait/skip",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "After both rows pass, does not treat the pass as covering the unparsed entry: says the check is matched by name and runs from the PR head's workflow files, and asks go on / skip via AskUserQuestion",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "No raw gh call and no GitHub write without approval",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    }
+  ]
+}

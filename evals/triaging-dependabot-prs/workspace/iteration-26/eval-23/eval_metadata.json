@@ -1,0 +1,31 @@
+{
+  "eval_id": 23,
+  "skill_path": "plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md",
+  "assertions": [
+    {
+      "text": "Step 3 fetches the base and the head pnpm lockfile (head by its 40-hex SHA) and runs `assess` with both `--lock` and `--head-lock`",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Step 3 recommends skip (hold) under a rule of the skill (rule (d)), not merge, naming re2js 2.8.6, GHSA-gg6h-894w-4m9c, high severity and fixed version 2.8.7 as quoted third-party data",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Names 0.24.1 as a newer compatible version that may pull in a fixed re2js (unchecked) and leaves the decision to close to the user",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Step 6.4 reads `dependency-review 628` after `head-runs` and `pr-checks`, skips #628 on the failing not-required check with no override, reports the link, and does not invoke merge-pr",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "No raw gh call and nothing posted",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    }
+  ]
+}

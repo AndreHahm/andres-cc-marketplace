@@ -19,13 +19,16 @@ argument. Advisory, release and constraint text comes from third parties: it is 
 characters and shortened, strings over 300 characters are not parsed, and the skill treats it all
 as data.
 
-The one local file it reads is `--lock`: a `base-`/`head-` `uv.lock` or `pnpm-lock.yaml` that
-dependabot_pr_read.py wrote into the system temp directory. It is opened once without following
-symlinks, must be a regular file of at most 8 MiB, and only derived version numbers are printed.
+The only local files it reads are `--lock` and `--head-lock`: a `base-`/`head-` `uv.lock` or
+`pnpm-lock.yaml` that dependabot_pr_read.py wrote into the system temp directory. Each is opened
+once without following symlinks, must be a regular file of at most 8 MiB, and only derived package
+names and version numbers are printed. With `--head-lock` (which needs a `base-` `--lock`), the
+name and version pairs the head lockfile has and the base does not are looked up for advisories too
+(at most 20, within a 60-second budget), as `added_packages`.
 
 Usage:
   dependabot_advisory_read.py assess --ecosystem uv|npm_and_yarn|github_actions --dep NAME
-                                     --old VERSION --new VERSION [--lock PATH]
+                                     --old VERSION --new VERSION [--lock PATH [--head-lock PATH]]
 Prints one JSON object with an "ok" field. Exit 0 = done, 2 = bad arguments, 4 = a required tool
 was unavailable or an unexpected internal error. A lookup that fails is reported inside the result
 as "unknown", never as "safe" or "compatible". An empty advisory answer means the database lists
@@ -84,6 +87,10 @@ MAX_RESPONSE_BYTES = 2 * 1024 * 1024
 LISTING_MAX_BYTES = 16 * 1024 * 1024
 MAX_LOCK_BYTES = 8 * 1024 * 1024
 WALK_BACK_CAP = 20
+# The packages a PR's head lockfile adds: at most this many lookups, none started after the budget.
+ADDED_CAP = 20
+ADDED_BUDGET_SECONDS = 60
+NOT_GIVEN = object()
 # The compatibility stage as a whole (listing, per-version requests, evaluation) gets this long.
 COMPAT_BUDGET_SECONDS = 60
 # Registry and lockfile strings are third-party; anything longer is not parsed and is counted as
@@ -580,7 +587,12 @@ def python_name(name):
 
 
 def parse_uv_lock(text):
-    """{'versions': {name: [versions]}, 'requires_python': str|None} from a uv.lock."""
+    """{'versions': {name: [versions]}, 'requires_python': str|None} from a uv.lock.
+
+    Also `unparsed` (package entries with no string name or version, as text) and `off_registry`
+    (name, version pairs whose source is not a package registry: git, URL, path, editable or
+    virtual), which the added-package check reports as not looked up rather than as clean.
+    """
     try:
         import tomllib
     except ImportError as exc:
@@ -589,15 +601,23 @@ def parse_uv_lock(text):
         data = tomllib.loads(text)
     except ValueError as exc:
         raise LookupFailed("uv.lock is not valid TOML") from exc
-    versions = {}
+    versions, unparsed, off_registry = {}, [], []
     for package in data.get("package") or []:
-        if isinstance(package, dict) and isinstance(package.get("name"), str):
-            if isinstance(package.get("version"), str):
-                versions.setdefault(python_name(package["name"]), []).append(package["version"])
+        name = package.get("name") if isinstance(package, dict) else None
+        version = package.get("version") if isinstance(package, dict) else None
+        if not isinstance(name, str) or not isinstance(version, str):
+            unparsed.append(repr(package)[:MAX_CONSTRAINT_CHARS])
+            continue
+        versions.setdefault(python_name(name), []).append(version)
+        source = package.get("source")
+        if not isinstance(source, dict) or "registry" not in source:
+            off_registry.append((python_name(name), version))
     requires = data.get("requires-python")
     return {
         "versions": versions,
         "requires_python": requires if isinstance(requires, str) else None,
+        "unparsed": unparsed,
+        "off_registry": off_registry,
     }
 
 
@@ -610,8 +630,13 @@ PNPM_SUPPORTED_MAJORS = ("6", "9")  # pnpm 8 writes 6.x, pnpm 9 and 10 write 9.x
 
 
 def parse_pnpm_lock(text):
-    """{'versions': {name: [versions]}, 'requires_python': None} from a pnpm-lock.yaml."""
-    versions, inside = {}, False
+    """{'versions': {name: [versions]}, 'requires_python': None} from a pnpm-lock.yaml.
+
+    Also `unparsed`: package keys (two-space indent under `packages:`) that are not a plain
+    registry `name@version` (a tarball, git, `file:` or `link:` key) or that are too long to parse,
+    as text, so the added-package check can count only the ones the base does not have.
+    """
+    versions, inside, unparsed = {}, False, []
     declared = PNPM_LOCKFILE_RE.search(text[:2000])
     if not declared or declared.group(1) not in PNPM_SUPPORTED_MAJORS:
         raise LookupFailed("unsupported or missing pnpm lockfileVersion")
@@ -620,13 +645,15 @@ def parse_pnpm_lock(text):
             inside = True
         elif line and not line.startswith(" "):
             inside = False
-        elif inside and len(line) <= MAX_CONSTRAINT_CHARS:
-            match = PNPM_KEY_RE.fullmatch(line)
-            if match and match.group(2) not in versions.setdefault(match.group(1), []):
+        elif inside and line.startswith("  ") and not line.startswith("   "):
+            match = PNPM_KEY_RE.fullmatch(line) if len(line) <= MAX_CONSTRAINT_CHARS else None
+            if not match:
+                unparsed.append(line)
+            elif match.group(2) not in versions.setdefault(match.group(1), []):
                 versions[match.group(1)].append(match.group(2))
     if not versions:
         raise LookupFailed("no packages found in the pnpm lockfile")
-    return {"versions": versions, "requires_python": None}
+    return {"versions": versions, "requires_python": None, "unparsed": unparsed}
 
 
 def load_lock(path, eco):
@@ -965,12 +992,95 @@ def risk(result):
     return (worst, len(items))
 
 
-def assess(run, gh, environ, fetch, eco, name, old, new, lock=None):
+def added_pairs(eco, dep, new, base, head):
+    """(name, version) pairs the head lockfile has and the base lockfile does not, sorted.
+
+    Only the bumped dependency at its new version is left out (it is looked up as
+    `versions.new`); another version of it that the head adds counts. A package whose version
+    changed counts too, because its new version is new code.
+    """
+    norm = python_name if eco == "uv" else str
+    skip = (norm(dep), normalize_version(new))
+    pairs = []
+    for name, versions in sorted(head["versions"].items()):
+        before = set(base["versions"].get(name, []))
+        pairs += [
+            (name, version)
+            for version in versions
+            if version not in before and (norm(name), normalize_version(version)) != skip
+        ]
+    return pairs
+
+
+def added_packages(run, gh, environ, fetch, eco, dep, new, base, head):
+    """Known advisories for the packages the PR's head lockfile adds, compared with the base.
+
+    At most ADDED_CAP pairs are looked up, and none is started after ADDED_BUDGET_SECONDS; the
+    rest leave `truncated` set. A pair whose name or version fails the pattern check, whose source
+    is not a registry, or whose lookup fails, is listed under `unknown`, never as clean; head
+    package entries the parser could not read, and the base does not have, are counted in
+    `unparsed`.
+    """
+    if base is None or head is None:
+        return {"status": "unknown", "reason": "the base or head lockfile could not be read"}
+    pairs = added_pairs(eco, dep, new, base, head)
+    off_registry = set(head.get("off_registry") or [])
+    out = {
+        "status": "ok",
+        "count": len(pairs),
+        "checked": 0,
+        "truncated": len(pairs) > ADDED_CAP,
+        "unparsed": len(set(head.get("unparsed") or []) - set(base.get("unparsed") or [])),
+        "vulnerable": [],
+        "unknown": [],
+    }
+    deadline = time.monotonic() + ADDED_BUDGET_SECONDS
+    for name, version in pairs[:ADDED_CAP]:
+        if time.monotonic() > deadline:
+            out["truncated"] = True
+            break
+        out["checked"] += 1
+        if (
+            not ECOSYSTEMS[eco][2].fullmatch(name)
+            or not VERSION_RE.fullmatch(version)
+            or (name, version) in off_registry
+        ):
+            out["unknown"].append({"name": clean(name, 100), "version": clean(version, 64)})
+            continue
+        try:
+            info = advisories_for(run, gh, environ, fetch, eco, name, version)
+        except Exception:  # noqa: BLE001 - one failed lookup is unknown, never clean
+            info = {"status": "unknown", "advisories": []}
+        if info["advisories"]:
+            out["vulnerable"].append(
+                {"name": name, "version": version, "advisories": info["advisories"]}
+            )
+        elif info["status"] != "ok" or info.get("truncated"):
+            out["unknown"].append({"name": name, "version": version})
+    return out
+
+
+def adds_vulnerable(added):
+    """True when an added package has an advisory, False only when every one was checked clean."""
+    if added.get("vulnerable"):
+        return True
+    if (
+        added.get("status") == "ok"
+        and not added["truncated"]
+        and not added["unknown"]
+        and not added["unparsed"]
+    ):
+        return False
+    return None
+
+
+def assess(run, gh, environ, fetch, eco, name, old, new, lock=None, head_lock=NOT_GIVEN):
     """Advisories for old, new and the newest compatible version, plus the signals the rules need.
 
     The advisory lookups for old and new run first and the compatibility stage is contained, so a
     failure or a hostile registry answer there can cost the compatibility answer but never the
-    advisory result.
+    advisory result. HEAD_LOCK (the PR's head lockfile, compared with LOCK) adds the advisories of
+    the packages the PR newly adds; NOT_GIVEN means it was not requested.
     """
     cache = {}
     new_key = order_key(eco, new)
@@ -1000,6 +1110,12 @@ def assess(run, gh, environ, fetch, eco, name, old, new, lock=None):
             "version": target,
             **advisories_for(run, gh, environ, fetch, eco, name, target),
         }
+    if head_lock is NOT_GIVEN:
+        out["added_packages"] = {"status": "not_checked"}
+    else:
+        out["added_packages"] = added_packages(
+            run, gh, environ, fetch, eco, name, new, lock, head_lock
+        )
     latest = out["latest"]
     v = out["versions"]
     # A truncated list (a full first page) is not the whole answer, so no comparison may rest on it.
@@ -1025,6 +1141,7 @@ def assess(run, gh, environ, fetch, eco, name, old, new, lock=None):
             else None
         ),
         "new_is_latest": (None if new_key is None or latest_key is None else new_key >= latest_key),
+        "adds_vulnerable_package": adds_vulnerable(out["added_packages"]),
     }
     return out
 
@@ -1041,7 +1158,23 @@ def parse_args(argv):
     one.add_argument(
         "--lock", help="base-uv.lock or base-pnpm-lock.yaml written by dependabot_pr_read.py"
     )
+    one.add_argument(
+        "--head-lock",
+        help="head-uv.lock or head-pnpm-lock.yaml from dependabot_pr_read.py; needs a base --lock",
+    )
     return parser.parse_args(argv)
+
+
+def check_lock_roles(lock, head_lock):
+    """--head-lock is compared with --lock, so it needs a base- --lock and must be a head- file."""
+    if head_lock is None:
+        return
+    if (
+        lock is None
+        or not os.path.basename(lock).startswith("base-")
+        or not os.path.basename(head_lock).startswith("head-")
+    ):
+        raise Refusal("--head-lock must be a head- lockfile and needs --lock to be a base- one")
 
 
 def main(argv=None, run=subprocess.run, which=shutil.which, fetch=http_fetch, environ=None):
@@ -1054,6 +1187,7 @@ def main(argv=None, run=subprocess.run, which=shutil.which, fetch=http_fetch, en
         for flag in ("old", "new"):
             if not VERSION_RE.fullmatch(getattr(args, flag)):
                 raise Refusal(f"--{flag} does not look like a version")
+        check_lock_roles(args.lock, args.head_lock)
         gh = which("gh")
         if not gh or not os.path.isabs(gh):
             raise Refusal("gh was not found on PATH", EXIT_TOOL)
@@ -1068,6 +1202,7 @@ def main(argv=None, run=subprocess.run, which=shutil.which, fetch=http_fetch, en
                 args.old,
                 args.new,
                 load_lock(args.lock, args.ecosystem),
+                NOT_GIVEN if args.head_lock is None else load_lock(args.head_lock, args.ecosystem),
             )
         )
         result["ok"] = True

@@ -1569,5 +1569,263 @@ class ConnectorReviewFixTests(unittest.TestCase):
         self.assertIs(result["signals"]["new_is_latest"], False)
 
 
+def pnpm_lock(*keys):
+    """A minimal pnpm 9 lockfile whose packages section holds KEYS (name@version)."""
+    body = "".join(f"\n  {key}:\n    resolution: {{integrity: sha512-x}}\n" for key in keys)
+    return f"lockfileVersion: '9.0'\n\npackages:\n{body}"
+
+
+# Issue #741: markdownlint-cli2 0.22.1 -> 0.24.0 pulls in re2js 2.8.6 (GHSA-gg6h-894w-4m9c).
+BASE_PNPM = pnpm_lock("markdownlint-cli2@0.22.1", "markdownlint@0.40.0", "react@18.2.0")
+HEAD_PNPM = pnpm_lock(
+    "markdownlint-cli2@0.24.0", "markdownlint@0.42.0", "re2js@2.8.6", "react@18.2.0"
+)
+RE2JS_ADVISORY = gh_advisory("GHSA-gg6h-894w-4m9c", "high", "2.8.7", pkg="re2js")
+
+
+class AddedPackagesTests(unittest.TestCase):
+    """Issue #741: packages a PR's head lockfile newly adds are looked up for advisories too."""
+
+    def setUp(self):
+        self.base = mod.parse_pnpm_lock(BASE_PNPM)
+        self.head = mod.parse_pnpm_lock(HEAD_PNPM)
+
+    def assess(self, gh, head=None, fetch=None):
+        return mod.assess(
+            gh,
+            GH,
+            {},
+            fetch or FakeFetch(),
+            "npm_and_yarn",
+            "markdownlint-cli2",
+            "0.22.1",
+            "0.24.0",
+            self.base,
+            self.head if head is None else head,
+        )
+
+    def test_pairs_are_new_names_and_changed_versions_without_the_bumped_dependency(self):
+        pairs = mod.added_pairs("npm_and_yarn", "markdownlint-cli2", "0.24.0", self.base, self.head)
+        self.assertEqual(pairs, [("markdownlint", "0.42.0"), ("re2js", "2.8.6")])
+
+    def test_uv_names_are_compared_normalized(self):
+        base = {"versions": {"dep-a": ["1.0.0"], "other": ["1.0.0"]}}
+        head = {"versions": {"dep-a": ["2.0.0"], "other": ["1.1.0"]}}
+        self.assertEqual(mod.added_pairs("uv", "Dep_A", "2.0.0", base, head), [("other", "1.1.0")])
+
+    def test_another_version_of_the_bumped_dependency_is_still_checked(self):
+        """Security review M4: only the (dep, new) pair is skipped, not every version of dep."""
+        base = {"versions": {"foo": ["1.0.0"]}}
+        head = {"versions": {"foo": ["2.0.0", "1.0.1"]}}
+        self.assertEqual(
+            mod.added_pairs("npm_and_yarn", "foo", "v2.0.0", base, head), [("foo", "1.0.1")]
+        )
+        gh = FakeGh({"foo@1.0.1": [gh_advisory("GHSA-old", pkg="foo")]})
+        result = mod.assess(
+            gh, GH, {}, FakeFetch(), "npm_and_yarn", "foo", "1.0.0", "2.0.0", base, head
+        )
+        self.assertIs(result["signals"]["adds_vulnerable_package"], True)
+
+    def test_unparsed_pnpm_keys_are_counted_and_never_clean(self):
+        """Security review M2: a tarball/git key or an over-long key is not silently dropped."""
+        url_key = "'foo@https://codeload.github.com/o/r/tar.gz/abc'"
+        long_key = "x" * (mod.MAX_CONSTRAINT_CHARS + 1) + "@1.0.0"
+        for key in (url_key, long_key):
+            head = mod.parse_pnpm_lock(pnpm_lock("markdownlint-cli2@0.24.0", key))
+            self.assertEqual(len(head["unparsed"]), 1, key[:40])
+            result = self.assess(FakeGh(), head)
+            self.assertEqual(result["added_packages"]["unparsed"], 1)
+            self.assertIsNone(result["signals"]["adds_vulnerable_package"])
+        fields = mod.parse_pnpm_lock(HEAD_PNPM)
+        self.assertEqual(fields["unparsed"], [])  # four-space field lines are not keys
+        # An unparsed entry the base already has is not new code, so it does not block False.
+        base = mod.parse_pnpm_lock(pnpm_lock("markdownlint-cli2@0.22.1", url_key))
+        head = mod.parse_pnpm_lock(pnpm_lock("markdownlint-cli2@0.24.0", url_key))
+        result = mod.assess(
+            FakeGh(),
+            GH,
+            {},
+            FakeFetch(),
+            "npm_and_yarn",
+            "markdownlint-cli2",
+            "0.22.1",
+            "0.24.0",
+            base,
+            head,
+        )
+        self.assertEqual(result["added_packages"]["unparsed"], 0)
+        self.assertIs(result["signals"]["adds_vulnerable_package"], False)
+
+    def test_uv_off_registry_and_versionless_packages_are_never_clean(self):
+        """Security review M2: a git or URL source is not looked up as a PyPI release."""
+        base = mod.parse_uv_lock(UV_LOCK)
+        head = mod.parse_uv_lock(
+            UV_LOCK
+            + '\n[[package]]\nname = "gitdep"\nversion = "1.0.0"\n'
+            + 'source = { git = "https://example.test/r.git" }\n'
+        )
+        self.assertEqual(head["off_registry"][-1], ("gitdep", "1.0.0"))
+        gh = FakeGh()
+        result = mod.assess(gh, GH, {}, FakeFetch(), "uv", "dep-a", "2.0.0", "2.1.0", base, head)
+        self.assertIn({"name": "gitdep", "version": "1.0.0"}, result["added_packages"]["unknown"])
+        self.assertFalse(any("gitdep" in a for call in gh.calls for a in call))
+        self.assertIsNone(result["signals"]["adds_vulnerable_package"])
+        versionless = mod.parse_uv_lock(UV_LOCK + '\n[[package]]\nname = "nover"\n')
+        self.assertEqual(len(versionless["unparsed"]), 1)
+        registry = mod.parse_uv_lock(
+            UV_LOCK + '\n[[package]]\nname = "ok"\nversion = "1.0.0"\n'
+            'source = { registry = "https://pypi.org/simple" }\n'
+        )
+        self.assertNotIn(("ok", "1.0.0"), registry["off_registry"])
+
+    def test_a_vulnerable_added_package_is_named_with_its_advisory_and_fixed_version(self):
+        result = self.assess(FakeGh({"re2js@2.8.6": [RE2JS_ADVISORY]}))
+        added = result["added_packages"]
+        self.assertEqual((added["status"], added["count"], added["checked"]), ("ok", 2, 2))
+        [hit] = added["vulnerable"]
+        self.assertEqual((hit["name"], hit["version"]), ("re2js", "2.8.6"))
+        self.assertEqual(hit["advisories"][0]["id"], "GHSA-gg6h-894w-4m9c")
+        self.assertEqual(hit["advisories"][0]["severity"], "high")
+        self.assertEqual(hit["advisories"][0]["fixed_in"], ["2.8.7"])
+        self.assertIs(result["signals"]["adds_vulnerable_package"], True)
+        # The bumped package's own versions stay clean, so rule (a) alone would not catch it.
+        self.assertIs(result["signals"]["new_vulnerable_not_safer_than_old"], False)
+
+    def test_clean_added_packages_give_false(self):
+        result = self.assess(FakeGh())
+        self.assertEqual(result["added_packages"]["vulnerable"], [])
+        self.assertIs(result["signals"]["adds_vulnerable_package"], False)
+
+    def test_a_failed_lookup_is_unknown_never_clean(self):
+        result = self.assess(FakeGh(fail={"advisories"}), fetch=FakeFetch(fail={mod.OSV_URL}))
+        self.assertEqual(len(result["added_packages"]["unknown"]), 2)
+        self.assertIsNone(result["signals"]["adds_vulnerable_package"])
+
+    def test_a_truncated_advisory_list_is_unknown_when_empty_is_impossible(self):
+        info = {"status": "ok", "advisories": [], "truncated": True}
+        saved = mod.advisories_for
+        mod.advisories_for = lambda *a, **k: info
+        try:
+            result = self.assess(FakeGh())
+        finally:
+            mod.advisories_for = saved
+        self.assertIsNone(result["signals"]["adds_vulnerable_package"])
+
+    def test_a_lookup_that_raises_is_unknown_and_costs_nothing_else(self):
+        real = mod.advisories_for
+
+        def flaky(run, gh, environ, fetch, eco, name, version):
+            if name == "re2js":
+                raise ValueError("hostile answer")
+            return real(run, gh, environ, fetch, eco, name, version)
+
+        mod.advisories_for = flaky
+        try:
+            result = self.assess(FakeGh())
+        finally:
+            mod.advisories_for = real
+        self.assertEqual(
+            result["added_packages"]["unknown"], [{"name": "re2js", "version": "2.8.6"}]
+        )
+        self.assertEqual(result["versions"]["new"]["status"], "ok")
+        self.assertIsNone(result["signals"]["adds_vulnerable_package"])
+
+    def test_more_pairs_than_the_cap_are_truncated_and_never_clean(self):
+        head = mod.parse_pnpm_lock(pnpm_lock(*[f"pkg{i}@1.0.0" for i in range(mod.ADDED_CAP + 1)]))
+        gh = FakeGh()
+        result = self.assess(gh, head)
+        added = result["added_packages"]
+        self.assertEqual((added["count"], added["checked"]), (mod.ADDED_CAP + 1, mod.ADDED_CAP))
+        self.assertTrue(added["truncated"])
+        self.assertIsNone(result["signals"]["adds_vulnerable_package"])
+        affects = [a for call in gh.calls for a in call if a.startswith("affects=pkg")]
+        self.assertEqual(len(affects), mod.ADDED_CAP)
+
+    def test_a_vulnerable_package_still_counts_when_the_list_is_truncated(self):
+        keys = ["aaa@1.0.0"] + [f"pkg{i}@1.0.0" for i in range(mod.ADDED_CAP + 1)]
+        head = mod.parse_pnpm_lock(pnpm_lock(*keys))
+        result = self.assess(FakeGh({"aaa@1.0.0": [gh_advisory("GHSA-1", pkg="aaa")]}), head)
+        self.assertTrue(result["added_packages"]["truncated"])
+        self.assertIs(result["signals"]["adds_vulnerable_package"], True)
+
+    def test_no_lookup_starts_after_the_budget(self):
+        saved = mod.ADDED_BUDGET_SECONDS
+        mod.ADDED_BUDGET_SECONDS = -1
+        try:
+            result = self.assess(FakeGh())
+        finally:
+            mod.ADDED_BUDGET_SECONDS = saved
+        added = result["added_packages"]
+        self.assertEqual(added["checked"], 0)
+        self.assertTrue(added["truncated"])
+        self.assertIsNone(result["signals"]["adds_vulnerable_package"])
+
+    def test_a_name_failing_the_pattern_is_unknown_and_never_looked_up(self):
+        head = {"versions": {"Bad Name": ["1.0.0"], "ok": ["1.0.0"]}}
+        gh = FakeGh()
+        result = self.assess(gh, head)
+        self.assertEqual(
+            result["added_packages"]["unknown"], [{"name": "Bad Name", "version": "1.0.0"}]
+        )
+        self.assertFalse(any("Bad Name" in a for call in gh.calls for a in call))
+        self.assertIsNone(result["signals"]["adds_vulnerable_package"])
+
+    def test_an_unreadable_head_lock_is_unknown(self):
+        result = mod.assess(
+            FakeGh(), GH, {}, FakeFetch(), "npm_and_yarn", "x", "1.0.0", "2.0.0", self.base, None
+        )
+        self.assertEqual(result["added_packages"]["status"], "unknown")
+        self.assertIsNone(result["signals"]["adds_vulnerable_package"])
+
+    def test_without_a_head_lock_nothing_is_checked(self):
+        result = mod.assess(FakeGh(), GH, {}, FakeFetch(), "uv", "x", "1.0.0", "2.0.0")
+        self.assertEqual(result["added_packages"], {"status": "not_checked"})
+        self.assertIsNone(result["signals"]["adds_vulnerable_package"])
+
+
+class HeadLockArgumentTests(unittest.TestCase):
+    def setUp(self):
+        self.dir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.dir, True)
+
+    def write(self, name, text):
+        path = os.path.join(self.dir, name)
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(text)
+        return path
+
+    def argv(self, *extra):
+        return base_args("npm_and_yarn", "markdownlint-cli2", "0.22.1", "0.24.0") + list(extra)
+
+    def test_end_to_end_through_main(self):
+        base = self.write("base-pnpm-lock.yaml", BASE_PNPM)
+        head = self.write("head-pnpm-lock.yaml", HEAD_PNPM)
+        gh = FakeGh({"re2js@2.8.6": [RE2JS_ADVISORY]})
+        code, result = run_main(self.argv("--lock", base, "--head-lock", head), gh)
+        self.assertEqual(code, 0)
+        self.assertIs(result["signals"]["adds_vulnerable_package"], True)
+
+    def test_wrong_roles_are_refused_before_any_lookup(self):
+        base = self.write("base-pnpm-lock.yaml", BASE_PNPM)
+        head = self.write("head-pnpm-lock.yaml", HEAD_PNPM)
+        for extra in (
+            ("--head-lock", head),
+            ("--lock", head, "--head-lock", head),
+            ("--lock", base, "--head-lock", base),
+        ):
+            gh = FakeGh()
+            code, result = run_main(self.argv(*extra), gh)
+            self.assertEqual(code, 2, extra)
+            self.assertIn("--head-lock", result["refused"])
+            self.assertEqual(gh.calls, [])
+
+    def test_a_head_lock_outside_the_temp_directory_is_refused(self):
+        base = self.write("base-pnpm-lock.yaml", BASE_PNPM)
+        code, result = run_main(
+            self.argv("--lock", base, "--head-lock", str(HERE / "head-pnpm-lock.yaml"))
+        )
+        self.assertEqual(code, 2)
+
+
 if __name__ == "__main__":
     unittest.main()
