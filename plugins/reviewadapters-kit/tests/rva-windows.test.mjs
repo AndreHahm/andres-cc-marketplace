@@ -238,29 +238,51 @@ test("a signal during the exit grace ends the helper an exited vendor left", { s
   await running;
 });
 
-test("a timeout whose kill does not work still ends the wait, with killFailed", { skip: WINDOWS_ONLY }, async () => {
-  const { runVendor } = await import(pathToFileURL(path.join(PLUGIN, "scripts", "rva-run.mjs")).href);
+test("a timeout whose kill does not work ends the wait with killFailed, and the caller can exit", { skip: WINDOWS_ONLY }, async () => {
+  const url = JSON.stringify(new URL("../scripts/rva-run.mjs", import.meta.url).href);
   const dir = privateDir(".rva-test-nokill-");
   const pidFile = path.join(dir, "vendor.pid");
   const vendor = `require("node:fs").writeFileSync(process.argv[1], String(process.pid)); setTimeout(() => {}, 600000);`;
   const env = { SystemRoot: process.env.SystemRoot, PATH: process.env.PATH };
-  // An unusable SystemRoot leaves rva-run without taskkill, as a policy that blocks it would.
-  const saved = process.env.SystemRoot;
-  process.env.SystemRoot = "unusable";
+  // The caller runs in its own process, as the dispatcher does, so the test sees whether that process can
+  // exit while the vendor it could not kill is still referenced. An unusable SystemRoot leaves rva-run
+  // without taskkill, as a policy that blocks it would.
+  const caller = `const m = await import(${url}); process.env.SystemRoot = "unusable";
+    const r = await m.runVendor({ command: process.execPath, args: ["-e", ${JSON.stringify(vendor)}, ${JSON.stringify(pidFile)}], cwd: ${JSON.stringify(dir)}, env: ${JSON.stringify(env)}, timeoutMs: 1000 });
+    console.log(JSON.stringify({ timedOut: r.timedOut, killFailed: r.killFailed }));`;
   const started = Date.now();
-  let run;
-  try {
-    run = await runVendor({ command: process.execPath, args: ["-e", vendor, pidFile], cwd: dir, env, timeoutMs: 1000 });
-  } finally {
-    process.env.SystemRoot = saved;
-  }
+  const r = spawnSync(process.execPath, ["--input-type=module", "-e", caller], { encoding: "utf8", timeout: 60_000 });
   const vendorPid = await waitFor(pidFile);
-  // The vendor still runs in `dir`, which the cleanup hook removes: end it here.
+  // The vendor may still run in `dir`, which the cleanup hook removes: end it here.
   if (alive(vendorPid)) process.kill(vendorPid);
   for (let i = 0; i < 50 && alive(vendorPid); i += 1) await new Promise((resolve) => setTimeout(resolve, 100));
-  assert.equal(run.timedOut, true);
-  assert.equal(run.killFailed, true);
+  assert.equal(r.error, undefined, "the caller did not exit after the kill failed");
+  assert.equal(r.status, 0, r.stderr);
+  assert.deepEqual(JSON.parse(r.stdout.trim()), { timedOut: true, killFailed: true });
   assert.ok(Date.now() - started < 30_000, "the wait did not end after the kill failed");
+});
+
+test("codex-kit is refused when a file next to an imported module is a link", { skip: WINDOWS_ONLY }, () => {
+  const base = privateDir(".rva-test-cklink-");
+  const codexKit = path.join(base, "codex-kit");
+  fs.cpSync(CODEX_KIT, codexKit, { recursive: true });
+  const home = path.join(base, "home");
+  fs.mkdirSync(path.join(home, ".claude", "plugins"), { recursive: true });
+  fs.writeFileSync(path.join(home, ".claude", "plugins", "installed_plugins.json"),
+    JSON.stringify({ version: 2, plugins: { "codex-kit@andres-cc-marketplace": [{ scope: "user", installPath: codexKit }] } }));
+  const url = JSON.stringify(new URL("../scripts/rva-codex-kit.mjs", import.meta.url).href);
+  const load = () => {
+    const code = `const m = await import(${url}); try { await m.loadCodexKit(); console.log(JSON.stringify("loaded")); } catch (e) { console.log(JSON.stringify(e.message)); }`;
+    const r = spawnSync(process.execPath, ["--input-type=module", "-e", code], { encoding: "utf8", env: { ...process.env, USERPROFILE: home, HOME: home } });
+    assert.equal(r.status, 0, r.stderr);
+    return JSON.parse(r.stdout.trim());
+  };
+  assert.equal(load(), "loaded");
+  // A junction needs no extra rights on Windows; Node reports it as a link, like a symbolic link.
+  const elsewhere = path.join(base, "elsewhere");
+  fs.mkdirSync(elsewhere);
+  fs.symlinkSync(elsewhere, path.join(codexKit, "scripts", "lib", "linked"), "junction");
+  assert.match(load(), /symbolic link or junction/);
 });
 
 // A helper a failing run left behind is ended here, not left running for ten minutes.

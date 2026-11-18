@@ -170,7 +170,7 @@ the path if it contains a space). The guard then allows only that copy's scripts
 
 **JavaScript** (Node.js ES modules, `.mjs`, no npm dependencies). New scripts in this plugin stay in
 JavaScript. Tests, from the repository root: `node --test "plugins/reviewadapters-kit/tests/*.test.mjs"`
-(79 tests: 68 pass and 11 skip on Linux with Node 24; on Windows, Node 22, 21 pass and 58 skip, since the
+(80 tests: 68 pass and 12 skip on Linux with Node 24; on Windows, Node 22, 22 pass and 58 skip, since the
 POSIX fixtures skip there and `tests/rva-windows.test.mjs` covers Windows). Name the files: on Node 22 and
 24, `node --test` on the directory path fails. The `Plugin Node tests` CI job runs them on every pull
 request.
