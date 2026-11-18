@@ -12,6 +12,16 @@ All notable changes to this plugin are documented here.
 - `collect_codacy.py` gave no warning when `codacy pull-request` returned fewer issues than its own
   `pullRequest.newIssues` count (100 of 150 on PR #759). The record now has `source.reported_new_issues` and
   `source.possibly_truncated`, the adapter warns on stderr, and the report says so.
+- `running-mutation-tests` Step 3 now stops first when the repository changed, handles a finished run with no
+  parser score, and says a module is not added to the weekly run when it stops; Step 1 states how a stem matches
+  the module list. `mutation-tester` names a red baseline's failing tests.
+- `mutation-tester`'s repository fingerprint used GNU-only `sha256sum`; it now uses `git hash-object`, so it runs
+  the same on macOS. Mutant keys with control characters are rejected by the runner and escaped in error text.
+- `qlty-sonar-read.py` read PATH twice, once to pick `sonar` and once for each child's PATH; it now reads it once.
+- `collect_sonar.py` caps `--branch` at 255 characters, like `qlty-sonar-read.py`, and the skill states the same
+  bounded branch and file patterns as the wrapper.
+- `codacy-adapter.md`'s exit-1 row had no Output cell (issue #766); the Sonar fixtures row now names each file.
+- The weekly mutation job no longer adds a redundant unlocked `pyyaml` on top of the locked environment.
 
 ## [1.0.0-alpha.4] - 2026-11-15
 
