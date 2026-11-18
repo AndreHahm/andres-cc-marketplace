@@ -635,6 +635,13 @@ PNPM_LOCKFILE_RE = re.compile(r"""lockfileVersion:\s*['"]?([0-9]+)""")
 PNPM_SUPPORTED_MAJORS = ("6", "9")  # pnpm 8 writes 6.x, pnpm 9 and 10 write 9.x
 
 
+def _mark_tarball(off_registry, source_ids, pair, text):
+    """Record PAIR as resolved from a tarball URL, fingerprinted by TEXT."""
+    if pair not in off_registry:
+        off_registry.append(pair)
+    source_ids[pair] = source_ids.get(pair, "") + text
+
+
 def parse_pnpm_lock(text):
     """{'versions': {name: [versions]}, 'requires_python': None} from a pnpm-lock.yaml.
 
@@ -645,7 +652,7 @@ def parse_pnpm_lock(text):
     URL is not the registry's standard layout (a plain key records no registry at all).
     """
     versions, inside, unparsed, off_registry, current = {}, False, [], [], None
-    source_ids = {}
+    source_ids, res_indent = {}, None
     declared = PNPM_LOCKFILE_RE.search(text[:2000])
     if not declared or declared.group(1) not in PNPM_SUPPORTED_MAJORS:
         raise LookupFailed("unsupported or missing pnpm lockfileVersion")
@@ -656,16 +663,26 @@ def parse_pnpm_lock(text):
             inside = False
         elif inside and line.startswith("  ") and not line.startswith("   "):
             match = PNPM_KEY_RE.fullmatch(line) if len(line) <= MAX_CONSTRAINT_CHARS else None
-            current = (match.group(1), match.group(2)) if match else None
+            current, res_indent = (match.group(1), match.group(2)) if match else None, None
             if not match:
                 unparsed.append(line)
             elif match.group(2) not in versions.setdefault(match.group(1), []):
                 versions[match.group(1)].append(match.group(2))
-        elif inside and current and "tarball:" in line:
-            # flow-style `resolution: {..., tarball: ...}` or a block `tarball:` line
-            if current not in off_registry:
-                off_registry.append(current)
-            source_ids[current] = source_ids.get(current, "") + line.strip()
+        elif inside and current:
+            # Only the package's own `resolution` counts: a flow `resolution: {..., tarball: ...}`
+            # line, or a `tarball:` line nested under a block `resolution:`. A dependency or peer
+            # that happens to be named `tarball` is not a tarball resolution.
+            indent, body = len(line) - len(line.lstrip(" ")), line.strip()
+            if res_indent is not None and indent <= res_indent:
+                res_indent = None
+            if body.startswith("resolution:"):
+                rest = body[len("resolution:") :].strip()
+                if not rest:
+                    res_indent = indent
+                elif "tarball:" in rest:
+                    _mark_tarball(off_registry, source_ids, current, body)
+            elif res_indent is not None and body.startswith("tarball:"):
+                _mark_tarball(off_registry, source_ids, current, body)
     if not versions:
         raise LookupFailed("no packages found in the pnpm lockfile")
     return {
@@ -1063,6 +1080,11 @@ def added_packages(run, gh, environ, fetch, eco, dep, new, base, head):
         return {"status": "unknown", "reason": "the base or head lockfile could not be read"}
     pairs = added_pairs(eco, dep, new, base, head)
     off_registry = set(head.get("off_registry") or [])
+    # A pair the base took from elsewhere (git, another index, a tarball URL) and the head takes
+    # from the registry under the same version is new code too: look it up like an added pair.
+    for name, version in sorted(set(base.get("off_registry") or []) - off_registry):
+        if version in head["versions"].get(name, []) and (name, version) not in pairs:
+            pairs.append((name, version))
     out = {
         "status": "ok",
         "count": len(pairs),

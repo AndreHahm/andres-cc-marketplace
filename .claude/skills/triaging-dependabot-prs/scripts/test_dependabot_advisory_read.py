@@ -1855,6 +1855,40 @@ class AddedPackagesTests(unittest.TestCase):
             [a["id"] for a in npm["added_packages"]["vulnerable"][0]["advisories"]], ["GHSA-a"]
         )
 
+    def test_a_dependency_named_tarball_does_not_make_its_parent_off_registry(self):
+        """Cross-model review round 2: only the package's own resolution names a tarball URL."""
+        text = (
+            "lockfileVersion: '6.0'\n\npackages:\n\n"
+            "  /parent@1.0.0:\n    resolution: {integrity: sha512-x}\n"
+            "    dependencies:\n      tarball: 1.0.0\n"
+            "    peerDependencies: {tarball: ^1.0.0}\n\n"
+            "  /tarball@1.0.0:\n    resolution: {integrity: sha512-y}\n\n"
+            "  /block@2.0.0:\n    resolution:\n      integrity: sha512-z\n"
+            "      tarball: https://npm.example.test/block.tgz\n    engines: {node: '>=18'}\n"
+        )
+        head = mod.parse_pnpm_lock(text)
+        self.assertEqual(head["off_registry"], [("block", "2.0.0")])
+        gh = FakeGh({"parent@1.0.0": [gh_advisory("GHSA-p", "high", "1.0.1", pkg="parent")]})
+        result = mod.assess(
+            gh, GH, {}, FakeFetch(), "npm_and_yarn", "bar", "1.0.0", "2.0.0", {"versions": {}}, head
+        )
+        self.assertEqual([v["name"] for v in result["added_packages"]["vulnerable"]], ["parent"])
+        self.assertIs(result["signals"]["adds_vulnerable_package"], True)
+
+    def test_a_package_moving_back_to_the_registry_under_one_version_is_looked_up(self):
+        """Cross-model review round 2: git or another index in the base, PyPI in the head."""
+        pkg = '[[package]]\nname = "foo"\nversion = "1.0.0"\n'
+        base = mod.parse_uv_lock(pkg + 'source = { git = "https://example.test/foo.git" }\n')
+        head = mod.parse_uv_lock(pkg + 'source = { registry = "https://pypi.org/simple" }\n')
+        gh = FakeGh({"foo@1.0.0": [gh_advisory("GHSA-f", "high", "1.0.1", pkg="foo")]})
+        result = mod.assess(gh, GH, {}, FakeFetch(), "uv", "bar", "1.0.0", "2.0.0", base, head)
+        added = result["added_packages"]
+        self.assertEqual((added["count"], added["checked"]), (1, 1))
+        self.assertEqual(added["vulnerable"][0]["name"], "foo")
+        self.assertIs(result["signals"]["adds_vulnerable_package"], True)
+        clean = mod.assess(FakeGh(), GH, {}, FakeFetch(), "uv", "bar", "1.0.0", "2.0.0", base, head)
+        self.assertIs(clean["signals"]["adds_vulnerable_package"], False)
+
     def test_more_pairs_than_the_cap_are_truncated_and_never_clean(self):
         head = mod.parse_pnpm_lock(pnpm_lock(*[f"pkg{i}@1.0.0" for i in range(mod.ADDED_CAP + 1)]))
         gh = FakeGh()

@@ -54,7 +54,7 @@ PR #364, 2026-09-21 — `commit`'s sibling step 16.5(b) had the identical exposu
 - Same flag, but step 1's `headRefOid` differs (a push landed after the caller vetted the head) → step 1 stops and reports both SHAs before any other step; nothing is merged
 - Same flag, step 1's head equals it, but a push lands while step 5's confirmation is open, so step 7(b)'s re-fetched `headRefOid` differs → step 7(b) stops and reports both SHAs without writing the marker; nothing is merged
 - Same flag, step 7(b)'s merge is rejected as unrebasable and a push lands while 7(d)'s strategy question is open, so 7(d)'s re-fetched `headRefOid` differs → 7(d) stops and reports both SHAs without writing the marker or retrying; nothing is merged
-- Same flag, and step 1.5 finds a touched open issue → it reports the issue and fixes and pushes nothing, so the head the caller vetted stays the head
+- Same flag, and step 1.5 finds a touched open issue the user did not defer → it reports the issue, fixes and pushes nothing, and stops the run, so nothing is merged over it; an issue the user explicitly deferred does not stop it
 
 **Verify step 4(a)'s reason screening covers the shared protocol's full step 1, not just the bot-trigger check (cross-model-review round, 2026-09-21 — Codex's fresh-eyes full-diff pass found step 4(a) previously named only the bot-trigger-mention check):**
 - Reason contains a literal bot-trigger mention (e.g. `@codex full review`) → step 4(a) rejects the flag and reports why; never proceeds to (b)
