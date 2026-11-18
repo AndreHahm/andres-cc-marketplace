@@ -342,8 +342,8 @@ def generate_handoff(
 
 
 def main():
-    sys.stdout.reconfigure(encoding="utf-8")  # ty: ignore[unresolved-attribute]
-    sys.stderr.reconfigure(encoding="utf-8")  # ty: ignore[unresolved-attribute]
+    sys.stdout.reconfigure(encoding="utf-8")  # ty: ignore[missing-union-attribute]
+    sys.stderr.reconfigure(encoding="utf-8")  # ty: ignore[missing-union-attribute]
 
     parser = argparse.ArgumentParser(
         description="Create a new handoff document with smart scaffolding"
