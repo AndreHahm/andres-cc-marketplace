@@ -1,0 +1,2 @@
+BASELINE. Plans the migration to SonarQube Server 10.6: no Automatic Analysis on Server (scanner in CI), sonar-project.properties instead of .sonarcloud.properties, edition limits, rule-key/version caveats, runner reachability, required check rename, token handling.
+Questions: replace or run alongside; edition; runner reachability; required check. Proposed commands: curl api/server/version, gh secret set SONAR_TOKEN / SONAR_HOST_URL, gh api rulesets. Does not state any out-of-scope boundary.

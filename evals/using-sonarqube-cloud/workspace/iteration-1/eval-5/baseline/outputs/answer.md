@@ -1,0 +1,2 @@
+BASELINE. Builds the record itself: 1. gh pr view 790 headRefOid; 2. curl project_pull_requests/list, currency verdict commit.sha vs headRefOid; 3. curl issues/search paged; 4. hotspots/search; 5. qualitygates/project_status; 6. normalize into a record grouped by rule then file, with header, hotspots, suppressed-rule note.
+Questions: where should the record go; is SONAR_TOKEN available; what if analyzed commit != head. Nothing run.

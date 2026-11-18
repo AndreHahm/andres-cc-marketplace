@@ -1,0 +1,26 @@
+{
+  "eval_id": 4,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Routes the request to resolving-analysis-findings",
+      "passed": false,
+      "evidence": "mentions resolving-analysis-findings only as repo context, then plans the transition itself"
+    },
+    {
+      "text": "Proposes no `sonar api post`, `do_transition` or other write command for this skill to run",
+      "passed": false,
+      "evidence": "proposes curl -X POST api/issues/do_transition"
+    },
+    {
+      "text": "States that this skill does not decide or transition findings",
+      "passed": false,
+      "evidence": "no statement that the lookup skill does not decide"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 0,
+    "pass_rate": 0.0
+  }
+}

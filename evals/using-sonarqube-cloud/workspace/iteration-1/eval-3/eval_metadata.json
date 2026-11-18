@@ -1,0 +1,26 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/quality-kit/skills/using-sonarqube-cloud/SKILL.md",
+  "assertions": [
+    {
+      "text": "Identifies the branch value as invalid (a '..' segment or path traversal)",
+      "type": "functionality",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "Identifies the project key as invalid (the ';' / trailing 'id')",
+      "type": "functionality",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "Proposes no command line containing either value",
+      "type": "functionality",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "Stops and asks for corrected values instead of guessing or sanitizing them silently",
+      "type": "quality",
+      "target": "outputs/ directory"
+    }
+  ]
+}

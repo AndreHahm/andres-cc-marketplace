@@ -1,0 +1,21 @@
+{
+  "eval_id": 5,
+  "skill_path": "plugins/quality-kit/skills/using-sonarqube-cloud/SKILL.md",
+  "assertions": [
+    {
+      "text": "Routes the request to collecting-analysis-findings",
+      "type": "presence",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "Does not assemble its own findings record or table as the answer",
+      "type": "functionality",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "Mentions the check against the PR head as a reason for the route",
+      "type": "quality",
+      "target": "outputs/ directory"
+    }
+  ]
+}

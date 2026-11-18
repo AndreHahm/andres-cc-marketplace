@@ -7,6 +7,8 @@ All notable changes to this plugin are documented here.
 ### Added
 - `qlty-sonar-read.py rule --organization <org> --rule <key>`: one rule's name, type, impacts and description, so
   `using-sonarqube-cloud` can answer what a rule checks without an unprojected `sonar api get`.
+- `skill-tester` evals for `using-sonarqube-cloud` (`evals/using-sonarqube-cloud/`): 7 plan-only scenarios, with
+  skill 24 of 24 assertions, baseline 9 of 24.
 
 ### Changed
 - The coverage tier installs PyYAML and defusedxml from `assets/qlty-coverage-tier-requirements.txt` with

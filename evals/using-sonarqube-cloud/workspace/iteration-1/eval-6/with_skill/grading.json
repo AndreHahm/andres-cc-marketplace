@@ -1,0 +1,26 @@
+{
+  "eval_id": 6,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Gives concrete steps for the user to change the gate themselves",
+      "passed": true,
+      "evidence": "UI steps: Administration > Quality Gate > Sonar way"
+    },
+    {
+      "text": "States that this skill does not run the gate change itself, even though the user asked",
+      "passed": true,
+      "evidence": "'I can't make either change for you'"
+    },
+    {
+      "text": "Does not propose running any write command (sonar api post, qualitygates/select) itself",
+      "passed": true,
+      "evidence": "'I'm not giving you a sonar api post ... command'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}
