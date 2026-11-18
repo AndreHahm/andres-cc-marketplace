@@ -1,0 +1,36 @@
+{
+  "eval_id": 14,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Response writes the stdin text to a file in the session scratchpad with the Write tool and feeds it to git-review-write-run-file.sh as stdin (`- < <scratchpad file>`), with the helper still writing the $RUN file",
+      "passed": true,
+      "evidence": "Section 1: Write the stdin text to <scratchpad>/review_for_codex.1.stdin.txt; helper call `... - < <scratchpad>/...stdin.txt`; Write never into $RUN or repo"
+    },
+    {
+      "text": "Response passes CODEX_KIT_REVIEW_REPO_ROOT as a prefix assignment on the node bridge-invoke.mjs command itself, not as a separate export call, and explains that Bash calls share no shell state",
+      "passed": true,
+      "evidence": "Section 2: `CODEX_KIT_REVIEW_REPO_ROOT=\"/repo/.claude/worktrees/x\" node ...bridge-invoke.mjs`; 'export ... would be lost in a separate call'"
+    },
+    {
+      "text": "Response passes CODEX_KIT_REVIEW_TIMEOUT_MS=480000 as a prefix assignment on the timeout-retry node command",
+      "passed": true,
+      "evidence": "Section 3: retry `CODEX_KIT_REVIEW_REPO_ROOT=... CODEX_KIT_REVIEW_TIMEOUT_MS=480000 node ...`"
+    },
+    {
+      "text": "Response keeps every call to one command with no && or ;",
+      "passed": true,
+      "evidence": "'one command per Bash call, with no && or ;' and 'Do not chain commands with && or ;'"
+    },
+    {
+      "text": "Response says a form that is still refused means stop and report, never another way of running the step",
+      "passed": true,
+      "evidence": "'If a call in one of these forms is still refused, stop and report it ... Never fall back'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

@@ -78,9 +78,14 @@ or paths as too complex. In such a session only, and only after such a refusal, 
   This covers the Phase 1 instruction file's "do not run `git diff`" line and the self-authored JSON
   envelopes.
 - **Every other call:** one command per Bash call, with no `&&` or `;`. Bash calls share no shell state,
-  so an `export` in its own call is lost: give a Codex dispatch its variables as prefix assignments on
-  the `node` command itself, `CODEX_KIT_REVIEW_REPO_ROOT="$REPO_ROOT" node ...`, plus
-  `CODEX_KIT_REVIEW_TIMEOUT_MS=480000` on a timeout retry. If that form is refused too, stop and report.
+  so an `export` in its own call is lost. Every call documented as an `export` followed by a command
+  passes those variables as prefix assignments on the command itself instead:
+  `GIT_INDEX_FILE="<literal $RUN>/index"` on each later `git diff` and planner call that needs the
+  throwaway index (the manifest cross-check, the planner re-run after a folder pick, and the fallback
+  name list in `references/scoped-review.md`), and `CODEX_KIT_REVIEW_REPO_ROOT="$REPO_ROOT"` on a Codex
+  `node` dispatch, plus `CODEX_KIT_REVIEW_TIMEOUT_MS=480000` on a timeout retry. Without the index
+  variable, intent-added untracked files silently drop out of the review. If that form is refused too,
+  stop and report.
 
 This is the only exception to the skill's no-`Write` rule, and it is narrow. `Write` goes only to the
 session's scratchpad directory, never into the repository or `$RUN`. It writes only the Preflight script

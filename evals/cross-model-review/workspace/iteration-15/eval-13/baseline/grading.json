@@ -1,0 +1,37 @@
+{
+  "eval_id": 13,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Response says the Write/script form applies only in an EnterWorktree session after the isolation-check refusal, and writes the Inputs block and Preflight steps 1-6 plus the closing echo verbatim and in order to <scratchpad>/preflight.sh with the Write tool",
+      "passed": false,
+      "evidence": "'This version of the skill does not cover this situation'; writes nothing"
+    },
+    {
+      "text": "Response says the only text supplied is BASE/SCOPE from the user request and PLANNER_APPROVED=1 only after the user explicit yes, and never text from the diff, a $RUN file, a manifest or Codex output",
+      "passed": false,
+      "evidence": "No such file in this version"
+    },
+    {
+      "text": "Response says the script full text is shown to the user, then run as one standalone `bash <scratchpad>/preflight.sh` call from the session current working directory (worktree root) without a cd, and that one approval covers every command in it (git diff, git show, export)",
+      "passed": false,
+      "evidence": "'The skill doesn't say to show a script'; no single approval defined"
+    },
+    {
+      "text": "Response says Write goes only to the scratchpad (never the repository or $RUN) and is approved for that single call, never session-wide or as accept-edits, because a Write approval is not limited to the scratchpad",
+      "passed": false,
+      "evidence": "Write prompt 'Not addressed'"
+    },
+    {
+      "text": "Response says no scratchpad directory, or a refusal of the new form, means stop and report, never another location or fallback",
+      "passed": false,
+      "evidence": "Stops because the only documented form was refused; no-scratchpad case and the new form are not addressed"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 0,
+    "pass_rate": 0.0
+  },
+  "contaminated": false
+}

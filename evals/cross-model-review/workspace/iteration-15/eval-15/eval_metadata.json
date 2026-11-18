@@ -1,0 +1,26 @@
+{
+  "eval_id": 15,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {
+      "text": "Response passes GIT_INDEX_FILE=/tmp/tmp.abc/index as a prefix assignment on the planner re-run command (wrapper with tag 1b and an --exclude-dir per pick), not as a separate export call",
+      "type": "functionality",
+      "target": "references/codex-pass-assembly.md"
+    },
+    {
+      "text": "Response passes GIT_INDEX_FILE=/tmp/tmp.abc/index as a prefix assignment on the manifest cross-check git diff --name-only > changed.names command",
+      "type": "functionality",
+      "target": "references/codex-pass-assembly.md"
+    },
+    {
+      "text": "Response explains that without the throwaway index the intent-added untracked file drops out of the new manifest and changed-name list, so it goes unreviewed without the cross-check noticing",
+      "type": "functionality",
+      "target": "references/codex-pass-assembly.md"
+    },
+    {
+      "text": "Response says a refusal of the prefix form means stop and report",
+      "type": "functionality",
+      "target": "references/codex-pass-assembly.md"
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "eval_id": 14,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Response writes the stdin text to a file in the session scratchpad with the Write tool and feeds it to git-review-write-run-file.sh as stdin (`- < <scratchpad file>`), with the helper still writing the $RUN file",
+      "passed": false,
+      "evidence": "Treats the refused write as failed and stops; no scratchpad stdin file"
+    },
+    {
+      "text": "Response passes CODEX_KIT_REVIEW_REPO_ROOT as a prefix assignment on the node bridge-invoke.mjs command itself, not as a separate export call, and explains that Bash calls share no shell state",
+      "passed": false,
+      "evidence": "`export CODEX_KIT_REVIEW_REPO_ROOT=...` on its own line before node"
+    },
+    {
+      "text": "Response passes CODEX_KIT_REVIEW_TIMEOUT_MS=480000 as a prefix assignment on the timeout-retry node command",
+      "passed": false,
+      "evidence": "`export CODEX_KIT_REVIEW_TIMEOUT_MS=480000` line before node"
+    },
+    {
+      "text": "Response keeps every call to one command with no && or ;",
+      "passed": false,
+      "evidence": "Dispatch and retry are multi-command (export lines then node)"
+    },
+    {
+      "text": "Response says a form that is still refused means stop and report, never another way of running the step",
+      "passed": true,
+      "evidence": "Section 6: refusal -> stop and report, never switch mechanism"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 1,
+    "pass_rate": 0.2
+  },
+  "contaminated": false
+}

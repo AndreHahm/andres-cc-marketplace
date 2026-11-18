@@ -459,7 +459,7 @@ See `references/deliberately-not-done.md` (extracted per plugin-rulebook's R13 l
 |---|---|
 | `references/scoped-review.md` | Planner run, folder pick, dispatch batches, timeouts, completed slices, round two |
 | `references/codex-pass-assembly.md` | Per-batch Codex eligibility, Phase 1 and Phase 2 instruction files |
-| `references/testing-scenarios.md` | The 37 scenarios, the quality-gate checklist and the run history |
+| `references/testing-scenarios.md` | The 38 scenarios, the quality-gate checklist and the run history |
 | `references/resolver-failure-handling.md`, `references/dispatcher-trust-pattern.md` | Partial failure; why the dispatcher-touched check is built the way it is (planner trust is in `references/scoped-review.md`) |
 | `references/diff-mechanics-rationale.md`, `references/index-seeding-rationale.md`, `references/embed-diff-not-run-rationale.md`, `references/symlink-exclusion-rationale.md`, `references/self-authored-envelope-fields.md`, `references/deliberately-not-done.md` | Why the Inputs and Preflight steps are built the way they are |
 | `scripts/smoke_test.py`, `scripts/preflight_fixtures_test.py` | Structural self-check; Preflight chain run against scratch repositories |
@@ -485,6 +485,6 @@ closing-tag neutralization, partial-failure preservation, scoped review and more
 `scripts/preflight_fixtures_test.py` runs the Preflight chain, planner step included, against scratch
 repositories.
 
-**Last dated run record:** `2026-11-10, evals/cross-model-review/workspace/iteration-14/` — eval 12
-(batch limit), Full Pipeline: `with_skill` 5/5, baseline 0/5. A dry run of the committed text, not a live
-dispatch. Earlier runs and their open items are under "Run history" in `references/testing-scenarios.md`.
+**Last dated run record:** `2026-11-18, evals/cross-model-review/workspace/iteration-15/` — evals 13-16
+(EnterWorktree, scenario 38), Full Pipeline: `with_skill` 17/17, baseline (`main`'s text) 5/17. Dry runs,
+not a live dispatch. Earlier runs and their open items are under "Run history" in `references/testing-scenarios.md`.
