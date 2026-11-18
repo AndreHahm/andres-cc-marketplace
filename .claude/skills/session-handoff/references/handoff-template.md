@@ -37,7 +37,7 @@ Use this template structure when creating handoff documents. The smart scaffold 
 - Project: [PROJECT_PATH]
 - Branch: [GIT_BRANCH]
 - Session duration: [APPROX_DURATION]
-- Context mode: [admin | review | ship | none - ship only if a merge or publish is the last step]
+- Context mode: [admin | review | ship | none - see SKILL.md Step 2 item 5; if unsure, review]
 
 ### Recent Commits (for context)
   - [commit 1 - oneline]
