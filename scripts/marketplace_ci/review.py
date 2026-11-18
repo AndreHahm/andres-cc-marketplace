@@ -1301,8 +1301,8 @@ _WAIVER_SECTION = re.compile(r"^##\s+Accepted Review Findings\s*$", re.IGNORECAS
 # A rule may contain spaces ("rulebook compliance / naming"), as the carry summary prints it. The
 # path may not, so the first space-free `<path>:<line>` followed by the dash ends the rule.
 _WAIVER_LINE = re.compile(
-    r"^\s*[-*]\s+(?P<rule>\S(?:.*?\S)?)\s+(?P<path>\S+?):(?P<line>\d+)\s+[-–—]+\s+"
-    r"(?P<kind>accepted|residual|deferred)\b(?:\s+#(?P<issue>\d+))?",
+    r"^\s*[-*]\s+(?P<rule>\S(?:.*?\S)?)\s+(?P<path>\S+?):(?P<line>[0-9]+)\s+[-–—]+\s+"
+    r"(?P<kind>accepted|residual|deferred)\b(?:\s+#(?P<issue>[0-9]+))?",
     re.IGNORECASE,
 )
 _MAX_CARRIED_INPUT = 500
