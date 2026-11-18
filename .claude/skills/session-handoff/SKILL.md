@@ -246,7 +246,8 @@ the pre-edit text, which chose `ship` each time. Iteration 4 re-ran evals 9 and 
 "next step opens the PR" wording was added.
 The file-reference lookup shared by `validate_handoff.py` and `check_staleness.py` is tested by
 `plugins/session-kit/tests/test_handoff_file_references.py` (bare names, partial paths, `/` boundary,
-`../` containment, untracked files, non-repo fallback, scoring).
+`../` containment, untracked files, non-repo fallback, scoring, and code names such as
+`os.geteuid` that are not counted as file references).
 
 **Last dated run record:** `evals/session-handoff/workspace/iteration-1/eval-{1,2,3}/with_skill/grading.json`,
 2026-09-03, `eval-{4,5,6}` on 2026-10-16, and `iteration-{1,2,3,4}` runs of evals 7-12 on 2026-11-18. `scripts/smoke_test.py`

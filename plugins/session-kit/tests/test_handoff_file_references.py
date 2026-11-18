@@ -164,3 +164,27 @@ def test_staleness_parent_segment_still_contained(repo: Path) -> None:
     existing, missing = check_staleness.check_files_exist(["../outside.txt"], str(repo))
     assert existing == []
     assert missing == ["../outside.txt"]
+
+
+@pytest.mark.parametrize(
+    "ident",
+    ["os.geteuid", "json.loads", "timezone.utc", "code.claude.com", "base.sha", "Tests.OPTIONAL"],
+)
+def test_code_identifier_is_not_a_file_reference(repo: Path, ident: str) -> None:
+    path = _write_handoff(repo, f"- `{ident}`\n| {ident} | x |\n- {ident}:12")
+    result = validate_handoff.validate_handoff(str(path))
+    assert result["files_missing"] == []
+    assert result["score"] == 100
+
+
+def test_bare_name_with_file_extension_still_checked(repo: Path) -> None:
+    path = _write_handoff(repo, "- `ghost_file.py`\n- `GHOST.MD`\n- `README.md`")
+    result = validate_handoff.validate_handoff(str(path))
+    assert result["files_missing"] == ["GHOST.MD", "ghost_file.py"]
+
+
+def test_path_with_slash_and_unknown_extension_still_checked(repo: Path) -> None:
+    path = _write_handoff(repo, "- `plugins/x/thing.geteuid`")
+    assert validate_handoff.validate_handoff(str(path))["files_missing"] == [
+        "plugins/x/thing.geteuid"
+    ]
