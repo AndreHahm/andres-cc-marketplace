@@ -47,7 +47,8 @@ class GitRepoHelper:
     def write(self, rel_path: str, content: str) -> Path:
         path = self.root / rel_path
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(content, encoding="utf-8")
+        # newline="": write the content as given, not with CRLF on Windows (#718)
+        path.write_text(content, encoding="utf-8", newline="")
         return path
 
     def stage(self, rel_path: str, content: str) -> Path:

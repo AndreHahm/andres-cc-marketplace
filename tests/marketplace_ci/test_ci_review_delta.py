@@ -975,7 +975,9 @@ def test_no_codex_call_after_a_conversion_to_draft(tmp_path, live, calls):
     assert "/usr/bin/gh api" in run  # never `gh` from PATH, which an earlier step could extend
     _fake_gh(tmp_path, live)
     script = tmp_path / "draft.sh"
-    script.write_text(run.replace("/usr/bin/gh", str(tmp_path / "bin" / "gh")), encoding="utf-8")
+    # as_posix: the step uses the path unquoted, so bash would strip a Windows path's backslashes
+    fake = (tmp_path / "bin" / "gh").as_posix()
+    script.write_text(run.replace("/usr/bin/gh", fake), encoding="utf-8")
     env = {"PATH": os.environ["PATH"], "REPO": "o/r", "PR_NUMBER": "1"}
     result = subprocess.run(["bash", "-e", str(script)], env=env, capture_output=True, text=True)
     assert (result.returncode == 0) is calls, (live, result.stdout)
@@ -1409,6 +1411,10 @@ def _run_lookup(
     and artifacts ({name: content}). The PR was created ready on 2025-12-31 (no PR record when
     `pr` is False); `ready` lists its `ready_for_review` event times. Returns the anchor and its
     result (None when there is no anchor)."""
+    if sys.platform == "win32":
+        # #718: the lookup runs `gh` through Python's subprocess, which on Windows launches only
+        # gh.exe, so it would call the real CLI rather than this extensionless fake.
+        pytest.skip("the fake gh is an extensionless script, which Windows cannot launch")
     fixtures = tmp_path / "fixtures"
     fixtures.mkdir()
     runs = []

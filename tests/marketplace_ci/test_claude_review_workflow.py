@@ -350,7 +350,8 @@ def _recheck(tmp_path, name, gh_stdout, gh_exit=0):
     fake = tmp_path / "gh"
     fake.write_text(f"#!/bin/sh\nprintf '%s\\n' {shlex.quote(gh_stdout)}\nexit {gh_exit}\n")
     fake.chmod(0o755)
-    run = _step("claude-review", name)["run"].replace("/usr/bin/gh", str(fake))
+    # as_posix: the step uses the path unquoted, so bash would strip a Windows path's backslashes
+    run = _step("claude-review", name)["run"].replace("/usr/bin/gh", fake.as_posix())
     out = tmp_path / "out"
     env = {"PATH": os.environ["PATH"], "GITHUB_OUTPUT": str(out), "HEAD_SHA": _HEAD,
            "REPO": "o/r", "PR_NUMBER": "1"}  # fmt: skip
