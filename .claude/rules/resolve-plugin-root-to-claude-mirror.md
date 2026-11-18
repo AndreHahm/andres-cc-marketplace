@@ -25,12 +25,11 @@ that owns it.
 
 Never substitute for a component whose own text explicitly forbids substituting a path inside the checkout; follow
 that component's own stop instead, and report it. Such a component says so in its own text ("never substitute a
-path inside the current checkout" or similar); reviewadapters-kit's command and dispatch skill are examples. They
-send the diff to a third party, and the mirror is part of the checkout under review, so the substituted scripts
-could be the reviewed branch's own code. Since issue #762, reviewadapters-kit is no longer mirrored into `.claude/`
-at all: run it from an installed copy, and treat any `.claude/` copy of its files as a branch's own addition.
-The component's text is itself loaded from the mirror in that case, so a branch that deletes the prohibition also
-defeats this exception; the component's stop and this paragraph are guidance, not a boundary against that branch.
+path inside the current checkout" or similar), typically because it sends the diff to a third party: the mirror is
+part of the checkout under review, so the substituted scripts could be the reviewed branch's own code. A mirrored
+component's text is that branch's too, so deleting the prohibition defeats this exception; it is guidance, not a
+boundary. reviewadapters-kit, the first such plugin, is not mirrored at all since issue #762: run it from an
+installed copy, and treat any `.claude/` copy of its files as a branch's own addition.
 
 Confirm the mirrored file exists first. Stop and report in either of two cases: the file is missing, or the
 substituted command is still denied. Never fall back to a different command or endpoint.
