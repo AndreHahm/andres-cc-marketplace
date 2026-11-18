@@ -245,3 +245,9 @@ partly case-sensitive (live: `Pillow@8.0.0` 46 advisories, `pillow@8.0.0` 26); `
 now conditional on the flag being absent; and the cost wording names the added-package stage alone. 139 advisory
 tests; every new check has a mutation that fails the suite. Evals were not re-run for the two prose fixes, which
 make the text match behavior already intended (rule (b) on a refreshed result, no push while the flag is set).
+
+Same day, round 2 of the pre-PR cross-model review found four more issues, all fixed: `merge-pr` step 1.5 now stops a
+pinned run on a touched, non-deferred issue instead of only reporting it; a pnpm `tarball:` counts only inside the
+package's own `resolution` (a dependency or peer named `tarball` no longer marks its parent off-registry); a package
+that moves from an off-registry source back to the registry under the same version is looked up; and the cost
+paragraph names the uv OSV exception. 141 advisory tests; every new check has a mutation that fails the suite.
