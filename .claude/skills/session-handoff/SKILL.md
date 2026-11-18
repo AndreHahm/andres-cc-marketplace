@@ -118,8 +118,10 @@ python3 "${CLAUDE_PLUGIN_ROOT}/skills/session-handoff/scripts/validate_handoff.p
 
 Checks: no `[TODO: ...]` placeholders remaining, required sections present and populated, no
 potential secrets (API keys, passwords, tokens), referenced files exist, quality score (0-100).
-A reference containing `/` is always checked; a bare name such as `README.md` is checked only when its
-suffix is a known file extension, so code names like `os.geteuid` are not counted as missing files.
+Only references ending in an extension (`.md`, `.py`, ...) are picked up; a path without one, such as
+`scripts/release`, is not checked. A picked-up path containing `/` is always checked, but a bare name
+such as `README.md` only when its suffix is a known file extension, so code names like `os.geteuid` are
+not counted as missing files.
 
 **Do not finalize a handoff with secrets detected or a score below 70.**
 
