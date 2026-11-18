@@ -359,6 +359,7 @@ export async function loadCodexKit({ devSibling = false } = {}) {
     if (checked.some((file) => fs.lstatSync(file).isSymbolicLink())) throw new CodexKitUnavailable("a codex-kit file is a symbolic link or junction");
     if (WINDOWS) prefetchTrees(root, checked);
     for (const file of checked) checkOwnership(root, file);
+    // eslint-disable-next-line no-unsanitized/method -- NotExploitable: each path is a resolved entry point of the installed codex-kit, checked above as owned, private and not a link
     const [bridge, exec, secrets] = await Promise.all(files.map((file) => import(pathToFileURL(file).href)));
     const api = {
       ENVELOPE_SCHEMA: bridge.ENVELOPE_SCHEMA,
