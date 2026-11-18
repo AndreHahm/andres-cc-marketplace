@@ -727,11 +727,12 @@ def check_sonar_adapter() -> None:
     for bad in (
         ("--kind", "ignored", "--branch", "main"),
         ("--kind", "repo", "--branch", "a/../b"),
+        ("--kind", "repo", "--branch", "a" * 256),
     ):
         code, out, _ = run_main(
             adapter, bad[0], bad[1], *project, *bad[2:], "--input", str(SONAR / "repo.json")
         )
-        check(f"--branch rejected for {' '.join(bad)}", code == 2 and out == "")
+        check(f"--branch rejected for {' '.join(bad)[:60]}", code == 2 and out == "")
     code, out, _ = run_main(
         adapter, "--kind", "ignored", *project, "--input", str(SONAR / "ignored.json")
     )
@@ -1114,7 +1115,7 @@ def check_skills() -> None:
         "allowlist regexes never allow a leading dash; owner and repo allow .github",
         "^[A-Za-z0-9._][A-Za-z0-9._-]*$" in collecting_body
         and "must not be `.` or `..`" in " ".join(collecting_body.split())
-        and "^[A-Za-z0-9][A-Za-z0-9._/-]*$" in collecting_body,
+        and "^[A-Za-z0-9][A-Za-z0-9._/-]{0,254}$" in collecting_body,
     )
     owner_repo = re.compile(r"^[A-Za-z0-9._][A-Za-z0-9._-]*$")
     check(
