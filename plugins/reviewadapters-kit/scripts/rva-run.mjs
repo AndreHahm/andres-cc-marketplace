@@ -143,8 +143,14 @@ export function runVendor({ command, args, cwd, env, timeoutMs, stdinFile }) {
       killTimer = setTimeout(() => {
         killGroup(child.pid, "SIGKILL");
         // A kill that did not work (taskkill blocked by policy, say) must not leave the dispatch waiting
-        // for an exit that never comes.
-        giveUpTimer = setTimeout(() => finish(null, undefined, undefined, true), KILL_AFTER_TERM_MS);
+        // for an exit that never comes: settle, and drop this process's references to the live child
+        // and its pipes so they no longer keep the dispatcher running.
+        giveUpTimer = setTimeout(() => {
+          finish(null, undefined, undefined, true);
+          child.stdout.destroy();
+          child.stderr.destroy();
+          child.unref();
+        }, KILL_AFTER_TERM_MS);
       }, KILL_AFTER_TERM_MS);
     }, timeoutMs);
     const finish = (code, spawnError, signal, killFailed = false) => {

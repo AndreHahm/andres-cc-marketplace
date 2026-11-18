@@ -344,16 +344,22 @@ export async function loadCodexKit({ devSibling = false } = {}) {
     } catch {
       continue;
     }
-    const files = [BRIDGE, EXEC, SECRETS].map((rel) => path.join(root, rel));
-    if (!files.every((file) => fs.existsSync(file))) continue;
+    const listed = [BRIDGE, EXEC, SECRETS].map((rel) => path.join(root, rel));
+    if (!listed.every((file) => fs.existsSync(file))) continue;
+    // Each entry point is resolved once too, and that path is the one checked and imported: a link on
+    // the way to it (inside the root, leading out through another account's junction and back) could
+    // otherwise be repointed between the checks and the import.
+    const files = listed.map((file) => fs.realpathSync(file));
     // The imported modules pull in siblings (codex-exec.mjs imports cdx-process.mjs and reads
     // cdx-token-shapes.json), so every file in each imported file's directory is checked, not only the
-    // three entry points.
+    // three entry points. Node resolves a sibling again when it imports it, so a sibling that is itself a
+    // link is refused rather than checked (codex-kit ships none).
     const dirs = new Set(files.map((file) => path.dirname(file)));
     const checked = [...dirs].flatMap((dir) => fs.readdirSync(dir).map((name) => path.join(dir, name)));
+    if (checked.some((file) => fs.lstatSync(file).isSymbolicLink())) throw new CodexKitUnavailable("a codex-kit file is a symbolic link or junction");
     if (WINDOWS) prefetchTrees(root, checked);
     for (const file of checked) checkOwnership(root, file);
-    const [bridge, exec, secrets] = await Promise.all(files.map((file) => import(pathToFileURL(fs.realpathSync(file)).href)));
+    const [bridge, exec, secrets] = await Promise.all(files.map((file) => import(pathToFileURL(file).href)));
     const api = {
       ENVELOPE_SCHEMA: bridge.ENVELOPE_SCHEMA,
       semanticallyValidate: bridge.semanticallyValidate,
