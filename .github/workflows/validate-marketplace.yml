@@ -7,10 +7,14 @@ on:
     # "labeled" is required so applying the bypass label actually re-triggers
     # a run -- without it, a maintainer's attested bypass would sit inert
     # against an already-failed check with no automatic re-evaluation.
+    # "edited" stays: a base-branch change (such as a stacked PR retargeted to
+    # main) fires it, and the jobs validate against the base.
     types: [opened, synchronize, reopened, edited, labeled]
 
+# The head SHA keeps a new head from queueing behind an old-head run whose
+# cancel hangs (issue #738); runs on the same head still cancel each other.
 concurrency:
-  group: marketplace-ci-${{ github.workflow }}-${{ github.event.pull_request.number }}
+  group: marketplace-ci-${{ github.workflow }}-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
   cancel-in-progress: true
 
 permissions:
@@ -20,6 +24,7 @@ jobs:
   validate-structure:
     name: Validate Repository Structure
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
@@ -123,6 +128,7 @@ jobs:
   validate-marketplace-plugins:
     name: Validate Marketplace Plugin Entries
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
@@ -226,6 +232,7 @@ jobs:
   validate-plugins:
     name: Validate Individual Plugins
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
@@ -385,6 +392,7 @@ jobs:
   check-duplicates:
     name: Check for Duplicate Plugin Names
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
