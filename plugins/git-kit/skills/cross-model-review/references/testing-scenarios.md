@@ -170,7 +170,8 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
     and steps 1-6 go verbatim into `<scratchpad>/preflight.sh` (only `BASE`/`SCOPE`/`PLANNER_APPROVED`
     filled in, never text from the diff, a run file or Codex output), the user is shown the script, and it
     runs as one `bash <scratchpad>/preflight.sh` call from the worktree cwd; stdin text comes from a
-    scratchpad file (`- < <file>`). `Write` touches only the scratchpad, never the repository or `$RUN`, is
+    scratchpad file (`- < <file>`); a Codex dispatch or timeout retry sets its `CODEX_KIT_REVIEW_*`
+    variables as prefix assignments on the `node` command, never in a separate `export` call. `Write` touches only the scratchpad, never the repository or `$RUN`, is
     approved per call, never session-wide, and every `$RUN` file is still written by the helper. No
     scratchpad, or a call still refused in that form, stops the run with a report. A session that did not
     use `EnterWorktree` never uses `Write`.
