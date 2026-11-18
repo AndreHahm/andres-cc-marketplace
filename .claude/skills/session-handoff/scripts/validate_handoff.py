@@ -177,8 +177,11 @@ def resolve_reference(
             return "verified"
     if repo_files is None:
         return "missing" if "/" in ref else "unverifiable"
+    # The list includes index entries, so a tracked file deleted but not yet staged is still in
+    # it: a match counts only if that file exists on disk now.
     suffix = "/" + ref
-    if any(f == ref or f.endswith(suffix) for f in repo_files):
+    base = Path(base_path)
+    if any((f == ref or f.endswith(suffix)) and (base / f).is_file() for f in repo_files):
         return "verified"
     return "missing"
 

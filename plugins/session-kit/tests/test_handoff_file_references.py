@@ -188,3 +188,23 @@ def test_path_with_slash_and_unknown_extension_still_checked(repo: Path) -> None
     assert validate_handoff.validate_handoff(str(path))["files_missing"] == [
         "plugins/x/thing.geteuid"
     ]
+
+
+def test_unstaged_deletion_is_missing(repo: Path) -> None:
+    # git ls-files --cached still lists a tracked file deleted but not yet staged.
+    (repo / "plugins" / "p" / "scripts" / "deep_file.py").unlink()
+    for ref in ("plugins/p/scripts/deep_file.py", "scripts/deep_file.py", "deep_file.py"):
+        assert _status(repo, ref) == "missing", ref
+    path = _write_handoff(repo, "- `deep_file.py`")
+    assert validate_handoff.validate_handoff(str(path))["files_missing"] == ["deep_file.py"]
+    existing, missing = check_staleness.check_files_exist(["scripts/deep_file.py"], str(repo))
+    assert existing == []
+    assert missing == ["scripts/deep_file.py"]
+
+
+def test_bare_name_verified_by_surviving_copy(repo: Path) -> None:
+    # One of two same-named tracked files deleted: the surviving one still verifies.
+    (repo / "other").mkdir()
+    (repo / "other" / "deep_file.py").write_text("x")
+    (repo / "plugins" / "p" / "scripts" / "deep_file.py").unlink()
+    assert _status(repo, "deep_file.py") == "verified"
