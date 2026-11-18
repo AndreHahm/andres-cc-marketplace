@@ -1,0 +1,22 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4614186854",
+      "line": 88,
+      "note": "Devin round 1: 6.7 said nothing was posted for a 7(b)/7(d) stop after a bypass; fixed in cf4103c3",
+      "path": "plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md",
+      "pr": 787,
+      "recorded_at": "2026-11-18T13:07:02+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "6979114773",
+      "line": 337,
+      "note": "Claude delta review round 1 (advisory Minor): exact-name Dependency review match missed reusable-workflow names; fixed in cf4103c3 with a test",
+      "path": "plugins/git-kit/skills/triaging-dependabot-prs/scripts/dependabot_pr_read.py",
+      "pr": 787,
+      "recorded_at": "2026-11-18T13:07:02+00:00"
+    }
+  ]
+}
