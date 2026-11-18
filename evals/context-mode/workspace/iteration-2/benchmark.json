@@ -1,0 +1,40 @@
+{
+  "skill_name": "context-mode",
+  "iteration": 2,
+  "timestamp": "2026-11-18T11:36:42+01:00",
+  "evals": [
+    {
+      "eval_id": 9,
+      "with_skill": {
+        "pass_rate": 1.0,
+        "assertions_passed": 3,
+        "assertions_total": 3,
+        "avg_tokens": 99587,
+        "avg_duration_ms": 10896
+      },
+      "baseline": {
+        "pass_rate": 0.6667,
+        "assertions_passed": 2,
+        "assertions_total": 3,
+        "avg_tokens": 99648,
+        "avg_duration_ms": 14628
+      },
+      "delta": {
+        "pass_rate": 0.3333,
+        "tokens": -61,
+        "duration_ms": -3732
+      }
+    }
+  ],
+  "summary": {
+    "with_skill_avg_pass_rate": 1.0,
+    "baseline_avg_pass_rate": 0.6667,
+    "improvement": 0.3333,
+    "avg_tokens_with_skill": 99587,
+    "avg_tokens_baseline": 99648,
+    "token_cost": -61,
+    "avg_duration_ms_with_skill": 10896,
+    "avg_duration_ms_baseline": 14628,
+    "duration_cost_ms": -3732
+  }
+}

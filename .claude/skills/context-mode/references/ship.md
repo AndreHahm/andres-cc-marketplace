@@ -11,10 +11,15 @@ be retracted. This mode carries the highest confirmation bar.
 - **Risk tolerance**: very low at the publish step. Draft and stage freely; the moment content becomes
   public, confirm that specific action even if a similar one was approved earlier in the session.
 - **Prepare, then execute**: do these as two separate steps, and confirm before the second.
-- **Pre-ship checks**: say which have run and which have not. Never proceed to publish while a check
-  that applies has not run.
-- **Secrets and external names**: before anything goes out, check the content for secrets and
-  credentials, and check named external companies or products against `external-references-reviewer`.
+- **Pre-ship checks**: say which have run and which have not. Never proceed to publish while a required
+  status check is failing or has not reported.
+- **Secrets**: for a PR merge, read the result of the `Security` workflow's secretlint job on the PR's
+  changed files and state it; it runs on every PR but is not a required check, so a failure does not
+  block the merge by itself. `commit`'s sensitive-file scan checks file names only. For content outside
+  a PR (wiki, page, post), check it for secrets and credentials yourself before it goes out.
+- **External names**: nothing runs `external-references-reviewer` automatically. When the content adds
+  names of outside companies, products or repositories, offer it as an optional check and say whether
+  it ran.
 - **Verbosity**: low. A short "here is what will go out, confirm?" beats a long narrative.
 
 ## Output structure
@@ -22,7 +27,7 @@ be retracted. This mode carries the highest confirmation bar.
 ```markdown
 ## What's shipping
 ## Destination (PR merge / marketplace publish / wiki / page / post)
-## Pre-ship checks done (QA pipeline, inventory sync, secret scan, external-reference check)
+## Pre-ship checks: ran / not run (QA pipeline, inventory sync, secretlint result, external-reference check if names were added)
 ## Confirmation
 ```
 
@@ -42,5 +47,6 @@ be retracted. This mode carries the highest confirmation bar.
 ## Anti-patterns
 
 - Do not merge, publish or post without an explicit confirmation for that specific action.
-- Do not skip the secret check on content before it goes public.
+- Do not merge without stating the PR's secretlint result, or that it did not run.
+- Do not publish non-PR content without checking it for secrets yourself.
 - Do not treat a wiki or Pages branch as lower stakes than the main repo.

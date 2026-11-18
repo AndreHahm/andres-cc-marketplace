@@ -130,7 +130,9 @@ ran as plan-only, with-skill-only agents and passed 20/20 assertions. That shows
 intended commands and statements; with no baseline arm it does not show the skill beats having no skill,
 and it did not execute the script (the smoke test does). A live `/context-mode` activation has not been
 run; treat that as untested. The earlier evals for the removed hook-tag design are kept in
-`evals/context-mode/superseded-hook-tag-design/`.
+`evals/context-mode/superseded-hook-tag-design/`. Eval 9 (2026-11-18, plan-only, with-skill-only, 3/3
+assertions) covers the ship profile's pre-merge wording: the secretlint result is stated, and
+`external-references-reviewer` is reported as an optional check rather than blocking the merge.
 
 **Quality gates:**
 - [ ] Only a value in `admin`, `review`, `ship` ever causes a profile file to be read.
