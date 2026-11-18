@@ -1199,6 +1199,15 @@ elif args[:2] == ["api", "get"] and args[2].startswith("/api/issues/search"):
                       "issues": [] if page != 1 or mode == "no-issue"
                       else [dict(issue(9 if mode == "other-issue" else 1),
                                  issueStatus="ACCEPTED")]}))
+elif args[:2] == ["api", "get"] and args[2].startswith("/api/rules/show"):
+    query = parse_qs(urlsplit(args[2]).query)
+    key = "python:S2" if mode == "other-rule" else query["key"][0]
+    print(json.dumps({"rule": {"key": key, "name": "n", "lang": "py", "type": "BUG",
+                      "severity": "MAJOR", "htmlDesc": "<p>d</p>", "createdAt": "x",
+                      "impacts": [{"softwareQuality": "RELIABILITY", "severity": "HIGH"}],
+                      "descriptionSections": [{"key": "root_cause", "content": "<p>c</p>",
+                                               "context": {}}]},
+                      "actives": [{"qProfile": "q", "by": person}]}))
 elif args[:2] == ["quality-gate", "status"]:
     condition = {"status": "ERROR", "metricKey": "new_coverage", "comparator": "LT",
                  "errorThreshold": "80", "actualValue": "10", "extra": "x"}
@@ -1416,6 +1425,48 @@ def check_qlty_sonar_read() -> None:
             ),
         )
 
+        log.write_text("", encoding="utf-8")
+        done = run("rule", "--organization", "org", "--rule", "python:S1")
+        rule_call = json.loads(log.read_text(encoding="utf-8").splitlines()[0])
+        check(
+            "qlty-sonar-read rule: organization in the query, actives and dates dropped",
+            done.returncode == 0
+            and rule_call["argv"]
+            == ["api", "get", "/api/rules/show?key=python%3AS1&organization=org"]
+            and isolated(rule_call)
+            and json.loads(done.stdout)
+            == {
+                "rule": {
+                    "key": "python:S1",
+                    "name": "n",
+                    "lang": "py",
+                    "type": "BUG",
+                    "severity": "MAJOR",
+                    "htmlDesc": "<p>d</p>",
+                    "impacts": [{"softwareQuality": "RELIABILITY", "severity": "HIGH"}],
+                    "descriptionSections": [{"key": "root_cause", "content": "<p>c</p>"}],
+                }
+            },
+            done.stdout + done.stderr,
+        )
+        for argv in (
+            ("rule", "--rule", "python:S1"),
+            ("rule", "--organization", "org", "--rule", "python S1"),
+            ("rule", "--organization", "Org", "--rule", "python:S1"),
+            ("rule", "--organization", "org", "--rule", "python:S1", "--project", "p"),
+        ):
+            done = run(*argv)
+            check(
+                f"qlty-sonar-read refuses {' '.join(argv[1:])} (exit 2)",
+                done.returncode == 2 and done.stdout == "",
+                f"{done.returncode} {done.stdout} {done.stderr}",
+            )
+        done = run("rule", "--organization", "org", "--rule", "python:S1", mode="other-rule")
+        check(
+            "qlty-sonar-read rule: a different rule in the answer exits 2",
+            done.returncode == 2 and done.stdout == "",
+            f"{done.returncode} {done.stdout} {done.stderr}",
+        )
         for mode in ("no-issue", "other-issue"):
             done = run("issue-state", "--issue", "K1", mode=mode)
             check(

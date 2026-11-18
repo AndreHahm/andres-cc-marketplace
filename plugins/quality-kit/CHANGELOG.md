@@ -4,6 +4,15 @@ All notable changes to this plugin are documented here.
 
 ## [Unreleased]
 
+### Added
+- `qlty-sonar-read.py rule --organization <org> --rule <key>`: one rule's name, type, impacts and description, so
+  `using-sonarqube-cloud` can answer what a rule checks without an unprojected `sonar api get`.
+
+### Changed
+- The weekly mutation job's timeout is 15 minutes, set from its first run (each module took 0.4 to 3.1 minutes).
+- `resolving-analysis-findings` keeps its Sonar rungs and decision rights in `references/sonar-mechanisms.md`, which a
+  `sonar` record reads first; the text moved unchanged.
+
 ### Fixed
 - Codacy ignores used the hex `issueId`, which `--ignore-issue` rejects, or, when it starts with digits, reads by
   that numeric prefix as a different issue (issue #760). The Codacy findings record (schema `2.0.0`) now carries
