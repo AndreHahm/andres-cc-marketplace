@@ -193,6 +193,15 @@ jobs:
             # The PR's own code runs in this job, so no later step may hold a write token.
             echo "fallback=true" >> "$GITHUB_OUTPUT"
           fi
+          # The tier script's hash-pinned dependencies: the base copy, or the PR's own copy only when the
+          # PR's own script runs anyway. Absent from a base that predates the file, so the next step then
+          # keeps its unhashed pins.
+          rm -f "$trusted/requirements.txt"
+          if ! fetch plugins/quality-kit/assets/qlty-coverage-tier-requirements.txt "$trusted/requirements.txt"; then
+            if [ "$have" -eq 0 ]; then
+              cp plugins/quality-kit/assets/qlty-coverage-tier-requirements.txt "$trusted/requirements.txt"
+            fi
+          fi
           # The repository override: the base copy, or none. The PR's own copy is never used.
           rm -f "$trusted/override.yml"
           if ! fetch .github/coverage-tiers.yml "$trusted/override.yml"; then
@@ -222,9 +231,20 @@ jobs:
           git -c core.quotePath=false diff --no-ext-diff --no-textconv --text \
             --src-prefix=a/ --dst-prefix=b/ --unified=0 HEAD^1 HEAD > "$out/patch.diff" \
             || { echo "::error::could not build the PR diff"; exit 1; }
+          # Hashes are checked only by `uv pip install --require-hashes`: `uv run --with-requirements`
+          # installs a package whose hash does not match (checked 2026-11-18, uv 0.12.21).
+          if [ -f "$trusted/requirements.txt" ]; then
+            venv="$RUNNER_TEMP/tier-venv"
+            { uv venv --no-config --quiet --python 3.13 "$venv" \
+              && uv pip install --no-config --quiet --python "$venv/bin/python" --require-hashes --no-build \
+                -r "$trusted/requirements.txt"; } \
+              || { echo "::error::could not install the tier script's hash-pinned dependencies"; exit 1; }
+            tier_python=("$venv/bin/python")
+          else
+            tier_python=(uv run --no-project --no-config --with "pyyaml==6.0.3" --with "defusedxml==0.7.1" python)
+          fi
           run_tier() {
-            uv run --no-project --no-config --with "pyyaml==6.0.3" --with "defusedxml==0.7.1" \
-              python -I "$trusted/tier.py" \
+            "${tier_python[@]}" -I "$trusted/tier.py" \
               --coverage "$out/coverage.json" --diff "$out/patch.diff" \
               --defaults "$trusted/defaults.yml" --override "$trusted/override.yml" "$@"
           }

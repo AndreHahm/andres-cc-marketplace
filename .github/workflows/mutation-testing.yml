@@ -91,7 +91,8 @@ jobs:
           version: "0.12.21"
           enable-cache: "false"
           python-version: "3.13"
-      - run: uv sync --locked --group dev --no-build --no-install-package csscompressor --no-install-package jsmin
+      # mutmut comes from the `mutation` group, so uv.lock's hashes cover it and its dependencies.
+      - run: uv sync --locked --group dev --group mutation --no-build --no-install-package csscompressor --no-install-package jsmin
       - name: Run mutmut
         id: run
         env:
@@ -100,7 +101,7 @@ jobs:
         run: |
           # set +e: the runner's own exit status (mutmut's, or 4 for a red baseline) is read below.
           set +e -uo pipefail
-          uv run --no-sync --no-build --no-config --with "mutmut==3.8.1" \
+          uv run --no-sync --no-build --no-config \
             python -B plugins/quality-kit/scripts/qlty-mutation-run.py --module "$MODULE"
           echo "status=$?" >> "$GITHUB_OUTPUT"
       - name: Summarize

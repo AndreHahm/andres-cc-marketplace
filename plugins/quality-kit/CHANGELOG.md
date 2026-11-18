@@ -9,6 +9,11 @@ All notable changes to this plugin are documented here.
   `using-sonarqube-cloud` can answer what a rule checks without an unprojected `sonar api get`.
 
 ### Changed
+- The coverage tier installs PyYAML and defusedxml from `assets/qlty-coverage-tier-requirements.txt` with
+  `uv pip install --require-hashes --no-build`, taken from the base SHA like the tier script. `uv run --with` and
+  `--with-requirements` do not check hashes (a wrong hash installed anyway with uv 0.12.21). The weekly mutation job
+  takes mutmut from a locked `mutation` dependency group. A test now runs the tier's trusted-restore step for each
+  state of the base branch.
 - The weekly mutation job's timeout is 15 minutes, set from its first run (each module took 0.4 to 3.1 minutes).
 - `resolving-analysis-findings` keeps its Sonar rungs and decision rights in `references/sonar-mechanisms.md`, which a
   `sonar` record reads first; the text moved unchanged.

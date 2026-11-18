@@ -37,6 +37,11 @@ headless-review = [
   # claude_review's credential redaction imports review.py, which needs it.
   "PyYAML>=6.0",
 ]
+# Only the weekly mutation job installs it (.github/workflows/mutation-testing.yml), so uv.lock pins
+# mutmut and every dependency with hashes instead of an unhashed `uv run --with`.
+mutation = [
+  "mutmut==3.8.1",
+]
 
 [tool.ruff]
 line-length = 100
