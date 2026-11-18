@@ -52,7 +52,11 @@ None.
 
 
 def _git(cwd: Path, *args: str) -> None:
-    subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True)
+    # The same scrubbed environment the scripts use, so a run from a git hook (which exports
+    # GIT_DIR or GIT_INDEX_FILE) cannot point these fixture commands at the caller's repo.
+    subprocess.run(
+        ["git", *args], cwd=cwd, check=True, capture_output=True, env=validate_handoff.git_env()
+    )
 
 
 @pytest.fixture
@@ -217,3 +221,67 @@ def test_bare_name_verified_by_surviving_copy(repo: Path) -> None:
     (repo / "other" / "deep_file.py").write_text("x")
     (repo / "plugins" / "p" / "scripts" / "deep_file.py").unlink()
     assert _status(repo, "deep_file.py") == "verified"
+
+
+def test_exact_deleted_path_not_verified_by_longer_path(repo: Path) -> None:
+    # src/task.py is deleted (not staged); examples/src/task.py must not stand in for it.
+    for rel in ("src/task.py", "examples/src/task.py"):
+        (repo / rel).parent.mkdir(parents=True, exist_ok=True)
+        (repo / rel).write_text("x")
+    _git(repo, "add", "-A")
+    _git(repo, "-c", "user.email=t@example.invalid", "-c", "user.name=t", "commit", "-qm", "two")
+    (repo / "src" / "task.py").unlink()
+    assert _status(repo, "src/task.py") == "missing"
+    assert _status(repo, "examples/src/task.py") == "verified"
+
+
+def test_doubled_slash_matches_like_single(repo: Path) -> None:
+    assert _status(repo, "scripts//deep_file.py") == "verified"
+    assert _status(repo, "scripts/./deep_file.py") == "verified"
+
+
+def test_handoff_dir_fallback_only_for_bare_names(repo: Path) -> None:
+    handoffs = repo / ".claude" / "handoffs"
+    (handoffs / "docs").mkdir()
+    (handoffs / "docs" / "design.md").write_text("x")
+    (handoffs / "2099-01-01-000001-earlier.md").write_text("x")
+    path = _write_handoff(repo, "- `docs/design.md`\n- `2099-01-01-000001-earlier.md`")
+    assert validate_handoff.validate_handoff(str(path))["files_missing"] == ["docs/design.md"]
+
+
+@pytest.mark.parametrize("name", ["main.cc", "README.mdx"])
+def test_bare_cc_and_mdx_names_checked(repo: Path, name: str) -> None:
+    path = _write_handoff(repo, f"- `{name}`")
+    assert validate_handoff.validate_handoff(str(path))["files_missing"] == [name]
+
+
+def test_local_path_starting_with_http_is_checked(repo: Path) -> None:
+    path = _write_handoff(repo, "- `http/client.py`\n- `httpx_client.py`")
+    result = validate_handoff.validate_handoff(str(path))
+    assert result["files_missing"] == ["http/client.py", "httpx_client.py"]
+
+
+def test_staleness_never_turns_absolute_path_into_relative(repo: Path) -> None:
+    (repo / "etc").mkdir()
+    (repo / "etc" / "passwd").write_text("x")
+    existing, missing = check_staleness.check_files_exist(["/etc/passwd"], str(repo))
+    assert existing == []
+    assert missing == ["/etc/passwd"]
+    table = "| /etc/passwd |\n| plugins/p/scripts/deep_file.py |\n"
+    handoff = repo / ".claude" / "handoffs" / "t.md"
+    handoff.write_text(table, encoding="utf-8")
+    files = check_staleness.parse_handoff_metadata(str(handoff))["modified_files"]
+    assert files == ["plugins/p/scripts/deep_file.py"]
+
+
+def test_git_lookup_ignores_inherited_repo_location(
+    repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    other = tmp_path / "other"
+    other.mkdir()
+    _git(other, "init", "-q")
+    monkeypatch.setenv("GIT_DIR", str(other / ".git"))
+    monkeypatch.setenv("GIT_INDEX_FILE", str(other / ".git" / "index"))
+    files = validate_handoff.list_repo_files(str(repo))
+    assert files is not None
+    assert "plugins/p/scripts/deep_file.py" in files

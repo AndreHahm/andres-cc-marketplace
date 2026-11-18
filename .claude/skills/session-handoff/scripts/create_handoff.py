@@ -27,11 +27,17 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+# Sibling-script import, same pattern as check_staleness.py.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from validate_handoff import git_env  # noqa: E402
+
 
 def run_cmd(cmd: list[str], cwd: str | None = None) -> tuple[bool, str]:
     """Run a command and return (success, output)."""
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, cwd=cwd, timeout=10)
+        result = subprocess.run(
+            cmd, capture_output=True, text=True, cwd=cwd, env=git_env(), timeout=10
+        )
         return result.returncode == 0, result.stdout.strip()
     except (subprocess.TimeoutExpired, FileNotFoundError):
         return False, ""
@@ -223,7 +229,7 @@ def generate_handoff(
 - Project: {project_path}
 - Branch: {branch_line}
 - Session duration: [estimate how long you worked]
-- Context mode: [admin | review | ship | none - see SKILL.md Step 2 item 5; if unsure, review]
+- Context mode: [admin | review | ship | none - see SKILL.md Step 2 item 5]
 
 ### Recent Commits (for context)
 {commits_section}

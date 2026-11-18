@@ -1,0 +1,11 @@
+{
+  "eval_id": 13,
+  "skill_path": "plugins/session-kit/skills/session-handoff/SKILL.md",
+  "assertions": [
+    {
+      "text": "Writes the Context mode value review, not ship, because the secretlint failure is untriaged",
+      "type": "functionality",
+      "target": "outputs/"
+    }
+  ]
+}

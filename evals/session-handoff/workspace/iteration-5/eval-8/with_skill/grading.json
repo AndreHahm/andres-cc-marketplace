@@ -1,0 +1,16 @@
+{
+  "eval_id": 8,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Writes the Context mode value ship, citing that merge is the only remaining step",
+      "passed": true,
+      "evidence": "\"I would write `Context mode: ship`\"; quotes the rule's PR-merge conditions including secretlint having passed"
+    }
+  ],
+  "summary": {
+    "assertions_total": 1,
+    "assertions_passed": 1,
+    "pass_rate": 1.0
+  }
+}

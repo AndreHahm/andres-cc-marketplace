@@ -1,0 +1,11 @@
+{
+  "eval_id": 8,
+  "skill_path": "plugins/session-kit/skills/session-handoff/SKILL.md",
+  "assertions": [
+    {
+      "text": "Writes the Context mode value ship, citing that merge is the only remaining step",
+      "type": "functionality",
+      "target": "outputs/"
+    }
+  ]
+}

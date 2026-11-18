@@ -55,7 +55,7 @@
     {
       "id": 8,
       "name": "Create with only the merge left",
-      "prompt": "You are at CREATE Step 2 and filling in the handoff's Session Metadata. PR #901 is ready for review (not a draft), every review finding is resolved and its threads are closed, no fix commits are pending, and the required checks were green when last checked. The next session's only step is merge-pr. Which Context mode value do you write, and why?",
+      "prompt": "You are at CREATE Step 2 and filling in the handoff's Session Metadata. PR #901 is ready for review (not a draft), every review finding is resolved and its threads are closed, no fix commits are pending, and when last checked the required checks were green and the Security workflow's secretlint job had passed. The next session's only step is merge-pr. Which Context mode value do you write, and why?",
       "expected_output": "Writes 'Context mode: ship', citing that merge is the only remaining step.",
       "files": []
     },
@@ -86,12 +86,19 @@
       "prompt": "You are at CREATE Step 2 and filling in the handoff's Session Metadata. PR #904 is still a draft. Required checks are green and no review findings exist. The next session should flip it to ready for review and then merge it. Which Context mode value do you write, and why?",
       "expected_output": "Writes 'Context mode: review', not ship: the PR is a draft, and flipping it to ready starts a review round before the merge.",
       "files": []
+    },
+    {
+      "id": 13,
+      "name": "Create with a failed secretlint result",
+      "prompt": "You are at CREATE Step 2 and filling in the handoff's Session Metadata. PR #905 is ready for review (not a draft), every review finding is resolved, no fix commits are pending, and the required checks were green when last checked. The Security workflow's secretlint job failed on one file and nobody has looked at it yet. The next session should merge the PR. Which Context mode value do you write, and why?",
+      "expected_output": "Writes 'Context mode: review', not ship: the secretlint failure has not been triaged, so merging is not the only remaining step.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 3,
     "declared_scenarios_covered": 3,
     "uncovered": [],
-    "coverage_note": "Evals 4-6 (2026-10-16) cover the Context mode load step added to Step 5; they are plan-only, with-skill-only runs. SKILL.md's declared Testing & Validation scenarios (3) are still covered by evals 1-3. Evals 7-9 (2026-11-18) cover the CREATE Step 2 rule for choosing the Context mode value (review while findings remain, ship only when merge is the only step left, none while implementing with no PR to open next); iteration-1 ran them plan-only, with-skill-only, and iteration-2 as an A/B against the pre-edit text. Evals 10-12 (2026-11-18) are borderline cases for the same rule (no PR yet but 'open and merge', a review round just requested, a green draft), added after evals 7-9 did not separate the rule from the pre-edit text."
+    "coverage_note": "Evals 4-6 (2026-10-16) cover the Context mode load step added to Step 5; they are plan-only, with-skill-only runs. SKILL.md's declared Testing & Validation scenarios (3) are still covered by evals 1-3. Evals 7-9 (2026-11-18) cover the CREATE Step 2 rule for choosing the Context mode value (review while findings remain, ship only when merge is the only step left, none while implementing with no PR to open next); iteration-1 ran them plan-only, with-skill-only, and iteration-2 as an A/B against the pre-edit text. Evals 10-12 (2026-11-18) are borderline cases for the same rule (no PR yet but 'open and merge', a review round just requested, a green draft), added after evals 7-9 did not separate the rule from the pre-edit text. After PR #790's review round 1 added the secretlint condition to the rule, eval 8 states that secretlint passed and eval 13 covers an untriaged secretlint failure; iteration-5 ran both plan-only, with-skill-only."
   }
 }
