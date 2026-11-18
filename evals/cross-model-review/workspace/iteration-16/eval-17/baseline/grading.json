@@ -1,0 +1,26 @@
+{
+  "eval_id": 17,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Case A: response writes BASE='release/1.2' and SCOPE='plugins/git-kit' as single-quoted assignments at the top of the script, before the Inputs block",
+      "passed": false,
+      "evidence": "Case A replaces the default line inside the Inputs block with double-quoted assignments after umask 077: 'BASE=\"release/1.2\"' / 'SCOPE=\"plugins/git-kit\"'"
+    },
+    {
+      "text": "Case B: response does not write the script and stops to ask the user, because the SCOPE value contains a single quote",
+      "passed": true,
+      "evidence": "Case B: 'refuse to write this value into the script, and stop before the script is written ... Ask the user for a corrected SCOPE with AskUserQuestion'; cites that single quotes 'would break at the embedded '' (its main stated reason is an inferred pathspec charset)"
+    },
+    {
+      "text": "Response treats the BASE/SCOPE values as data, never shell syntax",
+      "passed": false,
+      "evidence": "Judgment call: Case A uses double quotes, which leave $ and backtick expansion active, although the response itself notes double quotes expand $(...); Case B offers to write the hostile value with '\\'' escaping if the user insists"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 1,
+    "pass_rate": 0.3333
+  }
+}

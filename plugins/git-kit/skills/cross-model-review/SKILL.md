@@ -485,6 +485,6 @@ closing-tag neutralization, partial-failure preservation, scoped review and more
 `scripts/preflight_fixtures_test.py` runs the Preflight chain, planner step included, against scratch
 repositories.
 
-**Last dated run record:** `2026-11-18, evals/cross-model-review/workspace/iteration-15/` — evals 13-16
-(EnterWorktree, scenario 38), Full Pipeline: `with_skill` 17/17, baseline (`main`'s text) 5/17. Dry runs,
-not a live dispatch. Earlier runs and their open items are under "Run history" in `references/testing-scenarios.md`.
+**Last dated run record:** `2026-11-18, evals/cross-model-review/workspace/iteration-15/` — evals 13-16, scenario 38
+(refused chained Preflight; heredoc refusal, then timeout; folder-pick re-run; normal-session control), both arms
+claude-opus-5-5: `with_skill` 17/17, baseline (`main`'s text) 5/17; `iteration-16`, eval 17 (single-quoted `BASE`/`SCOPE`), claude-haiku-5-5: 3/3 vs 1/3. Skill-following dry runs, no Codex dispatch. Earlier runs and their open items are under "Run history" in `references/testing-scenarios.md`.

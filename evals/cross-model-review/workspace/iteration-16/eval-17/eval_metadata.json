@@ -1,0 +1,21 @@
+{
+  "eval_id": 17,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {
+      "text": "Case A: response writes BASE='release/1.2' and SCOPE='plugins/git-kit' as single-quoted assignments at the top of the script, before the Inputs block",
+      "type": "functionality",
+      "target": "references/codex-pass-assembly.md"
+    },
+    {
+      "text": "Case B: response does not write the script and stops to ask the user, because the SCOPE value contains a single quote",
+      "type": "functionality",
+      "target": "references/codex-pass-assembly.md"
+    },
+    {
+      "text": "Response treats the BASE/SCOPE values as data, never shell syntax",
+      "type": "functionality",
+      "target": "references/codex-pass-assembly.md"
+    }
+  ]
+}

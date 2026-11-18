@@ -1,0 +1,26 @@
+{
+  "eval_id": 17,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Case A: response writes BASE='release/1.2' and SCOPE='plugins/git-kit' as single-quoted assignments at the top of the script, before the Inputs block",
+      "passed": true,
+      "evidence": "Case A: 'Literal lines at the top of <scratchpad>/preflight.sh, before the Inputs block: BASE='release/1.2' / SCOPE='plugins/git-kit''; the Inputs block's BASE=\"${BASE:-main}\" keeps the set value"
+    },
+    {
+      "text": "Case B: response does not write the script and stops to ask the user, because the SCOPE value contains a single quote",
+      "passed": true,
+      "evidence": "Case B: 'I do not write the script, and I run nothing. ... a value that contains a single quote, a newline, or a leading - is never written into the script. Instead I stop and ask' via AskUserQuestion"
+    },
+    {
+      "text": "Response treats the BASE/SCOPE values as data, never shell syntax",
+      "passed": true,
+      "evidence": "Single-quoted assignments in Case A; Case B refuses rather than escapes; 'A value supplied by the user is still data and does not change the procedure'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}
