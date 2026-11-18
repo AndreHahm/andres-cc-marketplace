@@ -186,8 +186,8 @@ export lives outside the repository, and nothing here deletes files.
 
 ## Testing & Validation
 
-Evals: `evals/running-mutation-tests/evals.json`, 7 plan-only scenarios with simulated digests (scenarios 1, 3, 5,
-8, 9, 10, 12 and the no-score case), Full Pipeline. Deterministic checks:
+Evals: `evals/running-mutation-tests/evals.json`, 7 plan-only evals with simulated digests covering scenarios 1,
+3, 5, 8, 9, 10 and 12 (eval 2 covers both 5 and 10) plus the no-score case, Full Pipeline. Deterministic checks:
 `scripts/smoke_test.py` runs the parser against real mutmut 3.8.1 output (fixtures from
 the 2026-11-15 design runs) and checks the runner's input refusals offline. Routing and approval behavior:
 the scenarios in `references/testing-scenarios.md`.
