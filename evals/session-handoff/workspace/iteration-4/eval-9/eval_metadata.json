@@ -1,0 +1,11 @@
+{
+  "eval_id": 9,
+  "skill_path": "plugins/session-kit/skills/session-handoff/SKILL.md",
+  "assertions": [
+    {
+      "text": "Writes the Context mode value none",
+      "type": "functionality",
+      "target": "outputs/"
+    }
+  ]
+}

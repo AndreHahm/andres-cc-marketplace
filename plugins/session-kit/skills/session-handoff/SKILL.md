@@ -98,7 +98,14 @@ Open the generated file and fill in all `[TODO: ...]` sections. Prioritize:
 3. **Immediate Next Steps** — clear, actionable first steps
 4. **Decisions Made** — choices with rationale, not just outcomes
 5. **Context mode** — set the `Context mode:` line in Session Metadata to the mode the next session
-   should start in: `admin`, `review`, `ship`, or `none` (starting a worktree and implementing need no mode)
+   should start in, judged from what this session knows about the next step:
+   - `ship` only when all of these hold: a PR exists and is not a draft, no review findings are left to
+     triage and no fix commits are pending, the required checks were green when last checked, and the
+     next step is `merge-pr` or a publish.
+   - `review` when the next step opens the PR, or whenever a PR is open and review or fix work may still
+     be needed. When unsure between `review` and `ship`, choose `review`.
+   - `admin` for configuration, permission or setup work, or the post-merge cleanup session.
+   - `none` for starting a worktree or implementing, when opening a PR is not the next step.
 
 Use the template structure in [references/handoff-template.md](references/handoff-template.md) for
 guidance.
@@ -225,17 +232,25 @@ chain, read the most recent handoff first, then reference predecessors as needed
 
 ## Testing & Validation
 
-Eval suite: `evals/session-handoff/` — 6 scenarios (create-handoff, load-and-check-staleness-first,
-resume-a-stale-handoff, and three for the Context mode load step), `skill-tester` Quick Workflow, all passed (evals 1-3 as a blind comparison). Eval 3 verified
+Eval suite: `evals/session-handoff/` — 9 scenarios (create-handoff, load-and-check-staleness-first,
+resume-a-stale-handoff, three for the Context mode load step, and three for choosing the Context mode
+value at create time), `skill-tester` Quick Workflow, all passed (evals 1-3 as a blind comparison). Eval 3 verified
 staleness is checked and reported before a stale document's content is loaded or acted on. The 4
 deterministic scripts in `scripts/` are additionally independently testable by direct execution against
 fixtures. Evals 4-6 (2026-10-16) cover the Context mode load step in Step 5: a valid value is confirmed with the
 user before `Skill(context-mode)` runs, a hostile value is reported and ignored, and `none` sets nothing. They
-were plan-only, with-skill-only runs (8/8 assertions; no baseline arm).
+were plan-only, with-skill-only runs (8/8 assertions; no baseline arm). Evals 7-12 (2026-11-18) cover the
+create-time rule in Step 2 item 5. Iteration 2 ran evals 7-9 as an A/B against the pre-edit text and did
+not separate the two (6/6 each). Iteration 3 ran the borderline evals 10-12: 5/6 for the rule, 0/6 for
+the pre-edit text, which chose `ship` each time. Iteration 4 re-ran evals 9 and 10 after the
+"next step opens the PR" wording was added.
+The file-reference lookup shared by `validate_handoff.py` and `check_staleness.py` is tested by
+`plugins/session-kit/tests/test_handoff_file_references.py` (bare names, partial paths, `/` boundary,
+`../` containment, untracked files, non-repo fallback, scoring).
 
 **Last dated run record:** `evals/session-handoff/workspace/iteration-1/eval-{1,2,3}/with_skill/grading.json`,
-2026-09-03, and `eval-{4,5,6}` on 2026-10-16. `scripts/smoke_test.py` structural self-check passing as of
-2026-10-16 (including the new `check_context_mode_line`).
+2026-09-03, `eval-{4,5,6}` on 2026-10-16, and `iteration-{1,2,3,4}` runs of evals 7-12 on 2026-11-18. `scripts/smoke_test.py`
+structural self-check passing as of 2026-11-18.
 
 **Verify this skill activates on:**
 - "create a handoff for this work"

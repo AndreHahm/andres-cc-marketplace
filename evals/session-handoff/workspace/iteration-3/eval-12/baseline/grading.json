@@ -1,0 +1,21 @@
+{
+  "eval_id": 12,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Writes the Context mode value review",
+      "passed": false,
+      "evidence": "Fails: writes ship"
+    },
+    {
+      "text": "Does not write ship",
+      "passed": false,
+      "evidence": "Fails: writes ship for a draft PR"
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 0,
+    "pass_rate": 0.0
+  }
+}

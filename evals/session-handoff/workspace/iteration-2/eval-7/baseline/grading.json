@@ -1,0 +1,26 @@
+{
+  "eval_id": 7,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Writes the Context mode value review",
+      "passed": true,
+      "evidence": "\"Context mode: review\""
+    },
+    {
+      "text": "Does not write ship",
+      "passed": true,
+      "evidence": "ship not written; review chosen as the starting phase"
+    },
+    {
+      "text": "Cites the untriaged finding as the reason",
+      "passed": true,
+      "evidence": "\"triaging the one untriaged Codex finding\"; also notes the values are undefined"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}
