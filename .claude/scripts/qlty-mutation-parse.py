@@ -128,15 +128,15 @@ def load_exit_codes(mutants: Path, module: str | None = None) -> dict[str, int |
             raise InputError(f"{meta}: no exit_code_by_key object")
         for key, code in by_key.items():
             if code is not None and (isinstance(code, bool) or not isinstance(code, int)):
-                raise InputError(f"{meta}: exit code for {key} is not an integer: {code!r}")
+                raise InputError(f"{meta}: exit code for {key!r} is not an integer: {code!r}")
             if code not in STATUS_BY_EXIT_CODE:
                 raise InputError(
-                    f"{meta}: exit code {code} for {key} is not in mutmut {MUTMUT_VERSION}'s "
+                    f"{meta}: exit code {code} for {key!r} is not in mutmut {MUTMUT_VERSION}'s "
                     "table; "
                     "check the mutmut version before trusting any result"
                 )
             if key in codes:
-                raise InputError(f"{meta}: mutant {key} appears in more than one .meta file")
+                raise InputError(f"{meta}: mutant {key!r} appears in more than one .meta file")
             codes[key] = code
     return codes
 
