@@ -30,6 +30,7 @@ from scripts.marketplace_ci.review import (
     carry_blocking_findings,
     compute_pr_delta,
     exclude_from_ci_review,
+    finding_waiver_key,
     is_ci_review_excluded,
     merge_carried_findings,
     narrow_to_unreviewed,
@@ -438,6 +439,20 @@ def test_waiver_section_parsing():
     }
     assert parse_waivers(body, _never_open) == {("R6", "a_py", 3), ("R7", "b_py", 4)}
     assert parse_waivers("no section", _never_open) == set()
+
+
+def test_a_waiver_matches_a_rule_with_spaces():
+    # The carried-findings summary prints a reviewer's rule verbatim, spaces included; the line it
+    # prints must be one the parser accepts, and it must name the same finding key.
+    body = (
+        "## Accepted Review Findings\n"
+        "- rulebook compliance / naming p/inv.json:94 – accepted: false positive\n"
+        "- - q_py:0 – residual\n"
+    )
+    assert parse_waivers(body, _never_open) == {
+        finding_waiver_key("rulebook compliance / naming", "p/inv.json", 94),
+        ("-", "q_py", 0),
+    }
 
 
 def test_a_finding_on_an_unchanged_file_is_carried_until_waived(git_repo):

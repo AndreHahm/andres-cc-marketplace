@@ -386,7 +386,7 @@ review` is the gate after the PR exists and reviews only the delta, to cut OpenA
   below; `git-kit`'s `create-pr` asset does not name this repository's CI; it also
   lists accepted third-party findings, which CI ignores unless one matches a carried finding), one line per
   finding: `- <rule> <path>:<line> – accepted|residual|deferred #<issue>`, optionally followed by
-  `: <reason>` (`-` for a finding without a rule, `0` without a line, no spaces in the path; `#<issue>` is
+  `: <reason>` (`-` for a finding without a rule, `0` without a line; the rule may contain spaces, the path may not; `#<issue>` is
   required only for `deferred`, and must be an open issue of this repository, checked through the API). The job
   summary prints the line to copy for each carried finding. Every anchor carries (R10). A blocking entry the
   step cannot read, or more than 500 findings, reports `error`. The PR

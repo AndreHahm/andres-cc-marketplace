@@ -1298,8 +1298,10 @@ def narrow_to_unreviewed(
 # run whose file the pull request has not changed since stays blocking, without a new Codex call,
 # until the file changes or the pull request body waives it.
 _WAIVER_SECTION = re.compile(r"^##\s+Accepted Review Findings\s*$", re.IGNORECASE | re.MULTILINE)
+# A rule may contain spaces ("rulebook compliance / naming"), as the carry summary prints it. The
+# path may not, so the first space-free `<path>:<line>` followed by the dash ends the rule.
 _WAIVER_LINE = re.compile(
-    r"^\s*[-*]\s+(?P<rule>\S+)\s+(?P<path>\S+?):(?P<line>\d+)\s+[-–—]+\s+"
+    r"^\s*[-*]\s+(?P<rule>\S(?:.*?\S)?)\s+(?P<path>\S+?):(?P<line>\d+)\s+[-–—]+\s+"
     r"(?P<kind>accepted|residual|deferred)\b(?:\s+#(?P<issue>\d+))?",
     re.IGNORECASE,
 )
