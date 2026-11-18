@@ -537,11 +537,19 @@ def test_check_pr_actions_pin_bump(monkeypatch, git_repo, tmp_path, verified, ta
 
 
 def _commit_bytes(git_repo, files, message):
+    # #718: stage the exact bytes through the object database, not the work tree, so a
+    # core.autocrlf host keeps the CRLF and a Windows host can stage a tab in a file name
+    # (allowed by turning off core.protectNTFS: the path is never checked out).
     for path, data in files.items():
-        target = git_repo.root / path
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_bytes(data)
-        subprocess.run(["git", "add", "--", path], cwd=git_repo.root, check=True)
+        blob = subprocess.run(
+            ["git", "hash-object", "-w", "--no-filters", "--stdin"],
+            cwd=git_repo.root, input=data, capture_output=True, check=True,
+        ).stdout.decode().strip()  # fmt: skip
+        subprocess.run(
+            ["git", "-c", "core.protectNTFS=false", "update-index", "--add", "--cacheinfo",
+             f"100644,{blob},{path}"],
+            cwd=git_repo.root, check=True,
+        )  # fmt: skip
     subprocess.run(["git", "commit", "-q", "-m", message], cwd=git_repo.root, check=True)
     return subprocess.run(
         ["git", "rev-parse", "HEAD"], cwd=git_repo.root, capture_output=True, text=True, check=True

@@ -33,6 +33,22 @@ def _needs_timeout(request):
         pytest.skip("needs timeout to bound the guard's history checks")
 
 
+def _link_tools(bin_dir, tools):
+    """Put each found tool on a minimal PATH in `bin_dir`."""
+    for tool in tools:
+        found = shutil.which(tool)
+        if not found:
+            continue
+        if os.name == "nt":
+            # #718: a symlink to Git for Windows' git.exe loses the DLLs beside it and exits
+            # 127 with no output, so a wrapper runs the real binary from its own directory.
+            wrapper = bin_dir / tool
+            wrapper.write_text(f'#!/bin/sh\nexec "{Path(found).as_posix()}" "$@"\n', "utf-8")
+            wrapper.chmod(wrapper.stat().st_mode | stat.S_IEXEC)
+        else:
+            (bin_dir / tool).symlink_to(found)
+
+
 def _env(home, extra=None):
     env = {
         "PATH": SYSTEM_PATH,
@@ -179,10 +195,8 @@ def test_squash_merge_without_gh_keeps_warning(setup):
     # No gh on PATH: the PR fallback cannot run, so the guard fails toward warning.
     empty_bin = home / "empty-bin"
     empty_bin.mkdir()
-    for tool in ("git", "jq", "timeout", "env", "sed", "awk", "grep", "tr", "tail", "cat"):
-        found = shutil.which(tool)
-        if found:
-            (empty_bin / tool).symlink_to(found)
+    tools = ("git", "jq", "timeout", "env", "sed", "awk", "grep", "tr", "tail", "cat")
+    _link_tools(empty_bin, tools)
     out = _run_guard(wt, home, {"PATH": str(empty_bin)})
     assert json.loads(out)["decision"] == "block"
 
@@ -355,10 +369,7 @@ def test_slashed_remote_name_under_origin_blocks(setup, tmp_path):
 def _bin_without_timeout(home):
     empty_bin = home / "no-timeout-bin"
     empty_bin.mkdir()
-    for tool in ("git", "jq", "env", "sed", "awk", "grep", "tr", "tail", "cat"):
-        found = shutil.which(tool)
-        if found:
-            (empty_bin / tool).symlink_to(found)
+    _link_tools(empty_bin, ("git", "jq", "env", "sed", "awk", "grep", "tr", "tail", "cat"))
     return {"PATH": str(empty_bin)}
 
 
