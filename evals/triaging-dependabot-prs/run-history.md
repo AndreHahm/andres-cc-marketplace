@@ -235,3 +235,13 @@ at three per PR on every path. 137 advisory tests; every new check has a mutatio
 findings, all fixed or disclosed. New eval 25 (scenarios 73 and 74, iteration 28): 5 of 5, no baseline; `merge-pr`
 eval 18 (its iteration 11): 4 of 4 against 1 of 4 for the pre-change baseline. All author-graded from one simulated
 answer each.
+
+Same day, the pre-PR cross-model review (Claude and Codex, 4 batches, every Codex dispatch on the sandboxed read-only
+path) found five issues, all fixed before the PR: 6.1's re-assessment after a head change now applies rule (b) as
+well as (a) and (d), since the base lockfile may have moved; an off-registry source that changes under an unchanged
+name and version (another git revision or tarball URL) is now `source_changed`, by a per-package source fingerprint;
+a uv package with GitHub advisories also gets OSV's, since uv.lock names are lowercase and GitHub's pip matching is
+partly case-sensitive (live: `Pillow@8.0.0` 46 advisories, `pillow@8.0.0` 26); `merge-pr` step 1.5's fix bullet is
+now conditional on the flag being absent; and the cost wording names the added-package stage alone. 139 advisory
+tests; every new check has a mutation that fails the suite. Evals were not re-run for the two prose fixes, which
+make the text match behavior already intended (rule (b) on a refreshed result, no push while the flag is set).

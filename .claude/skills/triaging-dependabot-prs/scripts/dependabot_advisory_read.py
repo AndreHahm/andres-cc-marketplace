@@ -602,7 +602,7 @@ def parse_uv_lock(text):
         data = tomllib.loads(text)
     except ValueError as exc:
         raise LookupFailed("uv.lock is not valid TOML") from exc
-    versions, unparsed, off_registry = {}, [], []
+    versions, unparsed, off_registry, source_ids = {}, [], [], {}
     for package in data.get("package") or []:
         name = package.get("name") if isinstance(package, dict) else None
         version = package.get("version") if isinstance(package, dict) else None
@@ -614,12 +614,16 @@ def parse_uv_lock(text):
         registry = source.get("registry") if isinstance(source, dict) else None
         if not isinstance(registry, str) or registry.rstrip("/") != PYPI_SIMPLE:
             off_registry.append((python_name(name), version))
+            source_ids[(python_name(name), version)] = json.dumps(
+                source, sort_keys=True, default=str
+            )
     requires = data.get("requires-python")
     return {
         "versions": versions,
         "requires_python": requires if isinstance(requires, str) else None,
         "unparsed": unparsed,
         "off_registry": off_registry,
+        "source_ids": source_ids,
     }
 
 
@@ -641,6 +645,7 @@ def parse_pnpm_lock(text):
     URL is not the registry's standard layout (a plain key records no registry at all).
     """
     versions, inside, unparsed, off_registry, current = {}, False, [], [], None
+    source_ids = {}
     declared = PNPM_LOCKFILE_RE.search(text[:2000])
     if not declared or declared.group(1) not in PNPM_SUPPORTED_MAJORS:
         raise LookupFailed("unsupported or missing pnpm lockfileVersion")
@@ -656,10 +661,11 @@ def parse_pnpm_lock(text):
                 unparsed.append(line)
             elif match.group(2) not in versions.setdefault(match.group(1), []):
                 versions[match.group(1)].append(match.group(2))
-        elif inside and current and "tarball:" in line and current not in off_registry:
-            off_registry.append(
-                current
-            )  # flow-style `resolution: {..., tarball: ...}` or a block line
+        elif inside and current and "tarball:" in line:
+            # flow-style `resolution: {..., tarball: ...}` or a block `tarball:` line
+            if current not in off_registry:
+                off_registry.append(current)
+            source_ids[current] = source_ids.get(current, "") + line.strip()
     if not versions:
         raise LookupFailed("no packages found in the pnpm lockfile")
     return {
@@ -667,6 +673,7 @@ def parse_pnpm_lock(text):
         "requires_python": None,
         "unparsed": unparsed,
         "off_registry": off_registry,
+        "source_ids": source_ids,
     }
 
 
@@ -1026,6 +1033,22 @@ def added_pairs(eco, dep, new, base, head):
     return pairs
 
 
+def merged_with_osv(fetch, eco, name, version, advisories):
+    """ADVISORIES plus OSV's for NAME at VERSION, by id; OSV failing keeps ADVISORIES as they are.
+
+    uv.lock stores normalized (lowercase) names and GitHub's pip matching is partly
+    case-sensitive (live, 2026-11-18: `Pillow@8.0.0` 46 advisories, `pillow@8.0.0` 26), so a
+    non-empty GitHub answer for a normalized name can be a subset. OSV normalizes names. The same
+    vulnerability can appear twice under a GHSA and a PYSEC id.
+    """
+    try:
+        extra = osv_advisories(fetch, eco, name, version)
+    except (LookupFailed, AttributeError, TypeError):
+        return advisories
+    seen = {item["id"] for item in advisories}
+    return advisories + [item for item in extra if item["id"] not in seen]
+
+
 def added_packages(run, gh, environ, fetch, eco, dep, new, base, head):
     """Known advisories for the packages the PR's head lockfile adds, compared with the base.
 
@@ -1064,6 +1087,8 @@ def added_packages(run, gh, environ, fetch, eco, dep, new, base, head):
             continue
         try:
             info = advisories_for(run, gh, environ, fetch, eco, name, version)
+            if eco == "uv" and info["sources"].get("github") == "hit":
+                info["advisories"] = merged_with_osv(fetch, eco, name, version, info["advisories"])
         except Exception:  # noqa: BLE001 - one failed lookup is unknown, never clean
             info = {"status": "unknown", "advisories": []}
         if info["advisories"]:
@@ -1072,11 +1097,14 @@ def added_packages(run, gh, environ, fetch, eco, dep, new, base, head):
             )
         elif info["status"] != "ok" or info.get("truncated"):
             out["unknown"].append({"name": name, "version": version})
-    # A pair the base already has, whose source moved off the registry in the head, is new code
-    # from elsewhere under an old name and version: it is never looked up and never clean.
-    moved = sorted(off_registry - set(base.get("off_registry") or []))
-    for name, version in moved:
-        if version in base["versions"].get(name, []):
+    # A pair the base already has, whose source in the head is off the registry and differs from
+    # the base's (moved off the registry, or another git revision or tarball URL), is new code under
+    # an old name and version: it is never looked up and never clean.
+    base_ids, head_ids = base.get("source_ids") or {}, head.get("source_ids") or {}
+    for name, version in sorted(off_registry):
+        if version in base["versions"].get(name, []) and base_ids.get(
+            (name, version)
+        ) != head_ids.get((name, version), (name, version)):
             out["unknown"].append({"name": name, "version": version, "source_changed": True})
     return out
 
