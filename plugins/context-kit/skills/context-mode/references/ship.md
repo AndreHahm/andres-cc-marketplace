@@ -11,14 +11,17 @@ be retracted. This mode carries the highest confirmation bar.
 - **Risk tolerance**: very low at the publish step. Draft and stage freely; the moment content becomes
   public, confirm that specific action even if a similar one was approved earlier in the session.
 - **Prepare, then execute**: do these as two separate steps, and confirm before the second.
-- **Pre-ship checks**: say which have run and which have not. Never proceed to publish while a required
-  status check is failing or has not reported.
-- **Secrets**: for a PR merge, read the result of the `Security` workflow's secretlint job on the PR's
-  changed files and state it. It runs on every PR but is not a required check, so GitHub lets the merge
-  through on a failure: do not. Stop until the failure is triaged, either the secret removed (and
-  rotated) or the finding shown to be a false positive, and say which. `commit`'s sensitive-file scan
-  checks file names only. For content outside
-  a PR (wiki, page, post), check it for secrets and credentials yourself before it goes out.
+- **Pre-ship checks**: say which have run and which have not. Never proceed to publish while a check that
+  applies to the destination has not run or has failed; for a PR merge that includes every required
+  status check.
+- **Secrets**: for a PR merge, read the `Security` workflow's secretlint result for the exact head being
+  merged, immediately before `merge-pr`, and state it. It runs only on PRs into `main` and is not a
+  required check, so GitHub can merge without it: merge only when it passed (a run that found no
+  scannable changed files counts as passed). Still running: wait. Failed: stop until it is triaged, the
+  secret removed (and rotated) or the finding shown to be a false positive, and say which. No run for
+  this head (another base branch, a cancelled run): run secretlint on the changed files locally or ask
+  the user. `commit`'s sensitive-file scan checks file names only. For content outside a PR (wiki, page,
+  post), check it for secrets and credentials yourself before it goes out.
 - **External names**: nothing runs `external-references-reviewer` automatically. When the content adds
   names of outside companies, products or repositories, offer it as an optional check and say whether
   it ran.
@@ -49,7 +52,7 @@ be retracted. This mode carries the highest confirmation bar.
 ## Anti-patterns
 
 - Do not merge, publish or post without an explicit confirmation for that specific action.
-- Do not merge without stating the PR's secretlint result, or that it did not run.
-- Do not merge over a failed secretlint result that has not been triaged.
+- Do not merge without a passed secretlint result for the head being merged, or a failure triaged as
+  above; stating that it did not run is not enough.
 - Do not publish non-PR content without checking it for secrets yourself.
 - Do not treat a wiki or Pages branch as lower stakes than the main repo.

@@ -16,10 +16,26 @@ Usage:
 
 from __future__ import annotations
 
+import os
 import re
 import subprocess
 import sys
-from pathlib import Path
+from pathlib import Path, PurePosixPath
+
+# Repository-location variables (`git rev-parse --local-env-vars`). An inherited one, such as the
+# GIT_INDEX_FILE a git hook exports, would make a git call read another repository than cwd's.
+GIT_LOCAL_ENV_VARS = (
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_CONFIG GIT_CONFIG_PARAMETERS GIT_CONFIG_COUNT "
+    "GIT_OBJECT_DIRECTORY GIT_DIR GIT_WORK_TREE GIT_IMPLICIT_WORK_TREE GIT_GRAFT_FILE "
+    "GIT_INDEX_FILE GIT_NO_REPLACE_OBJECTS GIT_REPLACE_REF_BASE GIT_PREFIX GIT_SHALLOW_FILE "
+    "GIT_COMMON_DIR"
+).split()
+
+
+def git_env() -> dict[str, str]:
+    """The current environment without git's repository-location variables."""
+    return {k: v for k, v in os.environ.items() if k not in GIT_LOCAL_ENV_VARS}
+
 
 # Secret detection patterns
 # API key/password/secret/token accept an unquoted value too (e.g. DATABASE_PASSWORD=correct-horse-
@@ -66,7 +82,7 @@ FILE_EXTENSIONS = frozenset(
     "json jsonl jsonc yml yaml toml ini cfg conf env lock xml html htm css scss csv tsv sql "
     "log patch diff exe dll so png jpg jpeg gif svg webp pdf zip gz tar tgz go rs java kt rb "
     "php c h cpp hpp cs swift lua pem crt proto graphql gql vue svelte properties gradle kts "
-    "scala dart tf tfvars hcl".split()
+    "scala dart tf tfvars hcl cc cxx hh hxx mdx".split()
 )
 
 
@@ -142,6 +158,7 @@ def list_repo_files(base_path: str) -> list[str] | None:
             ["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
             capture_output=True,
             cwd=base_path,
+            env=git_env(),
             timeout=10,
         )
     except (subprocess.TimeoutExpired, FileNotFoundError, NotADirectoryError):
@@ -156,18 +173,20 @@ def resolve_reference(
 ) -> str:
     """Classify one file reference as "verified" or "missing".
 
-    A reference is tried as written (relative to base_path, then to each of extra_dirs), then
-    matched against the repo's file list: a bare name matches any file with that name, and a
-    partial path matches the end of a path on a "/" boundary (so "rulebook/SKILL.md" never
-    matches "plugin-rulebook/SKILL.md"). Outside a git repo there is no list, so a reference
-    not found as written is "missing".
+    A reference is tried as written (relative to base_path, and a bare name also relative to each
+    of extra_dirs), then matched against the repo's file list: a bare name matches any file with
+    that name, and a partial path matches the end of a path on a "/" boundary (so
+    "rulebook/SKILL.md" never matches "plugin-rulebook/SKILL.md"). Outside a git repo there is no
+    list, so a reference not found as written is "missing".
     """
-    ref = ref.removeprefix("./")
-    # A leading "/" is filtered by the caller; a "../" segment must not walk outside base_path,
-    # so an untrusted reference like "../../etc/passwd" is never verified by an unrelated file.
-    if ".." in Path(ref).parts:
+    path = PurePosixPath(ref)  # collapses "a//b" and "a/./b" to "a/b"
+    # An absolute path is never a project file, and a "../" segment must not walk outside
+    # base_path, so "../../etc/passwd" is never verified by an unrelated file.
+    if path.is_absolute() or ".." in path.parts:
         return "missing"
-    for root in (base_path, *extra_dirs):
+    ref = str(path)
+    bare = "/" not in ref
+    for root in (base_path, *(extra_dirs if bare else ())):
         base = Path(root).resolve()
         candidate = (base / ref).resolve()
         try:
@@ -179,7 +198,10 @@ def resolve_reference(
     if repo_files is None:
         return "missing"
     # The list includes index entries, so a tracked file deleted but not yet staged is still in
-    # it: a match counts only if that file exists on disk now.
+    # it. Such an exact entry decides the reference (it is missing: the direct check above
+    # failed), and any other match counts only if that file exists on disk now.
+    if not bare and ref in repo_files:
+        return "missing"
     suffix = "/" + ref
     base = Path(base_path)
     if any((f == ref or f.endswith(suffix)) and (base / f).is_file() for f in repo_files):
@@ -208,13 +230,11 @@ def check_file_references(
         for match in matches:
             # Remove line numbers
             filepath = match.split(":")[0]
-            # Skip obvious non-files, and a leading-"/" match -- pathlib's "/" operator
-            # resets to the right-hand side for an absolute path, so an unfiltered
-            # leading-"/" match would silently check the real filesystem root instead
-            # of base_path. No "/" requirement: a root-level file reference (e.g.
-            # "README.md", no slash) must still be checked, or it silently bypasses
-            # validation entirely.
-            if not filepath or filepath.startswith(("http", "/")):
+            # Skip a leading-"/" match: an absolute path is not a project file. A URL can't
+            # reach here (none of the patterns accepts ":"), so a local path that merely
+            # starts with "http" (http/client.py) is checked like any other. No "/"
+            # requirement: a root-level reference such as "README.md" must still be checked.
+            if not filepath or filepath.startswith("/"):
                 continue
             if "/" not in filepath and filepath.rsplit(".", 1)[-1].lower() not in FILE_EXTENSIONS:
                 continue

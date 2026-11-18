@@ -1,0 +1,16 @@
+{
+  "eval_id": 13,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Writes the Context mode value review, not ship, because the secretlint failure is untriaged",
+      "passed": true,
+      "evidence": "\"`Context mode: review`\"; \"This secretlint failure hasn't been looked at, so fix work may still be needed\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 1,
+    "assertions_passed": 1,
+    "pass_rate": 1.0
+  }
+}

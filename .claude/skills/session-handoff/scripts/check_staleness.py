@@ -24,13 +24,15 @@ from pathlib import Path
 
 # Sibling-script import, same pattern as session-kit's scripts/session_store.py.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from validate_handoff import list_repo_files, resolve_reference  # noqa: E402
+from validate_handoff import git_env, list_repo_files, resolve_reference  # noqa: E402
 
 
 def run_cmd(cmd: list[str], cwd: str | None = None) -> tuple[bool, str]:
     """Run a command and return (success, output)."""
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, cwd=cwd, timeout=10)
+        result = subprocess.run(
+            cmd, capture_output=True, text=True, cwd=cwd, env=git_env(), timeout=10
+        )
         return result.returncode == 0, result.stdout.strip()
     except (subprocess.TimeoutExpired, FileNotFoundError):
         return False, ""
@@ -85,7 +87,8 @@ def parse_handoff_metadata(filepath: str) -> dict:
     # Parse modified files from table
     table_matches = re.findall(r"\|\s*([a-zA-Z0-9_\-./]+\.[a-zA-Z]+)\s*\|", content)
     for f in table_matches:
-        if "/" in f and not f.startswith("["):
+        # Skip an absolute path, as validate_handoff.py does: it is not a project file.
+        if "/" in f and not f.startswith(("[", "/")):
             metadata["modified_files"].append(f)
 
     return metadata
@@ -161,8 +164,9 @@ def check_files_exist(files: list[str], project_path: str) -> tuple[list[str], l
     repo_files = list_repo_files(project_path) if files else None
 
     for f in files:
-        # A leading "/" would make pathlib's "/" operator reset to an absolute path.
-        if resolve_reference(f.lstrip("/"), project_path, repo_files) == "verified":
+        # An absolute path stays absolute (resolve_reference reports it missing); stripping the
+        # "/" would turn "/etc/passwd" into the project-relative "etc/passwd".
+        if resolve_reference(f, project_path, repo_files) == "verified":
             existing.append(f)
         else:
             missing.append(f)
