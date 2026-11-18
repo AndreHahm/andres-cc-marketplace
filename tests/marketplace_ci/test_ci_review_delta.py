@@ -453,6 +453,9 @@ def test_a_waiver_matches_a_rule_with_spaces():
         finding_waiver_key("rulebook compliance / naming", "p/inv.json", 94),
         ("-", "q_py", 0),
     }
+    # Only ASCII digits name a line: an Arabic-Indic three is not a line number.
+    non_ascii = "## Accepted Review Findings\n- R6 a_py:٣ – accepted\n"
+    assert parse_waivers(non_ascii, _never_open) == set()
 
 
 def test_a_finding_on_an_unchanged_file_is_carried_until_waived(git_repo):
