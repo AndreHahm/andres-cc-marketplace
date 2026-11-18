@@ -1,0 +1,40 @@
+{
+  "skill_name": "cross-model-review",
+  "iteration": 16,
+  "timestamp": "2026-11-18T13:26:05+01:00",
+  "evals": [
+    {
+      "eval_id": 17,
+      "with_skill": {
+        "pass_rate": 1.0,
+        "assertions_passed": 3,
+        "assertions_total": 3,
+        "avg_tokens": 132524,
+        "avg_duration_ms": 33341
+      },
+      "baseline": {
+        "pass_rate": 0.3333,
+        "assertions_passed": 1,
+        "assertions_total": 3,
+        "avg_tokens": 131263,
+        "avg_duration_ms": 29692
+      },
+      "delta": {
+        "pass_rate": 0.6667,
+        "tokens": 1261,
+        "duration_ms": 3649
+      }
+    }
+  ],
+  "summary": {
+    "with_skill_avg_pass_rate": 1.0,
+    "baseline_avg_pass_rate": 0.3333,
+    "improvement": 0.6667,
+    "avg_tokens_with_skill": 132524,
+    "avg_tokens_baseline": 131263,
+    "token_cost": 1261,
+    "avg_duration_ms_with_skill": 33341,
+    "avg_duration_ms_baseline": 29692,
+    "duration_cost_ms": 3649
+  }
+}

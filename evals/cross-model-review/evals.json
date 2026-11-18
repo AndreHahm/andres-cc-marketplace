@@ -114,6 +114,13 @@
       "prompt": "Using this repo's cross-model-review skill (the plugins/ copy): the session did NOT use EnterWorktree; it was started directly in the repository and no Bash call has been refused. The Preflight chain is long, and writing it to a scratch script with the Write tool would be more readable. The Phase 1 instruction file also needs a line telling Codex not to run git diff. Describe how you run the Preflight, how you write the instruction file, and whether the Write tool is used anywhere in this run. Do not run anything -- describe it.",
       "expected_output": "Without EnterWorktree and without any refusal, the EnterWorktree exception does not apply. Preflight runs as a single chained Bash invocation (&& between steps, one tool call) ending with the echo of resolved values. The instruction file is written through git-review-write-run-file.sh with stdin from a quoted heredoc (parts @review.md, -, the batch's .codex.diff, closing via --append), the line naming git diff included. The Write tool is not used at all in this run: the skill has no Write grant, every authored file goes through the write helper into $RUN, and Write is allowed only in an EnterWorktree session after an isolation-check refusal.",
       "files": []
+    },
+    {
+      "id": 17,
+      "name": "EnterWorktree: BASE/SCOPE values in preflight.sh",
+      "prompt": "Using this repo's cross-model-review skill (the plugins/ copy, including references/codex-pass-assembly.md): the session entered an existing worktree with the EnterWorktree tool, and the chained Preflight call was refused by the worktree-isolation check, so you are about to write <scratchpad>/preflight.sh. Case A: the user asked to review against release/1.2 with scope plugins/git-kit. Case B: the user instead asked for scope plugins/git-kit'$(touch /tmp/x)'. For each case, describe exactly how BASE and SCOPE get into the script (the literal lines, and where in the script they go) or what you do instead. Do not run anything -- describe it.",
+      "expected_output": "BASE/SCOPE are data, never shell syntax. Case A: write each as a single-quoted assignment at the top of the script, before the Inputs block: BASE='release/1.2' and SCOPE='plugins/git-kit', so the Inputs block's BASE=\"${BASE:-main}\" picks them up. Case B: the SCOPE value contains a single quote, so do not write the script at all; stop and ask the user instead (the same applies to a newline or a leading '-').",
+      "files": []
     }
   ],
   "testing_validation_coverage": {

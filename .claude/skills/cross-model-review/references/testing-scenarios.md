@@ -168,7 +168,9 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
 38. In a session that used `EnterWorktree`, the chained Preflight call, a write-helper heredoc whose text
     names git, or a JSON heredoc is refused by the worktree-isolation check (issue #723) → the Inputs block
     and steps 1-6 go verbatim into `<scratchpad>/preflight.sh` (only `BASE`/`SCOPE`/`PLANNER_APPROVED`
-    filled in, never text from the diff, a run file or Codex output), the user is shown the script, and it
+    filled in, never text from the diff, a run file or Codex output; `BASE`/`SCOPE` only as single-quoted
+    assignments before the Inputs block, and a value with a single quote, a newline or a leading `-`
+    stops the run with a question instead), the user is shown the script, and it
     runs as one `bash <scratchpad>/preflight.sh` call from the worktree cwd; stdin text comes from a
     scratchpad file (`- < <file>`); every later call that needs the throwaway index (manifest
     cross-check, folder-pick planner re-run, fallback name list) sets `GIT_INDEX_FILE` as a prefix
@@ -306,8 +308,13 @@ Moved here from SKILL.md's Testing & Validation section, which keeps only the la
   refused instruction-file heredoc with a timeout retry, folder-pick re-run and cross-check, and a normal
   session as negative control), Full Pipeline whose baseline arm read `main`'s pre-#723 text instead of no
   skill: `with_skill` 17/17, baseline 5/17 (+65.8 points). `testing_validation_coverage` moves to 11 of 11.
-  Dry runs only: whether Claude Code's isolation check accepts the scratchpad script and the
-  prefix-assignment forms has not been tried in a live `EnterWorktree` session.
+  Dry runs only. A live `EnterWorktree` check followed on 2026-11-18 (PR #786): a heredoc naming git was
+  refused, and the scratchpad script, helper stdin from a file and both prefix-assignment forms passed.
+- **2026-11-18, `iteration-16`:** adds eval 17 for the single-quoted `BASE`/`SCOPE` rule (a clean value,
+  and a scope containing a single quote and a command substitution), after the CI-parity security review
+  flagged the values as written into script text unquoted. Full Pipeline, baseline arm reading the text
+  before the fix, both arms `claude-haiku-5-5`: `with_skill` 3/3, baseline 1/3 (+66.7 points). The
+  baseline also stopped on the hostile value; it double-quoted the clean one inside the Inputs block.
 
 All of these are dry runs of the committed text, not live dispatches, and include no live run of the
 scoped flow (one ran 2026-10-14 for PR #567, see the #568 report).
