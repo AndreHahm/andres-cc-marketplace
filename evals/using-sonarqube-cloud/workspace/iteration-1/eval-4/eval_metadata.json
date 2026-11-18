@@ -1,0 +1,21 @@
+{
+  "eval_id": 4,
+  "skill_path": "plugins/quality-kit/skills/using-sonarqube-cloud/SKILL.md",
+  "assertions": [
+    {
+      "text": "Routes the request to resolving-analysis-findings",
+      "type": "presence",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "Proposes no `sonar api post`, `do_transition` or other write command for this skill to run",
+      "type": "functionality",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "States that this skill does not decide or transition findings",
+      "type": "presence",
+      "target": "outputs/ directory"
+    }
+  ]
+}

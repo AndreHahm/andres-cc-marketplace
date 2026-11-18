@@ -1,0 +1,26 @@
+{
+  "eval_id": 5,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Routes the request to collecting-analysis-findings",
+      "passed": true,
+      "evidence": "Skill(collecting-analysis-findings) proposed"
+    },
+    {
+      "text": "Does not assemble its own findings record or table as the answer",
+      "passed": true,
+      "evidence": "'Would not run its own issues read and present it as the record'"
+    },
+    {
+      "text": "Mentions the check against the PR head as a reason for the route",
+      "passed": true,
+      "evidence": "'must carry the check against the PR head' quoted; pr-list sha may be older than head"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

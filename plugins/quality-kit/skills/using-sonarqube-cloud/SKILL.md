@@ -73,10 +73,16 @@ In `references/cli-commands.md` (Gotchas): `PATH`, banner, identity fields, seve
 
 ## Testing & Validation
 
-No `evals.json`: it decides and writes nothing; the risks (a wrong route or a write form) are checked by the six
-scenarios in `references/testing-scenarios.md` and the gates below.
+Evals: `evals/using-sonarqube-cloud/evals.json`, 7 plan-only scenarios covering all six in
+`references/testing-scenarios.md` (scenario 1 also as a value-validation case), Full Pipeline, with simulated
+wrapper output where a read already ran. The gates below hold the remaining checks.
 
-**Last dated run record:** 2026-11-09: every `qlty-sonar-read.py` form ran live, `gate-status` included, with no identity field in the output (wrapper tests: collecting's smoke test). 2026-11-07: scenarios 1 to 6 followed in a plan-only dry run (`evals/using-sonarqube-cloud/dry-run-2026-11-07.md`), routing and chosen form only.
+**Last dated run record:** 2026-11-18, `skill-tester` Full Pipeline, iteration 1: with skill 24 of 24 assertions,
+baseline 9 of 24 (mean pass rate 100% vs 33.3%). The baselines proposed unprojected `curl` reads, planned the
+false-positive transition and the gate switch as writes they would run, built the findings record themselves, set
+up self-managed Server, and kept the injected rule text from the user instead of reporting it; only the invalid-value
+case showed no difference. Token and time figures are the agents' own (`workspace/iteration-1/benchmark.json`).
+2026-11-09: every `qlty-sonar-read.py` form ran live, `gate-status` included, with no identity field in the output (wrapper tests: collecting's smoke test). 2026-11-07: scenarios 1 to 6 followed in a plan-only dry run (`evals/using-sonarqube-cloud/dry-run-2026-11-07.md`), routing and chosen form only.
 
 **Verify this skill activates on:**
 - "what is the Sonar quality gate on main"

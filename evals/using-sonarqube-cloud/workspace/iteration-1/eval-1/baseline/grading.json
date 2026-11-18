@@ -1,0 +1,31 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Proposes a qlty-sonar-read.py read form (gate-status or pr-list) naming pull request 651 and the project key",
+      "passed": false,
+      "evidence": "proposes curl to qualitygates/project_status, no wrapper"
+    },
+    {
+      "text": "Proposes no bare `sonar api get`, `sonar list issues` or other unprojected sonar command for this lookup",
+      "passed": false,
+      "evidence": "proposes raw curl api/issues/search and hotspots/search (unprojected)"
+    },
+    {
+      "text": "Checks or states that 651 is a valid PR number before it reaches the command line",
+      "passed": false,
+      "evidence": "no validation of 651 mentioned"
+    },
+    {
+      "text": "Runs nothing: the command is shown as proposed, awaiting approval",
+      "passed": true,
+      "evidence": "'Nothing has been queried'; asks before running"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 1,
+    "pass_rate": 0.25
+  }
+}

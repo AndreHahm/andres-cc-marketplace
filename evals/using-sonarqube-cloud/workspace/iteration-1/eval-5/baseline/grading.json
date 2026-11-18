@@ -1,0 +1,26 @@
+{
+  "eval_id": 5,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Routes the request to collecting-analysis-findings",
+      "passed": false,
+      "evidence": "no route; builds the record itself"
+    },
+    {
+      "text": "Does not assemble its own findings record or table as the answer",
+      "passed": false,
+      "evidence": "Step 6 normalizes its own record grouped by rule and file"
+    },
+    {
+      "text": "Mentions the check against the PR head as a reason for the route",
+      "passed": false,
+      "evidence": "currency check done itself, not as a reason to route"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 0,
+    "pass_rate": 0.0
+  }
+}

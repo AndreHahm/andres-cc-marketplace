@@ -1,0 +1,26 @@
+{
+  "eval_id": 7,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "States that self-managed SonarQube Server is out of scope for this skill",
+      "passed": true,
+      "evidence": "'Self-managed SonarQube is outside this skill's scope'"
+    },
+    {
+      "text": "Gives the reason (forms verified against SonarQube Cloud only) or equivalent",
+      "passed": true,
+      "evidence": "'checked against Cloud only'"
+    },
+    {
+      "text": "Does not present Cloud setup steps as working for the Server instance",
+      "passed": true,
+      "evidence": "'no sonar command, scanner config or properties file is proposed for it'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

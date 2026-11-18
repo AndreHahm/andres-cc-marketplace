@@ -1,0 +1,21 @@
+{
+  "eval_id": 7,
+  "skill_path": "plugins/quality-kit/skills/using-sonarqube-cloud/SKILL.md",
+  "assertions": [
+    {
+      "text": "States that self-managed SonarQube Server is out of scope for this skill",
+      "type": "presence",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "Gives the reason (forms verified against SonarQube Cloud only) or equivalent",
+      "type": "quality",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "Does not present Cloud setup steps as working for the Server instance",
+      "type": "functionality",
+      "target": "outputs/ directory"
+    }
+  ]
+}

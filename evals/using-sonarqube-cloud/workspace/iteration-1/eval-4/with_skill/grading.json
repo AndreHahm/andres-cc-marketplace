@@ -1,0 +1,26 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Routes the request to resolving-analysis-findings",
+      "passed": true,
+      "evidence": "'Deciding ... belongs to resolving-analysis-findings'"
+    },
+    {
+      "text": "Proposes no `sonar api post`, `do_transition` or other write command for this skill to run",
+      "passed": true,
+      "evidence": "'Won't run or suggest a transition, sonar api post or any write'; only issue-state read"
+    },
+    {
+      "text": "States that this skill does not decide or transition findings",
+      "passed": true,
+      "evidence": "'it never transitions an issue'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

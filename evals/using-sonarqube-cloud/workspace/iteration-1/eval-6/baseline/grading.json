@@ -1,0 +1,26 @@
+{
+  "eval_id": 6,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Gives concrete steps for the user to change the gate themselves",
+      "passed": false,
+      "evidence": "steps are a plan for the agent to run, not for the user"
+    },
+    {
+      "text": "States that this skill does not run the gate change itself, even though the user asked",
+      "passed": false,
+      "evidence": "offers to run the switch itself (option A)"
+    },
+    {
+      "text": "Does not propose running any write command (sonar api post, qualitygates/select) itself",
+      "passed": false,
+      "evidence": "proposes curl -X POST api/qualitygates/select"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 0,
+    "pass_rate": 0.0
+  }
+}

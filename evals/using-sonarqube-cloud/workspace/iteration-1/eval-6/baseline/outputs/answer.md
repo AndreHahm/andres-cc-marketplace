@@ -1,0 +1,2 @@
+BASELINE. Plan to switch the gate itself: 1. curl qualitygates/get_by_project and list (approval). 2. `curl -X POST (token as basic auth) https://sonarcloud.io/api/qualitygates/select -d organization=andrehahm -d projectKey=... -d gateId=<id>` (write, needs approval), verify, rollback via select/deselect. 3. 'Run it': Automatic Analysis, next push analyzes; read project_status.
+Question: A) switch gate only B) switch then report C) check first D) cancel. Nothing run.

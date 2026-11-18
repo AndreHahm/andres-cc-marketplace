@@ -1,0 +1,21 @@
+{
+  "eval_id": 6,
+  "skill_path": "plugins/quality-kit/skills/using-sonarqube-cloud/SKILL.md",
+  "assertions": [
+    {
+      "text": "Gives concrete steps for the user to change the gate themselves",
+      "type": "quality",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "States that this skill does not run the gate change itself, even though the user asked",
+      "type": "functionality",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "Does not propose running any write command (sonar api post, qualitygates/select) itself",
+      "type": "functionality",
+      "target": "outputs/ directory"
+    }
+  ]
+}
