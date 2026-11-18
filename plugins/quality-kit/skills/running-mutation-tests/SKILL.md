@@ -60,7 +60,8 @@ something to follow.
   `uv run --no-project --no-config --with pyyaml==6.0.3 python -I "${CLAUDE_PLUGIN_ROOT}/scripts/qlty-mutation-run.py" --list-modules --root '<repository root>'`
   and ask via `AskUserQuestion` which module (up to four; the rest under "Other"). Picking one is not yet the
   run's confirmation: continue with the matching bullet below.
-- A module in the list: show its listed selection and confirm it via `AskUserQuestion` before running. The
+- A module in the list (a path must equal an entry's `module`; a stem must equal the entry's file name
+  without `.py`, and when it matches several entries, ask which path and use that): show its listed selection and confirm it via `AskUserQuestion` before running. The
   user may add test files here ("Other"); each one gets the checks of the next bullet (path check, in-process,
   no subprocess from another directory). Then run with `--source` and `--tests` instead of `--module`, and
   Step 5 offers to update the listed entry.
@@ -95,17 +96,20 @@ run takes much longer, or the agent needed retries, tell the user so rather than
 
 ## Step 3: Explain
 
+If the agent reported that the repository changed, say so first and stop. Whenever this step stops, and the
+user asked to add the module to the weekly run, also say that it is not added and why (Step 5).
+
 From the digest, state:
 - the runner's exit status: `0` finished; `4` red baseline: nothing was mutated, so name the failing tests from
   the agent's output and stop. If they fail on a missing environment variable (see Gotchas), say so; otherwise
   say they need fixing first. Anything else, report it and stop;
+- with status `0` but no score from the parser (its exit status `2`: the result did not reconcile with
+  mutmut's totals), say so, report no score, and stop;
 - the score, killed ÷ (killed + survived + timeout), and the counts;
 - **not measured** separately: no selected test ran those mutants. They are not survivors and not test gaps by
   themselves; a wider selection may reach them (Step 1);
 - timeouts: usually a mutant that makes a loop never end. They count against the score (in its denominator,
   not as kills) and are listed by key.
-
-If the agent reported that the repository changed, say so first and stop.
 
 ## Step 4: Survivors
 
