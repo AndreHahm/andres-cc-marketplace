@@ -34,7 +34,9 @@ repository root and exist on disk, except a file the reviewed change deletes:
   blob) at exactly that repository-relative path (`git cat-file -t <base>:<path>`, an exact tree
   lookup with no glob or case folding). A misspelled, case-variant or branch-only path, a deleted
   directory, and every missing path when no base resolves are still refused. A scope whose every
-  entry is deleted is refused too: there is nothing on disk to review. The verified paths are listed
+  entry is a verified deletion is accepted: `review.py` builds one for a PR that only deletes a
+  reviewer's files, the sandboxed bridge accepts it, and the diff embedded in the instructions is
+  what gets reviewed. The verified paths are listed
   in the prompt's `<deleted_target_paths>` block, which holds paths only; a trusted line after the
   restated trust boundary says they are missing from the working tree and present at the base. The
   check does not consult HEAD or the index, so a file removed locally without the change deleting it
@@ -52,8 +54,8 @@ repository root and exist on disk, except a file the reviewed change deletes:
   wrongly treat two genuinely distinct directories as the same one on a case-sensitive filesystem.
 - Reject if the canonicalized path does not start with the canonicalized repository root.
 
-Typed failure category: `target_path_not_found` for a missing entry that is not a verified deletion
-(or an all-deleted scope), `repository_boundary_violation` for an entry outside the root (checked
+Typed failure category: `target_path_not_found` for a missing entry that is not a verified deletion,
+`repository_boundary_violation` for an entry outside the root (checked
 first, for every entry). Detail: the specific entry that failed (the caller's own
 original argument, not necessarily its canonicalized form — useful for the caller to recognize which
 of its own inputs was rejected).

@@ -1757,10 +1757,13 @@ console.log("\n=== issue #781: a target deleted since the trusted merge base is 
     JSON.stringify(wrongCase)
   );
 
+  // Cross-model review C1: review.py builds an all-deleted scope for a PR that
+  // only deletes a reviewer's files, so it must pass the boundary check. A dry
+  // run proves that without launching Codex.
   const allDeleted = refused(f.root, "removed.md");
   check(
-    "a scope where every target is deleted is refused (nothing on disk to review)",
-    allDeleted.ok === false && allDeleted.category === "target_path_not_found" && /every target path is deleted/.test(allDeleted.detail),
+    "a scope where every target is a verified deletion passes the boundary check",
+    allDeleted.dryRun === true || allDeleted.category === "cli_unavailable",
     JSON.stringify(allDeleted)
   );
 

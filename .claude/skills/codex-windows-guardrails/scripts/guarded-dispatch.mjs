@@ -262,16 +262,11 @@ function checkRepositoryBoundary(targetPaths, repoRoot) {
       deleted.push(basePath);
     }
   }
-  // Every target deleted means nothing on disk to review: refuse, so a
-  // deletion-only scope never comes back as a clean audit of nothing.
-  if (deleted.length > 0 && deleted.length === targetPaths.length) {
-    return {
-      failure: typedFailure(
-        "target_path_not_found",
-        "every target path is deleted by the change under review; nothing on disk to review"
-      )
-    };
-  }
+  // A scope whose every target is a verified deletion is accepted too: the
+  // review.py dispatcher builds one for a PR that only deletes a reviewer's
+  // files, the sandboxed bridge accepts it, and each path is base-verified, so
+  // it is never an invented path that would come back as a clean audit of
+  // nothing.
   return { failure: null, deleted };
 }
 
