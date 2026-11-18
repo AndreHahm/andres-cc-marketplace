@@ -112,6 +112,18 @@ def check_parse_refusals(parse) -> None:
     check("unknown exit code refused", code == 2 and "not in mutmut 3.8.1" in err, err)
 
     root = copy_fixture("trust_boundary")
+    meta = meta_path(root)
+    data = json.loads(meta.read_text(encoding="utf-8"))
+    data["exit_code_by_key"]["a.x_f\x1b[2J__mutmut_1"] = 99
+    meta.write_text(json.dumps(data), encoding="utf-8")
+    code, _, err = call(parse.main, ["--mutants", str(root)])
+    check(
+        "control character in a key is escaped in the error",
+        code == 2 and "\x1b" not in err and "\\x1b" in err,
+        repr(err),
+    )
+
+    root = copy_fixture("trust_boundary")
     stats = root / "mutmut-cicd-stats.json"
     totals = json.loads(stats.read_text(encoding="utf-8"))
     totals["killed"] += 1
@@ -357,6 +369,7 @@ def check_run(run) -> None:
         ".x_f__mutmut_1",
         "a.x_f g__mutmut_1",
         "a.xǁFooǁ__mutmut_1",
+        "a.x_f\x1b[2J__mutmut_1",
     ):
         check(f"key rejected: {bad_key!r}", not run.is_mutant_key(bad_key))
     long_key = "a" * 50000 + ".x_" + "_" * 50000 + "__mutmut_"

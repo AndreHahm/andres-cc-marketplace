@@ -64,7 +64,7 @@ UNSAFE_NAME = re.compile(r"[\x00-\x1f\x7f]|^-")
 # "<module>.xǁ<Class>ǁ<method>__mutmut_<n>". Checked piecewise in is_mutant_key, because one regex
 # for the whole key backtracks super-linearly (Sonar S8786).
 KEY_MODULE = re.compile(r"[\w.]+")
-KEY_NAME = re.compile(r"[^\sǁ]+")
+KEY_NAME = re.compile(r"[^\s\x00-\x1f\x7fǁ]+")  # no control characters
 # The environment pytest and mutmut get (python_env): what an interpreter, a locale and a
 # temporary directory need, and nothing that usually holds a credential. Exact names only: a
 # prefix such as PYTHON or LC_ would also pass a third-party variable of any content (a package
@@ -324,7 +324,9 @@ def main(argv: list[str] | None = None) -> int:
                     ["python3", "-m", "mutmut", "show", key], cwd=root, env=env, check=False
                 ).returncode
                 if status != 0:
-                    print(f"qlty-mutation-run: mutmut show {key} exited {status}", file=sys.stderr)
+                    print(
+                        f"qlty-mutation-run: mutmut show {key!r} exited {status}", file=sys.stderr
+                    )
                     return status
             return 0
         finally:

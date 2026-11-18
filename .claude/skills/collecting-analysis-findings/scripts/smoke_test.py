@@ -1214,7 +1214,7 @@ else:
 """
 
 
-def check_sonar_read() -> None:
+def check_qlty_sonar_read() -> None:
     """qlty-sonar-read.py against a stub `sonar` on PATH: projection, paging, cwd, refusals."""
     with tempfile.TemporaryDirectory() as tmp:
         bin_dir, log = Path(tmp) / "bin", Path(tmp) / "log.jsonl"
@@ -1261,22 +1261,24 @@ def check_sonar_read() -> None:
         done = run("issues", "--project", "p", "--pull-request", "7")
         pages = [json.loads(line) for line in done.stdout.splitlines()]
         check(
-            "sonar_read issues: exit 0, two pages for 501 issues",
+            "qlty-sonar-read issues: exit 0, two pages for 501 issues",
             done.returncode == 0 and len(pages) == 2,
             done.stderr,
         )
-        check("sonar_read issues: every issue kept", sum(len(p["issues"]) for p in pages) == 501)
         check(
-            "sonar_read issues: no identity field or comment",
+            "qlty-sonar-read issues: every issue kept", sum(len(p["issues"]) for p in pages) == 501
+        )
+        check(
+            "qlty-sonar-read issues: no identity field or comment",
             not re.search(r"author|assignee|login|comments", done.stdout),
         )
         calls = [json.loads(line) for line in log.read_text(encoding="utf-8").splitlines()]
         check(
-            "sonar_read: runs sonar from a fresh empty directory, removed afterward",
+            "qlty-sonar-read: runs sonar from a fresh empty directory, removed afterward",
             bool(calls) and all(isolated(c) for c in calls),
         )
         check(
-            "sonar_read issues: fixed argv with --pull-request and page size",
+            "qlty-sonar-read issues: fixed argv with --pull-request and page size",
             calls[0]["argv"]
             == [
                 "list",
@@ -1318,14 +1320,14 @@ def check_sonar_read() -> None:
             check=False,
         )
         check(
-            "sonar_read output pipes into collect_sonar.py",
+            "qlty-sonar-read output pipes into collect_sonar.py",
             piped.returncode == 0 and "501 finding" in piped.stdout,
             piped.stderr,
         )
 
         done = run("pr-list", "--project", "p", "--pull-request", "7")
         check(
-            "sonar_read pr-list: one PR, contributors dropped",
+            "qlty-sonar-read pr-list: one PR, contributors dropped",
             done.returncode == 0
             and json.loads(done.stdout)
             == {
@@ -1343,7 +1345,7 @@ def check_sonar_read() -> None:
         done = run("ignored", "--project", "p")
         page = json.loads(done.stdout.splitlines()[0]) if done.stdout else {}
         check(
-            "sonar_read ignored: only the last comment's text kept, login dropped",
+            "qlty-sonar-read ignored: only the last comment's text kept, login dropped",
             done.returncode == 0
             and page.get("issues", [{}])[0].get("comments") == [{"markdown": "why"}]
             and "login" not in done.stdout,
@@ -1351,7 +1353,7 @@ def check_sonar_read() -> None:
         )
         done = run("issue-state", "--issue", "K1")
         check(
-            "sonar_read issue-state: key, status and comment count only",
+            "qlty-sonar-read issue-state: key, status and comment count only",
             done.returncode == 0
             and json.loads(done.stdout)
             == {"issues": [{"key": "K1", "issueStatus": "ACCEPTED", "comments": 2}]},
@@ -1361,7 +1363,7 @@ def check_sonar_read() -> None:
         done = run("gate-status", "--project", "p", "--pull-request", "7")
         gate_call = json.loads(log.read_text(encoding="utf-8").splitlines()[0])
         check(
-            "sonar_read gate-status: named target, isolated cwd, projected conditions",
+            "qlty-sonar-read gate-status: named target, isolated cwd, projected conditions",
             done.returncode == 0
             and gate_call["argv"]
             == ["quality-gate", "status", "-p", "p", "--pull-request", "7", "--format", "json"]
@@ -1389,25 +1391,25 @@ def check_sonar_read() -> None:
         gate_args = ("gate-status", "--project", "p", "--pull-request", "7")
         done = run(*gate_args, mode="gate-fail")
         check(
-            "sonar_read gate-status: a failing gate (CLI exit 51) prints the ERROR verdict, exit 0",
+            "qlty-sonar-read gate-status: failing gate (CLI exit 51) prints ERROR, exit 0",
             done.returncode == 0 and json.loads(done.stdout)["qualityGate"]["status"] == "ERROR",
             f"{done.returncode} {done.stdout} {done.stderr}",
         )
         done = run(*gate_args, mode="gate-none")
         check(
-            "sonar_read gate-status: no computed verdict (CLI exit 1 with a gate) prints it",
+            "qlty-sonar-read gate-status: no computed verdict (CLI exit 1 with a gate) prints it",
             done.returncode == 0 and json.loads(done.stdout)["qualityGate"]["status"] == "NONE",
             f"{done.returncode} {done.stdout} {done.stderr}",
         )
         for mode, expected in (("gate-missing", 1), ("gate-text", 1), ("gate-lie", 2)):
             done = run(*gate_args, mode=mode)
             check(
-                f"sonar_read gate-status: {mode} exits {expected} and prints nothing",
+                f"qlty-sonar-read gate-status: {mode} exits {expected} and prints nothing",
                 done.returncode == expected and done.stdout == "",
                 f"{done.returncode} {done.stdout} {done.stderr}",
             )
         check(
-            "sonar_read: exit 51 from a non-gate form stays a failure",
+            "qlty-sonar-read: exit 51 from a non-gate form stays a failure",
             (lambda d: d.returncode == 1 and d.stdout == "")(
                 run("pr-list", "--project", "p", mode="exit51")
             ),
@@ -1416,7 +1418,7 @@ def check_sonar_read() -> None:
         for mode in ("no-issue", "other-issue"):
             done = run("issue-state", "--issue", "K1", mode=mode)
             check(
-                f"sonar_read issue-state: {mode} exits 2 and prints nothing",
+                f"qlty-sonar-read issue-state: {mode} exits 2 and prints nothing",
                 done.returncode == 2 and done.stdout == "",
                 f"{done.returncode} {done.stdout} {done.stderr}",
             )
@@ -1474,12 +1476,13 @@ def check_sonar_read() -> None:
         for name, argv in refused.items():
             done = run(*argv)
             check(
-                f"sonar_read refuses {name} (exit 2)",
+                f"qlty-sonar-read refuses {name} (exit 2)",
                 done.returncode == 2,
                 f"{done.returncode} {done.stderr}",
             )
         check(
-            "sonar_read: a refused value never reaches sonar", log.read_text(encoding="utf-8") == ""
+            "qlty-sonar-read: a refused value never reaches sonar",
+            log.read_text(encoding="utf-8") == "",
         )
         # A PATH entry inside the caller's repository is skipped (codex-kit's gitExecutable).
         repo = Path(tmp) / "repo"
@@ -1489,7 +1492,7 @@ def check_sonar_read() -> None:
         log.write_text("", encoding="utf-8")
         done = run("pr-list", "--project", "p", path=str(repo / "bin"), cwd=str(repo))
         check(
-            "sonar_read skips a sonar in a PATH folder inside the repository (exit 2, not run)",
+            "qlty-sonar-read skips a sonar in a PATH folder inside the repo (exit 2, not run)",
             done.returncode == 2 and log.read_text(encoding="utf-8") == "",
             f"{done.returncode} {done.stderr}",
         )
@@ -1501,7 +1504,7 @@ def check_sonar_read() -> None:
             cwd=str(repo),
         )
         check(
-            "sonar_read falls through to a PATH folder outside the repository",
+            "qlty-sonar-read falls through to a PATH folder outside the repository",
             done.returncode == 0 and len(log.read_text(encoding="utf-8").splitlines()) == 1,
             f"{done.returncode} {done.stderr}",
         )
@@ -1516,7 +1519,7 @@ def check_sonar_read() -> None:
         log.write_text("", encoding="utf-8")
         done = run("pr-list", "--project", "p", path=str(outer / "bin"), cwd=str(inner))
         check(
-            "sonar_read skips a sonar in the outer checkout of a nested worktree (exit 2, not run)",
+            "qlty-sonar-read skips a sonar in a nested worktree's outer checkout (exit 2, not run)",
             done.returncode == 2 and log.read_text(encoding="utf-8") == "",
             f"{done.returncode} {done.stderr}",
         )
@@ -1530,7 +1533,7 @@ def check_sonar_read() -> None:
         else:
             done = run("pr-list", "--project", "p", path=str(linked), cwd=str(repo))
             check(
-                "sonar_read refuses a sonar link that resolves into the repository (exit 2)",
+                "qlty-sonar-read refuses a sonar link that resolves into the repository (exit 2)",
                 done.returncode == 2 and log.read_text(encoding="utf-8") == "",
                 f"{done.returncode} {done.stderr}",
             )
@@ -1544,7 +1547,7 @@ def check_sonar_read() -> None:
         )
         child_path = json.loads(log.read_text(encoding="utf-8").splitlines()[0])["env"]["PATH"]
         check(
-            "sonar_read gives sonar a PATH without folders inside the repository",
+            "qlty-sonar-read gives sonar a PATH without folders inside the repository",
             done.returncode == 0
             and str(repo / "bin") not in child_path.split(os.pathsep)
             and str(bin_dir) in child_path.split(os.pathsep),
@@ -1568,7 +1571,7 @@ def check_sonar_read() -> None:
                 del os.environ[name]
         seen = json.loads(log.read_text(encoding="utf-8").splitlines()[0])["env"]
         check(
-            f"sonar_read drops all {len(overrides)} STRIPPED_ENV overrides, keeps the token",
+            f"qlty-sonar-read drops all {len(overrides)} STRIPPED_ENV overrides, keeps the token",
             len(overrides) >= 15
             and {k: seen.get(k) for k in ("SONAR_TOKEN", *overrides)}
             == {"SONAR_TOKEN": "placeholder-token", **dict.fromkeys(overrides)},
@@ -1587,29 +1590,29 @@ def check_sonar_read() -> None:
             else:
                 os.environ["TMPDIR"] = saved_tmpdir
         check(
-            "sonar_read refuses a temporary directory inside a checkout (exit 2, not run)",
+            "qlty-sonar-read refuses a temporary directory inside a checkout (exit 2, not run)",
             done.returncode == 2 and log.read_text(encoding="utf-8") == "",
             f"{done.returncode} {done.stderr}",
         )
         log.write_text("", encoding="utf-8")
         done = run("pr-list", "--project", "p", path=".", cwd=str(bin_dir))
         check(
-            "sonar_read refuses a sonar found through a relative PATH entry (exit 2, not run)",
+            "qlty-sonar-read refuses a sonar found through a relative PATH entry (exit 2, not run)",
             done.returncode == 2 and log.read_text(encoding="utf-8") == "",
             f"{done.returncode} {done.stderr}",
         )
         check(
-            "sonar_read: sonar failure exits 1, prints nothing",
+            "qlty-sonar-read: sonar failure exits 1, prints nothing",
             (lambda d: d.returncode == 1 and d.stdout == "")(
                 run("pr-list", "--project", "p", mode="fail")
             ),
         )
         check(
-            "sonar_read: non-JSON output exits 2",
+            "qlty-sonar-read: non-JSON output exits 2",
             run("pr-list", "--project", "p", mode="text").returncode == 2,
         )
         check(
-            "sonar_read: more than 20 pages exits 3, prints nothing",
+            "qlty-sonar-read: more than 20 pages exits 3, prints nothing",
             (lambda d: d.returncode == 3 and d.stdout == "")(
                 run("issues", "--project", "p", mode="huge")
             ),
@@ -1617,7 +1620,7 @@ def check_sonar_read() -> None:
 
 
 def main() -> int:
-    guarded("sonar read wrapper checks", check_sonar_read)
+    guarded("sonar read wrapper checks", check_qlty_sonar_read)
     guarded("adapter checks", check_adapter)
     guarded("sonar adapter checks", check_sonar_adapter)
     guarded("sonar snapshot confirm checks", check_sonar_confirm)

@@ -25,6 +25,7 @@ computed) that printed a gate object is a verdict: it is printed and the wrapper
 from __future__ import annotations
 
 import argparse
+import functools
 import json
 import os
 import re
@@ -405,6 +406,9 @@ def _inside(path: str, roots: list[Path]) -> bool:
     return any(_identity(str(step)) in ids for step in (resolved, *resolved.parents))
 
 
+# Computed once per run, so the folder `sonar` is chosen from and the PATH every child gets come
+# from the same snapshot of PATH and the working directory (security review minor).
+@functools.cache
 def _trusted_path() -> tuple[list[str], list[Path]]:
     roots = _repo_roots(Path.cwd())
     kept = []
