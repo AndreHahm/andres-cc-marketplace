@@ -30,9 +30,15 @@ from validate_handoff import git_env, list_repo_files, resolve_reference  # noqa
 def run_cmd(cmd: list[str], cwd: str | None = None) -> tuple[bool, str]:
     """Run a command and return (success, output)."""
     try:
+        # nosemgrep reason (NotExploitable): every caller passes a literal git argv (only a strftime
+        # date is interpolated), and git_env() is os.environ minus git's repository-location
+        # variables, narrower than the default inheritance. See docs/ci.md, git through subprocess.
+        # The layout is pinned so the suppression stays on the line Semgrep reports.
+        # fmt: off
         result = subprocess.run(
-            cmd, capture_output=True, text=True, cwd=cwd, env=git_env(), timeout=10
+            cmd, capture_output=True, text=True, cwd=cwd, env=git_env(), timeout=10  # nosemgrep
         )
+        # fmt: on
         return result.returncode == 0, result.stdout.strip()
     except (subprocess.TimeoutExpired, FileNotFoundError):
         return False, ""
