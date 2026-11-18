@@ -13,8 +13,12 @@
 // `taskkill /T /F` on the leader, which ends it and every process it started that is still running.
 // taskkill comes from %SystemRoot%\System32, never from PATH. Once the leader has exited, /T no longer
 // finds its children, so the cleanup after a normal exit ends the processes whose parent was the leader
-// and that started after it (PowerShell's Win32_Process query), each with its own tree. A process that
-// re-parented itself, or one started from a grandchild after its parent exited, is not found.
+// and that started while it ran (PowerShell's Win32_Process query), each with its own tree, after
+// re-reading that child's parent and start time just before its kill. taskkill takes only an id, so a
+// child that exits and whose id is reused in the moment between that re-read and the kill is still a
+// residual. A process that re-parented itself, or one started from a grandchild after its parent exited,
+// is not found. A kill that leaves the vendor running ends the wait anyway, KILL_AFTER_TERM_MS after the
+// last attempt, with killFailed set.
 import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
@@ -23,7 +27,8 @@ import { runPowerShell, systemRoot } from "./rva-winacl.mjs";
 const MAX_CAPTURE_BYTES = 16 * 1024 * 1024;
 const EXIT_GRACE_MS = 2000;
 const KILL_AFTER_TERM_MS = 5000;
-const active = new Set();
+// Each running vendor's cleanup, keyed by a per-run object (never by pid, which Windows may reuse).
+const active = new Map();
 const WINDOWS = process.platform === "win32";
 
 function systemTool(name) {
@@ -40,18 +45,32 @@ function killTree(pid) {
   spawnSync(taskkill, ["/T", "/F", "/PID", String(pid)], { cwd: root, env: { SystemRoot: root, windir: root }, stdio: "ignore", windowsHide: true, timeout: 15_000 });
 }
 
-// Windows: the processes whose parent was `pid` and that started between `since` and `until` (ms since
-// the epoch, the leader's start and exit, with a second of slack each way), so a process that reused the
-// leader's id after it exited, and the children that one starts, do not match. `pid` is the child's
-// numeric id, the only value in the script text.
-function childrenBetween(pid, since, until) {
-  if (!Number.isInteger(pid)) return [];
-  const script = `Get-CimInstance Win32_Process -Filter ('ParentProcessId=' + ${pid}) | ForEach-Object { [string]$_.ProcessId + ' ' + [string][int64]($_.CreationDate.ToUniversalTime() - [datetime]::new(1970,1,1,0,0,0,'Utc')).TotalMilliseconds }`;
+// Windows: the processes whose `field` (ProcessId or ParentProcessId, fixed by the callers) is `id`, as
+// { pid, parent, created } with `created` in ms since the epoch. `id` is a numeric id, the only value in
+// the script text.
+function processesWhere(field, id) {
+  if (!Number.isInteger(id)) return [];
+  const script = `Get-CimInstance Win32_Process -Filter ('${field}=' + ${id}) | ForEach-Object { [string]$_.ProcessId + ' ' + [string]$_.ParentProcessId + ' ' + [string]([DateTimeOffset]$_.CreationDate).ToUnixTimeMilliseconds() }`;
   const run = runPowerShell(script);
   if (!run || run.status !== 0) return [];
   return run.stdout.split(/\r?\n/).map((line) => line.trim().split(" ").map(Number))
-    .filter(([child, created]) => Number.isInteger(child) && created >= since - 1000 && created <= until + 1000)
-    .map(([child]) => child);
+    .filter((fields) => fields.length === 3 && fields.every(Number.isInteger))
+    .map(([pid, parent, created]) => ({ pid, parent, created }));
+}
+
+// Windows: the processes whose parent was `pid` and that started between `since` (with a second of slack
+// for the leader's own start) and `until`, the leader's exit as seen here, which is after its real exit.
+// No slack after the exit: a process that reused the leader's id afterwards, and the children it starts,
+// cannot have started before it.
+function childrenBetween(pid, since, until) {
+  return processesWhere("ParentProcessId", pid)
+    .filter(({ parent, created }) => parent === pid && created >= since - 1000 && created <= until);
+}
+
+// Windows: end a child found by childrenBetween, unless its id now names another process (the child
+// exited, maybe during an earlier kill, and the id was reused).
+function killChild({ pid, parent, created }) {
+  if (processesWhere("ProcessId", pid).some((p) => p.parent === parent && p.created === created)) killTree(pid);
 }
 
 function killGroup(pid, signal) {
@@ -67,7 +86,7 @@ function killGroup(pid, signal) {
 }
 
 export function killActiveGroups() {
-  for (const pid of active) killGroup(pid, "SIGKILL");
+  for (const kill of active.values()) kill();
   active.clear();
 }
 
@@ -92,10 +111,15 @@ export function runVendor({ command, args, cwd, env, timeoutMs, stdinFile }) {
     } finally {
       if (stdinFd !== undefined) fs.closeSync(stdinFd);
     }
-    if (child.pid) active.add(child.pid);
+    const runKey = {};
+    if (child.pid) active.set(runKey, () => killGroup(child.pid, "SIGKILL"));
     const startedAt = Date.now();
     let leaderExited = false;
     let exitedAt;
+    // Windows, after the leader exited: the children it left, never the leader's own id.
+    const killChildren = () => {
+      for (const found of childrenBetween(child.pid, startedAt, exitedAt)) killChild(found);
+    };
     const out = [];
     const err = [];
     let outBytes = 0;
@@ -103,6 +127,7 @@ export function runVendor({ command, args, cwd, env, timeoutMs, stdinFile }) {
     let timedOut = false;
     let settled = false;
     let killTimer;
+    let giveUpTimer;
     let graceTimer;
     child.stdout.on("data", (chunk) => {
       if (outBytes < MAX_CAPTURE_BYTES) out.push(chunk);
@@ -115,29 +140,33 @@ export function runVendor({ command, args, cwd, env, timeoutMs, stdinFile }) {
     const timer = setTimeout(() => {
       timedOut = true;
       killGroup(child.pid, "SIGTERM");
-      killTimer = setTimeout(() => killGroup(child.pid, "SIGKILL"), KILL_AFTER_TERM_MS);
+      killTimer = setTimeout(() => {
+        killGroup(child.pid, "SIGKILL");
+        // A kill that did not work (taskkill blocked by policy, say) must not leave the dispatch waiting
+        // for an exit that never comes.
+        giveUpTimer = setTimeout(() => finish(null, undefined, undefined, true), KILL_AFTER_TERM_MS);
+      }, KILL_AFTER_TERM_MS);
     }, timeoutMs);
-    const finish = (code, spawnError, signal) => {
+    const finish = (code, spawnError, signal, killFailed = false) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
       clearTimeout(killTimer);
+      clearTimeout(giveUpTimer);
       clearTimeout(graceTimer);
       if (child.pid) {
         // On Windows a leader that has exited has no tree left to kill by its own id: end the children
         // it left behind instead.
-        if (WINDOWS && leaderExited) {
-          for (const pid of childrenBetween(child.pid, startedAt, exitedAt)) killTree(pid);
-        } else {
-          killGroup(child.pid, "SIGKILL");
-        }
-        active.delete(child.pid);
+        if (WINDOWS && leaderExited) killChildren();
+        else killGroup(child.pid, "SIGKILL");
+        active.delete(runKey);
       }
       resolve({
         spawnError,
         code,
         signal,
         timedOut,
+        killFailed,
         // Output past the capture limit is dropped, so a cut-off stdout could hide the final result.
         stdoutTruncated: outBytes > MAX_CAPTURE_BYTES,
         stdout: Buffer.concat(out).toString("utf8"),
@@ -146,15 +175,18 @@ export function runVendor({ command, args, cwd, env, timeoutMs, stdinFile }) {
     };
     child.on("error", (error) => finish(null, error.code ?? String(error)));
     child.on("exit", (code, signal) => {
+      if (settled) return;
       // The leader is done: the timeout no longer applies, only the short grace for the pipes.
       leaderExited = true;
       exitedAt = Date.now();
       clearTimeout(timer);
+      clearTimeout(giveUpTimer);
       if (WINDOWS) {
         // Windows may hand the exited leader's id to another process during the grace below: never kill
-        // by that id again (a signal handler included), only the children found by start time.
+        // by that id again, only the children found by start time. A signal handler during the grace
+        // (killActiveGroups) ends those children too.
         clearTimeout(killTimer);
-        active.delete(child.pid);
+        active.set(runKey, killChildren);
       }
       graceTimer = setTimeout(() => finish(code, undefined, signal), EXIT_GRACE_MS);
     });

@@ -230,7 +230,9 @@ export function unsafeTempDir(tmp) {
 // Windows has no sticky bit, so the temp directory itself must be private, inheritable rules included
 // (whatever is created in it inherits them), and owned by the user, SYSTEM, Administrators or
 // TrustedInstaller. A directory above it may let others add entries (C:\ lets Authenticated Users) but
-// not delete, rename or re-permission one. Any ACL that cannot be read counts as unsafe.
+// not delete, rename or re-permission one. Any ACL that cannot be read counts as unsafe. Read fresh on
+// every call: each call guards a write that follows it, and a directory another check cached earlier in
+// the run may have changed since.
 function unsafeWindowsTempDir(tmp) {
   const chain = [];
   for (let dir = tmp; ; dir = path.dirname(dir)) {
@@ -238,7 +240,7 @@ function unsafeWindowsTempDir(tmp) {
     if (path.dirname(dir) === dir) break;
   }
   try {
-    const infos = readAcls(chain);
+    const infos = readAcls(chain, { fresh: true });
     const me = currentUserSid();
     if (aclProblem(infos[0], me, { owner: "trusted", rights: WRITE_RIGHTS, inheritable: true })) return true;
     return infos.slice(1).some((info) => aclProblem(info, me, { owner: "trusted", rights: REPLACE_RIGHTS }) !== null);
@@ -332,7 +334,16 @@ function checkOwnership(root, file) {
 }
 
 export async function loadCodexKit({ devSibling = false } = {}) {
-  for (const root of candidateRoots(devSibling)) {
+  for (const listedRoot of candidateRoots(devSibling)) {
+    // Resolve the root once and use only that path from here on: the listed path may run through a
+    // junction or link another account can repoint after the checks, so resolving it again for the
+    // import could load a tree that was never checked.
+    let root;
+    try {
+      root = fs.realpathSync(listedRoot);
+    } catch {
+      continue;
+    }
     const files = [BRIDGE, EXEC, SECRETS].map((rel) => path.join(root, rel));
     if (!files.every((file) => fs.existsSync(file))) continue;
     // The imported modules pull in siblings (codex-exec.mjs imports cdx-process.mjs and reads
