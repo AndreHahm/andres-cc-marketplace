@@ -196,31 +196,10 @@ shape decided in `docs/ci.md` goes to a Codacy ignore (rung 3), with the approva
 
 ## Sonar mechanisms
 
-For a `sonar` record, steps 1 to 6 apply with these mechanisms. Severities are verbatim (`BLOCKER`, `CRITICAL`,
-`MAJOR`, `MINOR`, `INFO`), and `VULNERABILITY` counts as the `Security` category.
-
-| Rung | Mechanism |
-|---|---|
-| 1. Fix in code | The same |
-| 2. Inline suppression | Python files only: `# NOSONAR(<key>)`, where `<key>` is the finding's own `rule` without its `python:` prefix (for `python:S5655`, `# NOSONAR(S5655)`), plus the reason on that line (`references/suppression-formats.md`). No other language's form is verified, so a finding in any other file skips rung 2. `S1309` (the rule that tracks suppressions) cannot be suppressed this way, so it skips rung 2 too |
-| 3. Per-issue transition | `sonar api post /api/issues/do_transition`, `falsepositive` or `accept`, with a comment (`references/ignore-reasons.md`) |
-| 4. Path exclusion | A project setting in the UI, Administration → Analysis Scope → Ignore Issues on Multiple Criteria, not `.sonarcloud.properties` (per SonarSource staff on its community forum, checked 2026-11-08: multi-value settings are set only in the UI, and the documented `.sonarcloud.properties` settings include none). Handed to the user |
-| 5. Gate or profile change | Handed to the user; `using-sonarqube-cloud` covers how |
-
-| Action | Who decides |
-|---|---|
-| Rung 1, any severity | Decided and disclosed; the count must be proven to drop |
-| Rung 2 in a Python file on `MINOR` or `INFO`, not `VULNERABILITY`; or on `MAJOR` for a shape `docs/ci.md` records as accepted. Neither may carry a `SECURITY` impact or a `HIGH` or `BLOCKER` impact | Decided and disclosed, with the reason written in the comment |
-| Rung 2 in a Python file on any other finding, on any finding with such an impact, or a name not listed here | `AskUserQuestion`, once per finding or per named group |
-| Rung 3, any severity | `AskUserQuestion` per command, as for Codacy: its exact text, reason and comment per approval, after the fresh re-collect in step 1. Always a remote write. Before running the approved command, re-read the head with `python3 -I ${CLAUDE_PLUGIN_ROOT}/skills/resolving-analysis-findings/scripts/read_pr_head.py <owner/repo> <pr>`; if it differs from the re-collected record's `source.head_commit_sha`, re-collect and ask again; on any non-zero exit, stop. The head check cannot see someone else changing the issue meanwhile, so also re-read the issue's own state right before the command, with `python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/qlty-sonar-read.py issue-state --issue <issue_id>` (pre-approved; on a non-zero exit, stop): if its `issueStatus` is no longer `OPEN` or `CONFIRMED` (for `reopen`, no longer the record's `ignore_reason`), re-collect, show the current state and ask again. If the transition is refused anyway, do the same, and never retry the same command. `reopen` needs the same approval |
-| Rung 4 | Not run here: give the user the exact rule key and path pattern to enter, and what the path stops being reported for |
-| Rung 5, bulk transitions, `sonar remediate` | Not run here: give the user the exact change |
-
-Classify as in "Real or false positive": `FalsePositive` maps to the `falsepositive` transition, and
-`NotExploitable`, `AcceptedUse`, `TestCode` and `ExternalCode` to `accept`, with the classification stated in the
-comment. A name a framework requires is `AcceptedUse`, not `FalsePositive`: the rule read the name correctly.
-Verify reads the `sonar` record the same way, and Sonar's own issue list (read through the collector) is the authority. If Sonar did not
-honor a `NOSONAR`, fall back to rung 3 and say so. Rung 4 applies from the next analysis after the user sets it: re-collect then, and say when it was not yet re-analyzed.
+For a `sonar` record, read `references/sonar-mechanisms.md` before step 1 and follow it for steps 1 to 6: it holds
+Sonar's rungs (`# NOSONAR(<key>)` in Python files only, the `falsepositive`/`accept` transitions, the UI-only path
+exclusion), its decision rights, which a `SECURITY`, `HIGH` or `BLOCKER` impact always sends to `AskUserQuestion`,
+and the head and issue-state re-checks before every transition. Each transition is a remote write and asks per command.
 
 ## Real or false positive
 
@@ -259,21 +238,18 @@ The Cloud CLI is the authority, not GitHub's check annotations, which show a cap
 ## Local pre-PR scan
 
 Run before `create-pr` when the PR touches scripts or configuration, and only after asking via
-`AskUserQuestion` whether to run it now or skip it (it runs a local analysis tool over the branch); the question
-shows the exact `codacy-analysis` command, `--output` path included. `references/local-scan.md` has the
-verified flags. In short: `codacy-analysis analyze --pr --output-format json --output <scratchpad file>`. The
-`--output` path must be under the session scratchpad, and `--install-dependencies` is never passed; stop
-otherwise. A `codacy-analysis` allow rule in the user's own settings removes the permission prompt for this
-command, so read its text yourself before running it. Run the scan only on your own branch: some linters load
-code from the repository's config files, so scanning someone else's checked-out PR branch would run their code.
-The scan needs `.codacy/codacy.config.json`. In this repository that file is local and ignored (decided
-2026-10-17; `.codacy/` is in `.gitignore`), so each person creates their own. If the file is missing,
-stop and hand the user the `init` command from `references/local-scan.md`; never run `codacy-analysis init`
-yourself. When local and Cloud counts differ, Cloud wins; record the difference.
+`AskUserQuestion` whether to run it now or skip it; the question shows the exact command,
+`codacy-analysis analyze --pr --output-format json --output <scratchpad file>`. `references/local-scan.md` has the
+verified flags and the missing-config handling. The `--output` path must be under the session scratchpad and
+`--install-dependencies` is never passed; stop otherwise. Run it only on your own branch: some linters load code
+from the repository's config files. A `codacy-analysis` allow rule in the user's settings removes the prompt, so
+read the command yourself before running it. If `.codacy/codacy.config.json` is missing (it is local and ignored
+here), hand the user the `init` command from that reference; never run `codacy-analysis init` yourself. When
+local and Cloud counts differ, Cloud wins; record the difference.
 
-For a Sonar run, the scan is `sonar analyze` (`references/local-scan.md`). It has its own `AskUserQuestion`,
-which shows the exact `sonar analyze` command and whose text must say that the scan sends project files to Sonar (the CLI help does not
-say what plain `sonar analyze` uploads, so assume it does) and that the retention period is undocumented. It is never run on a yes given for the Codacy scan.
+For a Sonar run, the scan is `sonar analyze`, with its own `AskUserQuestion` showing the exact command and saying
+that the scan sends project files to Sonar and that the retention period is undocumented. A yes for the Codacy
+scan never runs it.
 
 ## Gotchas
 
@@ -289,15 +265,11 @@ say what plain `sonar analyze` uploads, so assume it does) and that the retentio
 
 ## Testing & Validation
 
-Evidence: `evals/resolving-analysis-findings/evals.json` (10 evals; Codacy and Sonar, blind comparison and
-with-skill re-runs) and `scripts/smoke_test.py`. The run history, what separates the arms, and the scenarios this
-file is checked against are in `references/testing-scenarios.md`.
+Evidence: `evals/resolving-analysis-findings/evals.json` (10 evals, Codacy and Sonar) and `scripts/smoke_test.py`;
+the run history, what separates the arms, and the scenarios are in `references/testing-scenarios.md`.
 
-**Last dated run record:** 2026-11-17: `scripts/smoke_test.py` passed after the Codacy id fix (issue #760: the
-numeric `resultDataId` pattern for `--ignore-issue`), and new evals 9 and 10 (iteration 11) passed 10 of 10 with the
-skill against 3 of 10 for the baseline; after the switch to the long `--issue` flag, iteration 12 (with skill only)
-passed 10 of 10 again. 2026-11-09: `scripts/smoke_test.py` passed after the Sonar re-collect, Verify and
-`issue-state` wrapper changes; no eval was re-run for them. Earlier records are in `references/testing-scenarios.md`.
+**Last dated run record:** 2026-11-18: `scripts/smoke_test.py` passed after the Sonar mechanisms moved to
+`references/sonar-mechanisms.md`. 2026-11-17: evals 9 and 10 passed 10 of 10 with the skill (iterations 11, 12).
 
 **Verify this skill activates on:**
 - "the Codacy check failed on my PR"
@@ -327,6 +299,7 @@ passed 10 of 10 again. 2026-11-09: `scripts/smoke_test.py` passed after the Sona
 | Resource | Purpose |
 |---|---|
 | `references/suppression-formats.md` | Inline suppression syntax per engine, with what is verified here |
+| `references/sonar-mechanisms.md` | Sonar's rungs, decision rights and re-checks before a transition, for a `sonar` record |
 | `references/ignore-reasons.md` | Codacy's five ignore reasons, Sonar's transitions, the commands, and example comments |
 | `references/local-scan.md` | The local `codacy-analysis` flags and the missing-config handling, and `sonar analyze` |
 | `references/author-checklist.md` | Checklist for new scripts that run `git` or another command; use it when adding a script (it points to `docs/ci.md` for the `git` rationale) |
