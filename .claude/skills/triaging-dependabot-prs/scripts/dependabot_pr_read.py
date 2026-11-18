@@ -328,13 +328,16 @@ def dependency_review(run, gh, repo, pr):
     """The PR's `Dependency review` check rows, required or not (actions/dependency-review-action).
 
     Matched by name, ignoring case and treating `-` and `_` as spaces, so both the job id
-    `dependency-review` and its display name `Dependency review` count.
+    `dependency-review` and its display name `Dependency review` count. The name may also be one
+    `/`-separated part of the check's name, as `gh` shows a job a reusable workflow runs
+    (`security / Dependency review`).
     """
     rows = pr_checks(run, gh, repo, pr, required=False)["items"]
     items = [
         row
         for row in rows
-        if re.sub(r"[-_\s]+", " ", row["name"]).strip().lower() == DEPENDENCY_REVIEW_NAME
+        if DEPENDENCY_REVIEW_NAME
+        in (re.sub(r"[-_\s]+", " ", part).strip().lower() for part in row["name"].split("/"))
     ]
     return {"count": len(items), "items": items}
 

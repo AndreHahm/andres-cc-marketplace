@@ -405,6 +405,21 @@ class PrReads(unittest.TestCase):
         )
         self.assertEqual((out["pr"], out["count"]), ("628", 2))
 
+    def test_dependency_review_run_by_a_reusable_workflow_is_matched(self):
+        """PR #787 review: gh names such a job `<caller> / <job>`; only a whole part matches."""
+        stdout = checks_stdout(
+            ("security / Dependency review", "fail", "7s", "https://example.test/1"),
+            ("ci / dependency-review / scan", "pass", "3s", "https://example.test/2"),
+            ("security / Dependency review summary", "fail", "1s", "https://example.test/3"),
+            ("dependency/review", "fail", "1s", "https://example.test/4"),
+        )
+        code, out = run_main(["dependency-review", "787"], FakeRun(pr_stdout=stdout, pr_rc=1))
+        self.assertEqual(code, 0, out)
+        self.assertEqual(
+            [(i["name"], i["bucket"]) for i in out["items"]],
+            [("security / Dependency review", "fail"), ("ci / dependency-review / scan", "pass")],
+        )
+
     def test_dependency_review_absent_is_an_empty_list_and_errors_stay_errors(self):
         none = FakeRun(pr_stdout=checks_stdout(("Hygiene", "pass", "1s", "")), pr_rc=0)
         code, out = run_main(["dependency-review", "5"], none)
