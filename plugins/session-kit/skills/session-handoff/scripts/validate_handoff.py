@@ -58,6 +58,16 @@ RECOMMENDED_SECTIONS = [
     "Potential Gotchas",
 ]
 
+# A reference with no "/" counts as a file only if its last suffix is one of these, so code
+# names such as `os.geteuid`, `json.loads` or `code.claude.com` are not reported as missing.
+# A reference with a "/" is always checked.
+FILE_EXTENSIONS = frozenset(
+    "md markdown txt rst py pyc pyi ipynb sh bash zsh ps1 bat cmd js mjs cjs ts tsx jsx "
+    "json jsonl jsonc yml yaml toml ini cfg conf env lock xml html htm css scss csv tsv sql "
+    "log patch diff exe dll so png jpg jpeg gif svg webp pdf zip gz tar tgz go rs java kt rb "
+    "php c h cpp hpp cs swift lua pem crt".split()
+)
+
 
 def check_todos(content: str) -> tuple[bool, list[str]]:
     """Check for remaining TODO placeholders."""
@@ -200,8 +210,11 @@ def check_file_references(
             # of base_path. No "/" requirement: a root-level file reference (e.g.
             # "README.md", no slash) must still be checked, or it silently bypasses
             # validation entirely.
-            if filepath and not filepath.startswith(("http", "/")):
-                found_files.add(filepath)
+            if not filepath or filepath.startswith(("http", "/")):
+                continue
+            if "/" not in filepath and filepath.rsplit(".", 1)[-1].lower() not in FILE_EXTENSIONS:
+                continue
+            found_files.add(filepath)
 
     existing = []
     missing = []
