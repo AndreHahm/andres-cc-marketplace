@@ -24,7 +24,7 @@ development, git/GitHub workflows, session analysis, and more.
 | [`github-actions-kit`](./plugins/github-actions-kit) | Generate, validate, and audit GitHub Actions workflows and custom actions. |
 | [`promptlibrary-kit`](./plugins/promptlibrary-kit) | Project-local prompt library: store, verify and optimize reusable prompts, look them up read-only, and run approved prompts in Claude. |
 | [`workledger-kit`](./plugins/workledger-kit) | Open-item ledger and PR history for a repository: collect, dedup and plan open items; every Linear/Notion write goes through `workmanagement-kit`'s approval gate. |
-| [`quality-kit`](./plugins/quality-kit) | Static-analysis findings: collect a PR's Codacy findings into one record, then decide to fix, suppress, ignore or exclude each with a recorded reason. |
+| [`quality-kit`](./plugins/quality-kit) | Code quality: collect a PR's Codacy or SonarQube Cloud findings into one record and decide each with a recorded reason, Codecov coverage tiers, and mutmut mutation testing as data, never a gate. |
 | [`decision-kit`](./plugins/decision-kit) | Independent second opinion from a pinned OpenRouter decision model before risky decisions; it can only add a stop. |
 | [`reviewadapters-kit`](./plugins/reviewadapters-kit) | Optional reviewer vendors (agy, pi, devin) on a diff with no tools, returning codex-kit's validated findings envelope; every vendor off until enabled locally. |
 
