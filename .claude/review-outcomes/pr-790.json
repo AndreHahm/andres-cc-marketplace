@@ -1,0 +1,109 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4614171342",
+      "note": "Fixed in 4fef78ab, round 1",
+      "pr": 790,
+      "recorded_at": "2026-11-18T13:12:47+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4614192847",
+      "note": "Fixed in 4fef78ab, round 1",
+      "pr": 790,
+      "recorded_at": "2026-11-18T13:12:47+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4614193028",
+      "note": "Fixed in 4fef78ab, round 1",
+      "pr": 790,
+      "recorded_at": "2026-11-18T13:12:47+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4614259042",
+      "note": "Fixed in 4fef78ab, round 1",
+      "pr": 790,
+      "recorded_at": "2026-11-18T13:12:48+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4614259056",
+      "note": "Fixed in 4fef78ab, round 1",
+      "pr": 790,
+      "recorded_at": "2026-11-18T13:12:48+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4614259066",
+      "note": "Fixed in 4fef78ab, round 1",
+      "pr": 790,
+      "recorded_at": "2026-11-18T13:12:49+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4614259078",
+      "note": "Fixed in 4fef78ab, round 1",
+      "pr": 790,
+      "recorded_at": "2026-11-18T13:12:49+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4614259095",
+      "note": "Fixed in 4fef78ab, round 1",
+      "pr": 790,
+      "recorded_at": "2026-11-18T13:12:49+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4614259104",
+      "note": "Fixed in 4fef78ab, round 1",
+      "pr": 790,
+      "recorded_at": "2026-11-18T13:12:57+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4614259120",
+      "note": "Fixed in 4fef78ab, round 1",
+      "pr": 790,
+      "recorded_at": "2026-11-18T13:12:57+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4614259142",
+      "note": "Fixed in 4fef78ab, round 1",
+      "pr": 790,
+      "recorded_at": "2026-11-18T13:12:58+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4614259156",
+      "note": "Fixed in 4fef78ab, round 1",
+      "pr": 790,
+      "recorded_at": "2026-11-18T13:12:58+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4614259178",
+      "note": "Fixed in 4fef78ab, round 1",
+      "pr": 790,
+      "recorded_at": "2026-11-18T13:12:58+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4614259194",
+      "note": "Fixed in 4fef78ab, round 1",
+      "pr": 790,
+      "recorded_at": "2026-11-18T13:12:59+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4614259215",
+      "note": "Fixed in 4fef78ab, round 1",
+      "pr": 790,
+      "recorded_at": "2026-11-18T13:12:59+00:00"
+    }
+  ]
+}
