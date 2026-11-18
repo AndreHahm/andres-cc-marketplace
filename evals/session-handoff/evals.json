@@ -44,12 +44,54 @@
       "prompt": "The handoff has been found, its staleness check reported FRESH, and its content was read and verified (RESUME Steps 1-4 are done). You are about to start Step 5. The handoff's Session Metadata contains the line: 'Context mode: none'. No context mode is active in this session.",
       "expected_output": "Sets no mode, asks nothing about a mode, and proceeds with Immediate Next Steps item 1.",
       "files": []
+    },
+    {
+      "id": 7,
+      "name": "Create with review findings still open",
+      "prompt": "You are at CREATE Step 2 and filling in the handoff's Session Metadata. This session opened PR #900 (not a draft). Codex posted 3 review findings; 2 are fixed and pushed, 1 is still untriaged. Required checks were green at the last check. The next session should finish the review and then merge. Which Context mode value do you write, and why?",
+      "expected_output": "Writes 'Context mode: review', because a finding is still untriaged; does not write ship.",
+      "files": []
+    },
+    {
+      "id": 8,
+      "name": "Create with only the merge left",
+      "prompt": "You are at CREATE Step 2 and filling in the handoff's Session Metadata. PR #901 is ready for review (not a draft), every review finding is resolved and its threads are closed, no fix commits are pending, and the required checks were green when last checked. The next session's only step is merge-pr. Which Context mode value do you write, and why?",
+      "expected_output": "Writes 'Context mode: ship', citing that merge is the only remaining step.",
+      "files": []
+    },
+    {
+      "id": 9,
+      "name": "Create before any PR exists",
+      "prompt": "You are at CREATE Step 2 and filling in the handoff's Session Metadata. No PR exists yet. The next session will create a worktree and implement the feature. Which Context mode value do you write, and why?",
+      "expected_output": "Writes 'Context mode: none'.",
+      "files": []
+    },
+    {
+      "id": 10,
+      "name": "Create when the next session opens the PR and then merges",
+      "prompt": "You are at CREATE Step 2 and filling in the handoff's Session Metadata. The branch is pushed and all its gates passed locally, but no PR exists yet. The user said: 'next session: open the PR and merge it'. Which Context mode value do you write, and why?",
+      "expected_output": "Writes 'Context mode: review', not ship: no PR exists yet, and opening it starts review rounds before any merge.",
+      "files": []
+    },
+    {
+      "id": 11,
+      "name": "Create right after a review round was requested",
+      "prompt": "You are at CREATE Step 2 and filling in the handoff's Session Metadata. PR #903 was just flipped to ready for review and is not a draft. Required checks are green. The CI review round was triggered a minute ago and has not posted yet; no findings exist so far. The user expects to merge it next session. Which Context mode value do you write, and why?",
+      "expected_output": "Writes 'Context mode: review', not ship: the requested review round may still post findings to triage.",
+      "files": []
+    },
+    {
+      "id": 12,
+      "name": "Create with a draft PR that is otherwise green",
+      "prompt": "You are at CREATE Step 2 and filling in the handoff's Session Metadata. PR #904 is still a draft. Required checks are green and no review findings exist. The next session should flip it to ready for review and then merge it. Which Context mode value do you write, and why?",
+      "expected_output": "Writes 'Context mode: review', not ship: the PR is a draft, and flipping it to ready starts a review round before the merge.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 3,
     "declared_scenarios_covered": 3,
     "uncovered": [],
-    "coverage_note": "Evals 4-6 (2026-10-16) cover the Context mode load step added to Step 5; they are plan-only, with-skill-only runs. SKILL.md's declared Testing & Validation scenarios (3) are still covered by evals 1-3."
+    "coverage_note": "Evals 4-6 (2026-10-16) cover the Context mode load step added to Step 5; they are plan-only, with-skill-only runs. SKILL.md's declared Testing & Validation scenarios (3) are still covered by evals 1-3. Evals 7-9 (2026-11-18) cover the CREATE Step 2 rule for choosing the Context mode value (review while findings remain, ship only when merge is the only step left, none while implementing with no PR to open next); iteration-1 ran them plan-only, with-skill-only, and iteration-2 as an A/B against the pre-edit text. Evals 10-12 (2026-11-18) are borderline cases for the same rule (no PR yet but 'open and merge', a review round just requested, a green draft), added after evals 7-9 did not separate the rule from the pre-edit text."
   }
 }

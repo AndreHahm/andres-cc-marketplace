@@ -223,7 +223,7 @@ def generate_handoff(
 - Project: {project_path}
 - Branch: {branch_line}
 - Session duration: [estimate how long you worked]
-- Context mode: [admin | review | ship | none - the mode the next session should start in]
+- Context mode: [admin | review | ship | none - ship only if merging is the only remaining step]
 
 ### Recent Commits (for context)
 {commits_section}

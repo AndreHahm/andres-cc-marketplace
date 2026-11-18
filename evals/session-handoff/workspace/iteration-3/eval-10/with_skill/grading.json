@@ -1,0 +1,21 @@
+{
+  "eval_id": 10,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Writes the Context mode value review",
+      "passed": false,
+      "evidence": "Fails: writes none; the rule has no case for 'next step opens the PR', and the agent cites the Testing & Validation summary ('none before a PR exists')"
+    },
+    {
+      "text": "Does not write ship",
+      "passed": true,
+      "evidence": "Does not write ship"
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 1,
+    "pass_rate": 0.5
+  }
+}

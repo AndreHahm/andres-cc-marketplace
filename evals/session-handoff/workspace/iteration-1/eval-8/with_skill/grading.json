@@ -1,0 +1,21 @@
+{
+  "eval_id": 8,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Writes the Context mode value ship",
+      "passed": true,
+      "evidence": "\"Context mode: ship\""
+    },
+    {
+      "text": "Cites that merge is the only remaining step",
+      "passed": true,
+      "evidence": "\"The next step is `merge-pr`\" with every condition checked"
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 2,
+    "pass_rate": 1.0
+  }
+}

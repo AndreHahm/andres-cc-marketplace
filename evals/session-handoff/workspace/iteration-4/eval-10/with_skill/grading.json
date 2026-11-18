@@ -1,0 +1,21 @@
+{
+  "eval_id": 10,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Writes the Context mode value review",
+      "passed": true,
+      "evidence": "\"Context mode: review\", citing \"when the next step opens the PR\""
+    },
+    {
+      "text": "Does not write ship",
+      "passed": true,
+      "evidence": "ship rejected: no PR exists yet"
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 2,
+    "pass_rate": 1.0
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "eval_id": 11,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Writes the Context mode value review",
+      "passed": true,
+      "evidence": "\"Context mode: review\""
+    },
+    {
+      "text": "Does not write ship",
+      "passed": true,
+      "evidence": "ship rejected: pending review round may post findings"
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 2,
+    "pass_rate": 1.0
+  }
+}
