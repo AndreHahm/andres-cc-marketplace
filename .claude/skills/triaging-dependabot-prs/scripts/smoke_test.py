@@ -544,7 +544,7 @@ def check_advisory_tests_pass():
 
 
 def check_advisory_step_is_wired():
-    """Step 3 names the script, the three rules' signals and the unknown-is-never-safe rule."""
+    """Step 3 names the script, the four rules' signals and the unknown-is-never-safe rule."""
     _, body = split_skill()
     needed = [
         "`dependabot_advisory_read.py assess`",
@@ -552,6 +552,9 @@ def check_advisory_step_is_wired():
         "new_compatible",
         "new_is_newest_compatible",
         "new_safer_than_newest_compatible",
+        "adds_vulnerable_package",
+        "--head-lock",
+        "`dependency-review <n>`",
         "never read it as safe or compatible",
         "recommend skip (hold) for that PR so the user decides",
         "pnpm-lock",

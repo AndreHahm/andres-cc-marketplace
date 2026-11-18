@@ -21,6 +21,7 @@ Usage:
   dependabot_pr_read.py pr-list
   dependabot_pr_read.py pr-view PR_NUMBER --fields FIELD[,FIELD...]
   dependabot_pr_read.py pr-checks PR_NUMBER
+  dependabot_pr_read.py dependency-review PR_NUMBER
   dependabot_pr_read.py head-runs PR_NUMBER
   dependabot_pr_read.py pr-threads PR_NUMBER
   dependabot_pr_read.py files PR_NUMBER
@@ -31,7 +32,9 @@ Usage:
 true when that page is full. `pr-view` returns only the requested fields, each from a fixed
 allowlist.
 `pr-checks` returns the required checks as name/bucket/elapsed/link rows (an empty list when none
-are reported). `head-runs` reads the PR's head branch and SHA, then the first page (100) of Actions
+are reported). `dependency-review` returns the same rows for the PR's `Dependency review` check
+(actions/dependency-review-action), whether or not it is required (an empty list when there is
+none). `head-runs` reads the PR's head branch and SHA, then the first page (100) of Actions
 workflow runs for that SHA and the first page (newest first) for that branch, and returns the runs
 that have not completed as `head_incomplete` (on the current head) and `other_head_incomplete` (on
 an older head of the branch), each as id/name/event/status/head_sha/url; `head_run_count` is the
@@ -293,9 +296,10 @@ def pr_view(run, gh, repo, pr, fields):
     return {"data": data}
 
 
-def pr_checks(run, gh, repo, pr):
-    """A PR's required checks as rows; `gh pr checks` exits non-zero for failing or pending ones."""
-    done = _gh_pr(run, gh, repo, "checks", pr, "--required")
+def pr_checks(run, gh, repo, pr, required=True):
+    """A PR's required checks (or all of them) as rows; `gh pr checks` exits non-zero for failing
+    or pending ones."""
+    done = _gh_pr(run, gh, repo, "checks", pr, *(["--required"] if required else []))
     if done.returncode not in CHECKS_EXIT_CODES:
         raise Refusal(f"gh pr checks {pr} failed", EXIT_TOOL)
     rows = []
@@ -320,6 +324,22 @@ def pr_checks(run, gh, repo, pr):
     return {"count": len(rows), "items": rows}
 
 
+def dependency_review(run, gh, repo, pr):
+    """The PR's `Dependency review` check rows, required or not (actions/dependency-review-action).
+
+    Matched by name, ignoring case and treating `-` and `_` as spaces, so both the job id
+    `dependency-review` and its display name `Dependency review` count.
+    """
+    rows = pr_checks(run, gh, repo, pr, required=False)["items"]
+    items = [
+        row
+        for row in rows
+        if re.sub(r"[-_\s]+", " ", row["name"]).strip().lower() == DEPENDENCY_REVIEW_NAME
+    ]
+    return {"count": len(items), "items": items}
+
+
+DEPENDENCY_REVIEW_NAME = "dependency review"
 HEAD_REF_RE = re.compile(r"[A-Za-z0-9._/@+=-]{1,255}")
 SHA_RE = re.compile(r"[0-9a-f]{40}")
 
@@ -463,7 +483,7 @@ def parse_args(argv):
     parser = argparse.ArgumentParser(description="Read-only Dependabot PR lookups.")
     sub = parser.add_subparsers(dest="kind", required=True)
     sub.add_parser("pr-list")
-    for kind in ("files", "commits", "pr-checks", "head-runs", "pr-threads"):
+    for kind in ("files", "commits", "pr-checks", "dependency-review", "head-runs", "pr-threads"):
         sub.add_parser(kind).add_argument("pr_number")
     view = sub.add_parser("pr-view")
     view.add_argument("pr_number")
@@ -500,6 +520,9 @@ def main(argv=None, run=subprocess.run, which=shutil.which):
         elif args.kind == "pr-checks":
             result["pr"] = args.pr_number
             result.update(pr_checks(run, gh, repo, args.pr_number))
+        elif args.kind == "dependency-review":
+            result["pr"] = args.pr_number
+            result.update(dependency_review(run, gh, repo, args.pr_number))
         elif args.kind == "head-runs":
             result["pr"] = args.pr_number
             result.update(head_runs(run, gh, repo, args.pr_number))

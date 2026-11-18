@@ -197,3 +197,29 @@ while the list read as complete (the gate itself still stopped, since the head i
 returns `other_heads_truncated`, and step 6.4 says the older-head list may be incomplete only while CI on the head
 is unfinished. One new test (55 in the suite); two mutations of the flag each fail it. Live on PR #628 the flag is
 true, as expected on a long-lived branch.
+
+## 2026-11-18 — issue #741, vulnerable packages added through a dependency (iteration 26)
+
+`assess` takes `--head-lock` (the PR head's lockfile, beside the base `--lock`): the name and version pairs only the
+head has, the bumped dependency left out, are looked up for advisories (at most 20, within 60 s) and reported as
+`added_packages` with the signal `adds_vulnerable_package`, which step 3's new rule (d) turns into a hold. The read
+script gains `dependency-review <n>` (the `Dependency review` check, read without `--required`), and step 6.4 skips a
+PR on which it fails. 16 new advisory tests (131 in the suite) and 2 new read tests (57); twelve mutations of the new
+advisory checks and four of the new read checks each fail the suites. Live on PR #628: `dependency-review` returned
+`Dependency review: fail`, and `assess --head-lock` checked the 12 pairs the head adds and found re2js 2.8.6
+(GHSA-gg6h-894w-4m9c, high, fixed in 2.8.7) while the bumped package's own signal stayed false. New eval 23
+(scenarios 71 and 72): 5 of 5, against 2 of 5 for a baseline on the pre-change skill (`98f86ec2`), which held the PR
+only on its own judgement and sent it to `merge-pr` at 6.4. Author-graded from one simulated answer each. Evals 1 to
+22 were not re-run (eval 14's expected cost wording and eval 15's rule count were updated); the smoke test's 21
+checks pass.
+
+Same day, `security-reviewer` (static) on the change found no Critical issue and four Major ones, all fixed before the
+first commit: 6.1 now re-runs `assess --head-lock` when the head moved since step 3 (a rebase regenerates the
+lockfile); head lockfile entries the parser cannot read (`unparsed`: pnpm tarball, git, `file:` or `link:` keys and
+over-long keys, uv packages with no version) make the signal `null`, counted only when the base lacks them, and a uv
+package from a non-registry source is `unknown` without a lookup; in 6.4 the worst matching `Dependency review` row
+decides and its pass never covers a `null` signal (the skill asks go on / skip, since the PR's head defines that
+check); only the bumped dependency at its new version is skipped, not its other versions. 3 more advisory tests (134
+in the suite); 22 mutations of the new advisory checks in all each fail the suite. A targeted re-check by
+`security-reviewer` rated all four resolved with nothing new. New eval 24 (iteration 27): 5 of 5, no baseline,
+author-graded from one simulated answer. Live on PR #628 the result is unchanged (`unparsed` 0, re2js 2.8.6 found).

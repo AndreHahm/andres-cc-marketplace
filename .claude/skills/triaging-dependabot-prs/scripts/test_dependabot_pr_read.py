@@ -384,8 +384,43 @@ class PrReads(unittest.TestCase):
             self.assertEqual(code, 4, out)
             self.assertFalse(out["ok"])
 
+    def test_dependency_review_reads_all_checks_and_keeps_only_that_one(self):
+        """Issue #741: the check is not required, so it is read without --required."""
+        stdout = checks_stdout(
+            ("Hygiene (PR contract)", "pass", "16s", "https://example.test/1"),
+            ("Dependency review", "fail", "7s", "https://example.test/2"),
+            ("dependency-review", "pending", "0", "https://example.test/3"),
+            ("Dependency review (extra)", "fail", "1s", "https://example.test/4"),
+            ("dependency_review_other", "fail", "1s", "https://example.test/5"),
+        )
+        fake = FakeRun(pr_stdout=stdout, pr_rc=1)
+        code, out = run_main(["dependency-review", "628"], fake)
+        self.assertEqual(code, 0, out)
+        self.assertEqual(
+            fake.pr_calls()[0][0], [GH, "pr", "checks", "628", "-R", f"github.com/{REPO}"]
+        )
+        self.assertEqual(
+            [(i["name"], i["bucket"]) for i in out["items"]],
+            [("Dependency review", "fail"), ("dependency-review", "pending")],
+        )
+        self.assertEqual((out["pr"], out["count"]), ("628", 2))
+
+    def test_dependency_review_absent_is_an_empty_list_and_errors_stay_errors(self):
+        none = FakeRun(pr_stdout=checks_stdout(("Hygiene", "pass", "1s", "")), pr_rc=0)
+        code, out = run_main(["dependency-review", "5"], none)
+        self.assertEqual((code, out["count"], out["items"]), (0, 0, []))
+        quiet = FakeRun(pr_stdout="", pr_rc=1, pr_stderr="no checks reported on the 'x' branch\n")
+        self.assertEqual(run_main(["dependency-review", "5"], quiet)[0], 0)
+        broken = FakeRun(pr_stdout="", pr_rc=1, pr_stderr="authentication required")
+        self.assertEqual(run_main(["dependency-review", "5"], broken)[0], 4)
+        self.assertEqual(run_main(["dependency-review", "5x"], FakeRun())[0], 2)
+
     def test_every_gh_pr_call_is_a_read_pinned_to_origin(self):
         runs = [
+            (
+                ["dependency-review", "5"],
+                FakeRun(pr_stdout="", pr_rc=1, pr_stderr="no checks reported"),
+            ),
             (["pr-list"], FakeRun()),
             (["pr-view", "5", "--fields", "body,files,commits"], FakeRun(pr_stdout="{}")),
             (
