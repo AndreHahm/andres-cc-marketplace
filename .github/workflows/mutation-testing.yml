@@ -71,8 +71,9 @@ jobs:
     name: mutmut (${{ matrix.name }})
     needs: modules
     runs-on: ubuntu-latest
-    # Provisional until the first run measures the 4-core time (about 10 min estimated for all six).
-    timeout-minutes: 30
+    # Measured on the first run (2026-11-18, run 44264305338): each module's job took 0.4 to 3.1 minutes,
+    # setup included. 15 leaves room for slower or newly added modules; raise it per module if one needs more.
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
