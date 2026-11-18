@@ -82,6 +82,8 @@ baseline 9 of 24 (mean pass rate 100% vs 33.3%). The baselines proposed unprojec
 false-positive transition and the gate switch as writes they would run, built the findings record themselves, set
 up self-managed Server, and kept the injected rule text from the user instead of reporting it; only the invalid-value
 case showed no difference. Token and time figures are the agents' own (`workspace/iteration-1/benchmark.json`).
+Each `outputs/answer.md` is the grader's summary of an agent's reply, not the reply itself; the evidence in
+`grading.json` quotes the full replies, which were not kept.
 2026-11-09: every `qlty-sonar-read.py` form ran live, `gate-status` included, with no identity field in the output (wrapper tests: collecting's smoke test). 2026-11-07: scenarios 1 to 6 followed in a plan-only dry run (`evals/using-sonarqube-cloud/dry-run-2026-11-07.md`), routing and chosen form only.
 
 **Verify this skill activates on:**
