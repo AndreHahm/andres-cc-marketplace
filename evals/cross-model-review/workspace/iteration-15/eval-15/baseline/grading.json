@@ -1,0 +1,32 @@
+{
+  "eval_id": 15,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Response passes GIT_INDEX_FILE=/tmp/tmp.abc/index as a prefix assignment on the planner re-run command (wrapper with tag 1b and an --exclude-dir per pick), not as a separate export call",
+      "passed": false,
+      "evidence": "`export GIT_INDEX_FILE=...` as a separate line before the wrapper"
+    },
+    {
+      "text": "Response passes GIT_INDEX_FILE=/tmp/tmp.abc/index as a prefix assignment on the manifest cross-check git diff --name-only > changed.names command",
+      "passed": false,
+      "evidence": "`export GIT_INDEX_FILE=...` as a separate line before git diff"
+    },
+    {
+      "text": "Response explains that without the throwaway index the intent-added untracked file drops out of the new manifest and changed-name list, so it goes unreviewed without the cross-check noticing",
+      "passed": true,
+      "evidence": "Explains the untracked file drops out of manifest and changed.names and the cross-check passes undetected"
+    },
+    {
+      "text": "Response says a refusal of the prefix form means stop and report",
+      "passed": true,
+      "evidence": "'treat it as PLAN_FAILED (stop, or go unscoped with the user's consent) and report the refusal'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 2,
+    "pass_rate": 0.5
+  },
+  "contaminated": false
+}

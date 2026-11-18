@@ -170,8 +170,10 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
     and steps 1-6 go verbatim into `<scratchpad>/preflight.sh` (only `BASE`/`SCOPE`/`PLANNER_APPROVED`
     filled in, never text from the diff, a run file or Codex output), the user is shown the script, and it
     runs as one `bash <scratchpad>/preflight.sh` call from the worktree cwd; stdin text comes from a
-    scratchpad file (`- < <file>`); a Codex dispatch or timeout retry sets its `CODEX_KIT_REVIEW_*`
-    variables as prefix assignments on the `node` command, never in a separate `export` call. `Write` touches only the scratchpad, never the repository or `$RUN`, is
+    scratchpad file (`- < <file>`); every later call that needs the throwaway index (manifest
+    cross-check, folder-pick planner re-run, fallback name list) sets `GIT_INDEX_FILE` as a prefix
+    assignment on its own command, and a Codex dispatch or timeout retry does the same with its
+    `CODEX_KIT_REVIEW_*` variables, never in a separate `export` call. `Write` touches only the scratchpad, never the repository or `$RUN`, is
     approved per call, never session-wide, and every `$RUN` file is still written by the helper. No
     scratchpad, or a call still refused in that form, stops the run with a report. A session that did not
     use `EnterWorktree` never uses `Write`.
@@ -271,7 +273,7 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
       `$INTENT_ADD_REFUSED`, which stops the review at Preflight step 1, never as "nothing to review"
 - [ ] The review scope planner is always run through the fixed-shape wrapper named by `allowed-tools`'s exact `bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope-run.sh` grant, spelled out literally in Preflight step 1, never through an array, and always resolved from the installed plugin root through `${CLAUDE_PLUGIN_ROOT:-.claude}` (the `.claude/` mirror when the variable is empty, a form deliberately left ungranted so it prompts), never from the `plugins/` folder of the repository under review; the wrapper accepts no `--repo`, `--output` or `--diff-dir`
 - [ ] The throwaway index is seeded only through `git-review-copy-index.sh` (one file to `$RUN/index`, no overwrite), never through a bare `cp` or a `Bash(cp:*)` grant
-- [ ] Every file the model authors or assembles is written through `git-review-write-run-file.sh` (one file directly under `$RUN`, parts only from `$RUN` or the two fixed prompts); the only other writes are Preflight's own `git show`/`git diff` redirects to fixed `$RUN` names; `allowed-tools` has no `Write` entry. The one exception, only in an `EnterWorktree` session after an isolation-check refusal, is `Write` to the session's scratchpad directory for the Preflight script or the helper's stdin text, never into the repository or `$RUN`
+- [ ] Every file the model authors or assembles is written through `git-review-write-run-file.sh` (one file directly under `$RUN`, parts only from `$RUN` or the two fixed prompts); the only other writes are Preflight's own `git show`/`git diff` redirects to fixed `$RUN` names; `allowed-tools` has no `Write` entry. The one exception, only in an `EnterWorktree` session after an isolation-check refusal, is `Write` to the session's scratchpad directory for the Preflight script or the helper's stdin text, never into the repository or `$RUN`; in that session every call that needs `GIT_INDEX_FILE` or a `CODEX_KIT_REVIEW_*` variable sets it as a prefix assignment on its own command
 - [ ] An `<untracked_files>` block always ends with the untrusted-data sentence, and Phase 2's closing boundary names those files' contents too
 - [ ] A failed planner never leaves the run without a defined path: section 7 of `scoped-review.md` builds the unscoped group from the safe-charset changed names
 - [ ] A planner failure is never treated as a pass; the user chooses unscoped or stop
@@ -300,6 +302,12 @@ Moved here from SKILL.md's Testing & Validation section, which keeps only the la
 - **2026-11-10, `iteration-14`:** eval 12 after the rebase onto main, Full Pipeline with a baseline arm:
   `with_skill` 5/5, baseline 0/5 (the baseline guessed a batch limit of 3 instead of 7);
   `benchmark.json` is in that folder.
+- **2026-11-18, `iteration-15`:** adds evals 13-16 for scenario 38 (issue #723: refused Preflight chain,
+  refused instruction-file heredoc with a timeout retry, folder-pick re-run and cross-check, and a normal
+  session as negative control), Full Pipeline whose baseline arm read `main`'s pre-#723 text instead of no
+  skill: `with_skill` 17/17, baseline 5/17 (+65.8 points). `testing_validation_coverage` moves to 11 of 11.
+  Dry runs only: whether Claude Code's isolation check accepts the scratchpad script and the
+  prefix-assignment forms has not been tried in a live `EnterWorktree` session.
 
 All of these are dry runs of the committed text, not live dispatches, and include no live run of the
 scoped flow (one ran 2026-10-14 for PR #567, see the #568 report).

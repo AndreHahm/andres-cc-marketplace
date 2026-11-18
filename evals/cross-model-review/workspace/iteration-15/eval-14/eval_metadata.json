@@ -1,0 +1,31 @@
+{
+  "eval_id": 14,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {
+      "text": "Response writes the stdin text to a file in the session scratchpad with the Write tool and feeds it to git-review-write-run-file.sh as stdin (`- < <scratchpad file>`), with the helper still writing the $RUN file",
+      "type": "functionality",
+      "target": "references/codex-pass-assembly.md"
+    },
+    {
+      "text": "Response passes CODEX_KIT_REVIEW_REPO_ROOT as a prefix assignment on the node bridge-invoke.mjs command itself, not as a separate export call, and explains that Bash calls share no shell state",
+      "type": "functionality",
+      "target": "references/codex-pass-assembly.md"
+    },
+    {
+      "text": "Response passes CODEX_KIT_REVIEW_TIMEOUT_MS=480000 as a prefix assignment on the timeout-retry node command",
+      "type": "functionality",
+      "target": "references/scoped-review.md section 4"
+    },
+    {
+      "text": "Response keeps every call to one command with no && or ;",
+      "type": "functionality",
+      "target": "references/codex-pass-assembly.md"
+    },
+    {
+      "text": "Response says a form that is still refused means stop and report, never another way of running the step",
+      "type": "functionality",
+      "target": "references/codex-pass-assembly.md"
+    }
+  ]
+}

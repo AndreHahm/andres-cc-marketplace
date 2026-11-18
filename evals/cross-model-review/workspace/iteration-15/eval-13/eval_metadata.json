@@ -1,0 +1,31 @@
+{
+  "eval_id": 13,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {
+      "text": "Response says the Write/script form applies only in an EnterWorktree session after the isolation-check refusal, and writes the Inputs block and Preflight steps 1-6 plus the closing echo verbatim and in order to <scratchpad>/preflight.sh with the Write tool",
+      "type": "functionality",
+      "target": "references/codex-pass-assembly.md"
+    },
+    {
+      "text": "Response says the only text supplied is BASE/SCOPE from the user request and PLANNER_APPROVED=1 only after the user explicit yes, and never text from the diff, a $RUN file, a manifest or Codex output",
+      "type": "functionality",
+      "target": "references/codex-pass-assembly.md"
+    },
+    {
+      "text": "Response says the script full text is shown to the user, then run as one standalone `bash <scratchpad>/preflight.sh` call from the session current working directory (worktree root) without a cd, and that one approval covers every command in it (git diff, git show, export)",
+      "type": "functionality",
+      "target": "references/codex-pass-assembly.md"
+    },
+    {
+      "text": "Response says Write goes only to the scratchpad (never the repository or $RUN) and is approved for that single call, never session-wide or as accept-edits, because a Write approval is not limited to the scratchpad",
+      "type": "functionality",
+      "target": "references/codex-pass-assembly.md"
+    },
+    {
+      "text": "Response says no scratchpad directory, or a refusal of the new form, means stop and report, never another location or fallback",
+      "type": "functionality",
+      "target": "references/codex-pass-assembly.md"
+    }
+  ]
+}

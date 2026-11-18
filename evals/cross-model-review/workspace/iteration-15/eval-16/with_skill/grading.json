@@ -1,0 +1,26 @@
+{
+  "eval_id": 16,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Response runs Preflight as a single chained Bash invocation (&& between steps, one tool call), not as a scratchpad script",
+      "passed": true,
+      "evidence": "'run the Inputs block and steps 1-6 as one chained Bash invocation: && between the steps, one tool call'"
+    },
+    {
+      "text": "Response writes the instruction file through git-review-write-run-file.sh with stdin from a heredoc, including the line about not running git diff",
+      "passed": true,
+      "evidence": "Helper calls with `- <<'EOF'` heredoc containing 'Do not run `git diff`'"
+    },
+    {
+      "text": "Response says the Write tool is not used anywhere in this run, because the skill has no Write grant and the Write exception applies only in an EnterWorktree session after an isolation-check refusal",
+      "passed": true,
+      "evidence": "'The Write tool is not used anywhere ... exception applies only after EnterWorktree and a refused Bash call. Neither happened'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}
