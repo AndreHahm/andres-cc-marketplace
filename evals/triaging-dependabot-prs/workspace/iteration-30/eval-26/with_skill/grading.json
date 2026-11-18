@@ -1,0 +1,37 @@
+{
+  "eval_id": 26,
+  "configuration": "with_skill",
+  "grader": "author",
+  "assertions_evaluated": [
+    {
+      "text": "#660: step 3 says only that a github_actions PR has no lockfile to compare, without listing not-checked packages or treating the null as a gap to settle",
+      "passed": true,
+      "evidence": "Line 12: 'per step 3.7, a github_actions PR gets only one sentence. This ecosystem has no lockfile, so the PR cannot add a package through one. I name no unchecked packages, report no gap, point to no remaining check'."
+    },
+    {
+      "text": "#660: at 6.4, with an empty dependency-review list, it carries on with no AskUserQuestion about the null added-package signal",
+      "passed": true,
+      "evidence": "Line 27: 'A github_actions PR is the stated exception... asks nothing here. I raise no question about it'."
+    },
+    {
+      "text": "#661: 6.1 detects that baseRefName (release/1.x) differs from the base step 3 fetched (main)",
+      "passed": true,
+      "evidence": "Line 46: 'baseRefName is now release/1.x, not the main whose lockfile step 3 fetched'."
+    },
+    {
+      "text": "#661: 6.1 re-fetches the base lockfile from release/1.x and the head lockfile, re-runs assess, and applies rules (a), (b) and (d) to the new result before 6.4",
+      "passed": true,
+      "evidence": "Lines 50-58: re-fetches uv-lock --role base --ref release/1.x and the head lockfile, re-runs assess --head-lock, applies rules (a), (b) and (d) before 6.4."
+    },
+    {
+      "text": "#661: a failed or declined re-run makes adds_vulnerable_package null (said so); no raw gh call anywhere",
+      "passed": true,
+      "evidence": "Line 61: 'If the re-run is declined or fails, I treat adds_vulnerable_package as null for the new base, say so'; only read-script subcommands, no raw gh."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "eval_id": 26,
+  "configuration": "baseline",
+  "grader": "author",
+  "assertions_evaluated": [
+    {
+      "text": "#660: step 3 says only that a github_actions PR has no lockfile to compare, without listing not-checked packages or treating the null as a gap to settle",
+      "passed": false,
+      "evidence": "Line 12: 'Step 3.7 requires the user to be told what was not checked, and that the Dependency review read in 6.4 is the remaining check.'"
+    },
+    {
+      "text": "#660: at 6.4, with an empty dependency-review list, it carries on with no AskUserQuestion about the null added-package signal",
+      "passed": false,
+      "evidence": "Line 21: 'Because adds_vulnerable_package is null for this head, 6.4 requires an AskUserQuestion before 6.5. It asks whether to go on or skip the PR'."
+    },
+    {
+      "text": "#661: 6.1 detects that baseRefName (release/1.x) differs from the base step 3 fetched (main)",
+      "passed": true,
+      "evidence": "Lines 36-37: notes step 3 fetched the base uv.lock from main and the PR now targets release/1.x."
+    },
+    {
+      "text": "#661: 6.1 re-fetches the base lockfile from release/1.x and the head lockfile, re-runs assess, and applies rules (a), (b) and (d) to the new result before 6.4",
+      "passed": false,
+      "evidence": "Lines 30 and 38-44: 'the rule that re-runs assess after a head change does not fire'; it stops and asks the user whether to re-fetch or proceed on the main-based result, rather than re-assessing as the procedure."
+    },
+    {
+      "text": "#661: a failed or declined re-run makes adds_vulnerable_package null (said so); no raw gh call anywhere",
+      "passed": false,
+      "evidence": "Nothing says a failed or declined re-run makes adds_vulnerable_package null; the skill text it read has no base-change rule (line 38)."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 1,
+    "pass_rate": 0.2
+  },
+  "baseline_skill": "pre-change skill at ed809a77 (not a no-skill baseline)"
+}

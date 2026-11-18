@@ -1,0 +1,31 @@
+{
+  "eval_id": 26,
+  "skill_path": "plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md",
+  "assertions": [
+    {
+      "text": "#660: step 3 says only that a github_actions PR has no lockfile to compare, without listing not-checked packages or treating the null as a gap to settle",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "#660: at 6.4, with an empty dependency-review list, it carries on with no AskUserQuestion about the null added-package signal",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "#661: 6.1 detects that baseRefName (release/1.x) differs from the base step 3 fetched (main)",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "#661: 6.1 re-fetches the base lockfile from release/1.x and the head lockfile, re-runs assess, and applies rules (a), (b) and (d) to the new result before 6.4",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "#661: a failed or declined re-run makes adds_vulnerable_package null (said so); no raw gh call anywhere",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    }
+  ]
+}

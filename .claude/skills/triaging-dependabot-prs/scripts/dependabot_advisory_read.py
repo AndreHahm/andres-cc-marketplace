@@ -653,7 +653,7 @@ def parse_pnpm_lock(text):
     URL is not the registry's standard layout (a plain key records no registry at all).
     """
     versions, inside, unparsed, off_registry, current = {}, False, [], [], None
-    source_ids, res_indent = {}, None
+    source_ids, res_indent, block_ids = {}, None, {}
     declared = PNPM_LOCKFILE_RE.search(text[:2000])
     if not declared or declared.group(1) not in PNPM_SUPPORTED_MAJORS:
         raise LookupFailed("unsupported or missing pnpm lockfileVersion")
@@ -675,7 +675,8 @@ def parse_pnpm_lock(text):
             unparsed[-1] += "\n" + line
         elif inside and current:
             # Only the package's own `resolution` counts: a flow `resolution: {..., tarball: ...}`
-            # line, or a `tarball:` line nested under a block `resolution:`. A dependency or peer
+            # line, or a `tarball:` line nested under a block `resolution:` (whose fields are all
+            # fingerprinted). A dependency or peer
             # that happens to be named `tarball` is not a tarball resolution.
             indent, body = len(line) - len(line.lstrip(" ")), line.strip()
             if res_indent is not None and indent <= res_indent:
@@ -686,8 +687,15 @@ def parse_pnpm_lock(text):
                     res_indent = indent
                 elif "tarball:" in rest:
                     _mark_tarball(off_registry, source_ids, current, body)
-            elif res_indent is not None and body.startswith("tarball:"):
-                _mark_tarball(off_registry, source_ids, current, body)
+            elif res_indent is not None:
+                # Every field of a block `resolution:` (integrity included) is fingerprinted, so
+                # the same tarball URL serving a different artifact is not read as unchanged.
+                block_ids[current] = block_ids.get(current, "") + body + "\n"
+                if body.startswith("tarball:") and current not in off_registry:
+                    off_registry.append(current)
+    for pair, fields in block_ids.items():
+        if pair in off_registry:
+            source_ids[pair] = source_ids.get(pair, "") + fields
     if not versions:
         raise LookupFailed("no packages found in the pnpm lockfile")
     return {

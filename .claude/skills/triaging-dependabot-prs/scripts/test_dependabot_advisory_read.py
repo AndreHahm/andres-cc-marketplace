@@ -1823,6 +1823,27 @@ class AddedPackagesTests(unittest.TestCase):
         self.assertEqual(same["added_packages"]["unknown"], [])
         self.assertIs(same["signals"]["adds_vulnerable_package"], False)
 
+    def test_a_changed_integrity_under_a_block_resolution_is_never_clean(self):
+        """Pre-ready cross-model review: one tarball URL serving another artifact is new code."""
+        block = (
+            "lockfileVersion: '9.0'\n\npackages:\n\n  foo@1.0.0:\n    resolution:\n"
+            "      integrity: sha512-{0}\n      tarball: https://npm.example.test/foo.tgz\n"
+        )
+        base, head = mod.parse_pnpm_lock(block.format("a")), mod.parse_pnpm_lock(block.format("b"))
+        self.assertEqual(head["off_registry"], [("foo", "1.0.0")])
+        result = mod.assess(
+            FakeGh(), GH, {}, FakeFetch(), "npm_and_yarn", "bar", "1.0.0", "2.0.0", base, head
+        )
+        self.assertEqual(
+            result["added_packages"]["unknown"],
+            [{"name": "foo", "version": "1.0.0", "source_changed": True}],
+        )
+        self.assertIsNone(result["signals"]["adds_vulnerable_package"])
+        same = mod.assess(
+            FakeGh(), GH, {}, FakeFetch(), "npm_and_yarn", "bar", "1.0.0", "2.0.0", base, base
+        )
+        self.assertIs(same["signals"]["adds_vulnerable_package"], False)
+
     def test_a_uv_package_with_github_hits_also_gets_osv_advisories(self):
         """Cross-model review: GitHub's pip matching is partly case-sensitive, uv names are not."""
         base = {"versions": {}}
