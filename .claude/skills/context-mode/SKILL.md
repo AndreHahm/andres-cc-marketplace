@@ -132,7 +132,9 @@ and it did not execute the script (the smoke test does). A live `/context-mode` 
 run; treat that as untested. The earlier evals for the removed hook-tag design are kept in
 `evals/context-mode/superseded-hook-tag-design/`. Eval 9 (2026-11-18, plan-only, with-skill-only, 3/3
 assertions) covers the ship profile's pre-merge wording: the secretlint result is stated, and
-`external-references-reviewer` is reported as an optional check rather than blocking the merge.
+`external-references-reviewer` is reported as an optional check rather than blocking the merge. Eval 10
+(2026-11-18, iteration-3, plan-only, with-skill-only, 3/3) covers a failed secretlint result: the merge
+stops until the failure is triaged.
 
 **Quality gates:**
 - [ ] Only a value in `admin`, `review`, `ship` ever causes a profile file to be read.
