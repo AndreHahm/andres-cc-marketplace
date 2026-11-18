@@ -58,6 +58,37 @@ On Git Bash `$RUN` must also sit inside `%USERPROFILE%`, because mode bits prove
 (`scripts/git-review-run-dir.sh`). The default temp directory normally does. If `TMPDIR` points outside
 the profile, every helper refuses; start the session with `TMPDIR` set to a folder inside the profile.
 
+### In an EnterWorktree session
+
+After the `EnterWorktree` tool, Claude Code's worktree-isolation check refuses some Bash calls before they
+run (issue #723): a chained call (`&&` or `;`) as "too complex to verify that it stays inside the
+worktree", a heredoc whose text names git as "feeds bash text naming git", and some heredocs with JSON
+or paths as too complex. In such a session only, and only after such a refusal, use these forms:
+
+- **Preflight:** write the Inputs block and steps 1-6 plus the closing `echo`, verbatim and in order, to
+  `<scratchpad>/preflight.sh` with the `Write` tool. The only text you supply is the `BASE`/`SCOPE` values
+  resolved from the user's request, and `PLANNER_APPROVED=1` only after the user's explicit yes. Never put
+  text from the diff, a `$RUN` file, a manifest or Codex output into the script. Show the user the script's
+  full text, then run it as one standalone call, `bash <scratchpad>/preflight.sh`, from the session's
+  current working directory (the worktree root `EnterWorktree` set); never `cd` elsewhere first. One
+  approval of that call covers every command in the script, including the `git diff`, `git show` and
+  `export` lines that otherwise prompt one by one.
+- **Stdin text for the write helper:** write the text to a file in the scratchpad directory with the
+  `Write` tool, then pass it as stdin: `bash "${CLAUDE_PLUGIN_ROOT:-.claude}/scripts/git-review-write-run-file.sh" "$RUN" <name> [--append] <part>... - < <scratchpad file>`.
+  This covers the Phase 1 instruction file's "do not run `git diff`" line and the self-authored JSON
+  envelopes.
+- **Every other call:** one command per Bash call, with no `&&` or `;`.
+
+This is the only exception to the skill's no-`Write` rule, and it is narrow. `Write` goes only to the
+session's scratchpad directory, never into the repository or `$RUN`. It writes only the Preflight script
+and the helper's stdin text. Every file under `$RUN` is still written by the helper. If the session has
+no scratchpad directory, stop and report; never pick another location. `Write` is not in `allowed-tools`,
+but a session scratchpad is often usable without a prompt, so the `Write` may not ask at all. When it
+does ask, approve it for that one call only, never for the session or as an accept-edits mode: a `Write`
+approval is not limited to the scratchpad. The script and stdin files stay in the scratchpad after the
+run, and the JSON envelopes among them can quote diff content. If a call is still refused in one of
+these forms, stop and report it; never fall back to another way of running the step.
+
 ## Phase 1 Codex instruction file (per batch)
 
 Codex has no prior context, so its instruction file contains the diff **content itself**. Never
