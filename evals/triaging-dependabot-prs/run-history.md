@@ -257,3 +257,13 @@ holds advisories stays in `vulnerable`). The CI-parity Codex delta review then b
 unparsed pnpm key present in base and head cancelled out even when its block (a tarball URL) changed, and uv's
 unparsed entries were cut to 300 characters. Unparsed entries are now compared as whole entries (pnpm: the key
 line and its field lines; uv: the full entry). 143 advisory tests; both mutations of the fix fail the suite.
+
+Same day, before flipping PR #787 to ready: the CI-parity Codex delta review was clean, and a pre-ready cross-model
+review (Claude and Codex, four batches, `evals/` left out by the user's pick) found four issues, all fixed: a pnpm
+block-form `resolution` fingerprinted only its `tarball:` line, so a changed `integrity` under the same URL read as
+unchanged (every field of the block is now fingerprinted); step 6.1 did not re-assess a PR retargeted to another base
+with no head push; a `github_actions` PR's `null` added-package signal (no lockfile exists) asked a needless question
+at 6.4; and SKILL.md's run record still said 139 advisory tests. 144 advisory tests; a mutation that fingerprints only
+the `tarball:` line fails the new test. New eval 26 (scenarios 75 and 76) covers the skill-text fixes: iteration 29 scored 4 of 5
+against 1 of 5 for the pre-change skill, the miss being an ambiguous 3.7 sentence, which was reworded; iteration 30
+scored 5 of 5 (author-graded, one simulated answer per arm; evals 1 to 25 were not re-run).

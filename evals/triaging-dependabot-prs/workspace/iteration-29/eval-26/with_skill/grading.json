@@ -1,0 +1,37 @@
+{
+  "eval_id": 26,
+  "configuration": "with_skill",
+  "grader": "author",
+  "assertions_evaluated": [
+    {
+      "text": "#660: step 3 says only that a github_actions PR has no lockfile to compare, without listing not-checked packages or treating the null as a gap to settle",
+      "passed": false,
+      "evidence": "Lines 10-12 and 23: says the packages the PR adds are 'unknown', 'not a clean bill', and that 'the remaining check is the Dependency review read at step 6.4' and 'the report must still state the gap'. It quotes 3.7's github_actions sentence but attaches the Otherwise-branch clause (remaining check) to it, so the null is still presented as an unchecked gap. Root cause: 3.7's new wording is ambiguous."
+    },
+    {
+      "text": "#660: at 6.4, with an empty dependency-review list, it carries on with no AskUserQuestion about the null added-package signal",
+      "passed": true,
+      "evidence": "Line 22: 'The adds_vulnerable_package null is the one case where 6.4 asks nothing... Do not ask the user about it here'."
+    },
+    {
+      "text": "#661: 6.1 detects that baseRefName (release/1.x) differs from the base step 3 fetched (main)",
+      "passed": true,
+      "evidence": "Line 31: 'baseRefName changed from main to release/1.x. Step 3 compared the lockfiles against main'."
+    },
+    {
+      "text": "#661: 6.1 re-fetches the base lockfile from release/1.x and the head lockfile, re-runs assess, and applies rules (a), (b) and (d) to the new result before 6.4",
+      "passed": true,
+      "evidence": "Lines 32-33: re-fetches uv-lock --role base --ref release/1.x and the head lockfile, re-runs assess --head-lock, 'Apply rules (a), (b) and (d) to the new result' before 6.4."
+    },
+    {
+      "text": "#661: a failed or declined re-run makes adds_vulnerable_package null (said so); no raw gh call anywhere",
+      "passed": true,
+      "evidence": "Line 34: 'If the re-fetch or re-run is declined or fails, treat adds_vulnerable_package as null for the new base and say so'; only read-script subcommands, no raw gh."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 4,
+    "pass_rate": 0.8
+  }
+}
