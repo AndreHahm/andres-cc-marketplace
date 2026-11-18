@@ -1889,6 +1889,55 @@ class AddedPackagesTests(unittest.TestCase):
         clean = mod.assess(FakeGh(), GH, {}, FakeFetch(), "uv", "bar", "1.0.0", "2.0.0", base, head)
         self.assertIs(clean["signals"]["adds_vulnerable_package"], False)
 
+    def test_an_unparsed_entry_whose_block_changed_is_never_clean(self):
+        """CI-parity review: the same unparsed key with a changed block must not cancel out."""
+        key = "'foo@https://codeload.github.com/o/r/tar.gz/abc'"
+        block = "  {0}:\n    resolution: {{tarball: https://codeload.github.com/o/r/tar.gz/{1}}}\n"
+        lock = (
+            "lockfileVersion: '9.0'\n\npackages:\n\n"
+            "  markdownlint-cli2@0.24.0:\n    resolution: {{integrity: sha512-x}}\n\n" + block
+        )
+        base = mod.parse_pnpm_lock(lock.format(key, "abc"))
+        head = mod.parse_pnpm_lock(lock.format(key, "def"))
+        result = mod.assess(
+            FakeGh(),
+            GH,
+            {},
+            FakeFetch(),
+            "npm_and_yarn",
+            "markdownlint-cli2",
+            "0.22.1",
+            "0.24.0",
+            base,
+            head,
+        )
+        self.assertEqual(result["added_packages"]["unparsed"], 1)
+        self.assertIsNone(result["signals"]["adds_vulnerable_package"])
+        same = mod.assess(
+            FakeGh(),
+            GH,
+            {},
+            FakeFetch(),
+            "npm_and_yarn",
+            "markdownlint-cli2",
+            "0.22.1",
+            "0.24.0",
+            base,
+            base,
+        )
+        self.assertEqual(same["added_packages"]["unparsed"], 0)
+        self.assertIs(same["signals"]["adds_vulnerable_package"], False)
+
+    def test_a_uv_unparsed_entry_is_compared_in_full(self):
+        """CI-parity review: a change past the first 300 characters still counts."""
+        pad = "x" * 400
+        entry = '[[package]]\nname = "nover"\nnote = "{0}{1}"\n'
+        base = mod.parse_uv_lock(UV_LOCK + entry.format(pad, "a"))
+        head = mod.parse_uv_lock(UV_LOCK + entry.format(pad, "b"))
+        result = mod.assess(FakeGh(), GH, {}, FakeFetch(), "uv", "x", "1.0.0", "2.0.0", base, head)
+        self.assertEqual(result["added_packages"]["unparsed"], 1)
+        self.assertIsNone(result["signals"]["adds_vulnerable_package"])
+
     def test_more_pairs_than_the_cap_are_truncated_and_never_clean(self):
         head = mod.parse_pnpm_lock(pnpm_lock(*[f"pkg{i}@1.0.0" for i in range(mod.ADDED_CAP + 1)]))
         gh = FakeGh()

@@ -607,7 +607,8 @@ def parse_uv_lock(text):
         name = package.get("name") if isinstance(package, dict) else None
         version = package.get("version") if isinstance(package, dict) else None
         if not isinstance(name, str) or not isinstance(version, str):
-            unparsed.append(repr(package)[:MAX_CONSTRAINT_CHARS])
+            # The whole entry, so a change anywhere in it differs from the base's copy.
+            unparsed.append(json.dumps(package, sort_keys=True, default=str))
             continue
         versions.setdefault(python_name(name), []).append(version)
         source = package.get("source")
@@ -665,9 +666,13 @@ def parse_pnpm_lock(text):
             match = PNPM_KEY_RE.fullmatch(line) if len(line) <= MAX_CONSTRAINT_CHARS else None
             current, res_indent = (match.group(1), match.group(2)) if match else None, None
             if not match:
-                unparsed.append(line)
+                unparsed.append(line)  # its field lines are appended below
             elif match.group(2) not in versions.setdefault(match.group(1), []):
                 versions[match.group(1)].append(match.group(2))
+        elif inside and current is None and unparsed and line.startswith("   "):
+            # A field line of an unparsed key: part of that entry's fingerprint, so the same key
+            # with a changed block (another tarball URL, say) does not cancel out against the base.
+            unparsed[-1] += "\n" + line
         elif inside and current:
             # Only the package's own `resolution` counts: a flow `resolution: {..., tarball: ...}`
             # line, or a `tarball:` line nested under a block `resolution:`. A dependency or peer
