@@ -66,6 +66,24 @@
     },
     {
       "disposition": "false_positive",
+      "finding": "claude-delta-d4ce7a70-review-1304",
+      "line": 1304,
+      "note": "measured: hostile 64 KB whitespace-heavy lines match in about 3 ms, no quadratic growth",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 783,
+      "recorded_at": "2026-11-18T11:29:39+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "claude-delta-d4ce7a70-review-1309",
+      "line": 1309,
+      "note": "carry summary prints a cannot-be-waived note for a path with whitespace (0da953b6)",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 783,
+      "recorded_at": "2026-11-18T11:29:38+00:00"
+    },
+    {
+      "disposition": "false_positive",
       "finding": "codex-delta-fbd62903-guard-143",
       "line": 143,
       "note": "Claude Code substitutes the plugin root inline in skill and command text; waived in the PR body",
