@@ -542,6 +542,20 @@ def test_entries_that_are_not_blocking_findings_carry_nothing(git_repo):
     assert carry_blocking_findings(git_repo.root, base, base, result, "", _never_open) == []
 
 
+def test_the_printed_waiver_hint_names_the_finding_or_says_it_cannot():
+    from scripts.marketplace_ci.__main__ import _waiver_hint
+
+    section = "## Accepted Review Findings\n"
+    hint = _waiver_hint("rulebook compliance / naming", "p/inv.json", 94)
+    # The author keeps one of the three kinds the hint offers.
+    filled = hint.replace("|residual|deferred #<issue>", "")
+    expected = {finding_waiver_key("rulebook compliance / naming", "p/inv.json", 94)}
+    assert parse_waivers(section + filled + "\n", _never_open) == expected
+    spaced = _waiver_hint("R6", "dir with space/a.py", 3)
+    assert "cannot be waived" in spaced
+    assert parse_waivers(section + spaced + "\n", _never_open) == set()
+
+
 def test_carry_findings_cli(monkeypatch, git_repo, tmp_path):
     base = _commit(git_repo, "base", a_py="a\n")
     anchor = _commit(git_repo, "pr 1", a_py="b\n")

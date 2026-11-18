@@ -388,7 +388,8 @@ review` is the gate after the PR exists and reviews only the delta, to cut OpenA
   finding: `- <rule> <path>:<line> – accepted|residual|deferred #<issue>`, optionally followed by
   `: <reason>` (`-` for a finding without a rule, `0` without a line; the rule may contain spaces, the path may not; `#<issue>` is
   required only for `deferred`, and must be an open issue of this repository, checked through the API). The job
-  summary prints the line to copy for each carried finding. Every anchor carries (R10). A blocking entry the
+  summary prints the line to copy for each carried finding, or, when its path contains whitespace, a note
+  that it cannot be waived. Every anchor carries (R10). A blocking entry the
   step cannot read, or more than 500 findings, reports `error`. The PR
   body is read live from the API, so a re-run cannot bring back a removed waiver. `publish` fails while `carried_blocking` is not `0`, and fails closed when
   it could not be computed. So a label or body edit after a failed review no longer clears it (R8).

@@ -896,6 +896,15 @@ def _issue_is_open(repo: str, number: int) -> bool:
     return state == "open" and is_pr is False
 
 
+def _waiver_hint(rule: str, path: str, line: int) -> str:
+    """The waiver line a summary prints for one carried finding. A path with whitespace cannot be
+    named in a waiver line (the parser takes the path as one space-free token), so that finding
+    gets a note instead of a line that would not match it."""
+    if any(ch.isspace() for ch in path):
+        return f"{rule} {path}:{line}: cannot be waived, its path contains whitespace"
+    return f"- {rule} {path}:{line} – accepted|residual|deferred #<issue>"
+
+
 def _handle_carry_findings(args: argparse.Namespace) -> int:
     """The anchor run's blocking findings that still block (issue #639, R7), written as JSON
     `{"count": N, "carried": [...]}`. Each carried finding is printed with the waiver line that
@@ -929,7 +938,7 @@ def _handle_carry_findings(args: argparse.Namespace) -> int:
     payload = {"count": len(carried), "carried": carried}
     Path(args.json_output).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     for f in carried:
-        print(f"- {f['rule']} {f['path']}:{f['line']} \u2013 accepted|residual|deferred #<issue>")
+        print(_waiver_hint(f["rule"], f["path"], f["line"]))
     print(f"carried blocking findings: {len(carried)}")
     return 0
 
