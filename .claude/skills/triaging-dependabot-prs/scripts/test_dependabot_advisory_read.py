@@ -1730,6 +1730,68 @@ class AddedPackagesTests(unittest.TestCase):
         self.assertEqual(result["versions"]["new"]["status"], "ok")
         self.assertIsNone(result["signals"]["adds_vulnerable_package"])
 
+    def test_a_pnpm_tarball_resolution_is_off_registry_and_never_looked_up(self):
+        """Residual 2: pnpm writes `tarball:` only for a URL outside the registry layout."""
+        head_text = (
+            "lockfileVersion: '9.0'\n\npackages:\n\n"
+            "  markdownlint-cli2@0.24.0:\n    resolution: {integrity: sha512-x}\n\n"
+            "  privpkg@1.0.0:\n"
+            "    resolution: {integrity: sha512-y, tarball: https://npm.example.test/privpkg.tgz}\n\n"
+            "  blockpkg@2.0.0:\n    resolution:\n      integrity: sha512-z\n"
+            "      tarball: https://npm.example.test/blockpkg.tgz\n\n"
+            "  plain@1.0.0:\n    resolution: {integrity: sha512-w}\n"
+        )
+        head = mod.parse_pnpm_lock(head_text)
+        self.assertEqual(head["off_registry"], [("privpkg", "1.0.0"), ("blockpkg", "2.0.0")])
+        gh = FakeGh()
+        result = self.assess(gh, head)
+        unknown = result["added_packages"]["unknown"]
+        self.assertIn({"name": "privpkg", "version": "1.0.0"}, unknown)
+        self.assertIn({"name": "blockpkg", "version": "2.0.0"}, unknown)
+        looked_up = [a for call in gh.calls for a in call if a.startswith("affects=")]
+        self.assertIn("affects=plain@1.0.0", looked_up)
+        self.assertFalse(any("privpkg" in a or "blockpkg" in a for a in looked_up))
+        self.assertIsNone(result["signals"]["adds_vulnerable_package"])
+
+    def test_a_uv_package_from_another_index_is_off_registry(self):
+        """Residual 2: only PyPI's own simple index counts as the registry."""
+        text = (
+            '[[package]]\nname = "a"\nversion = "1.0.0"\n'
+            'source = { registry = "https://pypi.org/simple/" }\n\n'
+            '[[package]]\nname = "b"\nversion = "1.0.0"\n'
+            'source = { registry = "https://pkgs.example.test/simple" }\n'
+        )
+        self.assertEqual(mod.parse_uv_lock(text)["off_registry"], [("b", "1.0.0")])
+
+    def test_a_source_moved_off_the_registry_on_an_unchanged_pair_is_never_clean(self):
+        """Security review m2: same name and version, new source, is new code from elsewhere."""
+        pkg = '[[package]]\nname = "foo"\nversion = "1.2.3"\n'
+        on_pypi = pkg + 'source = { registry = "https://pypi.org/simple" }\n'
+        on_git = pkg + 'source = { git = "https://example.test/foo.git" }\n'
+        base, head = mod.parse_uv_lock(on_pypi), mod.parse_uv_lock(on_git)
+        result = mod.assess(
+            FakeGh(), GH, {}, FakeFetch(), "uv", "bar", "1.0.0", "2.0.0", base, head
+        )
+        added = result["added_packages"]
+        self.assertEqual(added["count"], 0)
+        self.assertEqual(
+            added["unknown"], [{"name": "foo", "version": "1.2.3", "source_changed": True}]
+        )
+        self.assertIsNone(result["signals"]["adds_vulnerable_package"])
+        # The same off-registry source in base and head is not a change.
+        same = mod.assess(FakeGh(), GH, {}, FakeFetch(), "uv", "bar", "1.0.0", "2.0.0", head, head)
+        self.assertEqual(same["added_packages"]["unknown"], [])
+        # pnpm: a plain key that gains a `tarball:` resolution.
+        plain = mod.parse_pnpm_lock(pnpm_lock("foo@1.2.3"))
+        moved = mod.parse_pnpm_lock(
+            "lockfileVersion: '9.0'\n\npackages:\n\n  foo@1.2.3:\n"
+            "    resolution: {integrity: sha512-x, tarball: https://npm.example.test/foo.tgz}\n"
+        )
+        result = mod.assess(
+            FakeGh(), GH, {}, FakeFetch(), "npm_and_yarn", "bar", "1.0.0", "2.0.0", plain, moved
+        )
+        self.assertEqual(result["added_packages"]["unknown"][0]["source_changed"], True)
+
     def test_more_pairs_than_the_cap_are_truncated_and_never_clean(self):
         head = mod.parse_pnpm_lock(pnpm_lock(*[f"pkg{i}@1.0.0" for i in range(mod.ADDED_CAP + 1)]))
         gh = FakeGh()

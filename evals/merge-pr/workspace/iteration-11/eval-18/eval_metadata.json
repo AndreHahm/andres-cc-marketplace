@@ -1,0 +1,26 @@
+{
+  "eval_id": 18,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "The flag is honored without the bypass, never ignored",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Case A: stops at step 1 and reports both SHAs before any readiness, rights or confirmation step; nothing merged",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Case B: at 7(b) the verified SHA differs from the flag, so it stops and reports both SHAs without writing the marker or merging",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Case C: writes the gh-pr-merge marker right before the merge and merges with --match-head-commit set to the expected SHA",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    }
+  ]
+}

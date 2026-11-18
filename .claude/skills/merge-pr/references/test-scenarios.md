@@ -49,7 +49,12 @@ PR #364, 2026-09-21 — `commit`'s sibling step 16.5(b) had the identical exposu
 - Rejection-fallback retry at 7(d) on the bypass path, where the retry's freshly re-fetched `headRefOid` differs from step 4(b)'s attested `head_sha` → the retry stops and reports instead of merging, the same equality 7(b) requires
 - `--expected-head-sha <40 lowercase hex>` given with `--bypass-codex-review`, and the head SHA step 4(b) resolves equals it → the attestation proceeds exactly as without the flag, and the marker's `head_sha` is that resolved value
 - Same flags, but a push landed since the caller vetted the head so step 4(b)'s resolved SHA differs → step 4(b) stops and reports both SHAs before writing the reason file, the `gh-pr-review` marker, the comment or the label; nothing is attested, and a fresh bypass needs the caller to vet the new head
-- `--expected-head-sha` is not exactly 40 lowercase hex characters (short SHA, uppercase, extra characters) → step 1 rejects it and stops before any `gh` command; `--expected-head-sha` without `--bypass-codex-review` is ignored with a note
+- `--expected-head-sha` is not exactly 40 lowercase hex characters (short SHA, uppercase, extra characters) → step 1 rejects it and stops before any `gh` command
+- `--expected-head-sha` without `--bypass-codex-review`, and step 1's `headRefOid` equals it → the run proceeds as without the flag, and step 7(b) merges with `--match-head-commit` set to that SHA
+- Same flag, but step 1's `headRefOid` differs (a push landed after the caller vetted the head) → step 1 stops and reports both SHAs before any other step; nothing is merged
+- Same flag, step 1's head equals it, but a push lands while step 5's confirmation is open, so step 7(b)'s re-fetched `headRefOid` differs → step 7(b) stops and reports both SHAs without writing the marker; nothing is merged
+- Same flag, step 7(b)'s merge is rejected as unrebasable and a push lands while 7(d)'s strategy question is open, so 7(d)'s re-fetched `headRefOid` differs → 7(d) stops and reports both SHAs without writing the marker or retrying; nothing is merged
+- Same flag, and step 1.5 finds a touched open issue → it reports the issue and fixes and pushes nothing, so the head the caller vetted stays the head
 
 **Verify step 4(a)'s reason screening covers the shared protocol's full step 1, not just the bot-trigger check (cross-model-review round, 2026-09-21 — Codex's fresh-eyes full-diff pass found step 4(a) previously named only the bot-trigger-mention check):**
 - Reason contains a literal bot-trigger mention (e.g. `@codex full review`) → step 4(a) rejects the flag and reports why; never proceeds to (b)

@@ -223,3 +223,15 @@ check); only the bumped dependency at its new version is skipped, not its other 
 in the suite); 22 mutations of the new advisory checks in all each fail the suite. A targeted re-check by
 `security-reviewer` rated all four resolved with nothing new. New eval 24 (iteration 27): 5 of 5, no baseline,
 author-graded from one simulated answer. Live on PR #628 the result is unchanged (`unparsed` 0, re2js 2.8.6 found).
+
+Same day, the two residuals the first `security-reviewer` pass left open, fixed in the same PR at the user's request:
+step 6.6 now passes `--expected-head-sha` on every merge, and `merge-pr` honors it without the bypass (step 1 stops on
+a different head, step 7(b) and a 7(d) retry merge only that SHA, step 1.5 pushes no fix while it is set); and an
+added package from a uv index other than PyPI, a pnpm package whose resolution names a `tarball:` URL, or a pair whose
+source moved off the registry under an unchanged version, is `unknown` without a lookup. A private npm registry with
+the standard tarball layout leaves no trace in the lockfile and stays disclosed, not fixed. Returns to 6.1 are capped
+at three per PR on every path. 137 advisory tests; every new check has a mutation that fails the suite. A second
+`security-reviewer` pass found the `merge-pr` 7(d) retry still unpinned (Major), fixed before commit, plus four minor
+findings, all fixed or disclosed. New eval 25 (scenarios 73 and 74, iteration 28): 5 of 5, no baseline; `merge-pr`
+eval 18 (its iteration 11): 4 of 4 against 1 of 4 for the pre-change baseline. All author-graded from one simulated
+answer each.
