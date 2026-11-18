@@ -81,6 +81,47 @@
         }
       ],
       "type": "command"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "hook"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_b8c1b553",
+      "name": "PreToolUse-0",
+      "naming_history": [
+        {
+          "evidence": [
+            "hooks/hooks.json"
+          ],
+          "name": "PreToolUse-0",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-11-18",
+          "valid_to": null
+        }
+      ],
+      "path": "hooks/hooks.json",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "hooks/hooks.json"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-11-18",
+          "valid_to": null
+        }
+      ],
+      "type": "hook"
     }
   ],
   "extensions": {},
@@ -88,5 +129,5 @@
   "plugin_name": "reviewadapters-kit",
   "prefix": "rva",
   "schema_version": "1.0.0",
-  "updated_on": "2026-11-16"
+  "updated_on": "2026-11-18"
 }
