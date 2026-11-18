@@ -251,3 +251,9 @@ pinned run on a touched, non-deferred issue instead of only reporting it; a pnpm
 package's own `resolution` (a dependency or peer named `tarball` no longer marks its parent off-registry); a package
 that moves from an off-registry source back to the registry under the same version is looked up; and the cost
 paragraph names the uv OSV exception. 141 advisory tests; every new check has a mutation that fails the suite.
+
+Same day, round 3 of the pre-PR cross-model review converged on one wording fix (a truncated advisory list that
+holds advisories stays in `vulnerable`). The CI-parity Codex delta review then blocked on one Major finding: an
+unparsed pnpm key present in base and head cancelled out even when its block (a tarball URL) changed, and uv's
+unparsed entries were cut to 300 characters. Unparsed entries are now compared as whole entries (pnpm: the key
+line and its field lines; uv: the full entry). 143 advisory tests; both mutations of the fix fail the suite.
