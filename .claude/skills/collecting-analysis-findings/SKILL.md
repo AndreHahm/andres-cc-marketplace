@@ -240,4 +240,4 @@ report says the analysis is stale and gives no counts as current.
 | `scripts/smoke_test.py` | This skill's persisted smoke test |
 | `scripts/fixtures/pr.json`, `repo.json`, `ignored.json` | Synthetic input in the real Cloud CLI shapes, used by the smoke test |
 | `scripts/fixtures/unknown.json` | An unrecognized shape, used to prove the adapter fails closed |
-| `scripts/fixtures/sonar/` | Redacted real `sonar` output, used by the smoke test; `ignored.json` adds synthetic status and comment values |
+| `scripts/fixtures/sonar/pr.json`, `pr-list.json`, `repo.json`, `ignored.json` | Redacted real `sonar` output, used by the smoke test; `ignored.json` adds synthetic status and comment values |

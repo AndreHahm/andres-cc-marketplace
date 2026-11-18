@@ -76,7 +76,7 @@ mutmut's.
    export, outside the repository) and read the exit status from the command itself, not through a pipe.
    Its exit status is mutmut's own (`0` finished, whatever survived), `4` for a red baseline (no mutation
    run), `2` or `3` for input or setup problems. On any non-zero status, skip to step 8 and report it with the
-   last 40 lines of output.
+   last 40 lines of output; for `4`, also name each failing test the log shows.
 6. **Summarize:** `python3 -B '<parse script>' --mutants '<scratch>/mutants' --module <module path> --label <module> --format json`
    (the module path is the mutated file, such as `scripts/x/y.py`: the caller passes it). An exit
    status of 2 means the result could not be reconciled with mutmut's totals: report that and no score.
