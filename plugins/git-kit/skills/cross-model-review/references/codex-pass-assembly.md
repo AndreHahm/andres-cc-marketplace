@@ -79,7 +79,8 @@ or paths as too complex. In such a session only, and only after such a refusal, 
 - **Stdin text for the write helper:** write the text to a file in the scratchpad directory with the
   `Write` tool, then pass it as stdin: `bash "${CLAUDE_PLUGIN_ROOT:-.claude}/scripts/git-review-write-run-file.sh" "$RUN" <name> [--append] <part>... - < <scratchpad file>`.
   This covers the Phase 1 instruction file's "do not run `git diff`" line and the self-authored JSON
-  envelopes.
+  envelopes. Whether the helper's `allowed-tools` grant matches a call that ends in this redirect is not
+  verified, so the call may prompt; approve that one call, never a persistent allow rule.
 - **Every other call:** one command per Bash call, with no `&&` or `;`. Bash calls share no shell state,
   so an `export` in its own call is lost. Every call documented as an `export` followed by a command
   passes those variables as prefix assignments on the command itself instead:
