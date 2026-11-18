@@ -115,7 +115,7 @@ step 5).
      file path is part of that list, untouched otherwise (an issue with no single associated file path
      falls to untouched).
    - **When `--expected-head-sha` was given, fix and push nothing here**: report the touched issues instead and leave them to the caller, because a push would move the head away from the SHA the caller vetted, and the run would then stop at step 4(b) or 7(b) after the merge confirmation.
-   - **Fix every touched issue now, except a user-explicitly-deferred one**: apply the fix, verify it
+   - **Without `--expected-head-sha`, fix every touched issue now, except a user-explicitly-deferred one**: apply the fix, verify it
      (the applicable
      `.claude/rules/require-tests-for-behavior-changes.md` mechanism, or a re-read against the issue),
      then commit **and push** it via `Skill(commit)` — explicitly requesting the push, the same

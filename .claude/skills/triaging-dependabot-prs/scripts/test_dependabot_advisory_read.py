@@ -1792,6 +1792,69 @@ class AddedPackagesTests(unittest.TestCase):
         )
         self.assertEqual(result["added_packages"]["unknown"][0]["source_changed"], True)
 
+    def test_a_changed_git_revision_or_tarball_under_the_same_version_is_never_clean(self):
+        """Cross-model review: an off-registry source that changes under one version is new code."""
+        pkg = '[[package]]\nname = "foo"\nversion = "1.0.0"\n'
+        rev = 'source = {{ git = "https://example.test/foo.git?rev={0}#{0}" }}\n'
+        base, head = (
+            mod.parse_uv_lock(pkg + rev.format("one")),
+            mod.parse_uv_lock(pkg + rev.format("two")),
+        )
+        result = mod.assess(
+            FakeGh(), GH, {}, FakeFetch(), "uv", "bar", "1.0.0", "2.0.0", base, head
+        )
+        self.assertEqual(
+            result["added_packages"]["unknown"],
+            [{"name": "foo", "version": "1.0.0", "source_changed": True}],
+        )
+        self.assertIsNone(result["signals"]["adds_vulnerable_package"])
+        tar = (
+            "lockfileVersion: '9.0'\n\npackages:\n\n  foo@1.0.0:\n"
+            "    resolution: {{integrity: sha512-x, tarball: https://npm.example.test/{0}.tgz}}\n"
+        )
+        base, head = mod.parse_pnpm_lock(tar.format("a")), mod.parse_pnpm_lock(tar.format("b"))
+        result = mod.assess(
+            FakeGh(), GH, {}, FakeFetch(), "npm_and_yarn", "bar", "1.0.0", "2.0.0", base, head
+        )
+        self.assertEqual(result["added_packages"]["unknown"][0]["source_changed"], True)
+        same = mod.assess(
+            FakeGh(), GH, {}, FakeFetch(), "npm_and_yarn", "bar", "1.0.0", "2.0.0", base, base
+        )
+        self.assertEqual(same["added_packages"]["unknown"], [])
+        self.assertIs(same["signals"]["adds_vulnerable_package"], False)
+
+    def test_a_uv_package_with_github_hits_also_gets_osv_advisories(self):
+        """Cross-model review: GitHub's pip matching is partly case-sensitive, uv names are not."""
+        base = {"versions": {}}
+        head = {"versions": {"pillow": ["8.0.0"]}}
+        gh = FakeGh({"pillow@8.0.0": [gh_advisory("GHSA-a", "high", "8.1.0", pkg="pillow")]})
+        osv = {
+            "vulns": [
+                {"id": "GHSA-a", "summary": "same one", "affected": []},
+                {
+                    "id": "PYSEC-b",
+                    "summary": "only in osv",
+                    "affected": [],
+                    "database_specific": {"severity": "HIGH"},
+                },
+            ]
+        }
+        fetch = FakeFetch({(mod.OSV_URL, "pillow", "8.0.0"): osv})
+        result = mod.assess(gh, GH, {}, fetch, "uv", "bar", "1.0.0", "2.0.0", base, head)
+        ids = [a["id"] for a in result["added_packages"]["vulnerable"][0]["advisories"]]
+        self.assertEqual(ids, ["GHSA-a", "PYSEC-b"])
+        down = mod.assess(
+            gh, GH, {}, FakeFetch(fail={mod.OSV_URL}), "uv", "bar", "1.0.0", "2.0.0", base, head
+        )
+        self.assertEqual(
+            [a["id"] for a in down["added_packages"]["vulnerable"][0]["advisories"]], ["GHSA-a"]
+        )
+        npm = mod.assess(gh, GH, {}, fetch, "npm_and_yarn", "bar", "1.0.0", "2.0.0", base, head)
+        # npm names are not normalized, so OSV is not merged in on top of a GitHub hit.
+        self.assertEqual(
+            [a["id"] for a in npm["added_packages"]["vulnerable"][0]["advisories"]], ["GHSA-a"]
+        )
+
     def test_more_pairs_than_the_cap_are_truncated_and_never_clean(self):
         head = mod.parse_pnpm_lock(pnpm_lock(*[f"pkg{i}@1.0.0" for i in range(mod.ADDED_CAP + 1)]))
         gh = FakeGh()
