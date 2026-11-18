@@ -1,0 +1,31 @@
+{
+  "eval_id": 7,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Shows the exact YAML entry to append: the module path and tests/marketplace_ci/test_prefix_check.py, nothing else",
+      "passed": false,
+      "evidence": "Never shows the entry to append; asks a policy question about survivors instead"
+    },
+    {
+      "text": "Shows the score and the not-measured count beside the entry, not inside it",
+      "passed": false,
+      "evidence": "No entry shown, so nothing is placed beside it; offers 'record the four survivors as accepted' inside the weekly setup"
+    },
+    {
+      "text": "Asks for approval before editing .github/mutation-modules.yml",
+      "passed": true,
+      "evidence": "Asks before editing ('Before I make that edit, I need your answer')"
+    },
+    {
+      "text": "Edits no file",
+      "passed": true,
+      "evidence": "'have not edited any file'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 2,
+    "pass_rate": 0.5
+  }
+}

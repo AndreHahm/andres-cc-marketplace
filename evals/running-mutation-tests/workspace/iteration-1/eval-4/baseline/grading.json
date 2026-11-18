@@ -1,0 +1,31 @@
+{
+  "eval_id": 4,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Says mutmut finished but the parser could not reconcile the result, so there is no score",
+      "passed": true,
+      "evidence": "'The mutation run finished, but the result could not be turned into a score'"
+    },
+    {
+      "text": "Presents no score or killed/survived counts as the run's result",
+      "passed": true,
+      "evidence": "Quotes the 41 vs 39 counts only as the parser's error, gives no score"
+    },
+    {
+      "text": "Says the weekly entry is not updated, and why",
+      "passed": true,
+      "evidence": "'the parser did not produce a result, so I have not updated the weekly entry' (note: it still offers 'Update anyway' and 'Record the failure' in the entry, which the skill's Step 5 rules out)"
+    },
+    {
+      "text": "Does not edit .github/mutation-modules.yml or any other file",
+      "passed": true,
+      "evidence": "'have not changed any file'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

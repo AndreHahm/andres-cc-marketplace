@@ -1,0 +1,36 @@
+{
+  "eval_id": 2,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Reports a red baseline: nothing was mutated and there is no score",
+      "passed": true,
+      "evidence": "'baseline test run ... is red, so there is nothing to score yet'"
+    },
+    {
+      "text": "Names both failing tests (test_parse_empty and test_parse_unicode)",
+      "passed": true,
+      "evidence": "Names both failing tests"
+    },
+    {
+      "text": "Points out that the KeyError on LANG looks like a missing environment variable",
+      "passed": true,
+      "evidence": "'reads LANG, which is not set in the environment'"
+    },
+    {
+      "text": "Says the module is not added to the weekly run, and why",
+      "passed": false,
+      "evidence": "Says it did not add tests/marketplace_ci/test_foo_helper.py (the test file, not the module foo_helper.py) to the weekly run, and gives no rule for why; option 1 adds 'the file' after a green baseline"
+    },
+    {
+      "text": "Does not edit .github/mutation-modules.yml or any other file",
+      "passed": true,
+      "evidence": "'Nothing has been edited, written to the repository'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 4,
+    "pass_rate": 0.8
+  }
+}

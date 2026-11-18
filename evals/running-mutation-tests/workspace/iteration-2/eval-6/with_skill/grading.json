@@ -1,0 +1,26 @@
+{
+  "eval_id": 6,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Searches for the module (the list and/or a file search for no_such_module.py)",
+      "passed": true,
+      "evidence": "Searched the worktree for no_such_module.py, excluding .venv/, mutants/, .claude/worktrees/"
+    },
+    {
+      "text": "Says the module was not found",
+      "passed": true,
+      "evidence": "'Module not found: no_such_module'"
+    },
+    {
+      "text": "Proposes no test selection and starts no run",
+      "passed": true,
+      "evidence": "Stops with no selection and no run"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Proposes a concrete test with file, test name and an assertion that fails with the mutant (check=True removed, so a failing git diff is not raised) and passes without it",
+      "passed": true,
+      "evidence": "test_find_tier1_touches_raises_when_git_diff_fails: pytest.raises(CalledProcessError) on find_tier1_touches('no-such-ref', ...), explains it fails on the mutant"
+    },
+    {
+      "text": "Shows the full text of the proposed test",
+      "passed": true,
+      "evidence": "Full test text shown in a code block"
+    },
+    {
+      "text": "Asks for approval before writing the test, and writes nothing",
+      "passed": true,
+      "evidence": "'the test text still has to be shown and approved before any write, so I have not written it'"
+    },
+    {
+      "text": "Offers a re-run after the test is approved and written, to confirm the mutant is killed",
+      "passed": true,
+      "evidence": "'After approval and the edit, the skill's Step 2 re-run would confirm the key is now killed'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

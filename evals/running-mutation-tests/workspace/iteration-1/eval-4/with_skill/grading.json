@@ -1,0 +1,31 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Says mutmut finished but the parser could not reconcile the result, so there is no score",
+      "passed": true,
+      "evidence": "'The run finished, but the parser could not reconcile its result, so there is no score'"
+    },
+    {
+      "text": "Presents no score or killed/survived counts as the run's result",
+      "passed": true,
+      "evidence": "'I have not computed a score from the raw counts'"
+    },
+    {
+      "text": "Says the weekly entry is not updated, and why",
+      "passed": true,
+      "evidence": "'Weekly entry: not updated. The skill only adds or updates ... after a run whose parser produced a score (Step 5)'"
+    },
+    {
+      "text": "Does not edit .github/mutation-modules.yml or any other file",
+      "passed": true,
+      "evidence": "'Nothing further is run or written'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}
