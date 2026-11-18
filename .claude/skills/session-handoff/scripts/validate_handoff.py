@@ -65,7 +65,8 @@ FILE_EXTENSIONS = frozenset(
     "md markdown txt rst py pyc pyi ipynb sh bash zsh ps1 bat cmd js mjs cjs ts tsx jsx "
     "json jsonl jsonc yml yaml toml ini cfg conf env lock xml html htm css scss csv tsv sql "
     "log patch diff exe dll so png jpg jpeg gif svg webp pdf zip gz tar tgz go rs java kt rb "
-    "php c h cpp hpp cs swift lua pem crt".split()
+    "php c h cpp hpp cs swift lua pem crt proto graphql gql vue svelte properties gradle kts "
+    "scala dart tf tfvars hcl".split()
 )
 
 

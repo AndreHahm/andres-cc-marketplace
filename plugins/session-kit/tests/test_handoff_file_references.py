@@ -183,6 +183,12 @@ def test_bare_name_with_file_extension_still_checked(repo: Path) -> None:
     assert result["files_missing"] == ["GHOST.MD", "ghost_file.py"]
 
 
+@pytest.mark.parametrize("name", ["schema.proto", "query.graphql", "App.vue", "main.tf"])
+def test_bare_name_with_less_common_extension_still_checked(repo: Path, name: str) -> None:
+    path = _write_handoff(repo, f"- `{name}`")
+    assert validate_handoff.validate_handoff(str(path))["files_missing"] == [name]
+
+
 def test_path_with_slash_and_unknown_extension_still_checked(repo: Path) -> None:
     path = _write_handoff(repo, "- `plugins/x/thing.geteuid`")
     assert validate_handoff.validate_handoff(str(path))["files_missing"] == [
