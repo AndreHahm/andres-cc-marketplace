@@ -22,6 +22,10 @@ import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
+# Sibling-script import, same pattern as session-kit's scripts/session_store.py.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from validate_handoff import list_repo_files, resolve_reference  # noqa: E402
+
 
 def run_cmd(cmd: list[str], cwd: str | None = None) -> tuple[bool, str]:
     """Run a command and return (success, output)."""
@@ -151,23 +155,14 @@ def check_files_exist(files: list[str], project_path: str) -> tuple[list[str], l
     """Check which files from handoff still exist."""
     existing = []
     missing = []
-    base = Path(project_path).resolve()
+    # Same lookup as validate_handoff.py, so a partial path such as "plugin-rulebook/SKILL.md"
+    # that exists deeper in the repo is not reported missing. resolve_reference() keeps the
+    # containment check: a "../" entry like "../../etc/passwd" is never reported as existing.
+    repo_files = list_repo_files(project_path) if files else None
 
     for f in files:
-        # A leading "/" would make pathlib's "/" operator reset to the right-hand side
-        # (an absolute path); stripping it alone still leaves a "../" segment free to
-        # walk outside project_path once resolved. An untrusted handoff table entry
-        # like "../../etc/passwd" must never be reported as an existing reference just
-        # because that unrelated file happens to exist elsewhere on disk -- resolve the
-        # candidate and require it to stay under project_path, same containment check
-        # session_store.py's own _assert_path_within_base() uses.
-        candidate = (Path(project_path) / f.lstrip("/")).resolve()
-        try:
-            candidate.relative_to(base)
-        except ValueError:
-            missing.append(f)
-            continue
-        if candidate.exists():
+        # A leading "/" would make pathlib's "/" operator reset to an absolute path.
+        if resolve_reference(f.lstrip("/"), project_path, repo_files) == "verified":
             existing.append(f)
         else:
             missing.append(f)
@@ -446,8 +441,8 @@ def print_report(result: dict):
 
 
 def main():
-    sys.stdout.reconfigure(encoding="utf-8")  # ty: ignore[unresolved-attribute]
-    sys.stderr.reconfigure(encoding="utf-8")  # ty: ignore[unresolved-attribute]
+    sys.stdout.reconfigure(encoding="utf-8")  # ty: ignore[missing-union-attribute]
+    sys.stderr.reconfigure(encoding="utf-8")  # ty: ignore[missing-union-attribute]
 
     if len(sys.argv) < 2:
         print("Usage: python check_staleness.py <handoff-file>")
