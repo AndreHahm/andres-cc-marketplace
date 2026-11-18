@@ -80,6 +80,7 @@ NPM_URL = "https://registry.npmjs.org/{name}/latest"
 NPM_PACKUMENT_URL = "https://registry.npmjs.org/{name}"
 NPM_ABBREVIATED = "application/vnd.npm.install-v1+json"
 PYPI_VERSION_URL = "https://pypi.org/pypi/{name}/{version}/json"
+PYPI_SIMPLE = "https://pypi.org/simple"  # the registry uv.lock names for a package from PyPI
 DROPPED_ENV = ("GH_HOST", "GH_REPO", "GH_ENTERPRISE_TOKEN", "GITHUB_ENTERPRISE_TOKEN")
 TIMEOUT_SECONDS = 30
 MAX_RESPONSE_BYTES = 2 * 1024 * 1024
@@ -590,8 +591,8 @@ def parse_uv_lock(text):
     """{'versions': {name: [versions]}, 'requires_python': str|None} from a uv.lock.
 
     Also `unparsed` (package entries with no string name or version, as text) and `off_registry`
-    (name, version pairs whose source is not a package registry: git, URL, path, editable or
-    virtual), which the added-package check reports as not looked up rather than as clean.
+    (name, version pairs whose source is not PyPI: git, URL, path, editable, virtual or another
+    index), which the added-package check reports as not looked up rather than as clean.
     """
     try:
         import tomllib
@@ -610,7 +611,8 @@ def parse_uv_lock(text):
             continue
         versions.setdefault(python_name(name), []).append(version)
         source = package.get("source")
-        if not isinstance(source, dict) or "registry" not in source:
+        registry = source.get("registry") if isinstance(source, dict) else None
+        if not isinstance(registry, str) or registry.rstrip("/") != PYPI_SIMPLE:
             off_registry.append((python_name(name), version))
     requires = data.get("requires-python")
     return {
@@ -634,9 +636,11 @@ def parse_pnpm_lock(text):
 
     Also `unparsed`: package keys (two-space indent under `packages:`) that are not a plain
     registry `name@version` (a tarball, git, `file:` or `link:` key) or that are too long to parse,
-    as text, so the added-package check can count only the ones the base does not have.
+    as text, so the added-package check can count only the ones the base does not have; and
+    `off_registry`: pairs whose resolution names a `tarball:` URL, which pnpm writes only when the
+    URL is not the registry's standard layout (a plain key records no registry at all).
     """
-    versions, inside, unparsed = {}, False, []
+    versions, inside, unparsed, off_registry, current = {}, False, [], [], None
     declared = PNPM_LOCKFILE_RE.search(text[:2000])
     if not declared or declared.group(1) not in PNPM_SUPPORTED_MAJORS:
         raise LookupFailed("unsupported or missing pnpm lockfileVersion")
@@ -647,13 +651,23 @@ def parse_pnpm_lock(text):
             inside = False
         elif inside and line.startswith("  ") and not line.startswith("   "):
             match = PNPM_KEY_RE.fullmatch(line) if len(line) <= MAX_CONSTRAINT_CHARS else None
+            current = (match.group(1), match.group(2)) if match else None
             if not match:
                 unparsed.append(line)
             elif match.group(2) not in versions.setdefault(match.group(1), []):
                 versions[match.group(1)].append(match.group(2))
+        elif inside and current and "tarball:" in line and current not in off_registry:
+            off_registry.append(
+                current
+            )  # flow-style `resolution: {..., tarball: ...}` or a block line
     if not versions:
         raise LookupFailed("no packages found in the pnpm lockfile")
-    return {"versions": versions, "requires_python": None, "unparsed": unparsed}
+    return {
+        "versions": versions,
+        "requires_python": None,
+        "unparsed": unparsed,
+        "off_registry": off_registry,
+    }
 
 
 def load_lock(path, eco):
@@ -1017,9 +1031,10 @@ def added_packages(run, gh, environ, fetch, eco, dep, new, base, head):
 
     At most ADDED_CAP pairs are looked up, and none is started after ADDED_BUDGET_SECONDS; the
     rest leave `truncated` set. A pair whose name or version fails the pattern check, whose source
-    is not a registry, or whose lookup fails, is listed under `unknown`, never as clean; head
-    package entries the parser could not read, and the base does not have, are counted in
-    `unparsed`.
+    is not a registry, or whose lookup fails, is listed under `unknown`, never as clean, and so is
+    a pair the base already has whose source moved off the registry in the head
+    (`source_changed`); head package entries the parser could not read, and the base does not
+    have, are counted in `unparsed`.
     """
     if base is None or head is None:
         return {"status": "unknown", "reason": "the base or head lockfile could not be read"}
@@ -1057,6 +1072,12 @@ def added_packages(run, gh, environ, fetch, eco, dep, new, base, head):
             )
         elif info["status"] != "ok" or info.get("truncated"):
             out["unknown"].append({"name": name, "version": version})
+    # A pair the base already has, whose source moved off the registry in the head, is new code
+    # from elsewhere under an old name and version: it is never looked up and never clean.
+    moved = sorted(off_registry - set(base.get("off_registry") or []))
+    for name, version in moved:
+        if version in base["versions"].get(name, []):
+            out["unknown"].append({"name": name, "version": version, "source_changed": True})
     return out
 
 

@@ -218,11 +218,20 @@
       "files": [
         "outputs/answer.md"
       ]
+    },
+    {
+      "id": 25,
+      "name": "The merge is pinned to the head 6.4 checked, and an off-registry added package is never looked up",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT run any `gh`/`git`/shell command, post any comment, run any script or invoke any other skill -- describe exactly what you would do instead, and write your answer to outputs/answer.md.\n\nYou are following the `triaging-dependabot-prs` skill (plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md and its references). The user asked: \"triage the dependabot PRs\" and answered yes to the advisory and compatibility checks. One same-repo PR is open: #650 `chore(deps): bump beta from 2.0.0 to 2.1.0`, branch `dependabot/uv/beta-2.1.0`, base `main`, head `cccccccccccccccccccccccccccccccccccccccc`, every commit by `dependabot[bot]`, files `pyproject.toml` and `uv.lock`, up to date with its base.\n- Step 3: assume `assess --head-lock` returns old and new clean, compatible, newest compatible is 2.1.0, added_packages {status ok, count 2, checked 2, truncated false, unparsed 0, vulnerable [], unknown [{name gamma, version 0.3.0}]}, adds_vulnerable_package null; the head uv.lock lists gamma 0.3.0 with `source = { registry = \"https://pkgs.example.test/simple\" }`. Say what you recommend and what you tell the user about gamma.\n- Suppose the user then approves merging #650. At 6.1 the head is still `cccc...`; 6.4's head-runs, pr-checks and dependency-review (one row, pass) are all clean, and you settle the null signal as the skill says, with the user answering go on. Describe the exact `Skill(merge-pr)` call at 6.6.\n- Then suppose `merge-pr` reports that it stopped at its step 1 because the PR's head is now `dddddddddddddddddddddddddddddddddddddddd`, not the expected SHA. Describe 6.7.",
+      "expected_output": "Step 3: says gamma 0.3.0 comes from a non-PyPI index, was not looked up and is not clean, and that adds_vulnerable_package is null (no data), never reading the PR as clean; recommends as it would without the signal (merge) while naming that gap. 6.4: a Dependency review pass does not cover the null signal, so it names gamma as not checked and asks go on / skip. 6.6: invokes Skill(merge-pr) with 650 and `--expected-head-sha cccccccccccccccccccccccccccccccccccccccc` (no bypass flag), so merge-pr stops on a different head and merges only that SHA. 6.7: says merge-pr stopped at its step 1 on a head mismatch and nothing was merged, records #650 as not merged for now, returns to 6.1 and re-runs 6.1 to 6.4 (including the lockfile re-assessment, since the head changed after step 3) against the new head. No raw gh call.",
+      "files": [
+        "outputs/answer.md"
+      ]
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 75,
-    "declared_scenarios_covered": 33,
+    "declared_scenarios_total": 77,
+    "declared_scenarios_covered": 35,
     "uncovered": [
       "Scenario 1: No dependabot PRs open",
       "Scenario 2: List truncation",

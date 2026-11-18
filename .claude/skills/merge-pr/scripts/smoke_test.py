@@ -558,10 +558,40 @@ def check_expected_head_sha_validated_and_compared_before_attesting():
         or "stop and report both SHAs" not in (step4[step2_compare:])
     ):
         return False, "step 4(b) no longer says a mismatch stops without attesting anything"
+    # Issue #741: the flag also pins a merge without the bypass. Step 1 stops on a different head,
+    # and step 7(b) compares its verified SHA with it before the merge marker is written.
+    if "differs from it, stop and report both SHAs" not in step1:
+        return False, "step 1 no longer stops when the PR's head differs from --expected-head-sha"
+    step7 = _get_step_text(7)
+    if step7 is None:
+        return False, "step 7 ('## Instructions') not found"
+    pin = step7.find("if `--expected-head-sha` was given, this SHA must equal it")
+    merge_marker = step7.find("git-write-marker.sh")
+    if pin < 0 or merge_marker < 0 or not pin < merge_marker:
+        return (
+            False,
+            "step 7(b) no longer compares its verified SHA with --expected-head-sha before the "
+            "merge marker",
+        )
+    # Security review M1 (#741): the 7(d) retry after a rejected merge compares it too.
+    retry = step7.find("d. **Rejection fallback**")
+    retry_pin = step7.find("and `--expected-head-sha` was given, its freshly re-fetched", retry)
+    retry_marker = step7.find("**write the marker again**", retry)
+    if retry < 0 or retry_pin < 0 or retry_marker < 0 or not retry_pin < retry_marker:
+        return (
+            False,
+            "step 7(d) no longer compares the retry's SHA with --expected-head-sha before its "
+            "marker",
+        )
+    if "When `--expected-head-sha` was given, fix and push nothing here" not in SKILL_MD.read_text(
+        encoding="utf-8"
+    ):
+        return False, "step 1.5 no longer refuses to push a fix when --expected-head-sha was given"
     return (
         True,
-        "--expected-head-sha is validated at step 1; step 4(b) compares the resolved head SHA with "
-        "it and with step 2's last fetch before the reason file, marker, comment or label",
+        "--expected-head-sha is validated at step 1 and stops a different head there; step 4(b) "
+        "compares it before attesting, step 7(b) and a 7(d) retry before each merge marker, and "
+        "step 1.5 pushes no fix while it is set",
     )
 
 

@@ -1,0 +1,31 @@
+{
+  "eval_id": 25,
+  "skill_path": "plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md",
+  "assertions": [
+    {
+      "text": "Step 3 says gamma 0.3.0 comes from a non-PyPI index, was not looked up and is not clean, and reads adds_vulnerable_package null as no data",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Recommends as without the signal (merge) while naming the unchecked package, never calling the PR clean",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "6.4: a Dependency review pass does not cover the null signal; names gamma and asks go on / skip",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "6.6: invokes Skill(merge-pr) with 650 and --expected-head-sha set to the 6.1/6.4 head, with no bypass flag",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "6.7: says merge-pr stopped at its step 1 and nothing was merged, returns to 6.1 and re-runs 6.1 to 6.4 including the lockfile re-assessment for the new head; no raw gh call",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    }
+  ]
+}
