@@ -15,10 +15,11 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-// The plugin's scripts: rva-prepare, rva-dispatch, rva-run, rva-config, rva-codex-kit, rva-vendors and
-// rva-winacl (.mjs). A name counts only as a whole path segment's end: "rva-dispatch.test.mjs" does not match.
-// Case-insensitive, since macOS and Windows filesystems are. A literal, so no pattern is built at run time.
-const NAME_PATTERN = /(?<![A-Za-z0-9_.-])rva-(?:prepare|dispatch|run|config|codex-kit|vendors|winacl)\.mjs(?![A-Za-z0-9_.-])/i;
+// The plugin's scripts: rva-prepare, rva-dispatch, rva-run, rva-config, rva-codex-kit, rva-vendors,
+// rva-winacl and this guard, rva-guard-checkout-scripts (.mjs). A name counts only as a whole path segment's
+// end: "rva-dispatch.test.mjs" does not match. Case-insensitive, since macOS and Windows filesystems are. A
+// literal, so no pattern is built at run time.
+const NAME_PATTERN = /(?<![A-Za-z0-9_.-])rva-(?:prepare|dispatch|run|config|codex-kit|vendors|winacl|guard-checkout-scripts)\.mjs(?![A-Za-z0-9_.-])/i;
 const WORD_BREAK = /[\s;&|<>()]/;
 const PLUGIN_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 

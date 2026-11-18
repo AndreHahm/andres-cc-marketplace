@@ -170,7 +170,7 @@ the path if it contains a space). The guard then allows only that copy's scripts
 
 **JavaScript** (Node.js ES modules, `.mjs`, no npm dependencies). New scripts in this plugin stay in
 JavaScript. Tests, from the repository root: `node --test "plugins/reviewadapters-kit/tests/*.test.mjs"`
-(75 tests: 67 pass and 8 skip on Linux with Node 24; on Windows, Node 22, 17 pass and 58 skip, since the
+(79 tests: 68 pass and 11 skip on Linux with Node 24; on Windows, Node 22, 21 pass and 58 skip, since the
 POSIX fixtures skip there and `tests/rva-windows.test.mjs` covers Windows). Name the files: on Node 22 and
 24, `node --test` on the directory path fails. The `Plugin Node tests` CI job runs them on every pull
 request.
@@ -205,17 +205,25 @@ Supported since issue #770, with the same rules read from Windows' own mechanism
   icacls "%USERPROFILE%\rva-tmp" /inheritance:r /grant:r "%USERNAME%:(OI)(CI)F" "*S-1-5-18:(OI)(CI)F" "*S-1-5-32-544:(OI)(CI)F"
   ```
 
-- **The local allow-list and its `.claude` directory** follow the same rule. A repository outside your
-  profile (under `C:\Dev`, say) usually inherits Modify for Authenticated Users, so the file enables
-  nothing until its directory is made private the same way (`icacls "<repo>\.claude" /inheritance:r
-  /grant:r ...`, as above).
+- **The local allow-list, its `.claude` directory and every directory above it** follow the same rule. A
+  repository outside your profile (under `C:\Dev`, say) usually inherits Modify for Authenticated Users,
+  on `C:\Dev` and the repository as well as on `.claude`, and then the file enables nothing. Making only
+  `<repo>\.claude` private is not enough while a directory above it still lets another account delete or
+  rename entries: remove that grant at the highest such directory, which the ones below inherit
+  (`icacls "C:\Dev" /inheritance:r /grant:r ...`, as above; this closes everything under it to other
+  accounts), or keep the repository under your profile. Make `<repo>\.claude` private the same way only
+  if the file is still refused once the directories above it pass.
 - **Vendors run only from an `.exe` or `.com`.** npm installs a CLI as a `.cmd` shim, which only runs
   through `cmd.exe`, whose quoting and `%VAR%` expansion this plugin does not trust with an argument
   list: such a vendor fails with `cli_unavailable` naming the shim. agy and devin ship as `.exe`.
 - **The timeout kills the vendor's process tree** with `taskkill /T /F`. After a normal exit, the processes
-  the vendor started and left running are ended too, found by their parent's process id and a start
-  time between the vendor's start and exit; one that re-parented itself is not found, and a process that
-  reuses a helper's id between the query and the kill would be killed in its place.
+  the vendor started and left running are ended too, also when the dispatcher is interrupted during the
+  short grace after that exit. They are found by their parent's process id and a start time between the
+  vendor's start and exit, and each one's parent and start time are read again just before its kill. One
+  that re-parented itself is not found, and a process that reuses a helper's id between that second read
+  and the kill would be killed in its place (`taskkill` takes only an id). If a kill does not work (a
+  policy that blocks `taskkill`, say), the run still ends as a timeout, and the error says the vendor may
+  still be running.
 - **No `O_NOFOLLOW`:** after a file is opened, its path must not be a link and must name the same file
   (volume and file id) as the handle, so a link swapped in and back is caught. A junction in a directory
   above is not, as on POSIX. A filesystem that reports no file id (0) is refused; on ReFS, whose file ids

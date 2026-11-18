@@ -100,6 +100,21 @@ test("a private temp directory passes; one another account can modify does not",
   assert.equal(check(probe), true);
 });
 
+test("a temp directory check in the same process sees an ancestor's permissions changed after an earlier check", { skip: WINDOWS_ONLY }, () => {
+  const parent = privateDir(".rva-test-tmpanc-");
+  const tmp = path.join(parent, "tmp");
+  fs.mkdirSync(tmp);
+  const check = fresh();
+  const url = JSON.stringify(new URL("../scripts/rva-codex-kit.mjs", import.meta.url).href);
+  const icaclsExe = JSON.stringify(path.win32.join(process.env.SystemRoot, "System32", "icacls.exe"));
+  // Both checks run in one process, so the second one would reuse the first one's cached ACLs.
+  const probe = `import { execFileSync } from "node:child_process"; const m = await import(${url});
+    const before = m.unsafeTempDir(${JSON.stringify(tmp)});
+    execFileSync(${icaclsExe}, [${JSON.stringify(parent)}, "/grant", "*S-1-1-0:(DC)"], { stdio: "ignore" });
+    console.log(JSON.stringify([before, m.unsafeTempDir(${JSON.stringify(tmp)})]));`;
+  assert.deepEqual(check(probe), [false, true]);
+});
+
 test("ownedAndPrivate reads the file's DACL and refuses a grant to Authenticated Users", { skip: WINDOWS_ONLY }, () => {
   const dir = privateDir(".rva-test-file-");
   const file = path.join(dir, "local.json");
@@ -176,8 +191,10 @@ test("the timeout kills the vendor's whole process tree, and a normal exit ends 
   const dir = privateDir(".rva-test-run-");
   // A vendor stand-in that starts a helper living far longer than any timeout here, writes the helper's
   // pid, then hangs as long or exits at once. Only a kill can end either within the time checked below.
+  // The helper is detached: Node otherwise puts it in a job object that ends it with its parent, which
+  // would pass this test without any cleanup of ours (a real vendor's helper is not in that job).
   const helper = `const { spawn } = require("node:child_process"); const fs = require("node:fs");
-    const c = spawn(process.execPath, ["-e", "setTimeout(() => {}, 600000)"], { stdio: "ignore" });
+    const c = spawn(process.execPath, ["-e", "setTimeout(() => {}, 600000)"], { stdio: "ignore", detached: true });
     fs.writeFileSync(process.argv[1], String(c.pid));
     if (process.argv[2] === "hang") setTimeout(() => {}, 600000); else process.exit(0);`;
   const env = { SystemRoot: process.env.SystemRoot, PATH: process.env.PATH };
@@ -198,6 +215,52 @@ test("the timeout kills the vendor's whole process tree, and a normal exit ends 
   const leftHelper = await waitFor(exitPid);
   leftovers.push(leftHelper);
   assert.equal(alive(leftHelper), false, "a helper left by a finished vendor is still running");
+});
+
+test("a signal during the exit grace ends the helper an exited vendor left", { skip: WINDOWS_ONLY }, async () => {
+  const { runVendor, killActiveGroups } = await import(pathToFileURL(path.join(PLUGIN, "scripts", "rva-run.mjs")).href);
+  const dir = privateDir(".rva-test-grace-");
+  // The helper inherits the vendor's stdout, so the pipe stays open and only the grace timer ends the run.
+  // Detached for the job-object reason given in the test above.
+  const helper = `const { spawn } = require("node:child_process"); const fs = require("node:fs");
+    const c = spawn(process.execPath, ["-e", "setTimeout(() => {}, 600000)"], { stdio: ["ignore", "inherit", "inherit"], detached: true });
+    fs.writeFileSync(process.argv[1], String(c.pid));
+    process.exit(0);`;
+  const env = { SystemRoot: process.env.SystemRoot, PATH: process.env.PATH };
+  const pidFile = path.join(dir, "helper.pid");
+  const running = runVendor({ command: process.execPath, args: ["-e", helper, pidFile], cwd: dir, env, timeoutMs: 120_000 });
+  const helperPid = await waitFor(pidFile);
+  leftovers.push(helperPid);
+  // Let the vendor's exit be seen, well inside the two-second grace, then interrupt as onSignal does.
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  killActiveGroups();
+  assert.equal(alive(helperPid), false, "the helper outlived an interrupt during the exit grace");
+  await running;
+});
+
+test("a timeout whose kill does not work still ends the wait, with killFailed", { skip: WINDOWS_ONLY }, async () => {
+  const { runVendor } = await import(pathToFileURL(path.join(PLUGIN, "scripts", "rva-run.mjs")).href);
+  const dir = privateDir(".rva-test-nokill-");
+  const pidFile = path.join(dir, "vendor.pid");
+  const vendor = `require("node:fs").writeFileSync(process.argv[1], String(process.pid)); setTimeout(() => {}, 600000);`;
+  const env = { SystemRoot: process.env.SystemRoot, PATH: process.env.PATH };
+  // An unusable SystemRoot leaves rva-run without taskkill, as a policy that blocks it would.
+  const saved = process.env.SystemRoot;
+  process.env.SystemRoot = "unusable";
+  const started = Date.now();
+  let run;
+  try {
+    run = await runVendor({ command: process.execPath, args: ["-e", vendor, pidFile], cwd: dir, env, timeoutMs: 1000 });
+  } finally {
+    process.env.SystemRoot = saved;
+  }
+  const vendorPid = await waitFor(pidFile);
+  // The vendor still runs in `dir`, which the cleanup hook removes: end it here.
+  if (alive(vendorPid)) process.kill(vendorPid);
+  for (let i = 0; i < 50 && alive(vendorPid); i += 1) await new Promise((resolve) => setTimeout(resolve, 100));
+  assert.equal(run.timedOut, true);
+  assert.equal(run.killFailed, true);
+  assert.ok(Date.now() - started < 30_000, "the wait did not end after the kill failed");
 });
 
 // A helper a failing run left behind is ended here, not left running for ten minutes.

@@ -106,8 +106,10 @@ export function runPowerShell(script, input = "") {
 
 // Read owner and DACL for every path not already cached (real paths, as the callers pass them). A path
 // that could not be read, or whose descriptor is not one this module understands, is cached as
-// { error: true }; a failed or garbled PowerShell call throws.
-export function readAcls(paths) {
+// { error: true }; a failed or garbled PowerShell call throws. `fresh` re-reads every path, still in one
+// call, for a check that must see the permissions as they are now, not as an earlier check found them.
+export function readAcls(paths, { fresh = false } = {}) {
+  if (fresh) for (const file of paths) cache.delete(file);
   const missing = [...new Set(paths)].filter((file) => !cache.has(file));
   if (missing.length > 0) {
     const input = missing.map((file) => Buffer.from(file, "utf8").toString("base64")).join("\n");

@@ -32,7 +32,7 @@ const MAX_ARGUMENT_BYTES = 120_000;
 const VERSION_TIMEOUT_MS = 15_000;
 // Directories under the home directory that hold keys and credentials; an input file is never read from them.
 const PLUGIN_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const SECRET_DIRS =[".ssh", ".gnupg", ".aws", ".kube", ".docker", path.join(".config", "gh")];
+const SECRET_DIRS = [".ssh", ".gnupg", ".aws", ".kube", ".docker", path.join(".config", "gh")];
 
 // isInside against a directory's real path, for a home directory reached through a symbolic link.
 function isInsideReal(file, dir) {
@@ -219,7 +219,7 @@ async function cliVersion(binary, cwd, env, timeoutMs) {
   // The probe counts against the run's budget, so it never waits longer than that budget.
   const run = await runVendor({ command: binary, args: ["--version"], cwd, env, timeoutMs: Math.min(VERSION_TIMEOUT_MS, timeoutMs) });
   const line = (run.stdout || run.stderr).split("\n").find((l) => l.trim()) ?? "";
-  return { version: /^[\w .()+:/-]{1,80}$/.test(line.trim()) ? line.trim() : "unknown", timedOut: run.timedOut };
+  return { version: /^[\w .()+:/-]{1,80}$/.test(line.trim()) ? line.trim() : "unknown", timedOut: run.timedOut, killFailed: run.killFailed };
 }
 
 async function dispatch(options, runDir) {
@@ -362,7 +362,10 @@ async function dispatch(options, runDir) {
   const started = Date.now();
   const probe = await cliVersion(binary, runDir, env, timeoutMs);
   // A probe that ran out of time is a timeout for every vendor, not an unknown version.
-  if (probe.timedOut) throw new Failure("timeout", `${vendor.binary} --version used the whole ${timeoutMs} ms budget; nothing was sent`);
+  if (probe.timedOut) {
+    const left = probe.killFailed ? `, and it could not be stopped (it may still be running)` : "";
+    throw new Failure("timeout", `${vendor.binary} --version used the whole ${timeoutMs} ms budget${left}; nothing was sent`);
+  }
   const { version } = probe;
   // The first version-shaped token must equal the probed version, so 1.5.90, 11.5.9 or a newer CLI that
   // prints "2.0.0 (compat 1.5.9)" does not pass for the probed 1.5.9.
@@ -378,7 +381,10 @@ async function dispatch(options, runDir) {
   const run = await runVendor({ command: binary, args, cwd: runDir, env, timeoutMs: remaining, stdinFile: vendor.stdin ? files.promptFile : undefined });
   if (run.stdinError) throw new Failure("dispatcher_error", `the prompt file for ${vendorName} could not be opened; nothing was sent`);
   if (run.spawnError) throw new Failure("cli_unavailable", `${vendor.binary} could not be started`);
-  if (run.timedOut) throw new Failure("timeout", `${vendorName} did not finish within ${timeoutMs} ms; the diff was already sent`);
+  if (run.timedOut) {
+    const left = run.killFailed ? `, and it could not be stopped (it may still be running)` : "";
+    throw new Failure("timeout", `${vendorName} did not finish within ${timeoutMs} ms${left}; the diff was already sent`);
+  }
   if (run.code !== 0) {
     const how = run.code === null ? `was killed by ${run.signal ?? "a signal"}` : `exited ${run.code}`;
     // Redact the whole stream first: truncating first could cut a secret in half and hide it from redaction.

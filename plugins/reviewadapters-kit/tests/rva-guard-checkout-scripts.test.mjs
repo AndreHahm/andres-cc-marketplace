@@ -91,6 +91,14 @@ test("a copy inside the repository is denied, by relative or absolute path, in a
   }
 });
 
+test("the guard's own script is denied from the repository and allowed from the installed copy", () => {
+  const f = fixture();
+  const inRepo = `node "${path.join(f.repo, ".claude", "scripts", GUARD_NAME)}"`;
+  assert.ok(denied(run(bash(inRepo, f.repo), f.installed)), inRepo);
+  const installed = `node "${path.join(f.installed, "scripts", GUARD_NAME)}"`;
+  assert.equal(run(bash(installed, f.repo), f.installed), null, installed);
+});
+
 test("a variable, substitution or unterminated quote around a script name is denied", () => {
   const f = fixture();
   for (const cmd of [
