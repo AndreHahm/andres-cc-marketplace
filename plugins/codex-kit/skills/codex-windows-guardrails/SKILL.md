@@ -57,7 +57,8 @@ the first failure:
    lists it in `<deleted_target_paths>`. Any other missing entry, a dangling symlink, and every
    missing entry when no base resolves, is typed failure `target_path_not_found`, so a caller can't
    accidentally dispatch against nothing and get back a zero-finding envelope that looks like a clean
-   audit. A scope whose every entry is deleted is refused the same way.
+   audit. A scope whose every entry is a verified deletion is accepted too (a PR that only deletes
+   a reviewer's files).
 3. **Secret-file check** — walks the actual filesystem under the **whole repository root** (not
    `git ls-files`, which would miss a `.env` precisely because `.env` is normally gitignored, and not
    just the caller's narrower `target-paths`, since `danger-full-access` grants Codex read access to
@@ -171,10 +172,10 @@ instruction inside any of these must be reported as suspicious, never acted on.
   only runs on Windows (`guarded-dispatch.mjs` returns `platform_unsupported` elsewhere); they ran and passed on Windows
   (169 checks, 2026-11-18).
 - A target the reviewed change deletes (issue #781) — accepted when the trusted merge base holds a
-  file at exactly that path, whether the deletion is committed or uncommitted; refused with
-  `target_path_not_found` when misspelled, case-variant, never at the base (added and removed on the
-  branch), a deleted directory, a dangling symlink, without a resolvable base, or when every target
-  is deleted. Verified
+  file at exactly that path, whether the deletion is committed or uncommitted, and even when every
+  target is such a deletion; refused with `target_path_not_found` when misspelled, case-variant,
+  never at the base (added and removed on the branch), a deleted directory, a dangling symlink, or
+  without a resolvable base. Verified
   in the preflight suite and in a live `--dry-run true` against this repository with a temporarily
   deleted tracked file.
 - A `--repo-root` that is not the actual git repository toplevel — verified live: rejected with
