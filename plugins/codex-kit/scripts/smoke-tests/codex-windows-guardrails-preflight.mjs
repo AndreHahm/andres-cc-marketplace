@@ -1858,6 +1858,53 @@ console.log("\n=== issue #781: a missing target is still refused when the base c
       JSON.stringify(danglingRun)
     );
   }
+
+  // Cross-model review F1: a base directory replaced by a dangling directory
+  // symlink makes lstat on the file under it report ENOENT; the target must
+  // still be refused, not accepted as a deletion.
+  const danglingDir = makeFixture();
+  writeFixtureFile(path.join(danglingDir.root, "olddir"), "removed.md", "old content");
+  danglingDir.commit("init");
+  danglingDir.markBase();
+  fs.rmSync(path.join(danglingDir.root, "olddir"), { recursive: true });
+  let dirLinked = false;
+  try {
+    fs.symlinkSync(path.join(danglingDir.root, "missing-dir"), path.join(danglingDir.root, "olddir"), "dir");
+    dirLinked = true;
+  } catch (e) {
+    skipScenario("a target under a dangling directory symlink is refused", `cannot create a directory symlink in this environment (${e.code || e.message}); requires elevated privilege or Developer Mode on Windows`);
+  }
+  if (dirLinked) {
+    const danglingDirRun = runDispatchRaw(danglingDir.root, "target.md,olddir/removed.md", instructionFile, "smoke-781", ["--dry-run", "true"]);
+    check(
+      "a base file under a dangling directory symlink is refused with target_path_not_found, not accepted as a deletion",
+      danglingDirRun.ok === false && danglingDirRun.category === "target_path_not_found" && /under a symlink/.test(danglingDirRun.detail),
+      JSON.stringify(danglingDirRun)
+    );
+  }
+
+  // Security review m2: the same case through a junction, which needs no
+  // Developer Mode or elevation, so it also runs on an ordinary Windows machine.
+  const danglingJunction = makeFixture();
+  writeFixtureFile(path.join(danglingJunction.root, "olddir"), "removed.md", "old content");
+  danglingJunction.commit("init");
+  danglingJunction.markBase();
+  fs.rmSync(path.join(danglingJunction.root, "olddir"), { recursive: true });
+  let junctioned = false;
+  try {
+    fs.symlinkSync(path.join(danglingJunction.root, "missing-dir"), path.join(danglingJunction.root, "olddir"), "junction");
+    junctioned = true;
+  } catch (e) {
+    skipScenario("a target under a dangling junction is refused", `cannot create a junction in this environment (${e.code || e.message})`);
+  }
+  if (junctioned) {
+    const junctionRun = runDispatchRaw(danglingJunction.root, "target.md,olddir/removed.md", instructionFile, "smoke-781", ["--dry-run", "true"]);
+    check(
+      "a base file under a dangling junction is refused with target_path_not_found, not accepted as a deletion",
+      junctionRun.ok === false && junctionRun.category === "target_path_not_found",
+      JSON.stringify(junctionRun)
+    );
+  }
 }
 
 console.log(`\n=== Results: ${pass} passed, ${fail} failed, ${skip} skipped ===`);
