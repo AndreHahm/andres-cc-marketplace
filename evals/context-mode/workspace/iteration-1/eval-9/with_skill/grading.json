@@ -1,0 +1,26 @@
+{
+  "eval_id": 9,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Routes the merge through merge-pr",
+      "passed": true,
+      "evidence": "Routes through Skill(merge-pr) and never the raw command"
+    },
+    {
+      "text": "States the secretlint result before confirmation",
+      "passed": true,
+      "evidence": "\"secretlint (Security workflow): ran and passed on the PR's changed files\""
+    },
+    {
+      "text": "Reports the external-reference check as not run without blocking the merge",
+      "passed": true,
+      "evidence": "\"External-reference check: not run and not needed\"; the merge proceeds to confirmation"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}
