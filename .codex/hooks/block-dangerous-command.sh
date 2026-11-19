@@ -22,8 +22,10 @@ CMD=$(printf '%s' "${INPUT}" | jq -r '.tool_input.command // empty') ||
 COMMAND_PREFIX='(^|;[[:space:]]*|&&[[:space:]]*|[|][|][[:space:]]*|[|][[:space:]]*)'
 PUSH_FORCE_RE='git[[:space:]]+push([^;&|]*)--force'
 PUSH_FORCE_RE+='|git[[:space:]]+push([^;&|]*)[[:space:]]-f([[:space:]]|$)'
+# A leading `+` on a refspec (`git push origin +main`) is also a force push.
+PUSH_FORCE_RE+='|git[[:space:]]+push([^;&|]*)[[:space:]][+]'
 DIRECT_MAIN_RE='git[[:space:]]+push([^;&|]*[[:space:]])?'
-DIRECT_MAIN_RE+='(origin[[:space:]]+)?(main|master)([[:space:]]|$)'
+DIRECT_MAIN_RE+='(origin[[:space:]]+)?[+]?(main|master)([[:space:]]|$)'
 DIRECT_MAIN_RE+='|git[[:space:]]+push[^;&|]*:(refs/heads/)?(main|master)([[:space:]]|$)'
 FETCH_TO_SHELL_RE='(curl|wget|iwr|irm|invoke-webrequest|invoke-restmethod)[^|]*[|][[:space:]]*'
 FETCH_TO_SHELL_RE+='(bash|sh|zsh|iex|invoke-expression)([[:space:]]|$)'

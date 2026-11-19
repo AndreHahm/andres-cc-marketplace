@@ -92,11 +92,21 @@ prefix_rule(
     decision = "prompt",
     justification = "Ask before external network fetches.",
 )
+# Only read-only compose subcommands are allowed. The strictest matching rule
+# wins, so a blanket `docker compose` prompt would override these allows;
+# the mutating subcommands are listed instead. A subcommand in neither list
+# runs sandboxed and escalates through the normal approval path.
 prefix_rule(
-    pattern = ["docker", "compose"],
+    pattern = ["docker", "compose", ["ps", "config", "logs"]],
     decision = "allow",
-    justification = "Routine docker compose operations. Container runtime escape is out of scope for exec policy.",
-    match = ["docker compose ps", "docker compose up -d"],
+    justification = "Read-only docker compose inspection.",
+    match = ["docker compose ps", "docker compose logs web"],
+)
+prefix_rule(
+    pattern = ["docker", "compose", ["up", "down", "run", "exec", "start", "stop", "restart", "rm", "kill", "build", "pull", "push", "create", "cp"]],
+    decision = "prompt",
+    justification = "Compose can delete volumes or mount the host from an edited compose file; ask first.",
+    match = ["docker compose up -d", "docker compose down --volumes"],
 )
 prefix_rule(
     pattern = ["docker", "pull"],
@@ -295,10 +305,15 @@ prefix_rule(
 # list only commands that genuinely need to leave it (network access, or
 # writes to tool caches outside the workspace). Local read-only tools (cat,
 # grep, ls, sed, ...) already run inside the sandbox without a prompt; allowing
-# them here would only let them bypass the profile's deny-read rules.
+# them here would only let them bypass the profile's deny-read rules. A
+# command that runs workspace-controlled code (git hooks, build backends) or
+# takes an arbitrary output path is a prompt rule, not an allow rule.
 prefix_rule(pattern=["git", "fetch", "--prune"], decision="allow")
-prefix_rule(pattern=["git", "pull", "--ff-only"], decision="allow")
-prefix_rule(pattern=["gh", "api", "user"], decision="allow")
+prefix_rule(
+    pattern = ["git", "pull", "--ff-only"],
+    decision = "prompt",
+    justification = "A fast-forward runs the post-merge hook, which reads the working-tree pre-commit config; ask first.",
+)
 prefix_rule(pattern=["gh", "auth", "status"], decision="allow")
 prefix_rule(pattern=["gh", "issue", ["list", "view", "status"]], decision="allow")
 prefix_rule(pattern=["gh", "label", "list"], decision="allow")
@@ -308,8 +323,9 @@ prefix_rule(pattern=["gh", "run", ["list", "view", "watch"]], decision="allow")
 prefix_rule(pattern=["gh", "search"], decision="allow")
 prefix_rule(pattern=["gh", "status"], decision="allow")
 prefix_rule(pattern=["gh", "workflow", ["list", "view"]], decision="allow")
-prefix_rule(pattern=["uv", "build", "--native-tls"], decision="allow")
-prefix_rule(pattern=["uv", "export"], decision="allow")
-prefix_rule(pattern=["uv", "lock"], decision="allow")
-prefix_rule(pattern=["uv", "sync", "--locked"], decision="allow")
-prefix_rule(pattern=["uv", "tree"], decision="allow")
+prefix_rule(
+    pattern = ["uv", ["build", "export", "lock", "sync", "tree"]],
+    decision = "prompt",
+    justification = "uv can run project build code or write to an arbitrary output path; ask first.",
+    match = ["uv build --native-tls", "uv export -o requirements.txt", "uv sync --locked"],
+)
