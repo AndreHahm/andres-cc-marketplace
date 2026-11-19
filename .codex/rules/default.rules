@@ -97,7 +97,7 @@ prefix_rule(
 # the mutating subcommands are listed instead. A subcommand in neither list
 # runs sandboxed and escalates through the normal approval path.
 prefix_rule(
-    pattern = ["docker", "compose", ["ps", "config", "logs"]],
+    pattern = ["docker", "compose", ["ps", "logs"]],
     decision = "allow",
     justification = "Read-only docker compose inspection.",
     match = ["docker compose ps", "docker compose logs web"],
@@ -175,9 +175,9 @@ prefix_rule(
     decision = "forbidden",
     justification = "Destructive clean operations can delete untracked work.",
 )
-# No blanket `git pull` rule: the strictest matching rule wins, so one would
-# override the `git pull --ff-only` allow below. A bare `git pull` matches
-# nothing, runs sandboxed without network, and Codex asks to escalate.
+# No blanket `git pull` rule: a bare `git pull` matches nothing, runs
+# sandboxed without network, and Codex asks to escalate. `git pull --ff-only`
+# prompts (see the allowlist section below).
 prefix_rule(
     pattern = ["git", "pull", ["--rebase", "-r", "--no-ff", "--squash", "--no-rebase"]],
     decision = "forbidden",
