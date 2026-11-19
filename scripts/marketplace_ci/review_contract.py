@@ -58,7 +58,7 @@ EXCEPTIONS_PATH = Path(__file__).with_name("review_exceptions.yaml")
 
 # The workflow cannot import this module, so its `npm install -g @openai/codex@<version>` line
 # is a second copy of this value; a test fails if the two differ.
-CODEX_CLI_VERSION = "0.147.0"
+CODEX_CLI_VERSION = "0.170.0"
 # The model is a repository variable, not a value: the workflow and the parity wrapper both read
 # the variable of this name, and an unset variable means "the Codex default".
 MODEL_VARIABLE = "CODEX_KIT_REVIEW_MODEL"
