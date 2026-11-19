@@ -308,7 +308,11 @@ prefix_rule(
 # them here would only let them bypass the profile's deny-read rules. A
 # command that runs workspace-controlled code (git hooks, build backends) or
 # takes an arbitrary output path is a prompt rule, not an allow rule.
-prefix_rule(pattern=["git", "fetch", "--prune"], decision="allow")
+prefix_rule(
+    pattern = ["git", "fetch", "--prune"],
+    decision = "prompt",
+    justification = "Trailing arguments such as --upload-pack can run a command; ask first.",
+)
 prefix_rule(
     pattern = ["git", "pull", "--ff-only"],
     decision = "prompt",
