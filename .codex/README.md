@@ -40,6 +40,7 @@ Important settings:
 - **`approval_policy = "on-request"`** -- Codex requests approval before stepping outside the sandbox; see [Sandboxing](#sandboxing) for the other values
 - **`approvals_reviewer = "auto_review"`** -- routes eligible approval requests to Codex's automatic reviewer instead of you: a model approves or denies them against the `[auto_review]` policy in `config.toml`. That policy lives in this repository, so editing it changes what gets approved. `forbidden` exec rules cannot be approved this way. Remove this line to approve escalations yourself
 - **`default_permissions = "ah-workspace"`** -- selects the custom AndreHahm sandbox profile: broad local reads, workspace/temp writes, no command network, deny-read rules for credentials and crypto wallets
+- **`allow_login_shell = false`** -- optional hardening from the [advanced config](https://learn.chatgpt.com/docs/config-file/config-advanced) docs: disallows login shells for shell tools
 - **`web_search = "cached"`** -- Codex's built-in web search caches responses to reduce token spend on repeated queries
 - **`project_doc_fallback_filenames = ["CLAUDE.md"]`** -- migration aid for repos that haven't renamed `CLAUDE.md` to `AGENTS.md`; lets Codex still read the file
 - **Hooks** wired to the one shipped script -- see [Hooks](#hooks)
