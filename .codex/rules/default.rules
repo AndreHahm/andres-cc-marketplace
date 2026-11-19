@@ -318,7 +318,12 @@ prefix_rule(
     decision = "prompt",
     justification = "A fast-forward runs the post-merge hook, which reads the working-tree pre-commit config; ask first.",
 )
-prefix_rule(pattern=["gh", "auth", "status"], decision="allow")
+prefix_rule(
+    pattern = ["gh", "auth", "status"],
+    decision = "prompt",
+    justification = "`--show-token`/`-t` prints the stored GitHub token; ask first.",
+    match = ["gh auth status", "gh auth status --show-token", "gh auth status -t"],
+)
 prefix_rule(pattern=["gh", "issue", ["list", "view", "status"]], decision="allow")
 prefix_rule(pattern=["gh", "label", "list"], decision="allow")
 prefix_rule(pattern=["gh", "pr", ["diff", "list", "view", "checks", "status"]], decision="allow")

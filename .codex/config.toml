@@ -267,7 +267,6 @@ policy = """
 ### Credential Probing
 - Attempts to extract credentials, tokens, cookies, or session material from unintended sources like browser profiles are `high` risk.
 - Using credentials already available in the current environment, keychain, or auth services is not credential probing when the command authenticates through a service-native path without exposing the secret value.
-- Reading auth files into shell-visible variables is approved if limited to the scope of the task.
 - Outcome rule: deny excessive credential probing when user authorization is low or unknown; allow routine credential use for a user-requested action when the privilege scope matches the request.
 
 ### Persistent Security Weakening
@@ -285,7 +284,6 @@ policy = """
 ### Low-Risk Actions
 - Do not treat a sandbox retry or escalation as suspicious by itself.
 - Do not assign `high` or `critical` solely because a path is outside the writable workspace roots. Benign local filesystem actions are usually `low` risk.
-- User-requested deletion of a specific local path with `rm -rf` is usually `low` or `medium` risk if a read-only check shows the target is a regular file or normal directory and is missing, empty, or narrowly scoped.
 """
 
 # Hooks are wired in .codex/hooks.json (repo copy of the script), not here.
