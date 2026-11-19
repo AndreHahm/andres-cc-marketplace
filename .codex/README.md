@@ -37,8 +37,8 @@ Important settings:
   `model_verbosity` remains unset so the model preset controls response length.
 - **`personality = "pragmatic"`** and **`model_reasoning_summary = "auto"`**:
   use the pragmatic communication preset and automatic reasoning summaries.
-- **`approval_policy = "on-request"`** -- Codex asks before stepping outside the sandbox; see [Sandboxing](#sandboxing) for the other values
-- **`approvals_reviewer = "auto_review"`** -- routes eligible approval prompts through Codex's automatic reviewer
+- **`approval_policy = "on-request"`** -- Codex requests approval before stepping outside the sandbox; see [Sandboxing](#sandboxing) for the other values
+- **`approvals_reviewer = "auto_review"`** -- routes eligible approval requests to Codex's automatic reviewer instead of you: a model approves or denies them against the `[auto_review]` policy in `config.toml`. That policy lives in this repository, so editing it changes what gets approved. `forbidden` exec rules cannot be approved this way. Remove this line to approve escalations yourself
 - **`default_permissions = "ah-workspace"`** -- selects the custom AndreHahm sandbox profile: broad local reads, workspace/temp writes, no command network, deny-read rules for credentials and crypto wallets
 - **`web_search = "cached"`** -- Codex's built-in web search caches responses to reduce token spend on repeated queries
 - **`project_doc_fallback_filenames = ["CLAUDE.md"]`** -- migration aid for repos that haven't renamed `CLAUDE.md` to `AGENTS.md`; lets Codex still read the file
@@ -87,7 +87,9 @@ approval_policy = "on-request"
 approvals_reviewer = "auto_review"
 ```
 
-That profile gives Codex broad local reads, workspace/temp writes, no command network, and deny-read rules for common credential stores, wallets, `.env`, `*.pem`, and `*.key`. The practical effect: Codex can inspect ordinary local files and edit the repo without prompting, while secrets, network use, and writes outside the workspace require approval or a different profile.
+That profile gives Codex broad local reads, workspace/temp writes, no command network, and deny-read rules for common credential stores and wallets anywhere, plus `.env`, `*.pem`, `*.key` and `secrets/` inside the workspace roots only (such files elsewhere on disk stay readable). The practical effect: Codex can inspect ordinary local files and edit the repo without prompting, while network use and writes outside the workspace need an approved escalation (by the automatic reviewer, see above) or a different profile.
+
+What stays on disk and in the environment: `[history] persistence = "save-all"` keeps every prompt in Codex's history file, `memories = true` lets Codex keep memories between sessions, and `[shell_environment_policy] inherit = "all"` passes your whole environment to commands, minus Codex's default exclusions for names containing `KEY`, `SECRET` or `TOKEN`. Change those three settings if prompts, commands or environment values must not persist.
 
 Do not set `sandbox_mode` in this config. If it appears in any active config layer, Codex uses that setting instead of `default_permissions` (see the [permissions](https://developers.openai.com/codex/permissions) docs).
 

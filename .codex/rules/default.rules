@@ -4,11 +4,13 @@
 # outside the sandbox; hooks and sandboxing still matter for in-sandbox commands.
 
 # System commands and shell utils
+# Prefix rules match whole tokens, so only common spellings are listed here;
+# the PreToolUse hook catches other combined flags such as `-rfv`.
 prefix_rule(
-    pattern = ["rm", ["-rf", "-fr", "-Rf", "-rF"]],
+    pattern = ["rm", ["-rf", "-fr", "-Rf", "-rF", "-fR", "-RF", "-FR", "-Fr", "-rfv", "-fRv", "-Rfv", "-vrf", "-vRf"]],
     decision = "forbidden",
     justification = "Use `trash` instead of recursive force deletion.",
-    match = ["rm -rf build", "rm -fr tmp"],
+    match = ["rm -rf build", "rm -fr tmp", "rm -fR tmp", "rm -rfv tmp"],
 )
 prefix_rule(
     pattern = ["rm", ["-r", "-R", "--recursive"], ["-f", "--force"]],
@@ -293,6 +295,28 @@ prefix_rule(
     pattern = ["gh", "api", "graphql"],
     decision = "prompt",
     justification = "GraphQL calls can run mutations; ask first.",
+)
+# `gh api` can reach what the forbidden gh rules block (workflow dispatch,
+# secrets, variables, repo administration). Every call asks; a method flag in
+# first position is forbidden outright. `gh api <path> -X DELETE` and `-f`
+# (implicit POST) still only ask: prefix rules cannot see later arguments.
+prefix_rule(
+    pattern = ["gh", "api"],
+    decision = "prompt",
+    justification = "REST calls can mutate repository state; ask first.",
+    match = ["gh api repos/o/r", "gh api repos/o/r -X DELETE"],
+)
+prefix_rule(
+    pattern = ["gh", "api", ["-X", "--method"], ["POST", "PUT", "PATCH", "DELETE", "post", "put", "patch", "delete"]],
+    decision = "forbidden",
+    justification = "Mutating REST calls must be run manually outside Codex.",
+    match = ["gh api -X DELETE repos/o/r", "gh api --method POST repos/o/r/dispatches"],
+)
+prefix_rule(
+    pattern = ["gh", "api", ["--method=POST", "--method=PUT", "--method=PATCH", "--method=DELETE", "-XPOST", "-XPUT", "-XPATCH", "-XDELETE"]],
+    decision = "forbidden",
+    justification = "Mutating REST calls must be run manually outside Codex.",
+    match = ["gh api --method=DELETE repos/o/r", "gh api -XPOST repos/o/r"],
 )
 prefix_rule(
     pattern = ["gh", "repo", ["delete", "archive", "rename"]],
