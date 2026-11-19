@@ -1,0 +1,315 @@
+# Codex exec policy rules.
+#
+# Copy to ~/.codex/rules/default.rules. Rules govern requests to run commands
+# outside the sandbox; hooks and sandboxing still matter for in-sandbox commands.
+
+# System commands and shell utils
+prefix_rule(
+    pattern = ["rm", ["-rf", "-fr", "-Rf", "-rF"]],
+    decision = "forbidden",
+    justification = "Use `trash` instead of recursive force deletion.",
+    match = ["rm -rf build", "rm -fr tmp"],
+)
+prefix_rule(
+    pattern = ["rm", ["-r", "-R", "--recursive"], ["-f", "--force"]],
+    decision = "forbidden",
+    justification = "Use `trash` instead of recursive force deletion.",
+    match = ["rm -r -f build", "rm --recursive --force tmp"],
+)
+prefix_rule(
+    pattern = ["rm", ["-f", "--force"], ["-r", "-R", "--recursive"]],
+    decision = "forbidden",
+    justification = "Use `trash` instead of recursive force deletion.",
+    match = ["rm -f -r build", "rm --force --recursive tmp"],
+)
+# PowerShell parameters can appear in any order, so only the leading-flag
+# forms can be forbidden; every other Remove-Item call asks first.
+prefix_rule(
+    pattern = [["Remove-Item", "ri", "del", "erase", "rd"], ["-Recurse", "-r", "-Force"]],
+    decision = "forbidden",
+    justification = "Recursive or forced deletion is not allowed from Codex.",
+    match = ["Remove-Item -Recurse -Force build", "ri -r tmp"],
+)
+prefix_rule(
+    pattern = [["Remove-Item", "ri", "del", "erase", "rd"]],
+    decision = "prompt",
+    justification = "Ask before deleting files from PowerShell.",
+    match = ["Remove-Item build -Recurse -Force"],
+)
+prefix_rule(
+    pattern = ["sudo"],
+    decision = "forbidden",
+    justification = "sudo is not allowed from Codex; run it manually.",
+    match = ["sudo make install"],
+)
+prefix_rule(
+    pattern = ["mkfs"],
+    decision = "forbidden",
+    justification = "Filesystem formatting commands are not allowed from Codex.",
+    match = ["mkfs /dev/disk1"],
+)
+prefix_rule(
+    pattern = ["dd"],
+    decision = "forbidden",
+    justification = "Raw disk write commands are not allowed from Codex.",
+    match = ["dd if=image.iso of=/dev/disk1"],
+)
+prefix_rule(
+    pattern = ["killall"],
+    decision = "forbidden",
+)
+prefix_rule(
+    pattern = ["shutdown"],
+    decision = "forbidden",
+)
+prefix_rule(
+    pattern = ["reboot"],
+    decision = "forbidden",
+)
+prefix_rule(
+    pattern=[["bash", "sh"], ["-lc", "-c"]],
+    decision="prompt",
+    justification="Shell wrappers can hide compound commands; require explicit approval.",
+)
+# External network and containers
+prefix_rule(
+    pattern = ["curl"],
+    decision = "prompt",
+    justification = "Ask before external network requests.",
+)
+prefix_rule(
+    pattern = ["wget"],
+    decision = "prompt",
+    justification = "Ask before external network requests.",
+)
+prefix_rule(
+    pattern = ["Invoke-WebRequest"],
+    decision = "prompt",
+    justification = "Ask before external network fetches.",
+)
+prefix_rule(
+    pattern = [["iwr", "irm", "Invoke-RestMethod"]],
+    decision = "prompt",
+    justification = "Ask before external network fetches.",
+)
+prefix_rule(
+    pattern = ["docker", "compose"],
+    decision = "allow",
+    justification = "Routine docker compose operations. Container runtime escape is out of scope for exec policy.",
+    match = ["docker compose ps", "docker compose up -d"],
+)
+prefix_rule(
+    pattern = ["docker", "pull"],
+    decision = "prompt",
+    justification = "Ask before downloading Docker images.",
+)
+prefix_rule(
+    pattern = ["docker", "run"],
+    decision = "prompt",
+    justification = "Ask before running Docker containers.",
+)
+# Git mutations
+prefix_rule(
+    pattern = ["git", "push", "--force"],
+    decision = "forbidden",
+    justification = "Do not force-push unless the user explicitly requested it.",
+    match = ["git push --force origin feature"],
+)
+prefix_rule(
+    pattern = ["git", "push", "-f"],
+    decision = "forbidden",
+    justification = "Do not force-push unless the user explicitly requested it.",
+    match = ["git push -f origin feature"],
+)
+prefix_rule(
+    pattern = ["git", "push", ["--force-with-lease", "--force-if-includes"]],
+    decision = "forbidden",
+    justification = "Do not force-push unless the user explicitly requested it.",
+    match = ["git push --force-with-lease origin feature"],
+)
+prefix_rule(
+    pattern = ["git", ["clean", "checkout", "restore", "rm", "config"]],
+    decision = "prompt",
+    justification = "These commands can discard work or change repository config; ask first.",
+    match = ["git clean -ffdx", "git checkout -- file", "git restore .", "git rm file", "git config user.name"],
+)
+prefix_rule(
+    pattern = ["git", "worktree", "remove"],
+    decision = "prompt",
+    justification = "Removing a worktree can discard its uncommitted work; ask first.",
+)
+prefix_rule(
+    pattern = ["git", "reset", "--hard"],
+    decision = "forbidden",
+    justification = "Do not discard work unless the user explicitly requested it.",
+    match = ["git reset --hard HEAD"],
+)
+prefix_rule(
+    pattern = ["git", "push", "origin", ["main", "master"]],
+    decision = "forbidden",
+    justification = "Use feature branches and PRs; do not push directly to main/master.",
+    match = ["git push origin main", "git push origin master"],
+)
+prefix_rule(
+    pattern = ["git", "push", "origin", "HEAD", ["--force", "--force-with-lease", "-f"]],
+    decision = "forbidden",
+    justification = "Force-pushing is prohibited even for the current task branch.",
+)
+prefix_rule(
+    pattern = ["git", "push", "--set-upstream", "origin", "HEAD", ["--force", "--force-with-lease", "-f"]],
+    decision = "forbidden",
+    justification = "Force-pushing is prohibited even while setting upstream.",
+)
+prefix_rule(
+    pattern = ["git", "clean", ["-f", "-fd", "-fdx", "-df", "-dfx", "-xf", "-xfd"]],
+    decision = "forbidden",
+    justification = "Destructive clean operations can delete untracked work.",
+)
+# No blanket `git pull` rule: the strictest matching rule wins, so one would
+# override the `git pull --ff-only` allow below. A bare `git pull` matches
+# nothing, runs sandboxed without network, and Codex asks to escalate.
+prefix_rule(
+    pattern = ["git", "pull", ["--rebase", "-r", "--no-ff", "--squash", "--no-rebase"]],
+    decision = "forbidden",
+    justification = "Merging or rebasing pulls must be run manually outside Codex.",
+    match = ["git pull --rebase", "git pull --no-ff origin main"],
+)
+prefix_rule(
+    pattern = ["git", "merge"],
+    decision = "forbidden",
+    justification = "This command must be run manually outside Codex.",
+)
+prefix_rule(
+    pattern = ["git", "push"],
+    decision = "prompt",
+    justification = "Ask before running git push.",
+)
+prefix_rule(
+    pattern = ["git", "rebase"],
+    decision = "forbidden",
+    justification = "This command must be run manually outside Codex.",
+)
+prefix_rule(
+    pattern = ["git", "commit", "--amend"],
+    decision = "forbidden",
+    justification = "Amending can rewrite already-published history.",
+)
+prefix_rule(
+    pattern = ["git", "commit"],
+    decision = "prompt",
+    justification = "Ask before running git commit.",
+)
+prefix_rule(
+    pattern = ["git", "reset"],
+    decision = "forbidden",
+    justification = "This command must be run manually outside Codex.",
+)
+prefix_rule(
+    pattern = ["git", "filter-branch"],
+    decision = "forbidden",
+    justification = "This command must be run manually outside Codex.",
+)
+prefix_rule(
+    pattern = ["git", "branch", "-D"],
+    decision = "forbidden",
+    justification = "This command must be run manually outside Codex.",
+)
+prefix_rule(
+    pattern = ["git", "branch", "-d"],
+    decision = "forbidden",
+    justification = "This command must be run manually outside Codex.",
+)
+prefix_rule(
+    pattern = ["git", "tag", "-d"],
+    decision = "forbidden",
+    justification = "This command must be run manually outside Codex.",
+)
+prefix_rule(
+    pattern = ["git", "reflog", "expire"],
+    decision = "forbidden",
+    justification = "This command must be run manually outside Codex.",
+)
+prefix_rule(
+    pattern = ["git", "reflog", "delete"],
+    decision = "forbidden",
+    justification = "This command must be run manually outside Codex.",
+)
+prefix_rule(
+    pattern = ["git", "stash"],
+    decision = "forbidden",
+    justification = "This command must be run manually outside Codex.",
+)
+prefix_rule(
+    pattern = ["git", "clone"],
+    decision = "forbidden",
+    justification = "This command must be run manually outside Codex.",
+)
+prefix_rule(
+    pattern = ["git", "cherry-pick"],
+    decision = "forbidden",
+    justification = "This command must be run manually outside Codex.",
+)
+prefix_rule(
+    pattern = ["git", "revert"],
+    decision = "forbidden",
+    justification = "This command must be run manually outside Codex.",
+)
+# GH cli commands
+prefix_rule(
+    pattern = ["gh", "workflow", "run"],
+    decision = "forbidden",
+    justification = "The owner starts workflows manually.",
+)
+prefix_rule(
+    pattern = ["gh", ["secret", "variable"]],
+    decision = "forbidden",
+    justification = "Secrets and variables are managed by the owner in GitHub.",
+)
+prefix_rule(
+    pattern = ["gh", "pr", ["create", "merge", "close"]],
+    decision = "forbidden",
+)
+prefix_rule(
+    pattern = ["gh", "issue", "close"],
+    decision = "prompt",
+    justification = "Ask before closing an issue.",
+)
+prefix_rule(
+    pattern = ["gh", "issue", ["create", "edit"]],
+    decision = "prompt",
+    justification = "Ask before creating or editing an issue.",
+)
+prefix_rule(
+    pattern = ["gh", "api", "graphql"],
+    decision = "prompt",
+    justification = "GraphQL calls can run mutations; ask first.",
+)
+prefix_rule(
+    pattern = ["gh", "repo", ["delete", "archive", "rename"]],
+    decision = "forbidden",
+    justification = "Repository administration must never be performed by an autonomous coding task.",
+)
+# Allowlist
+#
+# An `allow` rule runs its command OUTSIDE the sandbox without prompting, so
+# list only commands that genuinely need to leave it (network access, or
+# writes to tool caches outside the workspace). Local read-only tools (cat,
+# grep, ls, sed, ...) already run inside the sandbox without a prompt; allowing
+# them here would only let them bypass the profile's deny-read rules.
+prefix_rule(pattern=["git", "fetch", "--prune"], decision="allow")
+prefix_rule(pattern=["git", "pull", "--ff-only"], decision="allow")
+prefix_rule(pattern=["gh", "api", "user"], decision="allow")
+prefix_rule(pattern=["gh", "auth", "status"], decision="allow")
+prefix_rule(pattern=["gh", "issue", ["list", "view", "status"]], decision="allow")
+prefix_rule(pattern=["gh", "label", "list"], decision="allow")
+prefix_rule(pattern=["gh", "pr", ["diff", "list", "view", "checks", "status"]], decision="allow")
+prefix_rule(pattern=["gh", "repo", ["list", "view"]], decision="allow")
+prefix_rule(pattern=["gh", "run", ["list", "view", "watch"]], decision="allow")
+prefix_rule(pattern=["gh", "search"], decision="allow")
+prefix_rule(pattern=["gh", "status"], decision="allow")
+prefix_rule(pattern=["gh", "workflow", ["list", "view"]], decision="allow")
+prefix_rule(pattern=["uv", "build", "--native-tls"], decision="allow")
+prefix_rule(pattern=["uv", "export"], decision="allow")
+prefix_rule(pattern=["uv", "lock"], decision="allow")
+prefix_rule(pattern=["uv", "sync", "--locked"], decision="allow")
+prefix_rule(pattern=["uv", "tree"], decision="allow")
