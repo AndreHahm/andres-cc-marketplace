@@ -1594,7 +1594,7 @@ jobs:
           node-version: "20"
 
       - name: Install Codex CLI (pinned version, never floating latest)
-        run: npm install -g @openai/codex@0.147.0
+        run: npm install -g @openai/codex@0.170.0
 
       - name: Authenticate and smoke-check the Codex CLI
         env:
