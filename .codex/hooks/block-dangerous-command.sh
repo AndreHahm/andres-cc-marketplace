@@ -14,10 +14,16 @@ block() {
 command -v jq >/dev/null 2>&1 || block "jq is required by the command-policy hook."
 
 INPUT=$(cat)
-CMD=$(printf '%s' "${INPUT}" | jq -r '.tool_input.command // empty') ||
+CMD=$(jq -r '.tool_input.command // empty' <<<"${INPUT}") ||
     block "Could not parse the hook input."
 
 [[ -z "${CMD}" ]] && exit 0
+
+# Here-strings, not `printf | grep -q`: under pipefail, grep -q exiting early
+# can kill printf with SIGPIPE on a long command and turn a match into a miss.
+matches() {
+    grep -qiE "$1" <<<"${CMD}"
+}
 
 COMMAND_PREFIX='(^|;[[:space:]]*|&&[[:space:]]*|[|][|][[:space:]]*|[|][[:space:]]*)'
 PUSH_FORCE_RE='git[[:space:]]+push([^;&|]*)--force'
@@ -30,37 +36,41 @@ DIRECT_MAIN_RE+='|git[[:space:]]+push[^;&|]*:(refs/heads/)?(main|master)([[:spac
 FETCH_TO_SHELL_RE='(curl|wget|iwr|irm|invoke-webrequest|invoke-restmethod)[^|]*[|][[:space:]]*'
 FETCH_TO_SHELL_RE+='(bash|sh|zsh|iex|invoke-expression)([[:space:]]|$)'
 
-if printf '%s\n' "${CMD}" | grep -qiE "${COMMAND_PREFIX}rm[[:space:]]" &&
-    printf '%s\n' "${CMD}" | grep -qiE '(^|[[:space:]])-[a-zA-Z]*[rR]|--recursive' &&
-    printf '%s\n' "${CMD}" | grep -qiE '(^|[[:space:]])-[a-zA-Z]*[fF]|--force'; then
-    block "Use trash instead of rm -rf."
-fi
+# Check the flags of each rm invocation only, so `rm x && cp -rf a b` passes.
+RM_SEGMENTS=$(grep -oiE "${COMMAND_PREFIX}rm[[:space:]][^;&|]*" <<<"${CMD}" || true)
+while IFS= read -r segment; do
+    [[ -z "${segment}" ]] && continue
+    if grep -qiE '(^|[[:space:]])-[a-zA-Z]*[rR]|--recursive' <<<"${segment}" &&
+        grep -qiE '(^|[[:space:]])-[a-zA-Z]*[fF]|--force' <<<"${segment}"; then
+        block "Use trash instead of rm -rf."
+    fi
+done <<<"${RM_SEGMENTS}"
 
-if printf '%s\n' "${CMD}" | grep -qiE "${COMMAND_PREFIX}sudo([[:space:]]|$)"; then
+if matches "${COMMAND_PREFIX}sudo([[:space:]]|$)"; then
     block "Do not run sudo from Codex without explicit human approval."
 fi
 
-if printf '%s\n' "${CMD}" | grep -qiE "${COMMAND_PREFIX}mkfs([.[:alnum:]_-]*)([[:space:]]|$)"; then
+if matches "${COMMAND_PREFIX}mkfs([.[:alnum:]_-]*)([[:space:]]|$)"; then
     block "Refusing filesystem formatting commands."
 fi
 
-if printf '%s\n' "${CMD}" | grep -qiE "${COMMAND_PREFIX}dd([[:space:]]|$)"; then
+if matches "${COMMAND_PREFIX}dd([[:space:]]|$)"; then
     block "Refusing raw disk write command dd."
 fi
 
-if printf '%s\n' "${CMD}" | grep -qiE "${FETCH_TO_SHELL_RE}"; then
+if matches "${FETCH_TO_SHELL_RE}"; then
     block "Do not pipe downloaded scripts directly into a shell."
 fi
 
-if printf '%s\n' "${CMD}" | grep -qiE "${PUSH_FORCE_RE}"; then
+if matches "${PUSH_FORCE_RE}"; then
     block "Do not force-push unless the user explicitly requested it."
 fi
 
-if printf '%s\n' "${CMD}" | grep -qiE 'git[[:space:]]+reset[[:space:]]+--hard'; then
+if matches 'git[[:space:]]+reset[[:space:]]+--hard'; then
     block "Do not run git reset --hard unless the user explicitly requested it."
 fi
 
-if printf '%s\n' "${CMD}" | grep -qiE "${DIRECT_MAIN_RE}"; then
+if matches "${DIRECT_MAIN_RE}"; then
     block "Use feature branches and PRs; do not push directly to main/master."
 fi
 

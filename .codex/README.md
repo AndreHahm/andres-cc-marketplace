@@ -89,7 +89,7 @@ approvals_reviewer = "auto_review"
 
 That profile gives Codex broad local reads, workspace/temp writes, no command network, and deny-read rules for common credential stores, wallets, `.env`, `*.pem`, and `*.key`. The practical effect: Codex can inspect ordinary local files and edit the repo without prompting, while secrets, network use, and writes outside the workspace require approval or a different profile.
 
-Do not set `sandbox_mode` in this config. If it appears in any active config layer, Codex uses that setting instead of `default_permissions`.
+Do not set `sandbox_mode` in this config. If it appears in any active config layer, Codex uses that setting instead of `default_permissions` (see the [permissions](https://developers.openai.com/codex/permissions) docs).
 
 Use `:danger-full-access` or `approval_policy = "never"` only inside an external sandbox such as a devcontainer or disposable VPS or as fallback on Windows (if the sandbox-mode will never work). The shared default should stay interactive and sandboxed.
 
@@ -130,6 +130,23 @@ Install:
 mkdir -p ~/.codex/hooks
 cp hooks/*.sh ~/.codex/hooks/
 chmod +x ~/.codex/hooks/*.sh
+```
+
+Copying the script does not register it. Add a `PreToolUse` entry to `~/.codex/hooks.json` that points at the installed copy (the project `hooks.json` resolves the repository copy, so it does not apply to other repositories):
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "^Bash$",
+        "hooks": [
+          { "type": "command", "command": "bash \"$HOME/.codex/hooks/block-dangerous-command.sh\"", "timeout": 10 }
+        ]
+      }
+    ]
+  }
+}
 ```
 
 In this repository, `hooks.json` wires the hook up to the repo copy (resolved via `git rev-parse --show-toplevel`), so nothing needs to be copied for project use. Each hook has a `timeout` (seconds, default 600) and an optional `statusMessage` shown in the TUI while it runs.
