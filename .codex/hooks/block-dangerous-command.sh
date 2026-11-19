@@ -26,13 +26,15 @@ matches() {
 }
 
 COMMAND_PREFIX='(^|;[[:space:]]*|&&[[:space:]]*|[|][|][[:space:]]*|[|][[:space:]]*)'
-PUSH_FORCE_RE='git[[:space:]]+push([^;&|]*)--force'
-PUSH_FORCE_RE+='|git[[:space:]]+push([^;&|]*)[[:space:]]-f([[:space:]]|$)'
+# `git push`, also after git's global options (`git -C repo push`, `git -c k=v push`).
+GIT_PUSH='git([[:space:]]+-[Cc][[:space:]]+[^[:space:];&|]+|[[:space:]]+-[^[:space:];&|]+)*[[:space:]]+push'
+PUSH_FORCE_RE="${GIT_PUSH}([^;&|]*)--force"
+PUSH_FORCE_RE+="|${GIT_PUSH}([^;&|]*)[[:space:]]-f([[:space:]]|\$)"
 # A leading `+` on a refspec (`git push origin +main`) is also a force push.
-PUSH_FORCE_RE+='|git[[:space:]]+push([^;&|]*)[[:space:]][+]'
-DIRECT_MAIN_RE='git[[:space:]]+push([^;&|]*[[:space:]])?'
+PUSH_FORCE_RE+="|${GIT_PUSH}([^;&|]*)[[:space:]][+]"
+DIRECT_MAIN_RE="${GIT_PUSH}([^;&|]*[[:space:]])?"
 DIRECT_MAIN_RE+='(origin[[:space:]]+)?[+]?(main|master)([[:space:]]|$)'
-DIRECT_MAIN_RE+='|git[[:space:]]+push[^;&|]*:(refs/heads/)?(main|master)([[:space:]]|$)'
+DIRECT_MAIN_RE+="|${GIT_PUSH}[^;&|]*:(refs/heads/)?(main|master)([[:space:]]|\$)"
 FETCH_TO_SHELL_RE='(curl|wget|iwr|irm|invoke-webrequest|invoke-restmethod)[^|]*[|][[:space:]]*'
 FETCH_TO_SHELL_RE+='(bash|sh|zsh|iex|invoke-expression)([[:space:]]|$)'
 
@@ -41,7 +43,7 @@ FETCH_TO_SHELL_RE+='(bash|sh|zsh|iex|invoke-expression)([[:space:]]|$)'
 # (`/bin/rm`) counts too; the wrapper's own options are checked with it.
 RM_WRAPPER='(xargs|command|builtin|env|nice|nohup|time|exec|timeout|doas)'
 RM_RE="${COMMAND_PREFIX}(${RM_WRAPPER}[[:space:]]([^;&|]*[[:space:]])?)?"
-RM_RE+='([^[:space:];&|]*/)?rm[[:space:]][^;&|]*'
+RM_RE+="([^[:space:];&|]*/)?[\"']?rm[\"']?[[:space:]][^;&|]*"
 RM_SEGMENTS=$(grep -oiE "${RM_RE}" <<<"${CMD}" || true)
 while IFS= read -r segment; do
     [[ -z "${segment}" ]] && continue

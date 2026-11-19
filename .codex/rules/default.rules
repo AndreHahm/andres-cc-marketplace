@@ -268,9 +268,19 @@ prefix_rule(
 )
 # GH cli commands
 prefix_rule(
-    pattern = ["gh", "workflow", "run"],
+    pattern = ["gh", "workflow", ["run", "enable", "disable"]],
     decision = "forbidden",
-    justification = "The owner starts workflows manually.",
+    justification = "The owner starts and toggles workflows manually.",
+)
+prefix_rule(
+    pattern = ["gh", "run", ["rerun", "cancel", "delete"]],
+    decision = "forbidden",
+    justification = "The owner reruns and cancels workflow runs manually.",
+)
+prefix_rule(
+    pattern = ["gh", "auth", "token"],
+    decision = "forbidden",
+    justification = "Prints the stored GitHub token.",
 )
 prefix_rule(
     pattern = ["gh", ["secret", "variable"]],
@@ -319,7 +329,7 @@ prefix_rule(
     match = ["gh api --method=DELETE repos/o/r", "gh api -XPOST repos/o/r"],
 )
 prefix_rule(
-    pattern = ["gh", "repo", ["delete", "archive", "rename"]],
+    pattern = ["gh", "repo", ["delete", "archive", "rename", "edit"]],
     decision = "forbidden",
     justification = "Repository administration must never be performed by an autonomous coding task.",
 )

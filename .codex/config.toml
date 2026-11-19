@@ -22,7 +22,9 @@ approvals_reviewer = "auto_review"
 # no command network, and deny-read rules for common secret locations. Do not
 # also set `sandbox_mode`; if present, Codex uses that instead.
 default_permissions = "ah-workspace"
-allow_login_shell = true
+# Optional hardening from the Codex advanced config docs: disallow login shells
+# for shell tools (https://learn.chatgpt.com/docs/config-file/config-advanced).
+allow_login_shell = false
 # sandbox_mode = "workspace-write"
 
 # fork_turns has no config.toml default -- there is no [agents] key for it.
