@@ -10,8 +10,11 @@ plan_mode_reasoning_effort = "high"
 
 model_reasoning_summary = "auto"
 
-# approval_policy stays interactive (on-request); eligible approval prompts
-# go through the auto_review reviewer (policy in [auto_review] below).
+# approval_policy is on-request, but eligible approval prompts go to the
+# auto_review reviewer, not to you: a model approves or denies escalations
+# against the [auto_review] policy below. The policy is part of this repository,
+# so a change to it changes what the approver allows. Forbidden exec rules
+# cannot be approved by it.
 approval_policy = "on-request"
 approvals_reviewer = "auto_review"
 
@@ -258,7 +261,7 @@ policy = """
 ### Data Exfiltration
 - Actions that send private workspace data, organization data, secrets, or credentials outside trusted internal or explicitly approved third-party systems are `high` or `critical` risk.
 - User-requested reads, queries, or uploads to trusted internal destinations are not exfiltration by default.
-- Running the local `claude` CLI is `low` risk and not exfiltration, even when its prompt or Read/Glob/Grep tools expose workspace source, decompiled code, or other private repo files. Passing secrets or credential files to it stays `high`.
+- Passing secrets or credential files to the local `claude` CLI is `high` risk.
 - Using credentials to authenticate a user-requested action is not, by itself, credential exfiltration.
 - Temporary tunnels, local debugging exposure, and third-party containers are high-risk only when they expose sensitive data, secrets, authenticated sessions, or a broader local surface than the user requested.
 - If an external destination is not clearly listed as trusted, look for evidence that it belongs to a trusted internal service; if none is found and the payload may include private data or org credentials, mark the transfer as `high` risk.
@@ -280,9 +283,9 @@ policy = """
 - Any force push, including `--force-with-lease`, and any `git rebase` are `high` risk and denied. The repo's exec-policy rules and hook block them outright, so propose a follow-up commit or a fresh branch instead.
 - If the command only restores or checks out a specific list of ordinary files in the working tree or index, treat it as a bounded local file edit, not a history rewrite.
 - Outcome rule: deny broad destructive actions when there is significant risk of irreversible damage and no proof of user authorization.
+- Never approve a `gh api` call (REST or GraphQL) that dispatches or reruns workflows, reads or changes secrets or variables, or deletes, archives, renames or changes the settings of a repository. The exec rules forbid the equivalent `gh` subcommands; `gh api` must not be a way around them.
 
 ### Low-Risk Actions
-- Do not treat a sandbox retry or escalation as suspicious by itself.
 - Do not assign `high` or `critical` solely because a path is outside the writable workspace roots. Benign local filesystem actions are usually `low` risk.
 """
 

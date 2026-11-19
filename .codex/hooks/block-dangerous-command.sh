@@ -37,7 +37,12 @@ FETCH_TO_SHELL_RE='(curl|wget|iwr|irm|invoke-webrequest|invoke-restmethod)[^|]*[
 FETCH_TO_SHELL_RE+='(bash|sh|zsh|iex|invoke-expression)([[:space:]]|$)'
 
 # Check the flags of each rm invocation only, so `rm x && cp -rf a b` passes.
-RM_SEGMENTS=$(grep -oiE "${COMMAND_PREFIX}rm[[:space:]][^;&|]*" <<<"${CMD}" || true)
+# An rm behind a common wrapper (`xargs rm -rf`, `command rm`) or given by path
+# (`/bin/rm`) counts too; the wrapper's own options are checked with it.
+RM_WRAPPER='(xargs|command|builtin|env|nice|nohup|time|exec|timeout|doas)'
+RM_RE="${COMMAND_PREFIX}(${RM_WRAPPER}[[:space:]]([^;&|]*[[:space:]])?)?"
+RM_RE+='([^[:space:];&|]*/)?rm[[:space:]][^;&|]*'
+RM_SEGMENTS=$(grep -oiE "${RM_RE}" <<<"${CMD}" || true)
 while IFS= read -r segment; do
     [[ -z "${segment}" ]] && continue
     if grep -qiE '(^|[[:space:]])-[a-zA-Z]*[rR]|--recursive' <<<"${segment}" &&
