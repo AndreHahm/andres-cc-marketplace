@@ -1,7 +1,7 @@
 # .codex/config.toml
 
 # Root-agent defaults.
-model = "gpt-5.6-terra"
+model = "gpt-6.1-terra"
 model_reasoning_effort = "medium"
 personality = "pragmatic"
 
@@ -9,15 +9,18 @@ personality = "pragmatic"
 plan_mode_reasoning_effort = "high"
 
 model_reasoning_summary = "auto"
-model_verbosity = "medium"
 
-# approval_policy stays interactive (on-request); sandbox_mode is
-# deliberately permissive (workspace-write, not the documented "read-only"
-# default) because this session needs write access to actually do its work.
-# Preserve your existing values if preferred; these settings do not affect
-# context hydration.
+# approval_policy stays interactive (on-request); eligible approval prompts
+# go through the auto_review reviewer (policy in [auto_review] below).
 approval_policy = "on-request"
-sandbox_mode = "workspace-write"
+approvals_reviewer = "auto_review"
+
+# AndreHahm workspace profile: broad local reads, workspace/temp writes,
+# no command network, and deny-read rules for common secret locations. Do not
+# also set `sandbox_mode`; if present, Codex uses that instead.
+default_permissions = "ah-workspace"
+allow_login_shell = true
+# sandbox_mode = "workspace-write"
 
 # fork_turns has no config.toml default -- there is no [agents] key for it.
 # Mechanically: a spawn_agent call with no explicit fork_turns defaults to
@@ -104,14 +107,21 @@ Whenever Haiku model is requested, Codex should use Luna instead.
 # effect while reading as a real, working restriction to anyone who checks it
 # in. If this is genuinely needed, set it in ~/.codex/config.toml instead.
 
+web_search = "cached"
 project_root_markers = [".git"]
+project_doc_max_bytes = 32768
+project_doc_fallback_filenames = ["CLAUDE.md"]
 
 [features]
-# multi_agent duplicates [agents].enabled below from a newer "Centralized Feature Flags"
-# surface (per official config docs, which call [features] the "preferred" location).
-# Whether the two overlap, are independent, or one supersedes the other is unconfirmed by
-# any fetched doc -- kept both defensively rather than assuming one makes the other a no-op.
-multi_agent = true
+# multi_agent_v2 replaces the deprecated multi_agent flag (stable in Codex 0.170 per
+# `codex features list`). Whether it overlaps with [agents].enabled below is unconfirmed
+# by any fetched doc -- kept both defensively.
+multi_agent_v2 = true
+hooks = true
+unified_exec = true
+memories = true
+fast_mode = false
+goals = false
 
 [agents]
 enabled = true
@@ -128,7 +138,7 @@ enabled = true
 # (found live, cross-model-review, 2026-09-02). An ad-hoc spawn with no per-agent file
 # and no explicit override still resolves correctly without a default here: it falls
 # through to parent session values, which for a spawn from this root session is the
-# same gpt-5.6-terra set above anyway.
+# same gpt-6.1-terra set above anyway.
 
 # At most two spawned-agent threads may be open concurrently.
 # This excludes the primary/root thread.
@@ -142,3 +152,140 @@ interrupt_message = true
 # document exactly what privilege this grants (unverified as of 2026-09-02) --
 # kept as a known, accepted tradeoff for this session's actual Windows needs.
 sandbox = "elevated"
+
+[shell_environment_policy]
+inherit = "all"
+ignore_default_excludes = false
+exclude = []
+set = {}
+include_only = []
+
+[analytics]
+enabled = false
+
+[feedback]
+enabled = false
+
+[history]
+persistence = "save-all"
+
+[tui]
+notifications = true
+notification_condition = "unfocused"
+animations = true
+show_tooltips = true
+status_line = ["model-with-reasoning", "context-remaining", "current-dir", "git-branch", "pull-request-number", "fast-mode"]
+status_line_use_colors = true
+terminal_title = ["spinner", "project", "git-branch"]
+
+[permissions.ah-workspace]
+description = "Workspace access with sensitive files denied and network disabled."
+extends = ":workspace"
+
+[permissions.ah-workspace.filesystem]
+glob_scan_max_depth = 5
+":root" = "read"
+":tmpdir" = "write"
+"~/.ssh/**" = "deny"
+"~/.gnupg/**" = "deny"
+"~/.aws/**" = "deny"
+"~/.azure/**" = "deny"
+"~/.config/gh/**" = "deny"
+"~/.git-credentials" = "deny"
+"~/.docker/config.json" = "deny"
+"~/.kube/**" = "deny"
+"~/.npmrc" = "deny"
+"~/.npm/**" = "deny"
+"~/.pypirc" = "deny"
+"~/.gem/credentials" = "deny"
+"~/.netrc" = "deny"
+"~/.config/gcloud/**" = "deny"
+"~/.codex/auth.json" = "deny"
+"~/.claude/.credentials.json" = "deny"
+# Windows credential locations
+"~/AppData/Roaming/GitHub CLI/**" = "deny"
+"~/AppData/Roaming/Microsoft/Credentials/**" = "deny"
+"~/AppData/Local/Microsoft/Credentials/**" = "deny"
+"~/Library/Keychains/**" = "deny"
+"~/Library/Application Support/**/metamask*/**" = "deny"
+"~/Library/Application Support/**/electrum*/**" = "deny"
+"~/Library/Application Support/**/exodus*/**" = "deny"
+"~/Library/Application Support/**/phantom*/**" = "deny"
+"~/Library/Application Support/**/solflare*/**" = "deny"
+
+[permissions.ah-workspace.filesystem.":workspace_roots"]
+"." = "write"
+"**/.env" = "deny"
+"**/.env.*" = "deny"
+"**/.env.prod" = "deny"
+"**/.env.test" = "deny"
+"**/.env.dev" = "deny"
+".env.sample" = "write"
+".env.example" = "write"
+".env.template" = "write"
+"**/*.pem" = "deny"
+"**/*.key" = "deny"
+"**/secrets/**" = "deny"
+
+[permissions.ah-workspace.network]
+enabled = false
+
+[auto_review]
+policy = """
+## Environment
+**Organization**: AndreHahm,
+**Primary use of Codex**: software development,
+**Repository visibility**: PUBLIC (verified via `gh repo view AndreHahm/andres-cc-marketplace`),
+**Internal sharing / snippet hosting**: None configured — treat public paste/gist services as outside the trust boundary,
+**Org-specific CLIs**: None configured,
+**Secrets management**: GitHub Actions repository secrets (e.g. OPENAI_API_KEY used by marketplace-ci.yml); local credentials excluded from version control via .gitignore (.env, .env.*, with .env.example allowed),
+**CI/CD deploy targets**: None configured — marketplace-ci.yml runs lint/audit checks and a Codex-dispatched review; no deployment step,
+**Network posture**: None configured,
+**Protected deployment namespaces / environments**: None configured — fall back to the Sensitive remote targets heuristic,
+**Data retention / declassification**: None configured,
+**Trusted repo**: The git repository the agent started in (its working directory) and its configured remote(s). When the repo's public/private visibility is given — by the Repository visibility entry or the user's own message — use it to scope what is OK to commit or push there: confidential material is fine in a private repo; in a public one, only that repo's own work is — and content ported, repointed, or first read from outside this session's repo is not its own work, whoever directed the port. Visibility scopes confidential material only: secrets and sensitive data (personal & entrusted) are never cleared into any repo by its visibility (see Definitions).,
+**Source control**: The trusted repo (github.com/AndreHahm/andres-cc-marketplace) and its remote(s) only — no additional orgs configured,
+**Trusted internal domains**: None configured,
+**Trusted cloud buckets**: None configured,
+**Key internal services**: None configured,
+**Internal package registry**: None configured — no npm/package publish step present in CI,
+**Default / protected branches**: main (the protected default branch; git-kit rules treat it as such),
+**Sensitive data locations & audiences**: any file or store holding personal data, confidential business data, credentials, regulated data, or similarly sensitive material; preserve exact handles when known and share only with audiences cleared at the [named+specifics] bar — note: plugins/analysis-kit/scripts/redact_secrets.py present, suggesting secret-redaction tooling in this repo,
+**Sensitive remote targets**: any namespace, host, or container whose name carries `prod` or `production` as a whole word or name segment (hyphen/underscore/dot-delimited — e.g. matches `prod-db`, not `producer`),
+**Protected IaC scopes**: IAM, RBAC, networking, quota, and node-pool resources; anything whose name or tag carries `prod` or `production` as a whole word or name segment
+
+## Tenant Risk Taxonomy and Allow/Deny Rules
+### Data Exfiltration
+- Actions that send private workspace data, organization data, secrets, or credentials outside trusted internal or explicitly approved third-party systems are `high` or `critical` risk.
+- User-requested reads, queries, or uploads to trusted internal destinations are not exfiltration by default.
+- Running the local `claude` CLI is `low` risk and not exfiltration, even when its prompt or Read/Glob/Grep tools expose workspace source, decompiled code, or other private repo files. Passing secrets or credential files to it stays `high`.
+- Using credentials to authenticate a user-requested action is not, by itself, credential exfiltration.
+- Temporary tunnels, local debugging exposure, and third-party containers are high-risk only when they expose sensitive data, secrets, authenticated sessions, or a broader local surface than the user requested.
+- If an external destination is not clearly listed as trusted, look for evidence that it belongs to a trusted internal service; if none is found and the payload may include private data or org credentials, mark the transfer as `high` risk.
+- Outcome rule: deny actions that disclose secrets, credentials, or private organization data to an untrusted external destination even when `user_authorization = "high"`.
+
+### Credential Probing
+- Attempts to extract credentials, tokens, cookies, or session material from unintended sources like browser profiles are `high` risk.
+- Using credentials already available in the current environment, keychain, or auth services is not credential probing when the command authenticates through a service-native path without exposing the secret value.
+- Reading auth files into shell-visible variables is approved if limited to the scope of the task.
+- Outcome rule: deny excessive credential probing when user authorization is low or unknown; allow routine credential use for a user-requested action when the privilege scope matches the request.
+
+### Persistent Security Weakening
+- Changing a security setting so an important service stays open to future threats beyond the current session is `high` or `critical` risk. Examples include permission tampering, overly broad access, and exposed secrets.
+- Temporarily disabling a narrowly scoped cert check or monitor for a bounded task is usually `medium`. Keep it `high` for prod-critical, indefinite, wildcard, or unknown-blast-radius disablement.
+- Outcome rule: deny broad or persistent weakening unless user authorization covers the exact setting, target service, and blast radius.
+
+### Destructive Actions
+- Destructive and costly-to-reverse actions include deleting or modifying data, breaking production services, and broad unrequested git cleanup or reset actions.
+- Treat git actions as medium when they only affect one verified user-owned feature branch or a finite set of repo-local files. Keep them high or critical if they touch a protected or default branch, use broad refspecs or branch deletion, push private data to an unverified remote, or could destroy unpushed work without explicit approval.
+- Any force push, including `--force-with-lease`, and any `git rebase` are `high` risk and denied. The repo's exec-policy rules and hook block them outright, so propose a follow-up commit or a fresh branch instead.
+- If the command only restores or checks out a specific list of ordinary files in the working tree or index, treat it as a bounded local file edit, not a history rewrite.
+- Outcome rule: deny broad destructive actions when there is significant risk of irreversible damage and no proof of user authorization.
+
+### Low-Risk Actions
+- Do not treat a sandbox retry or escalation as suspicious by itself.
+- Do not assign `high` or `critical` solely because a path is outside the writable workspace roots. Benign local filesystem actions are usually `low` risk.
+- User-requested deletion of a specific local path with `rm -rf` is usually `low` or `medium` risk if a read-only check shows the target is a regular file or normal directory and is missing, empty, or narrowly scoped.
+"""
+
+# Hooks are wired in .codex/hooks.json (repo copy of the script), not here.
