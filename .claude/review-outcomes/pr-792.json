@@ -1,0 +1,102 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4633095445",
+      "note": "Fixed in round 1 (81935f36 / fcafb5e6), verified locally",
+      "pr": 792,
+      "recorded_at": "2026-11-19T18:54:04+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4633105039",
+      "note": "Fixed in round 1 (81935f36 / fcafb5e6), verified locally",
+      "pr": 792,
+      "recorded_at": "2026-11-19T18:54:05+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4633105225",
+      "note": "Fixed in round 1 (81935f36 / fcafb5e6), verified locally",
+      "pr": 792,
+      "recorded_at": "2026-11-19T18:54:05+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4633105407",
+      "note": "Fixed in round 1 (81935f36 / fcafb5e6), verified locally",
+      "pr": 792,
+      "recorded_at": "2026-11-19T18:54:04+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4633105958",
+      "note": "Fixed in round 1 (81935f36 / fcafb5e6), verified locally",
+      "pr": 792,
+      "recorded_at": "2026-11-19T18:54:06+00:00"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "4633106151",
+      "note": "CI never trusts the checkout, so Codex ignores the project config there; checked with 0.147.0 and an untrusted CODEX_HOME",
+      "pr": 792,
+      "recorded_at": "2026-11-19T18:54:07+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4633106387",
+      "note": "Fixed in round 1 (81935f36 / fcafb5e6), verified locally",
+      "pr": 792,
+      "recorded_at": "2026-11-19T18:54:06+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4633106582",
+      "note": "Fixed in round 1 (81935f36 / fcafb5e6), verified locally",
+      "pr": 792,
+      "recorded_at": "2026-11-19T18:54:06+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4633518434",
+      "note": "Round 2, fixed or documented in 9ea6fc93",
+      "pr": 792,
+      "recorded_at": "2026-11-19T19:29:13+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4633518598",
+      "note": "Round 2, fixed or documented in 9ea6fc93",
+      "pr": 792,
+      "recorded_at": "2026-11-19T19:29:13+00:00"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "4633518737",
+      "note": "CI never trusts the project and holds no hook trust; local residual disclosed in the reply",
+      "pr": 792,
+      "recorded_at": "2026-11-19T19:29:14+00:00"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "4633518916",
+      "note": "CI never trusts the project and holds no hook trust; local residual disclosed in the reply",
+      "pr": 792,
+      "recorded_at": "2026-11-19T19:29:14+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4633519154",
+      "note": "Round 2, fixed or documented in 9ea6fc93",
+      "pr": 792,
+      "recorded_at": "2026-11-19T19:29:13+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4633949990",
+      "note": "Round 3, fixed in ced78114",
+      "pr": 792,
+      "recorded_at": "2026-11-19T20:04:00+00:00"
+    }
+  ]
+}
