@@ -1,0 +1,13 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4642487874",
+      "line": 113,
+      "note": "Untracked symlinks now count as one line and special files are skipped; fixed in 7956d955.",
+      "path": ".claude/statusline.sh",
+      "pr": 799,
+      "recorded_at": "2026-11-20T12:55:15+00:00"
+    }
+  ]
+}
