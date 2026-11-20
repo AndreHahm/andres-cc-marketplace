@@ -216,16 +216,11 @@ function danglingAncestor(canonicalEntry, canonicalRoot) {
 // 100644 and 100755 qualify: a deleted symlink is refused, since nothing
 // shows where it pointed (PR #805 review).
 const REGULAR_FILE_MODES = new Set(["100644", "100755"]);
-function fileAtBase(canonicalRoot, base, canonicalEntry) {
-  if (!base) return null;
-  const relative = path.relative(canonicalRoot, canonicalEntry);
-  if (relative === "" || path.isAbsolute(relative) || relative === ".." || relative.startsWith(".." + path.sep)) {
-    return null;
-  }
-  const posixPath = relative.split(path.sep).join("/");
-  const slash = posixPath.lastIndexOf("/");
-  const parentDir = slash === -1 ? "" : posixPath.slice(0, slash);
-  const name = posixPath.slice(slash + 1);
+
+// Lists one base directory as a Map of exact name -> { mode, type }, or null
+// when the lookup fails. Callers cache the result per directory for one
+// dispatch, so deleting many files from one directory runs git once.
+function listBaseDirectory(canonicalRoot, base, parentDir) {
   let listing;
   try {
     // --full-tree keeps the listing independent of cwd; maxBuffer matches
@@ -241,14 +236,35 @@ function fileAtBase(canonicalRoot, base, canonicalEntry) {
   } catch {
     return null;
   }
-  // -z records are "<mode> <type> <object>\t<name>", the name unquoted.
+  const entries = new Map();
+  // -z records are "<mode> <type> <object>\t<name>", the name unquoted. The
+  // first record of a name wins, as a linear scan of the listing would.
   for (const record of listing.split("\0")) {
     const tab = record.indexOf("\t");
-    if (tab === -1 || record.slice(tab + 1) !== name) continue;
+    if (tab === -1) continue;
+    const name = record.slice(tab + 1);
+    if (entries.has(name)) continue;
     const [mode, type] = record.slice(0, tab).split(" ");
-    return type === "blob" && REGULAR_FILE_MODES.has(mode) ? posixPath : null;
+    entries.set(name, { mode, type });
   }
-  return null;
+  return entries;
+}
+
+// `listings` caches listBaseDirectory results by parent directory for one
+// checkRepositoryBoundary call (one base); it never changes which path passes.
+function fileAtBase(canonicalRoot, base, canonicalEntry, listings = new Map()) {
+  if (!base) return null;
+  const relative = path.relative(canonicalRoot, canonicalEntry);
+  if (relative === "" || path.isAbsolute(relative) || relative === ".." || relative.startsWith(".." + path.sep)) {
+    return null;
+  }
+  const posixPath = relative.split(path.sep).join("/");
+  const slash = posixPath.lastIndexOf("/");
+  const parentDir = slash === -1 ? "" : posixPath.slice(0, slash);
+  const name = posixPath.slice(slash + 1);
+  if (!listings.has(parentDir)) listings.set(parentDir, listBaseDirectory(canonicalRoot, base, parentDir));
+  const entry = listings.get(parentDir)?.get(name);
+  return entry && entry.type === "blob" && REGULAR_FILE_MODES.has(entry.mode) ? posixPath : null;
 }
 
 // Returns { failure } on a rejected entry, else { failure: null, deleted },
@@ -258,6 +274,7 @@ function checkRepositoryBoundary(targetPaths, repoRoot) {
   const canonicalRoot = canonicalizeWithAncestorFallback(repoRoot);
   const deleted = [];
   let base;
+  const baseListings = new Map();
   for (const entry of targetPaths) {
     const resolvedEntry = path.resolve(repoRoot, entry);
     const canonicalEntry = canonicalizeWithAncestorFallback(resolvedEntry);
@@ -291,7 +308,7 @@ function checkRepositoryBoundary(targetPaths, repoRoot) {
         return { failure: typedFailure("target_path_not_found", `target path is under a symlink whose target does not exist: ${entry}`) };
       }
       if (base === undefined) base = resolveTrustedBase(canonicalRoot);
-      const basePath = fileAtBase(canonicalRoot, base, canonicalEntry);
+      const basePath = fileAtBase(canonicalRoot, base, canonicalEntry, baseListings);
       if (basePath === null) {
         return {
           failure: typedFailure(
