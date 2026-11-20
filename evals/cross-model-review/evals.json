@@ -140,7 +140,7 @@
       "id": 20,
       "name": "Optional models: egress question and re-check",
       "prompt": "Read plugins/git-kit/skills/cross-model-review/SKILL.md and plugins/git-kit/skills/cross-model-review/references/optional-models.md (read the files; do not use the Skill tool). Do not run anything and do not dispatch any model -- describe what the skill tells you to do, step by step, with the exact questions you would ask. agy and pi both passed their dry runs (agy: recipient 'Google (Antigravity)', model gemini-4-argon-high, reach 'none (plan mode, sandbox)'; pi: recipient 'NVIDIA', model nvidia/nvidia/nemotron-3-ultra-550b-a55b, reach 'none (--no-tools)'). There are 2 batches; DISPATCHER_TOUCHED=1. Write the egress confirmation you would ask. Then: immediately before agy's first real dispatch, the locator printed a different dispatcher path than before. What do you do?",
-      "expected_output": "One AskUserQuestion call, one question per vendor, each quoting recipient, model and reach, target paths of both batches, dispatch count (4 per vendor: two per batch), that the diff leaves the machine, and the DISPATCHER_TOUCHED disclosure; options send/skip. Real dispatches pass the dry run's model as --model. Changed dispatcher: drop agy for the run and record why; never dispatch on the old result.",
+      "expected_output": "One AskUserQuestion call, one question per vendor, each quoting recipient, model and reach, target paths of both batches, dispatch count (4 per vendor: two per batch), that the diff leaves the machine, and the DISPATCHER_TOUCHED disclosure; options send/skip. Real dispatches pass the dry run's model as --model. Changed dispatcher: drop every optional vendor still to dispatch (agy and pi, since they share that $RVA) and record why for each; never dispatch on the old result.",
       "files": []
     },
     {
@@ -155,6 +155,13 @@
       "name": "Optional models: N-model confidence",
       "prompt": "Read plugins/git-kit/skills/cross-model-review/SKILL.md and plugins/git-kit/skills/cross-model-review/references/optional-models.md (read the files; do not use the Skill tool). Do not run anything and do not dispatch any model -- describe what the skill tells you to do, step by step, with the exact questions you would ask. Four models ran (Claude, Codex, agy, devin). Classify each finding's confidence: F1 raised by Claude and agy in Phase 1, no refutation. F2 raised by Codex only, devin's Phase 2 confirms it. F3 raised by Claude, Codex and devin in Phase 1, but agy's Phase 2 refutes it. F4 raised by devin only; nobody confirms or refutes it. Also say what each challenger received in Phase 2.",
       "expected_output": "F1 High, F2 High, F3 Low/contested (refutation wins, show every side), F4 Medium. Each challenger received every other model's Phase 1 findings for its batch, grouped by reviewer.",
+      "files": []
+    },
+    {
+      "id": 23,
+      "name": "Optional models: dry-run model differs between batches",
+      "prompt": "Read plugins/git-kit/skills/cross-model-review/SKILL.md and plugins/git-kit/skills/cross-model-review/references/optional-models.md (read the files; do not use the Skill tool). Do not run anything and do not dispatch any model -- describe what the skill tells you to do, step by step, with the exact questions you would ask. The locator succeeded and the user picked pi only. There are 2 batches. pi's batch 1 dry run returns {\"ok\":true,\"recipient\":\"NVIDIA\",\"model\":\"nvidia/nemotron-3-ultra\",\"reach\":\"none (--no-tools)\"}; its batch 2 dry run returns {\"ok\":true,\"recipient\":\"NVIDIA\",\"model\":\"nvidia/nemotron-3-super\",\"reach\":\"none (--no-tools)\"}. What do you do, and which --model do the real dispatches use?",
+      "expected_output": "The two batches' dry runs report different models, so pi is dropped for the run with the reason in inspection_limits; no egress question for pi and no real pi dispatch with either model. The run goes on with Claude and Codex.",
       "files": []
     },
     {

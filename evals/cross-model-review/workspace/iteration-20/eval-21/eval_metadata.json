@@ -1,0 +1,26 @@
+{
+  "eval_id": 21,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {
+      "text": "Resolver step 3 asks whether to continue without Codex or stop",
+      "type": "functionality",
+      "target": "SKILL.md"
+    },
+    {
+      "text": "States the run is not single-model mode: Phase 2 runs between Claude and pi",
+      "type": "functionality",
+      "target": "references/optional-models.md"
+    },
+    {
+      "text": "pi is skipped for batch 2 only, with the timeout recorded and no retry; batch 1 and 3 envelopes are kept",
+      "type": "functionality",
+      "target": "references/optional-models.md"
+    },
+    {
+      "text": "Phase 2 runs between Claude and pi for batches 1 and 3 only; batch 2 is Claude-only (its findings Medium)",
+      "type": "functionality",
+      "target": "references/resolver-failure-handling.md"
+    }
+  ]
+}

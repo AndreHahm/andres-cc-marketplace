@@ -33,7 +33,23 @@ def _git(repo, *args):
 def _rva(root):
     (root / "scripts").mkdir(parents=True)
     (root / "scripts" / "rva-dispatch.mjs").write_text("// fake\n")
+    (root / "assets").mkdir()
+    (root / "assets" / "rva-devin-config.json").write_text("{}\n")
+    (root / "reviewadapters-kit.settings.json").write_text("{}\n")
     return root
+
+
+def _manifest(layout, *versions, raw=None):
+    """Write Claude Code's installed_plugins.json three levels above the cache's version folders."""
+    path = layout["tmp"] / "installed_plugins.json"
+    sibling = layout["cache"] / "reviewadapters-kit"
+    entries = [{"scope": "user", "installPath": str(sibling / v), "version": v} for v in versions]
+    path.write_text(
+        raw
+        if raw is not None
+        else json.dumps({"version": 2, "plugins": {"reviewadapters-kit@mkt": entries}})
+    )
+    return path
 
 
 @pytest.fixture
@@ -380,3 +396,135 @@ def test_printed_path_is_the_checked_real_path(layout):
     code, out = _run(layout)
     assert code == 0
     assert out["root"] == str(other.resolve())
+
+
+def test_symlinked_devin_config_refused(layout):
+    """Devin's adapter copies assets/ unchecked, so a link into the checkout is refused."""
+    root = _rva(layout["cache"] / "reviewadapters-kit" / "0.1.0")
+    target = layout["repo"] / "devin-config.json"
+    target.write_text('{"permissions": {}}\n')
+    config = root / "assets" / "rva-devin-config.json"
+    config.unlink()
+    config.symlink_to(target)
+    code, out = _run(layout)
+    assert code == 3
+    assert any("rva-devin-config.json is a symbolic link" in r for r in out["reasons"])
+
+
+def test_world_writable_devin_config_refused(layout):
+    root = _rva(layout["cache"] / "reviewadapters-kit" / "0.1.0")
+    (root / "assets" / "rva-devin-config.json").chmod(0o666)
+    code, out = _run(layout)
+    assert code == 3
+    assert any("rva-devin-config.json is writable by others" in r for r in out["reasons"])
+
+
+def test_symlinked_assets_dir_refused(layout):
+    root = _rva(layout["cache"] / "reviewadapters-kit" / "0.1.0")
+    shutil.rmtree(root / "assets")
+    elsewhere = layout["repo"] / "assets"
+    elsewhere.mkdir()
+    (root / "assets").symlink_to(elsewhere)
+    code, out = _run(layout)
+    assert code == 3
+    assert any("assets is a symbolic link" in r for r in out["reasons"])
+
+
+def test_missing_assets_dir_refused(layout):
+    root = _rva(layout["cache"] / "reviewadapters-kit" / "0.1.0")
+    shutil.rmtree(root / "assets")
+    code, out = _run(layout)
+    assert code == 3
+    assert any("assets is missing" in r for r in out["reasons"])
+
+
+def test_manifest_picks_the_listed_version(layout):
+    """With installed_plugins.json present, a stale unlisted folder neither blocks nor wins."""
+    _rva(layout["cache"] / "reviewadapters-kit" / "0.1.0")
+    listed = _rva(layout["cache"] / "reviewadapters-kit" / "0.2.0")
+    _manifest(layout, "0.2.0")
+    code, out = _run(layout)
+    assert code == 0
+    assert out["source"] == "sibling"
+    assert out["dispatcher"] == str(listed.resolve() / "scripts" / "rva-dispatch.mjs")
+
+
+def test_manifest_without_the_version_refuses_sibling(layout):
+    _rva(layout["cache"] / "reviewadapters-kit" / "0.1.0")
+    _manifest(layout)
+    code, out = _run(layout)
+    assert code == 3
+    assert any("listed as installed, found: none" in r for r in out["reasons"])
+
+
+def test_unreadable_manifest_refuses_sibling(layout):
+    _rva(layout["cache"] / "reviewadapters-kit" / "0.1.0")
+    _manifest(layout, raw="{not json")
+    code, out = _run(layout)
+    assert code == 3
+    assert any("installed_plugins.json could not be read" in r for r in out["reasons"])
+
+
+def test_world_writable_settings_refused(layout):
+    """loadConfig reads the vendors' default models from the root (PR #804 security review)."""
+    root = _rva(layout["cache"] / "reviewadapters-kit" / "0.1.0")
+    (root / "reviewadapters-kit.settings.json").chmod(0o666)
+    code, out = _run(layout)
+    assert code == 3
+    assert any("settings.json is writable by others" in r for r in out["reasons"])
+
+
+def test_symlinked_settings_refused(layout):
+    root = _rva(layout["cache"] / "reviewadapters-kit" / "0.1.0")
+    settings = root / "reviewadapters-kit.settings.json"
+    target = layout["repo"] / "settings.json"
+    target.write_text('{"vendors": {"pi": {"model": "elsewhere/model"}}}\n')
+    settings.unlink()
+    settings.symlink_to(target)
+    code, out = _run(layout)
+    assert code == 3
+    assert any("settings.json is a symbolic link" in r for r in out["reasons"])
+
+
+def test_missing_settings_refused(layout):
+    root = _rva(layout["cache"] / "reviewadapters-kit" / "0.1.0")
+    (root / "reviewadapters-kit.settings.json").unlink()
+    code, out = _run(layout)
+    assert code == 3
+    assert any("settings.json could not be checked" in r for r in out["reasons"])
+
+
+def test_dispatcher_directory_refused(layout):
+    root = _rva(layout["cache"] / "reviewadapters-kit" / "0.1.0")
+    (root / "scripts" / "rva-dispatch.mjs").unlink()
+    (root / "scripts" / "rva-dispatch.mjs").mkdir()
+    code, out = _run(layout)
+    assert code == 3
+    assert any("rva-dispatch.mjs is not a regular file" in r for r in out["reasons"])
+
+
+def test_world_writable_manifest_refuses_sibling(layout):
+    _rva(layout["cache"] / "reviewadapters-kit" / "0.1.0")
+    _manifest(layout, "0.1.0").chmod(0o666)
+    code, out = _run(layout)
+    assert code == 3
+    assert any("installed_plugins.json is writable by others" in r for r in out["reasons"])
+
+
+def test_symlinked_manifest_refuses_sibling(layout):
+    _rva(layout["cache"] / "reviewadapters-kit" / "0.1.0")
+    real = _manifest(layout, "0.1.0")
+    moved = real.with_name("elsewhere.json")
+    real.rename(moved)
+    real.symlink_to(moved)
+    code, out = _run(layout)
+    assert code == 3
+    assert any("installed_plugins.json could not be opened" in r for r in out["reasons"])
+
+
+def test_deeply_nested_manifest_refuses_sibling(layout):
+    _rva(layout["cache"] / "reviewadapters-kit" / "0.1.0")
+    _manifest(layout, raw="[" * 100_000 + "]" * 100_000)
+    code, out = _run(layout)
+    assert code == 3
+    assert any("installed_plugins.json could not be read" in r for r in out["reasons"])
