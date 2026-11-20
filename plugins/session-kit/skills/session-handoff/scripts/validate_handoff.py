@@ -129,8 +129,8 @@ def parse_frontmatter(content: str) -> tuple[dict[str, str] | None, list[str]]:
     """Return (fields, malformed lines) of a leading "---" frontmatter block.
 
     fields is None when the content does not start with a closed block (an older handoff).
-    A line that is not a flat "key: value" pair (no colon, an indented or nested line) is
-    returned as malformed and its value is not used.
+    A line that is not a flat "key: value" pair (no colon, an indented or nested line), or that
+    repeats an earlier key, is returned as malformed and its value is not used.
     """
     lines = content.split("\n")
     if not lines or lines[0].rstrip() != "---":
@@ -145,7 +145,8 @@ def parse_frontmatter(content: str) -> tuple[dict[str, str] | None, list[str]]:
         if not line.strip():
             continue
         match = re.fullmatch(r"([a-z_]+):[ \t]*(.*?)\s*", line)
-        if not match:
+        # A repeated key is malformed too: its later value never silently replaces the first.
+        if not match or match.group(1) in fields:
             malformed.append(line)
             continue
         fields[match.group(1)] = match.group(2)
