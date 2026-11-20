@@ -32,6 +32,26 @@
     },
     {
       "disposition": "fixed",
+      "finding": "ci-codex-delta-r3-security-L320",
+      "line": 320,
+      "note": "Fixed in 5c3991ea: a deleted target whose name matches a sensitive-filename pattern is refused with secret_file_in_scope, no exemption; 3 new checks, 181/181; security-reviewer pass, no Critical/Major.",
+      "path": "plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.mjs",
+      "pr": 805,
+      "recorded_at": "2026-11-20T19:24:31+00:00",
+      "rule": "credential-pii-leakage"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "ci-codex-delta-r4-rulebook-R29-SKILL-L176",
+      "line": 176,
+      "note": "False positive: the Testing & Validation section already has a Quality gates: subsection with 17 checkbox criteria (line 222), the heading R29 accepts; main has it too. Waived in the PR body.",
+      "path": "plugins/codex-kit/skills/codex-windows-guardrails/SKILL.md",
+      "pr": 805,
+      "recorded_at": "2026-11-20T19:34:52+00:00",
+      "rule": "plugin-rulebook"
+    },
+    {
+      "disposition": "fixed",
       "finding": "ci-codex-delta-skill-reviewer-L229",
       "line": 229,
       "note": "Fixed in 0acb3220: fileAtBase accepts only base modes 100644 and 100755, so a deleted symlink or submodule entry is refused; 5 new preflight checks, 176/176.",
