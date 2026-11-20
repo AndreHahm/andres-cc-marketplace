@@ -163,6 +163,13 @@
       "prompt": "Read plugins/git-kit/skills/cross-model-review/SKILL.md and plugins/git-kit/skills/cross-model-review/references/optional-models.md (read the files; do not use the Skill tool). Do not run anything and do not dispatch any model -- describe what the skill tells you to do, step by step, with the exact questions you would ask. The locator succeeded and the user picked pi only. There are 2 batches. pi's batch 1 dry run returns {\"ok\":true,\"recipient\":\"NVIDIA\",\"model\":\"nvidia/nemotron-3-ultra\",\"reach\":\"none (--no-tools)\"}; its batch 2 dry run returns {\"ok\":true,\"recipient\":\"NVIDIA\",\"model\":\"nvidia/nemotron-3-super\",\"reach\":\"none (--no-tools)\"}. What do you do, and which --model do the real dispatches use?",
       "expected_output": "The two batches' dry runs report different models, so pi is dropped for the run with the reason in inspection_limits; no egress question for pi and no real pi dispatch with either model. The run goes on with Claude and Codex.",
       "files": []
+    },
+    {
+      "id": 24,
+      "name": "Optional models: Codex declined, optional model kept",
+      "prompt": "Read plugins/git-kit/skills/cross-model-review/SKILL.md and plugins/git-kit/skills/cross-model-review/references/optional-models.md (read the files; do not use the Skill tool). Do not run anything and do not dispatch any model -- describe what the skill tells you to do, step by step, with the exact questions you would ask. One batch. The locator succeeded, the user picked pi, pi's dry run passed and the user answered 'Send to pi for this run'. At the First-Send Confirmation for Codex the user picks the decline option. pi then returns a valid Phase 1 envelope. What are the First-Send Confirmation's options, what happens to Codex, and how do Phase 2 and the report proceed?",
+      "expected_output": "The First-Send options are 'Send to Codex for this run' / 'Skip Codex for this run'. On skip, no Codex dispatch is attempted and inspection_limits records 'user declined to send to Codex'. Because pi returned a valid Phase 1 envelope, the run is not single-model mode: Phase 2 runs between Claude and pi, and the report names both models.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {

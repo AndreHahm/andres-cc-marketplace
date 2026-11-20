@@ -22,9 +22,9 @@ independently, then each tries to **cross-examine** the other's findings. A find
 comes from whether it survives that cross-examination. This kills the two failure modes of solo LLM
 review: self-ratification (a model won't critique its own work) and confident false positives.
 
-**Claude is always the native reviewer, in this session, using its own tools.** Codex is always the
+**Claude is always the native reviewer, in this session, using its own tools.** Codex is the default
 second reviewer, dispatched as an independent subprocess through codex-kit — never invoked ad hoc
-via a raw `codex exec`.
+via a raw `codex exec`; up to two optional models may join (`references/optional-models.md`).
 
 **This skill has no `Write` grant** (it cannot be limited to a path). Every file the model authors goes
 through `scripts/git-review-write-run-file.sh` (`references/codex-pass-assembly.md`, "Writing a run
@@ -295,12 +295,12 @@ choose "don't ask again" for it), with an unanswerable question counting as decl
 trust-boundary-verified against `$BASE`; and (d) if Preflight step 5 set `REVIEW_UNVERIFIED` or
 `REFUTE_UNVERIFIED`, that the reviewer instructions governing this dispatch came from the working
 tree, not `$BASE` — before Codex is judged against them, never deferred to `inspection_limits`. Ask
-before the backend resolves, covering both outcomes. Options: "Send to Codex for this run" / "Stay
-Claude-native for this run". Git-kit's own direct implementation of the first-send-confirmation
+before the backend resolves, covering both outcomes. Options: "Send to Codex for this run" / "Skip
+Codex for this run" (an optional model keeps its own egress question). Git-kit's own direct implementation of the first-send-confirmation
 obligation `codex-review-bridge`'s docs assign to any caller — independent of, and not satisfied by,
 a first-send gate any other codex-kit component may already have fired earlier in the session.
 
-**On "Stay Claude-native for this run": skip every Codex dispatch, before any is attempted** — single-model
+**On "Skip Codex for this run": skip every Codex dispatch, before any is attempted** — single-model
 mode (no Phase 2) unless a confirmed optional model returns a valid Phase 1 envelope, exactly as resolver
 step 3 (`references/optional-models.md` section 5). Record the `inspection_limits` reason as "user declined to send
 to Codex" rather than "Codex unavailable" — this is a deliberate opt-out, not a failure, and the
@@ -310,7 +310,7 @@ or Phase 2 to wait on a Codex envelope that will never exist.
 
 ## Phase 1 — Independent review (fresh-eyes persona)
 
-Both reviewers get the trusted `review.md` (materialized in Preflight step 5), reviewing the diff
+Claude and Codex get the trusted `review.md` (materialized in Preflight step 5), reviewing the diff
 from `"${DIFF[@]}"`, independently and in parallel. Both emit findings in codex-kit's canonical
 envelope shape, as summarized in `$RUN/review.md`'s Output section (the `$BASE`-verified copy; never
 read codex-kit's `envelope-schema.md` from the checkout as the contract, since the reviewed diff can edit
@@ -476,6 +476,6 @@ closing-tag neutralization, partial-failure preservation, scoped review and more
 `scripts/preflight_fixtures_test.py` runs the Preflight chain, planner step included, against scratch
 repositories.
 
-**Last dated run record:** `2026-11-20, evals/cross-model-review/workspace/iteration-17/` to `iteration-21/` — evals 18-23,
+**Last dated run record:** `2026-11-20, evals/cross-model-review/workspace/iteration-17/` to `iteration-22/` — evals 18-24,
 scenarios 39-48 (optional models), `with_skill` only, claude-opus-5-5: 16/17, then 17/17; iteration 19 re-ran evals 19-21 after
-the pre-PR review fixes, 11/11; iteration 20 re-ran 19-21 and added 23 after PR #804's round-1 fixes, 15/15; iteration 21 re-ran 19 after round 2, 4/4. Plan-only dry runs, no Codex or vendor dispatch. Wording edits made after a run and not re-run are listed per iteration under "Run history". Earlier runs (iterations 15-16 included) and their open items are under "Run history" in `references/testing-scenarios.md`.
+the pre-PR review fixes, 11/11; iteration 20 re-ran 19-21 and added 23 after PR #804's round-1 fixes, 15/15; iteration 21 re-ran 19 after round 2, 4/4; iteration 22 added 24 (Codex declined, optional model kept), 3/3. Plan-only dry runs, no Codex or vendor dispatch. Wording edits made after a run and not re-run are listed per iteration under "Run history". Earlier runs (iterations 15-16 included) and their open items are under "Run history" in `references/testing-scenarios.md`.

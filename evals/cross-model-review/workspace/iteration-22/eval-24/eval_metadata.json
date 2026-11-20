@@ -1,0 +1,21 @@
+{
+  "eval_id": 24,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {
+      "text": "States the First-Send Confirmation's options as 'Send to Codex for this run' / 'Skip Codex for this run'",
+      "type": "functionality",
+      "target": "SKILL.md"
+    },
+    {
+      "text": "On skip, attempts no Codex dispatch and records 'user declined to send to Codex' in inspection_limits",
+      "type": "functionality",
+      "target": "SKILL.md"
+    },
+    {
+      "text": "Does not enter single-model mode: Phase 2 runs between Claude and pi because pi returned a valid Phase 1 envelope",
+      "type": "functionality",
+      "target": "references/optional-models.md"
+    }
+  ]
+}
