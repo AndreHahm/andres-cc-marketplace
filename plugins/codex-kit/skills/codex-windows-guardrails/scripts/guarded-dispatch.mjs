@@ -1124,6 +1124,20 @@ async function main() {
     return;
   }
 
+  // The scan above walks the disk, so it never sees a deleted target, yet the
+  // prompt names each one in <deleted_target_paths> and Codex can read its
+  // old content from history. A deleted target whose name matches any
+  // sensitive-filename pattern is refused outright (PR #805 security review):
+  // with no file on disk there is no content for the documentation, template
+  // or .secretlintignore exemptions above to check, so none of them applies.
+  for (const deletedPath of deletedTargetPaths) {
+    const matched = matchesSecretPattern(deletedPath.split("/").pop());
+    if (matched) {
+      fail("secret_file_in_scope", `${deletedPath} is a deleted target that matches sensitive-filename pattern ${matched}`);
+      return;
+    }
+  }
+
   // Same containment rule codex-review-bridge itself enforces: the
   // instruction file must not resolve inside any target path. Deliberately
   // NOT a repository-boundary check -- the instruction file is expected to

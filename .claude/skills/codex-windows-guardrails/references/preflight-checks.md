@@ -44,8 +44,12 @@ repository root and exist on disk, except a file the reviewed change deletes:
   restated trust boundary says they are missing from the working tree and present at the base. The
   check does not consult HEAD or the index, so a file removed locally without the change deleting it
   is described the same way. `semanticallyValidate` already keeps a finding that cites one exactly.
-  The secret scan is unaffected: it walks the whole repository root on disk, so a deleted file is not
-  scanned, and Codex (unsandboxed) can read its earlier content from git history as it already could.
+  The secret scan walks the disk, so it never sees a deleted file, while the prompt names it and Codex
+  (unsandboxed) can read its earlier content from git history. A deleted target whose name matches any
+  sensitive-filename pattern is therefore refused with `secret_file_in_scope`, with no documentation,
+  template or `.secretlintignore` exemption, since there is no content on disk to check (PR #805 review).
+  So a PR that deletes such a file, even an exempt one such as `.env.example` or a doc about secrets,
+  cannot be reviewed through this fallback at all; the sandboxed bridge is the route for it.
 - Canonicalize via `fs.realpathSync`, resolving symlinks/junctions for every existing path
   component. For a not-yet-existing leaf, walk up to the nearest existing ancestor, canonicalize
   *that* (so an intermediate junction is still caught), then re-join the non-existent remainder —

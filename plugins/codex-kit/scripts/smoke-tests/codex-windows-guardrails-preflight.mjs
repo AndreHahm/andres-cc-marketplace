@@ -1992,6 +1992,23 @@ console.log("\n=== PR #805 review: only a regular file at the base counts as a d
     JSON.stringify(sharedMiss)
   );
 
+  // PR #805 security review: the disk scan never sees a deleted file, so a
+  // deleted target with a sensitive name is refused by name, with no
+  // documentation or template exemption (there is no content on disk to check).
+  for (const [label, relPath] of [
+    ["a deleted .env", ".env"],
+    ["a deleted strict-pattern key file (id_rsa)", "keys/id_rsa"],
+    ["a deleted loose-pattern doc (secret in its name)", "references/secret-handling.md"]
+  ]) {
+    const sensitive = baseEntryFixture("100644", relPath, "SAMPLE=1\n");
+    const sensitiveRun = runDispatchRaw(sensitive.root, `target.md,${relPath}`, instructionFile, "smoke-805", ["--dry-run", "true"]);
+    check(
+      `${label} target is refused with secret_file_in_scope, not accepted as a deletion`,
+      sensitiveRun.ok === false && sensitiveRun.category === "secret_file_in_scope" && /deleted target/.test(sensitiveRun.detail),
+      JSON.stringify(sensitiveRun)
+    );
+  }
+
   const nested = baseEntryFixture("100644", "sub/dir/removed.md", "old content");
   const nestedRun = runDispatch(nested.root, "target.md,sub/dir/removed.md", path.join(nested.root, "target.md"));
   check(
