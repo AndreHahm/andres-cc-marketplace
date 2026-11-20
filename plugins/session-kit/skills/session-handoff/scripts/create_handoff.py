@@ -72,12 +72,14 @@ def get_git_info(project_path: str) -> dict:
     # Without an upstream the last command fails; has_upstream records that, and listing_failed
     # records a failure of any other command, so the scaffold never claims a clean state it could
     # not check.
+    # -z gives NUL-separated, unquoted paths, so a non-ASCII name is listed as itself rather than
+    # C-quoted. The project's own handoffs are left out: they are not work to push.
     changed: list[str] = []
     for cmd in (
-        ["git", "diff", "--name-only"],
-        ["git", "diff", "--name-only", "--cached"],
-        ["git", "ls-files", "--others", "--exclude-standard"],
-        ["git", "diff", "--name-only", "@{upstream}...HEAD"],
+        ["git", "diff", "--name-only", "-z"],
+        ["git", "diff", "--name-only", "-z", "--cached"],
+        ["git", "ls-files", "-z", "--others", "--exclude-standard"],
+        ["git", "diff", "--name-only", "-z", "@{upstream}...HEAD"],
     ):
         success, output = run_cmd(cmd, cwd=project_path)
         if cmd[-1] == "@{upstream}...HEAD":
@@ -85,7 +87,11 @@ def get_git_info(project_path: str) -> dict:
         elif not success:
             info["listing_failed"] = True
         if success and output:
-            changed += [f for f in output.split("\n") if f and f not in changed]
+            changed += [
+                f
+                for f in output.split("\0")
+                if f and f not in changed and not f.startswith(".claude/handoffs/")
+            ]
     info["changed_files"] = changed
 
     # Commits whose changes cancel out (a commit and its revert) leave no file in the diff above,
