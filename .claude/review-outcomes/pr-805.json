@@ -1,0 +1,44 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4646051314",
+      "line": 233,
+      "note": "Fixed in af811ecf: per-directory base listing cache in one boundary check; 2 new preflight checks, 178/178.",
+      "path": "plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.mjs",
+      "pr": 805,
+      "recorded_at": "2026-11-20T18:47:32+00:00",
+      "rule": "performance"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-codex-delta-r2-rulebook-R30-SKILL-L175",
+      "line": 175,
+      "note": "Fixed in af811ecf: the deleted-target case matrix stays in references/preflight-checks.md; SKILL.md keeps a short summary and pointer. Rulebook re-check PASS.",
+      "path": "plugins/codex-kit/skills/codex-windows-guardrails/SKILL.md",
+      "pr": 805,
+      "recorded_at": "2026-11-20T18:47:33+00:00",
+      "rule": "R30"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "ci-codex-delta-r2-skill-reviewer-L263",
+      "line": 263,
+      "note": "Not reproducible: on Windows realpathSync, lstat and stat return ENOENT (not ENOTDIR) for a path under a regular file, verified live; the script refuses every other platform before the boundary check, and the path would fail closed anyway.",
+      "path": "plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.mjs",
+      "pr": 805,
+      "recorded_at": "2026-11-20T18:47:34+00:00",
+      "rule": "correctness"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-codex-delta-skill-reviewer-L229",
+      "line": 229,
+      "note": "Fixed in 0acb3220: fileAtBase accepts only base modes 100644 and 100755, so a deleted symlink or submodule entry is refused; 5 new preflight checks, 176/176.",
+      "path": "plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.mjs",
+      "pr": 805,
+      "recorded_at": "2026-11-20T18:06:17+00:00",
+      "rule": "security"
+    }
+  ]
+}
