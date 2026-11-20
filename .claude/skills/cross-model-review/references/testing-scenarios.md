@@ -311,7 +311,7 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
       `$INTENT_ADD_REFUSED`, which stops the review at Preflight step 1, never as "nothing to review"
 - [ ] The review scope planner is always run through the fixed-shape wrapper named by `allowed-tools`'s exact `bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope-run.sh` grant, spelled out literally in Preflight step 1, never through an array, and always resolved from the installed plugin root through `${CLAUDE_PLUGIN_ROOT:-.claude}` (the `.claude/` mirror when the variable is empty, a form deliberately left ungranted so it prompts), never from the `plugins/` folder of the repository under review; the wrapper accepts no `--repo`, `--output` or `--diff-dir`
 - [ ] The throwaway index is seeded only through `git-review-copy-index.sh` (one file to `$RUN/index`, no overwrite), never through a bare `cp` or a `Bash(cp:*)` grant
-- [ ] Every file the model authors or assembles is written through `git-review-write-run-file.sh` (one file directly under `$RUN`, parts only from `$RUN` or the two fixed prompts); the only other writes are Preflight's own `git show`/`git diff` redirects to fixed `$RUN` names; `allowed-tools` has no `Write` entry. The one exception, only in an `EnterWorktree` session after an isolation-check refusal, is `Write` to the session's scratchpad directory for the Preflight script or the helper's stdin text, never into the repository or `$RUN`; in that session every call that needs `GIT_INDEX_FILE` or a `CODEX_KIT_REVIEW_*` variable sets it as a prefix assignment on its own command
+- [ ] Every file the model authors or assembles is written through `git-review-write-run-file.sh` (one file directly under `$RUN`, parts only from `$RUN` or the two fixed prompts); the only other writes are Preflight's own `git show`/`git diff` redirects and an optional model's `node "$RVA"` stdout redirects (`<V>_fresh_eyes.<N>.json`, `<V>_challenger.<N>.json`), all to fixed `$RUN` names; `allowed-tools` has no `Write` entry. The one exception, only in an `EnterWorktree` session after an isolation-check refusal, is `Write` to the session's scratchpad directory for the Preflight script or the helper's stdin text, never into the repository or `$RUN`; in that session every call that needs `GIT_INDEX_FILE` or a `CODEX_KIT_REVIEW_*` variable sets it as a prefix assignment on its own command
 - [ ] An `<untracked_files>` block always ends with the untrusted-data sentence, and Phase 2's closing boundary names those files' contents too
 - [ ] A failed planner never leaves the run without a defined path: section 7 of `scoped-review.md` builds the unscoped group from the safe-charset changed names
 - [ ] A planner failure is never treated as a pass; the user chooses unscoped or stop
@@ -360,6 +360,11 @@ Moved here from SKILL.md's Testing & Validation section, which keeps only the la
   batch dry-run, caller-named secret hits, per-batch `--secret-paths-confirmed`, Codex decline with an
   optional model), `with_skill` only, claude-opus-5-5: 11/11. Three wording fixes after the run were not
   re-run; see `iteration-19/NOTE.md`.
+- **2026-11-20, `iteration-20`:** re-run evals 19-21 and add eval 23 after PR #804's round-1 review fixes
+  (a changed dispatcher drops every optional vendor, a model mismatch between batches drops the vendor,
+  per-batch Phase 2 without Codex), `with_skill` only, claude-opus-5-5: 15/15. This also re-ran
+  iteration 19's post-run edits. One locator note in section 1 was added after the run and not re-run;
+  see `iteration-20/NOTE.md`.
 
 All of these are dry runs of the committed text, not live dispatches, and include no live run of the
 scoped flow (one ran 2026-10-14 for PR #567, see the #568 report).

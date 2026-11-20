@@ -10,6 +10,15 @@ code. A run with no optional model behaves exactly as before.
 path the locator printed, and `$TARGET_PATHS` the batch's eligible paths from
 `references/codex-pass-assembly.md`.
 
+## Contents
+
+1. Locate the installed reviewadapters-kit
+2. Pick
+3. Inputs, dry run and egress confirmation
+4. Phase 1 and Phase 2 dispatches
+5. Confidence with more than two models
+6. Residual risks
+
 ## 1. Locate the installed reviewadapters-kit (Preflight step 7)
 
 **If Preflight set `PLANNER_TOUCHED=1`, offer no optional model** and record why: the diff changes the
@@ -21,12 +30,15 @@ python3 -I "${CLAUDE_PLUGIN_ROOT:-.claude}/scripts/git-review-locate-rva.py" --r
 ```
 
 It looks for exactly one installed `reviewadapters-kit/<version>/` beside git-kit's own copy in the
-plugin cache, then for an absolute path in `cross_model_review_rva_root` of the gitignored
+plugin cache (only a version Claude Code's `installed_plugins.json` lists, when that file exists),
+then for an absolute path in `cross_model_review_rva_root` of the gitignored
 `.claude/git-kit.local.json`. It refuses a path inside this repository or any of its worktrees, a path
 with characters outside `[A-Za-z0-9._/-]`, a directory above the root that another account can swap, a
-symbolic link or hard-linked file anywhere in `scripts/`, a file or directory not owned by you or
-writable by others (group write only for your own private group, on Linux, with no extended ACL), and a
-tracked config file. It writes nothing and runs nothing. On Windows it refuses every candidate.
+symbolic link or hard-linked file anywhere in `scripts/` or `assets/` (Devin's adapter copies the config
+that denies Devin every tool from there) or as the root's `reviewadapters-kit.settings.json` (the
+vendors' default models), a file or directory not owned by you or writable by others (group write only
+for your own private group, on Linux, with no extended ACL), and a tracked config file. It writes
+nothing and runs only `git` and `ls`, never the dispatcher. On Windows it refuses every candidate.
 
 - **Exit 0:** `{"ok": true, "dispatcher", "source", "notes"}`. Take `dispatcher` as `$RVA`, a literal
   absolute path; check that it is absolute, ends in `/scripts/rva-dispatch.mjs`, lies outside
@@ -37,6 +49,10 @@ tracked config file. It writes nothing and runs nothing. On Windows it refuses e
   diff to a third party with your vendor login, and a copy inside the checkout could be the reviewed
   branch's own code.
 - **Any other exit:** report it and offer no optional model.
+
+A reason "installed_plugins.json is writable by others" means Claude Code's manifest is group- or
+world-writable outside the private-group exception; the sibling lookup then refuses, and only the
+config path below can locate the copy.
 
 In this repository's own sessions `CLAUDE_PLUGIN_ROOT` is empty, the `:-.claude` mirror form runs (and
 prompts, like the planner wrapper), and the sibling lookup finds nothing, since the mirror is not in the
@@ -78,7 +94,8 @@ node "$RVA" --vendor <V> --reviewer-type fresh-eyes-reviewer --dispatch-id cross
 - **`ok: true`:** keep its `recipient`, `model` and `reach` for the confirmation, and pass that `model`
   as `--model` on every real dispatch of this vendor, so the confirmed model is the one used. Check the
   `model` against the dispatcher's own rule first (starts with a letter or digit, only
-  `[A-Za-z0-9._/:-]`); anything else drops the vendor, since the value goes into a shell command.
+  `[A-Za-z0-9._/:-]`); anything else drops the vendor, since the value goes into a shell command. Every
+  batch's dry run must report the same `model` as the first; a different one drops the vendor.
 - **`secret_paths_unconfirmed`:** a target or diff path of that batch has a secret-like name. The
   dispatcher reports only how many, so name them yourself: apply the rule in reviewadapters-kit's
   `review-adapter-dispatch` skill (Gates, item 3) to that batch's paths, and if your count differs from
@@ -108,9 +125,10 @@ differs per machine), so each call raises a permission prompt unless your settin
 ## 4. Phase 1 and Phase 2 dispatches
 
 **Re-check first.** Minutes may pass between the locator and the first dispatch (the pick and egress
-questions). Immediately before each vendor's first real dispatch, run the locator again; if it fails or
-prints a different `dispatcher`, drop that vendor for the run and record why, never dispatch on the old
-result.
+questions). Immediately before each vendor's first real dispatch, run the locator again. If it fails,
+drop that vendor for the run. If it prints a different `dispatcher` than the one the egress questions
+were asked against, drop every optional vendor still to dispatch, since they all share that `$RVA`.
+Record why for each, and never dispatch on the old result.
 
 **Phase 1, per vendor and batch:** the dry run's command without `--dry-run`, with `--model <confirmed
 model>`, the batch's three files, `--dispatch-id cross-model-review-$(date +%s)-fresh-eyes-<V>-<N>` and,
@@ -135,7 +153,7 @@ grouped by reviewer, not only the one other side.
 
 **A typed failure** skips that vendor for that batch, Phase 1 and Phase 2 alike (a Phase 1 failure means
 no Phase 2 dispatch of that vendor for the batch), with its category in `inspection_limits`; every
-envelope already returned is kept (`references/resolver-failure-handling.md`, applied per vendor). There
+envelope already returned is kept, and the other models' batches go on unchanged. There
 is no timeout retry for an optional model. A process ended by a signal (exit 129, 130 or 143) is a
 `dispatcher_error`, and the diff may already have been sent.
 
@@ -166,9 +184,10 @@ declined, failed per batch.
   reviewadapters-kit documents for its own command.
 - The locator trusts the installed copy as far as its file ownership and modes go. A copy installed from
   an unreviewed branch is still that branch's code (reviewadapters-kit README, "Running from a checkout").
-  It checks only the files in `scripts/`, not the codex-kit modules the dispatcher loads (the
-  dispatcher checks those itself). The sibling lookup accepts any single version folder
-  in the cache, even one Claude Code no longer lists as installed.
+  It checks only the files in `scripts/` and `assets/` and the root's settings file (not other root
+  entries, nor files inside a subdirectory there), not the codex-kit modules the dispatcher loads
+  (the dispatcher checks those itself). Without `installed_plugins.json`, the sibling lookup accepts
+  any single version folder in the cache, even one Claude Code no longer lists as installed.
 - Between the re-check and the `node` call there is still a short window; the ancestor check makes it
   unusable for other accounts, not for code already running as you.
 - A macOS ACL that grants write without group-write bits is not seen, as in reviewadapters-kit.

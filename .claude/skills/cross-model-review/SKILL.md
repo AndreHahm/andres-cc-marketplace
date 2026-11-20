@@ -28,7 +28,7 @@ via a raw `codex exec`.
 
 **This skill has no `Write` grant** (it cannot be limited to a path). Every file the model authors goes
 through `scripts/git-review-write-run-file.sh` (`references/codex-pass-assembly.md`, "Writing a run
-file") into `$RUN`, this skill's scratch dir; Preflight's `git` redirects write fixed names there. Never write to any path inside
+file") into `$RUN`, this skill's scratch dir; Preflight's `git` redirects and the optional-model dispatches' stdout redirects (`references/optional-models.md` section 4) write fixed names there. Never write to any path inside
 the repository itself, and never to `.claude/codex-windows-guardrails.local.json` in particular — this skill never
 enables that override on the user's behalf (see `references/deliberately-not-done.md`). The one deliberate exception is `git add -N`
 (Inputs section, below) — and even that never touches the repository's real index: it runs against a throwaway
@@ -443,7 +443,7 @@ the envelopes as needing review before they are shared. The same goes for `$RUN/
 
 Deliberately not in `allowed-tools`, so each prompts: `git diff` and `git show` (both accept `--output=<file>`, a write
 to any path), the `export GIT_INDEX_FILE` / `CODEX_KIT_REVIEW_*` assignments, exported or prefixed (a grant cannot pin the value they set),
-the `guarded-dispatch.mjs` fallback (a grant would pre-approve a full-access dispatch), `node "$RVA"` for an optional model (shared prefix: its path differs per machine, and any `node <path>:*` rule also admits a real send of any file, not only `--dry-run`), and, after `EnterWorktree` only,
+the `guarded-dispatch.mjs` fallback (a grant would pre-approve a full-access dispatch), `node "$RVA"` for an optional model (shared prefix: its path differs per machine, and any `node <path>:*` rule also admits a real send of any file, not only `--dry-run`), the locator's `.claude` mirror form `python3 -I ".claude/scripts/git-review-locate-rva.py"` in this repository's own sessions (the grant names `${CLAUDE_PLUGIN_ROOT}`, which is empty there; approve it per run, like the other mirror-form scripts), and, after `EnterWorktree` only,
 `Write` and `bash <scratchpad>/preflight.sh` (`Write` cannot be limited to a path; the script path varies, so its grant
 would be `Bash(bash:*)`, which also admits `bash -c` and any script; one approval covers every command in the script,
 and the scratchpad `Write` may not prompt at all). `git add -N` runs only through `scripts/git-review-intent-add.sh`.
@@ -484,6 +484,6 @@ closing-tag neutralization, partial-failure preservation, scoped review and more
 `scripts/preflight_fixtures_test.py` runs the Preflight chain, planner step included, against scratch
 repositories.
 
-**Last dated run record:** `2026-11-20, evals/cross-model-review/workspace/iteration-17/` to `iteration-19/` — evals 18-22,
+**Last dated run record:** `2026-11-20, evals/cross-model-review/workspace/iteration-17/` to `iteration-20/` — evals 18-23,
 scenarios 39-48 (optional models), `with_skill` only, claude-opus-5-5: 16/17, then 17/17; iteration 19 re-ran evals 19-21 after
-the pre-PR review fixes, 11/11. Plan-only dry runs, no Codex or vendor dispatch. Earlier runs (iterations 15-16 included) and their open items are under "Run history" in `references/testing-scenarios.md`.
+the pre-PR review fixes, 11/11; iteration 20 re-ran 19-21 and added 23 after PR #804's round-1 fixes, 15/15. Plan-only dry runs, no Codex or vendor dispatch. Wording edits made after a run and not re-run are listed per iteration under "Run history". Earlier runs (iterations 15-16 included) and their open items are under "Run history" in `references/testing-scenarios.md`.
