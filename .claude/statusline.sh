@@ -218,6 +218,8 @@ if [ -n "$git_branch" ]; then
 fi
 
 # Cost always with two decimals ($1.50, not $1.5). A value that isn't a number shows as 0.00.
+# The jq above floors to cents (0.456 shows $0.45) instead of rounding. Left as is on purpose:
+# total_cost_usd is an estimate, not the billed amount, so a cent either way does not matter.
 cost=$(LC_ALL=C printf '%.2f' "$cost" 2>/dev/null) || cost=${cost:-0}
 
 # LINE 2: Progress bar | Context % | cost | lines changed | duration | cache hit rate
