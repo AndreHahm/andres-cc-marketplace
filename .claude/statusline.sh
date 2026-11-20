@@ -2,8 +2,8 @@
 # Two-line statusline with visual context progress bar
 #
 # Line 1: Model and reasoning effort, folder, branch, open PR, push and working-tree state
-# Line 2: Progress bar, context % (with a compaction hint from 80%), cost, lines changed,
-#         duration, cache hit rate
+# Line 2: Progress bar, context % (with a compaction hint from 80%), cost, lines changed
+#         in shippable files (see below), duration, cache hit rate
 #
 # Context % uses Claude Code's pre-calculated remaining_percentage,
 # which accounts for compaction reserves. 100% = compaction fires.
@@ -20,13 +20,11 @@ stdin_data=$(cat)
 # Single jq call - extract all values at once
 # Prefer pre-calculated remaining_percentage (100 - remaining = used toward compact)
 # Fall back to manual calc from raw tokens if not available
-IFS=$'\t' read -r current_dir model_name cost lines_added lines_removed duration_ms ctx_used cache_pct < <(
+IFS=$'\t' read -r current_dir model_name cost duration_ms ctx_used cache_pct < <(
     echo "$stdin_data" | jq -r '[
         .workspace.current_dir // "unknown",
         .model.display_name // "Unknown",
         (try (.cost.total_cost_usd // 0 | . * 100 | floor / 100) catch 0),
-        (.cost.total_lines_added // 0),
-        (.cost.total_lines_removed // 0),
         (.cost.total_duration_ms // 0),
         (try (
             if (.context_window.remaining_percentage // null) != null then
@@ -53,11 +51,9 @@ if [ -z "$current_dir" ] && [ -z "$model_name" ]; then
     current_dir=$(echo "$stdin_data" | jq -r '.workspace.current_dir // .cwd // "unknown"' 2>/dev/null)
     model_name=$(echo "$stdin_data" | jq -r '.model.display_name // "Unknown"' 2>/dev/null)
     cost=$(echo "$stdin_data" | jq -r '(.cost.total_cost_usd // 0)' 2>/dev/null)
-    lines_added=$(echo "$stdin_data" | jq -r '(.cost.total_lines_added // 0)' 2>/dev/null)
-    lines_removed=$(echo "$stdin_data" | jq -r '(.cost.total_lines_removed // 0)' 2>/dev/null)
     duration_ms=$(echo "$stdin_data" | jq -r '(.cost.total_duration_ms // 0)' 2>/dev/null)
     # Windows jq emits CRLF; command substitution strips only the \n
-    for v in current_dir model_name cost lines_added lines_removed duration_ms; do
+    for v in current_dir model_name cost duration_ms; do
         printf -v "$v" '%s' "${!v%$'\r'}"
     done
     ctx_used=""
@@ -65,8 +61,6 @@ if [ -z "$current_dir" ] && [ -z "$model_name" ]; then
     : "${current_dir:=unknown}"
     : "${model_name:=Unknown}"
     : "${cost:=0}"
-    : "${lines_added:=0}"
-    : "${lines_removed:=0}"
     : "${duration_ms:=0}"
 fi
 
@@ -96,6 +90,27 @@ if cd "$current_dir" 2>/dev/null; then
                 /^\? /           { u++ }
                 END { print a + 0, b + 0, c + 0, u + 0 }'
         )
+        # Lines added/removed in shippable files only, not Claude Code's cost.total_lines_*
+        # (which counts every Edit/Write, scratchpad and git-ignored local files included).
+        # Base: the merge-base with origin's default branch, so committed and uncommitted
+        # work on this branch both count; on the default branch itself, HEAD (uncommitted
+        # only). Untracked files count only when not git-ignored; binary files never count.
+        default_ref=$(git rev-parse --abbrev-ref origin/HEAD 2>/dev/null) || default_ref="origin/main"
+        if [ "$git_branch" = "${default_ref#origin/}" ]; then
+            diff_base="HEAD"
+        else
+            diff_base=$(git merge-base HEAD "$default_ref" 2>/dev/null) || diff_base="HEAD"
+        fi
+        read -r lines_added lines_removed < <(
+            git --no-optional-locks -c core.useBuiltinFSMonitor=false diff --numstat "$diff_base" 2>/dev/null |
+                awk '$1 ~ /^[0-9]+$/ { a += $1; r += $2 } END { print a + 0, r + 0 }'
+        )
+        untracked_lines=$(
+            git --no-optional-locks -c core.useBuiltinFSMonitor=false ls-files -z --others --exclude-standard 2>/dev/null |
+                xargs -0 -r grep -IHc '' -- 2>/dev/null |
+                awk -F: '{ s += $NF } END { print s + 0 }'
+        )
+        lines_added=$(( ${lines_added:-0} + ${untracked_lines:-0} ))
     fi
 fi
 
