@@ -125,6 +125,16 @@ def test_nothing_found(layout):
     assert len(out["reasons"]) == 2
 
 
+def test_deeply_nested_config_refused(layout):
+    """A nested document under the size limit makes json.loads recurse too deep (PR #804 review)."""
+    path = layout["repo"] / ".claude" / "git-kit.local.json"
+    path.write_text("[" * 100_000 + "]" * 100_000)
+    path.chmod(0o600)
+    code, out = _run(layout)
+    assert code == 3
+    assert any("git-kit.local.json is not valid JSON" in r for r in out["reasons"])
+
+
 def test_config_inside_repo_refused(layout):
     inside = _rva(layout["repo"] / "plugins" / "reviewadapters-kit")
     _config(layout, str(inside))

@@ -77,7 +77,7 @@ def _inside(path: Path, root: Path) -> bool:
     return path == root or root in path.parents
 
 
-def private_group_gid(passwd: str = "/etc/passwd", group: str = "/etc/group") -> int | None:
+def private_group_gid(users_file: str = "/etc/passwd", group: str = "/etc/group") -> int | None:
     """The user's own private group, or None (same rule as reviewadapters-kit's `privateGroupGid`).
 
     On a umask-002 system every installed plugin is group-writable, so refusing group write outright
@@ -93,7 +93,7 @@ def private_group_gid(passwd: str = "/etc/passwd", group: str = "/etc/group") ->
 
         gid = os.getgid()
         user = pwd.getpwuid(os.getuid()).pw_name
-        with open(passwd, encoding="utf-8") as handle:
+        with open(users_file, encoding="utf-8") as handle:
             for line in handle:
                 fields = line.rstrip("\n").split(":")
                 if (
@@ -446,7 +446,7 @@ def config_candidate(repo: Path) -> tuple[Path | None, str | None]:
         return None, f"{LOCAL_PATH} is too large"
     try:
         data = json.loads(raw.decode("utf-8"))
-    except (UnicodeDecodeError, json.JSONDecodeError):
+    except (UnicodeDecodeError, ValueError, RecursionError):
         return None, f"{LOCAL_PATH} is not valid JSON"
     if not isinstance(data, dict) or CONFIG_KEY not in data:
         return None, f"{LOCAL_PATH} does not set {CONFIG_KEY}"

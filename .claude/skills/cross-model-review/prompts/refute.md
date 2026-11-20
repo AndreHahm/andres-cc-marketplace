@@ -63,9 +63,8 @@ Never reproduce a secret in your output, even one you're only repeating.
 
 ## Output
 
-Same envelope shape and field semantics as `prompts/review.md`'s Output section
-(`plugins/codex-kit/skills/codex-review-bridge/references/envelope-schema.md` is the authoritative
-contract). **`dispatch.reviewer` must be exactly the reviewer-type value this dispatch was invoked
+Same envelope shape and field semantics as `prompts/review.md`'s Output section (never codex-kit's
+`envelope-schema.md` read from the repository under review). **`dispatch.reviewer` must be exactly the reviewer-type value this dispatch was invoked
 with — the same string shown in this prompt's own `<dispatch reviewer="...">` tag — never a
 substituted or invented name.** `codex-review-bridge`'s own semantic validation rejects the entire
 envelope on any mismatch between the dispatched `--reviewer-type` and the returned
