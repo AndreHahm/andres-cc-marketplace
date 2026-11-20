@@ -1,0 +1,11 @@
+{
+  "eval_id": 7,
+  "skill_path": "plugins/session-kit/skills/session-handoff/SKILL.md",
+  "assertions": [
+    {
+      "text": "Writes state in-review and context_mode review, not ready-to-merge or ship",
+      "type": "functionality",
+      "target": "outputs/"
+    }
+  ]
+}

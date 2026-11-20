@@ -3,12 +3,10 @@
 Smart scaffold generator for handoff documents.
 
 Creates a new handoff document with auto-detected metadata:
-- Current timestamp
-- Project path
-- Git branch (if available)
-- Recent git log
-- Modified/staged files
-- Handoff chain linking
+- Frontmatter: creation time (UTC), project path, git branch and HEAD, platform,
+  handoff chain link
+- Resume Card and the v2 sections
+- Unpushed Changes: uncommitted and unpushed files
 
 Usage:
     python create_handoff.py [task-slug] [--continues-from <previous-handoff>]
@@ -24,7 +22,7 @@ import os
 import re
 import subprocess
 import sys
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 # Sibling-script import, same pattern as check_staleness.py.
@@ -48,9 +46,8 @@ def get_git_info(project_path: str) -> dict:
     info = {
         "is_git_repo": False,
         "branch": None,
-        "recent_commits": [],
-        "modified_files": [],
-        "staged_files": [],
+        "head": None,
+        "changed_files": [],
     }
 
     # Check if git repo
@@ -60,27 +57,37 @@ def get_git_info(project_path: str) -> dict:
 
     info["is_git_repo"] = True
 
-    # Get current branch
     success, branch = run_cmd(["git", "branch", "--show-current"], cwd=project_path)
     if success and branch:
         info["branch"] = branch
 
-    # Get recent commits (last 5)
-    success, log = run_cmd(["git", "log", "--oneline", "-5", "--no-decorate"], cwd=project_path)
-    if success and log:
-        info["recent_commits"] = log.split("\n")
+    success, head = run_cmd(["git", "rev-parse", "HEAD"], cwd=project_path)
+    if success and head:
+        info["head"] = head
 
-    # Get modified files (unstaged)
-    success, modified = run_cmd(["git", "diff", "--name-only"], cwd=project_path)
-    if success and modified:
-        info["modified_files"] = modified.split("\n")
-
-    # Get staged files
-    success, staged = run_cmd(["git", "diff", "--name-only", "--cached"], cwd=project_path)
-    if success and staged:
-        info["staged_files"] = staged.split("\n")
+    # Uncommitted (unstaged and staged) files, then files in commits not yet pushed. Without an
+    # upstream the last command fails and only uncommitted files are listed.
+    changed: list[str] = []
+    for cmd in (
+        ["git", "diff", "--name-only"],
+        ["git", "diff", "--name-only", "--cached"],
+        ["git", "diff", "--name-only", "@{upstream}...HEAD"],
+    ):
+        success, output = run_cmd(cmd, cwd=project_path)
+        if success and output:
+            changed += [f for f in output.split("\n") if f and f not in changed]
+    info["changed_files"] = changed
 
     return info
+
+
+def detect_platform() -> str:
+    """The frontmatter platform value: linux, windows or macos."""
+    if sys.platform.startswith("win"):
+        return "windows"
+    if sys.platform == "darwin":
+        return "macos"
+    return "linux"
 
 
 def find_previous_handoffs(project_path: str) -> list[dict]:
@@ -160,7 +167,7 @@ def generate_handoff(
 
     # Generate timestamp and filename
     now = datetime.now()
-    timestamp = now.strftime("%Y-%m-%d %H:%M:%S")
+    created = now.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     file_timestamp = now.strftime("%Y-%m-%d-%H%M%S")
 
     if not slug:
@@ -184,57 +191,52 @@ def generate_handoff(
     # Get previous handoff info for chaining
     prev_handoff = get_previous_handoff_info(project_path, continues_from)
 
-    # Build pre-filled sections
-    branch_line = git_info["branch"] if git_info["branch"] else "[not a git repo or detached HEAD]"
+    branch = git_info["branch"] or "[TODO: branch name; not a git repo or detached HEAD]"
+    head = git_info["head"] or "none"
 
-    # Recent commits section
-    if git_info["recent_commits"]:
-        commits_section = "\n".join(f"  - {c}" for c in git_info["recent_commits"])
+    # continues_from: an explicitly named, existing handoff is written as fact; the most recent
+    # handoff found without --continues-from is only a suggestion the author must confirm.
+    if prev_handoff.get("exists") and not prev_handoff.get("suggested"):
+        continues_line = prev_handoff["filename"]
+    elif prev_handoff.get("exists"):
+        continues_line = f"[TODO: {prev_handoff['filename']} or none]"
+    elif continues_from:
+        continues_line = f"[TODO: {continues_from} not found; an existing handoff filename or none]"
     else:
-        commits_section = "  - [no recent commits or not a git repo]"
+        continues_line = "none"
 
-    # Modified files section
-    all_modified = list(set(git_info["modified_files"] + git_info["staged_files"]))
-    if all_modified:
-        modified_section = "\n".join(
-            f"| {f} | [describe changes] | [why changed] |" for f in all_modified[:10]
-        )
-        if len(all_modified) > 10:
-            modified_section += f"\n| ... and {len(all_modified) - 10} more files | | |"
+    # Unpushed Changes: only uncommitted or unpushed files (optional section)
+    changed = git_info["changed_files"]
+    if changed:
+        rows = "\n".join(f"| {f} | [what changed and why] |" for f in changed[:10])
+        if len(changed) > 10:
+            rows += f"\n| ... and {len(changed) - 10} more files | |"
+        unpushed_section = f"| File | Change |\n|------|--------|\n{rows}"
     else:
-        modified_section = "| [no modified files detected] | | |"
-
-    # Handoff chain section
-    if prev_handoff.get("exists"):
-        chain_section = f"""## Handoff Chain
-
-- **Continues from**: [{prev_handoff["filename"]}](./{prev_handoff["filename"]})
-  - Previous title: {prev_handoff.get("title", "Unknown")}
-- **Supersedes**: [list any older handoffs this replaces, or "None"]
-
-> Review the previous handoff for full context before filling this one."""
-    else:
-        chain_section = """## Handoff Chain
-
-- **Continues from**: None (fresh start)
-- **Supersedes**: None
-
-> This is the first handoff for this task."""
+        unpushed_section = "None: everything is committed and pushed."
 
     # Generate the document
-    content = f"""# Handoff: [TASK_TITLE - replace this]
+    content = f"""---
+created: {created}
+project: {project_path}
+branch: {branch}
+head: {head}
+pr: [TODO: PR number, or none]
+platform: {detect_platform()}
+continues_from: {continues_line}
+state: [TODO: implementing|pr-draft|in-review|ready-to-merge|ready-to-publish|blocked|done]
+context_mode: [TODO: derived from state, see SKILL.md CREATE Step 2 item 5]
+---
 
-## Session Metadata
-- Created: {timestamp}
-- Project: {project_path}
-- Branch: {branch_line}
-- Session duration: [estimate how long you worked]
-- Context mode: [admin | review | ship | none - see SKILL.md Step 2 item 5]
+# Handoff: [TASK_TITLE - replace this]
 
-### Recent Commits (for context)
-{commits_section}
+## Resume Card
 
-{chain_section}
+- State: [TODO: the state value, in a few words of context]
+- Next step: [TODO: Immediate Next Steps item 1, verbatim]
+- Branch and PR: {branch}, [TODO: PR number or none]
+- Blockers: [TODO: none, or each blocker in one line]
+- User constraints: [TODO: the user's standing instructions in one line each, or none]
 
 ## Current State Summary
 
@@ -242,37 +244,27 @@ def generate_handoff(
 
 ## Codebase Understanding
 
-### Architecture Overview
-
-[TODO: Document key architectural insights discovered during this session]
-
 ### Critical Files
 
-| File | Purpose | Relevance |
-|------|---------|-----------|
-| [TODO: Add critical files] | | |
-
-### Key Patterns Discovered
-
-[TODO: Document important patterns, conventions, or idioms found in this codebase]
+| File | Role | Why it matters |
+|------|------|----------------|
+| [TODO: Add critical files; the role column carries the architecture] | | |
 
 ## Work Completed
 
-### Tasks Finished
+### Work Not Visible in Git
 
-- [ ] [TODO: List completed tasks]
+- [TODO: Issues filed, comments posted, runs left pending, or none]
 
-### Files Modified
+### Unpushed Changes
 
-| File | Changes | Rationale |
-|------|---------|-----------|
-{modified_section}
+{unpushed_section}
 
 ### Decisions Made
 
-| Decision | Options Considered | Rationale |
-|----------|-------------------|-----------|
-| [TODO: Document key decisions] | | |
+| Decision | Options Considered | Rationale | Decided by |
+|----------|-------------------|-----------|------------|
+| [TODO: Document key decisions] | | | [user or agent] |
 
 ## Pending Work
 
@@ -296,31 +288,28 @@ def generate_handoff(
 
 [TODO: This is the MOST IMPORTANT section - write critical information the next agent MUST know]
 
+#### User Constraints
+
+- [TODO: The user's standing instructions for this work, verbatim, or none]
+
+#### Learnings
+
+- [TODO: Process and tool behavior found this session, e.g. a guard that rejects a chained
+  marker-and-commit call; or none]
+
 ### Assumptions Made
 
 - [TODO: List assumptions made during this session]
 
-### Potential Gotchas
+### Potential Gotchas & Key Patterns
 
-- [TODO: Document things that might trip up a new agent]
+- [TODO: Codebase facts and conventions, e.g. a generated mirror that must not be edited by hand]
 
-## Environment State
-
-### Tools/Services Used
-
-- [TODO: List relevant tools and their configuration]
-
-### Active Processes
-
-- [TODO: Note any running processes, servers, etc.]
-
-### Environment Variables
-
-- [TODO: List relevant env var NAMES only - NEVER include actual values/secrets]
+Environment: [optional: running processes and required env var NAMES only, never values; or none]
 
 ## Related Resources
 
-- [TODO: Add links to relevant docs and files]
+- [optional: only links not findable from the PR or Critical Files; or none]
 
 ---
 

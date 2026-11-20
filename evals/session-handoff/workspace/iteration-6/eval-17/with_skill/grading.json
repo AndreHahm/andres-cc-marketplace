@@ -1,0 +1,16 @@
+{
+  "eval_id": 17,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Writes state ready-to-publish and context_mode ship",
+      "passed": true,
+      "evidence": "\"I would write `state: ready-to-publish` and `context_mode: ship`\"; \"the wiki's own preview and link check both passed\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 1,
+    "assertions_passed": 1,
+    "pass_rate": 1.0
+  }
+}

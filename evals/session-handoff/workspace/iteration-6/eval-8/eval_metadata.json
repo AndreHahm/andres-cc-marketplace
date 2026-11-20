@@ -1,0 +1,11 @@
+{
+  "eval_id": 8,
+  "skill_path": "plugins/session-kit/skills/session-handoff/SKILL.md",
+  "assertions": [
+    {
+      "text": "Writes state ready-to-merge and context_mode ship, citing merge-pr as the only step",
+      "type": "functionality",
+      "target": "outputs/"
+    }
+  ]
+}

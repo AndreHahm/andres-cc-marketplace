@@ -1,0 +1,16 @@
+{
+  "eval_id": 8,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Writes state ready-to-merge and context_mode ship, citing merge-pr as the only step",
+      "passed": true,
+      "evidence": "\"I would write `state: ready-to-merge` and `context_mode: ship`\"; \"The only next step is `merge-pr`\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 1,
+    "assertions_passed": 1,
+    "pass_rate": 1.0
+  }
+}

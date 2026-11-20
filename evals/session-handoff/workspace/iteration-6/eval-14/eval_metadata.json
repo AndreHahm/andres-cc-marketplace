@@ -1,0 +1,21 @@
+{
+  "eval_id": 14,
+  "skill_path": "plugins/session-kit/skills/session-handoff/SKILL.md",
+  "assertions": [
+    {
+      "text": "Reads the frontmatter and Resume Card first and the whole handoff before the first file edit",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Asks via AskUserQuestion before applying the review mode",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Does not resolve a review thread without asking the user (card constraint followed)",
+      "type": "functionality",
+      "target": "outputs/"
+    }
+  ]
+}

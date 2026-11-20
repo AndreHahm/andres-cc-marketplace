@@ -6,6 +6,7 @@ Searches for handoff documents in .claude/handoffs/ and displays:
 - Filename with date
 - Title extracted from document
 - Status (if marked complete)
+- State (from a v2 handoff's frontmatter)
 
 Usage:
     python list_handoffs.py           # List handoffs in current project
@@ -19,6 +20,10 @@ import re
 import sys
 from datetime import datetime
 from pathlib import Path
+
+# Sibling-script import, same pattern as check_staleness.py.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from validate_handoff import STATE_CONTEXT_MODE, parse_frontmatter  # noqa: E402
 
 
 def extract_title(filepath: Path) -> str:
@@ -36,6 +41,16 @@ def extract_title(filepath: Path) -> str:
     except Exception:
         pass
     return "[Unable to read title]"
+
+
+def read_state(filepath: Path) -> str | None:
+    """The v2 frontmatter's state value, or None for an older handoff or an unfilled value."""
+    try:
+        fields, _ = parse_frontmatter(filepath.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    state = (fields or {}).get("state", "")
+    return state if state in STATE_CONTEXT_MODE else None
 
 
 def check_completion_status(filepath: Path) -> str:
@@ -82,6 +97,7 @@ def list_handoffs(project_path: str) -> list[dict]:
                 "filename": filepath.name,
                 "title": extract_title(filepath),
                 "status": check_completion_status(filepath),
+                "state": read_state(filepath),
                 "date": parsed_date,
                 "size": filepath.stat().st_size,
             }
@@ -101,8 +117,8 @@ def format_date(dt: datetime | None) -> str:
 
 
 def main():
-    sys.stdout.reconfigure(encoding="utf-8")  # ty: ignore[unresolved-attribute]
-    sys.stderr.reconfigure(encoding="utf-8")  # ty: ignore[unresolved-attribute]
+    sys.stdout.reconfigure(encoding="utf-8")  # ty: ignore[missing-union-attribute]
+    sys.stderr.reconfigure(encoding="utf-8")  # ty: ignore[missing-union-attribute]
 
     # Get project path
     project_path = sys.argv[1] if len(sys.argv) > 1 else os.getcwd()
@@ -121,6 +137,8 @@ def main():
         print(f"  Date: {format_date(h['date'])}")
         print(f"  Title: {h['title']}")
         print(f"  Status: {h['status']}")
+        if h["state"]:
+            print(f"  State: {h['state']}")
         print(f"  File: {h['filename']}")
         print("-" * 80)
 

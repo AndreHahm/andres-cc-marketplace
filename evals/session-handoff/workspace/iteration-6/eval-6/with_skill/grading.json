@@ -1,0 +1,16 @@
+{
+  "eval_id": 6,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Sets no mode and asks nothing for an older handoff's 'Context mode: none' line, then proceeds with item 1",
+      "passed": true,
+      "evidence": "\"the value of the `Context mode:` line in Session Metadata\"; \"there is no `AskUserQuestion`\"; \"Start on the handoff's first next step\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 1,
+    "assertions_passed": 1,
+    "pass_rate": 1.0
+  }
+}
