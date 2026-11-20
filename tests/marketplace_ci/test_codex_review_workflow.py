@@ -126,3 +126,27 @@ def test_the_codex_config_check_trusts_only_the_base_branchs_config():
     assert 'git cat-file blob "$BASE_SHA:.codex/config.toml"' in step
     assert "cp .codex/config.toml" not in step
     assert "secrets." not in step
+
+
+def _job_if(job_id: str) -> str:
+    match = re.search(r"^    if: (?P<cond>>-\n(?:      .*\n)+|.*\n)", _job(job_id), re.M)
+    assert match, job_id
+    return " ".join(match.group("cond").replace(">-", "").split())
+
+
+def test_fork_prs_skip_the_codex_jobs_and_fail_explicitly():
+    """R1: a fork PR gets no Codex review; the fork-unsupported job fails it explicitly."""
+    for job_id in ("compute-scope", "codex-review", "publish"):
+        assert "github.event.pull_request.head.repo.fork == false" in _job_if(job_id), job_id
+    assert _job_if("fork-unsupported") == "github.event.pull_request.head.repo.fork"
+
+
+def test_the_workflow_listens_to_ready_for_review_but_not_converted_to_draft():
+    """R14: moving to ready reviews the whole PR; moving back to draft starts no run."""
+    match = re.search(
+        r"^on:\n  pull_request:\n(?:    #.*\n)*    types: \[(?P<types>[^\]]*)\]", TEXT, re.M
+    )
+    assert match
+    types = {t.strip() for t in match.group("types").split(",")}
+    assert "ready_for_review" in types
+    assert "converted_to_draft" not in types
