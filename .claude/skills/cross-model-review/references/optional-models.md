@@ -121,6 +121,8 @@ to send to <V>".
 
 Every dispatch below runs `node "$RVA"` by its literal path. It is not in `allowed-tools` (the path
 differs per machine), so each call raises a permission prompt unless your settings already allow it.
+Approve each call once after reading its rendered command, and never add an allow rule for it: any
+`node <path>` rule would also pre-approve a real send of any file.
 
 ## 4. Phase 1 and Phase 2 dispatches
 
