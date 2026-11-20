@@ -1,0 +1,21 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Reports a WARNING estimate, labelled an estimate rather than a measurement",
+      "passed": true,
+      "evidence": "Estimated Status: WARNING (estimate, not measured: no /context output yet)."
+    },
+    {
+      "text": "Recommends running /context and compacting only if the measured percentage confirms it, not running /compact or /clear now",
+      "passed": true,
+      "evidence": "Run /context now ... Compact only if that percentage confirms it. Do not run /compact or /clear on this estimate alone."
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 2,
+    "pass_rate": 1.0
+  }
+}

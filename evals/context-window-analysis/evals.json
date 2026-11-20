@@ -16,15 +16,36 @@
       "prompt": "audit my skills and CLAUDE.md for context bloat",
       "expected_output": "Does NOT produce a live-context-window health report. This request is explicitly out of scope per the skill's own 'When NOT to Use' section -- a broader skills/CLAUDE.md/plugin/MCP footprint audit belongs to context-audit instead. The response should point at context-audit (or a comparable footprint-auditing capability) rather than attempting the live-window health check this skill actually does.",
       "files": []
+    },
+    {
+      "id": 3,
+      "name": "One Warning sign, no /context output (estimate gives MONITOR)",
+      "prompt": "Situation: a long session (about 60 turns, many file reads). Responses have been slower than usual. There are no truncation warnings and no auto-compact message, and early decisions are still recalled correctly. The user has not shared /context output.\nUser message: responses feel slow, what's going on with my context?",
+      "expected_output": "Reports a MONITOR estimate right away, labelled an estimate, with 'keep going and plan a /compact at a natural break'; does not tell the user to run /compact or /clear now; asks for /context output for a measured figure.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "Two Warning signs, no /context output (estimate gives WARNING)",
+      "prompt": "Situation: a long session. Responses have been slower than usual and the agent has twice forgotten a decision made earlier in the session. There is no auto-compact message and no truncation warning. The user has not shared /context output.\nUser message: how full is my context right now",
+      "expected_output": "Reports a WARNING estimate right away, labelled an estimate; recommends running /context and compacting only if the measured percentage confirms it, not running /compact or /clear now.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "name": "Unrelated failed command is not a CRITICAL sign",
+      "prompt": "Situation: a short session (5 turns). The last Bash command failed because of a typo in a file name. There are no truncation warnings, no auto-compact message and no memory gaps. The user has not shared /context output.\nUser message: how full is my context right now",
+      "expected_output": "Does not report CRITICAL: treats the typo failure as unrelated to the context (at most one Warning sign), giving HEALTHY or MONITOR labelled an estimate, and does not tell the user to run /compact or /clear now.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 5,
-    "declared_scenarios_covered": 2,
+    "declared_scenarios_covered": 3,
     "uncovered": [
       "\"should I compact now\"",
-      "Responses feel slow and the user asks what's going on",
       "A request for the automatic hook-driven compaction-timing behavior itself -- defers to strategic-compact"
-    ]
+    ],
+    "coverage_note": "Eval 3 (2026-11-20) covers the declared 'responses feel slow' scenario. Evals 4 and 5 (2026-11-20) are extra: they cover Step 2's estimate mapping for two Warning signs and for an unrelated failure."
   }
 }

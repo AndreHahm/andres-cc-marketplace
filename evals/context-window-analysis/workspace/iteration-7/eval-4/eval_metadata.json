@@ -1,0 +1,16 @@
+{
+  "eval_id": 4,
+  "skill_path": "plugins/context-kit/skills/context-window-analysis/SKILL.md",
+  "assertions": [
+    {
+      "text": "Reports a WARNING estimate, labelled an estimate rather than a measurement",
+      "type": "structure",
+      "target": "outputs/"
+    },
+    {
+      "text": "Recommends running /context and compacting only if the measured percentage confirms it, not running /compact or /clear now",
+      "type": "functionality",
+      "target": "outputs/"
+    }
+  ]
+}

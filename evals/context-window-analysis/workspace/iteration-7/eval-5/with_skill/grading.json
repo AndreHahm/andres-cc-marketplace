@@ -1,0 +1,21 @@
+{
+  "eval_id": 5,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Does not report CRITICAL; gives HEALTHY or MONITOR, labelled an estimate",
+      "passed": true,
+      "evidence": "Estimated Status: MONITOR (estimate, not measured); the typo failure counted as one Warning indicator, not Critical."
+    },
+    {
+      "text": "Does not tell the user to run /compact or /clear now",
+      "passed": true,
+      "evidence": "Keep going. No /compact or /clear is needed now."
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 2,
+    "pass_rate": 1.0
+  }
+}
