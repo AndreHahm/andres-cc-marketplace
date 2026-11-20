@@ -105,7 +105,9 @@ if cd "$current_dir" 2>/dev/null; then
             git --no-optional-locks -c core.useBuiltinFSMonitor=false diff --numstat "$diff_base" 2>/dev/null |
                 awk '$1 ~ /^[0-9]+$/ { a += $1; r += $2 } END { print a + 0, r + 0 }'
         )
+        # From the repository root: ls-files --others lists only the current directory's subtree.
         untracked_lines=$(
+            cd "$git_root" &&
             git --no-optional-locks -c core.useBuiltinFSMonitor=false ls-files -z --others --exclude-standard 2>/dev/null |
                 xargs -0 -r grep -IHc '' -- 2>/dev/null |
                 awk -F: '{ s += $NF } END { print s + 0 }'
