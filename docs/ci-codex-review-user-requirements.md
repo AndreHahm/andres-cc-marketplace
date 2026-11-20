@@ -290,3 +290,19 @@ Status: approved (first-run rule added by the maintainer, 2026-11-16, issue #753
   `docs/ci.md` (a spoofed `dependabot[bot]` author on a `web-flow`-signed commit) now also covers this gate.
 
 Status: approved (maintainer, issue #704; path set chosen 2026-11-13)
+
+## R16. The pull request's Codex config does not govern its reviewers (issue #793)
+
+- The reviewers run Codex from the pull request's checkout, whose `.codex/config.toml` the pull request can
+  edit. Codex must not apply that project config: before any Codex call, CI checks that the feature table
+  `codex features list` resolves in the checkout equals the one it resolves in an empty directory, and fails
+  the job when it does not.
+- The check must be shown to work, not assumed to: the base branch's `.codex/config.toml`, trusted in a
+  throwaway Codex home, must resolve a different feature table. CI never trusts the pull request's own copy.
+  A base branch without the file skips this control. A control that shows no difference (for example after a
+  Codex pin change) fails the job until it is fixed.
+- **Accepted residual:** only the `[features]` table is compared. A pull request that rewrites the file so
+  its features match the defaults would pass even if Codex applied it; like any reviewer-steering change
+  (R10), the protection is human review.
+
+Status: approved (maintainer, 2026-11-20, issue #793)
