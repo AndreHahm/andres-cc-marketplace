@@ -99,12 +99,18 @@ GIT_WITH_OPTS_AT_START="${SEGMENT_START}git${GIT_OPT}+[[:space:]]+"
 # A subcommand ends at whitespace, the end, or the close of a group (`$(git -C x stash)`).
 GIT_SUB_END='([[:space:]);}`]|$)'
 FORBIDDEN_GIT_RE="(reset|filter-branch|stash|clone|cherry-pick|revert|merge)${GIT_SUB_END}"
-FORBIDDEN_GIT_RE+="|branch([^;&|]*[[:space:]])?(-[dD]|--delete)([[:space:]]|\$)"
-FORBIDDEN_GIT_RE+="|tag([^;&|]*[[:space:]])?-d([[:space:]]|\$)"
-FORBIDDEN_GIT_RE+="|reflog[[:space:]]+(expire|delete)([[:space:]]|\$)"
-FORBIDDEN_GIT_RE+="|commit([^;&|]*[[:space:]])?--amend([[:space:]]|\$)"
+FORBIDDEN_GIT_RE+="|branch([^;&|]*[[:space:]])?(-[dD]|--delete)${GIT_SUB_END}"
+FORBIDDEN_GIT_RE+="|tag([^;&|]*[[:space:]])?-d${GIT_SUB_END}"
+FORBIDDEN_GIT_RE+="|reflog[[:space:]]+(expire|delete)${GIT_SUB_END}"
+FORBIDDEN_GIT_RE+="|commit([^;&|]*[[:space:]])?--amend${GIT_SUB_END}"
 FORBIDDEN_GIT_RE+="|clean([^;&|]*[[:space:]])?(-[a-zA-Z]*f|--force)"
-FORBIDDEN_GIT_RE+="|pull([^;&|]*[[:space:]])?(--rebase|-r|--no-ff|--squash|--no-rebase)([[:space:]=]|\$)"
+FORBIDDEN_GIT_RE+="|pull([^;&|]*[[:space:]])?(--rebase|-r|--no-ff|--squash|--no-rebase)([=]|${GIT_SUB_END})"
+# chmod that makes a file writable by others: an octal mode whose last digit has the
+# write bit (2, 3, 6, 7), or a symbolic clause for o or a that adds or sets w. default.rules
+# lists a few exact modes; it cannot test the bit, so the hook catches the rest.
+CHMOD_WORLD_RE="${SEGMENT_START}chmod([[:space:]]+-[^[:space:];&|]*)*[[:space:]]+"
+CHMOD_WORLD_RE+="([0-7]{0,3}[2367]|([^[:space:];&|]*,)?[ugoa]*[oa][ugoa]*[+=][rwxXst]*w[^[:space:];&|]*)"
+CHMOD_WORLD_RE+="${GIT_SUB_END}"
 # A package publish with options or a workspace before `publish` (`npm -w pkg publish`,
 # `pnpm --filter pkg publish`, `yarn workspaces foreach -A npm publish`), or through
 # lerna or changesets (`npx lerna publish`, `pnpm changeset publish`). default.rules
@@ -182,6 +188,10 @@ fi
 
 if matches_code "${PUBLISH_RE}"; then
     block "Publishing packages is not allowed from Codex; publish manually."
+fi
+
+if matches_code "${CHMOD_WORLD_RE}"; then
+    block "World-writable permissions are not allowed from Codex."
 fi
 
 if matches "${DIRECT_MAIN_RE}"; then
