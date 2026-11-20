@@ -86,9 +86,11 @@ if cd "$current_dir" 2>/dev/null; then
     git_root=$(git -c core.useBuiltinFSMonitor=false rev-parse --show-toplevel 2>/dev/null)
     # One local `git status` call (no network): commits ahead of/behind the upstream as of the
     # last fetch, changed files (staged, unstaged or conflicted) and untracked files.
+    # --no-optional-locks: status otherwise refreshes the index under index.lock, and this
+    # background call could then make a git command running at the same moment fail.
     if [ -n "$git_root" ]; then
         read -r git_ahead git_behind git_changed git_untracked < <(
-            git -c core.useBuiltinFSMonitor=false status --porcelain=v2 --branch 2>/dev/null | awk '
+            git --no-optional-locks -c core.useBuiltinFSMonitor=false status --porcelain=v2 --branch 2>/dev/null | awk '
                 /^# branch\.ab / { a = substr($3, 2); b = substr($4, 2) }
                 /^[12u] /        { c++ }
                 /^\? /           { u++ }
@@ -189,7 +191,7 @@ if [ -n "$git_branch" ]; then
     line1="$line1$(printf '%b' "$git_state")"
 fi
 
-# Cost always with two decimals ($1.50, not $1.5); keep the raw value if it isn't a number.
+# Cost always with two decimals ($1.50, not $1.5). A value that isn't a number shows as 0.00.
 cost=$(LC_ALL=C printf '%.2f' "$cost" 2>/dev/null) || cost=${cost:-0}
 
 # LINE 2: Progress bar | Context % | cost | lines changed | duration | cache hit rate
