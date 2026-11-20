@@ -1,0 +1,32 @@
+{
+  "eval_id": 19,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Three picks: tells the user at most two may be picked and asks again; does not trim the list itself",
+      "passed": true,
+      "evidence": "'I tell the user they picked three models and a run takes at most two' and the same multi-select is asked again."
+    },
+    {
+      "text": "pi: drops the vendor with vendor_not_allowed recorded, without editing the allow-list, inputs or vendor setup",
+      "passed": true,
+      "evidence": "'record vendor_not_allowed for pi in inspection_limits ... never edit an input, the allow-list or pi's own setup'."
+    },
+    {
+      "text": "devin: dry-runs every batch, and since the dispatcher reports only a count, its egress question names every path of batch 1 (src/app.py and config/api-token.json) without reading reviewadapters-kit's own skill or references to narrow the list",
+      "passed": true,
+      "evidence": "'the confirmation must name every path in batch 1 (src/app.py, config/api-token.json)'; 'I do not look up reviewadapters-kit's skill or references to work out which path matched'."
+    },
+    {
+      "text": "devin: --secret-paths-confirmed only after a yes and only on batch 1's dispatches (Phase 1 and Phase 2), never on batch 2's",
+      "passed": true,
+      "evidence": "'Only batch 1's dispatches (Phase 1 and Phase 2) carry --secret-paths-confirmed'; 'batch 2 never gets --secret-paths-confirmed'; the flag follows a yes."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  },
+  "notes": "The agent read only SKILL.md and optional-models.md. Gaps named (not changed): wording for re-asking the pick; whether a dropped vendor's other dry runs still run; a failed flagged re-run; per-vendor input file names; disclosure wording; the order of the vendor and Codex confirmations; whether an approved planner run lifts PLANNER_TOUCHED for optional models."
+}
