@@ -191,6 +191,13 @@ extends = ":workspace"
 glob_scan_max_depth = 5
 ":root" = "read"
 ":tmpdir" = "write"
+# Credential folders use `/**`, the form the Windows and macOS sandboxes already ran
+# with. `~/.npm` is the exception: `/**` makes Codex list every file inside, and the
+# npm cache overflowed bubblewrap's 9000-argument limit on Linux, so it is denied as a
+# plain folder (verified on Linux to cover the files inside). A folder can use only
+# one form: listing both (`~/.gnupg` and `~/.gnupg/**`) stops the Linux sandbox from
+# starting. Patterns with a glob before the end (`**/metamask*/**`, `**/secrets/**`)
+# need `/**`: without it Codex denies only the matched folder entry, not its files.
 "~/.ssh/**" = "deny"
 "~/.gnupg/**" = "deny"
 "~/.aws/**" = "deny"
@@ -200,8 +207,6 @@ glob_scan_max_depth = 5
 "~/.docker/config.json" = "deny"
 "~/.kube/**" = "deny"
 "~/.npmrc" = "deny"
-# Whole directory, not `/**`: a glob makes Codex enumerate the npm cache, and on
-# Linux that overflows bubblewrap's 9000-argument limit.
 "~/.npm" = "deny"
 "~/.pypirc" = "deny"
 "~/.gem/credentials" = "deny"

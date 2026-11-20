@@ -19,6 +19,10 @@ CMD=$(jq -r '.tool_input.command // empty' <<<"${INPUT}") ||
 
 [[ -z "${CMD}" ]] && exit 0
 
+# Join backslash-continued lines first: every check below reads one line at a time,
+# so `git -C x \` + newline + `reset --hard` would otherwise slip past them.
+CMD=${CMD//$'\\\n'/ }
+
 # Here-strings, not `printf | grep -q`: under pipefail, grep -q exiting early
 # can kill printf with SIGPIPE on a long command and turn a match into a miss.
 matches() {
@@ -37,16 +41,17 @@ GIT_OPT+="|[[:space:]]+-[^[:space:];&|]+)"
 GIT_CMD="git${GIT_OPT}*[[:space:]]+"
 # A git command at the start of a command segment, so text that only mentions one
 # (a commit message, a PR body, a heredoc) does not match. A segment starts at the
-# line start or after ; & | ( { ! or `=` plus a backtick (`x=`git ...``). A bare
-# backtick does not start one: commit messages and docs quote commands in
-# backticks. Then a segment may carry shell keywords
-# (`if`, `then`, ...), variable assignments (`GIT_EDITOR=true`), command wrappers
-# with their options (`env X=1`, `timeout 60`, the same list as RM_WRAPPER below)
-# and a path (`/usr/bin/git`).
-SEGMENT_START='(^|[;&|({!]|=`)[[:space:]]*((if|then|do|else|elif|while|until|!)[[:space:]]+)*'
+# line start, after ; & | {, at `$(` or `<(`, or at `=` plus a backtick (`x=`git ...``).
+# A bare backtick, `(` or `!` inside text does not start one: messages and docs use
+# them around commands. After a real start, a segment may carry `(`, `!`, shell
+# keywords (`if`, `then`, ...), variable assignments (`GIT_EDITOR=true`), command
+# wrappers with their options and option values (`env -u HOME`, `timeout -s KILL 60`,
+# the same list as RM_WRAPPER below) and a path (`/usr/bin/git`).
+SEGMENT_START='(^|[;&|{]|[$<][(]|=`)([[:space:]]|[(!]|(if|then|do|else|elif|while|until)[[:space:]])*'
 SEGMENT_START+='([A-Za-z_][A-Za-z0-9_]*=[^[:space:];&|]*[[:space:]]+)*'
 SEGMENT_START+='((xargs|command|builtin|env|nice|nohup|time|exec|timeout|doas)'
-SEGMENT_START+='([[:space:]]+(-[^[:space:];&|]*|[0-9][^[:space:];&|]*|[A-Za-z_][A-Za-z0-9_]*=[^[:space:];&|]*))*'
+SEGMENT_START+='([[:space:]]+(-[^[:space:];&|]*([[:space:]]+[^-[:space:];&|][^[:space:];&|]*)?'
+SEGMENT_START+='|[0-9][^[:space:];&|]*|[A-Za-z_][A-Za-z0-9_]*=[^[:space:];&|]*))*'
 SEGMENT_START+='[[:space:]]+)*([^[:space:];&|]*/)?'
 GIT_AT_START="${SEGMENT_START}${GIT_CMD}"
 # The same, but only with at least one global option before the subcommand.
@@ -63,10 +68,22 @@ FORBIDDEN_GIT_RE+="|commit([^;&|]*[[:space:]])?--amend([[:space:]]|\$)"
 FORBIDDEN_GIT_RE+="|clean([^;&|]*[[:space:]])?(-[a-zA-Z]*f|--force)"
 FORBIDDEN_GIT_RE+="|pull([^;&|]*[[:space:]])?(--rebase|-r|--no-ff|--squash|--no-rebase)([[:space:]=]|\$)"
 # A package publish with options or a workspace before `publish` (`npm -w pkg publish`,
-# `pnpm --filter pkg publish`, `yarn workspaces foreach -A npm publish`). default.rules
-# forbids the plain forms but cannot match a value before the subcommand.
-PUBLISH_RE="${SEGMENT_START}(npm|pnpm|bun|yarn)([[:space:]]+[^;&|[:space:]]+)*"
-PUBLISH_RE+="[[:space:]]+publish${GIT_SUB_END}"
+# `pnpm --filter pkg publish`, `yarn workspaces foreach -A npm publish`), or through
+# lerna or changesets (`npx lerna publish`, `pnpm changeset publish`). default.rules
+# forbids the plain forms but cannot match a value before the subcommand. Only options
+# and their values may come before `publish`, so `npm help publish` or a test filter
+# named publish (`pnpm vitest publish`) is not blocked.
+PKG_OPTS='([[:space:]]+-[^[:space:];&|]*([[:space:]]+[^-[:space:];&|][^[:space:];&|]*)?)*'
+PUBLISH_RE="${SEGMENT_START}(npm|pnpm|bun|yarn)${PKG_OPTS}[[:space:]]+publish${GIT_SUB_END}"
+PUBLISH_RE+="|${SEGMENT_START}yarn[[:space:]]+workspaces[[:space:]]+foreach"
+PUBLISH_RE+="([[:space:]]+[^;&|[:space:]]+)*[[:space:]]+npm[[:space:]]+publish${GIT_SUB_END}"
+PUBLISH_RE+="|${SEGMENT_START}((npx|bunx|pnpm|yarn|npm)([[:space:]]+(exec|x|dlx))?[[:space:]]+)?"
+PUBLISH_RE+="(lerna|changeset)[[:space:]]+publish${GIT_SUB_END}"
+# npm publish run through yarn or pnpm for one workspace or all of them
+# (`yarn workspace pkg npm publish`, `yarn --cwd dir npm publish`, `pnpm -r exec npm publish`).
+PUBLISH_RE+="|${SEGMENT_START}(yarn|pnpm)${PKG_OPTS}"
+PUBLISH_RE+="([[:space:]]+(workspace[[:space:]]+[^;&|[:space:]]+|exec|-r|--recursive))*"
+PUBLISH_RE+="[[:space:]]+npm[[:space:]]+publish${GIT_SUB_END}"
 GIT_PUSH="${GIT_CMD}push"
 PUSH_FORCE_RE="${GIT_PUSH}([^;&|]*)--force"
 PUSH_FORCE_RE+="|${GIT_PUSH}([^;&|]*)[[:space:]]-f([[:space:]]|\$)"
