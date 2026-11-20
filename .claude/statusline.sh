@@ -2,7 +2,7 @@
 # Two-line statusline with visual context progress bar
 #
 # Line 1: Model and reasoning effort, folder, branch
-# Line 2: Progress bar, context %, cost, duration
+# Line 2: Progress bar, context %, cost, lines changed, duration, cache hit rate
 #
 # Context % uses Claude Code's pre-calculated remaining_percentage,
 # which accounts for compaction reserves. 100% = compaction fires.
@@ -119,7 +119,7 @@ if [ -n "$ctx_used" ] && [ "$ctx_used" != "null" ]; then
     done
     progress_bar="${progress_bar}\033[0m"
 
-    ctx_pct="${ctx_used}%"
+    ctx_pct="ctx ${ctx_used}%"
 else
     ctx_pct=""
 fi
@@ -158,7 +158,10 @@ if [ -n "$git_branch" ]; then
     line1="$line1 $(printf '%b \033[96m🌿 %s\033[0m' "$SEP" "$git_branch")"
 fi
 
-# LINE 2: Progress bar | Context % | cost | duration
+# Cost always with two decimals ($1.50, not $1.5); keep the raw value if it isn't a number.
+cost=$(LC_ALL=C printf '%.2f' "$cost" 2>/dev/null) || cost=${cost:-0}
+
+# LINE 2: Progress bar | Context % | cost | lines changed | duration | cache hit rate
 line2=""
 if [ -n "$progress_bar" ]; then
     line2=$(printf '%b' "$progress_bar")
@@ -175,11 +178,20 @@ if [ -n "$line2" ]; then
 else
     line2=$(printf '\033[33m$%s\033[0m' "$cost")
 fi
+if [ "$lines_added" -gt 0 ] 2>/dev/null || [ "$lines_removed" -gt 0 ] 2>/dev/null; then
+    line2="$line2 $(printf '%b \033[32m+%s\033[0m \033[31m−%s\033[0m' "$SEP" "$lines_added" "$lines_removed")"
+fi
 if [ -n "$session_time" ]; then
     line2="$line2 $(printf '%b \033[36m⏱ %s\033[0m' "$SEP" "$session_time")"
 fi
+# Prompt-cache hit rate of the last request; yellow below 70% so a drop stands out.
 if [ "$cache_pct" -gt 0 ] 2>/dev/null; then
-    line2="$line2 $(printf ' \033[2m↻%s%%\033[0m' "$cache_pct")"
+    if [ "$cache_pct" -lt 70 ]; then
+        cache_color='\033[33m'
+    else
+        cache_color='\033[2m'
+    fi
+    line2="$line2 $(printf " ${cache_color}cache %s%%\033[0m" "$cache_pct")"
 fi
 
 printf '%b\n%b' "$line1" "$line2"
