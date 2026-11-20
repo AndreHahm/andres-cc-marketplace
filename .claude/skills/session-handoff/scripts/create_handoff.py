@@ -34,7 +34,8 @@ from validate_handoff import git_env  # noqa: E402
 # a table delimiter, a link, an image or raw HTML into the document.
 SAFE_NAME_PUNCTUATION = frozenset("._/-+=@ ,")
 # A control character or an undecodable byte (a surrogate) never goes into a frontmatter value.
-UNSAFE_LINE = re.compile(r"[\x00-\x1f\x7f\ud800-\udfff]")
+# U+0085, U+2028 and U+2029 are line breaks to YAML and some Markdown renderers too.
+UNSAFE_LINE = re.compile(r"[\x00-\x1f\x7f\x85  \ud800-\udfff]")
 
 
 def is_safe_name(name: str) -> bool:
@@ -100,9 +101,11 @@ def get_git_info(project_path: str) -> dict:
     # C-quoted. Every path is relative to the repository root (git diff always is; ls-files gets
     # --full-name), so a project in a subdirectory of the repository gets one path base. The
     # project's own handoffs (<prefix>.claude/handoffs/) are left out: they are not work to push.
-    success, prefix = run_cmd(["git", "rev-parse", "--show-prefix"], cwd=project_path)
-    handoffs_dir = (prefix if success else "") + ".claude/handoffs/"
+    # Only the trailing newline is removed: a directory name may itself start or end with a space.
+    success, prefix = run_cmd(["git", "rev-parse", "--show-prefix"], cwd=project_path, strip=False)
+    handoffs_dir = (prefix.rstrip("\n") if success else "") + ".claude/handoffs/"
     changed: list[str] = []
+    seen: set[str] = set()
     for cmd in (
         ["git", "diff", "--name-only", "--no-relative", "-z"],
         ["git", "diff", "--name-only", "--no-relative", "-z", "--cached"],
@@ -117,11 +120,10 @@ def get_git_info(project_path: str) -> dict:
         elif not success:
             info["listing_failed"] = True
         if success and output:
-            changed += [
-                f
-                for f in output.split("\0")
-                if f and f not in changed and not f.startswith(handoffs_dir)
-            ]
+            for f in output.split("\0"):
+                if f and f not in seen and not f.startswith(handoffs_dir):
+                    seen.add(f)
+                    changed.append(f)
     info["changed_files"] = changed
 
     # Commits whose changes cancel out (a commit and its revert) leave no file in the diff above,

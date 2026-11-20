@@ -77,6 +77,16 @@
     },
     {
       "disposition": "fixed",
+      "finding": "ci-codex-6c0d8e2c-show-prefix-strip",
+      "line": 103,
+      "note": "show-prefix read unstripped; only the trailing newline is removed",
+      "path": "plugins/session-kit/skills/session-handoff/scripts/create_handoff.py",
+      "pr": 798,
+      "recorded_at": "2026-11-20T13:10:48+00:00",
+      "rule": "correctness"
+    },
+    {
+      "disposition": "fixed",
       "finding": "ci-codex-7eedd8bf-content-injection",
       "line": 256,
       "note": "allowlist of letters, digits and ._/-+=@ , replaces the blocklist; other names are counted in a TODO, never written",
@@ -134,6 +144,26 @@
       "pr": 798,
       "recorded_at": "2026-11-20T12:59:46+00:00",
       "rule": "runtime_correctness"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "claude-delta-6c0d8e2c-quadratic-dedup",
+      "line": 133,
+      "note": "changed-file de-duplication uses a set",
+      "path": "plugins/session-kit/skills/session-handoff/scripts/create_handoff.py",
+      "pr": 798,
+      "recorded_at": "2026-11-20T13:10:48+00:00",
+      "rule": "general"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "claude-delta-6c0d8e2c-unicode-line-breaks",
+      "line": 39,
+      "note": "UNSAFE_LINE also covers U+0085, U+2028 and U+2029",
+      "path": "plugins/session-kit/skills/session-handoff/scripts/create_handoff.py",
+      "pr": 798,
+      "recorded_at": "2026-11-20T13:10:48+00:00",
+      "rule": "general"
     }
   ]
 }
