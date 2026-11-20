@@ -266,6 +266,28 @@ def test_scaffold_never_writes_markup_branch(repo: Path) -> None:
     assert "branch: [TODO: branch name; it holds characters" in content
 
 
+@pytest.mark.parametrize("sep", [" ", " ", "\x85"])
+def test_scaffold_never_writes_unicode_line_break_project(tmp_path: Path, sep: str) -> None:
+    project = tmp_path / f"a{sep}state: done"
+    project.mkdir()
+    content = Path(create_handoff.generate_handoff(str(project), "demo")).read_text(
+        encoding="utf-8"
+    )
+    fields, _ = validate_handoff.parse_frontmatter(content)
+    assert fields is not None and fields["project"].startswith("[TODO: project path")
+
+
+def test_scaffold_in_space_prefixed_subdirectory_skips_own_handoffs(repo: Path) -> None:
+    project = repo / " sub"
+    project.mkdir()
+    first = Path(create_handoff.generate_handoff(str(project), "first"))
+    content = Path(create_handoff.generate_handoff(str(project), "second")).read_text(
+        encoding="utf-8"
+    )
+    section = content.split("### Unpushed Changes", 1)[1].split("###", 1)[0]
+    assert first.name not in section
+
+
 def test_diff_listings_ignore_relative_config(repo: Path) -> None:
     _git(repo, "config", "diff.relative", "true")
     (repo / "src" / "app.py").write_text("x = 7\n", encoding="utf-8")
