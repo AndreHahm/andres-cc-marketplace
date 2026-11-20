@@ -16,6 +16,15 @@ command -v jq >/dev/null 2>&1 || block "jq is required by the command-policy hoo
 INPUT=$(cat)
 CMD=$(jq -r '.tool_input.command // empty' <<<"${INPUT}") ||
     block "Could not parse the hook input."
+# A native Windows jq.exe writes every newline as CRLF, which would stop the
+# backslash-newline join below from matching. Only when this jq adds CRs, remove the
+# one it put before each newline. A CR the command itself holds stays, so the checks see
+# the bytes bash sees: bash does not end a heredoc on `EOF` + CR. Git Bash already drops
+# jq's CR at the end of a command substitution, so the probe has a newline inside and the
+# last CR is left alone (one left over can only make the checks block more).
+if [[ "$(jq -rn '"a\nb"')" == $'a\r\nb' ]]; then
+    CMD=${CMD//$'\r\n'/$'\n'}
+fi
 
 [[ -z "${CMD}" ]] && exit 0
 
@@ -29,8 +38,10 @@ CMD=$(jq -r '.tool_input.command // empty' <<<"${INPUT}") ||
 # after a `#` is kept as code (arithmetic shift, comment). An unterminated heredoc
 # keeps its lines, so a `<<` that bash does not read as a heredoc cannot hide the
 # rest of the command. Only the first heredoc on a line is removed.
+# BINMODE=3 stops gawk on Windows from dropping CRs, so a terminator line `EOF` + CR,
+# which does not end the heredoc in bash, does not end it here either. Other awks ignore it.
 strip_heredocs() {
-    awk -v sq="'" -v dq='"' '
+    awk -v BINMODE=3 -v sq="'" -v dq='"' '
 term != "" {
     held = held $0 "\n"
     line = $0
@@ -63,7 +74,7 @@ END { if (term != "") printf "%s", held }'
 # ssh, eval, source or a command runner; once a quote is left open at the end of a line,
 # no later line is blanked, since bash is still inside that string.
 blank_flag_values() {
-    awk -v sq="'" -v dq='"' '
+    awk -v BINMODE=3 -v sq="'" -v dq='"' '
 # Index of the quote q that closes a string opened before position i, or 0 if none
 # on this line. esc: a backslash escapes the next character (double and ANSI-C quotes).
 function close_at(s, i, q, esc,    n, c) {
