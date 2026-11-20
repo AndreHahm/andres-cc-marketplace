@@ -99,3 +99,30 @@ def test_the_findings_message_does_not_claim_every_blocker_is_on_a_changed_line(
     message = found.group(1)
     assert "changed line" not in message
     assert "codex-review-result" in message  # points at the artifact instead
+
+
+CONFIG_CHECK_NAME = "Check Codex does not apply the repository's own config"
+
+
+def test_the_codex_config_check_runs_after_login_and_the_probe_and_before_any_codex_call():
+    """#793: it must see the logged-in state the reviewers run in, and gate every Codex call."""
+    job = _job("codex-review")
+    order = [
+        REFUSE_NAME,
+        "Authenticate and smoke-check the Codex CLI",
+        "Allow Codex's bwrap sandbox on the hosted runner",
+        CONFIG_CHECK_NAME,
+        "Make no Codex call if the PR was converted to draft",
+        DISPATCH_NAME,
+    ]
+    positions = [job.index(name) for name in order]
+    assert positions == sorted(positions)
+
+
+def test_the_codex_config_check_trusts_only_the_base_branchs_config():
+    """The control must never trust PR content: it reads the config from the derived base SHA."""
+    step = _step(_job("codex-review"), CONFIG_CHECK_NAME)
+    assert "BASE_SHA: ${{ steps.delta_base.outputs.sha }}" in step
+    assert 'git cat-file blob "$BASE_SHA:.codex/config.toml"' in step
+    assert "cp .codex/config.toml" not in step
+    assert "secrets." not in step
