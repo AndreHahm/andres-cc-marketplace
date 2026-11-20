@@ -1907,5 +1907,74 @@ console.log("\n=== issue #781: a missing target is still refused when the base c
   }
 }
 
+console.log("\n=== PR #805 review: only a regular file at the base counts as a deletion ===");
+{
+  // Commits a base tree entry with an exact mode through the index, never
+  // touching the working tree, so the entry is absent on disk and the check
+  // needs no symlink privilege. `git add -A` would stage it as deleted.
+  const baseEntryFixture = (mode, relPath, content) => {
+    const f = makeFixture();
+    f.commit("init");
+    const oid = execFileSync("git", ["hash-object", "-w", "--stdin"], { cwd: f.root, input: content, encoding: "utf8" }).trim();
+    git(["update-index", "--add", "--cacheinfo", `${mode},${oid},${relPath}`], f.root);
+    git(["-c", "user.email=t@t.com", "-c", "user.name=Test", "commit", "-q", "-m", "add base entry"], f.root);
+    f.markBase();
+    git(["rm", "-q", "--cached", relPath], f.root);
+    git(["-c", "user.email=t@t.com", "-c", "user.name=Test", "commit", "-q", "-m", "delete base entry"], f.root);
+    return f;
+  };
+
+  const link = baseEntryFixture("120000", "link.md", "../outside-target");
+  const linkRun = runDispatchRaw(link.root, "target.md,link.md", instructionFile, "smoke-805", ["--dry-run", "true"]);
+  check(
+    "a deleted base SYMLINK (mode 120000, also a blob) is refused with target_path_not_found",
+    linkRun.ok === false && linkRun.category === "target_path_not_found",
+    JSON.stringify(linkRun)
+  );
+
+  // A gitlink (submodule, mode 160000, type commit) is not a file either. The
+  // commit id only has to be well formed; git stores it without checking it.
+  const gitlinkFixture = makeFixture();
+  gitlinkFixture.commit("init");
+  const headOid = execFileSync("git", ["rev-parse", "HEAD"], { cwd: gitlinkFixture.root, encoding: "utf8" }).trim();
+  git(["update-index", "--add", "--cacheinfo", `160000,${headOid},vendored`], gitlinkFixture.root);
+  git(["-c", "user.email=t@t.com", "-c", "user.name=Test", "commit", "-q", "-m", "add gitlink"], gitlinkFixture.root);
+  gitlinkFixture.markBase();
+  git(["rm", "-q", "--cached", "vendored"], gitlinkFixture.root);
+  git(["-c", "user.email=t@t.com", "-c", "user.name=Test", "commit", "-q", "-m", "delete gitlink"], gitlinkFixture.root);
+  const gitlinkRun = runDispatchRaw(gitlinkFixture.root, "target.md,vendored", instructionFile, "smoke-805", ["--dry-run", "true"]);
+  check(
+    "a deleted base SUBMODULE entry (mode 160000) is refused with target_path_not_found",
+    gitlinkRun.ok === false && gitlinkRun.category === "target_path_not_found",
+    JSON.stringify(gitlinkRun)
+  );
+
+  // A path naming a base DIRECTORY entry inside a nested tree (mode 040000)
+  // is refused by the type check, not only by the earlier top-level case.
+  const nestedDir = baseEntryFixture("100644", "outer/inner/a.md", "x");
+  const nestedDirRun = runDispatchRaw(nestedDir.root, "target.md,outer/inner", instructionFile, "smoke-805", ["--dry-run", "true"]);
+  check(
+    "a nested deleted base DIRECTORY (mode 040000) is refused with target_path_not_found",
+    nestedDirRun.ok === false && nestedDirRun.category === "target_path_not_found",
+    JSON.stringify(nestedDirRun)
+  );
+
+  const exec = baseEntryFixture("100755", "tool.sh", "#!/bin/sh\n");
+  const execRun = runDispatch(exec.root, "target.md,tool.sh", path.join(exec.root, "target.md"));
+  check(
+    "a deleted base executable file (mode 100755) is accepted as a deletion (stops at the next gate)",
+    execRun.ok === false && execRun.category === "instruction_containment_violation",
+    JSON.stringify(execRun)
+  );
+
+  const nested = baseEntryFixture("100644", "sub/dir/removed.md", "old content");
+  const nestedRun = runDispatch(nested.root, "target.md,sub/dir/removed.md", path.join(nested.root, "target.md"));
+  check(
+    "a deleted file in a nested base directory is found by the parent-tree lookup (stops at the next gate)",
+    nestedRun.ok === false && nestedRun.category === "instruction_containment_violation",
+    JSON.stringify(nestedRun)
+  );
+}
+
 console.log(`\n=== Results: ${pass} passed, ${fail} failed, ${skip} skipped ===`);
 process.exit(fail > 0 ? 1 : 0);

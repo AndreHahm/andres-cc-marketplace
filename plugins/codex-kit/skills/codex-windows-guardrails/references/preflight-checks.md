@@ -31,10 +31,12 @@ repository root and exist on disk, except a file the reviewed change deletes:
   directory between the repository root and the path, is refused with `target_path_not_found`, as
   the earlier `fs.existsSync` check did) and the trusted merge base
   (`resolveTrustedBase`: `merge-base HEAD origin/<default>`, never caller input; it is only as
-  trusted as the local `origin`, see `cdx-lintignore-base.mjs`'s known limitations) holds a file (a
-  blob) at exactly that repository-relative path (`git cat-file -t <base>:<path>`, an exact tree
-  lookup with no glob or case folding). A misspelled, case-variant or branch-only path, a deleted
-  directory, and every missing path when no base resolves are still refused. A scope whose every
+  trusted as the local `origin`, see `cdx-lintignore-base.mjs`'s known limitations) holds a regular
+  file at exactly that repository-relative path: `git ls-tree -z <base>:<parent directory>`, an exact
+  tree lookup with no glob or case folding, must list the name with type `blob` and mode `100644` or
+  `100755`. Git stores a symlink as a blob too (mode `120000`), so a deleted symlink is refused: nothing
+  on disk shows where it pointed (PR #805 review). A misspelled, case-variant or branch-only path, a
+  deleted directory, a deleted symlink or submodule entry, and every missing path when no base resolves are still refused. A scope whose every
   entry is a verified deletion is accepted: `review.py` builds one for a PR that only deletes a
   reviewer's files, the sandboxed bridge accepts it, and the diff embedded in the instructions is
   what gets reviewed. The verified paths are listed

@@ -206,11 +206,16 @@ function danglingAncestor(canonicalEntry, canonicalRoot) {
 }
 
 // Issue #781: returns the repository-relative POSIX path when the trusted
-// merge base holds a file (a blob) at exactly that path, else null. `base`
+// merge base holds a regular file at exactly that path, else null. `base`
 // comes from resolveTrustedBase (merge-base of HEAD with origin's default
 // branch), never from the caller, so a caller cannot declare its own base;
-// null (unresolvable) always yields null. `<base>:<path>` is an exact tree
-// lookup, not a pathspec, so no glob or case folding widens the match.
+// null (unresolvable) always yields null. It lists the parent directory's
+// tree (`<base>:<dir>`, an exact tree lookup, not a pathspec) and matches the
+// name exactly, so no glob or case folding widens the match. Git stores a
+// symlink as a blob too (mode 120000), so only the regular-file modes
+// 100644 and 100755 qualify: a deleted symlink is refused, since nothing
+// shows where it pointed (PR #805 review).
+const REGULAR_FILE_MODES = new Set(["100644", "100755"]);
 function fileAtBase(canonicalRoot, base, canonicalEntry) {
   if (!base) return null;
   const relative = path.relative(canonicalRoot, canonicalEntry);
@@ -218,18 +223,32 @@ function fileAtBase(canonicalRoot, base, canonicalEntry) {
     return null;
   }
   const posixPath = relative.split(path.sep).join("/");
+  const slash = posixPath.lastIndexOf("/");
+  const parentDir = slash === -1 ? "" : posixPath.slice(0, slash);
+  const name = posixPath.slice(slash + 1);
+  let listing;
   try {
-    const type = execFileSync(gitExecutable(canonicalRoot), ["cat-file", "-t", `${base}:${posixPath}`], {
+    // --full-tree keeps the listing independent of cwd; maxBuffer matches
+    // cdx-lintignore-base.mjs's 64 MiB so a large directory is not refused.
+    listing = execFileSync(gitExecutable(canonicalRoot), ["ls-tree", "-z", "--full-tree", `${base}:${parentDir}`], {
       cwd: canonicalRoot,
       env: gitEnv(),
       encoding: "utf8",
+      maxBuffer: 64 * 1024 * 1024,
       stdio: ["ignore", "pipe", "ignore"],
       windowsHide: true
-    }).trim();
-    return type === "blob" ? posixPath : null;
+    });
   } catch {
     return null;
   }
+  // -z records are "<mode> <type> <object>\t<name>", the name unquoted.
+  for (const record of listing.split("\0")) {
+    const tab = record.indexOf("\t");
+    if (tab === -1 || record.slice(tab + 1) !== name) continue;
+    const [mode, type] = record.slice(0, tab).split(" ");
+    return type === "blob" && REGULAR_FILE_MODES.has(mode) ? posixPath : null;
+  }
+  return null;
 }
 
 // Returns { failure } on a rejected entry, else { failure: null, deleted },
@@ -258,7 +277,7 @@ function checkRepositoryBoundary(targetPaths, repoRoot) {
     // that is legitimate. Callers list the old side of every change on purpose
     // (scripts/marketplace_ci/review.py's _changed_path_set), and the sandboxed
     // bridge already accepts such a target (issue #761). It is accepted here
-    // only when the trusted merge base holds a file at exactly that path; a
+    // only when the trusted merge base holds a regular file at exactly that path; a
     // misspelled or invented path has no base file and is still refused, as is
     // every missing path when the base cannot be resolved. A dangling symlink
     // is not a deletion and has nothing readable behind it: refused, as the
