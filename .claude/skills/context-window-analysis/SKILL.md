@@ -118,9 +118,15 @@ above, and use the indicators below only to explain it. Without `/context` outpu
 to a status and label it an estimate, not a measurement:
 
 - Any Critical indicator → CRITICAL
-- Any Warning indicator → WARNING
-- Only Healthy indicators, in a long session (many turns, large file reads or tool output) → MONITOR
+- Two or more Warning indicators, or an auto-compact message → WARNING
+- One Warning indicator, or only Healthy indicators in a long session (many turns, large file reads or
+  tool output) → MONITOR
 - Only Healthy indicators otherwise → HEALTHY
+
+Always report the estimated status and a recommendation right away; don't hold the report back waiting
+for `/context`. Below CRITICAL, though, an estimate never says to run `/compact` or `/clear` now: for
+HEALTHY the recommendation is "no action needed", for MONITOR "keep going and plan a `/compact` at a
+natural break", and for WARNING "run `/context`, and compact only if the measured percentage confirms it".
 
 Observable signals:
 
