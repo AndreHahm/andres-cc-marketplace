@@ -35,6 +35,45 @@
       "path": "plugins/session-kit/skills/session-handoff/scripts/validate_handoff.py",
       "pr": 798,
       "recorded_at": "2026-11-20T12:20:22+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4642498156",
+      "line": 89,
+      "note": "untracked listing made repository-wide with the :/ pathspec",
+      "path": "plugins/session-kit/skills/session-handoff/scripts/create_handoff.py",
+      "pr": 798,
+      "recorded_at": "2026-11-20T12:49:07+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-codex-58bf43ca-injection-surface",
+      "line": 246,
+      "note": "filenames with a line break, pipe, backtick or control character are never written into the table; a TODO counts them",
+      "path": "plugins/session-kit/skills/session-handoff/scripts/create_handoff.py",
+      "pr": 798,
+      "recorded_at": "2026-11-20T12:49:14+00:00",
+      "rule": "injection-surface"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-codex-58bf43ca-redaction-reminder",
+      "line": 345,
+      "note": "footer reminder now asks to redact personal or confidential details",
+      "path": "plugins/session-kit/skills/session-handoff/scripts/create_handoff.py",
+      "pr": 798,
+      "recorded_at": "2026-11-20T12:49:14+00:00",
+      "rule": "credential-pii-leakage"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-codex-58bf43ca-table-pipe",
+      "line": 246,
+      "note": "same fix: a name containing a pipe is left out of the table",
+      "path": "plugins/session-kit/skills/session-handoff/scripts/create_handoff.py",
+      "pr": 798,
+      "recorded_at": "2026-11-20T12:49:14+00:00",
+      "rule": "correctness"
     }
   ]
 }

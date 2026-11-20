@@ -29,6 +29,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from validate_handoff import git_env  # noqa: E402
 
+# A filename with any of these characters is never written into the handoff's Markdown table.
+UNSAFE_NAME = re.compile(r"[\x00-\x1f\x7f|`]")
+
 
 def run_cmd(cmd: list[str], cwd: str | None = None, strip: bool = True) -> tuple[bool, str]:
     """Run a command and return (success, output).
@@ -86,7 +89,9 @@ def get_git_info(project_path: str) -> dict:
     for cmd in (
         ["git", "diff", "--name-only", "-z"],
         ["git", "diff", "--name-only", "-z", "--cached"],
-        ["git", "ls-files", "-z", "--full-name", "--others", "--exclude-standard"],
+        # ":/" makes ls-files repository-wide like the diffs; without it, it lists only files
+        # under a subdirectory project and could miss untracked work elsewhere in the repository.
+        ["git", "ls-files", "-z", "--full-name", "--others", "--exclude-standard", "--", ":/"],
         ["git", "diff", "--name-only", "-z", "@{upstream}...HEAD"],
     ):
         success, output = run_cmd(cmd, cwd=project_path, strip=False)
@@ -243,10 +248,21 @@ def generate_handoff(
     # Unpushed Changes: only uncommitted or unpushed files (optional section)
     changed = git_info["changed_files"]
     if changed:
-        rows = "\n".join(f"| {f} | [TODO: what changed and why] |" for f in changed[:10])
-        if len(changed) > 10:
-            rows += f"\n| ... and {len(changed) - 10} more files | |"
-        unpushed_section = f"| File | Change |\n|------|--------|\n{rows}"
+        # A git filename can hold a line break, "|" or a backtick, which would end the table row
+        # or cell and put text of the filename's choosing into the handoff. Such names are never
+        # written; a TODO counts them instead, so the author lists them by hand.
+        listed = [f for f in changed if not UNSAFE_NAME.search(f)]
+        unsafe = len(changed) - len(listed)
+        rows = "\n".join(f"| {f} | [TODO: what changed and why] |" for f in listed[:10])
+        if len(listed) > 10:
+            rows += f"\n| ... and {len(listed) - 10} more files | |"
+        unpushed_section = f"| File | Change |\n|------|--------|\n{rows}" if listed else ""
+        if unsafe:
+            note = (
+                f"[TODO: {unsafe} changed file(s) have a line break, '|', a backtick or a "
+                "control character in the name and are not listed; describe them, or none]"
+            )
+            unpushed_section = f"{unpushed_section}\n\n{note}" if listed else note
     else:
         unpushed_section = "None: everything is committed and pushed."
     if not git_info["is_git_repo"]:
@@ -365,7 +381,8 @@ Environment: [optional: running processes and required env var NAMES only, never
 
 ---
 
-**Security Reminder**: Run `validate_handoff.py` before finalizing to check for secret exposure.
+**Security Reminder**: Run `validate_handoff.py` before finalizing to check for secret exposure, and
+redact personal or confidential details before sharing this handoff.
 """
 
     # Write the file. file_timestamp has one-second resolution -- two concurrent

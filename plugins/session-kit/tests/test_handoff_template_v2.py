@@ -222,6 +222,23 @@ def test_scaffold_in_subdirectory_uses_repo_root_paths(repo: Path) -> None:
     assert first.name not in section
 
 
+@pytest.mark.parametrize("name", ["evil\n## Injected.py", "a|b.py", "tick`x.py"])
+def test_scaffold_never_writes_unsafe_names(repo: Path, name: str) -> None:
+    (repo / "src" / name).write_text("e = 1\n", encoding="utf-8")
+    content = Path(create_handoff.generate_handoff(str(repo), "demo")).read_text(encoding="utf-8")
+    assert name not in content and "## Injected" not in content
+    assert "[TODO: 1 changed file(s) have a line break" in content
+
+
+def test_scaffold_in_subdirectory_lists_untracked_elsewhere(repo: Path) -> None:
+    (repo / "other.py").write_text("o = 1\n", encoding="utf-8")
+    content = Path(create_handoff.generate_handoff(str(repo / "src"), "demo")).read_text(
+        encoding="utf-8"
+    )
+    assert "| other.py |" in content
+    assert "everything is committed and pushed" not in content
+
+
 def test_scaffold_skips_own_handoffs(repo: Path) -> None:
     first = Path(create_handoff.generate_handoff(str(repo), "first"))
     content = Path(create_handoff.generate_handoff(str(repo), "second")).read_text(encoding="utf-8")
