@@ -196,6 +196,16 @@ def test_scaffold_without_upstream_does_not_claim_pushed(repo: Path) -> None:
     assert "[TODO: the branch has no upstream" in content
 
 
+def test_scaffold_outside_git_does_not_claim_pushed(tmp_path: Path) -> None:
+    project = tmp_path / "plain"
+    project.mkdir()
+    content = Path(create_handoff.generate_handoff(str(project), "demo")).read_text(
+        encoding="utf-8"
+    )
+    assert "everything is committed and pushed" not in content
+    assert "[TODO: not a git repository" in content
+
+
 def test_scaffold_with_upstream_and_nothing_pending(repo: Path, tmp_path: Path) -> None:
     remote = tmp_path / "remote.git"
     _git(tmp_path, "init", "-q", "--bare", str(remote))
@@ -304,6 +314,20 @@ def test_card_with_unfilled_line_is_a_problem(repo: Path) -> None:
     assert validate_handoff.check_resume_card(content) == [
         "Resume Card has no filled line for: Blockers"
     ]
+
+
+def test_card_problem_blocks_ready(repo: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    path = _write_v2(repo)
+    content = path.read_text(encoding="utf-8").replace("- Blockers: none\n", "")
+    path.write_text(content, encoding="utf-8")
+    result = validate_handoff.validate_handoff(str(path))
+    assert result["card_problems"] == ["Resume Card has no filled line for: Blockers"]
+    assert validate_handoff.print_report(result) is False
+    assert "NEEDS WORK" in capsys.readouterr().out
+
+
+def test_filled_card_reports_ready(repo: Path) -> None:
+    assert validate_handoff.print_report(validate_handoff.validate_handoff(str(_write_v2(repo))))
 
 
 def test_empty_card_is_a_problem() -> None:
