@@ -1,0 +1,31 @@
+{
+  "eval_id": 20,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Asks one question per vendor (in one AskUserQuestion call), each quoting that vendor's recipient, model and reach",
+      "passed": true,
+      "evidence": "\"It is one AskUserQuestion call with two questions, one per vendor. It is separate from Codex's First-Send Confirmation\"; each question quotes recipient, model and reach."
+    },
+    {
+      "text": "Each question states the batches' target paths, the dispatch count and that the diff leaves the machine, and repeats the DISPATCHER_TOUCHED disclosure",
+      "passed": true,
+      "evidence": "\"Target paths: batch 1: <batch-1 paths>; batch 2: <batch-2 paths>\"; \"This answer covers 4 agy dispatches\"; \"The full diff text of those files leaves this machine\"; \"Disclosure: DISPATCHER_TOUCHED=1\"."
+    },
+    {
+      "text": "Real dispatches pass the dry run's model as --model",
+      "passed": true,
+      "evidence": "\"Each model is kept as --model for every real dispatch of that vendor.\""
+    },
+    {
+      "text": "A changed dispatcher at the re-check drops agy for the run with the reason; the earlier locator result is not used",
+      "passed": true,
+      "evidence": "\"Not dispatch agy at all ... and not use either the old or the new path\"; records the drop with both paths in inspection_limits."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

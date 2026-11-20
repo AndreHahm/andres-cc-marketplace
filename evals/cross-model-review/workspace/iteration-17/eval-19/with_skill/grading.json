@@ -1,0 +1,26 @@
+{
+  "eval_id": 19,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Three picks: tells the user at most two may be picked and asks again; does not trim the list itself",
+      "passed": true,
+      "evidence": "\"More than two picks: say so and ask again; never trim the list yourself\" ... \"I would not drop one myself\"; re-asks with the same multiSelect question."
+    },
+    {
+      "text": "pi: drops the vendor with vendor_not_allowed recorded, without editing the allow-list, inputs or vendor setup",
+      "passed": true,
+      "evidence": "\"I drop pi for this run and record vendor_not_allowed for pi in inspection_limits. I do not edit the inputs, the allow-list, or pi's setup\"."
+    },
+    {
+      "text": "devin: stays addable; the egress question names the secret-like path and --secret-paths-confirmed is passed only after a yes",
+      "passed": true,
+      "evidence": "\"Devin stays addable. The confirmation must name the hit (config/api-token.json)\"; \"Only on 'Send to devin' do the real dispatches get --model <confirmed model> and --secret-paths-confirmed\"."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "eval_id": 20,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {
+      "text": "Asks one question per vendor (in one AskUserQuestion call), each quoting that vendor's recipient, model and reach",
+      "type": "functionality",
+      "target": "references/optional-models.md"
+    },
+    {
+      "text": "Each question states the batches' target paths, the dispatch count and that the diff leaves the machine, and repeats the DISPATCHER_TOUCHED disclosure",
+      "type": "functionality",
+      "target": "references/optional-models.md"
+    },
+    {
+      "text": "Real dispatches pass the dry run's model as --model",
+      "type": "functionality",
+      "target": "references/optional-models.md"
+    },
+    {
+      "text": "A changed dispatcher at the re-check drops agy for the run with the reason; the earlier locator result is not used",
+      "type": "functionality",
+      "target": "references/optional-models.md"
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "eval_id": 29,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Case A: no optional model is offered; the run continues as Claude + Codex",
+      "passed": true,
+      "evidence": "\"exit 3 means: offer no optional model, mention the two reasons in one line ... and go on with Claude and Codex\"; \"No pick question\"."
+    },
+    {
+      "text": "Case A: does not search elsewhere or use a reviewadapters-kit copy inside the checkout",
+      "passed": true,
+      "evidence": "\"Never search further and never run a copy inside the checkout.\""
+    },
+    {
+      "text": "Case B: offers no optional model despite PLANNER_APPROVED=1, and records why in inspection_limits",
+      "passed": true,
+      "evidence": "\"If Preflight set PLANNER_TOUCHED=1, offer no optional model and record why.\" The locator is not run at all; Phase 3 lists \"optional models not offered: PLANNER_TOUCHED=1\" among the limits."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

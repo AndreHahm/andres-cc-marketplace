@@ -42,7 +42,7 @@ In this repository's own sessions `CLAUDE_PLUGIN_ROOT` is empty, the `:-.claude`
 prompts, like the planner wrapper), and the sibling lookup finds nothing, since the mirror is not in the
 plugin cache: only the config path can work there.
 
-## 2. Pick (Preflight step 8)
+## 2. Pick (Preflight step 7)
 
 Only when the locator succeeded, and before the First-Send Confirmation, ask via `AskUserQuestion`
 (`multiSelect: true`): "Add optional reviewer models to Claude and Codex for this run? At most two."
@@ -50,7 +50,7 @@ with options `agy`, `pi`, `devin`. No pick (or only "Other" text) means none. Mo
 say so and ask again; never trim the list yourself. The pick holds for this run only and is never stored.
 Whether a vendor may run at all is reviewadapters-kit's local allow-list, not this question.
 
-## 3. Inputs, dry run and egress confirmation (Preflight step 9)
+## 3. Inputs, dry run and egress confirmation (Preflight step 7)
 
 Per picked vendor and per batch with at least one eligible path, write three files under `$RUN` with
 the write helper (`references/codex-pass-assembly.md`, "Writing a run file"). `$RUN` is private, outside
@@ -85,8 +85,8 @@ node "$RVA" --vendor <V> --reviewer-type fresh-eyes-reviewer --dispatch-id cross
   make it pass. The categories are listed in reviewadapters-kit's `review-adapter-dispatch` skill
   (its typed-failures reference).
 
-Then **one egress confirmation per remaining vendor** (one `AskUserQuestion` call, one question each,
-options "Send to <V> for this run" / "Skip <V>"), before that vendor's first real dispatch and
+Then **a single `AskUserQuestion` call with one question per remaining vendor** (never a separate call
+per vendor; options "Send to <V> for this run" / "Skip <V>"), before that vendor's first real dispatch and
 independent of Codex's First-Send Confirmation. Each question quotes the dry run's `recipient`, `model`
 and `reach`; names the target paths of every batch (or their union and the batch count) and the number of
 dispatches the answer covers (two per batch with eligible paths); states that the full diff text of those
@@ -125,7 +125,8 @@ finding id. Dispatch with `--reviewer-type challenger-reviewer` and
 envelopes Claude reads (`$RUN/claude_challenger.json`) cover every other model's Phase 1 findings,
 grouped by reviewer, not only the one other side.
 
-**A typed failure** skips that vendor for that batch, with its category in `inspection_limits`; every
+**A typed failure** skips that vendor for that batch, Phase 1 and Phase 2 alike (a Phase 1 failure means
+no Phase 2 dispatch of that vendor for the batch), with its category in `inspection_limits`; every
 envelope already returned is kept (`references/resolver-failure-handling.md`, applied per vendor). There
 is no timeout retry for an optional model. A process ended by a signal (exit 129, 130 or 143) is a
 `dispatcher_error`, and the diff may already have been sent.
