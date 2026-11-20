@@ -1,8 +1,9 @@
 #!/bin/bash
 # Two-line statusline with visual context progress bar
 #
-# Line 1: Model and reasoning effort, folder, branch, push and working-tree state
-# Line 2: Progress bar, context %, cost, lines changed, duration, cache hit rate
+# Line 1: Model and reasoning effort, folder, branch, open PR, push and working-tree state
+# Line 2: Progress bar, context % (with a compaction hint from 80%), cost, lines changed,
+#         duration, cache hit rate
 #
 # Context % uses Claude Code's pre-calculated remaining_percentage,
 # which accounts for compaction reserves. 100% = compaction fires.
@@ -69,11 +70,15 @@ if [ -z "$current_dir" ] && [ -z "$model_name" ]; then
     : "${duration_ms:=0}"
 fi
 
-# Reasoning effort: `effort.level` from the input when present, else the
-# CLAUDE_EFFORT environment variable; hidden when neither is set. Claude Code
-# documents both for hooks and Bash commands, not explicitly for the status line.
+# Reasoning effort: the documented `effort.level` field (absent when the model has no
+# effort parameter), else the CLAUDE_EFFORT environment variable; hidden when neither is set.
 effort_level=$(echo "$stdin_data" | jq -r '.effort.level // empty' 2>/dev/null | tr -d '\r')
 : "${effort_level:=${CLAUDE_EFFORT:-}}"
+
+# Open PR for the current branch: the documented `pr.number` field, present only while
+# Claude Code finds an open PR or merge request. Digits only, so nothing else is printed.
+pr_number=$(echo "$stdin_data" | jq -r '.pr.number // empty' 2>/dev/null | tr -d '\r')
+[[ "$pr_number" =~ ^[0-9]+$ ]] || pr_number=""
 
 # Git info
 if cd "$current_dir" 2>/dev/null; then
@@ -131,6 +136,11 @@ if [ -n "$ctx_used" ] && [ "$ctx_used" != "null" ]; then
     progress_bar="${progress_bar}\033[0m"
 
     ctx_pct="ctx ${ctx_used}%"
+    # From 80% (red bar) on, prompt a decision; whether compacting or a handoff fits
+    # depends on the task, which the status line cannot know.
+    if [ "$ctx_used" -ge 80 ]; then
+        ctx_pct="${ctx_pct} \033[31m→ /compact or handoff\033[0m"
+    fi
 else
     ctx_pct=""
 fi
@@ -167,6 +177,9 @@ fi
 line1="$line1 $(printf '\033[94m📁 %s\033[0m' "$folder_name")"
 if [ -n "$git_branch" ]; then
     line1="$line1 $(printf '%b \033[96m🌿 %s\033[0m' "$SEP" "$git_branch")"
+    if [ -n "$pr_number" ]; then
+        line1="$line1 $(printf '\033[94m#%s\033[0m' "$pr_number")"
+    fi
     # ↑ not pushed, ↓ not pulled, ● changed files, + untracked files; each only when non-zero.
     git_state=""
     [ "${git_ahead:-0}" -gt 0 ] 2>/dev/null && git_state+=" \033[33m↑${git_ahead}\033[0m"
