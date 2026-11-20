@@ -68,12 +68,117 @@ prefix_rule(
     pattern = ["reboot"],
     decision = "forbidden",
 )
+# World-writable modes, with up to two flags before the mode.
+prefix_rule(
+    pattern = ["chmod", ["777", "0777", "1777", "2777", "666", "0666", "a+rwx", "a=rwx", "ugo+rwx", "ugo=rwx", "a+w", "o+w", "go+w"]],
+    decision = "forbidden",
+    justification = "World-writable permissions are not allowed from Codex.",
+    match = ["chmod 777 build", "chmod 0777 x", "chmod 1777 dir", "chmod 666 f", "chmod a=rwx x", "chmod go+w x"],
+    not_match = ["chmod 755 build", "chmod +x script.sh", "chmod 644 f"],
+)
+prefix_rule(
+    pattern = ["chmod", ["-R", "--recursive", "-f", "-v"], ["777", "0777", "1777", "2777", "666", "0666", "a+rwx", "a=rwx", "ugo+rwx", "ugo=rwx", "a+w", "o+w", "go+w"]],
+    decision = "forbidden",
+    justification = "World-writable permissions are not allowed from Codex.",
+    match = ["chmod -R 777 build", "chmod --recursive a+w x"],
+)
+prefix_rule(
+    pattern = ["chmod", ["-R", "--recursive", "-f", "-v"], ["-R", "--recursive", "-f", "-v"], ["777", "0777", "1777", "2777", "666", "0666", "a+rwx", "a=rwx", "ugo+rwx", "ugo=rwx", "a+w", "o+w", "go+w"]],
+    decision = "forbidden",
+    justification = "World-writable permissions are not allowed from Codex.",
+    match = ["chmod -R -v 777 x"],
+)
 prefix_rule(
     pattern=[["bash", "sh"], ["-lc", "-c"]],
     decision="prompt",
     justification="Shell wrappers can hide compound commands; require explicit approval.",
 )
 # External network and containers
+prefix_rule(
+    pattern = [["npm", "pnpm", "bun"], "publish"],
+    decision = "forbidden",
+    justification = "Publishing packages is not allowed from Codex; publish manually.",
+    match = ["npm publish", "npm publish --tag next", "pnpm publish", "bun publish"],
+)
+prefix_rule(
+    pattern = ["yarn", "publish"],
+    decision = "forbidden",
+    justification = "Publishing packages is not allowed from Codex; publish manually.",
+    match = ["yarn publish"],
+)
+prefix_rule(
+    pattern = ["yarn", "npm", "publish"],
+    decision = "forbidden",
+    justification = "Publishing packages is not allowed from Codex; publish manually.",
+    match = ["yarn npm publish"],
+    not_match = ["yarn npm info react"],
+)
+# Flag-first monorepo forms. Forms with a value before `publish`
+# (`npm -w pkg publish`, `pnpm --filter pkg publish`) cannot be written as a
+# prefix rule; the PreToolUse hook blocks those.
+prefix_rule(
+    pattern = ["pnpm", ["-r", "--recursive"], "publish"],
+    decision = "forbidden",
+    justification = "Publishing packages is not allowed from Codex; publish manually.",
+    match = ["pnpm -r publish", "pnpm --recursive publish --access public"],
+)
+prefix_rule(
+    pattern = ["npm", ["--workspaces", "-ws"], "publish"],
+    decision = "forbidden",
+    justification = "Publishing packages is not allowed from Codex; publish manually.",
+    match = ["npm --workspaces publish", "npm -ws publish"],
+)
+# Download-and-run tools: each fetches a package and executes it.
+prefix_rule(
+    pattern = [["npx", "bunx", "uvx"]],
+    decision = "prompt",
+    justification = "This downloads and runs a package; ask first.",
+    match = ["npx prettier --check .", "bunx eslint .", "uvx ruff check"],
+)
+prefix_rule(
+    pattern = ["npm", ["exec", "x"]],
+    decision = "prompt",
+    justification = "This downloads and runs a package; ask first.",
+    match = ["npm exec -- prettier .", "npm x eslint"],
+)
+prefix_rule(
+    pattern = [["pnpm", "yarn"], "dlx"],
+    decision = "prompt",
+    justification = "This downloads and runs a package; ask first.",
+    match = ["pnpm dlx create-vite", "yarn dlx cowsay"],
+)
+prefix_rule(
+    pattern = ["pipx", "run"],
+    decision = "prompt",
+    justification = "This downloads and runs a package; ask first.",
+    match = ["pipx run black ."],
+)
+prefix_rule(
+    pattern = ["uv", "tool", "run"],
+    decision = "prompt",
+    justification = "This downloads and runs a package; ask first.",
+    match = ["uv tool run ruff check"],
+)
+prefix_rule(
+    pattern = ["bun", "x"],
+    decision = "prompt",
+    justification = "This downloads and runs a package; ask first.",
+    match = ["bun x eslint ."],
+)
+# Project generators download and run a `create-*` package. A bare `npm init`
+# with no package name also prompts.
+prefix_rule(
+    pattern = ["npm", ["create", "init"]],
+    decision = "prompt",
+    justification = "This downloads and runs a project generator; ask first.",
+    match = ["npm create vite@latest", "npm init vite"],
+)
+prefix_rule(
+    pattern = [["pnpm", "yarn", "bun"], "create"],
+    decision = "prompt",
+    justification = "This downloads and runs a project generator; ask first.",
+    match = ["pnpm create vite", "yarn create next-app", "bun create hono"],
+)
 prefix_rule(
     pattern = ["curl"],
     decision = "prompt",
@@ -228,6 +333,11 @@ prefix_rule(
 )
 prefix_rule(
     pattern = ["git", "branch", "-d"],
+    decision = "forbidden",
+    justification = "This command must be run manually outside Codex.",
+)
+prefix_rule(
+    pattern = ["git", "branch", "--delete"],
     decision = "forbidden",
     justification = "This command must be run manually outside Codex.",
 )
