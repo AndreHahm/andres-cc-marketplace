@@ -32,6 +32,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { matchesSecretFilename, LOOSE_SECRET_FILENAME_PATTERNS } from "../../scripts/lib/cdx-secret-filenames.mjs";
+import { gitExecutable } from "../../scripts/lib/cdx-lintignore-base.mjs";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const GUARDED_DISPATCH = path.join(SCRIPT_DIR, "..", "..", "skills", "codex-windows-guardrails", "scripts", "guarded-dispatch.mjs");
@@ -1915,7 +1916,8 @@ console.log("\n=== PR #805 review: only a regular file at the base counts as a d
   const baseEntryFixture = (mode, relPath, content) => {
     const f = makeFixture();
     f.commit("init");
-    const oid = execFileSync("git", ["hash-object", "-w", "--stdin"], { cwd: f.root, input: content, encoding: "utf8" }).trim();
+    // gitExecutable: an absolute git from PATH, never a folder inside the fixture (Sonar S4036).
+    const oid = execFileSync(gitExecutable(f.root), ["hash-object", "-w", "--stdin"], { cwd: f.root, input: content, encoding: "utf8" }).trim();
     git(["update-index", "--add", "--cacheinfo", `${mode},${oid},${relPath}`], f.root);
     git(["-c", "user.email=t@t.com", "-c", "user.name=Test", "commit", "-q", "-m", "add base entry"], f.root);
     f.markBase();
@@ -1936,7 +1938,7 @@ console.log("\n=== PR #805 review: only a regular file at the base counts as a d
   // commit id only has to be well formed; git stores it without checking it.
   const gitlinkFixture = makeFixture();
   gitlinkFixture.commit("init");
-  const headOid = execFileSync("git", ["rev-parse", "HEAD"], { cwd: gitlinkFixture.root, encoding: "utf8" }).trim();
+  const headOid = execFileSync(gitExecutable(gitlinkFixture.root), ["rev-parse", "HEAD"], { cwd: gitlinkFixture.root, encoding: "utf8" }).trim();
   git(["update-index", "--add", "--cacheinfo", `160000,${headOid},vendored`], gitlinkFixture.root);
   git(["-c", "user.email=t@t.com", "-c", "user.name=Test", "commit", "-q", "-m", "add gitlink"], gitlinkFixture.root);
   gitlinkFixture.markBase();
@@ -1965,6 +1967,29 @@ console.log("\n=== PR #805 review: only a regular file at the base counts as a d
     "a deleted base executable file (mode 100755) is accepted as a deletion (stops at the next gate)",
     execRun.ok === false && execRun.category === "instruction_containment_violation",
     JSON.stringify(execRun)
+  );
+
+  // The per-directory listing cache (PR #805 CodeRabbit review) must not
+  // change which paths pass: two deletions from one directory both pass, and
+  // a misspelled sibling looked up from the same cached listing is refused.
+  const shared = makeFixture();
+  writeFixtureFile(path.join(shared.root, "docs"), "one.md", "1");
+  writeFixtureFile(path.join(shared.root, "docs"), "two.md", "2");
+  shared.commit("init");
+  shared.markBase();
+  git(["rm", "-q", "docs/one.md", "docs/two.md"], shared.root);
+  shared.commit("delete both");
+  const sharedRun = runDispatch(shared.root, "target.md,docs/one.md,docs/two.md", path.join(shared.root, "target.md"));
+  check(
+    "two deletions from one base directory are both accepted (stops at the next gate)",
+    sharedRun.ok === false && sharedRun.category === "instruction_containment_violation",
+    JSON.stringify(sharedRun)
+  );
+  const sharedMiss = runDispatchRaw(shared.root, "target.md,docs/one.md,docs/three.md", instructionFile, "smoke-805", ["--dry-run", "true"]);
+  check(
+    "a misspelled sibling after a cached listing of the same directory is still refused",
+    sharedMiss.ok === false && sharedMiss.category === "target_path_not_found" && /docs\/three\.md/.test(sharedMiss.detail),
+    JSON.stringify(sharedMiss)
   );
 
   const nested = baseEntryFixture("100644", "sub/dir/removed.md", "old content");
