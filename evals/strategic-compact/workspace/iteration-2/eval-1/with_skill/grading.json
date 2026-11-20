@@ -1,0 +1,26 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Response proactively suggests /compact (or session-kit's session-handoff) without being explicitly asked",
+      "passed": true,
+      "evidence": "Unprompted: a milestone is one of the best times to compact; recommends /compact, /clear or session-handoff by next step."
+    },
+    {
+      "text": "Response cites a real, named trigger from the skill's Optimal Compaction Points table (e.g. 'milestone completed', tests passing, commit made) as the reason, not a generic justification",
+      "passed": true,
+      "evidence": "Cites Optimal Compaction Points: Milestone completed (tests passed, then a commit)."
+    },
+    {
+      "text": "Response does not give generic/unrelated advice that ignores the milestone entirely",
+      "passed": true,
+      "evidence": "Advice is built around the milestone; not generic."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

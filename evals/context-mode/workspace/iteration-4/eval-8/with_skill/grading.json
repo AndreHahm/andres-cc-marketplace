@@ -1,0 +1,21 @@
+{
+  "eval_id": 8,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Plans exactly one script invocation whose only argument is the word status",
+      "passed": true,
+      "evidence": "One planned command: set_mode.py status."
+    },
+    {
+      "text": "Reports the active mode from the script's answer rather than guessing from the conversation",
+      "passed": true,
+      "evidence": "Expected output Active context mode: review, taken from the status branch of set_mode.py; reply states review from it."
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 2,
+    "pass_rate": 1.0
+  }
+}
