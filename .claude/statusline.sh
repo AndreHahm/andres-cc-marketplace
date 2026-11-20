@@ -1,7 +1,7 @@
 #!/bin/bash
 # Two-line statusline with visual context progress bar
 #
-# Line 1: Model, folder, branch
+# Line 1: Model and reasoning effort, folder, branch
 # Line 2: Progress bar, context %, cost, duration
 #
 # Context % uses Claude Code's pre-calculated remaining_percentage,
@@ -68,6 +68,12 @@ if [ -z "$current_dir" ] && [ -z "$model_name" ]; then
     : "${lines_removed:=0}"
     : "${duration_ms:=0}"
 fi
+
+# Reasoning effort: `effort.level` from the input when present, else the
+# CLAUDE_EFFORT environment variable; hidden when neither is set. Claude Code
+# documents both for hooks and Bash commands, not explicitly for the status line.
+effort_level=$(echo "$stdin_data" | jq -r '.effort.level // empty' 2>/dev/null | tr -d '\r')
+: "${effort_level:=${CLAUDE_EFFORT:-}}"
 
 # Git info
 if cd "$current_dir" 2>/dev/null; then
@@ -141,8 +147,12 @@ SEP='\033[2m│\033[0m'
 # Get short model name (e.g., "Opus" instead of "Claude 3.5 Opus")
 short_model=$(echo "$model_name" | sed -E 's/Claude [0-9.]+ //; s/^Claude //')
 
-# LINE 1: [Model] folder | branch
-line1=$(printf '\033[37m[%s]\033[0m' "$short_model")
+# LINE 1: [Model · effort] folder | branch
+if [ -n "$effort_level" ]; then
+    line1=$(printf '\033[37m[%s · %s]\033[0m' "$short_model" "$effort_level")
+else
+    line1=$(printf '\033[37m[%s]\033[0m' "$short_model")
+fi
 line1="$line1 $(printf '\033[94m📁 %s\033[0m' "$folder_name")"
 if [ -n "$git_branch" ]; then
     line1="$line1 $(printf '%b \033[96m🌿 %s\033[0m' "$SEP" "$git_branch")"
