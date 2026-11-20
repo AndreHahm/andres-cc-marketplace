@@ -19,10 +19,6 @@ CMD=$(jq -r '.tool_input.command // empty' <<<"${INPUT}") ||
 
 [[ -z "${CMD}" ]] && exit 0
 
-# Join backslash-continued lines first: every check below reads one line at a time,
-# so `git -C x \` + newline + `reset --hard` would otherwise slip past them.
-CMD=${CMD//$'\\\n'/ }
-
 # The command without heredoc bodies, for the checks that look for a command at the
 # start of a line: a heredoc that writes a note or a script mentioning `git rebase`
 # is text, not a command. Only a body whose delimiter is quoted (`<<'EOF'`, `<<"EOF"`)
@@ -33,7 +29,8 @@ CMD=${CMD//$'\\\n'/ }
 # after a `#` is kept as code (arithmetic shift, comment). An unterminated heredoc
 # keeps its lines, so a `<<` that bash does not read as a heredoc cannot hide the
 # rest of the command. Only the first heredoc on a line is removed.
-CMD_CODE=$(awk -v sq="'" -v dq='"' '
+strip_heredocs() {
+    awk -v sq="'" -v dq='"' '
 term != "" {
     held = held $0 "\n"
     line = $0
@@ -56,15 +53,106 @@ term != "" {
     sub("^[^<]*<<-?[ \t]*[" sq dq "]?", "", word)
     term = word
 }
-END { if (term != "") printf "%s", held }' <<<"${CMD}")
+END { if (term != "") printf "%s", held }'
+}
+
+# CMD_CODE with the quoted value of a message or pattern option blanked (`-m "use --amend"`
+# becomes `-m ""`), for the forbidden-git check only, so text inside a message is not
+# read as a flag. The scanner tracks quotes like bash (single, double, $'...', backslash).
+# A line is not blanked when it holds `$(`, a backtick, `${` or `$'`, or names a shell,
+# ssh, eval, source or a command runner; once a quote is left open at the end of a line,
+# no later line is blanked, since bash is still inside that string.
+blank_flag_values() {
+    awk -v sq="'" -v dq='"' '
+# Index of the quote q that closes a string opened before position i, or 0 if none
+# on this line. esc: a backslash escapes the next character (double and ANSI-C quotes).
+function close_at(s, i, q, esc,    n, c) {
+    n = length(s)
+    while (i <= n) {
+        c = substr(s, i, 1)
+        if (esc && c == "\\") { i += 2; continue }
+        if (c == q) return i
+        i++
+    }
+    return 0
+}
+# Copy line s, blanking an option value when blank is set. An unclosed quote sets open
+# and returns s unchanged.
+function scan(s, blank,    out, i, n, c, j, q, esc, start, rest) {
+    out = ""; n = length(s); i = 1
+    while (i <= n) {
+        c = substr(s, i, 1)
+        if (c == "\\") { out = out substr(s, i, 2); i += 2; continue }
+        if (blank && c ~ /[;&|]/) { open = 1; return s }
+        if (blank && (i == 1 || substr(s, i - 1, 1) ~ /[ \t]/)) {
+            rest = substr(s, i)
+            if (match(rest, "^(-a?m|--message|-e|--exclude|--list|-l)(=|[ \t]+)[" sq dq "]")) {
+                q = substr(rest, RLENGTH, 1)
+                j = close_at(s, i + RLENGTH, q, q == dq)
+                if (!j) { open = 1; return s }
+                out = out substr(rest, 1, RLENGTH) q
+                i = j + 1
+                continue
+            }
+        }
+        start = i
+        if (c == "$" && substr(s, i + 1, 1) == sq) { q = sq; esc = 1; i++ }
+        else if (c == sq) { q = sq; esc = 0 }
+        else if (c == dq) { q = dq; esc = 1 }
+        else { out = out c; i++; continue }
+        j = close_at(s, i + 1, q, esc)
+        if (!j) { open = 1; return s }
+        out = out substr(s, start, j - start + 1)
+        i = j + 1
+    }
+    return out
+}
+{
+    if (open) { print; next }
+    # A line that is not one plain git command, or that holds anything whose quoting
+    # this scanner does not model (command or parameter substitution, a backtick, ANSI-C
+    # quoting, a heredoc, a shell or runner name), is printed as is and ends blanking
+    # for the rest of the command.
+    if ($0 !~ /^[ \t]*([^ \t;&|]*\/)?git[ \t]/ ||
+        $0 ~ ("\\$\\(|`|\\$\\{|\\$" sq "|<<") ||
+        $0 ~ /(^|[^A-Za-z0-9_.-])(bash|sh|zsh|dash|ksh|fish|pwsh|powershell|ssh|eval|source|watch|su|script|flock|parallel|xargs|trap|foreach)([^A-Za-z0-9_.-]|$)/) {
+        open = 1; print; next
+    }
+    print scan($0, 1)
+}'
+}
+
+CMD_CODE=$(strip_heredocs <<<"${CMD}")
+CMD_FLAGS=$(blank_flag_values <<<"${CMD_CODE}")
+
+# Every check reads one line at a time, so `git -C x \` + newline + `reset --hard` would
+# slip past them. Each check also reads a copy with backslash-newline pairs joined. Not
+# every such pair is a continuation (`echo x\\` or a comment ending in a backslash), so
+# the lines as written are kept, never replaced. The joined copy goes through the
+# heredoc filter and the flag scanner on its own, so no state carries over between the
+# two copies.
+CMD_JOINED=${CMD//$'\\\n'/ }
+if [[ "${CMD_JOINED}" != "${CMD}" ]]; then
+    JOINED_CODE=$(strip_heredocs <<<"${CMD_JOINED}")
+    JOINED_FLAGS=$(blank_flag_values <<<"${JOINED_CODE}")
+    CMD+=$'\n'"${CMD_JOINED}"
+    CMD_CODE+=$'\n'"${JOINED_CODE}"
+    CMD_FLAGS+=$'\n'"${JOINED_FLAGS}"
+fi
 
 # Here-strings, not `printf | grep -q`: under pipefail, grep -q exiting early
 # can kill printf with SIGPIPE on a long command and turn a match into a miss.
 matches() {
     grep -qiE "$1" <<<"${CMD}"
 }
+# The anchored checks also read a copy with every quote character removed: bash removes
+# them before git sees the words, so `git -C . "stash"` or `st''ash` is the stash subcommand.
+QUOTE_CHARS="[\"']"
 matches_code() {
-    grep -qiE "$1" <<<"${CMD_CODE}"
+    grep -qiE "$1" <<<"${CMD_CODE}" || grep -qiE "$1" <<<"${CMD_CODE//${QUOTE_CHARS}/}"
+}
+matches_flags() {
+    grep -qiE "$1" <<<"${CMD_FLAGS}" || grep -qiE "$1" <<<"${CMD_FLAGS//${QUOTE_CHARS}/}"
 }
 
 COMMAND_PREFIX='(^|;[[:space:]]*|&&[[:space:]]*|[|][|][[:space:]]*|[|][[:space:]]*)'
@@ -75,7 +163,8 @@ GIT_OPT_VALUE="([^[:space:];&|\"']|\"[^\"]*\"|'[^']*')+"
 GIT_OPT="([[:space:]]+-[Cc][[:space:]]+${GIT_OPT_VALUE}"
 GIT_OPT+="|[[:space:]]+--(git-dir|work-tree|namespace|exec-path|super-prefix|config-env)"
 GIT_OPT+="[[:space:]]+${GIT_OPT_VALUE}"
-GIT_OPT+="|[[:space:]]+-[^[:space:];&|]+)"
+# Any other option, which may carry an attached quoted value (`--git-dir="a b"`).
+GIT_OPT+="|[[:space:]]+-${GIT_OPT_VALUE})"
 GIT_CMD="git${GIT_OPT}*[[:space:]]+"
 # A git command at the start of a command segment, so text that only mentions one
 # (a commit message, a PR body, a heredoc) does not match. A segment starts at the
@@ -117,7 +206,9 @@ CHMOD_WORLD_RE+="${GIT_SUB_END}"
 # forbids the plain forms but cannot match a value before the subcommand. Only options
 # and their values may come before `publish`, so `npm help publish` or a test filter
 # named publish (`pnpm vitest publish`) is not blocked.
-PKG_OPTS='([[:space:]]+-[^[:space:];&|]*([[:space:]]+[^-[:space:];&|][^[:space:];&|]*)?)*'
+# An option value may be quoted (`npm --prefix "a b" publish`), as GIT_OPT_VALUE allows.
+PKG_OPT_PART="[^[:space:];&|\"']|\"[^\"]*\"|'[^']*'"
+PKG_OPTS="([[:space:]]+-(${PKG_OPT_PART})*([[:space:]]+([^-[:space:];&|\"']|\"[^\"]*\"|'[^']*')(${PKG_OPT_PART})*)?)*"
 PUBLISH_RE="${SEGMENT_START}(npm|pnpm|bun|yarn)${PKG_OPTS}[[:space:]]+publish${GIT_SUB_END}"
 PUBLISH_RE+="|${SEGMENT_START}yarn[[:space:]]+workspaces[[:space:]]+foreach"
 PUBLISH_RE+="([[:space:]]+[^;&|[:space:]]+)*[[:space:]]+npm[[:space:]]+publish${GIT_SUB_END}"
@@ -174,7 +265,11 @@ if matches "${PUSH_FORCE_RE}"; then
     block "Do not force-push unless the user explicitly requested it."
 fi
 
-if matches_code "${GIT_AT_START}reset([^;&|]*[[:space:]])?--hard"; then
+# The raw-text match runs on the full command, as before this hook gained the anchored
+# check, so a reset inside an executed string (`bash -c '...'`, `eval '...'`, a heredoc
+# fed to an interpreter) stays blocked; the anchored check adds the global-option forms.
+if matches 'git[[:space:]]+reset[[:space:]]+--hard' ||
+    matches_code "${GIT_AT_START}reset([^;&|]*[[:space:]])?--hard"; then
     block "Do not run git reset --hard unless the user explicitly requested it."
 fi
 
@@ -182,7 +277,7 @@ if matches_code "${GIT_AT_START}rebase${GIT_SUB_END}"; then
     block "Do not rebase; propose a follow-up commit or a fresh branch instead."
 fi
 
-if matches_code "${GIT_WITH_OPTS_AT_START}(${FORBIDDEN_GIT_RE})"; then
+if matches_flags "${GIT_WITH_OPTS_AT_START}(${FORBIDDEN_GIT_RE})"; then
     block "This git command is forbidden by the exec-policy rules, also with git -C or other global options."
 fi
 
