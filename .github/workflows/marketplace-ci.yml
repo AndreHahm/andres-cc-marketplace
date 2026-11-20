@@ -1596,6 +1596,50 @@ jobs:
       - name: Install Codex CLI (pinned version, never floating latest)
         run: npm install -g @openai/codex@0.170.0
 
+      # Issue #793: the reviewers run Codex from this checkout, whose .codex/config.toml the PR
+      # can edit. Codex applies a project config only to a trusted project, and nothing in this
+      # job trusts the checkout, so the PR's config must not govern its own reviewers. Two steps
+      # check that instead of assuming it, with `codex features list`:
+      #   - This one (the control): a copy of the config, trusted in a throwaway CODEX_HOME, must
+      #     resolve a different feature table than an empty directory does; otherwise the later
+      #     comparison could not catch an applied config.
+      #   - "Check Codex does not apply the repository's own config", right before the reviewers
+      #     are dispatched: in the checkout, Codex must resolve the same table as in an empty
+      #     directory.
+      # The control applies the PR's config, so it runs before `codex login` writes the key to
+      # disk, with no secret in its environment. On 0.170.0, `features list` was seen to start no
+      # MCP server, notify command or hook from a trusted config; re-verify that whenever the
+      # Codex pin changes. Both steps compare the [features] table only, not every key a project
+      # config can set, and assume `codex exec` loads project config the way `features list` does.
+      - name: Check a trusted copy of the repository's Codex config is detectable
+        run: |
+          set -euo pipefail
+          features() { codex features list | grep -E ' (true|false)$'; }
+          if [ -L .codex/config.toml ] || { [ -e .codex/config.toml ] && [ ! -f .codex/config.toml ]; }; then
+            echo "::error::.codex/config.toml is a symlink or not a regular file -- refusing to read it"
+            exit 1
+          fi
+          if [ ! -e .codex/config.toml ]; then
+            echo "::notice::the checkout has no .codex/config.toml, so there is no project config Codex could apply"
+            exit 0
+          fi
+          empty_dir=$(mktemp -d "$RUNNER_TEMP/codex-empty.XXXXXX")
+          control_dir=$(mktemp -d "$RUNNER_TEMP/codex-control.XXXXXX")
+          control_home=$(mktemp -d "$RUNNER_TEMP/codex-control-home.XXXXXX")
+          mkdir "$control_dir/.git" "$control_dir/.codex"
+          cp .codex/config.toml "$control_dir/.codex/config.toml"
+          printf '[projects."%s"]\ntrust_level = "trusted"\n' "$control_dir" > "$control_home/config.toml"
+          (cd "$control_dir" && CODEX_HOME="$control_home" features) > "$RUNNER_TEMP/codex-features-control.txt"
+          (cd "$empty_dir" && CODEX_HOME="$control_home" features) > "$RUNNER_TEMP/codex-features-control-default.txt"
+          rc=0
+          cmp -s "$RUNNER_TEMP/codex-features-control-default.txt" "$RUNNER_TEMP/codex-features-control.txt" || rc=$?
+          if [ "$rc" -ne 1 ]; then
+            echo "::error::.codex/config.toml changes no feature even when trusted (or the comparison failed, cmp exit $rc), so the later check cannot show whether Codex applied it"
+            exit 1
+          fi
+          changed=$(diff "$RUNNER_TEMP/codex-features-control-default.txt" "$RUNNER_TEMP/codex-features-control.txt" | grep -c '^>' || true)
+          echo "Trusted, the repository's Codex config changes $changed feature(s), so an applied config is detectable"
+
       - name: Authenticate and smoke-check the Codex CLI
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -1618,6 +1662,24 @@ jobs:
         run: |
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
           codex sandbox /bin/true
+
+      # Issue #793, second half (see "Check a trusted copy of the repository's Codex config is
+      # detectable" above): run after login, in the same state the reviewers run in. Applies no
+      # PR config: neither directory is trusted.
+      - name: Check Codex does not apply the repository's own config
+        run: |
+          set -euo pipefail
+          features() { codex features list | grep -E ' (true|false)$'; }
+          empty_dir=$(mktemp -d "$RUNNER_TEMP/codex-empty.XXXXXX")
+          features > "$RUNNER_TEMP/codex-features-checkout.txt"
+          (cd "$empty_dir" && features) > "$RUNNER_TEMP/codex-features-default.txt"
+          rc=0
+          cmp -s "$RUNNER_TEMP/codex-features-default.txt" "$RUNNER_TEMP/codex-features-checkout.txt" || rc=$?
+          if [ "$rc" -ne 0 ]; then
+            echo "::error::Codex resolves different features in the checkout than in an empty directory (cmp exit $rc), so it applied the repository's .codex/config.toml -- refusing to dispatch reviewers the PR's own config would govern"
+            exit 1
+          fi
+          echo "Codex resolves the same features in the checkout as in an empty directory"
 
       # R14: this run started on a ready PR, but it may have been converted to draft while it
       # waited, and `converted_to_draft` starts no run that would cancel this one. The draft flag
