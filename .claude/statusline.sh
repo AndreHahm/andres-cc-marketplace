@@ -1,7 +1,7 @@
 #!/bin/bash
 # Two-line statusline with visual context progress bar
 #
-# Line 1: Model and reasoning effort, folder, branch
+# Line 1: Model and reasoning effort, folder, branch, push and working-tree state
 # Line 2: Progress bar, context %, cost, lines changed, duration, cache hit rate
 #
 # Context % uses Claude Code's pre-calculated remaining_percentage,
@@ -79,6 +79,17 @@ effort_level=$(echo "$stdin_data" | jq -r '.effort.level // empty' 2>/dev/null |
 if cd "$current_dir" 2>/dev/null; then
     git_branch=$(git -c core.useBuiltinFSMonitor=false branch --show-current 2>/dev/null)
     git_root=$(git -c core.useBuiltinFSMonitor=false rev-parse --show-toplevel 2>/dev/null)
+    # One local `git status` call (no network): commits ahead of/behind the upstream as of the
+    # last fetch, changed files (staged, unstaged or conflicted) and untracked files.
+    if [ -n "$git_root" ]; then
+        read -r git_ahead git_behind git_changed git_untracked < <(
+            git -c core.useBuiltinFSMonitor=false status --porcelain=v2 --branch 2>/dev/null | awk '
+                /^# branch\.ab / { a = substr($3, 2); b = substr($4, 2) }
+                /^[12u] /        { c++ }
+                /^\? /           { u++ }
+                END { print a + 0, b + 0, c + 0, u + 0 }'
+        )
+    fi
 fi
 
 # Build repo path display (folder name only for brevity)
@@ -156,6 +167,13 @@ fi
 line1="$line1 $(printf '\033[94m📁 %s\033[0m' "$folder_name")"
 if [ -n "$git_branch" ]; then
     line1="$line1 $(printf '%b \033[96m🌿 %s\033[0m' "$SEP" "$git_branch")"
+    # ↑ not pushed, ↓ not pulled, ● changed files, + untracked files; each only when non-zero.
+    git_state=""
+    [ "${git_ahead:-0}" -gt 0 ] 2>/dev/null && git_state+=" \033[33m↑${git_ahead}\033[0m"
+    [ "${git_behind:-0}" -gt 0 ] 2>/dev/null && git_state+=" \033[35m↓${git_behind}\033[0m"
+    [ "${git_changed:-0}" -gt 0 ] 2>/dev/null && git_state+=" \033[31m●${git_changed}\033[0m"
+    [ "${git_untracked:-0}" -gt 0 ] 2>/dev/null && git_state+=" \033[2m+${git_untracked}\033[0m"
+    line1="$line1$(printf '%b' "$git_state")"
 fi
 
 # Cost always with two decimals ($1.50, not $1.5); keep the raw value if it isn't a number.
