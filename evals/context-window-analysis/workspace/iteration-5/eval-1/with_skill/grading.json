@@ -1,0 +1,26 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Response asks the user to run /context and share the output, or explicitly falls back to indirect estimation only when /context output isn't available",
+      "passed": true,
+      "evidence": "Asks the user to run /context and paste the output for the measured figure."
+    },
+    {
+      "text": "Response includes a status assessment using one of HEALTHY/MONITOR/WARNING/CRITICAL",
+      "passed": true,
+      "evidence": "Estimated Status: HEALTHY (estimate, not a measurement), reported right away."
+    },
+    {
+      "text": "Response includes concrete recommendations (e.g. /compact, /clear, or 'no action needed'), not a vague answer",
+      "passed": true,
+      "evidence": "Recommendations: No action needed. Continue as normal; no /compact or /clear on the estimate."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

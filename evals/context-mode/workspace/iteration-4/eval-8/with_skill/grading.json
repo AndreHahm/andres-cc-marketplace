@@ -9,13 +9,13 @@
     },
     {
       "text": "Reports the active mode from the script's answer rather than guessing from the conversation",
-      "passed": true,
-      "evidence": "Expected output Active context mode: review, taken from the status branch of set_mode.py; reply states review from it."
+      "passed": false,
+      "evidence": "Not supported: the response predicts the output from the status branch of set_mode.py and its steps note says it stated the mode using the saved review mode from the scenario; unlike iteration 1, it never says it would relay whatever the script actually prints. Regraded after cross-model-review (2026-11-20)."
     }
   ],
   "summary": {
     "assertions_total": 2,
-    "assertions_passed": 2,
-    "pass_rate": 1.0
+    "assertions_passed": 1,
+    "pass_rate": 0.5
   }
 }
