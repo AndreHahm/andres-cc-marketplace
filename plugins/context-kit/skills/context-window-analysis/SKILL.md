@@ -117,7 +117,9 @@ With `/context` output, the percentage decides the status: map it onto the Conte
 above, and use the indicators below only to explain it. Without `/context` output, map the indicators below
 to a status and label it an estimate, not a measurement:
 
-- Any Critical indicator → CRITICAL
+- A Critical indicator tied to the context itself (truncation of the conversation, context rot, or an
+  operation failing on the context limit) → CRITICAL. A failure or a truncated tool result with no link
+  to the context, such as a mistyped command, counts as one Warning indicator instead.
 - Two or more Warning indicators, or an auto-compact message → WARNING
 - One Warning indicator, or only Healthy indicators in a long session (many turns, large file reads or
   tool output) → MONITOR
