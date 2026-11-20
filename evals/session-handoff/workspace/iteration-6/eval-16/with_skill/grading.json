@@ -1,0 +1,21 @@
+{
+  "eval_id": 16,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Reads the whole older handoff at once (no card)",
+      "passed": true,
+      "evidence": "\"The missing Resume Card alone requires reading the whole document at once\""
+    },
+    {
+      "text": "Takes the mode from the 'Context mode:' line and asks before applying it",
+      "passed": true,
+      "evidence": "\"the value of the `Context mode:` line in Session Metadata\"; \"I ask via AskUserQuestion: The handoff requests the review context mode; apply it?\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 2,
+    "pass_rate": 1.0
+  }
+}

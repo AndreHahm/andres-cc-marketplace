@@ -1,0 +1,26 @@
+{
+  "eval_id": 14,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Reads the frontmatter and Resume Card first and the whole handoff before the first file edit",
+      "passed": true,
+      "evidence": "\"Frontmatter first\"; \"Resume Card next\"; \"Rest of the document, before the first edit\""
+    },
+    {
+      "text": "Asks via AskUserQuestion before applying the review mode",
+      "passed": true,
+      "evidence": "\"The handoff requests the review context mode; apply it?\" with the options Apply / Skip"
+    },
+    {
+      "text": "Does not resolve a review thread without asking the user (card constraint followed)",
+      "passed": true,
+      "evidence": "\"I do not resolve either thread. The user constraint says to ask first.\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

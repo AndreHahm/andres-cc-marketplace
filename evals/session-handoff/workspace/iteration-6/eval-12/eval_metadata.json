@@ -1,0 +1,11 @@
+{
+  "eval_id": 12,
+  "skill_path": "plugins/session-kit/skills/session-handoff/SKILL.md",
+  "assertions": [
+    {
+      "text": "Writes state pr-draft and context_mode review, not ship, because the PR is a draft",
+      "type": "functionality",
+      "target": "outputs/"
+    }
+  ]
+}

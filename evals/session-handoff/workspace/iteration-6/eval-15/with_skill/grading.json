@@ -1,0 +1,26 @@
+{
+  "eval_id": 15,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Reads the whole handoff at once because the card names a blocker",
+      "passed": true,
+      "evidence": "\"Because the card names a blocker, Step 3 requires reading the whole document at once\""
+    },
+    {
+      "text": "Checks whether the blocker is resolved before item 1",
+      "passed": true,
+      "evidence": "\"checking whether the python3.13 CI blocker has been resolved, before touching item #1\""
+    },
+    {
+      "text": "Asks via AskUserQuestion before applying the review mode",
+      "passed": true,
+      "evidence": "\"The handoff requests the review context mode; apply it?\", with the options Apply / Skip"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

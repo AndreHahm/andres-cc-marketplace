@@ -1,0 +1,16 @@
+{
+  "eval_id": 10,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Writes state in-review and context_mode review, not ship, because no PR exists yet",
+      "passed": true,
+      "evidence": "\"`state: in-review`\"; \"`context_mode: review`\"; \"something is still left before `merge-pr`: no PR exists yet\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 1,
+    "assertions_passed": 1,
+    "pass_rate": 1.0
+  }
+}

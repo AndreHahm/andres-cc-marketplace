@@ -1,0 +1,16 @@
+{
+  "eval_id": 13,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Writes state in-review and context_mode review, not ship, because the secretlint failure is untriaged",
+      "passed": true,
+      "evidence": "\"I would write `state: in-review` and `context_mode: review`\"; \"It neither passed nor was triaged\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 1,
+    "assertions_passed": 1,
+    "pass_rate": 1.0
+  }
+}

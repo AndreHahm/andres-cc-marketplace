@@ -1,0 +1,16 @@
+{
+  "eval_id": 16,
+  "skill_path": "plugins/session-kit/skills/session-handoff/SKILL.md",
+  "assertions": [
+    {
+      "text": "Reads the whole older handoff at once (no card)",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Takes the mode from the 'Context mode:' line and asks before applying it",
+      "type": "functionality",
+      "target": "outputs/"
+    }
+  ]
+}

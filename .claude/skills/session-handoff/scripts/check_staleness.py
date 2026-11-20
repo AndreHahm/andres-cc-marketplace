@@ -24,7 +24,19 @@ from pathlib import Path
 
 # Sibling-script import, same pattern as session-kit's scripts/session_store.py.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from validate_handoff import git_env, list_repo_files, resolve_reference  # noqa: E402
+from validate_handoff import (  # noqa: E402
+    git_env,
+    list_repo_files,
+    parse_frontmatter,
+    resolve_reference,
+    section_extent,
+)
+
+# A table cell holding a file path, in the format the scaffold writes.
+TABLE_FILE_CELL = r"\|\s*([a-zA-Z0-9_\-./]+\.[a-zA-Z]+)\s*\|"
+
+# v2 handoffs take file references only from these sections.
+FILE_SECTIONS = ("Critical Files", "Unpushed Changes")
 
 
 def run_cmd(cmd: list[str], cwd: str | None = None) -> tuple[bool, str]:
@@ -44,8 +56,37 @@ def run_cmd(cmd: list[str], cwd: str | None = None) -> tuple[bool, str]:
         return False, ""
 
 
+def parse_created(text: str) -> datetime | None:
+    """Parse a creation time as naive local time.
+
+    Accepts the space-separated "YYYY-MM-DD HH:MM:SS" form (the old template's default) and
+    ISO 8601 "YYYY-MM-DDTHH:MM:SSZ" (the v2 frontmatter, and some older handoffs). An unmatched
+    format returns None, which the caller reports as UNKNOWN rather than FRESH.
+    """
+    match = re.search(r"(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}:\d{2})(Z)?", text)
+    if not match:
+        return None
+    try:
+        naive = datetime.strptime(f"{match.group(1)} {match.group(2)}", "%Y-%m-%d %H:%M:%S")
+    except ValueError:
+        return None
+    if match.group(3):
+        # Trailing "Z" means these digits are UTC, not local time. Convert to the equivalent
+        # local wall-clock time so it stays comparable to datetime.now() and to git's own
+        # --since parsing, both of which are naive-local everywhere else in this script.
+        return naive.replace(tzinfo=UTC).astimezone().replace(tzinfo=None)
+    return naive
+
+
+def table_files(text: str) -> list[str]:
+    """Relative file paths with a "/" from table cells; an absolute path is not a project file."""
+    return [
+        f for f in re.findall(TABLE_FILE_CELL, text) if "/" in f and not f.startswith(("[", "/"))
+    ]
+
+
 def parse_handoff_metadata(filepath: str) -> dict:
-    """Extract metadata from a handoff file."""
+    """Extract metadata from a handoff file: v2 frontmatter first, else the old body lines."""
     content = Path(filepath).read_text(encoding="utf-8")
     metadata = {
         "created": None,
@@ -54,27 +95,25 @@ def parse_handoff_metadata(filepath: str) -> dict:
         "modified_files": [],
     }
 
-    # Parse Created timestamp -- accepts both the space-separated "YYYY-MM-DD HH:MM:SS" form
-    # (the handoff template's own default) and ISO-8601 "YYYY-MM-DDTHH:MM:SSZ" (used by some
-    # handoff authors, e.g. Write("Created: 2026-09-03T05:34:17Z", ...)); an unmatched format
-    # previously left `created` as None, which silently suppressed every staleness signal
-    # below rather than surfacing as an unknown/error state.
-    match = re.search(r"Created:\s*(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}:\d{2})(Z)?", content)
+    fields, _ = parse_frontmatter(content)
+    if fields is not None:
+        metadata["created"] = parse_created(fields.get("created", ""))
+        branch = fields.get("branch", "")
+        if branch and not branch.startswith("["):
+            metadata["branch"] = branch
+        metadata["project_path"] = fields.get("project") or None
+        for section in FILE_SECTIONS:
+            heading = re.search(
+                rf"(?:^|\n)(#{{1,6}})\s*{re.escape(section)}(?=\s*$)", content, re.MULTILINE
+            )
+            if heading:
+                metadata["modified_files"] += table_files(section_extent(content, heading))
+        return metadata
+
+    # Older handoffs: "Created:" accepts both formats parse_created does.
+    match = re.search(r"Created:\s*(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}Z?)", content)
     if match:
-        try:
-            naive = datetime.strptime(f"{match.group(1)} {match.group(2)}", "%Y-%m-%d %H:%M:%S")
-            if match.group(3):
-                # Trailing "Z" means these digits are UTC, not local time -- naively
-                # treating them as local (the old behavior) silently shifted every
-                # staleness signal (age, and the git --since boundary) by the local
-                # UTC offset. Convert to the equivalent local wall-clock time so it
-                # stays comparable to datetime.now() and to git's own --since parsing,
-                # both of which are naive-local everywhere else in this script.
-                metadata["created"] = naive.replace(tzinfo=UTC).astimezone().replace(tzinfo=None)
-            else:
-                metadata["created"] = naive
-        except ValueError:
-            pass
+        metadata["created"] = parse_created(match.group(1))
 
     # Parse Branch -- tolerates an optional Markdown code-span wrapper (`` `branch-name` ``,
     # a real convention some handoff authors use) so its backticks aren't captured into the
@@ -90,12 +129,8 @@ def parse_handoff_metadata(filepath: str) -> dict:
     if match:
         metadata["project_path"] = match.group(1).strip()
 
-    # Parse modified files from table
-    table_matches = re.findall(r"\|\s*([a-zA-Z0-9_\-./]+\.[a-zA-Z]+)\s*\|", content)
-    for f in table_matches:
-        # Skip an absolute path, as validate_handoff.py does: it is not a project file.
-        if "/" in f and not f.startswith(("[", "/")):
-            metadata["modified_files"].append(f)
+    # Parse modified files from every table
+    metadata["modified_files"] = table_files(content)
 
     return metadata
 

@@ -1,20 +1,20 @@
 # Handoff Template
 
-Use this template structure when creating handoff documents. The smart scaffold script will pre-fill metadata sections; complete the remaining sections based on session context.
+Use this template structure when creating handoff documents. The smart scaffold script pre-fills the
+frontmatter and the Unpushed Changes table; complete the remaining sections based on session context.
+Older handoffs (no frontmatter, a Session Metadata section) stay readable: every script and the load
+step fall back to their body lines.
 
 ## Table of Contents
 
-- [Session Metadata](#session-metadata)
-  - [Recent Commits](#recent-commits-for-context)
-- [Handoff Chain](#handoff-chain)
+- [Frontmatter](#frontmatter)
+- [Resume Card](#resume-card)
 - [Current State Summary](#current-state-summary)
 - [Codebase Understanding](#codebase-understanding)
-  - [Architecture Overview](#architecture-overview)
   - [Critical Files](#critical-files)
-  - [Key Patterns Discovered](#key-patterns-discovered)
 - [Work Completed](#work-completed)
-  - [Tasks Finished](#tasks-finished)
-  - [Files Modified](#files-modified)
+  - [Work Not Visible in Git](#work-not-visible-in-git)
+  - [Unpushed Changes](#unpushed-changes)
   - [Decisions Made](#decisions-made)
 - [Pending Work](#pending-work)
   - [Immediate Next Steps](#immediate-next-steps)
@@ -23,32 +23,49 @@ Use this template structure when creating handoff documents. The smart scaffold 
 - [Context for Resuming Agent](#context-for-resuming-agent)
   - [Important Context](#important-context)
   - [Assumptions Made](#assumptions-made)
-  - [Potential Gotchas](#potential-gotchas)
-- [Environment State](#environment-state)
+  - [Potential Gotchas & Key Patterns](#potential-gotchas--key-patterns)
 - [Related Resources](#related-resources)
 - [Template Usage Notes](#template-usage-notes)
 
 ---
 
+## Frontmatter
+
+Flat `key: value` lines between `---` markers at the very top of the file, no nesting:
+
+```
+---
+created: [ISO 8601 UTC, e.g. 2026-11-20T09:15:00Z]
+project: [PROJECT_PATH]
+branch: [GIT_BRANCH]
+head: [commit SHA of HEAD]
+pr: [PR number, or none]
+platform: [linux | windows | macos]
+continues_from: [previous handoff filename, or none]
+state: [implementing | pr-draft | in-review | ready-to-merge | ready-to-publish | blocked | done]
+context_mode: [none | review | ship | admin - derived from state, see SKILL.md CREATE Step 2 item 5]
+---
+```
+
+`head` replaces the old Recent Commits list, and `continues_from` the old Handoff Chain section.
+`project` is data only: no script ever uses it as a working directory.
+
+```
 # Handoff: [TASK_TITLE]
+```
 
-## Session Metadata
-- Created: [TIMESTAMP]
-- Project: [PROJECT_PATH]
-- Branch: [GIT_BRANCH]
-- Session duration: [APPROX_DURATION]
-- Context mode: [admin | review | ship | none - see SKILL.md Step 2 item 5]
+## Resume Card
 
-### Recent Commits (for context)
-  - [commit 1 - oneline]
-  - [commit 2 - oneline]
+Right after the title, at most 15 lines. A summary for the first read on load; the full sections stay
+required. Its labels must not be bare `Branch:`, `Created:` or `Project:`, which older handoffs use.
 
-## Handoff Chain
-
-- **Continues from**: [previous handoff filename, or "None (fresh start)"]
-- **Supersedes**: [list any older handoffs this replaces, or "None"]
-
-> Review the previous handoff for full context before filling this one.
+```
+- State: [state value, in a few words of context]
+- Next step: [Immediate Next Steps item 1, verbatim]
+- Branch and PR: [branch], [PR number or none]
+- Blockers: [none, or each blocker in one line]
+- User constraints: [the user's standing instructions in one line each, or none]
+```
 
 ## Current State Summary
 
@@ -56,38 +73,37 @@ Use this template structure when creating handoff documents. The smart scaffold 
 
 ## Codebase Understanding
 
-### Architecture Overview
-
-[Key architectural insights discovered during this session - how the system is structured, main components, data flow]
-
 ### Critical Files
 
-| File | Purpose | Relevance |
-|------|---------|-----------|
-| path/to/file | What this file does | Why it matters for this task |
+| File | Role | Why it matters |
+|------|------|----------------|
+| path/to/file | What this file does and where it sits in the system | Why it matters for this task |
 
-### Key Patterns Discovered
-
-[Important patterns, conventions, or idioms found in this codebase that the next agent should follow]
+The role column carries the architecture (the old Architecture Overview section). The staleness check
+reads its file paths.
 
 ## Work Completed
 
-### Tasks Finished
+### Work Not Visible in Git
 
-- [x] Task 1 - brief description of what was done
-- [x] Task 2 - brief description
+- [Issues filed, comments posted, runs left pending; or none]
 
-### Files Modified
+### Unpushed Changes
 
-| File | Changes | Rationale |
-|------|---------|-----------|
-| path/to/file | Description of changes | Why this change was made |
+Optional: only files that are uncommitted or committed but not pushed. The staleness check reads its
+file paths when present.
+
+| File | Change |
+|------|--------|
+| path/to/file | What changed and why |
 
 ### Decisions Made
 
-| Decision | Options Considered | Rationale |
-|----------|-------------------|-----------|
-| Chose X over Y | X, Y, Z | Why X was chosen |
+| Decision | Options Considered | Rationale | Decided by |
+|----------|-------------------|-----------|------------|
+| Chose X over Y | X, Y, Z | Why X was chosen | user |
+
+A decision the user made is not overridden without asking them again.
 
 ## Pending Work
 
@@ -110,36 +126,34 @@ Use this template structure when creating handoff documents. The smart scaffold 
 
 ### Important Context
 
-[Critical information the next agent MUST know to continue effectively - this is the most important section for handoff]
+[Critical information the next agent MUST know to continue effectively - this is the most important
+section for handoff]
+
+#### User Constraints
+
+- [The user's standing instructions for this work, verbatim]
+
+#### Learnings
+
+- [Process and tool behavior found this session, e.g. a guard that rejects a chained marker-and-commit
+  call]
 
 ### Assumptions Made
 
 - Assumption 1: [what was assumed to be true]
-- Assumption 2: [another assumption]
 
-### Potential Gotchas
+### Potential Gotchas & Key Patterns
 
-- [Things that might trip up a new agent - edge cases, quirks, non-obvious behavior]
+- [Codebase facts and conventions, e.g. a generated mirror that must not be edited by hand]
 
-## Environment State
+Learnings and Gotchas & Key Patterns are split by subject: process and tool behavior go in Learnings,
+codebase facts and conventions here.
 
-### Tools/Services Used
-
-- [Tool/Service]: [relevant configuration or state]
-
-### Active Processes
-
-- [Any background processes, dev servers, watchers that may be running]
-
-### Environment Variables
-
-- [Key env vars that matter for this work - DO NOT include secrets/values, just names]
+Environment: [optional: running processes and required env var NAMES only, never values; or none]
 
 ## Related Resources
 
-- [Link to relevant documentation]
-- [Related file paths]
-- [External resources consulted]
+- [Only links not findable from the PR or Critical Files; or none]
 
 ---
 
@@ -148,6 +162,7 @@ Use this template structure when creating handoff documents. The smart scaffold 
 When filling this template:
 1. Be specific and concrete - vague descriptions don't help the next agent
 2. Include file paths with line numbers where relevant (e.g., `src/auth.ts:142`)
-3. Prioritize the "Important Context" and "Immediate Next Steps" sections
+3. Prioritize the Resume Card, "Important Context" and "Immediate Next Steps"
 4. Don't include sensitive data (API keys, passwords, tokens)
 5. Focus on WHAT and WHY, not just WHAT - rationale is crucial for handoffs
+6. Leave out what git or the PR already records (commit lists, merged file lists)

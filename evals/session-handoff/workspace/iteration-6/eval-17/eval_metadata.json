@@ -1,0 +1,11 @@
+{
+  "eval_id": 17,
+  "skill_path": "plugins/session-kit/skills/session-handoff/SKILL.md",
+  "assertions": [
+    {
+      "text": "Writes state ready-to-publish and context_mode ship",
+      "type": "functionality",
+      "target": "outputs/"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Asks via AskUserQuestion before invoking Skill(context-mode) with ship, reading the value from the frontmatter",
+      "passed": true,
+      "evidence": "\"Before item #1: read the frontmatter's `context_mode` value\"; \"I call `AskUserQuestion` ... Options: Apply / Skip\""
+    },
+    {
+      "text": "Never uses replace",
+      "passed": true,
+      "evidence": "\"never with `replace`\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 2,
+    "pass_rate": 1.0
+  }
+}
