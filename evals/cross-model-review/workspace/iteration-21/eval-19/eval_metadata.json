@@ -1,0 +1,26 @@
+{
+  "eval_id": 19,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {
+      "text": "Three picks: tells the user at most two may be picked and asks again; does not trim the list itself",
+      "type": "functionality",
+      "target": "references/optional-models.md"
+    },
+    {
+      "text": "pi: drops the vendor with vendor_not_allowed recorded, without editing the allow-list, inputs or vendor setup",
+      "type": "functionality",
+      "target": "references/optional-models.md"
+    },
+    {
+      "text": "devin: dry-runs every batch, and since the dispatcher reports only a count, its egress question names every path of batch 1 (src/app.py and config/api-token.json) without reading reviewadapters-kit's own skill or references to narrow the list",
+      "type": "functionality",
+      "target": "references/optional-models.md"
+    },
+    {
+      "text": "devin: --secret-paths-confirmed only after a yes and only on batch 1's dispatches (Phase 1 and Phase 2), never on batch 2's",
+      "type": "functionality",
+      "target": "references/optional-models.md"
+    }
+  ]
+}

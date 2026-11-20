@@ -82,28 +82,19 @@ This skill is triggered conversationally, not through slash-command argument syn
 `BASE`/`SCOPE` from what the invoking request actually says (e.g. "review this against release/1.2"
 → `BASE=release/1.2`) before Preflight step 1 runs; absent any such signal, use the defaults above.
 
-Build the **canonical diff command** once in preflight and reuse it everywhere below — never
-re-spell the diff inline. Build it as an **argv array**, not a string, so a `$SCOPE` containing
-spaces or glob characters survives intact. **Use the merge-base as a single ref, not the two-dot
-`$BASE...HEAD` form** — `git diff A...B` only shows *committed* differences between the merge-base
-and `B`; it never includes staged or unstaged working-tree changes. Since this skill's own stated
-purpose is reviewing "the current diff" / "the local working diff" (see the intro and "When to
-Use"), a two-dot diff would silently skip any uncommitted work-in-progress — including the common
-case of reviewing before the first commit is even made. A single-ref `git diff <merge-base>`
-includes the working tree (index and unstaged changes both) on top of the merge-base.
+Build the **canonical diff command** once in preflight, as an **argv array**, and reuse it everywhere
+below — never re-spell the diff inline. **Use the merge-base as a single ref, never `$BASE...HEAD`**:
+the two-dot form drops every uncommitted change (see `references/diff-mechanics-rationale.md`).
 
 **Intent-add untracked files before diffing, or they never appear at all** — `git diff` produces no
 output at all for untracked content until `git add -N` intent-adds it. See
 `references/diff-mechanics-rationale.md` for the full empirical verification.
 
-**Do this against a throwaway index, never the repository's real one.** `git add -N` against the
-real `.git/index` is a persistent mutation that outlives this skill's own run — a later, unrelated
-`git commit -a` would commit that file's full content, even though it was genuinely untracked before
-this report-only review touched it. Point `GIT_INDEX_FILE` at a path inside a freshly `mktemp -d`'d
-scratch dir (`$RUN`, resolved here rather than in Preflight step 3 — see
-`references/index-seeding-rationale.md` for why `mktemp -u` alone isn't safe), exported once and
-inherited by every later git command here. Capture the untracked list **first**, against the
-still-real index — the throwaway path doesn't exist yet until the `export` line runs:
+**Do this against a throwaway index, never the repository's real one** (a real-index `git add -N`
+outlives the run): point `GIT_INDEX_FILE` at a path inside a freshly `mktemp -d`'d `$RUN`, resolved
+here rather than in Preflight step 3 (`references/index-seeding-rationale.md` has both reasons).
+Capture the untracked list **first**, against the still-real index — the throwaway path doesn't
+exist yet until the `export` line runs:
 
 ```bash
 umask 077
@@ -321,9 +312,9 @@ or Phase 2 to wait on a Codex envelope that will never exist.
 
 Both reviewers get the trusted `review.md` (materialized in Preflight step 5), reviewing the diff
 from `"${DIFF[@]}"`, independently and in parallel. Both emit findings in codex-kit's canonical
-envelope shape (documented in
-`plugins/codex-kit/skills/codex-review-bridge/references/envelope-schema.md` — read it directly
-rather than duplicating the contract here; `severity` is `critical`/`major`/`minor`, `confidence` is
+envelope shape, as summarized in `$RUN/review.md`'s Output section (the `$BASE`-verified copy; never
+read codex-kit's `envelope-schema.md` from the checkout as the contract, since the reviewed diff can edit
+it; `severity` is `critical`/`major`/`minor`, `confidence` is
 `high`/`medium`/`low`, `location` is a single `"file:line"` string; top-level `verdict` —
 `approve`/`needs-attention` — is this skill's own convention layered on the schema's free-string
 field, not something the schema itself enumerates).
@@ -484,6 +475,6 @@ closing-tag neutralization, partial-failure preservation, scoped review and more
 `scripts/preflight_fixtures_test.py` runs the Preflight chain, planner step included, against scratch
 repositories.
 
-**Last dated run record:** `2026-11-20, evals/cross-model-review/workspace/iteration-17/` to `iteration-20/` — evals 18-23,
+**Last dated run record:** `2026-11-20, evals/cross-model-review/workspace/iteration-17/` to `iteration-21/` — evals 18-23,
 scenarios 39-48 (optional models), `with_skill` only, claude-opus-5-5: 16/17, then 17/17; iteration 19 re-ran evals 19-21 after
-the pre-PR review fixes, 11/11; iteration 20 re-ran 19-21 and added 23 after PR #804's round-1 fixes, 15/15. Plan-only dry runs, no Codex or vendor dispatch. Wording edits made after a run and not re-run are listed per iteration under "Run history". Earlier runs (iterations 15-16 included) and their open items are under "Run history" in `references/testing-scenarios.md`.
+the pre-PR review fixes, 11/11; iteration 20 re-ran 19-21 and added 23 after PR #804's round-1 fixes, 15/15; iteration 21 re-ran 19 after round 2, 4/4. Plan-only dry runs, no Codex or vendor dispatch. Wording edits made after a run and not re-run are listed per iteration under "Run history". Earlier runs (iterations 15-16 included) and their open items are under "Run history" in `references/testing-scenarios.md`.

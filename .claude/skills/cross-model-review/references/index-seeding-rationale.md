@@ -5,6 +5,13 @@ Critical threshold). SKILL.md keeps the ordering-critical warning (capture `$REA
 exporting `GIT_INDEX_FILE`) and the `umask 077` requirement; this file holds the fuller "why a copy,
 not a from-scratch reseed" rationale.
 
+## Why a throwaway index at all
+
+`git add -N` against the real `.git/index` is a persistent mutation that outlives this skill's own run —
+a later, unrelated `git commit -a` would commit that file's full content, even though it was genuinely
+untracked before this report-only review touched it. So every intent-add, and every git command after
+it, runs against `GIT_INDEX_FILE` pointed at `$RUN/index`, exported once and inherited.
+
 A fresh `GIT_INDEX_FILE` starts genuinely empty. Two distinct kinds of already-tracked file lose
 their real status against an empty (or freshly-reseeded) index, both misreporting as **deleted**
 rather than modified against `$MERGE_BASE`:

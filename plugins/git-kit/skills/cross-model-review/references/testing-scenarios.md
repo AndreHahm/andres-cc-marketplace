@@ -75,8 +75,8 @@ activation. This file holds the deeper concrete-scenario and quality-gate checkl
     Preflight exclusion is still preferred since it also stops the symlink's content from being sent
     to Codex at all, not just its citation from surviving); Claude's own native review still covers it.
 19. `codex-kit` is genuinely not installed (single-model mode) → Claude's native pass still produces
-    a correctly-shaped envelope using `review.md`'s self-contained field summary, without needing to
-    read `envelope-schema.md` (which doesn't exist in this scenario since git-kit doesn't bundle it).
+    a correctly-shaped envelope using `review.md`'s self-contained field summary, the contract in every
+    case (git-kit doesn't bundle `envelope-schema.md`, and the checkout's copy is never read).
 20. The review scope includes an untracked file → after this run finishes, `git status` on the real
     repository still shows it as `??`, exactly as before the run — no lingering intent-to-add entry,
     since `git add -N` ran against a throwaway `GIT_INDEX_FILE`, never `.git/index`.
@@ -189,8 +189,8 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
     dropped for the run with its category in `inspection_limits`; the allow-list, inputs and vendor setup
     are never edited to make it pass, and the other picked vendor still goes on.
 42. A dry run returns `secret_paths_unconfirmed` (it gives only a count) → every batch is dry-run, the
-    vendor stays addable, its egress question names each secret-like path with its batch (from the
-    documented rule, or every path of the batch if the counts differ), and `--secret-paths-confirmed` is
+    vendor stays addable, its egress question names every path of the flagged batch with the batch and
+    the dispatcher's count (never narrowed by reading reviewadapters-kit's own text), and `--secret-paths-confirmed` is
     passed only after a yes and only for those batches, in Phase 1 and Phase 2.
 43. Two vendors pass the dry run → one `AskUserQuestion` call with one question per vendor, each quoting
     that dry run's `recipient`, `model` and `reach`, the batches' target paths, the dispatch count, and
@@ -283,8 +283,8 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
 - [ ] Preflight step 2's symlink-containment check always resolves `$REPO_ROOT` inline via
       `git rev-parse --show-toplevel`, never the `$REPO_ROOT` variable — step 4 hasn't assigned it yet
       at that point in the sequence
-- [ ] review.md's self-contained field summary is used whenever `envelope-schema.md` is unavailable
-      (codex-kit not installed) — Claude's native pass is never left without a field contract to follow
+- [ ] review.md's self-contained field summary is always the envelope contract; codex-kit's `envelope-schema.md` is never read from the repository under review, so Claude's native pass is never left without a field
+      contract to follow, whether or not codex-kit is installed
 - [ ] `git add -N` always runs against a throwaway `GIT_INDEX_FILE` (`git-review-intent-add.sh` sets
       it to `<run-dir>/index` itself) — the real `.git/index` is never
       touched, and a `git status` on the real repo after the run shows every previously-untracked
@@ -365,6 +365,10 @@ Moved here from SKILL.md's Testing & Validation section, which keeps only the la
   per-batch Phase 2 without Codex), `with_skill` only, claude-opus-5-5: 15/15. This also re-ran
   iteration 19's post-run edits. One locator note in section 1 was added after the run and not re-run;
   see `iteration-20/NOTE.md`.
+- **2026-11-20, `iteration-21`:** re-run eval 19 after PR #804's round-2 fix (a flagged batch's egress
+  question names every path; reviewadapters-kit's own text is never read), `with_skill` only,
+  claude-opus-5-5: 4/4. The envelope-contract boundary (`review.md`'s summary only, never codex-kit's
+  schema file from the checkout) was added after this run, covered by the quality gate, not by an eval.
 
 All of these are dry runs of the committed text, not live dispatches, and include no live run of the
 scoped flow (one ran 2026-10-14 for PR #567, see the #568 report).
