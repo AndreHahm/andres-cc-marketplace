@@ -1,0 +1,154 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4644461374",
+      "line": 255,
+      "note": "fixed in 2b669027: assets/ and the root settings file are now checked like scripts/",
+      "path": "plugins/git-kit/scripts/git-review-locate-rva.py",
+      "pr": 804,
+      "recorded_at": "2026-11-20T17:34:25+00:00",
+      "rule": "devin-security"
+    },
+    {
+      "disposition": "declined",
+      "finding": "claude-delta-298bfe15-1",
+      "line": 20,
+      "note": "same mirror-form convention as every sibling script; the mirror form is now named in Boundaries",
+      "path": "plugins/git-kit/skills/cross-model-review/references/optional-models.md",
+      "pr": 804,
+      "recorded_at": "2026-11-20T17:34:25+00:00",
+      "rule": "grant-form"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "claude-delta-298bfe15-2",
+      "line": 28,
+      "note": "fixed in 2b669027: says it runs only git and ls, never the dispatcher",
+      "path": "plugins/git-kit/skills/cross-model-review/references/optional-models.md",
+      "pr": 804,
+      "recorded_at": "2026-11-20T17:34:25+00:00",
+      "rule": "overstated-claim"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "coderabbit-298bfe15-1",
+      "line": 115,
+      "note": "fixed in 2b669027: stdout redirect listed in SKILL.md, codex-pass-assembly and the quality gate",
+      "path": "plugins/git-kit/skills/cross-model-review/references/optional-models.md",
+      "pr": 804,
+      "recorded_at": "2026-11-20T17:34:25+00:00",
+      "rule": "write-exception"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "coderabbit-298bfe15-2",
+      "line": 110,
+      "note": "fixed in 2b669027: a changed dispatcher drops every vendor still to dispatch; eval 20",
+      "path": "plugins/git-kit/skills/cross-model-review/references/optional-models.md",
+      "pr": 804,
+      "recorded_at": "2026-11-20T17:34:25+00:00",
+      "rule": "recheck-scope"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "coderabbit-298bfe15-3",
+      "line": 78,
+      "note": "fixed in 2b669027: a model differing between batches drops the vendor; new eval 23",
+      "path": "plugins/git-kit/skills/cross-model-review/references/optional-models.md",
+      "pr": 804,
+      "recorded_at": "2026-11-20T17:34:25+00:00",
+      "rule": "model-mismatch"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "coderabbit-298bfe15-4",
+      "line": 354,
+      "note": "fixed in 2b669027: iteration 20 re-ran evals 19-21 and added 23, 15/15",
+      "path": "plugins/git-kit/skills/cross-model-review/references/testing-scenarios.md",
+      "pr": 804,
+      "recorded_at": "2026-11-20T17:34:25+00:00",
+      "rule": "eval-rerun"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "coderabbit-298bfe15-5",
+      "line": 487,
+      "note": "fixed in 2b669027: run record points to the not-re-run edits",
+      "path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+      "pr": 804,
+      "recorded_at": "2026-11-20T17:34:25+00:00",
+      "rule": "run-record"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "coderabbit-298bfe15-6",
+      "line": 7,
+      "note": "fixed in 2b669027: Phase 2 runs only for batches with the model's envelope; eval 21",
+      "path": "plugins/git-kit/skills/cross-model-review/references/resolver-failure-handling.md",
+      "pr": 804,
+      "recorded_at": "2026-11-20T17:34:25+00:00",
+      "rule": "per-batch-phase2"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "coderabbit-298bfe15-7",
+      "line": 146,
+      "note": "fixed in 2b669027: vendor envelopes for the same batch only",
+      "path": "plugins/git-kit/skills/cross-model-review/references/codex-pass-assembly.md",
+      "pr": 804,
+      "recorded_at": "2026-11-20T17:34:25+00:00",
+      "rule": "batch-filter"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "coderabbit-298bfe15-8",
+      "line": 288,
+      "note": "fixed in 2b669027: sibling lookup honors installed_plugins.json",
+      "path": "plugins/git-kit/scripts/git-review-locate-rva.py",
+      "pr": 804,
+      "recorded_at": "2026-11-20T17:34:25+00:00",
+      "rule": "version-pin"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-delta-298bfe15-1",
+      "line": 238,
+      "note": "fixed in 2b669027: Boundaries names the locator's .claude mirror form and its per-run approval",
+      "path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+      "pr": 804,
+      "recorded_at": "2026-11-20T17:34:25+00:00",
+      "rule": "rulebook-compliance"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "codex-delta-298bfe15-2",
+      "line": 75,
+      "note": "node RVA stays ungranted on purpose: any node-path grant also pre-approves real sends; Boundaries states it; the per-call prompt is a second egress gate",
+      "path": "plugins/git-kit/skills/cross-model-review/references/optional-models.md",
+      "pr": 804,
+      "recorded_at": "2026-11-20T17:34:25+00:00",
+      "rule": "tool-reconciliation"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-delta-298bfe15-3",
+      "line": 1,
+      "note": "fixed in 2b669027: table of contents added",
+      "path": "plugins/git-kit/skills/cross-model-review/references/optional-models.md",
+      "pr": 804,
+      "recorded_at": "2026-11-20T17:34:25+00:00",
+      "rule": "reference-structure"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-delta-298bfe15-4",
+      "line": 147,
+      "note": "fixed in 2b669027: both reference cycles removed, grouping detail inlined",
+      "path": "plugins/git-kit/skills/cross-model-review/references/codex-pass-assembly.md",
+      "pr": 804,
+      "recorded_at": "2026-11-20T17:34:25+00:00",
+      "rule": "reference-chains"
+    }
+  ]
+}
