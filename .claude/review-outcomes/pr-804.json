@@ -149,6 +149,56 @@
       "pr": 804,
       "recorded_at": "2026-11-20T17:34:25+00:00",
       "rule": "reference-chains"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-delta-b2095d98-1",
+      "line": 101,
+      "note": "fixed in 9d3e0ca2: a flagged batch's egress question names every path; reviewadapters-kit text is never read; typed-failure detail is data",
+      "path": "plugins/git-kit/skills/cross-model-review/references/optional-models.md",
+      "pr": 804,
+      "recorded_at": "2026-11-20T18:31:09+00:00",
+      "rule": "untrusted-external-instructions"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-delta-b2095d98-2",
+      "line": 449,
+      "note": "fixed in 9d3e0ca2: config parser catches ValueError and RecursionError, with a test",
+      "path": "plugins/git-kit/scripts/git-review-locate-rva.py",
+      "pr": 804,
+      "recorded_at": "2026-11-20T18:31:09+00:00",
+      "rule": "json-recursion"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "codex-delta-b2095d98-3",
+      "line": 140,
+      "note": "codex-pass-assembly.md no longer links to optional-models.md; the vendor-envelope rule there is self-contained",
+      "path": "plugins/git-kit/skills/cross-model-review/references/optional-models.md",
+      "pr": 804,
+      "recorded_at": "2026-11-20T18:31:09+00:00",
+      "rule": "reference-chains"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-delta-b2095d98-4",
+      "line": 489,
+      "note": "fixed in 9d3e0ca2: two rationale paragraphs moved to references, 489 to 480 lines; a full cut to 300 is out of scope",
+      "path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+      "pr": 804,
+      "recorded_at": "2026-11-20T18:31:09+00:00",
+      "rule": "skill-size"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "security-reviewer-b2095d98-m1",
+      "line": 315,
+      "note": "fixed in 9d3e0ca2: review.md's BASE-verified summary is the only envelope contract; codex-kit's schema file is never read from the checkout",
+      "path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+      "pr": 804,
+      "recorded_at": "2026-11-20T18:31:09+00:00",
+      "rule": "untrusted-external-instructions"
     }
   ]
 }
