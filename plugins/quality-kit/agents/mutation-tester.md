@@ -52,11 +52,13 @@ mutmut's.
 
 1. **Check the paths.** The scratch directory must not lie inside the repository root (compare resolved
    paths) and must be absent or empty. The scripts must exist.
-2. **Record the repository's state:** `git -C '<root>' status --porcelain=v1 -z`, and a fingerprint of the
+2. **Record the repository's state:** `git -C '<root>' status --porcelain=v1 -z --untracked-files=all`, and a fingerprint of the
    contents of every tracked and untracked file (the root is passed as `$1`, never written into the script):
    `bash -o pipefail -c 'git -C "$1" ls-files -z -co --exclude-standard | (cd "$1" && xargs -0 git hash-object --no-filters --) | git hash-object --stdin' fingerprint '<root>'`
    (git only, so it runs the same with GNU and BSD tools).
-   Keep both outputs: the status alone misses a second edit to a file that was already modified. A non-zero
+   Keep both outputs: the status alone misses a second edit to a file that was already modified, and the
+   fingerprint holds no file names, so a renamed file is seen only because the status lists each untracked
+   file by name (`--untracked-files=all`). A non-zero
    status from the fingerprint means a listed file could not be read (usually a tracked file deleted in the
    working tree): report that file and stop.
 3. **Export the working tree** (create it first: `mkdir -p '<scratch>'`). This is the one pipeline, so it
