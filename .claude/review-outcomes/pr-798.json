@@ -1,0 +1,40 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4642153302",
+      "line": 244,
+      "note": "older handoffs keep the pre-v2 required-section extent",
+      "path": "plugins/session-kit/skills/session-handoff/scripts/validate_handoff.py",
+      "pr": 798,
+      "recorded_at": "2026-11-20T12:20:22+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4642244162",
+      "line": 30,
+      "note": "checklist names the older section names as fallbacks",
+      "path": "plugins/session-kit/skills/session-handoff/references/resume-checklist.md",
+      "pr": 798,
+      "recorded_at": "2026-11-20T12:20:22+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4642244169",
+      "line": 84,
+      "note": "v2 table_files takes root-level names with a known extension; also CI Codex skill-reviewer blocking Major",
+      "path": "plugins/session-kit/skills/session-handoff/scripts/check_staleness.py",
+      "pr": 798,
+      "recorded_at": "2026-11-20T12:20:22+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4642244200",
+      "line": 175,
+      "note": "only a whole TODO placeholder is exempt from the closed-set check",
+      "path": "plugins/session-kit/skills/session-handoff/scripts/validate_handoff.py",
+      "pr": 798,
+      "recorded_at": "2026-11-20T12:20:22+00:00"
+    }
+  ]
+}
