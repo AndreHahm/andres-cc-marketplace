@@ -277,7 +277,7 @@ node plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.
    level before either script produces its own typed-failure JSON — the same `cli_unavailable`
    fallback case `codex-backend.md` names explicitly): tell the user Codex is unavailable for this
    run and ask via `AskUserQuestion` whether to proceed without Codex (single-model unless an optional
-   model was confirmed; then Claude and that model cross-examine each other) or stop.
+   model returned a valid Phase 1 envelope; then Claude and that model cross-examine each other) or stop.
    - **On Phase 1's Codex call failing for a batch**: that batch has no Codex side. If **no** batch has a
      valid Codex Phase 1 envelope (judged once every dispatched Phase 1 call has returned, so the order
      batches ran in, or whether they ran in parallel, does not change the outcome; ask step 3's question
@@ -309,9 +309,9 @@ Claude-native for this run". Git-kit's own direct implementation of the first-se
 obligation `codex-review-bridge`'s docs assign to any caller — independent of, and not satisfied by,
 a first-send gate any other codex-kit component may already have fired earlier in the session.
 
-**On "Stay Claude-native for this run": enter single-model mode immediately, before any dispatch is
-attempted** — the same skip-Phase-1's-Codex-pass-and-all-of-Phase-2 path resolver step 3 uses, not
-just the zero-Codex-unavailable case. Record the `inspection_limits` reason as "user declined to send
+**On "Stay Claude-native for this run": skip every Codex dispatch, before any is attempted** — single-model
+mode (no Phase 2) unless a confirmed optional model returns a valid Phase 1 envelope, exactly as resolver
+step 3 (`references/optional-models.md` section 5). Record the `inspection_limits` reason as "user declined to send
 to Codex" rather than "Codex unavailable" — this is a deliberate opt-out, not a failure, and the
 report should say so accurately. Without this, nothing else in this document transitions the workflow
 out of the two-model path on this answer, leaving Phase 1 free to still attempt the declined dispatch
@@ -484,6 +484,6 @@ closing-tag neutralization, partial-failure preservation, scoped review and more
 `scripts/preflight_fixtures_test.py` runs the Preflight chain, planner step included, against scratch
 repositories.
 
-**Last dated run record:** `2026-11-20, evals/cross-model-review/workspace/iteration-17/` and `iteration-18/` — evals 18-22,
-scenarios 39-48 (optional models), `with_skill` only, claude-opus-5-5: 16/17, then 17/17 after the fixes; plan-only dry runs,
-no Codex or vendor dispatch. Earlier runs (iterations 15-16 included) and their open items are under "Run history" in `references/testing-scenarios.md`.
+**Last dated run record:** `2026-11-20, evals/cross-model-review/workspace/iteration-17/` to `iteration-19/` — evals 18-22,
+scenarios 39-48 (optional models), `with_skill` only, claude-opus-5-5: 16/17, then 17/17; iteration 19 re-ran evals 19-21 after
+the pre-PR review fixes, 11/11. Plan-only dry runs, no Codex or vendor dispatch. Earlier runs (iterations 15-16 included) and their open items are under "Run history" in `references/testing-scenarios.md`.
