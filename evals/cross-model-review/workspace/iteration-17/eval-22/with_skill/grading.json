@@ -1,0 +1,31 @@
+{
+  "eval_id": 22,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "F1 High and F2 High",
+      "passed": true,
+      "evidence": "\"F1 ... High. Two models raised it independently and nothing refuted it\"; \"F2 ... High. This matches the explicit 'one raised it in Phase 1 and the other's Phase 2 pass explicitly confirms it' case\"."
+    },
+    {
+      "text": "F3 Low/contested despite three-model Phase 1 agreement",
+      "passed": true,
+      "evidence": "\"F3 ... Low / contested. Any model's Phase 2 refutation drops the finding to Low / contested, however many agreed in Phase 1.\""
+    },
+    {
+      "text": "F4 Medium",
+      "passed": true,
+      "evidence": "\"F4 ... Medium, flagged as a gap\" (no other model addressed it, which the address-every-finding rule makes a gap)."
+    },
+    {
+      "text": "Each challenger received every other model's findings for its batch, grouped by reviewer",
+      "passed": true,
+      "evidence": "Optional vendors: \"every other model's Phase 1 findings for this batch, grouped by reviewer\"; Claude and Codex \"widen the same way\". The agent flagged that SKILL.md's Phase 2 'Claude's native pass' still names only the Codex envelopes, inconsistent with optional-models.md section 4."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

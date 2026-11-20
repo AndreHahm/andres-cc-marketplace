@@ -349,6 +349,11 @@ Moved here from SKILL.md's Testing & Validation section, which keeps only the la
   flagged the values as written into script text unquoted. Full Pipeline, baseline arm reading the text
   before the fix, both arms `claude-haiku-5-5`: `with_skill` 3/3, baseline 1/3 (+66.7 points). The
   baseline also stopped on the hostile value; it double-quoted the clean one inside the Inputs block.
+- **2026-11-20, `iteration-17` and `iteration-18`:** add evals 18-22 for scenarios 39-48 (issue #541 Part B,
+  optional models), `with_skill` only, claude-opus-5-5, Read-only dry runs. Iteration 17: 16/17; the miss
+  was a separate egress question per vendor instead of one call. After three wording fixes, iteration 18
+  re-ran evals 20-22: 11/11. Two later wording fixes (resolver step 3's single-model sub-bullet, the
+  section step labels) were not re-run; see `iteration-18/NOTE.md`.
 
 All of these are dry runs of the committed text, not live dispatches, and include no live run of the
 scoped flow (one ran 2026-10-14 for PR #567, see the #568 report).

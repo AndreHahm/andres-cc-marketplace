@@ -278,11 +278,11 @@ node plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.
    fallback case `codex-backend.md` names explicitly): tell the user Codex is unavailable for this
    run and ask via `AskUserQuestion` whether to proceed without Codex (single-model unless an optional
    model was confirmed; then Claude and that model cross-examine each other) or stop.
-   - **On Phase 1's Codex call failing for a batch**: that batch is Claude-only. If **no** batch has a
+   - **On Phase 1's Codex call failing for a batch**: that batch has no Codex side. If **no** batch has a
      valid Codex Phase 1 envelope (judged once every dispatched Phase 1 call has returned, so the order
-     batches ran in, or whether they ran in parallel, does not change the outcome), take the
-     full single-model path: skip every remaining Codex dispatch and follow the single-model paths in
-     Phase 2/3. Otherwise keep every finished batch's envelopes, still dispatch the remaining batches, and
+     batches ran in, or whether they ran in parallel, does not change the outcome; ask step 3's question
+     once, then), skip every remaining Codex dispatch; follow the single-model paths in Phase 2/3 only if no
+     optional model returned a valid Phase 1 envelope either (`references/optional-models.md` section 5). Otherwise keep every finished batch's envelopes, still dispatch the remaining batches, and
      run Phase 2 only for batches with a valid Phase 1 envelope.
    - **On Phase 2's Codex call failing** (Phase 1's Codex dispatch already succeeded): **partial
      failure, not full single-model — never discard the already-completed envelopes.** See
@@ -367,8 +367,8 @@ separate schema, since the bridge's envelope shape is fixed and has no verdict-o
 slot.
 
 **Claude's native pass:** follow `$RUN/refute.md`, given the Codex Phase 1 envelopes
-(`$RUN/codex_fresh_eyes.<N>.json`) as the findings to cross-examine. Write them with the write helper
-to `$RUN/claude_challenger.json`.
+(`$RUN/codex_fresh_eyes.<N>.json`) and every confirmed optional model's (`$RUN/<V>_fresh_eyes.<N>.json`,
+grouped by reviewer) as the findings to cross-examine. Write them with the write helper to `$RUN/claude_challenger.json`.
 
 **Codex's pass, once per dispatch batch:** assemble and dispatch each challenger file exactly as
 `references/codex-pass-assembly.md` says (file outside `--target-paths`, `review.md` prepended, findings
@@ -484,6 +484,6 @@ closing-tag neutralization, partial-failure preservation, scoped review and more
 `scripts/preflight_fixtures_test.py` runs the Preflight chain, planner step included, against scratch
 repositories.
 
-**Last dated run record:** `2026-11-18, evals/cross-model-review/workspace/iteration-15/` — evals 13-16, scenario 38
-(refused chained Preflight; heredoc refusal, then timeout; folder-pick re-run; normal-session control), both arms
-claude-opus-5-5: `with_skill` 17/17, baseline (`main`'s text) 5/17; `iteration-16`, eval 17 (single-quoted `BASE`/`SCOPE`), claude-haiku-5-5: 3/3 vs 1/3. Skill-following dry runs, no Codex dispatch. Earlier runs and their open items are under "Run history" in `references/testing-scenarios.md`.
+**Last dated run record:** `2026-11-20, evals/cross-model-review/workspace/iteration-17/` and `iteration-18/` — evals 18-22,
+scenarios 39-48 (optional models), `with_skill` only, claude-opus-5-5: 16/17, then 17/17 after the fixes; plan-only dry runs,
+no Codex or vendor dispatch. Earlier runs (iterations 15-16 included) and their open items are under "Run history" in `references/testing-scenarios.md`.

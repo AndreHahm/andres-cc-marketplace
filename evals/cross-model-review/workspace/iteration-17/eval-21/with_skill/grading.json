@@ -1,0 +1,26 @@
+{
+  "eval_id": 21,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Resolver step 3 asks whether to continue without Codex or stop",
+      "passed": true,
+      "evidence": "\"ask once via AskUserQuestion whether to proceed without Codex or stop\"; options \"Proceed without Codex\" (Claude plus pi) / \"Stop\"."
+    },
+    {
+      "text": "States the run is not single-model mode: Phase 2 runs between Claude and pi",
+      "passed": true,
+      "evidence": "\"Because a valid optional-model envelope exists, the run is not single-model. Phase 2 still runs between Claude and pi\"."
+    },
+    {
+      "text": "pi is skipped for batch 2 only, with the timeout recorded and no retry; batch 1 and 3 envelopes are kept",
+      "passed": true,
+      "evidence": "\"Batches 1 and 3 have valid pi envelopes and are kept\"; \"Pi is skipped for that batch, with the category recorded in inspection_limits. There is no timeout retry for an optional model.\" The agent flagged as ambiguous whether 'skipped for that batch' also covers pi's Phase 2 for batch 2."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

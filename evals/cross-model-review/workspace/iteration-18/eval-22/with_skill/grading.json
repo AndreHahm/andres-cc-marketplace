@@ -1,0 +1,31 @@
+{
+  "eval_id": 22,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "F1 High and F2 High",
+      "passed": true,
+      "evidence": "\"F1: High. Two models, Claude and agy, raised it independently in Phase 1, and nobody refuted it.\" \"F2: High. One model, Codex, raised it, and another model's Phase 2 pass, devin's, explicitly confirmed it.\""
+    },
+    {
+      "text": "F3 Low/contested despite three-model Phase 1 agreement",
+      "passed": true,
+      "evidence": "\"F3: Low / contested. agy's Phase 2 refutation wins regardless of the three-way Phase 1 agreement\"."
+    },
+    {
+      "text": "F4 Medium",
+      "passed": true,
+      "evidence": "\"F4: Medium. Section 5 puts 'everything else' in this tier\", flagged as a gap since three challengers received it and none addressed it."
+    },
+    {
+      "text": "Each challenger received every other model's findings for its batch, grouped by reviewer",
+      "passed": true,
+      "evidence": "Table: Claude reads codex/agy/devin fresh-eyes envelopes grouped by reviewer; Codex, agy and devin each get the other three models' findings in <other_reviewer_findings>, grouped by reviewer. The Claude row now follows SKILL.md directly (the iteration-17 inconsistency is gone)."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}
