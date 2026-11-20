@@ -95,6 +95,7 @@ if cd "$current_dir" 2>/dev/null; then
         # Base: the merge-base with origin's default branch, so committed and uncommitted
         # work on this branch both count; on the default branch itself, HEAD (uncommitted
         # only). Untracked files count only when not git-ignored; binary files never count.
+        # --no-textconv --no-ext-diff: never run a diff driver the repository's attributes select.
         default_ref=$(git rev-parse --abbrev-ref origin/HEAD 2>/dev/null) || default_ref="origin/main"
         if [ "$git_branch" = "${default_ref#origin/}" ]; then
             diff_base="HEAD"
@@ -102,15 +103,23 @@ if cd "$current_dir" 2>/dev/null; then
             diff_base=$(git merge-base HEAD "$default_ref" 2>/dev/null) || diff_base="HEAD"
         fi
         read -r lines_added lines_removed < <(
-            git --no-optional-locks -c core.useBuiltinFSMonitor=false diff --numstat "$diff_base" 2>/dev/null |
+            git --no-optional-locks -c core.useBuiltinFSMonitor=false diff --no-textconv --no-ext-diff --numstat "$diff_base" 2>/dev/null |
                 awk '$1 ~ /^[0-9]+$/ { a += $1; r += $2 } END { print a + 0, r + 0 }'
         )
         # From the repository root: ls-files --others lists only the current directory's subtree.
+        # As git counts them: a symlink is one line (its target), a regular file its own lines;
+        # named pipes and other special files are skipped, so reading one can never block.
         untracked_lines=$(
             cd "$git_root" &&
             git --no-optional-locks -c core.useBuiltinFSMonitor=false ls-files -z --others --exclude-standard 2>/dev/null |
-                xargs -0 -r grep -IHc '' -- 2>/dev/null |
-                awk -F: '{ s += $NF } END { print s + 0 }'
+                while IFS= read -r -d '' f; do
+                    if [ -L "$f" ]; then
+                        echo 1
+                    elif [ -f "$f" ]; then
+                        grep -Ic '' -- "$f" 2>/dev/null
+                    fi
+                done |
+                awk '{ s += $1 } END { print s + 0 }'
         )
         lines_added=$(( ${lines_added:-0} + ${untracked_lines:-0} ))
     fi

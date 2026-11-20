@@ -1633,7 +1633,9 @@ jobs:
       # The control trusts the target branch's config, so it is only as trusted as that branch: a
       # PR aimed at a branch its author crafted is the same accepted residual as editing this file.
       # Both checks compare the [features] table only, not every key a project config can set, and
-      # assume `codex exec` loads project config the way `features list` does.
+      # assume `codex exec` loads project config the way `features list` does. Running `features
+      # list` in the checkout is safe even if Codex did apply the config: on the pinned 0.170.0 it
+      # starts no MCP server, hook or notify command (observed); re-verify that on a pin change.
       - name: Check Codex does not apply the repository's own config
         env:
           BASE_SHA: ${{ steps.delta_base.outputs.sha }}
@@ -1672,7 +1674,7 @@ jobs:
             exit 1
           fi
           changed=$(diff "$RUNNER_TEMP/codex-features-control-default.txt" "$RUNNER_TEMP/codex-features-control.txt" | grep -c '^>' || true)
-          echo "Codex did not apply the project config; trusted, the base branch's config changes $changed feature(s), so an applied config is detectable"
+          echo "Codex resolved the default [features] table in the checkout, so it did not apply the project config's features (only that table is compared); trusted, the base branch's config changes $changed feature(s), so an applied config is detectable"
 
       # R14: this run started on a ready PR, but it may have been converted to draft while it
       # waited, and `converted_to_draft` starts no run that would cancel this one. The draft flag
