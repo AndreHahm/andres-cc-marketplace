@@ -3,6 +3,7 @@ older handoffs. Covers create_handoff.py, validate_handoff.py, check_staleness.p
 list_handoffs.py.
 """
 
+import os
 import subprocess
 import sys
 from datetime import datetime
@@ -222,12 +223,56 @@ def test_scaffold_in_subdirectory_uses_repo_root_paths(repo: Path) -> None:
     assert first.name not in section
 
 
-@pytest.mark.parametrize("name", ["evil\n## Injected.py", "a|b.py", "tick`x.py"])
+@pytest.mark.parametrize(
+    "name",
+    [
+        "evil\n## Injected.py",
+        "a|b.py",
+        "tick`x.py",
+        "![x](https:__example.invalid_p.png)",
+        "<img src=x>.py",
+        "[link](x).py",
+    ],
+)
 def test_scaffold_never_writes_unsafe_names(repo: Path, name: str) -> None:
     (repo / "src" / name).write_text("e = 1\n", encoding="utf-8")
     content = Path(create_handoff.generate_handoff(str(repo), "demo")).read_text(encoding="utf-8")
     assert name not in content and "## Injected" not in content
-    assert "[TODO: 1 changed file(s) have a line break" in content
+    assert "[TODO: 1 changed file(s) have a name with characters other than" in content
+
+
+def test_scaffold_survives_non_utf8_name(repo: Path) -> None:
+    (repo / "src" / os.fsdecode(b"bad\xff.py")).write_text("b = 1\n", encoding="utf-8")
+    content = Path(create_handoff.generate_handoff(str(repo), "demo")).read_text(encoding="utf-8")
+    assert "[TODO: 1 changed file(s) have a name with characters other than" in content
+
+
+def test_scaffold_never_writes_unsafe_project_path(tmp_path: Path) -> None:
+    project = tmp_path / "a\nstate: done"
+    project.mkdir()
+    content = Path(create_handoff.generate_handoff(str(project), "demo")).read_text(
+        encoding="utf-8"
+    )
+    fields, malformed = validate_handoff.parse_frontmatter(content)
+    assert fields is not None and malformed == []
+    assert fields["project"].startswith("[TODO: project path")
+    assert "state" in fields and fields["state"].startswith("[TODO")
+
+
+def test_scaffold_never_writes_markup_branch(repo: Path) -> None:
+    _git(repo, "checkout", "-q", "-b", "<b>x</b>")
+    content = Path(create_handoff.generate_handoff(str(repo), "demo")).read_text(encoding="utf-8")
+    assert "<b>" not in content
+    assert "branch: [TODO: branch name; it holds characters" in content
+
+
+def test_diff_listings_ignore_relative_config(repo: Path) -> None:
+    _git(repo, "config", "diff.relative", "true")
+    (repo / "src" / "app.py").write_text("x = 7\n", encoding="utf-8")
+    content = Path(create_handoff.generate_handoff(str(repo / "src"), "demo")).read_text(
+        encoding="utf-8"
+    )
+    assert "| src/app.py |" in content
 
 
 def test_scaffold_in_subdirectory_lists_untracked_elsewhere(repo: Path) -> None:
@@ -287,7 +332,7 @@ def test_scaffold_net_zero_unpushed_commits_are_reported(repo: Path, tmp_path: P
     _git(repo, *ident, "revert", "--no-edit", "HEAD")
     content = Path(create_handoff.generate_handoff(str(repo), "demo")).read_text(encoding="utf-8")
     assert "everything is committed and pushed" not in content
-    assert "[TODO: 2 unpushed commit(s) with no net file change" in content
+    assert "[TODO: 2 unpushed commit(s) whose files are not" in content
 
 
 def test_scaffold_outside_git_does_not_claim_pushed(tmp_path: Path) -> None:

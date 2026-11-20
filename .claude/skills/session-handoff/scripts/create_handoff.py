@@ -29,19 +29,36 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from validate_handoff import git_env  # noqa: E402
 
-# A filename with any of these characters is never written into the handoff's Markdown table.
-UNSAFE_NAME = re.compile(r"[\x00-\x1f\x7f|`]")
+# Only a filename made of letters, digits (any script) and these characters is written into the
+# handoff's Markdown table. An allowlist, not a blocklist: a name can otherwise carry a line break,
+# a table delimiter, a link, an image or raw HTML into the document.
+SAFE_NAME_PUNCTUATION = frozenset("._/-+=@ ,")
+# A control character or an undecodable byte (a surrogate) never goes into a frontmatter value.
+UNSAFE_LINE = re.compile(r"[\x00-\x1f\x7f\ud800-\udfff]")
+
+
+def is_safe_name(name: str) -> bool:
+    """True when a git filename may be written into the Unpushed Changes table as it is."""
+    return bool(name) and all(c.isalnum() or c in SAFE_NAME_PUNCTUATION for c in name)
 
 
 def run_cmd(cmd: list[str], cwd: str | None = None, strip: bool = True) -> tuple[bool, str]:
     """Run a command and return (success, output).
 
     strip=False keeps the output as is, for NUL-separated listings (-z), where stripping
-    whitespace would cut a leading or trailing space off the first or last filename.
+    whitespace would cut a leading or trailing space off the first or last filename. Bytes that
+    do not decode (a non-UTF-8 filename) become surrogates instead of raising, and is_safe_name
+    then keeps such a name out of the handoff.
     """
     try:
         result = subprocess.run(
-            cmd, capture_output=True, text=True, cwd=cwd, env=git_env(), timeout=10
+            cmd,
+            capture_output=True,
+            text=True,
+            errors="surrogateescape",
+            cwd=cwd,
+            env=git_env(),
+            timeout=10,
         )
         return result.returncode == 0, result.stdout.strip() if strip else result.stdout
     except (subprocess.TimeoutExpired, FileNotFoundError):
@@ -87,12 +104,12 @@ def get_git_info(project_path: str) -> dict:
     handoffs_dir = (prefix if success else "") + ".claude/handoffs/"
     changed: list[str] = []
     for cmd in (
-        ["git", "diff", "--name-only", "-z"],
-        ["git", "diff", "--name-only", "-z", "--cached"],
+        ["git", "diff", "--name-only", "--no-relative", "-z"],
+        ["git", "diff", "--name-only", "--no-relative", "-z", "--cached"],
         # ":/" makes ls-files repository-wide like the diffs; without it, it lists only files
         # under a subdirectory project and could miss untracked work elsewhere in the repository.
         ["git", "ls-files", "-z", "--full-name", "--others", "--exclude-standard", "--", ":/"],
-        ["git", "diff", "--name-only", "-z", "@{upstream}...HEAD"],
+        ["git", "diff", "--name-only", "--no-relative", "-z", "@{upstream}...HEAD"],
     ):
         success, output = run_cmd(cmd, cwd=project_path, strip=False)
         if cmd[-1] == "@{upstream}...HEAD":
@@ -232,6 +249,10 @@ def generate_handoff(
     prev_handoff = get_previous_handoff_info(project_path, continues_from)
 
     branch = git_info["branch"] or "[TODO: branch name; not a git repo or detached HEAD]"
+    # Git allows characters such as "<", ">", "(" and "!" in a branch name, and a checked-out
+    # contributed PR keeps the contributor's name; the same allowlist keeps it from adding markup.
+    if git_info["branch"] and not is_safe_name(git_info["branch"]):
+        branch = "[TODO: branch name; it holds characters other than letters, digits and ._/-+=@]"
     head = git_info["head"] or "none"
 
     # continues_from: an explicitly named, existing handoff is written as fact; the most recent
@@ -244,14 +265,21 @@ def generate_handoff(
         continues_line = f"[TODO: {continues_from} not found; an existing handoff filename or none]"
     else:
         continues_line = "none"
+    # A handoff filename comes from a directory listing or the command line: one with a line break
+    # or control character would end the frontmatter line and inject a field.
+    if UNSAFE_LINE.search(continues_line):
+        continues_line = "[TODO: previous handoff filename, or none]"
+    project_line = project_path
+    if UNSAFE_LINE.search(project_line):
+        project_line = "[TODO: project path; it holds a line break or control character]"
 
     # Unpushed Changes: only uncommitted or unpushed files (optional section)
     changed = git_info["changed_files"]
     if changed:
-        # A git filename can hold a line break, "|" or a backtick, which would end the table row
-        # or cell and put text of the filename's choosing into the handoff. Such names are never
-        # written; a TODO counts them instead, so the author lists them by hand.
-        listed = [f for f in changed if not UNSAFE_NAME.search(f)]
+        # A git filename can hold a line break, "|", a link, an image or raw HTML, which would put
+        # text of the filename's choosing into the handoff. Only names is_safe_name allows are
+        # written; a TODO counts the rest, so the author lists them by hand.
+        listed = [f for f in changed if is_safe_name(f)]
         unsafe = len(changed) - len(listed)
         rows = "\n".join(f"| {f} | [TODO: what changed and why] |" for f in listed[:10])
         if len(listed) > 10:
@@ -259,8 +287,8 @@ def generate_handoff(
         unpushed_section = f"| File | Change |\n|------|--------|\n{rows}" if listed else ""
         if unsafe:
             note = (
-                f"[TODO: {unsafe} changed file(s) have a line break, '|', a backtick or a "
-                "control character in the name and are not listed; describe them, or none]"
+                f"[TODO: {unsafe} changed file(s) have a name with characters other than "
+                "letters, digits and ._/-+=@ , and are not listed; describe them, or none]"
             )
             unpushed_section = f"{unpushed_section}\n\n{note}" if listed else note
     else:
@@ -277,16 +305,17 @@ def generate_handoff(
         no_upstream = "[TODO: the branch has no upstream; add files from unpushed commits, or none]"
         unpushed_section = f"{unpushed_section}\n\n{no_upstream}" if changed else no_upstream
     elif git_info["unpushed_commits"] and not changed:
-        # Local commits exist even though no file differs from the upstream.
+        # Local commits exist although no listed file differs from the upstream: their changes
+        # cancel out, or touch only the project's own handoffs, which are left out above.
         unpushed_section = (
-            f"[TODO: {git_info['unpushed_commits']} unpushed commit(s) with no net file change; "
-            "push them or say why not]"
+            f"[TODO: {git_info['unpushed_commits']} unpushed commit(s) whose files are not "
+            "listed here; push them or say why not]"
         )
 
     # Generate the document
     content = f"""---
 created: {created}
-project: {project_path}
+project: {project_line}
 branch: {branch}
 head: {head}
 pr: [TODO: PR number, or none]

@@ -74,6 +74,66 @@
       "pr": 798,
       "recorded_at": "2026-11-20T12:49:14+00:00",
       "rule": "correctness"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-codex-7eedd8bf-content-injection",
+      "line": 256,
+      "note": "allowlist of letters, digits and ._/-+=@ , replaces the blocklist; other names are counted in a TODO, never written",
+      "path": "plugins/session-kit/skills/session-handoff/scripts/create_handoff.py",
+      "pr": 798,
+      "recorded_at": "2026-11-20T12:59:46+00:00",
+      "rule": "content-injection"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-codex-7eedd8bf-frontmatter-injection",
+      "line": 289,
+      "note": "a project path or previous handoff filename with a control character becomes a TODO; the branch gets the same allowlist",
+      "path": "plugins/session-kit/skills/session-handoff/scripts/create_handoff.py",
+      "pr": 798,
+      "recorded_at": "2026-11-20T12:59:46+00:00",
+      "rule": "frontmatter-injection"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-codex-7eedd8bf-net-zero-wording",
+      "line": 282,
+      "note": "TODO now says the commits' files are not listed, without claiming no net change",
+      "path": "plugins/session-kit/skills/session-handoff/scripts/create_handoff.py",
+      "pr": 798,
+      "recorded_at": "2026-11-20T12:59:46+00:00",
+      "rule": "correctness"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-codex-7eedd8bf-no-relative",
+      "line": 90,
+      "note": "git diff listings pass --no-relative",
+      "path": "plugins/session-kit/skills/session-handoff/scripts/create_handoff.py",
+      "pr": 798,
+      "recorded_at": "2026-11-20T12:59:46+00:00",
+      "rule": "correctness"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-codex-7eedd8bf-non-utf8-robustness",
+      "line": 90,
+      "note": "same fix as the runtime_correctness finding",
+      "path": "plugins/session-kit/skills/session-handoff/scripts/create_handoff.py",
+      "pr": 798,
+      "recorded_at": "2026-11-20T12:59:46+00:00",
+      "rule": "robustness"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-codex-7eedd8bf-non-utf8-runtime",
+      "line": 44,
+      "note": "git output decoded with surrogateescape; an undecodable name fails the allowlist instead of aborting",
+      "path": "plugins/session-kit/skills/session-handoff/scripts/create_handoff.py",
+      "pr": 798,
+      "recorded_at": "2026-11-20T12:59:46+00:00",
+      "rule": "runtime_correctness"
     }
   ]
 }
