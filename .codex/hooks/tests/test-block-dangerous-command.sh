@@ -121,9 +121,10 @@ B	pnpm -r exec npm publish
 # --- backslash-newline continuation (a native Windows jq.exe writes these newlines as CRLF)
 B	git -C x \\\nreset --hard
 B	git -C x \\\nstash
-# --- heredocs: a quoted body is text, an unquoted or executed body is code
+# --- heredocs: only an allowlisted whole command (cat > FILE <<'EOF', or a commit message
+# through "$(cat <<'EOF'") loses its body; every other body is checked as code.
 A	cat > note.md <<'EOF'\ngit rebase main\nEOF
-A	cat > note.md <<"EOF"\ngit -C x stash\nEOF
+B	cat > note.md <<"EOF"\ngit -C x stash\nEOF
 B	cat > note.md <<EOF\n$(git rebase main)\nEOF
 B	bash <<'EOF'\ngit rebase main\nEOF
 B	ssh host <<'EOF'\ngit -C x stash\nEOF
@@ -139,6 +140,55 @@ A	git -C x \\\r\nreset --hard
 A	git -C x \\\r\nstash
 # The opener's delimiter is EOF + CR; the hook only knows EOF and keeps the body (blocks more).
 B	cat > note.md <<'EOF'\r\ngit rebase main\r\nEOF\r\necho done
+# Text after the closing quote is part of the delimiter: bash ends this heredoc on EOFX.
+B	cat <<'EOF'X\nhi\nEOFX\ngit -C . stash\nEOF
+# A CR after the closing quote makes the delimiter EOF + CR, so the EOF + CR line ends it.
+B	cat <<'EOF'\r\nx\r\nEOF\r\ngit -C . stash\nEOF
+A	cat <<'EOF' > note.md\ngit rebase main\nEOF
+# The closing quote must match the opener, not a quote before the <<.
+B	echo ''<<"EOF' "\nEOF' \ngit -C . stash\nEOF
+B	echo ''<<"EOF'\n"; git -C . stash\nEOF
+# A << inside quotes is text: $( inside single quotes and an escaped \" do not reopen code.
+B	echo '$('x'<<'EOF' '\ngit -C . stash\nEOF
+B	echo "\\"<<'EOF' "\ngit -C . stash\nEOF
+# A lone backslash escapes the first <, so this is input from a file named EOF, not a heredoc.
+# $[ ] is arithmetic, not a heredoc.
+B	echo \\<<'EOF'\ngit -C . stash\nEOF
+B	echo \\\\<<'EOF'\ngit -C . stash\nEOF
+B	echo $[1<<'EOF' ]\ngit -C . stash\nEOF
+B	echo $((1<<'EOF' ))\ngit -C . stash\nEOF
+# A quote or an unquoted heredoc opened on an earlier line: the << below is not a heredoc.
+B	echo "a\ncat <<'EOF'\n"\ngit -C . stash\nEOF
+B	echo 'a\ncat <<'EOF'\n'\ngit -C . stash\nEOF
+B	cat <<X\ncat <<'EOF'\nX\ngit rebase main\nEOF
+# A quote inside a comment on an earlier line opens no string.
+B	# say "hi\necho "x\ncat <<'EOF'\n"; git rebase main\nEOF
+B	# don't\necho 'x\ncat <<"EOF"\n'; git rebase main\nEOF
+B	# don't rebase\ncat > note.md <<'EOF'\ngit rebase main\nEOF
+# Two heredocs on one line: bash reads both bodies in turn.
+B	cat <<'A' <<'B'\nA\ncat <<'C'\nB\ngit rebase main\nC
+# A case pattern inside $( ends with a ) that does not close the $( .
+B	x="$(case y in y) echo "cat <<'EOF'\n"; git rebase main ;; esac)"\nEOF
+# Inside $( bash ends the heredoc at EOF) and runs the next line.
+B	x="$(cat <<'EOF'\nhi\nEOF)"\ngit rebase main\nEOF
+# Pass-4 shapes: an open quote after the opener, a [[ =~ ]] word, case split by a
+# continuation, an alias that opens a quote.
+B	cat <<'EOF'; echo "\n"; git rebase main\nEOF
+B	[[ x =~ a|#' ]]\ncat <<"EOF"\n' ]]\ngit rebase main\nEOF
+B	x="$(ca\\\nse y in y) echo "cat <<'EOF'\n"; git rebase main ;; esac)"\nEOF
+B	shopt -s expand_aliases; alias q='echo "'\nq cat <<'EOF'\n"; git rebase main\nEOF
+# The allowlisted whole commands lose their body; the first line is still checked.
+A	cat >> note.md <<'EOF'\ngit rebase main\nEOF
+A	cat <<'EOF' > note.md\ngit -C x stash\nEOF
+A	git commit -m "$(cat <<'EOF'\nfix: do not git rebase main\nEOF\n)"
+A	git commit -s -m "$(cat <<'EOF'\nfix: x\n\ngit -C x stash is blocked\nEOF\n)"
+B	git -C x commit --amend -m "$(cat <<'EOF'\nmsg\nEOF\n)"
+# Anything after the heredoc, or a different closing line, is checked whole.
+B	cat > note.md <<'EOF'\nhi\nEOF\ngit rebase main
+B	git commit -m "$(cat <<'EOF'\nmsg\nEOF\n)"; git rebase main
+B	cat > "note.md" <<'EOF'\ngit rebase main\nEOF
+B	cat > a <<'EOF'\ngit rebase main\nEOF\ncat > b <<'EOF'\ngit -C x stash\nEOF
+B	echo "$(cat <<'EOF')"\ngit rebase main\nEOF
 CASES
 
 printf 'pass=%d fail=%d (%s)\n' "${pass}" "${fail}" "${HOOK}"
