@@ -58,6 +58,23 @@ END {
     sub(sq ".*$", "", term)
     if (last < 2 || line[last] != term) form = 0
     for (i = 2; form && i < last; i++) if (index(line[i], term) == 1) form = 0
+    # Bash before 4.0 finds the end of $( by scanning the text, so a ) in the body could end
+    # it early. The commit form keeps its body unless the scan cannot: parentheses balanced
+    # and never closing more than they opened, no quote, backtick or backslash, and no # with
+    # a parenthesis after it on its line.
+    depth = 0
+    for (i = 2; form == 2 && i < last; i++) {
+        s = line[i]
+        if (index(s, sq) || index(s, dq) || index(s, "`") || index(s, "\\")) form = 0
+        h = index(s, "#")
+        if (h && substr(s, h) ~ /[()]/) form = 0
+        for (j = 1; form && j <= length(s); j++) {
+            c = substr(s, j, 1)
+            if (c == "(") depth++
+            else if (c == ")" && --depth < 0) form = 0
+        }
+    }
+    if (form == 2 && depth != 0) form = 0
     if (!form) { for (i = 1; i <= n; i++) print line[i]; exit }
     print line[1]
     if (form == 2) print line[n]
