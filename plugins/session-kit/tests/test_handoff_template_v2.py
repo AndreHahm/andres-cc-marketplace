@@ -222,6 +222,23 @@ def test_scaffold_listing_failure_does_not_claim_clean(
     assert "[TODO: a git listing command failed" in content
 
 
+def test_scaffold_net_zero_unpushed_commits_are_reported(repo: Path, tmp_path: Path) -> None:
+    remote = tmp_path / "remote.git"
+    _git(tmp_path, "init", "-q", "--bare", str(remote))
+    _git(repo, "remote", "add", "origin", str(remote))
+    (repo / ".gitignore").write_text(".claude/\n", encoding="utf-8")
+    _git(repo, "add", ".gitignore")
+    ident = ("-c", "user.email=t@example.invalid", "-c", "user.name=t")
+    _git(repo, *ident, "commit", "-qm", "ignore")
+    _git(repo, "push", "-q", "-u", "origin", "main")
+    (repo / "src" / "app.py").write_text("x = 9\n", encoding="utf-8")
+    _git(repo, *ident, "commit", "-qam", "change")
+    _git(repo, *ident, "revert", "--no-edit", "HEAD")
+    content = Path(create_handoff.generate_handoff(str(repo), "demo")).read_text(encoding="utf-8")
+    assert "everything is committed and pushed" not in content
+    assert "[TODO: 2 unpushed commit(s) with no net file change" in content
+
+
 def test_scaffold_outside_git_does_not_claim_pushed(tmp_path: Path) -> None:
     project = tmp_path / "plain"
     project.mkdir()
@@ -330,6 +347,16 @@ def test_empty_state_or_mode_is_a_problem(repo: Path, key: str) -> None:
     result = validate_handoff.validate_handoff(str(_write_v2(repo, **{key: ""})))
     name = "state" if key == "state" else "context_mode"
     assert f"empty value: {name}" in result["frontmatter_problems"]
+    assert validate_handoff.print_report(result) is False
+
+
+def test_unclosed_frontmatter_blocks_ready(repo: Path) -> None:
+    path = _write_v2(repo)
+    content = path.read_text(encoding="utf-8").replace("context_mode: none\n---\n", "", 1)
+    path.write_text(content, encoding="utf-8")
+    result = validate_handoff.validate_handoff(str(path))
+    assert result["has_frontmatter"] is False
+    assert result["frontmatter_problems"] == ["frontmatter block is not closed"]
     assert validate_handoff.print_report(result) is False
 
 

@@ -50,6 +50,7 @@ def get_git_info(project_path: str) -> dict:
         "changed_files": [],
         "has_upstream": False,
         "listing_failed": False,
+        "unpushed_commits": 0,
     }
 
     # Check if git repo
@@ -86,6 +87,17 @@ def get_git_info(project_path: str) -> dict:
         if success and output:
             changed += [f for f in output.split("\n") if f and f not in changed]
     info["changed_files"] = changed
+
+    # Commits whose changes cancel out (a commit and its revert) leave no file in the diff above,
+    # so count unpushed commits directly.
+    if info["has_upstream"]:
+        success, count = run_cmd(
+            ["git", "rev-list", "--count", "@{upstream}..HEAD"], cwd=project_path
+        )
+        if success and count.isdigit():
+            info["unpushed_commits"] = int(count)
+        else:
+            info["listing_failed"] = True
 
     return info
 
@@ -234,6 +246,12 @@ def generate_handoff(
         # Unpushed commits could not be listed, so never claim everything is pushed.
         no_upstream = "[TODO: the branch has no upstream; add files from unpushed commits, or none]"
         unpushed_section = f"{unpushed_section}\n\n{no_upstream}" if changed else no_upstream
+    elif git_info["unpushed_commits"] and not changed:
+        # Local commits exist even though no file differs from the upstream.
+        unpushed_section = (
+            f"[TODO: {git_info['unpushed_commits']} unpushed commit(s) with no net file change; "
+            "push them or say why not]"
+        )
 
     # Generate the document
     content = f"""---
