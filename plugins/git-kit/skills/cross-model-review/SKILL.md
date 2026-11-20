@@ -22,9 +22,9 @@ independently, then each tries to **cross-examine** the other's findings. A find
 comes from whether it survives that cross-examination. This kills the two failure modes of solo LLM
 review: self-ratification (a model won't critique its own work) and confident false positives.
 
-**Claude is always the native reviewer, in this session, using its own tools.** Codex is always the
+**Claude is always the native reviewer, in this session, using its own tools.** Codex is the default
 second reviewer, dispatched as an independent subprocess through codex-kit — never invoked ad hoc
-via a raw `codex exec`.
+via a raw `codex exec`; up to two optional models may join (`references/optional-models.md`).
 
 **This skill has no `Write` grant** (it cannot be limited to a path). Every file the model authors goes
 through `scripts/git-review-write-run-file.sh` (`references/codex-pass-assembly.md`, "Writing a run
@@ -310,12 +310,12 @@ tree, not `$BASE` — before Codex is judged against them, never deferred to `in
 every `sensitive_paths` entry by name, apart from the target paths, as not embedded and not a target (Codex
 could still read it, see (a)); (f) if `INDEX_COPY_FAILED=1`, that the diff may be incomplete; and (g) if the
 repository's own codex-kit would run, that it is unverified code from the repository under review. Ask
-before the backend resolves, covering both outcomes. Options: "Send to Codex for this run" / "Stay
-Claude-native for this run"; in case (g) the first says "with this repository's own dispatcher". Git-kit's own direct implementation of the first-send-confirmation
+before the backend resolves, covering both outcomes. Options: "Send to Codex for this run" / "Skip
+Codex for this run" (an optional model keeps its own egress question); in case (g) the first says "with this repository's own dispatcher". Git-kit's own direct implementation of the first-send-confirmation
 obligation `codex-review-bridge`'s docs assign to any caller — independent of, and not satisfied by,
 a first-send gate any other codex-kit component may already have fired earlier in the session.
 
-**On "Stay Claude-native for this run": skip every Codex dispatch, before any is attempted** — single-model
+**On "Skip Codex for this run": skip every Codex dispatch, before any is attempted** — single-model
 mode (no Phase 2) unless a confirmed optional model returns a valid Phase 1 envelope, exactly as resolver
 step 3 (`references/optional-models.md` section 5). Record the `inspection_limits` reason as "user declined to send
 to Codex" rather than "Codex unavailable" — this is a deliberate opt-out, not a failure, and the
@@ -323,7 +323,7 @@ report should say so accurately.
 
 ## Phase 1 — Independent review (fresh-eyes persona)
 
-Both reviewers get the trusted `review.md` (materialized in Preflight step 5), reviewing the diff
+Claude and Codex get the trusted `review.md` (materialized in Preflight step 5), reviewing the diff
 from `"${DIFF[@]}"`, independently and in parallel. Both emit findings in codex-kit's canonical
 envelope shape, as summarized in `$RUN/review.md`'s Output section (the `$BASE`-verified copy; never
 read codex-kit's `envelope-schema.md` from the checkout as the contract, since the reviewed diff can edit
@@ -484,4 +484,4 @@ closing-tag neutralization, partial-failure preservation, scoped review and more
 `scripts/preflight_fixtures_test.py` runs the Preflight chain, planner step included, against scratch
 repositories.
 
-**Last dated run record:** `2026-11-18, evals/cross-model-review/workspace/iteration-15/` — evals 13-16, scenario 38 (refused chained Preflight; heredoc refusal, then timeout; folder-pick re-run; normal-session control), both arms claude-opus-5-5: `with_skill` 17/17, baseline (`main`'s text) 5/17; `2026-11-21, iteration-17`, eval 18 (accepted findings, scenario 39), `with_skill` only, 7/7; `iteration-16`, eval 17 (single-quoted `BASE`/`SCOPE`), claude-haiku-5-5: 3/3 vs 1/3; `2026-11-24, iteration-24`, eval 25 (literal helper calls, issue #866), 6/6 vs 4/6; `iteration-25`, eval 26 (sensitive names and dispatcher origin, issue #697, scenario 40), 6/6 vs 0/6 against `main`'s text; `iteration-26`, eval 25 re-run, `with_skill` only, 6/6; `iteration-27`, eval 27 (PATH filter, later calls), `with_skill` only, 6/6. `2026-11-20, iteration-17` to `iteration-21`, evals 29 and 19-23 (optional models, scenarios 41-50), `with_skill` only, 16/17, then 17/17; iteration 19 re-ran evals 19-21 after the pre-PR review fixes, 11/11; iteration 20 re-ran 19-21 and added 23 after PR #804's round-1 fixes, 15/15; iteration 21 re-ran 19 after round 2, 4/4. Skill-following dry runs, no Codex or vendor dispatch. Wording edits made after a run and not re-run are listed per iteration under "Run history". Earlier runs and their open items are under "Run history" in `references/testing-scenarios.md`.
+**Last dated run record:** `2026-11-18, evals/cross-model-review/workspace/iteration-15/` — evals 13-16, scenario 38 (refused chained Preflight; heredoc refusal, then timeout; folder-pick re-run; normal-session control), both arms claude-opus-5-5: `with_skill` 17/17, baseline (`main`'s text) 5/17; `2026-11-21, iteration-17`, eval 18 (accepted findings, scenario 39), `with_skill` only, 7/7; `iteration-16`, eval 17 (single-quoted `BASE`/`SCOPE`), claude-haiku-5-5: 3/3 vs 1/3; `2026-11-24, iteration-24`, eval 25 (literal helper calls, issue #866), 6/6 vs 4/6; `iteration-25`, eval 26 (sensitive names and dispatcher origin, issue #697, scenario 40), 6/6 vs 0/6 against `main`'s text; `iteration-26`, eval 25 re-run, `with_skill` only, 6/6; `iteration-27`, eval 27 (PATH filter, later calls), `with_skill` only, 6/6. `2026-11-20, iteration-17` to `iteration-22`, evals 29 and 19-24 (optional models, scenarios 41-50), `with_skill` only, 16/17, then 17/17; iteration 19 re-ran evals 19-21 after the pre-PR review fixes, 11/11; iteration 20 re-ran 19-21 and added 23 after PR #804's round-1 fixes, 15/15; iteration 21 re-ran 19 after round 2, 4/4; iteration 22 added 24 (Codex declined, optional model kept), 3/3. Skill-following dry runs, no Codex or vendor dispatch. Wording edits made after a run and not re-run are listed per iteration under "Run history". Earlier runs and their open items are under "Run history" in `references/testing-scenarios.md`.

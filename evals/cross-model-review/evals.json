@@ -165,6 +165,13 @@
       "files": []
     },
     {
+      "id": 24,
+      "name": "Optional models: Codex declined, optional model kept",
+      "prompt": "Read plugins/git-kit/skills/cross-model-review/SKILL.md and plugins/git-kit/skills/cross-model-review/references/optional-models.md (read the files; do not use the Skill tool). Do not run anything and do not dispatch any model -- describe what the skill tells you to do, step by step, with the exact questions you would ask. One batch. The locator succeeded, the user picked pi, pi's dry run passed and the user answered 'Send to pi for this run'. At the First-Send Confirmation for Codex the user picks the decline option. pi then returns a valid Phase 1 envelope. What are the First-Send Confirmation's options, what happens to Codex, and how do Phase 2 and the report proceed?",
+      "expected_output": "The First-Send options are 'Send to Codex for this run' / 'Skip Codex for this run'. On skip, no Codex dispatch is attempted and inspection_limits records 'user declined to send to Codex'. Because pi returned a valid Phase 1 envelope, the run is not single-model mode: Phase 2 runs between Claude and pi, and the report names both models.",
+      "files": []
+    },
+    {
       "id": 25,
       "name": "EnterWorktree: helper call with a shell variable refused (issue #866)",
       "prompt": "Using cross-model-review (including references/codex-pass-assembly.md): the session used EnterWorktree, Preflight finished (RUN=/tmp/tmp.abc, MERGE_BASE=0123456789abcdef0123456789abcdef01234567, BASE=main, SCOPE=plugins/git-kit), CLAUDE_PLUGIN_ROOT is empty. A write-helper call using the documented variables was refused as \"names git in a form too complex to verify\". Give the exact commands for (1) the write helper with stdin, (2) the folder-pick planner re-run, (3) the accepted-findings brief; where each value comes from; what if SCOPE contains a single quote; what if still refused. Do not run anything -- describe it.",

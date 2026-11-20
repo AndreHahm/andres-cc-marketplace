@@ -42,9 +42,11 @@ activation. This file holds the deeper concrete-scenario and quality-gate checkl
 9. Every changed file is a deletion or an invalid-charset path (Preflight step 2's eligible list is
    empty) → single-model mode is entered proactively, before any dispatch attempt, with
    `inspection_limits` recording "zero Codex-eligible paths" rather than "Codex unavailable."
-10. The First-Send Confirmation is answered "Stay Claude-native for this run" → single-model mode is
-    entered immediately, with `inspection_limits` recording "user declined to send to Codex," never a
-    dispatch attempt on the declined path.
+10. The First-Send Confirmation is answered "Skip Codex for this run" → no Codex dispatch is ever
+    attempted, and `inspection_limits` records "user declined to send to Codex". With no confirmed
+    optional model, single-model mode is entered immediately; when a confirmed optional model returns a
+    valid Phase 1 envelope, Phase 2 runs between Claude and that model instead (as scenario 45 does for
+    an unavailable Codex).
 11. Codex's Phase 2 dispatch returns an envelope with `dispatch.reviewer: "challenger-reviewer"`
     (exactly the `--reviewer-type` it was invoked with, per `refute.md`'s corrected instruction) →
     the bridge's `semanticallyValidate` accepts it; a hand-picked alternate name like
@@ -285,8 +287,8 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
       silently fails to match the extended-regex pattern
 - [ ] A dispatch is never attempted when Preflight step 2's eligible-files list is empty — single-model
       mode is entered proactively instead
-- [ ] "Stay Claude-native for this run" at the First-Send Confirmation always enters single-model mode
-      immediately — never leaves Phase 1/2 to still attempt or wait on a declined Codex dispatch
+- [ ] "Skip Codex for this run" at the First-Send Confirmation never attempts or waits on a Codex
+      dispatch; it enters single-model mode only when no optional model returned a valid Phase 1 envelope
 - [ ] Codex's `dispatch.reviewer` always echoes the exact `--reviewer-type` value it was dispatched
       with — `refute.md` never asserts a substituted name like `codex-challenger`
 - [ ] Preflight step 6's trust check always covers `assets/` as well as `scripts/` under
@@ -426,6 +428,9 @@ Moved here from SKILL.md's Testing & Validation section, which keeps only the la
   question names every path; reviewadapters-kit's own text is never read), `with_skill` only,
   claude-opus-5-5: 4/4. The envelope-contract boundary (`review.md`'s summary only, never codex-kit's
   schema file from the checkout) was added after this run, covered by the quality gate, not by an eval.
+- **2026-11-20, `iteration-22`:** add eval 24 after PR #804's round-4 fix (the First-Send option is
+  "Skip Codex for this run"; declining Codex keeps a confirmed optional model's Phase 2), `with_skill`
+  only, claude-opus-5-5: 3/3; see `iteration-22/NOTE.md`.
 
 Every eval run listed above is a dry run of the committed text, not a live dispatch (the live checks that
 some entries name are separate from their evals), and none is a live run of the scoped flow (one ran

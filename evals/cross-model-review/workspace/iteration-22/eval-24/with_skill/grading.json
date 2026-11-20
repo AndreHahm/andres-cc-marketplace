@@ -1,0 +1,27 @@
+{
+  "eval_id": 24,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "States the First-Send Confirmation's options as 'Send to Codex for this run' / 'Skip Codex for this run'",
+      "passed": true,
+      "evidence": "'Options are exactly two: \"Send to Codex for this run\" and \"Skip Codex for this run\".'"
+    },
+    {
+      "text": "On skip, attempts no Codex dispatch and records 'user declined to send to Codex' in inspection_limits",
+      "passed": true,
+      "evidence": "'skip every Codex dispatch before any is attempted ... Codex's resolver ... is never run'; inspection_limits records 'user declined to send to Codex'."
+    },
+    {
+      "text": "Does not enter single-model mode: Phase 2 runs between Claude and pi because pi returned a valid Phase 1 envelope",
+      "passed": true,
+      "evidence": "'Because pi returned a valid Phase 1 envelope, this is not single-model mode'; Phase 2 runs pi's challenger and Claude's challenger over pi's findings; confidence uses Claude and pi."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  },
+  "notes": "Gaps named (not changed): order of the vendor and Codex confirmations; where the decline reason goes in a mixed run; whether Codex-only disclosures still apply; Claude's challenger input when Codex is declined."
+}
