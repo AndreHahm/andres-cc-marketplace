@@ -1,0 +1,32 @@
+{
+  "eval_id": 19,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Three picks: tells the user at most two may be picked and asks again; does not trim the list itself",
+      "passed": true,
+      "evidence": "\"tell the user they picked three and the limit is two. Then I ask the identical multiSelect question again. I do not drop one of the three myself.\""
+    },
+    {
+      "text": "pi: drops the vendor with vendor_not_allowed recorded, without editing the allow-list, inputs or vendor setup",
+      "passed": true,
+      "evidence": "\"drop pi for the whole run and record 'pi dropped at dry run: vendor_not_allowed'. I do not touch `.claude/reviewadapters-kit.local.json`.\""
+    },
+    {
+      "text": "devin: dry-runs every batch, and since the dispatcher reports only a count, names the hit itself (config/api-token.json, batch 1) in the egress question",
+      "passed": true,
+      "evidence": "Dry-runs both batches; applies review-adapter-dispatch Gate 3: \"`config/api-token.json` matches on 'token' ... My count is 1, the same as the dispatcher's 1\"; question lists \"Secret-path hit: `config/api-token.json` in batch 1\"."
+    },
+    {
+      "text": "devin: --secret-paths-confirmed only after a yes and only on batch 1's dispatches (Phase 1 and Phase 2), never on batch 2's",
+      "passed": true,
+      "evidence": "Phase 1 and Phase 2 batch 1 commands carry `--secret-paths-confirmed`; batch 2 commands \"**without** `--secret-paths-confirmed`\" in both phases."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  },
+  "notes": "Agent ambiguity 1: the flagged batch re-run's timing relative to the egress question was implicit; made explicit after this run."
+}

@@ -66,19 +66,24 @@ list:
   then `@review.md` (the `$BASE`-verified copy, never the plugin's working-tree prompt unless the user
   already approved that in Preflight step 5).
 
-Then run, per picked vendor, once, against batch 1's files:
+Then dry-run each picked vendor against **every** batch with an eligible path, since the dispatcher's
+secret-name check runs per dispatch on that batch's own paths (a dry run sends nothing):
 
 ```bash
-node "$RVA" --vendor <V> --reviewer-type fresh-eyes-reviewer --dispatch-id cross-model-review-$(date +%s)-dry-<V> --instruction-file "$RUN/rva_review.1.md" --diff-file "$RUN/rva_diff.1.diff" --target-paths-file "$RUN/rva_paths.1.txt" --cwd "$REPO_ROOT" --dry-run
+node "$RVA" --vendor <V> --reviewer-type fresh-eyes-reviewer --dispatch-id cross-model-review-$(date +%s)-dry-<V>-<N> --instruction-file "$RUN/rva_review.<N>.md" --diff-file "$RUN/rva_diff.<N>.diff" --target-paths-file "$RUN/rva_paths.<N>.txt" --cwd "$REPO_ROOT" --dry-run
 ```
 
 - **`ok: true`:** keep its `recipient`, `model` and `reach` for the confirmation, and pass that `model`
   as `--model` on every real dispatch of this vendor, so the confirmed model is the one used. Check the
   `model` against the dispatcher's own rule first (starts with a letter or digit, only
   `[A-Za-z0-9._/:-]`); anything else drops the vendor, since the value goes into a shell command.
-- **`secret_paths_unconfirmed`:** a target or diff path has a secret-like name. The vendor stays
-  addable, but the confirmation below must name the hit; only on yes add `--secret-paths-confirmed` to
-  its dispatches. Run the dry run again with the flag to get `recipient`, `model` and `reach`.
+- **`secret_paths_unconfirmed`:** a target or diff path of that batch has a secret-like name. The
+  dispatcher reports only how many, so name them yourself: apply the rule in reviewadapters-kit's
+  `review-adapter-dispatch` skill (Gates, item 3) to that batch's paths, and if your count differs from
+  the dispatcher's, name every path of the batch instead. The vendor stays addable, but the confirmation
+  below must name each hit with its batch; only on yes add `--secret-paths-confirmed` to this vendor's
+  dispatches **for those batches only**, never to a batch whose own dry run passed without it. Before the
+  confirmation, run that batch's dry run again with the flag to get `recipient`, `model` and `reach`.
 - **Any other failure** (`vendor_not_allowed`, `cli_unavailable`, `codex_kit_unavailable`, `usage`, and
   every other typed failure): drop that vendor for this run with
   its category in `inspection_limits`. Never edit an input, the allow-list or the vendor's own setup to
@@ -91,8 +96,8 @@ independent of Codex's First-Send Confirmation. Each question quotes the dry run
 and `reach`; names the target paths of every batch (or their union and the batch count) and the number of
 dispatches the answer covers (two per batch with eligible paths); states that the full diff text of those
 files leaves the machine; and repeats, for this vendor, every disclosure Codex's confirmation carries for
-the same run: `DISPATCHER_TOUCHED`, `PLANNER_TOUCHED`, `REVIEW_UNVERIFIED`/`REFUTE_UNVERIFIED`, and any
-secret-path hit by name. A declined or unanswered question drops that vendor, recorded as "user declined
+the same run: `DISPATCHER_TOUCHED`, `PLANNER_TOUCHED`, `REVIEW_UNVERIFIED`/`REFUTE_UNVERIFIED`, and every
+secret-path hit by name and batch. A declined or unanswered question drops that vendor, recorded as "user declined
 to send to <V>".
 
 Every dispatch below runs `node "$RVA"` by its literal path. It is not in `allowed-tools` (the path
@@ -107,7 +112,7 @@ result.
 
 **Phase 1, per vendor and batch:** the dry run's command without `--dry-run`, with `--model <confirmed
 model>`, the batch's three files, `--dispatch-id cross-model-review-$(date +%s)-fresh-eyes-<V>-<N>` and,
-if confirmed, `--secret-paths-confirmed`, redirecting stdout to `$RUN/<V>_fresh_eyes.<N>.json` on the
+only for a batch whose hits were confirmed, `--secret-paths-confirmed`, redirecting stdout to `$RUN/<V>_fresh_eyes.<N>.json` on the
 same command (the output never passes through context). Vendors and batches are independent, so their
 calls may run in parallel.
 
@@ -117,7 +122,8 @@ file (the no-tools first line instead of the "do not run `git diff`" line, no di
 dispatcher embeds `rva_diff.<N>.diff` itself), with every other model's Phase 1 findings for this batch
 in `<other_reviewer_findings>`, filtered to `$TARGET_PATHS` and neutralized as that reference says. Group
 them by reviewer, each group labeled with the reviewer's name, so a classification names reviewer and
-finding id. Dispatch with `--reviewer-type challenger-reviewer` and
+finding id. Dispatch as in Phase 1 (same `--model`, diff and paths files, and `--secret-paths-confirmed`
+only where Phase 1 had it), with `rva_challenger.<V>.<N>.md` as `--instruction-file`, `--reviewer-type challenger-reviewer` and
 `--dispatch-id cross-model-review-$(date +%s)-challenger-<V>-<N>`, stdout redirected to
 `$RUN/<V>_challenger.<N>.json`.
 

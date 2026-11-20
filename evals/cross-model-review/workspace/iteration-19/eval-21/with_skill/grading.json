@@ -1,0 +1,27 @@
+{
+  "eval_id": 21,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Resolver step 3 asks whether to continue without Codex or stop",
+      "passed": true,
+      "evidence": "Asks once after every Phase 1 call returned: \"Codex is unavailable for this run (cli_unavailable on all 3 batches). Proceed without Codex, with Claude and pi cross-examining each other, or stop the review?\""
+    },
+    {
+      "text": "States the run is not single-model mode: Phase 2 runs between Claude and pi",
+      "passed": true,
+      "evidence": "\"pi did return valid envelopes, so this is not single-model mode\"; \"`single_model_mode` is **not** set\"; pi challenger for batches 1 and 3, Claude challenges pi's envelopes."
+    },
+    {
+      "text": "pi is skipped for batch 2 only, with the timeout recorded and no retry; batch 1 and 3 envelopes are kept",
+      "passed": true,
+      "evidence": "\"the timeout skips pi for that batch in Phase 2 as well ... There is no timeout retry for an optional model\"; inspection_limits lists \"pi failed on batch 2 with `timeout`, and was not retried\"; batch 2 Claude-only at Medium."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  },
+  "notes": "Agent surfaced gaps: references/resolver-failure-handling.md still says the full single-model path with no optional-model exception; resolver step 3's question says 'confirmed' while its sub-bullet and optional-models.md section 5 say 'returned a valid Phase 1 envelope'."
+}

@@ -208,8 +208,10 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
 43. A picked vendor's dry run returns `vendor_not_allowed` (or `cli_unavailable`) → that vendor is
     dropped for the run with its category in `inspection_limits`; the allow-list, inputs and vendor setup
     are never edited to make it pass, and the other picked vendor still goes on.
-44. A dry run returns `secret_paths_unconfirmed` → the vendor stays addable, its egress question names
-    the secret-like path, and `--secret-paths-confirmed` is passed only after a yes.
+44. A dry run returns `secret_paths_unconfirmed` (it gives only a count) → every batch is dry-run, the
+    vendor stays addable, its egress question names each secret-like path with its batch (from the
+    documented rule, or every path of the batch if the counts differ), and `--secret-paths-confirmed` is
+    passed only after a yes and only for those batches, in Phase 1 and Phase 2.
 45. Two vendors pass the dry run → one `AskUserQuestion` call with one question per vendor, each quoting
     that dry run's `recipient`, `model` and `reach`, the batches' target paths, the dispatch count, and
     the same `DISPATCHER_TOUCHED`/`PLANNER_TOUCHED`/`REVIEW_UNVERIFIED`/`REFUTE_UNVERIFIED` disclosures as
@@ -411,6 +413,10 @@ Moved here from SKILL.md's Testing & Validation section, which keeps only the la
   was a separate egress question per vendor instead of one call. After three wording fixes, iteration 18
   re-ran evals 20-22: 11/11. Two later wording fixes (resolver step 3's single-model sub-bullet, the
   section step labels) were not re-run; see `iteration-18/NOTE.md`.
+- **2026-11-20, `iteration-19`:** re-run evals 19-21 after the pre-PR `cross-model-review` fixes (every
+  batch dry-run, caller-named secret hits, per-batch `--secret-paths-confirmed`, Codex decline with an
+  optional model), `with_skill` only, claude-opus-5-5: 11/11. Three wording fixes after the run were not
+  re-run; see `iteration-19/NOTE.md`.
 
 Every eval run listed above is a dry run of the committed text, not a live dispatch (the live checks that
 some entries name are separate from their evals), and none is a live run of the scoped flow (one ran
