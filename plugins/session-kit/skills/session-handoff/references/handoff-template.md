@@ -58,6 +58,7 @@ context_mode: [none | review | ship | admin - derived from state, see SKILL.md C
 
 Right after the title, at most 15 lines. A summary for the first read on load; the full sections stay
 required. Its labels must not be bare `Branch:`, `Created:` or `Project:`, which older handoffs use.
+`validate_handoff.py` requires each of the five lines below to carry a value.
 
 ```
 - State: [state value, in a few words of context]

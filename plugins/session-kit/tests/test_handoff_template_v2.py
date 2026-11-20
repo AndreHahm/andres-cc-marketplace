@@ -184,6 +184,32 @@ def test_scaffold_lists_uncommitted_files(repo: Path) -> None:
     assert "| src/app.py |" in content
 
 
+def test_scaffold_lists_untracked_files(repo: Path) -> None:
+    (repo / "src" / "new.py").write_text("n = 1\n", encoding="utf-8")
+    content = Path(create_handoff.generate_handoff(str(repo), "demo")).read_text(encoding="utf-8")
+    assert "| src/new.py |" in content
+
+
+def test_scaffold_without_upstream_does_not_claim_pushed(repo: Path) -> None:
+    content = Path(create_handoff.generate_handoff(str(repo), "demo")).read_text(encoding="utf-8")
+    assert "everything is committed and pushed" not in content
+    assert "[TODO: the branch has no upstream" in content
+
+
+def test_scaffold_with_upstream_and_nothing_pending(repo: Path, tmp_path: Path) -> None:
+    remote = tmp_path / "remote.git"
+    _git(tmp_path, "init", "-q", "--bare", str(remote))
+    _git(repo, "remote", "add", "origin", str(remote))
+    _git(repo, "push", "-q", "-u", "origin", "main")
+    (repo / ".gitignore").write_text(".claude/\n", encoding="utf-8")
+    _git(repo, "add", ".gitignore")
+    _git(repo, "-c", "user.email=t@example.invalid", "-c", "user.name=t", "commit", "-qm", "ignore")
+    _git(repo, "push", "-q")
+    content = Path(create_handoff.generate_handoff(str(repo), "demo")).read_text(encoding="utf-8")
+    assert "None: everything is committed and pushed." in content
+    assert "no upstream" not in content
+
+
 def test_scaffold_suggested_chain_link_is_a_todo(repo: Path) -> None:
     first = Path(create_handoff.generate_handoff(str(repo), "first"))
     second = Path(create_handoff.generate_handoff(str(repo), "second"))
@@ -261,6 +287,31 @@ def test_unknown_state_is_a_problem(repo: Path, capsys: pytest.CaptureFixture[st
     assert result["score"] == 90
     assert validate_handoff.print_report(result) is False
     assert "NEEDS WORK" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("key", ["state", "mode"])
+def test_empty_state_or_mode_is_a_problem(repo: Path, key: str) -> None:
+    result = validate_handoff.validate_handoff(str(_write_v2(repo, **{key: ""})))
+    name = "state" if key == "state" else "context_mode"
+    assert f"empty value: {name}" in result["frontmatter_problems"]
+    assert validate_handoff.print_report(result) is False
+
+
+def test_card_with_unfilled_line_is_a_problem(repo: Path) -> None:
+    path = _write_v2(repo)
+    content = path.read_text(encoding="utf-8").replace("- Blockers: none\n", "- Blockers:\n")
+    path.write_text(content, encoding="utf-8")
+    assert validate_handoff.check_resume_card(content) == [
+        "Resume Card has no filled line for: Blockers"
+    ]
+
+
+def test_empty_card_is_a_problem() -> None:
+    content = "---\nstate: done\n---\n# Handoff: x\n\n## Resume Card\n\n## Next\n"
+    assert validate_handoff.check_resume_card(content) == [
+        "Resume Card has no filled line for: State, Next step, Branch and PR, Blockers, "
+        "User constraints"
+    ]
 
 
 def test_context_mode_override_is_a_note_only(repo: Path) -> None:

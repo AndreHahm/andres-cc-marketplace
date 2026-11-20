@@ -108,6 +108,8 @@ STATE_CONTEXT_MODE = {
 }
 CONTEXT_MODES = ("none", "review", "ship", "admin")
 RESUME_CARD_MAX_LINES = 15
+# The card's "- Label: value" lines, as the scaffold and references/handoff-template.md write them.
+RESUME_CARD_LABELS = ("State", "Next step", "Branch and PR", "Blockers", "User constraints")
 
 # A reference with no "/" counts as a file only if its last suffix is one of these, so code
 # names such as `os.geteuid`, `json.loads` or `code.claude.com` are not reported as missing.
@@ -162,6 +164,10 @@ def check_frontmatter(fields: dict[str, str], malformed: list[str]) -> tuple[lis
     problems += [f"missing key: {key}" for key in FRONTMATTER_KEYS if key not in fields]
     state = fields.get("state", "")
     mode = fields.get("context_mode", "")
+    # A present but empty value is neither a TODO nor a closed-set value; reject it explicitly.
+    for key in ("state", "context_mode"):
+        if key in fields and not fields[key]:
+            problems.append(f"empty value: {key}")
     # An unfilled "[TODO: ...]" value is already reported by check_todos.
     if state and "[TODO" not in state and state not in STATE_CONTEXT_MODE:
         problems.append(f"unknown state: {state[:40]}")
@@ -190,6 +196,13 @@ def check_resume_card(content: str) -> list[str]:
     lines = [line for line in card.split("\n") if line.strip()]
     if len(lines) > RESUME_CARD_MAX_LINES:
         return [f"Resume Card has {len(lines)} lines (at most {RESUME_CARD_MAX_LINES})"]
+    missing = [
+        label
+        for label in RESUME_CARD_LABELS
+        if not re.search(rf"^\s*-\s*{re.escape(label)}:[ \t]*\S", card, re.MULTILINE)
+    ]
+    if missing:
+        return [f"Resume Card has no filled line for: {', '.join(missing)}"]
     return []
 
 

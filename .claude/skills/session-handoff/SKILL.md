@@ -87,9 +87,9 @@ python3 "${CLAUDE_PLUGIN_ROOT}/skills/session-handoff/scripts/create_handoff.py"
 
 The script creates `.claude/handoffs/` if needed, generates a timestamped filename, and pre-fills the
 frontmatter (creation time in UTC, project path, git branch, the HEAD commit, platform, and `continues_from`
-when continuing from a previous handoff) and the Unpushed Changes table (uncommitted and unpushed
-files). It leaves out what git or the PR already records, such as a commit list. Output is the file
-path for editing.
+when continuing from a previous handoff) and the Unpushed Changes table (uncommitted, untracked and
+unpushed files; a TODO when the branch has no upstream). It leaves out what git or the PR already
+records, such as a commit list. Output is the file path for editing.
 
 ### Step 2: Complete the Handoff Document
 
@@ -133,8 +133,8 @@ python3 "${CLAUDE_PLUGIN_ROOT}/skills/session-handoff/scripts/validate_handoff.p
 Checks: no `[TODO: ...]` placeholders remaining, required sections present and populated, no
 potential secrets (API keys, passwords, tokens), referenced files exist, quality score (0-100). For a
 handoff with frontmatter it also checks that every frontmatter key is present, that `state` and
-`context_mode` hold values from the closed sets above, and that the Resume Card follows the title and
-is at most 15 lines; an older handoff without frontmatter is scored as before.
+`context_mode` hold non-empty values from the closed sets above, and that the Resume Card follows the
+title, is at most 15 lines and fills its five lines; an older handoff is scored as before.
 Only references ending in an extension (`.md`, `.py`, ...) are picked up; a path without one, such as
 `scripts/release`, is not checked. A picked-up path containing `/` is always checked, but a bare name
 such as `README.md` only when its suffix is a known file extension, so code names like `os.geteuid` are
