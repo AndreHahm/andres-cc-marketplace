@@ -25,15 +25,20 @@ CMD=${CMD//$'\\\n'/ }
 
 # The command without heredoc bodies, for the checks that look for a command at the
 # start of a line: a heredoc that writes a note or a script mentioning `git rebase`
-# is text, not a command. A heredoc stays in when its line names a shell or ssh
-# (`bash <<EOF` runs its body), and a `<<` inside quotes (`echo "a <<b"`) is not a
-# heredoc, unless it follows `$(` (`"$(cat <<'EOF'`). An unterminated heredoc runs
-# to the end of the command, as in bash. Only the first heredoc on a line is removed.
+# is text, not a command. Only a body whose delimiter is quoted (`<<'EOF'`, `<<"EOF"`)
+# is removed: bash expands `$(...)` and backticks in an unquoted body, so that body
+# can run commands. A body also stays in when its line names a shell, ssh, eval,
+# source or the `.` builtin (they run it), and a `<<` inside quotes (`echo "a <<b"`)
+# is not a heredoc, unless it follows `$(` (`"$(cat <<'EOF'`). A `<<` after `((` or
+# after a `#` is kept as code (arithmetic shift, comment). An unterminated heredoc
+# keeps its lines, so a `<<` that bash does not read as a heredoc cannot hide the
+# rest of the command. Only the first heredoc on a line is removed.
 CMD_CODE=$(awk -v sq="'" -v dq='"' '
 term != "" {
+    held = held $0 "\n"
     line = $0
     if (tabs) sub(/^\t+/, "", line)
-    if (line == term) term = ""
+    if (line == term) { term = ""; held = "" }
     next
 }
 {
@@ -41,13 +46,17 @@ term != "" {
     if (!match($0, "(^|[^<])<<-?[ \t]*[" sq dq "]?[A-Za-z_][A-Za-z0-9_]*")) next
     before = substr($0, 1, RSTART)
     word = substr($0, RSTART, RLENGTH)
-    if ($0 ~ /(^|[^A-Za-z0-9_.-])(bash|sh|zsh|dash|ksh|fish|pwsh|powershell|ssh)([^A-Za-z0-9_.-]|$)/) next
+    if (word !~ "<<-?[ \t]*[" sq dq "]") next
+    if ($0 ~ /(^|[^A-Za-z0-9_.-])(bash|sh|zsh|dash|ksh|fish|pwsh|powershell|ssh|eval|source)([^A-Za-z0-9_.-]|$)/) next
+    if ($0 ~ /(^|[^A-Za-z0-9_.\/-])\.[ \t]/) next
+    if (before ~ /\(\(/ || before ~ /(^|[ \t;&|(])#/) next
     while (match(before, /\$\(/)) before = substr(before, RSTART + 2)
     if ((split(before, a, sq) - 1) % 2 || (split(before, b, dq) - 1) % 2) next
     tabs = (word ~ /<<-/)
     sub("^[^<]*<<-?[ \t]*[" sq dq "]?", "", word)
     term = word
-}' <<<"${CMD}")
+}
+END { if (term != "") printf "%s", held }' <<<"${CMD}")
 
 # Here-strings, not `printf | grep -q`: under pipefail, grep -q exiting early
 # can kill printf with SIGPIPE on a long command and turn a match into a miss.
