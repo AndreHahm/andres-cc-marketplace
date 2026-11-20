@@ -200,7 +200,9 @@ glob_scan_max_depth = 5
 "~/.docker/config.json" = "deny"
 "~/.kube/**" = "deny"
 "~/.npmrc" = "deny"
-"~/.npm/**" = "deny"
+# Whole directory, not `/**`: a glob makes Codex enumerate the npm cache, and on
+# Linux that overflows bubblewrap's 9000-argument limit.
+"~/.npm" = "deny"
 "~/.pypirc" = "deny"
 "~/.gem/credentials" = "deny"
 "~/.netrc" = "deny"
@@ -225,9 +227,9 @@ glob_scan_max_depth = 5
 "**/.env.prod" = "deny"
 "**/.env.test" = "deny"
 "**/.env.dev" = "deny"
-".env.sample" = "write"
-".env.example" = "write"
-".env.template" = "write"
+# No write carve-outs for .env.example/.sample/.template: on Linux, Codex 0.170
+# panics on an exact-file write entry when the file exists, and rejects glob or
+# `./` forms for write. The `**/.env.*` deny above therefore covers them too.
 "**/*.pem" = "deny"
 "**/*.key" = "deny"
 "**/secrets/**" = "deny"
