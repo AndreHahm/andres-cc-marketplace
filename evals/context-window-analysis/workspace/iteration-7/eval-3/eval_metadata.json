@@ -1,0 +1,21 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/context-kit/skills/context-window-analysis/SKILL.md",
+  "assertions": [
+    {
+      "text": "Reports a MONITOR estimate, labelled an estimate rather than a measurement",
+      "type": "structure",
+      "target": "outputs/"
+    },
+    {
+      "text": "Does not tell the user to run /compact or /clear now",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Asks the user for /context output for a measured figure",
+      "type": "functionality",
+      "target": "outputs/"
+    }
+  ]
+}

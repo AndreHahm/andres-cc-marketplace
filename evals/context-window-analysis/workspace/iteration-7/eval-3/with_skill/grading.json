@@ -1,0 +1,26 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Reports a MONITOR estimate, labelled an estimate rather than a measurement",
+      "passed": true,
+      "evidence": "Estimated Status: MONITOR (estimate from observable signals, not a measurement)."
+    },
+    {
+      "text": "Does not tell the user to run /compact or /clear now",
+      "passed": true,
+      "evidence": "Keep going. You do not need to /compact or /clear right now; plan a /compact at the next natural break."
+    },
+    {
+      "text": "Asks the user for /context output for a measured figure",
+      "passed": true,
+      "evidence": "For an exact reading, run /context and paste the output here."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}
