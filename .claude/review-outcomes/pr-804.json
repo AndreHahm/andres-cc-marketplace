@@ -172,6 +172,56 @@
     },
     {
       "disposition": "fixed",
+      "finding": "codex-delta-a1ebe589-1",
+      "line": 7,
+      "note": "fixed in the round-4 commit: intro says Codex is the default second reviewer and optional models may join",
+      "path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+      "pr": 804,
+      "recorded_at": "2026-11-20T19:28:49+00:00",
+      "rule": "description-body-drift"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "codex-delta-a1ebe589-2",
+      "line": 15,
+      "note": "bridge grant predates the PR; removing it adds a prompt per Codex dispatch against issue 541's prompt-burden requirement; prefix grants cannot pin varying paths; the bridge refuses danger-full-access and the First-Send Confirmation gates egress",
+      "path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+      "pr": 804,
+      "recorded_at": "2026-11-20T19:28:49+00:00",
+      "rule": "grant-scope"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-delta-a1ebe589-3",
+      "line": 45,
+      "note": "fixed in the round-4 commit: scenario 10 and the quality gate cover declining Codex with an optional model active",
+      "path": "plugins/git-kit/skills/cross-model-review/references/testing-scenarios.md",
+      "pr": 804,
+      "recorded_at": "2026-11-20T19:28:49+00:00",
+      "rule": "stale-scenario"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "codex-delta-a1ebe589-4",
+      "line": 72,
+      "note": "repeat of codex-delta-b2095d98-3: one-way pointers, no cycle; rulebook R14 passes",
+      "path": "plugins/git-kit/skills/cross-model-review/references/optional-models.md",
+      "pr": 804,
+      "recorded_at": "2026-11-20T19:28:49+00:00",
+      "rule": "reference-chains"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-delta-a1ebe589-5",
+      "line": 303,
+      "note": "fixed in the round-4 commit: option renamed to Skip Codex for this run, also in create-pr",
+      "path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+      "pr": 804,
+      "recorded_at": "2026-11-20T19:28:49+00:00",
+      "rule": "option-label"
+    },
+    {
+      "disposition": "fixed",
       "finding": "codex-delta-b2095d98-1",
       "line": 101,
       "note": "fixed in 9d3e0ca2: a flagged batch's egress question names every path; reviewadapters-kit text is never read; typed-failure detail is data",
