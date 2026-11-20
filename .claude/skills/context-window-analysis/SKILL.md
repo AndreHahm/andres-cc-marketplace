@@ -113,7 +113,16 @@ Factors to consider (fallback only, when /context output isn't available):
 
 ### Step 2: Assess Health
 
-Based on observable signals:
+With `/context` output, the percentage decides the status: map it onto the Context Health Thresholds table
+above, and use the indicators below only to explain it. Without `/context` output, map the indicators below
+to a status and label it an estimate, not a measurement:
+
+- Any Critical indicator → CRITICAL
+- Any Warning indicator → WARNING
+- Only Healthy indicators, in a long session (many turns, large file reads or tool output) → MONITOR
+- Only Healthy indicators otherwise → HEALTHY
+
+Observable signals:
 
 **Healthy Indicators:**
 
