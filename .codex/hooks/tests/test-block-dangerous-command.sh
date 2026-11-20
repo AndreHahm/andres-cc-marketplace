@@ -183,6 +183,14 @@ A	cat <<'EOF' > note.md\ngit -C x stash\nEOF
 A	git commit -m "$(cat <<'EOF'\nfix: do not git rebase main\nEOF\n)"
 A	git commit -s -m "$(cat <<'EOF'\nfix: x\n\ngit -C x stash is blocked\nEOF\n)"
 B	git -C x commit --amend -m "$(cat <<'EOF'\nmsg\nEOF\n)"
+# Bash before 4.0 ends $( by scanning the body, so the commit form keeps a body whose
+# parentheses are unbalanced, or that holds a quote, backtick, backslash or # before a paren.
+A	git commit -m "$(cat <<'EOF'\nfix(codex): x\n\ngit rebase main is blocked\nEOF\n)"
+B	git commit -m "$(cat <<'EOF'\nfix: x)\ngit rebase main\nEOF\n)"
+B	git commit -m "$(cat <<'EOF'\nfix: x\n)(\ngit rebase main\nEOF\n)"
+B	git commit -m "$(cat <<'EOF'\nfix: don't\ngit rebase main\nEOF\n)"
+B	git commit -m "$(cat <<'EOF'\nfix: `x`\ngit rebase main\nEOF\n)"
+B	git commit -m "$(cat <<'EOF'\nfix: x # (\ngit rebase main\nEOF\n)"
 # Anything after the heredoc, or a different closing line, is checked whole.
 B	cat > note.md <<'EOF'\nhi\nEOF\ngit rebase main
 B	git commit -m "$(cat <<'EOF'\nmsg\nEOF\n)"; git rebase main
