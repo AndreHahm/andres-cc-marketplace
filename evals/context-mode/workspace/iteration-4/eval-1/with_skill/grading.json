@@ -1,0 +1,26 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Plans exactly one script invocation whose only argument is the word ship (no extra words or characters)",
+      "passed": true,
+      "evidence": "One planned command: python3 \"$PWD/.claude/skills/context-mode/scripts/set_mode.py\" ship (installed-plugin form named as an alternative, not a second run)."
+    },
+    {
+      "text": "States plainly, after running it, that the ship mode is active",
+      "passed": true,
+      "evidence": "Ship mode is now active for this session."
+    },
+    {
+      "text": "Does not plan to read references/ship.md or any profile file directly instead of running the script",
+      "passed": true,
+      "evidence": "Reads ship.md only to anticipate output; the profile is delivered by running the script, not read instead of it."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

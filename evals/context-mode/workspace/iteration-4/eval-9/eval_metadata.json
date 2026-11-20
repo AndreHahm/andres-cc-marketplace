@@ -1,0 +1,21 @@
+{
+  "eval_id": 9,
+  "skill_path": "plugins/context-kit/skills/context-mode/references/ship.md",
+  "assertions": [
+    {
+      "text": "Routes the merge through merge-pr",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "States the secretlint result before confirmation",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Reports the external-reference check as not run without blocking the merge",
+      "type": "functionality",
+      "target": "outputs/"
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Response answers using the skill's actual named criteria (phase transition, milestone completed, plan finalized, debug session resolved, switching to an unrelated task, or a configured tool-call threshold), not a generic answer",
+      "passed": true,
+      "evidence": "Table of named criteria: exploration to implementation, milestone, plan finalized, debug resolved, unrelated task; tool-call thresholds 50/100/150."
+    },
+    {
+      "text": "If none of the named conditions clearly apply from the prompt alone, the response says so explicitly rather than guessing or fabricating a trigger",
+      "passed": true,
+      "evidence": "Says session length does not decide it and that the task phase is not visible: What I cannot see from here; asks via AskUserQuestion instead of guessing."
+    },
+    {
+      "text": "Response does not answer with no reference to any real trigger from the skill (e.g. a bare 'sure, whenever you want')",
+      "passed": true,
+      "evidence": "Every branch is tied to a named trigger; no bare whenever-you-want answer."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}
