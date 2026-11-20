@@ -196,6 +196,32 @@ def test_scaffold_without_upstream_does_not_claim_pushed(repo: Path) -> None:
     assert "[TODO: the branch has no upstream" in content
 
 
+def test_scaffold_change_rows_are_todos(repo: Path) -> None:
+    (repo / "src" / "app.py").write_text("x = 3\n", encoding="utf-8")
+    content = Path(create_handoff.generate_handoff(str(repo), "demo")).read_text(encoding="utf-8")
+    assert "| src/app.py | [TODO: what changed and why] |" in content
+
+
+def test_scaffold_listing_failure_does_not_claim_clean(
+    repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    remote = tmp_path / "remote.git"
+    _git(tmp_path, "init", "-q", "--bare", str(remote))
+    _git(repo, "remote", "add", "origin", str(remote))
+    _git(repo, "push", "-q", "-u", "origin", "main")
+    real_run_cmd = create_handoff.run_cmd
+
+    def failing_ls_files(cmd: list[str], cwd: str | None = None) -> tuple[bool, str]:
+        if cmd[:2] == ["git", "ls-files"]:
+            return False, ""
+        return real_run_cmd(cmd, cwd=cwd)
+
+    monkeypatch.setattr(create_handoff, "run_cmd", failing_ls_files)
+    content = Path(create_handoff.generate_handoff(str(repo), "demo")).read_text(encoding="utf-8")
+    assert "everything is committed and pushed" not in content
+    assert "[TODO: a git listing command failed" in content
+
+
 def test_scaffold_outside_git_does_not_claim_pushed(tmp_path: Path) -> None:
     project = tmp_path / "plain"
     project.mkdir()
@@ -304,6 +330,13 @@ def test_empty_state_or_mode_is_a_problem(repo: Path, key: str) -> None:
     result = validate_handoff.validate_handoff(str(_write_v2(repo, **{key: ""})))
     name = "state" if key == "state" else "context_mode"
     assert f"empty value: {name}" in result["frontmatter_problems"]
+    assert validate_handoff.print_report(result) is False
+
+
+@pytest.mark.parametrize("key", ["project", "branch", "pr"])
+def test_empty_other_key_is_a_problem(repo: Path, key: str) -> None:
+    result = validate_handoff.validate_handoff(str(_write_v2(repo, **{key: ""})))
+    assert f"empty value: {key}" in result["frontmatter_problems"]
     assert validate_handoff.print_report(result) is False
 
 

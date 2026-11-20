@@ -49,6 +49,7 @@ def get_git_info(project_path: str) -> dict:
         "head": None,
         "changed_files": [],
         "has_upstream": False,
+        "listing_failed": False,
     }
 
     # Check if git repo
@@ -67,8 +68,9 @@ def get_git_info(project_path: str) -> dict:
         info["head"] = head
 
     # Uncommitted (unstaged, staged and untracked) files, then files in commits not yet pushed.
-    # Without an upstream the last command fails; has_upstream records that, so the scaffold does
-    # not claim everything is pushed when it could not check.
+    # Without an upstream the last command fails; has_upstream records that, and listing_failed
+    # records a failure of any other command, so the scaffold never claims a clean state it could
+    # not check.
     changed: list[str] = []
     for cmd in (
         ["git", "diff", "--name-only"],
@@ -79,6 +81,8 @@ def get_git_info(project_path: str) -> dict:
         success, output = run_cmd(cmd, cwd=project_path)
         if cmd[-1] == "@{upstream}...HEAD":
             info["has_upstream"] = success
+        elif not success:
+            info["listing_failed"] = True
         if success and output:
             changed += [f for f in output.split("\n") if f and f not in changed]
     info["changed_files"] = changed
@@ -213,7 +217,7 @@ def generate_handoff(
     # Unpushed Changes: only uncommitted or unpushed files (optional section)
     changed = git_info["changed_files"]
     if changed:
-        rows = "\n".join(f"| {f} | [what changed and why] |" for f in changed[:10])
+        rows = "\n".join(f"| {f} | [TODO: what changed and why] |" for f in changed[:10])
         if len(changed) > 10:
             rows += f"\n| ... and {len(changed) - 10} more files | |"
         unpushed_section = f"| File | Change |\n|------|--------|\n{rows}"
@@ -222,6 +226,10 @@ def generate_handoff(
     if not git_info["is_git_repo"]:
         # Nothing could be checked, so never claim everything is committed and pushed.
         unpushed_section = "[TODO: not a git repository; list files changed this session, or none]"
+    elif git_info["listing_failed"]:
+        # Some changes could not be listed, so never claim everything is committed.
+        failed = "[TODO: a git listing command failed; add uncommitted and unpushed files, or none]"
+        unpushed_section = f"{unpushed_section}\n\n{failed}" if changed else failed
     elif not git_info["has_upstream"]:
         # Unpushed commits could not be listed, so never claim everything is pushed.
         no_upstream = "[TODO: the branch has no upstream; add files from unpushed commits, or none]"

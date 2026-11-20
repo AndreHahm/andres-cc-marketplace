@@ -164,8 +164,8 @@ def check_frontmatter(fields: dict[str, str], malformed: list[str]) -> tuple[lis
     problems += [f"missing key: {key}" for key in FRONTMATTER_KEYS if key not in fields]
     state = fields.get("state", "")
     mode = fields.get("context_mode", "")
-    # A present but empty value is neither a TODO nor a closed-set value; reject it explicitly.
-    for key in ("state", "context_mode"):
+    # A present but empty value says nothing; absence is written as "none", never left blank.
+    for key in FRONTMATTER_KEYS:
         if key in fields and not fields[key]:
             problems.append(f"empty value: {key}")
     # An unfilled "[TODO: ...]" value is already reported by check_todos.
