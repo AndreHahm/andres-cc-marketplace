@@ -1,0 +1,21 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/context-kit/skills/strategic-compact/SKILL.md",
+  "assertions": [
+    {
+      "text": "Response proactively suggests /compact (or session-kit's session-handoff) without being explicitly asked",
+      "type": "functionality",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "Response cites a real, named trigger from the skill's Optimal Compaction Points table (e.g. 'milestone completed', tests passing, commit made) as the reason, not a generic justification",
+      "type": "quality",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "Response does not give generic/unrelated advice that ignores the milestone entirely",
+      "type": "quality",
+      "target": "outputs/ directory"
+    }
+  ]
+}

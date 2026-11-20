@@ -1,0 +1,21 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/context-kit/skills/context-mode/SKILL.md",
+  "assertions": [
+    {
+      "text": "Plans to run no command at all, in particular none containing the typed text after the word ship",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Tells the user the value is not valid",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Does not set ship, or any other mode, anyway",
+      "type": "functionality",
+      "target": "outputs/"
+    }
+  ]
+}

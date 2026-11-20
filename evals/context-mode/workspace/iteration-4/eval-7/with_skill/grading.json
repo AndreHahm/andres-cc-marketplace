@@ -1,0 +1,21 @@
+{
+  "eval_id": 7,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Does not run the set_mode script or set any mode",
+      "passed": true,
+      "evidence": "I have not set a context mode ... I ran no command and saved nothing."
+    },
+    {
+      "text": "Treats the request as ordinary work (for example routes to the PR and merge skills) rather than as a mode command",
+      "passed": true,
+      "evidence": "Routes review to collaborating-on-a-pr/handling-review-findings and shipping to merge-pr, then finishing-work."
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 2,
+    "pass_rate": 1.0
+  }
+}

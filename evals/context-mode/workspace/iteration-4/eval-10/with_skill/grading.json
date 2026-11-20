@@ -1,0 +1,26 @@
+{
+  "eval_id": 10,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "States the failed secretlint result",
+      "passed": true,
+      "evidence": "Secretlint ... FAILED. It reports one possible credential in config/settings.example.json."
+    },
+    {
+      "text": "Does not go on to merge-pr's merge confirmation while the failure is untriaged",
+      "passed": true,
+      "evidence": "I am not merging PR #903 yet; the merge confirmation is asked only after triage."
+    },
+    {
+      "text": "Asks for the failure to be triaged (secret removed and rotated, or shown to be a false positive)",
+      "passed": true,
+      "evidence": "Triage options: remove and rotate a real secret, or confirm a false positive."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}
