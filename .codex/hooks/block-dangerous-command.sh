@@ -28,43 +28,40 @@ fi
 
 [[ -z "${CMD}" ]] && exit 0
 
-# The command without heredoc bodies, for the checks that look for a command at the
-# start of a line: a heredoc that writes a note or a script mentioning `git rebase`
-# is text, not a command. Only a body whose delimiter is quoted (`<<'EOF'`, `<<"EOF"`)
-# is removed: bash expands `$(...)` and backticks in an unquoted body, so that body
-# can run commands. A body also stays in when its line names a shell, ssh, eval,
-# source or the `.` builtin (they run it), and a `<<` inside quotes (`echo "a <<b"`)
-# is not a heredoc, unless it follows `$(` (`"$(cat <<'EOF'`). A `<<` after `((` or
-# after a `#` is kept as code (arithmetic shift, comment). An unterminated heredoc
-# keeps its lines, so a `<<` that bash does not read as a heredoc cannot hide the
-# rest of the command. Only the first heredoc on a line is removed.
-# BINMODE=3 stops gawk on Windows from dropping CRs, so a terminator line `EOF` + CR,
-# which does not end the heredoc in bash, does not end it here either. Other awks ignore it.
+# The command without its heredoc body, for the checks that look for a command at the
+# start of a line, so a note or commit message that mentions `git rebase` is text, not a
+# command. Parsing bash in general proved unsafe (four review passes each found a way to
+# hide a line that bash runs), so only these whole commands lose their body:
+#   cat > FILE <<'EOF'   (or >> FILE, or the redirection after the delimiter)
+#   git commit [-flags] -m "$(cat <<'EOF'   ... EOF, then a last line )"
+# The delimiter must be single-quoted, FILE a plain path, and no body line may start with
+# the delimiter (bash 5.3 also ends a heredoc inside $( at a line such as EOF) ). The first
+# line, and the closing )" of the commit form, stay in and are checked. Any other command,
+# including one with more lines after the heredoc, is checked whole.
+# BINMODE=3 stops gawk on Windows from dropping CRs, so a line EOF + CR, which does not end
+# the heredoc in bash, does not end it here either. Other awks ignore it.
 strip_heredocs() {
     awk -v BINMODE=3 -v sq="'" -v dq='"' '
-term != "" {
-    held = held $0 "\n"
-    line = $0
-    if (tabs) sub(/^\t+/, "", line)
-    if (line == term) { term = ""; held = "" }
-    next
-}
-{
-    print
-    if (!match($0, "(^|[^<])<<-?[ \t]*[" sq dq "]?[A-Za-z_][A-Za-z0-9_]*")) next
-    before = substr($0, 1, RSTART)
-    word = substr($0, RSTART, RLENGTH)
-    if (word !~ "<<-?[ \t]*[" sq dq "]") next
-    if ($0 ~ /(^|[^A-Za-z0-9_.-])(bash|sh|zsh|dash|ksh|fish|pwsh|powershell|ssh|eval|source)([^A-Za-z0-9_.-]|$)/) next
-    if ($0 ~ /(^|[^A-Za-z0-9_.\/-])\.[ \t]/) next
-    if (before ~ /\(\(/ || before ~ /(^|[ \t;&|(])#/) next
-    while (match(before, /\$\(/)) before = substr(before, RSTART + 2)
-    if ((split(before, a, sq) - 1) % 2 || (split(before, b, dq) - 1) % 2) next
-    tabs = (word ~ /<<-/)
-    sub("^[^<]*<<-?[ \t]*[" sq dq "]?", "", word)
-    term = word
-}
-END { if (term != "") printf "%s", held }'
+{ line[NR] = $0 }
+END {
+    n = NR
+    w = "[A-Za-z_][A-Za-z0-9_]*"
+    f = ">>?[ \t]*[A-Za-z0-9_./-]+"
+    form = 0
+    if (line[1] ~ ("^cat[ \t]+" f "[ \t]+<<[ \t]*" sq w sq "$") ||
+        line[1] ~ ("^cat[ \t]+<<[ \t]*" sq w sq "[ \t]+" f "$")) form = 1
+    else if (line[1] ~ ("^git[ \t]+commit([ \t]+-[A-Za-z0-9-]+)*[ \t]+-m[ \t]+" dq "[$][(]cat[ \t]+<<[ \t]*" sq w sq "$")) form = 2
+    last = n
+    if (form == 2) { if (line[n] != (")" dq)) form = 0; last = n - 1 }
+    term = line[1]
+    sub("^[^<]*<<[ \t]*" sq, "", term)
+    sub(sq ".*$", "", term)
+    if (last < 2 || line[last] != term) form = 0
+    for (i = 2; form && i < last; i++) if (index(line[i], term) == 1) form = 0
+    if (!form) { for (i = 1; i <= n; i++) print line[i]; exit }
+    print line[1]
+    if (form == 2) print line[n]
+}'
 }
 
 # CMD_CODE with the quoted value of a message or pattern option blanked (`-m "use --amend"`
