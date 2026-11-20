@@ -8,7 +8,11 @@
 > of which 2 followed a typed prompt, and every resulting `/compact` suggestion declined) and a three-round
 > blind premise eval (`evals/context-mode/premise-eval/`). The current design sets one of three modes
 > (`admin`, `review`, `ship`) by command at the start of a session; see `SKILL.md`. The trigger lists, hook
-> latency and validation data below are kept only as the record of what was tried.
+> latency and validation data below are kept only as the record of what was tried. The `SKILL.md` sections
+> cited below ("How activation reaches this skill", "Mid-session switching mechanics", "Provenance
+> boundary", "Reporting a mode change", the Dispatch logic, and the "State and side effects" bullet) belong
+> to that earlier `SKILL.md` and no longer exist in the current one; read them in the parent of commit
+> `b5b2345a`, which removed that design.
 
 Summary of the design decisions and real-transcript validation behind `context-mode`, extracted from
 the review session that produced this skill so the rationale ships with the plugin instead of living

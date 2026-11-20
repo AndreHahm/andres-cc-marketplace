@@ -258,6 +258,7 @@ full list of what each hook writes is in `references/state-and-side-effects.md`.
 | `scripts/smoke_test.py` | This skill's own persisted hook-contract regression test |
 | `references/hook-wiring.md` | Full hook wiring by event, the shared-tracking-file lock, and the Windows PowerShell milestone-matcher fix |
 | `references/state-and-side-effects.md` | What every hook writes to disk, where, and the data-only boundary |
+| `references/testing-history.md` | Why this skill is tested through its hook scripts rather than evals, and the dated smoke-test run history |
 | `hooks/scripts/ctx-compact-session-init.sh` | `SessionStart` — initializes per-session tool-call tracking |
 | `hooks/scripts/ctx-compact-track-and-suggest.sh` | `PreToolUse` — counts tool calls, detects phase transitions, generates suggestions |
 | `hooks/scripts/ctx-compact-milestone-detector.sh` | `PostToolUse` — detects test/build/commit/deploy milestones |
@@ -271,44 +272,17 @@ full list of what each hook writes is in `references/state-and-side-effects.md`.
 
 ## Testing & Validation
 
-**`evals/strategic-compact/evals.json` exists, but doesn't exercise this skill's actual hook-driven
-behavior — by design, not omission** (fixed 2026-09-21: this section previously said the file didn't
-exist at all, which contradicted the recorded-run sentence two sentences later; found by CodeRabbit's
-automated PR review against PR #368). This skill's actual behavior is hook-driven automation (6 Bash
-scripts + 3 shared Python hooks, all wired via `hooks/hooks.json`), not model-invoked guidance a `skill-tester` blind-comparison eval
-measures — there's no "with skill vs. without skill" prompt-completion difference to compare, since the
-skill never depends on the model reading and following its own body text to act; the hooks fire
-deterministically regardless. A `skill-tester` Quick Workflow run was performed anyway on 2026-09-21 (at
-explicit user request, to confirm the mismatch directly rather than by assertion) — 6/6 assertions
-passed with 0/18 of this skill's own declared scenarios actually exercised (0/21 until 2026-10-16, when three context-mode-switch scenarios were removed) (originally reported as
-0/10; see `evals/strategic-compact/evals.json`'s own `coverage_note` for the recount history), matching
-this exact reasoning. Recorded at `evals/strategic-compact/evals.json`. The meaningful test surface is the hook
-scripts' own input/output contracts, verified directly
-(stdin → stdout/exit-code, against realistic and adversarial JSON payloads) rather than via an
-LLM-judged eval — see `hook-development/scripts/test-hook.sh`. The checklist below documents that
-direct-verification surface, and the persisted `scripts/smoke_test.py` exercises
-`ctx-compact-milestone-detector.sh`, `ctx-compact-skill-category-detector.sh`, `ctx-compact-stop-check.sh`, and
-`ctx-compact-session-init.sh` directly
-against this same stdin/stdout contract, plus imports and cross-checks `context-monitor.py`'s
-`get_session_dir()` implementation. **Known gap (hook-reviewer, 2026-09-18):** `ctx-compact-track-and-
-suggest.sh` (the most complex script — async, cross-process locking), `ctx-compact-instructions.sh`,
-`ctx-pre-compact.py`, and `ctx-post-compact-restore.py` have no direct stdin/stdout contract test of their
-own yet — only incidental coverage via shared helper functions and constant cross-checks. Tracked as
-an open item, not silently claimed as covered.
+**This skill is tested through its hook scripts, not through LLM-judged evals.** Its behavior is
+hook-driven automation, so a `skill-tester` with-skill versus baseline comparison has no prompt-completion
+difference to measure: `evals/strategic-compact/evals.json` exercises 0 of the 18 declared scenarios below,
+by design. The test surface is the hook scripts' stdin/stdout/exit-code contract, which the persisted
+`scripts/smoke_test.py` checks directly. Four scripts (`ctx-compact-track-and-suggest.sh`,
+`ctx-compact-instructions.sh`, `ctx-pre-compact.py`, `ctx-post-compact-restore.py`) still have no
+direct contract test of their own (known gap, tracked as an open item). The full reasoning, the eval runs
+and the smoke-test history are in `references/testing-history.md`.
 
-**Last dated run record:** `scripts/smoke_test.py` — 55/55 checks passing as of 2026-11-10 (PR #694 review fixes: the tool-call-count fallback is published as 0% so it cannot open the shell hooks' gate, and a milestone no longer spawns a desktop notification, 2 new checks; 53/53 after the cross-model-review fixes: the first milestone of a session is no longer held back by the cooldown (1 more check), the shipped window is back to 200k, a phase alert seen while gated stays pending until the gate opens, and the monitor reuses the last usage value when it falls out of the scanned transcript tail, 2 new checks; `display_startup_banner` setting, 2 new checks; 48/48 after the settings file moved to `assets/`; tool-call thresholds now default to 50/100/150 and come from the settings files, 4 new checks; 44/44 after issue #690, fix 4: 3 new checks cover the milestone gate, single-channel delivery and the 30-minute cooldown; 41/41 after fix 3: 5 new checks cover the real-context alert gate in `ctx-compact-track-and-suggest.sh` and the monitor's `pct-<hash>` handoff, including an alert that came due while gated firing once the gate opens; the learn nudge is now a single one at 65%; earlier the same day, 36/36 — issue #690: the 4 `ctx-compact-stop-check.sh` checks now assert a non-blocking `systemMessage` instead of `decision: block`, and 7 new `check_monitor_*` checks cover `context-monitor.py`'s real-token-usage estimate, sidechain skipping and window-size precedence); 29/29 as of 2026-10-16, including `check_session_init_sweeps_expired_mode_files` for the mode-file sweep (also 29/29 on 2026-09-21, before `check_session_init_resets_mode_file_on_startup` was removed with `detect_mode.py`; added
-`check_powershell_tool_payload_still_triggers_milestone` for the Windows PowerShell-matcher fix, 6
-`check_skill_category_*` checks for the new heavy_operation/session_analysis events,
-`check_skill_category_unset_plugin_root_fails_open` and `check_session_init_resets_mode_file_on_startup`
-(removed 2026-10-16) for 2 fixes found by scripts-reviewer's own pass on this batch,
-`check_no_hook_script_falls_back_to_cksum` for a `cross-model-review` finding on the same batch, and —
-from Codex + CodeRabbit's automated PR reviews on PR #368 —
-`check_skill_category_malformed_local_json_falls_back_to_defaults` and
-`check_stop_hook_delivers_multiple_queued_suggestions`, plus renaming the two
-`check_skill_category_*_start_and_finish` checks to `*_start` and rewriting
-`check_skill_category_priority_heavy_over_session_analysis` and
-`check_prefixed_content_with_hostile_tail_is_discarded` for the finish-phase removal and pending-file
-queue rewrite respectively).
+**Last dated run record:** `scripts/smoke_test.py`, 55/55 checks passing as of 2026-11-10; earlier runs
+are listed in `references/testing-history.md`.
 
 **Verify this skill's hooks activate on:**
 - A session starting (`SessionStart`, any source) — tool-call tracking initializes; a `compact`/
@@ -317,7 +291,8 @@ queue rewrite respectively).
   additionally fires on every successful tool call (`PostToolUse`, matcher `.*`).
 - A `Bash` **or `PowerShell`** command matching a known test/build/commit/deploy pattern (e.g.
   `pytest`, `git commit`, `npm run build`) — `ctx-compact-milestone-detector.sh` fires on `PostToolUse`
-  for either tool (matcher `^(Bash|PowerShell)$`; see "Windows PowerShell coverage" above).
+  for either tool (matcher `^(Bash|PowerShell)$`; see "Windows PowerShell coverage" in
+  `references/hook-wiring.md`).
 - A `Skill()` call to a known `heavy_operation`/`session_analysis` skill about to start —
   `ctx-compact-skill-category-detector.sh` fires on `PreToolUse`, matcher `^Skill$` (see "Skill-category
   events" above).
