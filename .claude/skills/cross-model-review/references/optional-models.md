@@ -59,7 +59,9 @@ list:
 
 - `rva_diff.<N>.diff`: the batch's `.codex.diff` files, joined (`@diffs-1/<slice>.codex.diff` parts). A
   vendor gets the same eligible-only diff Codex gets, so every diff header path is in the target list.
-  Intent-added untracked files are already part of that diff.
+  Intent-added untracked files are already part of that diff. In the unscoped fallback
+  (`references/scoped-review.md` section 7) there are no slices: the single batch 1 uses
+  `@codex_unscoped.diff`, and its eligible paths are that section's kept names.
 - `rva_paths.<N>.txt`: the batch's eligible paths, one per line, LF only.
 - `rva_review.<N>.md`: a first line telling the model it has no tools, must judge from the embedded
   diff alone, and must record in `inspection_limits` what it could not check without reading the files;
