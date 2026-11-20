@@ -1,0 +1,22 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4643844937",
+      "line": 58,
+      "note": "Status now lists every untracked file (--untracked-files=all), so a rename inside an untracked folder is seen; fixed in 3ced7dcc",
+      "path": "plugins/quality-kit/agents/mutation-tester.md",
+      "pr": 801,
+      "recorded_at": "2026-11-20T15:00:58+00:00"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "7042582814",
+      "line": 37,
+      "note": "The sentence describes the check the skill makes on user-supplied values before they reach a command line, not a script check; text predates this PR, which only changed the length cap",
+      "path": "plugins/quality-kit/skills/collecting-analysis-findings/SKILL.md",
+      "pr": 801,
+      "recorded_at": "2026-11-20T15:01:03+00:00"
+    }
+  ]
+}
