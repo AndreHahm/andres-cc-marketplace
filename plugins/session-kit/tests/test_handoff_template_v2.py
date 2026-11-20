@@ -202,6 +202,26 @@ def test_scaffold_lists_non_ascii_path_unquoted(repo: Path) -> None:
     assert "| src/über.py |" in content
 
 
+def test_scaffold_keeps_edge_spaces_in_names(repo: Path) -> None:
+    (repo / " lead.py").write_text("a = 1\n", encoding="utf-8")
+    content = Path(create_handoff.generate_handoff(str(repo), "demo")).read_text(encoding="utf-8")
+    assert "|  lead.py |" in content
+
+
+def test_scaffold_in_subdirectory_uses_repo_root_paths(repo: Path) -> None:
+    project = repo / "src"
+    (project / "new.py").write_text("n = 1\n", encoding="utf-8")
+    (repo / "src" / "app.py").write_text("x = 5\n", encoding="utf-8")
+    first = Path(create_handoff.generate_handoff(str(project), "first"))
+    content = Path(create_handoff.generate_handoff(str(project), "second")).read_text(
+        encoding="utf-8"
+    )
+    section = content.split("### Unpushed Changes", 1)[1].split("###", 1)[0]
+    assert "| src/new.py |" in section and "| src/app.py |" in section
+    assert "| new.py |" not in section
+    assert first.name not in section
+
+
 def test_scaffold_skips_own_handoffs(repo: Path) -> None:
     first = Path(create_handoff.generate_handoff(str(repo), "first"))
     content = Path(create_handoff.generate_handoff(str(repo), "second")).read_text(encoding="utf-8")
@@ -223,10 +243,12 @@ def test_scaffold_listing_failure_does_not_claim_clean(
     _git(repo, "push", "-q", "-u", "origin", "main")
     real_run_cmd = create_handoff.run_cmd
 
-    def failing_ls_files(cmd: list[str], cwd: str | None = None) -> tuple[bool, str]:
+    def failing_ls_files(
+        cmd: list[str], cwd: str | None = None, strip: bool = True
+    ) -> tuple[bool, str]:
         if cmd[:2] == ["git", "ls-files"]:
             return False, ""
-        return real_run_cmd(cmd, cwd=cwd)
+        return real_run_cmd(cmd, cwd=cwd, strip=strip)
 
     monkeypatch.setattr(create_handoff, "run_cmd", failing_ls_files)
     content = Path(create_handoff.generate_handoff(str(repo), "demo")).read_text(encoding="utf-8")
@@ -307,6 +329,14 @@ def test_parse_frontmatter_valid() -> None:
 )
 def test_parse_frontmatter_missing_or_unclosed(content: str) -> None:
     assert validate_handoff.parse_frontmatter(content) == (None, [])
+
+
+def test_parse_frontmatter_repeated_key_is_malformed() -> None:
+    fields, malformed = validate_handoff.parse_frontmatter(
+        "---\nstate: done\nstate: implementing\n---\n"
+    )
+    assert fields == {"state": "done"}
+    assert malformed == ["state: implementing"]
 
 
 def test_parse_frontmatter_reports_malformed_lines() -> None:

@@ -30,13 +30,17 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from validate_handoff import git_env  # noqa: E402
 
 
-def run_cmd(cmd: list[str], cwd: str | None = None) -> tuple[bool, str]:
-    """Run a command and return (success, output)."""
+def run_cmd(cmd: list[str], cwd: str | None = None, strip: bool = True) -> tuple[bool, str]:
+    """Run a command and return (success, output).
+
+    strip=False keeps the output as is, for NUL-separated listings (-z), where stripping
+    whitespace would cut a leading or trailing space off the first or last filename.
+    """
     try:
         result = subprocess.run(
             cmd, capture_output=True, text=True, cwd=cwd, env=git_env(), timeout=10
         )
-        return result.returncode == 0, result.stdout.strip()
+        return result.returncode == 0, result.stdout.strip() if strip else result.stdout
     except (subprocess.TimeoutExpired, FileNotFoundError):
         return False, ""
 
@@ -73,15 +77,19 @@ def get_git_info(project_path: str) -> dict:
     # records a failure of any other command, so the scaffold never claims a clean state it could
     # not check.
     # -z gives NUL-separated, unquoted paths, so a non-ASCII name is listed as itself rather than
-    # C-quoted. The project's own handoffs are left out: they are not work to push.
+    # C-quoted. Every path is relative to the repository root (git diff always is; ls-files gets
+    # --full-name), so a project in a subdirectory of the repository gets one path base. The
+    # project's own handoffs (<prefix>.claude/handoffs/) are left out: they are not work to push.
+    success, prefix = run_cmd(["git", "rev-parse", "--show-prefix"], cwd=project_path)
+    handoffs_dir = (prefix if success else "") + ".claude/handoffs/"
     changed: list[str] = []
     for cmd in (
         ["git", "diff", "--name-only", "-z"],
         ["git", "diff", "--name-only", "-z", "--cached"],
-        ["git", "ls-files", "-z", "--others", "--exclude-standard"],
+        ["git", "ls-files", "-z", "--full-name", "--others", "--exclude-standard"],
         ["git", "diff", "--name-only", "-z", "@{upstream}...HEAD"],
     ):
-        success, output = run_cmd(cmd, cwd=project_path)
+        success, output = run_cmd(cmd, cwd=project_path, strip=False)
         if cmd[-1] == "@{upstream}...HEAD":
             info["has_upstream"] = success
         elif not success:
@@ -90,7 +98,7 @@ def get_git_info(project_path: str) -> dict:
             changed += [
                 f
                 for f in output.split("\0")
-                if f and f not in changed and not f.startswith(".claude/handoffs/")
+                if f and f not in changed and not f.startswith(handoffs_dir)
             ]
     info["changed_files"] = changed
 
