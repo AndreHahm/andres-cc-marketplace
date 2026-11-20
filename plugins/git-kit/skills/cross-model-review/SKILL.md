@@ -440,7 +440,8 @@ would be `Bash(bash:*)`, which also admits `bash -c` and any script; one approva
 and the scratchpad `Write` may not prompt at all). `git add -N` runs only through `scripts/git-review-intent-add.sh`.
 These prompt unless your own settings or permission mode already allow them. For `git diff`, `git show` and `bash` the
 reason is a shared prefix: any prefix rule for them also admits `--output` or `-c`. Approve each run once and do not
-add a persistent allow rule for them; approve `Write` for the single call only, never for the session.
+add a persistent allow rule for them; approve `Write` for the single call only, never for the session. Approve each
+`node "$RVA"` dispatch once, after reading its rendered command at the prompt, and never add an allow rule for it.
 
 ## Reference Guide
 

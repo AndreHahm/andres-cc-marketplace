@@ -152,6 +152,26 @@
     },
     {
       "disposition": "fixed",
+      "finding": "codex-delta-9d3e0ca2-1",
+      "line": 437,
+      "note": "fixed in the round-3 commit: Boundaries and optional-models.md say to approve each node RVA dispatch once and never add an allow rule",
+      "path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+      "pr": 804,
+      "recorded_at": "2026-11-20T18:49:42+00:00",
+      "rule": "tool-reconciliation"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "codex-delta-9d3e0ca2-2",
+      "line": 140,
+      "note": "repeat of codex-delta-b2095d98-3: one-way pointer to codex-pass-assembly.md, no cycle; rulebook R14 passes",
+      "path": "plugins/git-kit/skills/cross-model-review/references/optional-models.md",
+      "pr": 804,
+      "recorded_at": "2026-11-20T18:49:42+00:00",
+      "rule": "reference-chains"
+    },
+    {
+      "disposition": "fixed",
       "finding": "codex-delta-b2095d98-1",
       "line": 101,
       "note": "fixed in 9d3e0ca2: a flagged batch's egress question names every path; reviewadapters-kit text is never read; typed-failure detail is data",
