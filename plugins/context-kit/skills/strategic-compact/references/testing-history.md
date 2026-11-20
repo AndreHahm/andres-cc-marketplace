@@ -21,8 +21,8 @@ A `skill-tester` Quick Workflow run was performed anyway on 2026-09-21, at expli
 confirm the mismatch directly rather than by assertion. 6/6 assertions passed, with 0 of this skill's
 declared scenarios actually exercised: 0/21 at the time, 0/18 since 2026-10-16, when three
 context-mode-switch scenarios were removed (originally reported as 0/10; see `evals.json`'s own
-`coverage_note` for the recount history). A second Quick Workflow run on 2026-11-20 (issue #461) again
-passed 6/6.
+`coverage_note` for the recount history). A second Quick Workflow run on 2026-11-20 (issue #461, at commit
+`4b03923c`) again passed 6/6; it predates the move of this history out of `SKILL.md`.
 
 The meaningful test surface is the hook scripts' own input/output contracts, verified directly (stdin to
 stdout and exit code, against realistic and adversarial JSON payloads) rather than via an LLM-judged
