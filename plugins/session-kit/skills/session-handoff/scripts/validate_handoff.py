@@ -546,7 +546,7 @@ def print_report(result: dict):
         for note in result["frontmatter_notes"]:
             print(f"\n[INFO] {note}")
         for problem in result["card_problems"]:
-            print(f"\n[WARN] {problem}")
+            print(f"\n[FAIL] {problem}")
 
     # Secrets
     if not result["secrets_found"]:
@@ -579,6 +579,7 @@ def print_report(result: dict):
         and result["todos_clear"]
         and result["required_complete"]
         and not result["frontmatter_problems"]
+        and not result["card_problems"]
     ):
         print("Verdict: READY for handoff")
         return True

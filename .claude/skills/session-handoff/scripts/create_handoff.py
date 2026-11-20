@@ -6,7 +6,7 @@ Creates a new handoff document with auto-detected metadata:
 - Frontmatter: creation time (UTC), project path, git branch and HEAD, platform,
   handoff chain link
 - Resume Card and the v2 sections
-- Unpushed Changes: uncommitted and unpushed files
+- Unpushed Changes: uncommitted, untracked and unpushed files
 
 Usage:
     python create_handoff.py [task-slug] [--continues-from <previous-handoff>]
@@ -219,7 +219,10 @@ def generate_handoff(
         unpushed_section = f"| File | Change |\n|------|--------|\n{rows}"
     else:
         unpushed_section = "None: everything is committed and pushed."
-    if git_info["is_git_repo"] and not git_info["has_upstream"]:
+    if not git_info["is_git_repo"]:
+        # Nothing could be checked, so never claim everything is committed and pushed.
+        unpushed_section = "[TODO: not a git repository; list files changed this session, or none]"
+    elif not git_info["has_upstream"]:
         # Unpushed commits could not be listed, so never claim everything is pushed.
         no_upstream = "[TODO: the branch has no upstream; add files from unpushed commits, or none]"
         unpushed_section = f"{unpushed_section}\n\n{no_upstream}" if changed else no_upstream
