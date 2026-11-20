@@ -179,6 +179,37 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
     approved per call, never session-wide, and every `$RUN` file is still written by the helper. No
     scratchpad, or a call still refused in that form, stops the run with a report. A session that did not
     use `EnterWorktree` never uses `Write`.
+39. The locator exits 3 (no installed reviewadapters-kit, or every candidate refused) → no optional
+    model is offered, the reasons are mentioned in one line, and the run is Claude and Codex exactly as
+    before; nothing searches further or runs a copy inside the checkout (`references/optional-models.md`
+    section 1; the locator's own cases are in `tests/marketplace_ci/test_git_review_locate_rva.py`).
+40. The locator succeeds and the user picks three models → the skill says at most two may be picked and
+    asks again; it never trims the list itself. No pick → Claude and Codex only.
+41. A picked vendor's dry run returns `vendor_not_allowed` (or `cli_unavailable`) → that vendor is
+    dropped for the run with its category in `inspection_limits`; the allow-list, inputs and vendor setup
+    are never edited to make it pass, and the other picked vendor still goes on.
+42. A dry run returns `secret_paths_unconfirmed` → the vendor stays addable, its egress question names
+    the secret-like path, and `--secret-paths-confirmed` is passed only after a yes.
+43. Two vendors pass the dry run → one `AskUserQuestion` call with one question per vendor, each quoting
+    that dry run's `recipient`, `model` and `reach`, the batches' target paths, the dispatch count, and
+    the same `DISPATCHER_TOUCHED`/`PLANNER_TOUCHED`/`REVIEW_UNVERIFIED`/`REFUTE_UNVERIFIED` disclosures as
+    Codex's confirmation, before that vendor's first real dispatch. A declined vendor is never
+    dispatched and is recorded as "user declined to send to <V>". Every real dispatch passes the
+    dry run's model as `--model`.
+44. An optional model's Phase 1 dispatch fails for one batch → that vendor is skipped for that batch
+    only; every other envelope is kept and Phase 2 runs for the remaining models.
+45. Codex is unavailable but one optional model returned a valid Phase 1 envelope → resolver step 3
+    asks whether to continue without Codex; on yes, Phase 2 runs between Claude and that model and the
+    run is not single-model mode.
+46. Phase 3 with three or four models → a finding raised independently by two models, or raised by one
+    and confirmed by another, is High; any refutation makes it Low/contested; anything else is Medium.
+    Each challenger received every other model's findings for its batch, grouped by reviewer.
+47. `PLANNER_TOUCHED=1` (the diff changes the review scripts, the locator among them) → no optional
+    model is offered, even after the user approved running the working-tree scripts, and the reason is
+    in `inspection_limits`.
+48. The locator is run again immediately before a vendor's first real dispatch and now fails, or prints
+    a different `dispatcher` → that vendor is dropped for the run with the reason; the earlier result is
+    never used for a dispatch.
 
 ## Quality gates
 
@@ -198,6 +229,9 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
 - [ ] No code is edited before Phase 3's closing `AskUserQuestion` is answered
 - [ ] Single-model mode always skips Phase 1's Codex pass and all of Phase 2 — never dispatches Codex
       after the user chose to proceed single-model
+- [ ] No optional model is ever dispatched without its own per-vendor egress confirmation in this
+      invocation, and never from a reviewadapters-kit path the locator did not print
+- [ ] A run with no optional model picked behaves exactly as a Claude + Codex run
 - [ ] A Codex-bound instruction file never embeds diff text for a file Preflight step 2 excluded from
       `--target-paths` — a batch's `.codex.diff` files are used for every Codex-facing embed (or
       `$RUN/codex_unscoped.diff` in the planner-unavailable fallback, `scoped-review.md` section 7),

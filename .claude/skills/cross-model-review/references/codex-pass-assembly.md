@@ -143,7 +143,9 @@ defense does not depend on which path handles the dispatch: replace every closin
 (`<`, optional whitespace, `/`, a tag-like name, optional whitespace, `>`) with `(/name)` so a crafted
 `</other_reviewer_findings>`-shaped substring quoted in a finding cannot close the block below.
 
-`Read` `$RUN/claude_fresh_eyes.json`; drop findings per the filter above, neutralize what remains, and
+`Read` `$RUN/claude_fresh_eyes.json` (with optional models, also each confirmed vendor's
+`$RUN/<V>_fresh_eyes.<N>.json`, grouped by reviewer: `references/optional-models.md` section 4); drop
+findings per the filter above, neutralize what remains, and
 write `$RUN/challenger_instructions_for_codex.<N>.md` with the write helper as the
 concatenation, in order, of: `review.md`; a blank line; `refute.md`; a blank line, then a line telling
 Codex not to run `git diff` or any shell command to fetch the diff, then `\n<diff>\n<the same diff text
