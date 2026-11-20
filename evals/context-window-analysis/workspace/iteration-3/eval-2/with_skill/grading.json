@@ -1,0 +1,21 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Response does not perform the requested skills/CLAUDE.md bloat audit itself -- an in-scope live-window health readout offered alongside a correct decline does not violate this",
+      "passed": true,
+      "evidence": "Did not run the workflow or produce a bloat report; only explains the scope."
+    },
+    {
+      "text": "Response points the user at a broader skills/CLAUDE.md/plugin/MCP footprint audit capability (e.g. context-audit) rather than attempting the live-window check itself",
+      "passed": true,
+      "evidence": "Recommended next step: run the context-audit skill (context-kit)."
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 2,
+    "pass_rate": 1.0
+  }
+}
