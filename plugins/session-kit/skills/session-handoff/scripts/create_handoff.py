@@ -48,6 +48,7 @@ def get_git_info(project_path: str) -> dict:
         "branch": None,
         "head": None,
         "changed_files": [],
+        "has_upstream": False,
     }
 
     # Check if git repo
@@ -65,15 +66,19 @@ def get_git_info(project_path: str) -> dict:
     if success and head:
         info["head"] = head
 
-    # Uncommitted (unstaged and staged) files, then files in commits not yet pushed. Without an
-    # upstream the last command fails and only uncommitted files are listed.
+    # Uncommitted (unstaged, staged and untracked) files, then files in commits not yet pushed.
+    # Without an upstream the last command fails; has_upstream records that, so the scaffold does
+    # not claim everything is pushed when it could not check.
     changed: list[str] = []
     for cmd in (
         ["git", "diff", "--name-only"],
         ["git", "diff", "--name-only", "--cached"],
+        ["git", "ls-files", "--others", "--exclude-standard"],
         ["git", "diff", "--name-only", "@{upstream}...HEAD"],
     ):
         success, output = run_cmd(cmd, cwd=project_path)
+        if cmd[-1] == "@{upstream}...HEAD":
+            info["has_upstream"] = success
         if success and output:
             changed += [f for f in output.split("\n") if f and f not in changed]
     info["changed_files"] = changed
@@ -214,6 +219,10 @@ def generate_handoff(
         unpushed_section = f"| File | Change |\n|------|--------|\n{rows}"
     else:
         unpushed_section = "None: everything is committed and pushed."
+    if git_info["is_git_repo"] and not git_info["has_upstream"]:
+        # Unpushed commits could not be listed, so never claim everything is pushed.
+        no_upstream = "[TODO: the branch has no upstream; add files from unpushed commits, or none]"
+        unpushed_section = f"{unpushed_section}\n\n{no_upstream}" if changed else no_upstream
 
     # Generate the document
     content = f"""---
