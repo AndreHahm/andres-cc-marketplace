@@ -1452,6 +1452,7 @@ def check_qlty_sonar_read() -> None:
         for argv in (
             ("rule", "--rule", "python:S1"),
             ("rule", "--organization", "org", "--rule", "python S1"),
+            ("rule", "--organization", "org", "--rule", "-python:S1"),
             ("rule", "--organization", "Org", "--rule", "python:S1"),
             ("rule", "--organization", "org", "--rule", "python:S1", "--project", "p"),
         ):
@@ -1459,6 +1460,13 @@ def check_qlty_sonar_read() -> None:
             check(
                 f"qlty-sonar-read refuses {' '.join(argv[1:])} (exit 2)",
                 done.returncode == 2 and done.stdout == "",
+                f"{done.returncode} {done.stdout} {done.stderr}",
+            )
+        for key in ("roslyn.sonaranalyzer.security.cs:S3649", "common-java:DuplicatedBlocks"):
+            done = run("rule", "--organization", "org", "--rule", key)
+            check(
+                f"qlty-sonar-read rule: accepts a dotted or hyphenated repository ({key})",
+                done.returncode == 0 and json.loads(done.stdout)["rule"]["key"] == key,
                 f"{done.returncode} {done.stdout} {done.stderr}",
             )
         done = run("rule", "--organization", "org", "--rule", "python:S1", mode="other-rule")
