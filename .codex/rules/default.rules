@@ -113,6 +113,12 @@ prefix_rule(
     match = ["yarn npm publish"],
     not_match = ["yarn npm info react"],
 )
+prefix_rule(
+    pattern = [["lerna", "changeset"], "publish"],
+    decision = "forbidden",
+    justification = "Publishing packages is not allowed from Codex; publish manually.",
+    match = ["lerna publish from-package", "changeset publish"],
+)
 # Flag-first monorepo forms. Forms with a value before `publish`
 # (`npm -w pkg publish`, `pnpm --filter pkg publish`) cannot be written as a
 # prefix rule; the PreToolUse hook blocks those.
