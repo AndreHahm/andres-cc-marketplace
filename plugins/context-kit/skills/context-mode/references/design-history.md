@@ -136,7 +136,7 @@ agent") — a context-mode nonce would be the same class of unauthenticated plai
 the model itself inside the attacker's own channel, rather than by a separate process in a different
 trust domain the way git-kit's version is. The accepted residual risk is bounded: a successful forgery
 only ever changes operating *posture* among 4 fixed modes (verified directly against
-`references/dev.md`, the most permissive profile — it disables no hard gate, only relaxes
+the former `dev` mode file, the most permissive profile at the time — it disabled no hard gate, only relaxed
 ask-before-acting on obvious implementation choices), never a permission or tool-grant, is stated
 plainly on every switch per `SKILL.md`'s "Reporting a mode change" section (never silent), and
 presupposes an attacker who can already inject arbitrary text into context — a capability strictly more

@@ -16,6 +16,13 @@ For a broader footprint audit (skills, CLAUDE.md, plugins, MCP servers — not j
 `context-audit` instead; the two overlap on live `/context` notes but this skill focuses on the current
 window's health in the moment.
 
+## Quick Start
+
+- "how full is my context" or `/context-kit:context-window-analysis` — starts the check
+- Share the output of `/context` when asked — the assessment uses its real token counts (see Workflow)
+- Read the HEALTHY/MONITOR/WARNING/CRITICAL status and the recommended action (`/compact`, `/clear`, or
+  continue)
+
 ## When to Use
 
 - "how full is my context right now"
