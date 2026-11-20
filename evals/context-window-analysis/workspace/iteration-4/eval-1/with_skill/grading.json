@@ -1,0 +1,26 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Response asks the user to run /context and share the output, or explicitly falls back to indirect estimation only when /context output isn't available",
+      "passed": true,
+      "evidence": "Asks the user to run /context and paste the output first."
+    },
+    {
+      "text": "Response includes a status assessment using one of HEALTHY/MONITOR/WARNING/CRITICAL",
+      "passed": false,
+      "evidence": "No status given: the response shows only the threshold table and offers an estimate only if the user asks; it never states a current HEALTHY/MONITOR/WARNING/CRITICAL assessment."
+    },
+    {
+      "text": "Response includes concrete recommendations (e.g. /compact, /clear, or 'no action needed'), not a vague answer",
+      "passed": false,
+      "evidence": "No concrete recommendation for the current state; only the conditional actions in the threshold table."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 1,
+    "pass_rate": 0.3333
+  }
+}
