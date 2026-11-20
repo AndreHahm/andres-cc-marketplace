@@ -462,6 +462,10 @@ def validate_handoff(filepath: str) -> dict:
     if fields is None:
         # An older handoff: no frontmatter or card checks, and the old recommended list.
         frontmatter_problems, frontmatter_notes, card_problems = [], [], []
+        # A file that opens a "---" block but never closes it is a broken v2 handoff, not an
+        # older one; without this it would skip every v2 check and could still report READY.
+        if content.split("\n", 1)[0].rstrip() == "---":
+            frontmatter_problems = ["frontmatter block is not closed"]
         missing_recommended = check_recommended_sections(content, LEGACY_RECOMMENDED_SECTIONS)
     else:
         frontmatter_problems, frontmatter_notes = check_frontmatter(fields, malformed)
@@ -536,7 +540,7 @@ def print_report(result: dict):
             print(f"       - {section}")
 
     # v2 frontmatter and Resume Card
-    if result["has_frontmatter"]:
+    if result["has_frontmatter"] or result["frontmatter_problems"]:
         if result["frontmatter_problems"]:
             print("\n[FAIL] Frontmatter problems:")
             for problem in result["frontmatter_problems"]:
