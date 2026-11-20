@@ -405,6 +405,12 @@ Moved here from SKILL.md's Testing & Validation section, which keeps only the la
 - **2026-11-24, `iteration-30`:** eval 28 again after tracked issues left Codex's brief (the printed line in its
   prompt changed before the run), one plan-only `with_skill` run, no baseline: 5/5. It ran before the rule that keeps
   issue text and tracked marks out of the findings embedded for Codex, which no eval covers yet.
+- **2026-11-20, `iteration-17` and `iteration-18`:** add evals 29 (recorded as 18 until the rebase onto main) and
+  19-22 for scenarios 41-50 (39-48 in the notes; issue #541 Part B,
+  optional models), `with_skill` only, claude-opus-5-5, Read-only dry runs. Iteration 17: 16/17; the miss
+  was a separate egress question per vendor instead of one call. After three wording fixes, iteration 18
+  re-ran evals 20-22: 11/11. Two later wording fixes (resolver step 3's single-model sub-bullet, the
+  section step labels) were not re-run; see `iteration-18/NOTE.md`.
 
 Every eval run listed above is a dry run of the committed text, not a live dispatch (the live checks that
 some entries name are separate from their evals), and none is a live run of the scoped flow (one ran

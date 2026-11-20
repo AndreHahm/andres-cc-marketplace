@@ -1,0 +1,21 @@
+{
+  "eval_id": 29,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {
+      "text": "Case A: no optional model is offered; the run continues as Claude + Codex",
+      "type": "functionality",
+      "target": "references/optional-models.md"
+    },
+    {
+      "text": "Case A: does not search elsewhere or use a reviewadapters-kit copy inside the checkout",
+      "type": "functionality",
+      "target": "references/optional-models.md"
+    },
+    {
+      "text": "Case B: offers no optional model despite PLANNER_APPROVED=1, and records why in inspection_limits",
+      "type": "functionality",
+      "target": "references/optional-models.md"
+    }
+  ]
+}

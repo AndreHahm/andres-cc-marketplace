@@ -1,0 +1,21 @@
+{
+  "eval_id": 19,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {
+      "text": "Three picks: tells the user at most two may be picked and asks again; does not trim the list itself",
+      "type": "functionality",
+      "target": "references/optional-models.md"
+    },
+    {
+      "text": "pi: drops the vendor with vendor_not_allowed recorded, without editing the allow-list, inputs or vendor setup",
+      "type": "functionality",
+      "target": "references/optional-models.md"
+    },
+    {
+      "text": "devin: stays addable; the egress question names the secret-like path and --secret-paths-confirmed is passed only after a yes",
+      "type": "functionality",
+      "target": "references/optional-models.md"
+    }
+  ]
+}
