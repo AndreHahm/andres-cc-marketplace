@@ -1,0 +1,32 @@
+{
+  "eval_id": 20,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Asks one question per vendor (in one AskUserQuestion call), each quoting that vendor's recipient, model and reach",
+      "passed": true,
+      "evidence": "One AskUserQuestion with two questions, 'Send to agy' and 'Send to pi', each quoting Recipient, Model and Reach from the dry run."
+    },
+    {
+      "text": "Each question states the batches' target paths, the dispatch count and that the diff leaves the machine, and repeats the DISPATCHER_TOUCHED disclosure",
+      "passed": true,
+      "evidence": "Each question: 'Target paths: batch 1: ...; batch 2: ... (2 batches). This answer covers 4 agy dispatches ... The full diff text of these files leaves this machine ... Disclosure: DISPATCHER_TOUCHED=1'."
+    },
+    {
+      "text": "Real dispatches pass the dry run's model as --model",
+      "passed": true,
+      "evidence": "'plan to pass that `model` as `--model` on every real dispatch'; option descriptions name 'with model gemini-4-argon-high'."
+    },
+    {
+      "text": "A changed dispatcher at the re-check drops every optional vendor still to dispatch (agy and pi), each with the reason; the earlier locator result is not used",
+      "passed": true,
+      "evidence": "'Drop every optional vendor still to dispatch, not only agy. All of them share that $RVA, so pi is dropped too'; reasons recorded for both; 'Never dispatch on the old result, and do not switch to the new path either'."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  },
+  "notes": "Gaps named by the agent (not changed): wording of the DISPATCHER_TOUCHED disclosure for a vendor; re-check timing when vendors dispatch in parallel; no recovery path after a dispatcher change and when to tell the user; paths listed per batch or as a union; question-length guidance."
+}

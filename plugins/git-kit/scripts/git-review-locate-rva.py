@@ -8,7 +8,9 @@ login. git-kit's own plugin root says nothing about where that plugin lives, so 
 two places, in order:
 
   1. sibling: the plugin cache directory next to this script's own installed copy,
-     `<cache>/<marketplace>/reviewadapters-kit/<version>/`, when exactly one version is there;
+     `<cache>/<marketplace>/reviewadapters-kit/<version>/`, when exactly one version is there
+     (counting, when Claude Code's `installed_plugins.json` exists, only a version it lists; the
+     manifest must then be a plain file you own and only you can write);
   2. config:  the absolute path in `cross_model_review_rva_root` of the gitignored
      `.claude/git-kit.local.json` in the repository.
 
@@ -20,9 +22,11 @@ when:
     it nor a directory above it is this repository or any of its worktrees (by device and inode);
   - every directory above it belongs to the current user or root and, if others can write it, has
     the sticky bit, so nobody else can swap the root after the check;
-  - the root, `scripts/`, and every entry in `scripts/` (Node imports the dispatcher's siblings
-    from there) are owned by the current user, writable by nobody else, not symbolic links, and no
-    regular file there has a second hard link; `scripts/rva-dispatch.mjs` exists.
+  - the root, `scripts/`, `assets/`, and every entry in both (Node imports the dispatcher's
+    siblings from `scripts/`; the Devin adapter copies the config that denies Devin every tool from
+    `assets/`) and the root's `reviewadapters-kit.settings.json` (the vendors' default models) are
+    owned by the current user, writable by nobody else, not symbolic links, and no regular file
+    there has a second hard link; `scripts/rva-dispatch.mjs` exists as a regular file.
 
 Group write is accepted only for the user's own private group, on Linux, with no extended ACL
 (reviewadapters-kit's rule; see `private_group_gid`), since every plugin installed under umask 002
@@ -57,6 +61,12 @@ PLUGIN_NAME = "reviewadapters-kit"
 LOCAL_PATH = ".claude/git-kit.local.json"
 CONFIG_KEY = "cross_model_review_rva_root"
 DISPATCHER = ("scripts", "rva-dispatch.mjs")
+# Directories whose every entry is checked: the dispatcher's modules and the files it copies.
+CHECKED_DIRS = ("scripts", "assets")
+# The settings file the dispatcher's loadConfig reads from the root.
+SETTINGS_FILE = "reviewadapters-kit.settings.json"
+# Claude Code's record of installed plugins, three levels above a version folder in the cache.
+INSTALLED_MANIFEST = "installed_plugins.json"
 MAX_CONFIG_BYTES = 1_000_000
 # The printed path is pasted into shell commands, so it may hold no shell syntax.
 _SAFE_PATH_RE = re.compile(r"/[A-Za-z0-9._/-]+\Z")
@@ -234,48 +244,64 @@ def check_root(
         return None, f"{candidate} has characters outside [A-Za-z0-9._/-]"
     if _inside(real, repo) or _same_file_inside(real, [repo, *worktrees]):
         return None, f"{candidate} lies inside the repository under review or one of its worktrees"
-    problem = _ancestor_problem(real)
+    problem = _ancestor_problem(real) or _dir_problem(real)
     if problem:
         return None, problem
-    current = real
-    for part in ("",) + DISPATCHER[:-1]:
-        if part:
-            current = current / part
-        try:
-            st = current.lstat()
-        except OSError:
-            return None, f"{current} is missing"
-        if stat.S_ISLNK(st.st_mode):
-            return None, f"{current} is a symbolic link"
-        if not stat.S_ISDIR(st.st_mode):
-            return None, f"{current} is not a directory"
-        problem = _owner_problem(st, str(current), current)
+    # Node imports the dispatcher's siblings from scripts/, and the Devin adapter copies the config
+    # that denies Devin every tool from assets/, so every entry in both is checked.
+    for name in CHECKED_DIRS:
+        directory = real / name
+        problem = _dir_problem(directory)
         if problem:
             return None, problem
-    # Node imports the dispatcher's siblings from scripts/, so every entry there is checked.
-    scripts = current
-    try:
-        entries = list(os.scandir(scripts))
-    except OSError:
-        return None, f"{scripts} could not be listed"
-    if not any(e.name == DISPATCHER[-1] for e in entries):
-        return None, f"{real.joinpath(*DISPATCHER)} is missing"
-    for entry in entries:
-        path = Path(entry.path)
         try:
-            st = path.lstat()
+            entries = list(os.scandir(directory))
         except OSError:
-            return None, f"{path} could not be checked"
-        if stat.S_ISLNK(st.st_mode):
-            return None, f"{path} is a symbolic link"
-        if stat.S_ISREG(st.st_mode) and st.st_nlink > 1:
-            return None, f"{path} has more than one hard link"
-        if not (stat.S_ISREG(st.st_mode) or stat.S_ISDIR(st.st_mode)):
-            return None, f"{path} is not a regular file"
-        problem = _owner_problem(st, str(path), path)
-        if problem:
-            return None, problem
+            return None, f"{directory} could not be listed"
+        if name == DISPATCHER[0] and not any(e.name == DISPATCHER[-1] for e in entries):
+            return None, f"{real.joinpath(*DISPATCHER)} is missing"
+        for entry in entries:
+            problem = _entry_problem(Path(entry.path))
+            if problem:
+                return None, problem
+    if not real.joinpath(*DISPATCHER).is_file():
+        return None, f"{real.joinpath(*DISPATCHER)} is not a regular file"
+    # loadConfig reads the vendors' default models (pi's names the recipient) from the root itself.
+    settings = real / SETTINGS_FILE
+    problem = _entry_problem(settings) or (
+        None if settings.is_file() else f"{settings} is not a regular file"
+    )
+    if problem:
+        return None, problem
     return real, None
+
+
+def _dir_problem(directory: Path) -> str | None:
+    """Why `directory` is not a plain directory owned by the user and writable by nobody else."""
+    try:
+        st = directory.lstat()
+    except OSError:
+        return f"{directory} is missing"
+    if stat.S_ISLNK(st.st_mode):
+        return f"{directory} is a symbolic link"
+    if not stat.S_ISDIR(st.st_mode):
+        return f"{directory} is not a directory"
+    return _owner_problem(st, str(directory), directory)
+
+
+def _entry_problem(path: Path) -> str | None:
+    """Why an entry of a checked directory could be swapped or edited by someone else, or None."""
+    try:
+        st = path.lstat()
+    except OSError:
+        return f"{path} could not be checked"
+    if stat.S_ISLNK(st.st_mode):
+        return f"{path} is a symbolic link"
+    if stat.S_ISREG(st.st_mode) and st.st_nlink > 1:
+        return f"{path} has more than one hard link"
+    if not (stat.S_ISREG(st.st_mode) or stat.S_ISDIR(st.st_mode)):
+        return f"{path} is not a regular file"
+    return _owner_problem(st, str(path), path)
 
 
 def sibling_candidate(plugin_root: Path) -> tuple[Path | None, str | None]:
@@ -288,10 +314,65 @@ def sibling_candidate(plugin_root: Path) -> tuple[Path | None, str | None]:
         versions = sorted(p for p in sibling.iterdir() if p.is_dir() and not p.is_symlink())
     except OSError:
         return None, f"no installed {PLUGIN_NAME} beside git-kit in the plugin cache"
+    listed, why = installed_versions(plugin_dir.parent)
+    if why:
+        return None, why
+    if listed is not None:
+        versions = [p for p in versions if p.name in listed]
     if len(versions) != 1:
         found = ", ".join(p.name for p in versions) or "none"
-        return None, f"expected one installed {PLUGIN_NAME} version, found: {found}"
+        where = " listed as installed" if listed is not None else ""
+        return None, f"expected one installed {PLUGIN_NAME} version{where}, found: {found}"
     return versions[0], None
+
+
+def installed_versions(marketplace_dir: Path) -> tuple[set[str] | None, str | None]:
+    """The version folder names Claude Code lists as installed for this marketplace's copy.
+
+    (None, None) when the manifest does not exist, so the single-folder rule alone applies; a
+    manifest that exists but is not a plain file you own and only you can write, or cannot be read
+    or parsed, refuses the sibling. It only narrows the choice among folders already in the cache,
+    each still checked by `check_root`, but whoever could write it could pick an older copy.
+    """
+    manifest = marketplace_dir.parent.parent / INSTALLED_MANIFEST
+    if not os.path.lexists(manifest):
+        return None, None
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
+    try:
+        fd = os.open(manifest, flags)
+    except OSError:
+        return None, f"{INSTALLED_MANIFEST} could not be opened"
+    with os.fdopen(fd, "rb") as handle:
+        st = os.fstat(handle.fileno())
+        if not stat.S_ISREG(st.st_mode):
+            return None, f"{INSTALLED_MANIFEST} is not a regular file"
+        fd_path = Path(f"/proc/{os.getpid()}/fd/{handle.fileno()}")
+        problem = _owner_problem(st, INSTALLED_MANIFEST, fd_path)
+        if problem:
+            return None, problem
+        raw = handle.read(MAX_CONFIG_BYTES + 1)
+    if len(raw) > MAX_CONFIG_BYTES:
+        return None, f"{INSTALLED_MANIFEST} is too large"
+    try:
+        data = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, ValueError, RecursionError):
+        return None, f"{INSTALLED_MANIFEST} could not be read"
+    plugins = data.get("plugins") if isinstance(data, dict) else None
+    if not isinstance(plugins, dict):
+        return None, f"{INSTALLED_MANIFEST} has no plugins object"
+    entries = plugins.get(f"{PLUGIN_NAME}@{marketplace_dir.name}") or []
+    if not isinstance(entries, list):
+        return None, f"{INSTALLED_MANIFEST} has an unexpected {PLUGIN_NAME} entry"
+    sibling = Path(os.path.realpath(marketplace_dir / PLUGIN_NAME))
+    listed = set()
+    for entry in entries:
+        install = entry.get("installPath") if isinstance(entry, dict) else None
+        if not isinstance(install, str) or not os.path.isabs(install):
+            continue
+        resolved = Path(os.path.realpath(install))
+        if resolved.parent == sibling:
+            listed.add(resolved.name)
+    return listed, None
 
 
 def _git(repo: Path, *args: str) -> bytes | None:

@@ -8,7 +8,8 @@ the fuller reasoning for each.
   dispatched Phase 1 call has returned): skip every remaining Codex dispatch (Phase 1's Codex pass,
   already failed, and Codex's Phase 2). If no confirmed optional model returned a valid Phase 1 envelope
   either, that is the full single-model path: skip all of Phase 2 and follow the single-model paths in
-  Phase 2 and Phase 3. Otherwise Phase 2 still runs between Claude and that model
+  Phase 2 and Phase 3. Otherwise Phase 2 still runs between Claude and that model, for each batch with
+  that model's valid Phase 1 envelope only; a batch with none is Claude-only, its Claude findings Medium
   (`references/optional-models.md` section 5).
 - **On Phase 1's Codex call failing for one batch while another batch already succeeded**: a partial
   failure at batch level. That batch has no Codex side: it is Claude-only (its Claude findings stay

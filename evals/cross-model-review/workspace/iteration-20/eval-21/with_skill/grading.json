@@ -1,0 +1,32 @@
+{
+  "eval_id": 21,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Resolver step 3 asks whether to continue without Codex or stop",
+      "passed": true,
+      "evidence": "Step 3 question: 'Proceed without Codex' / 'Stop the review', asked once after Phase 1 returned."
+    },
+    {
+      "text": "States the run is not single-model mode: Phase 2 runs between Claude and pi",
+      "passed": true,
+      "evidence": "'Because pi returned a valid Phase 1 envelope, proceeding is not single-model mode: Claude and pi cross-examine each other.'"
+    },
+    {
+      "text": "pi is skipped for batch 2 only, with the timeout recorded and no retry; batch 1 and 3 envelopes are kept",
+      "passed": true,
+      "evidence": "'A typed failure skips pi for that batch ... no timeout retry for an optional model ... pi's envelopes for batches 1 and 3 are kept'."
+    },
+    {
+      "text": "Phase 2 runs between Claude and pi for batches 1 and 3 only; batch 2 is Claude-only (its findings Medium)",
+      "passed": true,
+      "evidence": "'Phase 2 runs only for batches where at least two models have a valid Phase 1 envelope'; 'Batch 2: no Phase 2 at all ... It is Claude-only, as resolver-failure-handling.md says'; batch 2 findings capped at Medium."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  },
+  "notes": "Gaps named by the agent (not changed): exact wording of the step 3 question; whether 'every dispatched Phase 1 call' includes pi's; no per-batch report flag for a mixed run; telling the user at a stop that pi's diffs were already sent."
+}
