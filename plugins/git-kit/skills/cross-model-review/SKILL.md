@@ -280,7 +280,7 @@ with the same flags: the reviewed repository's own code, deliberately ungranted,
    CLI itself missing, and **`codex-kit` not being installed at all** (the launcher then reports
    `cli_unavailable`, the fallback case `codex-backend.md` names): tell the user Codex is unavailable for this
    run and ask via `AskUserQuestion` whether to proceed without Codex (single-model unless an
-   optional model was confirmed; then Claude and that model cross-examine each other) or stop.
+   optional model returned a valid Phase 1 envelope; then Claude and that model cross-examine each other) or stop.
    - **On Phase 1's Codex call failing for a batch**: that batch has no Codex side. If **no** batch has a
      valid Codex Phase 1 envelope (judged once every dispatched Phase 1 call has returned, so the order
      batches ran in, or whether they ran in parallel, does not change the outcome; ask step 3's question
@@ -315,9 +315,9 @@ Claude-native for this run"; in case (g) the first says "with this repository's 
 obligation `codex-review-bridge`'s docs assign to any caller — independent of, and not satisfied by,
 a first-send gate any other codex-kit component may already have fired earlier in the session.
 
-**On "Stay Claude-native for this run": enter single-model mode immediately, before any dispatch is
-attempted** — the same skip-Phase-1's-Codex-pass-and-all-of-Phase-2 path resolver step 3 uses, not
-just the zero-Codex-unavailable case. Record the `inspection_limits` reason as "user declined to send
+**On "Stay Claude-native for this run": skip every Codex dispatch, before any is attempted** — single-model
+mode (no Phase 2) unless a confirmed optional model returns a valid Phase 1 envelope, exactly as resolver
+step 3 (`references/optional-models.md` section 5). Record the `inspection_limits` reason as "user declined to send
 to Codex" rather than "Codex unavailable" — this is a deliberate opt-out, not a failure, and the
 report should say so accurately.
 
@@ -484,4 +484,4 @@ closing-tag neutralization, partial-failure preservation, scoped review and more
 `scripts/preflight_fixtures_test.py` runs the Preflight chain, planner step included, against scratch
 repositories.
 
-**Last dated run record:** `2026-11-18, evals/cross-model-review/workspace/iteration-15/` — evals 13-16, scenario 38 (refused chained Preflight; heredoc refusal, then timeout; folder-pick re-run; normal-session control), both arms claude-opus-5-5: `with_skill` 17/17, baseline (`main`'s text) 5/17; `2026-11-21, iteration-17`, eval 18 (accepted findings, scenario 39), `with_skill` only, 7/7; `iteration-16`, eval 17 (single-quoted `BASE`/`SCOPE`), claude-haiku-5-5: 3/3 vs 1/3; `2026-11-24, iteration-24`, eval 25 (literal helper calls, issue #866), 6/6 vs 4/6; `iteration-25`, eval 26 (sensitive names and dispatcher origin, issue #697, scenario 40), 6/6 vs 0/6 against `main`'s text; `iteration-26`, eval 25 re-run, `with_skill` only, 6/6; `iteration-27`, eval 27 (PATH filter, later calls), `with_skill` only, 6/6. `2026-11-20, iteration-17` and `iteration-18`, evals 29 and 19-22 (optional models, scenarios 41-50), `with_skill` only, 16/17, then 17/17 after the fixes. Skill-following dry runs, no Codex or vendor dispatch. Earlier runs and their open items are under "Run history" in `references/testing-scenarios.md`.
+**Last dated run record:** `2026-11-18, evals/cross-model-review/workspace/iteration-15/` — evals 13-16, scenario 38 (refused chained Preflight; heredoc refusal, then timeout; folder-pick re-run; normal-session control), both arms claude-opus-5-5: `with_skill` 17/17, baseline (`main`'s text) 5/17; `2026-11-21, iteration-17`, eval 18 (accepted findings, scenario 39), `with_skill` only, 7/7; `iteration-16`, eval 17 (single-quoted `BASE`/`SCOPE`), claude-haiku-5-5: 3/3 vs 1/3; `2026-11-24, iteration-24`, eval 25 (literal helper calls, issue #866), 6/6 vs 4/6; `iteration-25`, eval 26 (sensitive names and dispatcher origin, issue #697, scenario 40), 6/6 vs 0/6 against `main`'s text; `iteration-26`, eval 25 re-run, `with_skill` only, 6/6; `iteration-27`, eval 27 (PATH filter, later calls), `with_skill` only, 6/6. `2026-11-20, iteration-17` to `iteration-19`, evals 29 and 19-22 (optional models, scenarios 41-50), `with_skill` only, 16/17, then 17/17; iteration 19 re-ran evals 19-21 after the pre-PR review fixes, 11/11. Skill-following dry runs, no Codex or vendor dispatch. Earlier runs and their open items are under "Run history" in `references/testing-scenarios.md`.

@@ -1,0 +1,32 @@
+{
+  "eval_id": 20,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Asks one question per vendor (in one AskUserQuestion call), each quoting that vendor's recipient, model and reach",
+      "passed": true,
+      "evidence": "One AskUserQuestion with questions 'agy egress' and 'pi egress', each quoting Recipient, Model and Reach from the dry run."
+    },
+    {
+      "text": "Each question states the batches' target paths, the dispatch count and that the diff leaves the machine, and repeats the DISPATCHER_TOUCHED disclosure",
+      "passed": true,
+      "evidence": "\"Target paths: batch 1: ...; batch 2: ... (2 batches). This answer covers 4 agy dispatches ... The full diff text of those files leaves this machine ... Disclosure: DISPATCHER_TOUCHED=1\"."
+    },
+    {
+      "text": "Real dispatches pass the dry run's model as --model",
+      "passed": true,
+      "evidence": "Phase 1 command carries `--model gemini-4-argon-high`; pi's uses `--model nvidia/nvidia/nemotron-3-ultra-550b-a55b` unmodified."
+    },
+    {
+      "text": "A changed dispatcher at the re-check drops agy for the run with the reason; the earlier locator result is not used",
+      "passed": true,
+      "evidence": "\"Send nothing to agy ... Don't run `node` on the old `$RVA`. Don't switch to the new path\"; inspection_limits records the dispatcher change."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  },
+  "notes": "Agent gaps (pre-existing re-check text, not changed here): what the re-check compares against, and whether one vendor's mismatch drops the others."
+}
