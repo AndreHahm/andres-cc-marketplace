@@ -27,7 +27,8 @@ Verify every claim against the current codebase before acting on it, per "Contex
 - [ ] Check the "Decided by" column of "Decisions Made": a user decision is not overridden without asking
 - [ ] Understand all assumptions listed - are they still valid?
 - [ ] Check if any blockers have been resolved since handoff
-- [ ] Review "Potential Gotchas & Key Patterns" to avoid known pitfalls
+- [ ] Review "Potential Gotchas & Key Patterns" (an older handoff's "Potential Gotchas" and "Key Patterns
+      Discovered") to avoid known pitfalls
 
 ## State Verification
 
@@ -39,7 +40,8 @@ Verify every claim against the current codebase before acting on it, per "Contex
 
 - [ ] Start with "Immediate Next Steps" item #1
 - [ ] Use the "Critical Files" roles for the structure of the code involved
-- [ ] Apply patterns documented in "Potential Gotchas & Key Patterns"
+- [ ] Apply patterns documented in "Potential Gotchas & Key Patterns" (an older handoff's "Key Patterns
+      Discovered")
 
 ## During Work
 

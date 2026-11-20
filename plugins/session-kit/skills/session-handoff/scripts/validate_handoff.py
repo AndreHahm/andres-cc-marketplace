@@ -107,6 +107,8 @@ STATE_CONTEXT_MODE = {
     "done": "admin",
 }
 CONTEXT_MODES = ("none", "review", "ship", "admin")
+# The placeholder check_todos reports; matching it whole is what exempts a frontmatter value.
+TODO_VALUE = re.compile(r"\[TODO:[^\]]*\]")
 RESUME_CARD_MAX_LINES = 15
 # The card's "- Label: value" lines, as the scaffold and references/handoff-template.md write them.
 RESUME_CARD_LABELS = ("State", "Next step", "Branch and PR", "Blockers", "User constraints")
@@ -168,10 +170,11 @@ def check_frontmatter(fields: dict[str, str], malformed: list[str]) -> tuple[lis
     for key in FRONTMATTER_KEYS:
         if key in fields and not fields[key]:
             problems.append(f"empty value: {key}")
-    # An unfilled "[TODO: ...]" value is already reported by check_todos.
-    if state and "[TODO" not in state and state not in STATE_CONTEXT_MODE:
+    # Only a value check_todos reports (a whole "[TODO: ...]" placeholder) is exempt; anything
+    # else outside the closed set, such as "[TODO choose state]", is an unknown value.
+    if state and not TODO_VALUE.fullmatch(state) and state not in STATE_CONTEXT_MODE:
         problems.append(f"unknown state: {state[:40]}")
-    if mode and "[TODO" not in mode and mode not in CONTEXT_MODES:
+    if mode and not TODO_VALUE.fullmatch(mode) and mode not in CONTEXT_MODES:
         problems.append(f"unknown context_mode: {mode[:40]}")
     if state in STATE_CONTEXT_MODE and mode in CONTEXT_MODES:
         expected = expected_context_mode(state, fields.get("pr"))
@@ -222,8 +225,13 @@ def check_todos(content: str) -> tuple[bool, list[str]]:
     return len(todos) == 0, todos
 
 
-def check_required_sections(content: str) -> tuple[bool, list[str]]:
-    """Check that required sections exist and have content."""
+def check_required_sections(content: str, nested: bool = False) -> tuple[bool, list[str]]:
+    """Check that required sections exist and have content.
+
+    nested (v2 handoffs): a section's text runs to the next heading of the same or a higher
+    level, so subsections count. Without it (older handoffs) the text stops at the next heading
+    of any level, as before v2, so their results do not change.
+    """
     missing = []
     for section in REQUIRED_SECTIONS:
         # Look for section header
@@ -239,9 +247,15 @@ def check_required_sections(content: str) -> tuple[bool, list[str]]:
         if not match:
             missing.append(f"{section} (missing)")
         else:
-            # Check if section has meaningful content (not just placeholder). Subsections
-            # count (v2's Important Context has User Constraints and Learnings under it).
-            section_content = section_extent(content, match).strip()
+            # Check if section has meaningful content (not just placeholder). In a v2 handoff
+            # subsections count (Important Context has User Constraints and Learnings under it).
+            if nested:
+                section_content = section_extent(content, match).strip()
+            else:
+                section_start = match.end()
+                next_section = re.search(r"\n#{1,6}\s+", content[section_start:])
+                section_end = section_start + next_section.start() if next_section else len(content)
+                section_content = content[section_start:section_end].strip()
 
             # 50 chars minimum: roughly 1-2 sentences, enough to convey meaningful context
             if len(section_content) < 50 or "[TODO" in section_content:
@@ -457,8 +471,10 @@ def validate_handoff(filepath: str) -> dict:
 
     # Run checks
     todos_clear, remaining_todos = check_todos(content)
-    required_complete, missing_required = check_required_sections(content)
     fields, malformed = parse_frontmatter(content)
+    required_complete, missing_required = check_required_sections(
+        content, nested=fields is not None
+    )
     if fields is None:
         # An older handoff: no frontmatter or card checks, and the old recommended list.
         frontmatter_problems, frontmatter_notes, card_problems = [], [], []

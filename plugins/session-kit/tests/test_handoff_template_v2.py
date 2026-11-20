@@ -196,6 +196,18 @@ def test_scaffold_without_upstream_does_not_claim_pushed(repo: Path) -> None:
     assert "[TODO: the branch has no upstream" in content
 
 
+def test_scaffold_lists_non_ascii_path_unquoted(repo: Path) -> None:
+    (repo / "src" / "über.py").write_text("u = 1\n", encoding="utf-8")
+    content = Path(create_handoff.generate_handoff(str(repo), "demo")).read_text(encoding="utf-8")
+    assert "| src/über.py |" in content
+
+
+def test_scaffold_skips_own_handoffs(repo: Path) -> None:
+    first = Path(create_handoff.generate_handoff(str(repo), "first"))
+    content = Path(create_handoff.generate_handoff(str(repo), "second")).read_text(encoding="utf-8")
+    assert first.name not in content.split("### Unpushed Changes", 1)[1].split("###", 1)[0]
+
+
 def test_scaffold_change_rows_are_todos(repo: Path) -> None:
     (repo / "src" / "app.py").write_text("x = 3\n", encoding="utf-8")
     content = Path(create_handoff.generate_handoff(str(repo), "demo")).read_text(encoding="utf-8")
@@ -350,6 +362,21 @@ def test_empty_state_or_mode_is_a_problem(repo: Path, key: str) -> None:
     assert validate_handoff.print_report(result) is False
 
 
+@pytest.mark.parametrize(("key", "value"), [("state", "[TODO choose state]"), ("mode", "[TODO]")])
+def test_todo_shaped_unknown_value_is_a_problem(repo: Path, key: str, value: str) -> None:
+    result = validate_handoff.validate_handoff(str(_write_v2(repo, **{key: value})))
+    name = "state" if key == "state" else "context_mode"
+    assert f"unknown {name}: {value}" in result["frontmatter_problems"]
+    assert validate_handoff.print_report(result) is False
+
+
+def test_legacy_required_section_ignores_subsections() -> None:
+    body = "### Important Context\n\n#### Detail\n\n" + "Enough text to pass the length rule. " * 3
+    assert validate_handoff.check_required_sections(body)[1][1] == "Important Context (incomplete)"
+    nested = validate_handoff.check_required_sections(body, nested=True)[1]
+    assert "Important Context (incomplete)" not in nested
+
+
 def test_unclosed_frontmatter_blocks_ready(repo: Path) -> None:
     path = _write_v2(repo)
     content = path.read_text(encoding="utf-8").replace("context_mode: none\n---\n", "", 1)
@@ -438,6 +465,17 @@ def test_staleness_reads_frontmatter(repo: Path) -> None:
     assert meta["project_path"] == str(repo)
     # Only Critical Files and Unpushed Changes are file sources.
     assert meta["modified_files"] == ["src/app.py", "src/util.py"]
+
+
+def test_staleness_v2_reads_bare_filenames(repo: Path) -> None:
+    path = _write_v2(repo)
+    content = path.read_text(encoding="utf-8").replace(
+        "| src/app.py | Entry point |", "| README.md | Readme |\n| src/app.py | Entry point |"
+    )
+    path.write_text(content, encoding="utf-8")
+    meta = check_staleness.parse_handoff_metadata(str(path))
+    assert meta["modified_files"] == ["README.md", "src/app.py", "src/util.py"]
+    assert check_staleness.check_staleness(str(path))["referenced_files_missing"] == ["README.md"]
 
 
 def test_staleness_v2_branch_matches(repo: Path) -> None:

@@ -25,6 +25,7 @@ from pathlib import Path
 # Sibling-script import, same pattern as session-kit's scripts/session_store.py.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from validate_handoff import (  # noqa: E402
+    FILE_EXTENSIONS,
     git_env,
     list_repo_files,
     parse_frontmatter,
@@ -78,10 +79,18 @@ def parse_created(text: str) -> datetime | None:
     return naive
 
 
-def table_files(text: str) -> list[str]:
-    """Relative file paths with a "/" from table cells; an absolute path is not a project file."""
+def table_files(text: str, bare_names: bool = False) -> list[str]:
+    """Relative file paths from table cells; an absolute path is not a project file.
+
+    A path needs a "/" unless bare_names is set (v2 handoffs): then a root-level name such as
+    README.md counts too when its suffix is a known file extension, as validate_handoff.py does.
+    Older handoffs keep the "/" requirement so their results do not change.
+    """
     return [
-        f for f in re.findall(TABLE_FILE_CELL, text) if "/" in f and not f.startswith(("[", "/"))
+        f
+        for f in re.findall(TABLE_FILE_CELL, text)
+        if not f.startswith(("[", "/"))
+        and ("/" in f or (bare_names and f.rsplit(".", 1)[-1].lower() in FILE_EXTENSIONS))
     ]
 
 
@@ -107,7 +116,9 @@ def parse_handoff_metadata(filepath: str) -> dict:
                 rf"(?:^|\n)(#{{1,6}})\s*{re.escape(section)}(?=\s*$)", content, re.MULTILINE
             )
             if heading:
-                metadata["modified_files"] += table_files(section_extent(content, heading))
+                metadata["modified_files"] += table_files(
+                    section_extent(content, heading), bare_names=True
+                )
         return metadata
 
     # Older handoffs: "Created:" accepts both formats parse_created does.

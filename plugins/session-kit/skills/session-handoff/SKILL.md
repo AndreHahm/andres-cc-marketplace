@@ -147,10 +147,10 @@ not counted as missing files.
 Report to the user: handoff file location, validation score and any warnings, summary of captured
 context, first action item for the next session.
 
-The handoff document contains verbatim project paths, git branch/commit info, and modified-file lists —
-and, per "Storage Location" above, is meant to be committed and shared with a team. Review its content
-before sharing outside the immediate context, the same as `session-resume`/`session-export`'s generated
-documents.
+The handoff document contains verbatim project paths, git branch/commit info, modified-file lists and the
+user's verbatim instructions — and, per "Storage Location" above, may be committed and shared with a team.
+Review it and redact personal details before sharing it outside the immediate context, the same as
+`session-resume`/`session-export`'s generated documents.
 
 ## RESUME Workflow
 

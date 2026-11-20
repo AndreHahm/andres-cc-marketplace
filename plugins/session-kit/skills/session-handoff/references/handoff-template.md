@@ -31,7 +31,8 @@ step fall back to their body lines.
 
 ## Frontmatter
 
-Flat `key: value` lines between `---` markers at the very top of the file, no nesting:
+Flat `key: value` lines between `---` markers at the very top of the file, no nesting. The block below
+is kept whole because every key is required:
 
 ```
 ---
