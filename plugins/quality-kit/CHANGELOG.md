@@ -32,7 +32,9 @@ All notable changes to this plugin are documented here.
   parser score, and says a module is not added to the weekly run when it stops; Step 1 states how a stem matches
   the module list. `mutation-tester` names a red baseline's failing tests.
 - `mutation-tester`'s repository fingerprint used GNU-only `sha256sum`; it now uses `git hash-object`, so it runs
-  the same on macOS. Mutant keys with control characters are rejected by the runner and escaped in error text.
+  the same on macOS; its status check lists every untracked file (`--untracked-files=all`), so a renamed file
+  inside an untracked folder is still seen. Mutant keys with control characters are rejected by the runner and
+  escaped in error text.
 - `qlty-sonar-read.py` read PATH twice, once to pick `sonar` and once for each child's PATH; it now reads it once.
 - `collect_sonar.py` caps `--branch` at 255 characters, like `qlty-sonar-read.py`, and the skill states the same
   bounded branch and file patterns as the wrapper.
