@@ -148,8 +148,9 @@ a reviewer reports it anew, until the flagged code changes (issue #808).
   as waived, with the waiver line it matched, and does not block. This replaces `docs/ci.md`'s rule that a
   model finding is never suppressed: a waiver is not a suppression by a registry, it is the author's
   recorded decision on that one finding, and it stays visible in the result.
-- **The match key: rule, path and the flagged line's fingerprint.** The fingerprint is a short hash of the
-  flagged line's text at the reviewed head, with whitespace collapsed. CI prints it next to every blocking
+- **The match key: rule, path and the flagged line's fingerprint.** The fingerprint is a hash of the
+  flagged line's text at the reviewed head, with whitespace collapsed, 32 hex digits long so an author
+  cannot make two different lines share one. CI prints it next to every blocking
   finding in the job summary, ready to copy into a waiver line. A waiver matches a finding when the rule and
   path are equal and the fingerprint of the finding's flagged line equals the waiver's. The line number in
   the waiver is informational, so a waiver survives the flagged line moving, and a reviewer rewording its
@@ -158,10 +159,11 @@ a reviewer reports it anew, until the flagged code changes (issue #808).
   `0` and the fingerprint `-`; it then matches on rule and path alone. A waiver line without a fingerprint
   (the earlier format) matches on rule, path and exact line, as before.
 - **Maintainer-only acceptance for gate-critical and security findings.** A waiver for a finding on a
-  gate-critical path (R3), or one raised by `security-reviewer`, counts only when an actor with write,
-  maintain or admin permission (the actor check of R12) has posted a pull request comment confirming that
-  waiver line. The confirmation is bound to the line, including its fingerprint, not to a head, so it
-  survives pushes until the flagged line changes. Without it, the finding keeps blocking, and the job
+  gate-critical path (R3), on a path not spelled the canonical way, or one raised by `security-reviewer`
+  (by any of the reviewers that reported it), counts only when a user whose role is maintain or admin
+  has posted a pull request comment confirming that waiver line, and has not edited it since. The
+  confirmation is bound to the line, including its fingerprint, not to a head, so it survives pushes
+  until the flagged line changes. Without it, the finding keeps blocking, and the job
   summary says that a confirmation is missing. Every other waiver needs no confirmation: anyone who can
   edit the pull request body can waive it (see the accepted residual below).
 - **Malformed lines are reported.** A non-empty line in the section that is not a valid waiver line, that
@@ -174,15 +176,19 @@ a reviewer reports it anew, until the flagged code changes (issue #808).
   also lists accepted third-party findings (CodeRabbit, Devin, the Codex connector, human reviewers) in the
   same shape, with the reviewer's name in place of the rule and no fingerprint. CI's gate acts only on lines
   that match its own findings; every reviewer reads the whole section (R17).
-- **Waivers reach the reviewers as data.** CI passes the section's valid lines to each model reviewer as
-  data, not instructions, so a reviewer can leave out a finding already waived. The reviewer's choice is not
+- **Waivers reach the reviewers as data.** CI passes the section's valid lines that need no confirmation
+  to each model reviewer except `security-reviewer`, as data, not instructions, so a reviewer can leave out
+  a finding already waived. A waiver that needs a maintainer's confirmation is never passed on, so it
+  cannot talk a reviewer out of reporting the finding the confirmation is for. The reviewer's choice is not
   trusted: CI's own matching above decides what blocks.
 - **Accepted residual:** anyone who can edit the pull request body can waive a finding that does not need a
   maintainer's confirmation. The waiver is visible in the body while it is in effect, and the waived
   finding is visible in each run's result. When the waiver line is removed, the finding blocks again on the
   next run that carries or re-reports it.
 
-Status: approved (maintainer, 2026-11-21, issue #808; replaces the version approved on 2026-11-16, issue #753)
+Status: approved (maintainer, 2026-11-21, issue #808; replaces the version approved on 2026-11-16, issue #753;
+the maintain-or-admin confirmation and the 32-digit fingerprint chosen by the maintainer after the
+security review)
 
 ## R8. Events without new commits make no Codex call
 
