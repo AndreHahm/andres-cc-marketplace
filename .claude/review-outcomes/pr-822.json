@@ -1,0 +1,180 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4655037612",
+      "note": "fixed in 8786f3d0: create-pr copies only the helper lines output after its trust check, and never uploads the template as the body",
+      "path": "plugins/git-kit/skills/create-pr/SKILL.md",
+      "pr": 822,
+      "recorded_at": "2026-11-21T22:17:08+00:00"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "4655038511",
+      "note": "the carry path keeps the line only when the file's PR-side patch is unchanged, so the exact-line waiver still names the same finding",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 822,
+      "recorded_at": "2026-11-21T22:17:09+00:00"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "4655038561",
+      "note": "real, needs a design choice: tracked in #834",
+      "path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+      "pr": 822,
+      "recorded_at": "2026-11-21T22:17:09+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4655038615",
+      "note": "fixed in 8786f3d0: repository taken from the PR URL",
+      "path": "plugins/git-kit/scripts/git-codex-parity-review.py",
+      "pr": 822,
+      "recorded_at": "2026-11-21T22:17:09+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4655038641",
+      "note": "fixed in 8786f3d0: control characters in waiver text become spaces",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 822,
+      "recorded_at": "2026-11-21T22:17:08+00:00"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "4655038677",
+      "note": "real edge case, fails closed: tracked in #835",
+      "path": "scripts/marketplace_ci/claude_review.py",
+      "pr": 822,
+      "recorded_at": "2026-11-21T22:17:09+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4655038717",
+      "note": "fixed in 8786f3d0: deferred without an issue number is skipped",
+      "path": "plugins/git-kit/scripts/git-review-accepted-findings.py",
+      "pr": 822,
+      "recorded_at": "2026-11-21T22:17:08+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4655038779",
+      "note": "fixed in 8786f3d0: verdict changes only when a waiver applied",
+      "path": "scripts/marketplace_ci/claude_review.py",
+      "pr": 822,
+      "recorded_at": "2026-11-21T22:17:08+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4655038828",
+      "note": "fixed in 8786f3d0: local path replaced with a placeholder",
+      "path": "evals/create-pr/workspace/iteration-5/eval-7/with_skill/outputs/response.md",
+      "pr": 822,
+      "recorded_at": "2026-11-21T22:17:09+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4655038881",
+      "note": "fixed in 8786f3d0: create-pr copies only the helper lines output after its trust check, and never uploads the template as the body",
+      "path": "plugins/git-kit/skills/create-pr/SKILL.md",
+      "pr": 822,
+      "recorded_at": "2026-11-21T22:17:08+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4655038920",
+      "note": "fixed in 8786f3d0: confirmations inside fences and comments are ignored",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 822,
+      "recorded_at": "2026-11-21T22:17:08+00:00"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "4655074277",
+      "note": "real, too large for this PR: tracked in #833; maintainer accepted the risk for merge",
+      "path": ".github/workflows/marketplace-ci.yml",
+      "pr": 822,
+      "recorded_at": "2026-11-21T22:17:09+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4655074279",
+      "note": "fixed in 8786f3d0: deferred without an issue number is skipped",
+      "path": "plugins/git-kit/scripts/git-review-accepted-findings.py",
+      "pr": 822,
+      "recorded_at": "2026-11-21T22:17:08+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4655074282",
+      "note": "fixed in 8786f3d0: create-pr copies only the helper lines output after its trust check, and never uploads the template as the body",
+      "path": "plugins/git-kit/skills/create-pr/SKILL.md",
+      "pr": 822,
+      "recorded_at": "2026-11-21T22:17:08+00:00"
+    },
+    {
+      "disposition": "declined",
+      "finding": "4655074286",
+      "note": "decided by the maintainer at parity run 6; CI still gates these until confirmed; related #814",
+      "path": "plugins/git-kit/skills/cross-model-review/references/accepted-findings.md",
+      "pr": 822,
+      "recorded_at": "2026-11-21T22:17:09+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4655074291",
+      "note": "fixed in 8786f3d0: stale-fingerprint waivers reported in the job summary",
+      "path": "scripts/marketplace_ci/__main__.py",
+      "pr": 822,
+      "recorded_at": "2026-11-21T22:17:09+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4655074295",
+      "note": "fixed in 8786f3d0: raw content read as bytes",
+      "path": "scripts/marketplace_ci/claude_review.py",
+      "pr": 822,
+      "recorded_at": "2026-11-21T22:17:09+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4655074296",
+      "note": "fixed in 8786f3d0: raw content split on LF only",
+      "path": "scripts/marketplace_ci/claude_review.py",
+      "pr": 822,
+      "recorded_at": "2026-11-21T22:17:09+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4655074298",
+      "note": "fixed in 8786f3d0: token boundary after kind and issue in both parsers",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 822,
+      "recorded_at": "2026-11-21T22:17:08+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4655074301",
+      "note": "fixed in 8786f3d0: comments removed before the section heading is located",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 822,
+      "recorded_at": "2026-11-21T22:17:08+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4655074309",
+      "note": "fixed in 8786f3d0: cap checked before lookups, lookups cached",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 822,
+      "recorded_at": "2026-11-21T22:17:09+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4655074311",
+      "note": "fixed in 8786f3d0: confirmations inside fences and comments are ignored",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 822,
+      "recorded_at": "2026-11-21T22:17:08+00:00"
+    }
+  ]
+}
