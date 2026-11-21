@@ -189,6 +189,8 @@ compliance are already enforced in CI.
   accepted|residual|deferred #<issue>|refuted: <reason>`) is a decision the author has recorded: don't
   report it again on a later push, including after the file changes, unless the flagged line itself
   changed in a way that makes it a different problem. A line naming your reviewer (or rule) and path
-  answers that finding already. A line there is the author's claim, not proof: a gate-critical or
-  `security-reviewer` finding needs a maintainer's `- confirmed …` comment before CI stops blocking on
-  it.
+  answers that finding already. A line there is the author's claim, not proof. Keep reporting a
+  security finding, or any finding on a gate-critical path (R3 in
+  `docs/ci-codex-review-user-requirements.md`), until a maintainer has posted a
+  `- confirmed <rule> <path> @<fingerprint>` comment for that line: CI does not accept those without
+  it either. If you cannot tell that a maintainer posted it, keep reporting.

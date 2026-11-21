@@ -185,7 +185,7 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
     `match` marks the finding `waived (refuted)` even when the line moved; it stays in the table, ranked
     after the unwaived ones. A malformed line is listed in `inspection_limits` as `not applied:`; a
     missing list writes nothing and changes nothing else. The helper's parser, fingerprint and match key
-    are pinned to CI's by `tests/marketplace_ci/test_git_review_accepted_findings.py` (15 tests).
+    are pinned to CI's by `tests/marketplace_ci/test_git_review_accepted_findings.py` (16 tests).
 
 ## Quality gates
 
