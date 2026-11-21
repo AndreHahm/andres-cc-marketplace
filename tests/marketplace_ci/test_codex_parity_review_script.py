@@ -255,6 +255,29 @@ def test_the_local_list_reaches_the_review_before_a_pull_request_exists(repo, tm
     assert f"--accepted-findings {tmp_path / 'out-accepted.json'}" in args
 
 
+def test_the_local_list_is_fetched_with_the_repository_so_deferred_lines_are_checked(
+    repo, tmp_path
+):
+    # Without --repo, fetch-accepted-findings rejects every `deferred` line locally, though CI
+    # accepts one whose issue is open once the PR exists.
+    subprocess.run(
+        ["git", "remote", "add", "origin", "https://github.com/o/r.git"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    (repo / ".claude").mkdir()
+    (repo / ".claude/accepted-review-findings.local.md").write_text(
+        "- R6 a.py:3 – deferred #12\n", encoding="utf-8"
+    )
+    calls = tmp_path / "uv-calls.txt"
+    result, _, _ = _run(repo, tmp_path, uv_prelude=f'echo "$@" >> "{calls}"\n')
+    assert result.returncode == 0
+    fetch = [c for c in calls.read_text().splitlines() if "fetch-accepted-findings" in c]
+    assert len(fetch) == 1
+    assert "--repo o/r --body-file .claude/accepted-review-findings.local.md" in fetch[0]
+
+
 def test_a_failed_pull_request_lookup_reads_no_list(repo, tmp_path):
     # A failed `gh pr view` is not "no pull request": an open PR's body may differ from the local
     # list, so neither is read and the run says so.
