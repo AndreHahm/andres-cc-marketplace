@@ -1836,8 +1836,11 @@ def carry_findings(
                     raise CarryError(f"cannot compare {path} with the anchor")
                 unchanged[path] = now == then
         is_waived = isinstance(entry.get("waiver"), str)
-        if resolved and not unchanged[path] and not is_waived:
-            # A changed file releases a blocking finding: the file is reviewed again.
+        # A changed file releases a blocking finding: the file is reviewed again. Unless a waiver
+        # of the body applies to it now: then it is carried as waived, so a reviewer that leaves
+        # it out does not lose it, and removing the waiver makes it block again (R7).
+        released = resolved and not unchanged[path] and not is_waived
+        if released and not any(w.rule == rule and w.path == path for w in waivers):
             continue
         fingerprint = entry.get("fingerprint")
         if not (isinstance(fingerprint, str) and _FINGERPRINT.fullmatch(fingerprint)):
@@ -1892,6 +1895,8 @@ def carry_findings(
         if waiver is not None:
             carried["waiver"] = waiver.text[:300]
             waived.append(carried)
+            continue
+        if released:
             continue
         if why_not is None and line != anchor_line:
             # A waiver in the earlier format names the exact line, so it stops matching once the

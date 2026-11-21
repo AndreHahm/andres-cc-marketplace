@@ -11,6 +11,7 @@ from types import SimpleNamespace
 from scripts.marketplace_ci import __main__ as main_module
 from scripts.marketplace_ci.__main__ import _apply_waivers, _waiver_hint, main
 from scripts.marketplace_ci.review import (
+    CarryOutcome,
     Finding,
     carry_findings,
     find_waiver,
@@ -306,6 +307,35 @@ def test_a_blocking_finding_is_still_released_when_its_file_changes(git_repo):
     del entry["waiver"]
     outcome = carry_findings(git_repo.root, base, anchor, _anchor_result(entry), "", _never_open)
     assert outcome.blocking == () and outcome.waived == ()
+
+
+def test_a_blocking_finding_waived_in_the_push_that_changes_its_file_is_carried_waived(git_repo):
+    # The push adds a waiver and changes the file: the finding is kept as waived (not released),
+    # so a reviewer that leaves it out does not lose it, and removing the waiver blocks again.
+    base = _commit(git_repo, "base", **{"s/SKILL.md": "x\n"})
+    anchor = _commit(git_repo, "pr 1", **{"s/SKILL.md": "\n" * 14 + GRANT + "\n"})
+    _commit(git_repo, "pr 2", **{"s/SKILL.md": "new\n" + "\n" * 14 + GRANT + "\n"})
+    entry = {**_waived_entry(), "blocking": True}
+    del entry["waiver"]
+    body = _section(f"- tool-scoping s/SKILL.md:15 @{FP} – accepted")
+    outcome = carry_findings(git_repo.root, base, anchor, _anchor_result(entry), body, _never_open)
+    assert outcome.blocking == ()
+    assert [(f["line"], f["waiver"]) for f in outcome.waived] == [
+        (16, f"- tool-scoping s/SKILL.md:15 @{FP} – accepted")
+    ]
+
+
+def test_a_released_finding_whose_waiver_needs_a_confirmation_is_still_released(git_repo):
+    # Without the confirmation the waiver does not apply, so the changed file releases the
+    # finding as before (it is reviewed again), with no note.
+    base = _commit(git_repo, "base", **{"s/SKILL.md": "x\n"})
+    anchor = _commit(git_repo, "pr 1", **{"s/SKILL.md": "\n" * 14 + GRANT + "\n"})
+    _commit(git_repo, "pr 2", **{"s/SKILL.md": "new\n" + "\n" * 14 + GRANT + "\n"})
+    entry = {**_waived_entry(), "blocking": True, "reporters": ["security-reviewer"]}
+    del entry["waiver"]
+    body = _section(f"- tool-scoping s/SKILL.md:15 @{FP} – accepted")
+    outcome = carry_findings(git_repo.root, base, anchor, _anchor_result(entry), body, _never_open)
+    assert outcome == CarryOutcome((), (), ())
 
 
 def test_an_earlier_format_waiver_on_a_moved_line_says_why_it_stopped_applying(git_repo):

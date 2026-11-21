@@ -318,7 +318,11 @@ def accepted_findings_source() -> tuple[list[str], str] | str | None:
         refusal = _local_list_refusal()
         if refusal is not None:
             return f"{LOCAL_ACCEPTED_FINDINGS}: {refusal}"
-        return ["--body-file", str(LOCAL_ACCEPTED_FINDINGS)], str(LOCAL_ACCEPTED_FINDINGS)
+        # With the repository, a `deferred` line's issue is checked as CI will once a PR exists.
+        repo_args = ["--repo", slug] if slug else []
+        return [*repo_args, "--body-file", str(LOCAL_ACCEPTED_FINDINGS)], str(
+            LOCAL_ACCEPTED_FINDINGS
+        )
     return None
 
 
