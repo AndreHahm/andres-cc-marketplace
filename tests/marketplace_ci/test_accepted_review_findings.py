@@ -308,6 +308,34 @@ def test_a_blocking_finding_is_still_released_when_its_file_changes(git_repo):
     assert outcome.blocking == () and outcome.waived == ()
 
 
+def test_an_earlier_format_waiver_on_a_moved_line_says_why_it_stopped_applying(git_repo):
+    # A waiver without a fingerprint names the exact line, so once the flagged line moves it no
+    # longer matches: the finding blocks, and a note names the new line and the fingerprint.
+    base = _commit(git_repo, "base", **{"s/SKILL.md": "x\n"})
+    anchor = _commit(git_repo, "pr 1", **{"s/SKILL.md": "\n" * 14 + GRANT + "\n"})
+    _commit(git_repo, "pr 2", **{"s/SKILL.md": "new\nlines\n" + "\n" * 14 + GRANT + "\n"})
+    entry = {**_waived_entry(), "waiver": "- tool-scoping s/SKILL.md:15 – accepted"}
+    body = _section("- tool-scoping s/SKILL.md:15 – accepted")
+    outcome = carry_findings(git_repo.root, base, anchor, _anchor_result(entry), body, _never_open)
+    assert [f["line"] for f in outcome.blocking] == [17] and outcome.waived == ()
+    assert len(outcome.notes) == 1
+    assert "line 15" in outcome.notes[0] and f"s/SKILL.md:17 @{FP}" in outcome.notes[0]
+
+
+def test_a_waived_finding_whose_line_was_removed_moves_to_an_identical_line(git_repo):
+    # The flagged line is removed, but a line with the same text remains: the finding is carried
+    # at that line, not dropped (docs/ci.md says so).
+    base = _commit(git_repo, "base", **{"s/SKILL.md": "x\n"})
+    anchor = _commit(
+        git_repo, "pr 1", **{"s/SKILL.md": "\n" * 14 + GRANT + "\n" + "\n" * 10 + GRANT + "\n"}
+    )
+    _commit(git_repo, "pr 2", **{"s/SKILL.md": "\n" * 25 + GRANT + "\n"})
+    outcome = carry_findings(
+        git_repo.root, base, anchor, _anchor_result(_waived_entry()), "", _never_open
+    )
+    assert [f["line"] for f in outcome.blocking] == [26]
+
+
 def test_a_carried_entry_of_unknown_origin_needs_a_confirmation(git_repo):
     # An anchor written before issue #808 records a carried finding as `reviewer: carried` with
     # no origin or reporters: it may have been security-reviewer's, so a waiver needs a
