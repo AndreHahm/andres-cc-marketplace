@@ -445,6 +445,26 @@ review` is the gate after the PR exists and reviews only the delta, to cut OpenA
   leaves out a finding already accepted; CI's own matching still decides what blocks. Accepted residual: anyone who can edit the
   PR body can waive a finding that needs no confirmation; the waiver is visible in the body and the waived
   finding in each run's result.
+- **Every reviewer reads the same list (R17, issue #808).** Before a pull request exists the list is the
+  gitignored `.claude/accepted-review-findings.local.md` (same line format, heading optional);
+  `create-pr` copies its lines into the body. Where each reviewer reads it:
+  - **Claude delta review:** `claude-scope` runs `fetch-accepted-findings` (base code, `gh` by absolute
+    path; a base without the command or a failed read only warns, since the review is advisory). The
+    general pass's prompt gets the briefable waivers (`{{ACCEPTED_FINDINGS}}`), the security pass none.
+    `publish-claude-review --accepted-findings` reads each Critical or Major finding's line at the head
+    through the contents API and marks a match waived (rule `claude-general` or `claude-security`): not
+    posted inline, listed as waived, not failing the check; a security-pass finding needs a confirmation.
+  - **Local parity review:** `git-codex-parity-review.py` passes the open PR's body, else the local file,
+    to `run-codex-review --accepted-findings`; a list it cannot read is a stated difference from CI.
+  - **`cross-model-review`:** its Preflight step 7 briefs the local file to both models, and Phase 3
+    marks a matched finding `waived (<kind>)` through `git-review-accepted-findings.py`, git-kit's copy of
+    the parser and match key (`tests/marketplace_ci/test_git_review_accepted_findings.py` keeps it equal
+    to `review.py`'s).
+  - **Third-party reviewers:** the Codex connector through `AGENTS.md`'s `## Code Review Rules`, Devin
+    through `REVIEW.md`, CodeRabbit through `.coderabbit.yaml`'s `**/*` path instructions. Limit: none of
+    the three is part of CI's gate, and whether each one actually reads the PR body's section and holds
+    back a listed finding has not been checked live yet; a bot that raises one again blocks nothing and
+    is answered through `handling-review-findings`.
 - **Drafts (R14).** On a draft PR, `compute-scope` reports `bypass_eligible=true` without a lookup, no
   Codex call is made, and `publish` passes as skipped. The workflow listens to `ready_for_review`; that
   event has no anchor, so the whole PR delta minus the exclusions is reviewed, on every move to ready

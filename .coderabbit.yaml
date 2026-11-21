@@ -134,6 +134,9 @@ reviews:
         1. Language: All user-facing UI text, strings, and messages MUST be in English.
         2. Code Quality: Avoid N+1 issues, blocking operations, and ensure high code quality.
            Suggest optimizations that follow modern best practices.
+        3. Accepted findings (issue #808): read the PR description's "## Accepted Review Findings"
+           section. Do not raise again a finding a line there names by reviewer (CodeRabbit) or rule
+           and path, unless the flagged line itself changed into a different problem.
 
     - path: "plugins/*/skills/**/SKILL.md"
       instructions: |
