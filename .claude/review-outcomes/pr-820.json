@@ -1,0 +1,68 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4651659238",
+      "note": "Pre-#713 result with neither field is read as advisory; core fields and exit status still checked (3a1976a6).",
+      "path": "plugins/git-kit/scripts/git-codex-parity-review.py",
+      "pr": 820,
+      "recorded_at": "2026-11-21T09:15:13+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4651659372",
+      "note": "Advisory computed from the uncollapsed PR delta; dispatch keeps the collapsed list (3a1976a6).",
+      "path": "scripts/marketplace_ci/__main__.py",
+      "pr": 820,
+      "recorded_at": "2026-11-21T09:15:13+00:00"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "4651659490",
+      "note": "Documented Testing and Validation scenarios satisfy the repo testing rule; wrapper behavior has unit tests.",
+      "path": "plugins/git-kit/skills/create-pr/SKILL.md",
+      "pr": 820,
+      "recorded_at": "2026-11-21T09:15:16+00:00"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "4651659587",
+      "note": "Coverage cannot be recomputed safely; falsifying it needs a Tier-1 edit, which forces advisory.",
+      "path": "plugins/git-kit/scripts/git-codex-parity-review.py",
+      "pr": 820,
+      "recorded_at": "2026-11-21T09:15:16+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4651685746",
+      "note": "HEAD recorded at preflight, re-checked before dispatch and after the run; exit 2 on change (3a1976a6).",
+      "path": "plugins/git-kit/scripts/git-codex-parity-review.py",
+      "pr": 820,
+      "recorded_at": "2026-11-21T09:15:15+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4651685752",
+      "note": "Symlink prefix test case-folded with _case_key (3a1976a6).",
+      "path": "plugins/git-kit/scripts/git-codex-parity-review.py",
+      "pr": 820,
+      "recorded_at": "2026-11-21T09:15:14+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4651685757",
+      "note": "Scenario and reference wording name both PARITY lines (3a1976a6).",
+      "path": "plugins/git-kit/skills/create-pr/references/test-scenarios.md",
+      "pr": 820,
+      "recorded_at": "2026-11-21T09:15:15+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4651685759",
+      "note": "Same defect as 4651659372, fixed in 3a1976a6.",
+      "path": "scripts/marketplace_ci/__main__.py",
+      "pr": 820,
+      "recorded_at": "2026-11-21T09:15:14+00:00"
+    }
+  ]
+}
