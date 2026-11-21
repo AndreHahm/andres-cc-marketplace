@@ -155,3 +155,18 @@ def test_the_probe_failed_message_names_why_no_fallback_was_used(tmp_path):
     refused = errors("this branch changes .codex/config.toml, which Codex reads")
     assert "the unsandboxed fallback was refused: this branch changes .codex/config.toml" in refused
     assert "pass --allow-unsandboxed-fallback" not in refused
+
+
+def test_render_names_the_fallback_path_cap_for_a_sandbox_cause():
+    """Issue #816: a reviewer that failed on the sandbox because the fallback could not take its
+    path list says so, whatever the caller's own fallback note is."""
+    over = ReviewerReport(
+        reviewer="a-reviewer", status="failed", error="setup refresh", fallback_over_cap=True
+    )
+    text = render_could_not_run([over, _done("b-reviewer")])
+    assert (
+        "Why no fallback: a-reviewer: its path list is over the unsandboxed fallback's "
+        f"{review._MAX_GUARDED_TARGET_PATHS_CHARS}-character limit" in text
+    )
+    other = render_could_not_run([_failed("a-reviewer", "setup refresh")])
+    assert "Why no fallback" not in other

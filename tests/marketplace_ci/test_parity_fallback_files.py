@@ -495,6 +495,26 @@ def test_provenance_names_the_reviewers_that_ran_unsandboxed():
     assert "unsandboxed_reviewers" not in clean
 
 
+def test_reviewer_results_mark_a_reviewer_over_the_fallback_path_cap():
+    """Issue #816: a reviewer the fallback could not take is marked, so a sandboxed run while the
+    sandbox was reported down is explained in the result file."""
+    cli = _cli()
+    from scripts.marketplace_ci.review import ReviewerReport
+
+    reports = [
+        ReviewerReport(
+            reviewer="a-reviewer",
+            status="completed",
+            output={"findings": []},
+            fallback_over_cap=True,
+        ),
+        ReviewerReport(reviewer="b-reviewer", status="completed", output={"findings": []}),
+    ]
+    results = cli._reviewer_results(reports)
+    assert results["a-reviewer"] == {"status": "clean", "attempts": 1, "fallback_over_cap": True}
+    assert results["b-reviewer"] == {"status": "clean", "attempts": 1}
+
+
 # --- Issue #676: the fallback runs from a snapshot of the base tip, not the working tree ---
 
 

@@ -2203,6 +2203,9 @@ class ReviewerReport:
     error: str | None = None
     attempts: int = 1
     unsandboxed: bool = False  # ran through codex-windows-guardrails (danger-full-access)
+    # The fallback was consented but cannot take this reviewer's path list (issue #816), so the
+    # reviewer ran sandboxed only.
+    fallback_over_cap: bool = False
 
 
 # At most this many reviewers run at once. Two keeps the burst on the Codex
@@ -2626,6 +2629,12 @@ def render_could_not_run(
         )
         if code in SANDBOX_FAILURE_CODES and fallback_note:
             lines.append(f"  Why no fallback: {fallback_note}")
+        over_cap = [r.reviewer for r in members if r.fallback_over_cap]
+        if code in SANDBOX_FAILURE_CODES and over_cap:
+            lines.append(
+                f"  Why no fallback: {', '.join(over_cap)}: its path list is over the unsandboxed "
+                f"fallback's {_MAX_GUARDED_TARGET_PATHS_CHARS}-character limit"
+            )
         lines.append(f"  Cause: {info.cause}")
         lines.append(f"  What to do: {info.action}")
         lines.append(f"  Raw detail: {members[0].error or 'none'}")
@@ -2638,6 +2647,13 @@ GUARDRAILS_DISPATCH_RELATIVE_PATH = Path(
 # Most of a command line the unsandboxed dispatcher takes its comma-joined --target-paths in;
 # Windows refuses a whole command line over 32,767 characters.
 _MAX_GUARDED_TARGET_PATHS_CHARS = 20000
+
+
+def _fits_guarded_command_line(paths: Sequence[str]) -> bool:
+    """Whether the unsandboxed fallback can take `paths` as its comma-joined --target-paths."""
+    return len(",".join(paths)) <= _MAX_GUARDED_TARGET_PATHS_CHARS
+
+
 _PROBE_ATTEMPTS = 3
 _PROBE_TIMEOUT_SECONDS = 60
 # What the unsandboxed fallback depends on: the dispatcher, everything it imports (directly or
@@ -3035,6 +3051,21 @@ def _is_isolation_unavailable(stderr: str) -> bool:
     return isinstance(parsed, dict) and parsed.get("category") == "isolation_profile_unavailable"
 
 
+def _reviewer_scope(name: str, scope: ReviewScope) -> tuple[str, ...]:
+    """The paths one reviewer is dispatched on."""
+    if name == "plugin-rulebook-checker":
+        # Narrow to only what R1-R27 actually reviews -- see
+        # _is_rulebook_scoped_path's own comment for why. Fall back to
+        # the full scope if filtering would leave nothing: a caller
+        # dispatches this reviewer whenever mode requires DELTA_VALIDATE's
+        # baseline regardless of whether any in-scope file happens to
+        # remain, and an empty paths list is worse than a widened
+        # (but real) one.
+        scoped = tuple(p for p in scope.paths if _is_rulebook_scoped_path(p))
+        return scoped or tuple(scope.paths)
+    return tuple(scope.paths)
+
+
 def _dispatch_one(
     name: str,
     scope: ReviewScope,
@@ -3056,17 +3087,7 @@ def _dispatch_one(
     sandbox_probe: Callable[[], str | None] | None = None,
     unsandboxed_allowed: Callable[[], bool] | None = None,
 ) -> ReviewerReport:
-    reviewer_scope = scope.paths
-    if name == "plugin-rulebook-checker":
-        # Narrow to only what R1-R27 actually reviews -- see
-        # _is_rulebook_scoped_path's own comment for why. Fall back to
-        # the full scope if filtering would leave nothing: a caller
-        # dispatches this reviewer whenever mode requires DELTA_VALIDATE's
-        # baseline regardless of whether any in-scope file happens to
-        # remain, and an empty paths list is worse than a widened
-        # (but real) one.
-        scoped = tuple(p for p in scope.paths if _is_rulebook_scoped_path(p))
-        reviewer_scope = scoped or scope.paths
+    reviewer_scope = _reviewer_scope(name, scope)
 
     # Checked whether or not line ranges exist: the paths reach the bridge one per line in a file,
     # so a newline inside a name would split into two valid-looking entries and the real file would
@@ -3140,7 +3161,7 @@ def _dispatch_one(
     # fallback; the sandboxed attempt and its failure report are unchanged.
     guarded_argv: list[str] | None = None
     joined_paths = ",".join(reviewer_scope)
-    if guardrails_script is not None and len(joined_paths) <= _MAX_GUARDED_TARGET_PATHS_CHARS:
+    if guardrails_script is not None and _fits_guarded_command_line(reviewer_scope):
         guarded_argv = [
             node, str(guardrails_script),
             "--reviewer-type", name,
@@ -3388,6 +3409,14 @@ def dispatch_reviewers(
         if allow_guardrails_fallback
         else None
     )
+    # Reviewers the consented fallback cannot take: their comma-joined path list is too long for
+    # its command line, so they only ever run sandboxed (issue #816).
+    over_cap = frozenset(
+        name
+        for name in names
+        if guardrails_script is not None
+        and not _fits_guarded_command_line(_reviewer_scope(name, scope))
+    )
     start_unsandboxed = False
     # One latched verdict for the whole run (see SandboxVerdict): the pre-dispatch probe and every
     # reviewer's fallback gate share it, so a sandbox seen down once stays down.
@@ -3396,9 +3425,22 @@ def dispatch_reviewers(
     if probe_problem:
         if guardrails_script is not None:
             start_unsandboxed = True
+            fallback = [name for name in names if name not in over_cap]
+            sandboxed = [name for name in names if name in over_cap]
+            parts = []
+            if fallback:
+                parts.append(
+                    f"running {', '.join(fallback)} unsandboxed (--allow-unsandboxed-fallback)"
+                )
+            if sandboxed:
+                parts.append(
+                    f"running {', '.join(sandboxed)} in the sandbox anyway: its path list is over "
+                    f"the unsandboxed fallback's {_MAX_GUARDED_TARGET_PATHS_CHARS}-character "
+                    "path limit"
+                )
             print(
                 f"run-codex-review: Codex sandbox probe failed ({probe_problem}); "
-                "running the reviewers unsandboxed (--allow-unsandboxed-fallback)",
+                + "; ".join(parts),
                 file=sys.stderr,
             )
         else:
@@ -3492,7 +3534,9 @@ def dispatch_reviewers(
                 # traceback surfaces.
                 pool.shutdown(wait=False, cancel_futures=True)
                 raise
-        return tuple(reports)
+        return tuple(
+            replace(r, fallback_over_cap=True) if r.reviewer in over_cap else r for r in reports
+        )
 
 
 # --- SHA-bound emergency bypass attestation (design's documented comment-plus-label protocol) ---
