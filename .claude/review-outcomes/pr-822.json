@@ -175,6 +175,46 @@
       "path": "scripts/marketplace_ci/review.py",
       "pr": 822,
       "recorded_at": "2026-11-21T22:17:08+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4655242440",
+      "note": "round 2, f750f029: any non-zero exit stops the copy; no hard-coded .claude fallback (mirror byte-identity rule)",
+      "path": "plugins/git-kit/skills/create-pr/SKILL.md",
+      "pr": 822,
+      "recorded_at": "2026-11-21T23:23:11+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4655243038",
+      "note": "round 2, f750f029: confirmations count only above the first code, HTML or comment line",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 822,
+      "recorded_at": "2026-11-21T23:23:11+00:00"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "4655244134",
+      "note": "an earlier-format waiver matches rule, path and exact line by R7 design, as on the Codex path",
+      "path": "scripts/marketplace_ci/claude_review.py",
+      "pr": 822,
+      "recorded_at": "2026-11-21T23:23:11+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4655244293",
+      "note": "round 2, f750f029: stale waivers listed in waiver_lines_not_applied",
+      "path": "scripts/marketplace_ci/__main__.py",
+      "pr": 822,
+      "recorded_at": "2026-11-21T23:23:11+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4655245248",
+      "note": "round 2, f750f029: distinct deferred issue lookups capped",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 822,
+      "recorded_at": "2026-11-21T23:23:11+00:00"
     }
   ]
 }
