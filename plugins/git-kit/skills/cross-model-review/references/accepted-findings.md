@@ -17,7 +17,7 @@ fingerprint; a line without a fingerprint matches the exact line) are CI's.
 ## Preflight step 7: brief
 
 From `$REPO_ROOT`, run
-`python3 -I "${CLAUDE_PLUGIN_ROOT:-.claude}/scripts/git-review-accepted-findings.py" brief --run-dir "$RUN"`.
+`python3 -I "${CLAUDE_PLUGIN_ROOT}/scripts/git-review-accepted-findings.py" brief --run-dir "$RUN"`.
 
 - It writes `$RUN/accepted.md` only when there is something to brief: the valid lines as one JSON object
   each (rule, path, line, fingerprint, kind), never their free-text reason, and never a line whose rule
@@ -33,7 +33,7 @@ From `$REPO_ROOT`, run
 ## Phase 3: mark
 
 When the local list exists, run
-`python3 -I "${CLAUDE_PLUGIN_ROOT:-.claude}/scripts/git-review-accepted-findings.py" match <envelopes>`
+`python3 -I "${CLAUDE_PLUGIN_ROOT}/scripts/git-review-accepted-findings.py" match <envelopes>`
 from `$REPO_ROOT`, naming every envelope Phase 3 reads. It prints, per finding, its `axis`, `location`,
 the flagged line's fingerprint in the working tree (null when the path is unusual, a symlink is on the
 way, or the line is missing) and the matching waiver line (or null).

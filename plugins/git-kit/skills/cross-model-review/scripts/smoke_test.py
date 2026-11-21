@@ -86,6 +86,9 @@ def check_bash_grants():
         # needle (e.g. "cat") false-pass on unrelated prose containing it as a substring
         # (e.g. "location", "classification", "duplicate").
         needle = cmd.rsplit("/", 1)[-1] if "/" in cmd else cmd
+        # A quoted script path ("${CLAUDE_PLUGIN_ROOT}/scripts/x.py") leaves the closing
+        # quote on the basename, and \b can never match after it.
+        needle = needle.strip("\"'")
         if not re.search(r"\b" + re.escape(needle) + r"\b", body):
             unused.append(cmd)
     if unused:
