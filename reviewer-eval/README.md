@@ -67,11 +67,27 @@ and whether that is stable (at least 4 of 5; `null` until five runs are given).
 with `configured_model` `gpt-6-luna` and `pinned_cli_version` `0.170.0`. Every (head, reviewer)
 pair was stable: 5 of 5 agreed, except `skill-reviewer` on #798, `plugin-rulebook-checker` on #799
 and `security-reviewer` on #805 (4 of 5 each, where one run added a blocking finding the other four
-did not raise). The runs were made locally (`run-codex-review --base-sha <merge-base>`, no
-`--ci-delta`) with a ChatGPT login, not CI's API key, so the auth path differs from CI's.
-PR #579's heads were not used: the dispatcher reads its reviewer files from the checkout, so they
-would have measured the October roster. PRs #800 and #806 were tried and dropped: neither started
-any reviewer. To repeat, run the same command five times in a checkout of each head.
+did not raise). The runs were made locally with a ChatGPT login, not CI's API key, so the auth path
+differs from CI's. PR #579's heads were not used: the dispatcher reads its reviewer files from the
+checkout, so they would have measured the October roster. PRs #800 and #806 were tried and dropped:
+neither started any reviewer.
+
+`pinned_cli_version` is the version CI installs (`review_contract.CODEX_CLI_VERSION`), not a
+measurement: `run-codex-review` does not check the `codex` on `PATH`, so `--stability` cannot tell
+runs under different installed CLIs apart. For this baseline, `codex --version` printed
+`codex-cli 0.170.0` before the runs, and the CLI was not changed during them; no run file records
+that.
+
+To repeat, run this five times, one run after another, in a checkout of each head, with `codex`
+0.170.0 on `PATH`. The base is the head's merge-base with `main`, recorded per head as `base_sha` in
+`baseline.json`. Without `CODEX_KIT_REVIEW_MODEL` the run records no `configured_model`, and
+`--stability` refuses it.
+
+```bash
+CODEX_KIT_REVIEW_MODEL=gpt-6-luna CODEX_KIT_REVIEW_TIMEOUT_MS=720000 \
+  uv run python -m scripts.marketplace_ci run-codex-review \
+  --base-sha "$(git merge-base HEAD origin/main)" --output run1.json
+```
 
 ## Case format
 
