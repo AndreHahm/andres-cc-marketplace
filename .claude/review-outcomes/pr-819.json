@@ -1,0 +1,40 @@
+{
+  "entries": [
+    {
+      "disposition": "accepted",
+      "finding": "4651659968",
+      "line": 173,
+      "note": "Real: run-codex-review records a short base SHA as given; Tier-1 producer fix deferred to #818, README now requires the full SHA.",
+      "path": "scripts/reviewer_eval/score.py",
+      "pr": 819,
+      "recorded_at": "2026-11-21T08:59:57+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4651660061",
+      "line": 91,
+      "note": "Repeat loop now writes to the gitignored .temp/stability/; fixed in eeee9afd.",
+      "path": "reviewer-eval/README.md",
+      "pr": 819,
+      "recorded_at": "2026-11-21T08:59:57+00:00"
+    },
+    {
+      "disposition": "declined",
+      "finding": "claude-delta-d3120cc2-score.py-174",
+      "line": 174,
+      "note": "Informational: an empty reviewed_paths list is legitimate; a run that reviewed nothing has no reviewers, so the roster check refuses it.",
+      "path": "scripts/reviewer_eval/score.py",
+      "pr": 819,
+      "recorded_at": "2026-11-21T08:59:57+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "claude-delta-d3120cc2-test_score.py-464",
+      "line": 464,
+      "note": "Renamed the stale test to what it now checks; fixed in eeee9afd.",
+      "path": "tests/reviewer_eval/test_score.py",
+      "pr": 819,
+      "recorded_at": "2026-11-21T08:59:57+00:00"
+    }
+  ]
+}
