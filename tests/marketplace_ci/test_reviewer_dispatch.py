@@ -2585,3 +2585,70 @@ def test_the_bridge_argv_starts_with_the_resolved_node_path(
     scope = _skill_scope(change, dependency_index)
     dispatch_reviewers(scope, base_sha="deadbeef", repo=repo)
     assert seen and set(seen) == {"/trusted/node"}
+
+
+# --- Issue #816: the fallback cannot take a path list over its command-line cap ---
+
+
+def test_a_reviewer_over_the_fallback_path_cap_runs_sandboxed_and_says_so(
+    monkeypatch, capsys, repo, change, dependency_index, trusted_node
+):
+    """The sandbox probe failed and the fallback is consented, but every reviewer's comma-joined
+    path list is over the cap: each runs the sandboxed bridge call, is not reported as
+    unsandboxed, is marked `fallback_over_cap`, and the startup message names them instead of
+    claiming the reviewers run unsandboxed."""
+    monkeypatch.setattr(review, "_MAX_GUARDED_TARGET_PATHS_CHARS", 1)
+
+    def on_call(reviewer, argv):
+        assert not _is_guarded(argv)
+        return subprocess.CompletedProcess(
+            args=argv, returncode=0, stdout=_envelope("Pass"), stderr=b""
+        )
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    reports = dispatch_reviewers(
+        scope,
+        base_sha="deadbeef",
+        repo=repo,
+        allow_guardrails_fallback=True,
+        sandbox_probe=lambda: "setup refresh had errors",
+    )
+    assert reports and all(r.status == "completed" for r in reports)
+    assert all(not r.unsandboxed and r.fallback_over_cap for r in reports)
+    err = capsys.readouterr().err
+    assert "running the reviewers unsandboxed" not in err
+    assert "over the unsandboxed fallback's 1-character path limit" in err
+    for r in reports:
+        assert r.reviewer in err
+
+
+def test_a_reviewer_under_the_fallback_path_cap_is_not_marked(
+    monkeypatch, repo, change, dependency_index, trusted_node
+):
+    def on_call(reviewer, argv):
+        assert _is_guarded(argv)
+        return subprocess.CompletedProcess(
+            args=argv, returncode=0, stdout=_envelope("Pass"), stderr=b""
+        )
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    reports = dispatch_reviewers(
+        scope,
+        base_sha="deadbeef",
+        repo=repo,
+        allow_guardrails_fallback=True,
+        sandbox_probe=lambda: "setup refresh had errors",
+    )
+    assert all(r.unsandboxed and not r.fallback_over_cap for r in reports)
+
+
+def test_without_consent_nothing_is_marked_over_the_fallback_path_cap(
+    monkeypatch, repo, change, dependency_index
+):
+    monkeypatch.setattr(review, "_MAX_GUARDED_TARGET_PATHS_CHARS", 1)
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(lambda reviewer, argv: _ok(argv)))
+    scope = _skill_scope(change, dependency_index)
+    reports = dispatch_reviewers(scope, base_sha="deadbeef", repo=repo)
+    assert reports and not any(r.fallback_over_cap for r in reports)

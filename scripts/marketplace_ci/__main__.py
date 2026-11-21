@@ -1512,6 +1512,8 @@ def _reviewer_results(reports: Sequence, failed: Sequence[str] = ()) -> dict:
         results[report.reviewer] = {"status": status, "attempts": report.attempts}
         if getattr(report, "unsandboxed", False):
             results[report.reviewer]["unsandboxed"] = True
+        if getattr(report, "fallback_over_cap", False):
+            results[report.reviewer]["fallback_over_cap"] = True
     return results
 
 
