@@ -119,14 +119,16 @@ Status: approved
 - Findings are not carried forward. A later run reviews only its own delta, so its check can pass while
   an earlier finding is still unfixed. That finding's inline comment stays open in the pull request until
   someone resolves it.
-- **Accepted findings (issue #808, Codex R17).** The pull request's `## Accepted Review Findings` reach both
-  passes' prompts as data. A Critical or Major finding that a waiver line matches by Codex R7's key, with
-  `claude-general` or `claude-security` as the rule, is marked waived: it is not posted inline, the summary
-  lists it as waived, and it does not fail the check. A security-pass finding needs a maintainer's
-  confirmation, as a `security-reviewer` one does. The summary prints the waiver line, fingerprint
-  included, for every other Critical or Major finding.
+- **Accepted findings (issue #808, Codex R17).** The pull request's `## Accepted Review Findings` are matched
+  against both passes' findings. A Critical or Major finding that a waiver line matches by Codex R7's key,
+  with `claude-general` or `claude-security` as the rule, is marked waived: it is not posted inline, the
+  summary lists it as waived, and it does not fail the check. As in Codex R7, a waiver counts only with a
+  maintainer's confirmation comment when the finding is on a gate-critical path (Codex R3), on a path not
+  written the canonical way, or from the security pass. Only the general pass is told about the accepted
+  findings, and only about those that need no confirmation, as data without their free-text reason. The
+  summary prints the waiver line, fingerprint included, for every other Critical or Major finding.
 
-Status: approved; the accepted-findings bullet proposed (issue #808)
+Status: approved
 
 ## R8. Model and timeout settings
 
