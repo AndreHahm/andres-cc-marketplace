@@ -6,11 +6,13 @@ in the line format of a pull request's `## Accepted Review Findings` section:
 
     - <rule> <path>:<line> @<fingerprint> – accepted|residual|deferred #<issue>|refuted: <reason>
 
-Two commands, both run from the repository root:
+Three commands, all run from the repository root:
 
 - `brief --run-dir DIR` writes `DIR/accepted.md`: the valid lines as one JSON object each (rule,
   path, line, fingerprint, kind; never the free-text reason), framed as data for the reviewers.
   Writes nothing when there is no list or no valid line. Prints the lines it could not read.
+- `lines` prints the valid lines unchanged, for create-pr to copy into a new pull request's body,
+  and `not applied: <line>` for each other line; exit 3 when the list must not be read.
 - `match ENVELOPE...` prints a JSON list naming, for each finding of the given codex-kit
   envelopes, its `axis`, `location`, the flagged line's fingerprint in the working tree, and the
   waiver line that matches it (or null).
@@ -39,7 +41,7 @@ KINDS = ("accepted", "residual", "deferred", "refuted")
 _WAIVER_LINE = re.compile(
     r"^\s*[-*]\s+(?P<rule>\S(?:.*?\S)?)\s+(?P<path>\S+?):(?P<line>[0-9]+)"
     rf"(?:\s+@(?P<fp>[0-9a-fA-F]{{{FINGERPRINT_LEN}}}|-))?\s+[-–—]+\s+"
-    r"(?P<kind>accepted|residual|deferred|refuted)\b(?:\s+#(?P<issue>[0-9]+))?",
+    r"(?P<kind>accepted|residual|deferred|refuted)(?![\w-])(?:\s+#(?P<issue>[0-9]+)(?![\w-]))?",
     re.IGNORECASE,
 )
 _HEADING = re.compile(r"^##\s+Accepted Review Findings\s*$", re.IGNORECASE | re.MULTILINE)
@@ -58,6 +60,8 @@ def line_fingerprint(text: str) -> str:
 def parse(text: str) -> tuple[list[dict], list[str]]:
     """The valid waiver lines and the other non-empty lines. A `deferred` line is valid here
     without checking its issue (no GitHub access); CI checks it once a pull request exists."""
+    # Comments first, as CI does: a commented-out section must not be the one selected.
+    text = _HTML_COMMENT.sub("", text)
     match = _HEADING.search(text)
     if match is not None:
         rest = text[match.end() :]
@@ -65,12 +69,14 @@ def parse(text: str) -> tuple[list[dict], list[str]]:
         text = rest[: end.start()] if end else rest
     waivers: list[dict] = []
     skipped: list[str] = []
-    for raw in _HTML_COMMENT.sub("", text).splitlines():
+    for raw in text.splitlines():
         stripped = raw.strip()
         if not stripped or stripped.lower().strip("-* .") == "none":
             continue
         m = _WAIVER_LINE.match(raw)
-        if m is None:
+        # A `deferred` line names its issue; CI rejects one without (its open state is not
+        # checked here, there is no GitHub access).
+        if m is None or (m["kind"].lower() == "deferred" and not m["issue"]):
             skipped.append(stripped)
             continue
         fp = m["fp"].lower() if m["fp"] else None
@@ -82,6 +88,7 @@ def parse(text: str) -> tuple[list[dict], list[str]]:
                 "fingerprint": fp,
                 "kind": m["kind"].lower(),
                 "text": stripped[:300],
+                "raw": stripped,
             }
         )
     return waivers, skipped
@@ -226,6 +233,28 @@ def _location(value: object) -> tuple[str, int] | None:
     return (value, 0) if value else None
 
 
+def cmd_lines() -> int:
+    """The list's valid waiver lines, unchanged, one per line, for create-pr to copy into the
+    pull request body; `not applied: <line>` for each other line. Exit 3, with the reason on
+    stderr, when the list must not be read (a symlink on its path, a copy git tracks)."""
+    if not (LOCAL_LIST.exists() or LOCAL_LIST.is_symlink()):
+        return 0
+    refusal = _list_refusal()
+    if refusal is not None:
+        print(f"git-review-accepted-findings: {LOCAL_LIST} not read: {refusal}", file=sys.stderr)
+        return 3
+    text = _read_regular(LOCAL_LIST, _MAX_LIST_BYTES)
+    if text is None:
+        print(f"git-review-accepted-findings: {LOCAL_LIST} could not be read", file=sys.stderr)
+        return 3
+    waivers, skipped = parse(text)
+    for waiver in waivers:
+        print(waiver["raw"])
+    for line in skipped:
+        print(f"not applied: {line}")
+    return 0
+
+
 def cmd_brief(run_dir: str) -> int:
     target = Path(run_dir)
     try:
@@ -320,9 +349,12 @@ def main(argv: list[str] | None = None) -> int:
     brief.add_argument("--run-dir", required=True)
     match = sub.add_parser("match")
     match.add_argument("envelopes", nargs="+")
+    sub.add_parser("lines")
     args = parser.parse_args(argv)
     if args.command == "brief":
         return cmd_brief(args.run_dir)
+    if args.command == "lines":
+        return cmd_lines()
     return cmd_match(args.envelopes)
 
 

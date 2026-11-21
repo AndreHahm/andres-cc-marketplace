@@ -761,3 +761,117 @@ def test_a_carried_finding_covered_by_a_blocking_one_adds_its_reporters():
     (only,) = merged["findings"]
     assert only["reporters"] == ["fresh-eyes-reviewer", "security-reviewer"]
     assert own["reporters"] == ["fresh-eyes-reviewer"]  # the input is not changed
+
+
+# --- PR #822 round 1 review fixes -----------------------------------------------------------
+
+
+def test_a_kind_or_issue_with_a_suffix_is_not_a_waiver():
+    section = read_waiver_section(
+        _section(
+            f"- R6 a_py:3 @{FP} – accepted-extra",
+            f"- R6 a_py:3 @{FP} – deferred #123abc",
+            f"- R6 a_py:3 @{FP} – accepted: kept",
+            f"- R6 a_py:3 @{FP} – deferred #12: tracked",
+        ),
+        lambda n: n == 12,
+    )
+    assert [w.kind for w in section.waivers] == ["accepted", "deferred"]
+    assert len(section.malformed) == 2
+
+
+def test_a_commented_out_section_before_the_visible_one_applies_nothing():
+    body = (
+        "<!--\n## Accepted Review Findings\n"
+        f"- R6 a_py:3 @{FP} – accepted\n-->\n\n## Accepted Review Findings\nNone\n"
+    )
+    assert read_waiver_section(body, _never_open).waivers == ()
+    body = body.replace("None\n", f"- R6 b_py:4 @{FP} – accepted\n")
+    assert [w.path for w in read_waiver_section(body, _never_open).waivers] == ["b_py"]
+
+
+def test_a_tab_in_a_waiver_line_still_carries():
+    waiver = read_waiver_section(
+        _section(f"- R6 a_py:3 @{FP}\t– accepted:\tkept"), _never_open
+    ).waivers[0]
+    assert "\t" not in waiver.text
+    entry = {
+        "rule": "R6",
+        "path": "a_py",
+        "line": 3,
+        "severity": "Major",
+        "reviewer": "skill-reviewer",
+        "reporters": ["skill-reviewer"],
+        "fingerprint": FP,
+        "waiver": waiver.text,
+    }
+    merged = merge_carried_findings(
+        {"status": "clean", "findings": [], "blocking": False}, [entry], "0"
+    )
+    assert merged["findings"][0]["waiver"] == waiver.text
+
+
+def test_a_confirmation_inside_a_code_block_or_comment_confirms_nothing():
+    line = f"- confirmed R6 a_py @{FP}"
+    assert parse_confirmations(f"Example:\n```\n{line}\n```\n") == set()
+    assert parse_confirmations(f"~~~md\n{line}\n~~~\n") == set()
+    assert parse_confirmations(f"<!--\n{line}\n-->\n") == set()
+    assert parse_confirmations(f"> {line}\n") == set()
+    assert parse_confirmations(f"```\nx\n```\n{line}\n") == {("R6", "a_py", FP)}
+
+
+def test_a_waiver_with_a_stale_fingerprint_is_reported(git_repo):
+    _commit(git_repo, "pr", **{"s/SKILL.md": "# title\n\n" + GRANT + "\n"})
+    finding = _finding("s/SKILL.md", 3)
+    waivers = read_waiver_section(
+        _section(f"- tool-scoping s/SKILL.md:15 @{'0' * 32} – accepted"), _never_open
+    ).waivers
+    _, applied, notes = _apply_waivers([finding], {finding}, waivers, git_repo.root, set())
+    assert applied == {}
+    assert len(notes) == 1 and "matches no flagged line" in notes[0] and f"3 @{FP}" in notes[0]
+
+
+def test_deferred_issues_are_looked_up_once_and_not_past_the_cap():
+    calls = []
+
+    def is_open(n):
+        calls.append(n)
+        return True
+
+    lines = [f"- R6 a_py:{i} @{FP} – deferred #7" for i in range(1, 206)]
+    section = read_waiver_section(_section(*lines), is_open)
+    assert calls == [7]
+    assert len(section.waivers) == 200 and len(section.malformed) == 5
+
+
+def test_a_claude_review_with_only_minor_findings_keeps_its_verdict():
+    from scripts.marketplace_ci.claude_review import apply_waivers
+
+    result = _claude_result(_claude_finding(severity="Minor"))
+    apply_waivers(result, (), set(), lambda path, line: GRANT)
+    assert result["verdict"] == "Changes Requested"
+
+
+def test_the_head_line_reader_reads_bytes_and_keeps_git_line_numbers():
+    from scripts.marketplace_ci.claude_review import head_line_reader
+
+    content = b"one\rstill one\n\xff\xfe two\nthree\n"
+    reader = head_line_reader(
+        "o/r", "h" * 40, lambda a, _p=None: subprocess.CompletedProcess(a, 0, content, b"")
+    )
+    assert reader("x", 1) == "one\rstill one"
+    assert reader("x", 3) == "three"
+    assert reader("x", 2) is not None
+    binary = head_line_reader(
+        "o/r", "h" * 40, lambda a, _p=None: subprocess.CompletedProcess(a, 0, b"a\0b\n", b"")
+    )
+    assert binary("y", 1) is None
+
+
+def test_a_fence_closes_only_on_a_bare_marker_and_lines_split_like_github():
+    line = f"- confirmed R6 a_py @{FP}"
+    # "```python" inside an open block is code, so the block is still open.
+    assert parse_confirmations(f"```\n```python\n{line}\n```\n") == set()
+    # A U+2028 is not a line break on GitHub: the line is not a bullet of its own.
+    assert parse_confirmations(f"text {line}\n") == set()
+    assert parse_confirmations(f"```\nx\n```\r\n{line}\r\n") == {("R6", "a_py", FP)}

@@ -231,3 +231,67 @@ def test_brief_refuses_a_shared_run_directory(checkout, tmp_path):
     run.mkdir()
     run.chmod(0o777)
     assert helper.main(["brief", "--run-dir", str(run)]) == 2
+
+
+# --- PR #822 round 1 review fixes -----------------------------------------------------------
+
+
+def test_a_deferred_line_needs_its_issue_number():
+    waivers, skipped = helper.parse(
+        f"- R6 a_py:3 @{FP} – deferred\n- R6 a_py:4 @{FP} – deferred #12: tracked\n"
+    )
+    assert [w["line"] for w in waivers] == [4]
+    assert skipped == [f"- R6 a_py:3 @{FP} – deferred"]
+
+
+@pytest.mark.parametrize(
+    "line", [f"- R6 a_py:3 @{FP} – accepted-extra", f"- R6 a_py:3 @{FP} – deferred #123abc"]
+)
+def test_a_kind_or_issue_with_a_suffix_is_skipped_like_ci(line):
+    waivers, skipped = helper.parse(line + "\n")
+    assert waivers == [] and skipped == [line]
+    assert (
+        review.read_waiver_section(
+            "## Accepted Review Findings\n" + line + "\n", lambda _n: True
+        ).waivers
+        == ()
+    )
+
+
+def test_a_commented_out_section_is_not_the_one_read():
+    body = (
+        "<!--\n## Accepted Review Findings\n"
+        f"- R6 a_py:3 @{FP} – accepted\n-->\n## Accepted Review Findings\nNone\n"
+    )
+    assert helper.parse(body) == ([], [])
+
+
+def test_lines_prints_the_waiver_lines_for_create_pr(checkout, capsys):
+    (checkout / ".claude/accepted-review-findings.local.md").write_text(
+        LIST_LINE + "- R8 c_py:5 – declined\n", encoding="utf-8"
+    )
+    assert helper.main(["lines"]) == 0
+    out = capsys.readouterr().out.splitlines()
+    assert out == [LIST_LINE.strip(), "not applied: - R8 c_py:5 – declined"]
+
+
+def test_lines_prints_nothing_without_a_list(checkout, capsys):
+    assert helper.main(["lines"]) == 0
+    assert capsys.readouterr().out == ""
+
+
+def test_lines_refuses_a_tracked_or_symlinked_list(checkout, tmp_path, capsys):
+    target = checkout / ".claude/accepted-review-findings.local.md"
+    target.write_text(LIST_LINE, encoding="utf-8")
+    _git(checkout, "add", "-f", ".claude/accepted-review-findings.local.md")
+    assert helper.main(["lines"]) == 3
+    captured = capsys.readouterr()
+    assert captured.out == "" and "tracked" in captured.err
+    _git(checkout, "rm", "-q", "--cached", ".claude/accepted-review-findings.local.md")
+    target.unlink()
+    elsewhere = tmp_path.parent / f"{tmp_path.name}-lines"
+    elsewhere.write_text(LIST_LINE, encoding="utf-8")
+    target.symlink_to(elsewhere)
+    assert helper.main(["lines"]) == 3
+    captured = capsys.readouterr()
+    assert captured.out == "" and "symlink" in captured.err

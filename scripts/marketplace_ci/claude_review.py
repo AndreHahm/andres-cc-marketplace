@@ -426,10 +426,12 @@ def apply_waivers(
     waived, and recomputes the status. A security-pass finding needs a maintainer's
     confirmation like a `security-reviewer` one. Returns a note per finding whose matching
     waiver could not apply."""
-    from scripts.marketplace_ci.review import find_waiver, line_fingerprint
+    from scripts.marketplace_ci.review import find_waiver, line_fingerprint, stale_waiver_notes
 
     keys = set(confirmed)
     notes: list[str] = []
+    used: list = []
+    unwaived: list[tuple[str, str, int, str | None]] = []
     for f in result.get("findings", []):
         if f["severity"] not in BLOCKING or not f["in_scope"]:
             continue
@@ -448,16 +450,22 @@ def apply_waivers(
         )
         if waiver is not None:
             f["waiver"] = waiver.text[:300]
-        elif why_not is not None:
+            used.append(waiver)
+            continue
+        unwaived.append((rule, f["path"], f["line"], f["fingerprint"]))
+        if why_not is not None:
             notes.append(f"{rule} {f['display_path']}:{f['line']}: the waiver {why_not}")
+    notes.extend(stale_waiver_notes(waivers, used, unwaived))
+    waived = sum(1 for f in result.get("findings", []) if f.get("waiver"))
     if result.get("status") in ("findings", "clean"):
         blocking = any(
             f["severity"] in BLOCKING and not f.get("waiver") for f in result.get("findings", [])
         )
         result["status"] = "findings" if blocking else "clean"
-        if not blocking and result.get("verdict") == "Changes Requested":
+        # Only a waiver changes the verdict: a review with only Minor findings keeps its own.
+        if waived and not blocking and result.get("verdict") == "Changes Requested":
             result["verdict"] = "LGTM"
-    result["waived_findings"] = sum(1 for f in result.get("findings", []) if f.get("waiver"))
+    result["waived_findings"] = waived
     return notes
 
 
@@ -479,7 +487,13 @@ def head_line_reader(repo: str, head_sha: str, gh: Gh) -> Callable[[str, int], s
                 ],
                 None,
             )
-            cache[path] = git_lines(got.stdout) if got.returncode == 0 else None
+            # Bytes, decoded as `fingerprint_at` does: text mode would raise on a file that is not
+            # UTF-8 and turn a bare carriage return into a line break, shifting git's numbering.
+            raw = got.stdout
+            if isinstance(raw, str):
+                raw = raw.encode("utf-8", errors="surrogateescape")
+            ok = got.returncode == 0 and b"\0" not in raw
+            cache[path] = git_lines(raw.decode("utf-8", errors="replace")) if ok else None
         lines = cache[path]
         if lines is None or not 1 <= line <= len(lines):
             return None
@@ -570,6 +584,13 @@ def summary_body(result: Mapping, unplaced: Sequence[Mapping]) -> str:
 
 
 Gh = Callable[[Sequence[str], dict | None], subprocess.CompletedProcess]
+
+
+def _gh_raw(args: Sequence[str]) -> subprocess.CompletedProcess:
+    """`gh api` with its output as bytes, for file content read line by line."""
+    return subprocess.run(  # nosec B603 B607  # literal gh subcommand, no shell
+        ["gh", "api", *args], capture_output=True
+    )
 
 
 def _gh(args: Sequence[str], payload: dict | None = None) -> subprocess.CompletedProcess:

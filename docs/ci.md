@@ -409,14 +409,17 @@ review` is the gate after the PR exists and reviews only the delta, to cut OpenA
   format) matches the exact rule, path and line. The job summary prints the line to copy, fingerprint
   included, for each blocking finding, or, when its path contains whitespace, a note that it cannot be
   waived, and lists every section line that was not applied with the reason (an unknown kind, a bad
-  fingerprint, a closed or missing `deferred` issue, or a line not in the form): a mistake is reported, never
+  fingerprint, a closed or missing `deferred` issue, a line not in the form, or a waiver whose fingerprint
+  matches no flagged line of its rule and path, with that line's current fingerprint; HTML comments are
+  removed before the section is located): a mistake is reported, never
   silently ignored, and does not fail the job on its own. A waiver for a finding on a gate-critical path
   (R3, `is_gate_critical`, also tested on the normalized spelling), on a path not spelled the canonical way,
   or one `security-reviewer` raised (any reporter; carried findings keep their `reporters`) counts only
   when a user whose `role_name` is `maintain` or `admin` (not `permission`, which reports maintain as
   `write`) has posted a PR comment line `- confirmed <rule> <path> @<fingerprint>` that was never edited
   (`created_at == updated_at`, since a user with write access can edit another user's comment;
-  `parse_confirmations`); without it the finding keeps blocking and the summary says the confirmation is
+  `parse_confirmations`; a line inside a fenced code block, an HTML comment or a block quote is an
+  example and confirms nothing); without it the finding keeps blocking and the summary says the confirmation is
   missing. A confirmation names the fingerprint, so it lapses when the flagged line's text changes (not on a
   whitespace-only edit), and an
   earlier-format line cannot be confirmed. Every anchor carries (R10). A blocking entry the
