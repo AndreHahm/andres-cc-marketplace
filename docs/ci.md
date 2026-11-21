@@ -403,7 +403,9 @@ review` is the gate after the PR exists and reviews only the delta, to cut OpenA
   of this repository, checked through the API). The fingerprint is the first 32 hex digits of the SHA-256 of
   the flagged line's text with whitespace collapsed (`line_fingerprint`), so a waiver matches on rule, path
   and fingerprint and survives the line moving or the claim being reworded; editing the flagged line changes
-  the fingerprint, and the finding is reviewed and blocks again. A line without `@<fingerprint>` (the earlier
+  the fingerprint, and the finding is reviewed and blocks again. A whitespace-only edit (re-indenting, a
+  longer run of spaces) keeps the fingerprint, so a waiver and a maintainer's confirmation survive it; in
+  Python an indentation change can change behavior, which a maintainer confirming a waiver accepts. A line without `@<fingerprint>` (the earlier
   format) matches the exact rule, path and line. The job summary prints the line to copy, fingerprint
   included, for each blocking finding, or, when its path contains whitespace, a note that it cannot be
   waived, and lists every section line that was not applied with the reason (an unknown kind, a bad
@@ -415,7 +417,8 @@ review` is the gate after the PR exists and reviews only the delta, to cut OpenA
   `write`) has posted a PR comment line `- confirmed <rule> <path> @<fingerprint>` that was never edited
   (`created_at == updated_at`, since a user with write access can edit another user's comment;
   `parse_confirmations`); without it the finding keeps blocking and the summary says the confirmation is
-  missing. A confirmation names the fingerprint, so it lapses when the flagged line changes, and an
+  missing. A confirmation names the fingerprint, so it lapses when the flagged line's text changes (not on a
+  whitespace-only edit), and an
   earlier-format line cannot be confirmed. Every anchor carries (R10). A blocking entry the
   step cannot read, or more than 500 findings, reports `error`. The PR
   body is read live from the API, so a re-run cannot bring back a removed waiver. `publish` fails while `carried_blocking` is not `0`, and fails closed when
@@ -443,8 +446,10 @@ review` is the gate after the PR exists and reviews only the delta, to cut OpenA
   residual where a removed waiver dropped the finding for good). A change to the file releases a blocking
   carried finding (the file is reviewed again), but not a waived one: while a line with its fingerprint
   still exists at the head (`locate_fingerprint`, the nearest one when several match), it is carried at
-  that line, so a waiver removed after the file changed still makes it block; once the flagged line's
-  text is edited or removed, it is dropped and the changed line is reviewed. When a carried finding has the same rule,
+  that line, so a waiver removed after the file changed still makes it block; once no line with that text
+  remains, it is dropped and the changed line is reviewed (a removed line whose text appears elsewhere in the
+  file moves the finding to that copy). An earlier-format waiver names the exact line, so it stops matching
+  once the line moves: the finding blocks, and the summary says so and prints the line to write instead. When a carried finding has the same rule,
   path and line as one of this run's own findings, the stricter decision stays: a waived current finding
   never absorbs a blocking carried one (both are kept), and a carried finding a current one covers adds its
   reviewers to that finding's `reporters`, so a carried `security-reviewer` finding still needs a
