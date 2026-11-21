@@ -162,6 +162,11 @@ def _print_stability(paths: list[str], reviewer: str) -> int:
             if head is not None and run_head != head:
                 raise ValueError(f"head {run_head} differs from {head}, the head of the first run")
             head = run_head
+            # Runs that all lack a pin agree on None, but that says nothing about what ran.
+            for pin in ("configured_model", "pinned_cli_version"):
+                value = provenance.get(pin)
+                if not isinstance(value, str) or not value.strip():
+                    raise ValueError(f"no provenance.{pin}, so the run is not under a recorded pin")
             context = _review_context(result, provenance)
             if first_context is None:
                 first_context = context
