@@ -1247,20 +1247,22 @@ def test_sandbox_hint_does_not_recommend_the_mode_a_reviewer_already_ran_in(tmp_
 
 def test_sandbox_hint_does_not_recommend_sandbox_down_over_the_fallback_path_cap(tmp_path):
     """Issue #816: --sandbox-down cannot help a reviewer the fallback cannot take, because its path
-    list is over the fallback's limit; it is told so, and the other reviewer keeps the advice."""
+    list is over the fallback's limit; it is told so, and the other reviewer keeps the advice
+    without being told the flag starts every reviewer. The split is the one dispatch can produce:
+    plugin-rulebook-checker's narrowed path list fits, a full-scope reviewer's does not."""
     output = tmp_path / "out.json"
     output.write_text(
         json.dumps(
             {
-                "dispatch_failed": _sandbox_failed("dependency-reviewer", "skill-reviewer"),
+                "dispatch_failed": _sandbox_failed("plugin-rulebook-checker", "skill-reviewer"),
                 "provenance": {},
                 "reviewer_results": {
-                    "dependency-reviewer": {
+                    "plugin-rulebook-checker": {"status": "could_not_run", "attempts": 1},
+                    "skill-reviewer": {
                         "status": "could_not_run",
                         "attempts": 1,
                         "fallback_over_cap": True,
                     },
-                    "skill-reviewer": {"status": "could_not_run", "attempts": 1},
                 },
             }
         ),
@@ -1269,11 +1271,12 @@ def test_sandbox_hint_does_not_recommend_sandbox_down_over_the_fallback_path_cap
     hint = _load_module().sandbox_rerun_hint(output)
     assert hint is not None
     over, rest = hint.split("\n", 1)
-    assert "dependency-reviewer" in over and "skill-reviewer" not in over
+    assert "skill-reviewer" in over and "plugin-rulebook-checker" not in over
     assert "over the unsandboxed fallback's path limit" in over
     assert "rerun with it only if you accept" not in over
-    assert "skill-reviewer" in rest and "dependency-reviewer" not in rest
+    assert "plugin-rulebook-checker" in rest and "skill-reviewer" not in rest
     assert "rerun with it only if you accept" in rest
+    assert "every reviewer" not in rest
 
 
 def test_sandbox_hint_is_given_per_reviewer(tmp_path):

@@ -588,8 +588,8 @@ def sandbox_rerun_hint(output: Path) -> str | None:
     """A line telling the caller to rerun with `--sandbox-down`, when a could-not-run result names
     reviewers that failed on the Codex sandbox, else None. The sandbox probe can pass while
     reviewers still fail on a flaky sandbox (issue #652); `--sandbox-down` skips the probe and
-    starts every reviewer through the guardrails fallback. Data only: the result is read, never
-    acted on."""
+    starts the fallback-eligible reviewers through the guardrails fallback. Data only: the result
+    is read, never acted on."""
     try:
         data = json.loads(output.read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -651,9 +651,9 @@ def sandbox_rerun_hint(output: Path) -> str | None:
         )
         lines.append(
             f"PARITY: {', '.join(fresh)} reported a Codex sandbox failure ({evidence}). "
-            "--sandbox-down skips the probe and starts every reviewer through the guardrails "
-            "fallback (unsandboxed: no sandbox, this account's permissions, network); rerun with "
-            "it only if you accept that."
+            "--sandbox-down skips the probe and starts the fallback-eligible reviewers through the "
+            "guardrails fallback (unsandboxed: no sandbox, this account's permissions, network); "
+            "rerun with it only if you accept that."
         )
     return "\n".join(lines)
 

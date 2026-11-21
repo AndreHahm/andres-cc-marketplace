@@ -2644,6 +2644,39 @@ def test_a_reviewer_under_the_fallback_path_cap_is_not_marked(
     assert all(r.unsandboxed and not r.fallback_over_cap for r in reports)
 
 
+def test_the_narrowed_rulebook_reviewer_can_fit_the_fallback_path_cap_while_others_do_not(
+    monkeypatch, repo, change, dependency_index, trusted_node
+):
+    """The one split dispatch can produce: plugin-rulebook-checker's path list drops `evals/`, so
+    it fits the cap and runs unsandboxed, while every full-scope reviewer is over it, runs
+    sandboxed and is marked."""
+    skill = "plugins/demo-kit/skills/x/SKILL.md"
+    monkeypatch.setattr(review, "_MAX_GUARDED_TARGET_PATHS_CHARS", len(skill))
+
+    def on_call(reviewer, argv):
+        assert _is_guarded(argv) == (reviewer == "plugin-rulebook-checker")
+        return subprocess.CompletedProcess(
+            args=argv, returncode=0, stdout=_envelope("Pass"), stderr=b""
+        )
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = derive_review_scope([change(skill), change("evals/x/evals.json")], dependency_index())
+    reports = dispatch_reviewers(
+        scope,
+        base_sha="deadbeef",
+        repo=repo,
+        allow_guardrails_fallback=True,
+        sandbox_probe=lambda: "setup refresh had errors",
+    )
+    by_name = {r.reviewer: r for r in reports}
+    assert "plugin-rulebook-checker" in by_name and len(by_name) > 1
+    for name, r in by_name.items():
+        narrowed = name == "plugin-rulebook-checker"
+        assert r.status == "completed"
+        assert r.unsandboxed is narrowed
+        assert r.fallback_over_cap is not narrowed
+
+
 def test_without_consent_nothing_is_marked_over_the_fallback_path_cap(
     monkeypatch, repo, change, dependency_index
 ):
