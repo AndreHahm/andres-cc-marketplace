@@ -156,3 +156,7 @@ line-budget threshold. See `SKILL.md`'s own "Verify this skill activates on/does
 - The wrapper passes the fetched `origin/main` tip as `--base-sha` (CI's `base.sha`), not the merge-base, so a long-lived
   branch is reviewed with the current reviewer instructions
 - A malformed Tier-1 list at the base (mixed types, an unhashable element) → the "could not check" warning, run proceeds
+- Accepted findings (issue #808): `.claude/accepted-review-findings.local.md` exists → its waiver-shaped
+  lines are copied unchanged into the body's `## Accepted Review Findings` section in place of "None";
+  when the section already has lines, `AskUserQuestion` offers keep both / replace / leave out, and no
+  line is dropped without the answer; a line without the waiver shape is reported as left out

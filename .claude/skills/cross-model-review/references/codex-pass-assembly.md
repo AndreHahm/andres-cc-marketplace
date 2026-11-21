@@ -105,7 +105,8 @@ these forms, stop and report it; never fall back to another way of running the s
 
 Codex has no prior context, so its instruction file contains the diff **content itself**. Never
 instruct Codex to run `git diff` (issue #78: on a real Windows machine a Codex-run diff of a large change
-failed every time, while the embedded diff succeeded). Build the file from `$RUN/review.md`, then the
+failed every time, while the embedded diff succeeded). Build the file from `$RUN/review.md`, then
+`$RUN/accepted.md` when it exists (`@accepted.md`, SKILL.md's Preflight step 7), then the
 batch's `.codex.diff` files as `\n<diff>\n<diff text>\n</diff>\n` preceded by a line telling Codex not
 to run `git diff` or any shell command to fetch it. If `$UNTRACKED_FILES` contains paths of this batch,
 add a labeled block `<untracked_files>` naming only those paths (each passing the pattern check),
