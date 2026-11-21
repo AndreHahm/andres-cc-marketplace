@@ -880,10 +880,10 @@ def _first_run(args: argparse.Namespace) -> bool:
     return not (getattr(args, "ci_delta", False) and getattr(args, "anchor_sha", ""))
 
 
-def _issue_is_open(repo: str, number: int) -> bool:
+def _issue_is_open(repo: str, number: int, gh: str = "gh") -> bool:
     """True only for an open issue (not a pull request) of `repo`, read through `gh api`."""
     result = subprocess.run(
-        ["gh", "api", f"repos/{repo}/issues/{number}", "--jq", "[.state, (.pull_request != null)]"],
+        [gh, "api", f"repos/{repo}/issues/{number}", "--jq", "[.state, (.pull_request != null)]"],
         capture_output=True,
         text=True,
     )
@@ -896,13 +896,157 @@ def _issue_is_open(repo: str, number: int) -> bool:
     return state == "open" and is_pr is False
 
 
-def _waiver_hint(rule: str, path: str, line: int) -> str:
-    """The waiver line a summary prints for one carried finding. A path with whitespace cannot be
-    named in a waiver line (the parser takes the path as one space-free token), so that finding
-    gets a note instead of a line that would not match it."""
+def _waiver_hint(rule: str, path: str, line: int, fingerprint: str | None = None) -> str:
+    """The waiver line a summary prints for one blocking finding, with the flagged line's
+    fingerprint when it is known (R7). A path with whitespace cannot be named in a waiver line
+    (the parser takes the path as one space-free token), so that finding gets a note instead of
+    a line that would not match it."""
     if any(ch.isspace() for ch in path):
         return f"{rule} {path}:{line}: cannot be waived, its path contains whitespace"
-    return f"- {rule} {path}:{line} – accepted|residual|deferred #<issue>"
+    mark = f" @{fingerprint}" if fingerprint else ""
+    return f"- {rule} {path}:{line}{mark} – accepted|residual|deferred #<issue>|refuted"
+
+
+def _confirmed_waivers(repo: str, pr_number: str, gh: str = "gh") -> set[tuple[str, str, str]]:
+    """The waiver keys confirmed in the pull request's comments by a user whose role is maintain
+    or admin (R7), read through `gh api`. A comment edited after it was posted confirms nothing,
+    since a user with write access can edit another user's comment. Anything that cannot be read
+    confirms nothing, so a waiver that needs a confirmation keeps blocking (fail closed)."""
+    from scripts.marketplace_ci.review import parse_confirmations
+
+    if not (
+        re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo or "")
+        and re.fullmatch(r"[1-9][0-9]*", pr_number or "")
+    ):
+        return set()
+    listed = subprocess.run(
+        [
+            gh,
+            "api",
+            "--paginate",
+            f"repos/{repo}/issues/{pr_number}/comments",
+            "--jq",
+            '.[] | select(.user.type == "User" and .created_at == .updated_at)'
+            " | {login: .user.login, body: .body}",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if listed.returncode != 0:
+        return set()
+    by_login: dict[str, set[tuple[str, str, str]]] = {}
+    for raw in listed.stdout.splitlines():
+        try:
+            comment = json.loads(raw)
+        except ValueError:
+            return set()
+        login, body = comment.get("login"), comment.get("body")
+        if not (isinstance(login, str) and re.fullmatch(r"[A-Za-z0-9-]{1,39}", login)):
+            continue
+        keys = parse_confirmations(body if isinstance(body, str) else "")
+        if keys:
+            by_login.setdefault(login, set()).update(keys)
+    confirmed: set[tuple[str, str, str]] = set()
+    for login, keys in by_login.items():
+        permission = subprocess.run(
+            [gh, "api", f"repos/{repo}/collaborators/{login}/permission", "--jq", ".role_name"],
+            capture_output=True,
+            text=True,
+        )
+        # `role_name`, not `permission`: the latter reports a maintain user as `write`.
+        if permission.returncode == 0 and permission.stdout.strip() in ("maintain", "admin"):
+            confirmed |= keys
+    return confirmed
+
+
+def _handle_fetch_accepted_findings(args: argparse.Namespace) -> int:
+    """Everything R7's waivers need from GitHub, written as one JSON file so the step that runs
+    the reviewers needs no token (R17): the pull request body (or `--body-file`, the local list
+    before a pull request exists), the open issues its `deferred` lines name, and the waiver keys
+    a maintainer confirmed in a comment. Exits 2 when the body cannot be read."""
+    from scripts.marketplace_ci.review import _section_text, read_waiver_section
+
+    has_pr = bool(
+        re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", args.repo or "")
+        and re.fullmatch(r"[1-9][0-9]*", args.pr_number or "")
+    )
+    if args.body_file:
+        try:
+            body = Path(args.body_file).read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as exc:
+            print(f"fetch-accepted-findings: cannot read {args.body_file}: {exc}", file=sys.stderr)
+            return 2
+        # The local list (R17) is the section's lines alone; read it as that section.
+        if _section_text(body) is None:
+            body = "## Accepted Review Findings\n" + body
+    elif has_pr:
+        fetched = subprocess.run(
+            [args.gh, "api", f"repos/{args.repo}/pulls/{args.pr_number}", "--jq", '.body // ""'],
+            capture_output=True,
+            text=True,
+        )
+        if fetched.returncode != 0:
+            print("fetch-accepted-findings: cannot read the pull request body", file=sys.stderr)
+            return 2
+        body = fetched.stdout
+    else:
+        print(
+            "fetch-accepted-findings: give --body-file or --repo and --pr-number", file=sys.stderr
+        )
+        return 2
+    open_issues: list[int] = []
+
+    def issue_is_open(n: int) -> bool:
+        is_open = bool(args.repo) and _issue_is_open(args.repo, n, args.gh)
+        if is_open:
+            open_issues.append(n)
+        return is_open
+
+    read_waiver_section(body, issue_is_open)
+    confirmed = sorted(_confirmed_waivers(args.repo, args.pr_number, args.gh)) if has_pr else []
+    payload = {
+        "body": body,
+        "open_issues": sorted(set(open_issues)),
+        "confirmed": [list(key) for key in confirmed],
+    }
+    Path(args.output).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    return 0
+
+
+def _load_accepted_findings(path: str):
+    """The body, open-issue check and confirmed keys `fetch-accepted-findings` wrote. Raises
+    ValueError on anything malformed, which the caller turns into a failed run."""
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    body, issues, confirmed = data.get("body"), data.get("open_issues"), data.get("confirmed")
+    if not (
+        isinstance(body, str)
+        and isinstance(issues, list)
+        and all(isinstance(n, int) and not isinstance(n, bool) for n in issues)
+        and isinstance(confirmed, list)
+        and all(
+            isinstance(key, list) and len(key) == 3 and all(isinstance(k, str) for k in key)
+            for key in confirmed
+        )
+    ):
+        raise ValueError(f"{path} is not a fetch-accepted-findings result")
+    return body, set(issues), {tuple(key) for key in confirmed}
+
+
+def _waiver_report(malformed, notes) -> list[str]:
+    """Summary lines for waiver lines that were not applied and waivers that matched a finding
+    but could not apply (R7: reported, never silently ignored)."""
+    lines = [f"not applied: {text} ({why})" for text, why in malformed]
+    lines.extend(notes)
+    return lines
+
+
+def _append_step_summary(title: str, lines: Sequence[str]) -> None:
+    """Add a fenced block to the GitHub job summary, when there is one."""
+    summary = os.environ.get("GITHUB_STEP_SUMMARY")
+    if not summary or not lines:
+        return
+    with open(summary, "a", encoding="utf-8") as handle:
+        handle.write(f"### {title}\n```\n" + "\n".join(lines) + "\n```\n")
 
 
 def _handle_carry_findings(args: argparse.Namespace) -> int:
@@ -910,9 +1054,11 @@ def _handle_carry_findings(args: argparse.Namespace) -> int:
     `{"count": N, "carried": [...]}`. Each carried finding is printed with the waiver line that
     would accept it. Exits 0 on a decision, 2 when the inputs cannot be read (the caller must
     treat that as blocking)."""
-    from scripts.marketplace_ci.review import CarryError, carry_blocking_findings
+    from scripts.marketplace_ci.review import CarryError, carry_findings, read_waiver_section
 
     carried: list[dict] = []
+    waived: list[dict] = []
+    report: list[str] = []
     if args.anchor_sha:
         if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", args.repo):
             print(f"carry-findings: bad --repo {args.repo!r}", file=sys.stderr)
@@ -923,23 +1069,42 @@ def _handle_carry_findings(args: argparse.Namespace) -> int:
         except (OSError, ValueError) as exc:
             print(f"carry-findings: cannot read inputs: {exc}", file=sys.stderr)
             return 2
+
+        def issue_is_open(n: int) -> bool:
+            return _issue_is_open(args.repo, n)
+
+        confirmations: set[tuple[str, str, str]] | None = None
+
+        def confirmed(key: tuple[str, str, str]) -> bool:
+            nonlocal confirmations
+            if confirmations is None:
+                confirmations = _confirmed_waivers(args.repo, args.pr_number)
+            return key in confirmations
+
         try:
-            carried = carry_blocking_findings(
+            outcome = carry_findings(
                 Path.cwd(),
                 args.base_sha,
                 args.anchor_sha,
                 anchor_result,
                 body,
-                lambda n: _issue_is_open(args.repo, n),
+                issue_is_open,
+                confirmed,
             )
         except CarryError as exc:
             print(f"carry-findings: {exc}", file=sys.stderr)
             return 2
-    payload = {"count": len(carried), "carried": carried}
+        carried, waived = list(outcome.blocking), list(outcome.waived)
+        report = _waiver_report(read_waiver_section(body, issue_is_open).malformed, outcome.notes)
+    # Waived carried findings travel with the blocking ones, so the merge records them as waived
+    # and they block again once their waiver line is removed; `count` is the blocking ones.
+    payload = {"count": len(carried), "carried": [*carried, *waived]}
     Path(args.json_output).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     for f in carried:
-        print(_waiver_hint(f["rule"], f["path"], f["line"]))
-    print(f"carried blocking findings: {len(carried)}")
+        print(_waiver_hint(f["rule"], f["path"], f["line"], f.get("fingerprint")))
+    for line in report:
+        print(line)
+    print(f"carried blocking findings: {len(carried)}; waived: {len(waived)}")
     return 0
 
 
@@ -1144,8 +1309,28 @@ def _handle_claude_review_prompts(args: argparse.Namespace) -> int:
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     security = needs_security_pass(scope)
+    accepted = ""
+    if args.accepted_findings:
+        from scripts.marketplace_ci.review import (
+            read_waiver_section,
+            render_accepted_findings_briefing,
+        )
+
+        body, open_issues, _ = _load_accepted_findings(args.accepted_findings)
+        waivers = read_waiver_section(body, open_issues.__contains__).waivers
+        accepted = render_accepted_findings_briefing(waivers)
     for name in ("general", "security") if security else ("general",):
-        values = prompt_values(scope, review_md, security_md, name, args.base_sha, args.head_sha)
+        # The security pass is never told what was accepted (R7: its findings need a
+        # maintainer's confirmation to be waived).
+        values = prompt_values(
+            scope,
+            review_md,
+            security_md,
+            name,
+            args.base_sha,
+            args.head_sha,
+            accepted if name == "general" else "",
+        )
         (out_dir / f"{name}.md").write_text(build_prompt(template, values), encoding="utf-8")
     with open(args.github_output, "a", encoding="utf-8") as out:
         out.write(f"security={'true' if security else 'false'}\n")
@@ -1172,7 +1357,13 @@ def _handle_publish_claude_review(args: argparse.Namespace) -> int:
     recorded passes, posts it (inline Critical/Major findings, one updated summary comment),
     and writes the result file. Exits 1 when the check fails: a Critical or Major finding, or
     a review that could not run."""
-    from scripts.marketplace_ci.claude_review import decide, publish
+    from scripts.marketplace_ci.claude_review import (
+        _gh,
+        apply_waivers,
+        decide,
+        head_line_reader,
+        publish,
+    )
 
     def load(path: str):
         if not path or not Path(path).is_file():
@@ -1195,6 +1386,19 @@ def _handle_publish_claude_review(args: argparse.Namespace) -> int:
         head_sha=args.head_sha,
         run_attempt=args.run_attempt,
     )
+    if args.accepted_findings and result["findings"]:
+        from scripts.marketplace_ci.review import read_waiver_section
+
+        try:
+            body, open_issues, confirmed = _load_accepted_findings(args.accepted_findings)
+        except (OSError, ValueError) as exc:
+            print(f"::warning::the accepted review findings could not be read: {exc}")
+        else:
+            section = read_waiver_section(body, open_issues.__contains__)
+            reader = head_line_reader(args.repo, args.head_sha, _gh)
+            notes = apply_waivers(result, section.waivers, confirmed, reader)
+            for line in _waiver_report(section.malformed, notes):
+                print(f"::warning::{line}")
     if result["status"] != "skipped":
         for warning in publish(result, repo=args.repo, pr_number=args.pr_number):
             print(f"::warning::{warning}")
@@ -1360,8 +1564,48 @@ def _handle_check_trust_boundary(args: argparse.Namespace) -> int:
     return 0
 
 
+def _apply_waivers(findings, blocking_set, waivers, repo: Path, confirmed_keys):
+    """R7 for this run's own findings: every finding's flagged-line fingerprint at HEAD, the
+    blocking findings a waiver applies to (finding -> the waiver line), and a note per blocking
+    finding whose matching waiver still needs a maintainer's confirmation."""
+    from scripts.marketplace_ci.review import find_waiver, finding_waiver_key, fingerprint_at
+
+    fingerprints = {}
+    for f in findings:
+        if isinstance(f.path, str) and f.path:
+            fingerprints[f] = fingerprint_at(repo, "HEAD", f.path, f.line)
+    applied: dict = {}
+    notes: list[str] = []
+    if not waivers:
+        return fingerprints, applied, notes
+    for f in findings:
+        if f not in blocking_set or f not in fingerprints:
+            continue
+        rule, path, line = finding_waiver_key(f.rule, f.path, f.line)
+        waiver, why_not = find_waiver(
+            waivers,
+            rule=rule,
+            path=path,
+            line=line,
+            fingerprint=fingerprints[f],
+            reviewers=[f.reviewer, *f.reporters],
+            confirmed=confirmed_keys.__contains__,
+        )
+        if waiver is not None:
+            applied[f] = waiver.text[:300]
+        elif why_not is not None:
+            notes.append(f"{rule} {path}:{line}: the waiver {why_not}")
+    return fingerprints, applied, notes
+
+
 def _finding_to_dict(
-    finding, in_diff: bool | None = None, blocking: bool | None = None, decision=None
+    finding,
+    in_diff: bool | None = None,
+    blocking: bool | None = None,
+    decision=None,
+    *,
+    fingerprint: str | None = None,
+    waiver: str | None = None,
 ) -> dict:
     entry = decision.exception if decision is not None else None
     return {
@@ -1388,6 +1632,8 @@ def _finding_to_dict(
             if entry is not None
             else None
         ),
+        "fingerprint": fingerprint,
+        "waiver": waiver,
     }
 
 
@@ -1627,6 +1873,7 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
         derive_review_scope,
         dispatch_reviewers,
         fallback_files_changed,
+        finding_waiver_key,
         gate_decision,
         general_correctness_coverage,
         probe_sandbox,
@@ -1647,6 +1894,20 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
         exceptions = review_contract.load_exceptions(review_contract.EXCEPTIONS_PATH)
     except review_contract.ContractError as exc:
         return _fail_run_codex_review(args, f"exceptions registry unusable: {exc}")
+
+    # R7/R17: read before dispatch, so the reviewers are briefed and a list that cannot be read
+    # stops the run rather than leaving every waived finding blocking without a word.
+    from scripts.marketplace_ci.review import read_waiver_section
+
+    accepted_text, open_issues, confirmed_keys = "", set(), set()
+    if args.accepted_findings:
+        try:
+            accepted_text, open_issues, confirmed_keys = _load_accepted_findings(
+                args.accepted_findings
+            )
+        except (OSError, ValueError) as exc:
+            return _fail_run_codex_review(args, f"accepted findings unreadable: {exc}")
+    waiver_section = read_waiver_section(accepted_text, open_issues.__contains__)
 
     instructions_dir = Path(args.instructions_dir) if args.instructions_dir else None
     if instructions_dir is not None:
@@ -1782,6 +2043,7 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
             changed_ranges=changed_ranges,
             changed_paths=_changed_path_set(changed),
             exceptions=exceptions,
+            accepted_findings=waiver_section.waivers,
             allow_guardrails_fallback=allow_fallback,
             fallback_root=fallback_root,
             fallback_refusal=refusal,
@@ -1906,6 +2168,13 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
         )
     except Exception as exc:  # fail closed: exit 2 and overwrite the output file
         return _fail_run_codex_review(args, f"diff-scoped classification failed: {exc!r}", reports)
+    try:
+        fingerprints, waivers_applied, waiver_notes = _apply_waivers(
+            findings, blocking_set, waiver_section.waivers, repo, confirmed_keys
+        )
+    except Exception as exc:  # fail closed, like the gate above
+        return _fail_run_codex_review(args, f"waiver matching failed: {exc!r}", reports)
+    blocking_set = {f for f in blocking_set if f not in waivers_applied}
     blocking = bool(blocking_set)
     # What a clean result does not cover (issue #713). Neither changes the gate or the exit code.
     # Coverage is over what the reviewers saw; advisory is over the whole PR delta, since it is
@@ -1920,6 +2189,18 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
         )
     except Exception as exc:  # fail closed, like the classification above
         return _fail_run_codex_review(args, f"coverage/advisory failed: {exc!r}", reports)
+    _append_step_summary(
+        "Blocking findings (waive one with its line in `## Accepted Review Findings`)",
+        [
+            _waiver_hint(*finding_waiver_key(f.rule, f.path, f.line), fingerprints.get(f))
+            for f in findings
+            if f in blocking_set
+        ],
+    )
+    _append_step_summary(
+        "Accepted Review Findings not applied",
+        _waiver_report(waiver_section.malformed, waiver_notes),
+    )
 
     payload = {
         "mode": scope.mode,
@@ -1947,11 +2228,17 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
                     exceptions=exceptions,
                     coverage=coverage,
                 ),
+                fingerprint=fingerprints.get(f),
+                waiver=waivers_applied.get(f),
             )
             for f in findings
         ],
         "coverage": coverage_field,
         "advisory": advisory_field,
+        "waived_findings": len(waivers_applied),
+        "waiver_lines_not_applied": [
+            {"line": text, "why": why} for text, why in waiver_section.malformed
+        ],
         "blocking": blocking,
     }
     output_text = json.dumps(payload, indent=2)
@@ -2177,6 +2464,12 @@ def build_parser() -> argparse.ArgumentParser:
     claude_prompts.add_argument("--base-sha", required=True, metavar="SHA")
     claude_prompts.add_argument("--head-sha", required=True, metavar="SHA")
     claude_prompts.add_argument("--github-output", required=True, metavar="PATH")
+    claude_prompts.add_argument(
+        "--accepted-findings",
+        default="",
+        metavar="PATH",
+        help="fetch-accepted-findings' JSON: the waivers go into the prompts as data (R17)",
+    )
     claude_prompts.set_defaults(handler=_handle_claude_review_prompts)
 
     claude_patch = subparsers.add_parser(
@@ -2201,6 +2494,12 @@ def build_parser() -> argparse.ArgumentParser:
     claude_publish.add_argument("--repo", required=True, metavar="OWNER/REPO")
     claude_publish.add_argument("--pr-number", required=True, type=int)
     claude_publish.add_argument("--result-out", required=True, metavar="PATH")
+    claude_publish.add_argument(
+        "--accepted-findings",
+        default="",
+        metavar="PATH",
+        help="fetch-accepted-findings' JSON: a finding a waiver matches is marked waived (R17)",
+    )
     claude_publish.set_defaults(handler=_handle_publish_claude_review)
 
     headless_pass = subparsers.add_parser(
@@ -2234,6 +2533,12 @@ def build_parser() -> argparse.ArgumentParser:
     carry_findings.add_argument("--anchor-result", default="", metavar="PATH")
     carry_findings.add_argument("--pr-body-file", default="", metavar="PATH")
     carry_findings.add_argument("--repo", default="", metavar="OWNER/REPO")
+    carry_findings.add_argument(
+        "--pr-number",
+        default="",
+        metavar="N",
+        help="the pull request whose comments may confirm a waiver (R7)",
+    )
     carry_findings.add_argument("--json-output", required=True, metavar="PATH")
     carry_findings.set_defaults(handler=_handle_carry_findings)
 
@@ -2287,7 +2592,32 @@ def build_parser() -> argparse.ArgumentParser:
         help="the caller already knows the Codex sandbox is down (an earlier cross-model-review "
         "had to fall back): treat the pre-dispatch probe as failed instead of running it",
     )
+    run_codex_review.add_argument(
+        "--accepted-findings",
+        default="",
+        metavar="PATH",
+        help="fetch-accepted-findings' JSON (R7, R17): a blocking finding a waiver matches is "
+        "recorded as waived, and the waivers brief the reviewers as data",
+    )
     run_codex_review.set_defaults(handler=_handle_run_codex_review)
+
+    fetch_accepted = subparsers.add_parser(
+        "fetch-accepted-findings",
+        help="read a PR's Accepted Review Findings, open deferred issues and confirmations (R7)",
+    )
+    fetch_accepted.add_argument("--repo", default="", metavar="OWNER/REPO")
+    fetch_accepted.add_argument("--pr-number", default="", metavar="N")
+    fetch_accepted.add_argument(
+        "--body-file",
+        default="",
+        metavar="PATH",
+        help="read the waiver lines from this file instead of the PR body (the local list, R17)",
+    )
+    fetch_accepted.add_argument(
+        "--gh", default="gh", metavar="PATH", help="the gh executable (CI passes an absolute path)"
+    )
+    fetch_accepted.add_argument("--output", required=True, metavar="PATH")
+    fetch_accepted.set_defaults(handler=_handle_fetch_accepted_findings)
 
     check_trust_boundary = subparsers.add_parser(
         "check-trust-boundary",

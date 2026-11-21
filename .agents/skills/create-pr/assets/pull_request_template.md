@@ -44,12 +44,14 @@
 
 <!-- Review findings this PR deliberately leaves in place, from any reviewer (a CI review job,
      CodeRabbit, Devin, Codex, a human reviewer). One line per finding:
-       - <rule or reviewer> <path>:<line> – accepted|residual|deferred #<issue>: <reason or link>
+       - <rule or reviewer> <path>:<line> @<fingerprint> – accepted|residual|deferred #<issue>|refuted: <reason or link>
      accepted = an accepted risk; residual = a disclosed limitation; deferred = filed as an open
-     issue (the #<issue> is required). A CI job that reads this section may stop blocking on a
-     finding listed here: for such a finding, use its rule (`-` when it has none) and line (`0`
-     when it has none) exactly as the CI job prints them. A path with spaces cannot be matched.
-     Use "None" if none. -->
+     issue (the #<issue> is required); refuted = shown not to be a defect. Reviewers that read
+     this section do not raise a listed finding again. For a finding a CI job printed, copy its
+     line as printed: its rule (`-` when it has none), line (`0` when it has none) and
+     `@<fingerprint>` (`@-` without a line), which keeps the waiver matching when the line moves.
+     For another reviewer's finding, name the reviewer and leave out the fingerprint. A path with
+     spaces cannot be matched. Use "None" if none. -->
 
 ## Open Items (disclosed, not blocking)
 
