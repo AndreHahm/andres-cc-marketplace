@@ -961,9 +961,10 @@ def _confirmed_waivers(repo: str, pr_number: str, gh: str = "gh") -> set[tuple[s
 
 def _handle_fetch_accepted_findings(args: argparse.Namespace) -> int:
     """Everything R7's waivers need from GitHub, written as one JSON file so the step that runs
-    the reviewers needs no token (R17): the pull request body (or `--body-file`, the local list
-    before a pull request exists), the open issues its `deferred` lines name, and the waiver keys
-    a maintainer confirmed in a comment. Exits 2 when the body cannot be read."""
+    the reviewers needs no token (R17): the pull request body's `## Accepted Review Findings`
+    section only (or `--body-file`, the local list before a pull request exists), the open
+    issues its `deferred` lines name, and the waiver keys a maintainer confirmed in a comment.
+    Exits 2 when the body cannot be read."""
     from scripts.marketplace_ci.review import _section_text, read_waiver_section
 
     has_pr = bool(
@@ -1004,8 +1005,11 @@ def _handle_fetch_accepted_findings(args: argparse.Namespace) -> int:
 
     read_waiver_section(body, issue_is_open)
     confirmed = sorted(_confirmed_waivers(args.repo, args.pr_number, args.gh)) if has_pr else []
+    # Keep only the section, not the whole body: the file is uploaded as an artifact, which would
+    # keep text a later edit removes from the body. Every reader re-extracts the same section.
+    section = _section_text(body)
     payload = {
-        "body": body,
+        "body": "" if section is None else "## Accepted Review Findings" + section,
         "open_issues": sorted(set(open_issues)),
         "confirmed": [list(key) for key in confirmed],
     }

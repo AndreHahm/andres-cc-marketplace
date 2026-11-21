@@ -494,6 +494,27 @@ def test_fetch_accepted_findings_writes_what_the_tokenless_review_step_reads(tmp
     assert main(["fetch-accepted-findings", "--output", str(out)]) == 2
 
 
+def test_fetch_accepted_findings_keeps_only_the_section_of_the_body(tmp_path, monkeypatch):
+    """The output file can be uploaded as an artifact: text outside the section is not kept."""
+    from scripts.marketplace_ci.__main__ import _load_accepted_findings
+
+    monkeypatch.setattr(main_module, "_issue_is_open", lambda repo, n, gh="gh": False)
+    monkeypatch.setattr(main_module, "_confirmed_waivers", lambda repo, pr, gh: set())
+    section = _section("- R7 b_py:4 – accepted")
+    for pr_body, kept in (
+        (f"## Summary\nprivate note\n\n{section}\n## Testing\nother text\n", True),
+        ("## Summary\nprivate note\n", False),
+    ):
+        fake = subprocess.CompletedProcess([], 0, stdout=pr_body, stderr="")
+        monkeypatch.setattr(main_module.subprocess, "run", lambda *a, _f=fake, **k: _f)
+        out = tmp_path / f"accepted-{kept}.json"
+        args = ["fetch-accepted-findings", "--repo", "o/r", "--pr-number", "7", "--gh", "gh"]
+        assert main([*args, "--output", str(out)]) == 0
+        text, _, _ = _load_accepted_findings(str(out))
+        assert "private note" not in text and "other text" not in text
+        assert parse_waivers(text, _never_open) == ({("R7", "b_py", 4)} if kept else set())
+
+
 # --- Security review follow-ups (M1, M2, M4, M5) ---------------------------------------------
 
 
