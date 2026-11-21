@@ -241,3 +241,22 @@ def test_the_shadow_patterns_are_the_workflows_and_the_wrappers():
     spec.loader.exec_module(wrapper)
     assert wrapper._SCRIPTS_SHADOW_PATTERN == review.SCRIPTS_SHADOW_PATTERN
     assert wrapper._TOP_LEVEL_SHADOW_PATTERN == review.TOP_LEVEL_SHADOW_PATTERN
+
+
+def test_the_wrappers_reason_set_is_every_reason_review_advisory_gives():
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("parity", WRAPPER)
+    assert spec is not None and spec.loader is not None
+    wrapper = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(wrapper)
+    # One path per reason; the wrapper refuses a result carrying any reason outside its set.
+    advisory = review_advisory(
+        (
+            "scripts/marketplace_ci/review.py",
+            ".codex/config.toml",
+            "plugins/plugin-devkit/agents/security-reviewer.md",
+        ),
+        ("json.py",),
+    )
+    assert set(advisory["reasons"]) == wrapper._ADVISORY_REASONS

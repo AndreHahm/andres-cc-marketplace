@@ -652,12 +652,20 @@ def _valid_coverage(value: object) -> bool:
     )
 
 
+# Every reason review.py's `review_advisory` gives; a drift test keeps the two equal. The result
+# is branch-produced, so a reason outside this set makes it not a valid result.
+_ADVISORY_REASONS = frozenset(
+    {"review-dispatch-critical", "reviewer-steering", "reviewer-definition", "import-shadow"}
+)
+
+
 def _valid_advisory(value: object) -> bool:
     return (
         isinstance(value, dict)
         and isinstance(value.get("advisory"), bool)
         and _str_list(value.get("paths"))
         and _str_list(value.get("reasons"))
+        and set(value["reasons"]) <= _ADVISORY_REASONS
         and value["advisory"] == bool(value["paths"])
     )
 
@@ -773,7 +781,7 @@ def coverage_and_advisory(data: dict, expected: list[str] | None) -> tuple[list[
     if advisory["advisory"]:
         lines.append(
             "PARITY WARNING: this branch changes what runs or steers the reviewers ("
-            f"{', '.join(advisory['reasons'])}: {_render_paths(advisory['paths'])})."
+            f"{_render_paths(advisory['reasons'])}: {_render_paths(advisory['paths'])})."
         )
     if lines:
         lines.append(
