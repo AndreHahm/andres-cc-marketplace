@@ -618,7 +618,7 @@ jobs:
         if: steps.live_general.outputs.state == 'ok'
         continue-on-error: true
         timeout-minutes: ${{ fromJSON(needs.headless-scope.outputs.pass_minutes) }}
-        uses: anthropics/claude-code-action@4fa93a88de49bbef68b10eb15aabedf28ca0e1ed # ratchet:anthropics/claude-code-action@v1.0.271
+        uses: anthropics/claude-code-action@e5812cd75691ca7bbfc57c0ecf4441db3a1ab7dd # ratchet:anthropics/claude-code-action@v1.0.281
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY_CODE }}
           github_token: ${{ github.token }}
@@ -697,7 +697,7 @@ jobs:
         if: steps.live_security.outputs.state == 'ok'
         continue-on-error: true
         timeout-minutes: ${{ fromJSON(needs.headless-scope.outputs.pass_minutes) }}
-        uses: anthropics/claude-code-action@4fa93a88de49bbef68b10eb15aabedf28ca0e1ed # ratchet:anthropics/claude-code-action@v1.0.271
+        uses: anthropics/claude-code-action@e5812cd75691ca7bbfc57c0ecf4441db3a1ab7dd # ratchet:anthropics/claude-code-action@v1.0.281
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY_CODE }}
           github_token: ${{ github.token }}
