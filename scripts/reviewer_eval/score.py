@@ -110,7 +110,9 @@ def stability(blocking_sets: list[frozenset]) -> dict:
     return {"repeats": len(blocking_sets), "agree": agree, "stable": stable}
 
 
-_CONTEXT_PROVENANCE = ("base_sha", "model", "cli_version", "configured_model", "pinned_cli_version")
+# The recorded pins, not `model`/`cli_version`: those are the reviewers' own report about
+# themselves, which varies between runs under the same pins (issue #586) and is not evidence.
+_CONTEXT_PROVENANCE = ("base_sha", "configured_model", "pinned_cli_version")
 
 
 def _review_context(result: dict, provenance: dict) -> dict:

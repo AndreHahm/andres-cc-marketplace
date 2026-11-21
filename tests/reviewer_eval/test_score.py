@@ -407,13 +407,11 @@ def test_cli_stability_rejects_the_same_file_under_another_spelling(
     assert "same file" in captured.err
 
 
-@pytest.mark.parametrize(
-    "field", ["base_sha", "model", "cli_version", "configured_model", "pinned_cli_version"]
-)
+@pytest.mark.parametrize("field", ["base_sha", "configured_model", "pinned_cli_version"])
 def test_cli_stability_rejects_runs_with_a_different_review_context(
     tmp_path: Path, capsys: pytest.CaptureFixture, field: str
 ):
-    # Same head, but the reviewer was given a different base, model or CLI: not a repeat.
+    # Same head, but the reviewer was given a different base, model pin or CLI pin: not a repeat.
     runs = [_run_file(tmp_path, f"run{n}.json", [], provenance={field: "one"}) for n in range(4)]
     runs.append(_run_file(tmp_path, "run4.json", [], provenance={field: "two"}))
     assert score.main(["--stability", *runs, "--reviewer", "security"]) == 1
@@ -421,6 +419,26 @@ def test_cli_stability_rejects_runs_with_a_different_review_context(
     assert captured.out == ""
     assert "run4.json" in captured.err
     assert field in captured.err
+
+
+def test_cli_stability_ignores_what_the_reviewers_report_about_themselves(
+    tmp_path: Path, capsys: pytest.CaptureFixture
+):
+    # Seen live (issue #586): five runs under the same pins self-reported cli_version as "",
+    # "unknown" and "codex-cli 0.170.0". The self-report is not evidence, so it does not split them.
+    pins = {"configured_model": "gpt-6-luna", "pinned_cli_version": "0.170.0"}
+    reported = [("GPT-6", ""), ("GPT-6", "unknown"), ("gpt-6", "codex-cli 0.170.0"), (None, None)]
+    runs = [
+        _run_file(
+            tmp_path, f"run{n}.json", [], provenance={**pins, "model": model, "cli_version": cli}
+        )
+        for n, (model, cli) in enumerate(reported)
+    ]
+    runs.append(_run_file(tmp_path, "run4.json", [], provenance=pins))
+    assert score.main(["--stability", *runs, "--reviewer", "security"]) == 0
+    printed = json.loads(capsys.readouterr().out)
+    assert printed["agree"] == 5
+    assert printed["stable"] is True
 
 
 def test_cli_stability_rejects_a_field_present_in_one_run_and_absent_in_another(
