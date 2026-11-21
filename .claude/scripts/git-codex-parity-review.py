@@ -273,19 +273,27 @@ LOCAL_ACCEPTED_FINDINGS = Path(".claude/accepted-review-findings.local.md")
 _NO_PR = "no pull requests found"
 
 
-def _open_pr_number() -> str | None:
-    """The number of the open pull request for this branch, `""` when there is none, or None
-    when gh cannot tell (not installed, not signed in, no network): only gh's own "no pull
-    requests found" answer, or a pull request that is not open, counts as none."""
+_PR_URL_RE = re.compile(r"https://github\.com/([A-Za-z0-9._-]+/[A-Za-z0-9._-]+)/pull/([0-9]+)")
+
+
+def _open_pr() -> tuple[str, str] | tuple[str, None] | None:
+    """The number and `owner/repo` of the open pull request for this branch, `("", None)` when
+    there is none, or None when gh cannot tell (not installed, not signed in, no network): only
+    gh's own "no pull requests found" answer, or a pull request that is not open, counts as none.
+    The repository comes from the pull request's own URL, never from `origin`: gh may resolve
+    the branch against another default repository, where the same number is another PR."""
     result = _run(
-        ["gh", "pr", "view", "--json", "number,state", "--jq", 'select(.state == "OPEN") | .number']
+        ["gh", "pr", "view", "--json", "state,url", "--jq", 'select(.state == "OPEN") | .url']
     )
     if result is None:
         return None
-    number = result.stdout.strip()
+    url = result.stdout.strip()
     if result.returncode == 0:
-        return number if number.isdigit() or not number else None
-    return "" if result.returncode == 1 and _NO_PR in result.stderr else None
+        if not url:
+            return "", None
+        match = _PR_URL_RE.fullmatch(url)
+        return (match.group(2), match.group(1)) if match else None
+    return ("", None) if result.returncode == 1 and _NO_PR in result.stderr else None
 
 
 def _local_list_refusal() -> str | None:
@@ -309,11 +317,13 @@ def accepted_findings_source() -> tuple[list[str], str] | str | None:
     """`fetch-accepted-findings`' arguments for the list CI would read (R17): the open pull
     request's body when there is one, else the local file, else None. The second item names the
     source for the log. A string instead says why no list is read although one may apply."""
-    slug, number = _origin_slug(), _open_pr_number()
-    if number is None or (number and not slug):
+    pr = _open_pr()
+    if pr is None:
         return "could not tell whether this branch has an open pull request"
-    if number:
-        return ["--repo", slug or "", "--pr-number", number], f"the body of PR #{number}"
+    number, pr_slug = pr
+    if number and pr_slug:
+        return ["--repo", pr_slug, "--pr-number", number], f"the body of PR #{number}"
+    slug = _origin_slug()
     if LOCAL_ACCEPTED_FINDINGS.is_file() or LOCAL_ACCEPTED_FINDINGS.is_symlink():
         refusal = _local_list_refusal()
         if refusal is not None:

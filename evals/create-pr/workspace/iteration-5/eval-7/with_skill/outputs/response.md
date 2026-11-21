@@ -2,7 +2,7 @@
 
 ## Source note
 
-The brief says `.claude/accepted-review-findings.local.md` sits at the repository root. In this worktree, `Read` of `/home/andre-hahm/Repos/andres-cc-marketplace/.claude/worktrees/ci-accepted-findings-requirements/.claude/accepted-review-findings.local.md` returned "File does not exist". The file is gitignored, so it may only exist in the main checkout. I used the three lines exactly as the brief supplied them.
+The brief says `.claude/accepted-review-findings.local.md` sits at the repository root. In this worktree, `Read` of `<worktree>/.claude/accepted-review-findings.local.md` returned "File does not exist". The file is gitignored, so it may only exist in the main checkout. I used the three lines exactly as the brief supplied them.
 
 ## Line-by-line classification (SKILL.md step 2)
 

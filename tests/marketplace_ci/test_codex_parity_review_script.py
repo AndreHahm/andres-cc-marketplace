@@ -191,6 +191,8 @@ def _run(
     pr_answer = {
         "none": 'echo "no pull requests found for branch \\"b\\"" >&2; exit 1',
         "fail": 'echo "HTTP 401: Bad credentials" >&2; exit 1',
+        # An open PR in the repository gh resolved, which need not be `origin`'s.
+        "open": "echo https://github.com/x/y/pull/9; exit 0",
     }[pr_view]
     # Mirrors gh 2.45.0: `variable list --json` exists, `variable get` does not.
     _stub(
@@ -1426,3 +1428,19 @@ def test_no_sandbox_hint_without_a_sandbox_failure_in_the_result(tmp_path, conte
     if content is not None:
         output.write_text(content, encoding="utf-8")
     assert _load_module().sandbox_rerun_hint(output) is None
+
+
+def test_an_open_pull_request_is_read_from_its_own_repository(repo, tmp_path):
+    # `origin` is o/r, but gh resolved the branch's PR in x/y: the PR's own URL names the
+    # repository, so PR #9 of x/y is read, never PR #9 of o/r.
+    subprocess.run(
+        ["git", "remote", "add", "origin", "https://github.com/o/r.git"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    calls = tmp_path / "uv-calls.txt"
+    result, _, _ = _run(repo, tmp_path, pr_view="open", uv_prelude=f'echo "$@" >> "{calls}"\n')
+    assert result.returncode == 0
+    fetch = [c for c in calls.read_text().splitlines() if "fetch-accepted-findings" in c]
+    assert len(fetch) == 1 and "--repo x/y --pr-number 9" in fetch[0]

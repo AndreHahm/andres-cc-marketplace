@@ -1448,7 +1448,7 @@ _FINGERPRINT = re.compile(rf"[0-9a-f]{{{_FINGERPRINT_LEN}}}|-")
 _WAIVER_LINE = re.compile(
     r"^\s*[-*]\s+(?P<rule>\S(?:.*?\S)?)\s+(?P<path>\S+?):(?P<line>[0-9]+)"
     rf"(?:\s+@(?P<fp>[0-9a-f]{{{_FINGERPRINT_LEN}}}|-))?\s+[-–—]+\s+"
-    r"(?P<kind>accepted|residual|deferred|refuted)\b(?:\s+#(?P<issue>[0-9]+))?",
+    r"(?P<kind>accepted|residual|deferred|refuted)(?![\w-])(?:\s+#(?P<issue>[0-9]+)(?![\w-]))?",
     re.IGNORECASE,
 )
 # The same shape with any kind word and any `@` token, to say why a line is not a waiver.
@@ -1456,6 +1456,8 @@ _WAIVER_LIKE = re.compile(
     r"^\s*[-*]\s+\S(?:.*?\S)?\s+\S+?:[0-9]+(?:\s+@(?P<fp>\S*))?\s+[-–—]+\s+(?P<kind>[^\s:#]+)"
 )
 _HTML_COMMENT = re.compile(r"<!--.*?(?:-->|\Z)", re.DOTALL)
+_CONTROL_CHARS = re.compile(r"[\x00-\x1f\x7f]")
+_FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
 _MAX_WAIVERS = 200
 _SECURITY_REVIEWER = "security-reviewer"
 
@@ -1551,10 +1553,13 @@ def locate_fingerprint(
 
 
 def _section_text(pr_body: str) -> str | None:
-    match = _WAIVER_SECTION.search(pr_body or "")
+    # HTML comments go first: a commented-out section before the visible one would otherwise be
+    # selected, with its opening `<!--` cut off, so its hidden lines would apply.
+    body = _HTML_COMMENT.sub("", pr_body or "")
+    match = _WAIVER_SECTION.search(body)
     if match is None:
         return None
-    rest = pr_body[match.end() :]
+    rest = body[match.end() :]
     end = re.search(r"^#{1,2}\s", rest, re.MULTILINE)
     return rest[: end.start()] if end else rest
 
@@ -1570,6 +1575,7 @@ def read_waiver_section(pr_body: str, issue_is_open: Callable[[int], bool]) -> W
     section = _HTML_COMMENT.sub("", section)
     waivers: list[Waiver] = []
     malformed: list[tuple[str, str]] = []
+    looked_up: dict[int, bool] = {}
     for raw in section.splitlines():
         text = raw.strip()
         if not text or text.lower().strip("-* .") == "none":
@@ -1586,14 +1592,21 @@ def read_waiver_section(pr_body: str, issue_is_open: Callable[[int], bool]) -> W
             malformed.append((text, why))
             continue
         kind = m["kind"].lower()
-        if kind == "deferred" and not (m["issue"] and issue_is_open(int(m["issue"]))):
-            malformed.append((text, "deferred needs an open issue of this repository"))
-            continue
+        # The cap first, so a line past it starts no issue lookup.
         if len(waivers) >= _MAX_WAIVERS:
             malformed.append((text, f"more than {_MAX_WAIVERS} waiver lines"))
             continue
+        if kind == "deferred":
+            number = int(m["issue"]) if m["issue"] else None
+            if number is not None and number not in looked_up:
+                looked_up[number] = issue_is_open(number)
+            if number is None or not looked_up[number]:
+                malformed.append((text, "deferred needs an open issue of this repository"))
+                continue
         fp = m["fp"].lower() if m["fp"] else None
-        waivers.append(Waiver(m["rule"], m["path"], int(m["line"]), fp, kind, text))
+        # Control characters (a tab) as one space: a carried waiver line may hold none (R7).
+        clean = " ".join(_CONTROL_CHARS.sub(" ", text).split())
+        waivers.append(Waiver(m["rule"], m["path"], int(m["line"]), fp, kind, clean))
     return WaiverSection(tuple(waivers), tuple(malformed))
 
 
@@ -1651,7 +1664,24 @@ def parse_confirmations(comment_body: str) -> set[tuple[str, str, str]]:
     """The waivers one comment confirms, one line each: `- confirmed <rule> <path> @<fingerprint>`.
     A confirmation names the fingerprint, so it lapses when the flagged line's text changes."""
     keys: set[tuple[str, str, str]] = set()
-    for raw in (comment_body or "").splitlines():
+    fence: str | None = None
+    # A line inside an HTML comment or a fenced code block is an example, not a confirmation; a
+    # block quote never matches, since the line must start with the bullet.
+    # On "\n" only, as GitHub renders lines: splitlines() also splits on U+2028 and form feed.
+    for raw in _HTML_COMMENT.sub("", comment_body or "").replace("\r\n", "\n").split("\n"):
+        opened = _FENCE.match(raw)
+        if opened is not None:
+            marker, rest = opened.group(1), opened.group(2)
+            if fence is None:
+                fence = marker
+                continue
+            # Only a bare fence of the same kind and at least the same length closes one
+            # (CommonMark); "```python" inside an open block is code.
+            if marker[0] == fence[0] and len(marker) >= len(fence) and not rest.strip():
+                fence = None
+            continue
+        if fence is not None:
+            continue
         m = _CONFIRMATION_LINE.match(raw)
         if m is not None:
             keys.add(confirmation_key(m["rule"], m["path"], m["fp"].lower()))
@@ -1688,6 +1718,34 @@ def find_waiver(
             f"`- confirmed {rule} {path} @{waiver.fingerprint or '<fingerprint>'}`"
         )
     return None, blocked
+
+
+def stale_waiver_notes(
+    waivers: Sequence[Waiver],
+    used: Iterable[Waiver],
+    unwaived: Iterable[tuple[str, str, int, str | None]],
+) -> list[str]:
+    """R7 reports every section line that is not applied. A waiver that applied to no finding
+    while an unwaived finding has its rule and path, but another line's text, most likely names
+    a line that changed since: say so, with the fingerprint the line has now."""
+    applied = {id(w) for w in used}
+    notes: list[str] = []
+    for waiver in waivers:
+        if id(waiver) in applied or waiver.fingerprint in (None, "-"):
+            continue
+        current = sorted(
+            {
+                f"{ln} @{fp}"
+                for r, p, ln, fp in unwaived
+                if (r, p) == (waiver.rule, waiver.path) and fp
+            }
+        )
+        if current:
+            notes.append(
+                f"{waiver.text}: its fingerprint matches no flagged line of {waiver.rule} "
+                f"{waiver.path} (now: {', '.join(current)}); the line changed or another is meant"
+            )
+    return notes
 
 
 _BRIEFING_RULE = re.compile(r"[A-Za-z0-9._/:()-]{1,64}")

@@ -1074,8 +1074,13 @@ def _handle_carry_findings(args: argparse.Namespace) -> int:
             print(f"carry-findings: cannot read inputs: {exc}", file=sys.stderr)
             return 2
 
+        looked_up: dict[int, bool] = {}
+
         def issue_is_open(n: int) -> bool:
-            return _issue_is_open(args.repo, n)
+            # The section is parsed twice (carry and report); look each issue up once.
+            if n not in looked_up:
+                looked_up[n] = _issue_is_open(args.repo, n)
+            return looked_up[n]
 
         confirmations: set[tuple[str, str, str]] | None = None
 
@@ -1372,7 +1377,7 @@ def _handle_publish_claude_review(args: argparse.Namespace) -> int:
     and writes the result file. Exits 1 when the check fails: a Critical or Major finding, or
     a review that could not run."""
     from scripts.marketplace_ci.claude_review import (
-        _gh,
+        _gh_raw,
         apply_waivers,
         decide,
         head_line_reader,
@@ -1424,7 +1429,7 @@ def _handle_publish_claude_review(args: argparse.Namespace) -> int:
             print(f"::warning::the accepted review findings could not be read: {exc}")
         else:
             section = read_waiver_section(body, open_issues.__contains__)
-            reader = head_line_reader(args.repo, args.head_sha, _gh)
+            reader = head_line_reader(args.repo, args.head_sha, lambda a, _p=None: _gh_raw(a))
             notes = apply_waivers(result, section.waivers, confirmed, reader)
             for line in _waiver_report(section.malformed, notes):
                 print(f"::warning::{line}")
@@ -1601,7 +1606,12 @@ def _apply_waivers(findings, blocking_set, waivers, repo: Path, confirmed_keys):
     """R7 for this run's own findings: every finding's flagged-line fingerprint at HEAD, the
     blocking findings a waiver applies to (finding -> the waiver line), and a note per blocking
     finding whose matching waiver still needs a maintainer's confirmation."""
-    from scripts.marketplace_ci.review import find_waiver, finding_waiver_key, fingerprint_at
+    from scripts.marketplace_ci.review import (
+        find_waiver,
+        finding_waiver_key,
+        fingerprint_at,
+        stale_waiver_notes,
+    )
 
     fingerprints = {}
     for f in findings:
@@ -1611,6 +1621,8 @@ def _apply_waivers(findings, blocking_set, waivers, repo: Path, confirmed_keys):
     notes: list[str] = []
     if not waivers:
         return fingerprints, applied, notes
+    used = []
+    unwaived = []
     for f in findings:
         if f not in blocking_set or f not in fingerprints:
             continue
@@ -1626,8 +1638,12 @@ def _apply_waivers(findings, blocking_set, waivers, repo: Path, confirmed_keys):
         )
         if waiver is not None:
             applied[f] = waiver.text[:300]
-        elif why_not is not None:
+            used.append(waiver)
+            continue
+        unwaived.append((rule, path, line, fingerprints[f]))
+        if why_not is not None:
             notes.append(f"{rule} {path}:{line}: the waiver {why_not}")
+    notes.extend(stale_waiver_notes(waivers, used, unwaived))
     return fingerprints, applied, notes
 
 
