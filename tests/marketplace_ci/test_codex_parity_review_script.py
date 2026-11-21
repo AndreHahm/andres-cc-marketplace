@@ -171,6 +171,7 @@ def _run(
     result_json: str | None = "auto",
     uv_prelude: str = "",
     output_name: str = "out.json",
+    pr_view: str = "none",
 ):
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir(exist_ok=True)
@@ -185,11 +186,18 @@ def _run(
         "uv",
         f'echo "$@ " > "{log}.args"\nenv > "{log}.env"\n{uv_prelude}{write_result}exit {uv_rc}',
     )
+    # `pr view` answers as gh 2.105.0 does with no pull request ("none"), or fails like an auth or
+    # network error ("fail").
+    pr_answer = {
+        "none": 'echo "no pull requests found for branch \\"b\\"" >&2; exit 1',
+        "fail": 'echo "HTTP 401: Bad credentials" >&2; exit 1',
+    }[pr_view]
     # Mirrors gh 2.45.0: `variable list --json` exists, `variable get` does not.
     _stub(
         bin_dir,
         "gh",
         f'echo "$@" >> "{log}.gh"\n'
+        f'if [ "$1 $2" = "pr view" ]; then {pr_answer}; fi\n'
         '[ "$2" = "list" ] || { echo "unknown command" >&2; exit 1; }\n'
         # The selector names the variable asked for; answer the timeout one separately.
         'case "$*" in *CODEX_KIT_REVIEW_TIMEOUT_MS*)\n'
@@ -245,6 +253,38 @@ def test_the_local_list_reaches_the_review_before_a_pull_request_exists(repo, tm
         result.stdout
     )
     assert f"--accepted-findings {tmp_path / 'out-accepted.json'}" in args
+
+
+def test_a_failed_pull_request_lookup_reads_no_list(repo, tmp_path):
+    # A failed `gh pr view` is not "no pull request": an open PR's body may differ from the local
+    # list, so neither is read and the run says so.
+    (repo / ".claude").mkdir()
+    (repo / ".claude/accepted-review-findings.local.md").write_text(
+        "- R6 a.py:3 – accepted\n", encoding="utf-8"
+    )
+    result, args, _ = _run(repo, tmp_path, pr_view="fail")
+    assert "PARITY WARNING: accepted review findings not read" in result.stdout
+    assert "could not tell whether this branch has an open pull request" in result.stdout
+    assert "accepted findings: not read" in result.stdout
+    assert "--accepted-findings" not in args
+
+
+def test_a_tracked_local_list_is_not_used(repo, tmp_path):
+    # Same rule as cross-model-review's helper: a tracked copy was written by the branch.
+    (repo / ".claude").mkdir()
+    (repo / ".claude/accepted-review-findings.local.md").write_text(
+        "- R6 a.py:3 – accepted\n", encoding="utf-8"
+    )
+    subprocess.run(
+        ["git", "add", "-f", ".claude/accepted-review-findings.local.md"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    result, args, _ = _run(repo, tmp_path)
+    assert "PARITY WARNING: accepted review findings not read" in result.stdout
+    assert "tracked by git" in result.stdout
+    assert "--accepted-findings" not in args
 
 
 def test_an_unreadable_accepted_list_is_reported_as_a_difference(repo, tmp_path):

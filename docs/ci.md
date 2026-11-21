@@ -481,7 +481,9 @@ review` is the gate after the PR exists and reviews only the delta, to cut OpenA
     through the contents API and marks a match waived (rule `claude-general` or `claude-security`): not
     posted inline, listed as waived, not failing the check; a security-pass finding needs a confirmation.
   - **Local parity review:** `git-codex-parity-review.py` passes the open PR's body, else the local file,
-    to `run-codex-review --accepted-findings`; a list it cannot read is a stated difference from CI.
+    to `run-codex-review --accepted-findings`; a list it cannot read is a stated difference from CI. Only
+    gh's "no pull requests found" counts as no PR: a failed lookup reads neither list, and a local file is
+    read only under `git-review-accepted-findings.py`'s rule (no symlink on its path, not tracked by git).
   - **`cross-model-review`:** its Preflight step 7 briefs the local file to both models, and Phase 3
     marks a matched finding `waived (<kind>)` through `git-review-accepted-findings.py`, git-kit's copy of
     the parser and match key (`tests/marketplace_ci/test_git_review_accepted_findings.py` keeps it equal

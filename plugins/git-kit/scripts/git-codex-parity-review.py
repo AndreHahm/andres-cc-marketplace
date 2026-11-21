@@ -270,25 +270,54 @@ def _origin_slug() -> str | None:
 LOCAL_ACCEPTED_FINDINGS = Path(".claude/accepted-review-findings.local.md")
 
 
+_NO_PR = "no pull requests found"
+
+
 def _open_pr_number() -> str | None:
-    """The number of the open pull request for this branch, or None (none, or gh unavailable)."""
+    """The number of the open pull request for this branch, `""` when there is none, or None
+    when gh cannot tell (not installed, not signed in, no network): only gh's own "no pull
+    requests found" answer, or a pull request that is not open, counts as none."""
     result = _run(
         ["gh", "pr", "view", "--json", "number,state", "--jq", 'select(.state == "OPEN") | .number']
     )
-    if result is None or result.returncode != 0:
+    if result is None:
         return None
     number = result.stdout.strip()
-    return number if number.isdigit() else None
+    if result.returncode == 0:
+        return number if number.isdigit() or not number else None
+    return "" if result.returncode == 1 and _NO_PR in result.stderr else None
 
 
-def accepted_findings_source() -> tuple[list[str], str] | None:
+def _local_list_refusal() -> str | None:
+    """Why the local list must not be read, by cross-model-review's helper rule (a symlink on its
+    path, a copy git tracks, or git unable to tell), or None."""
+    helper = Path(__file__).with_name("git-review-accepted-findings.py")
+    try:
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location("git_review_accepted_findings", helper)
+        if spec is None or spec.loader is None:
+            raise ImportError(helper)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module._list_refusal()
+    except Exception as exc:  # the helper is missing or broken: fail closed
+        return f"its trust check could not run ({type(exc).__name__})"
+
+
+def accepted_findings_source() -> tuple[list[str], str] | str | None:
     """`fetch-accepted-findings`' arguments for the list CI would read (R17): the open pull
     request's body when there is one, else the local file, else None. The second item names the
-    source for the log."""
+    source for the log. A string instead says why no list is read although one may apply."""
     slug, number = _origin_slug(), _open_pr_number()
-    if slug and number:
-        return ["--repo", slug, "--pr-number", number], f"the body of PR #{number}"
-    if LOCAL_ACCEPTED_FINDINGS.is_file() and not LOCAL_ACCEPTED_FINDINGS.is_symlink():
+    if number is None or (number and not slug):
+        return "could not tell whether this branch has an open pull request"
+    if number:
+        return ["--repo", slug or "", "--pr-number", number], f"the body of PR #{number}"
+    if LOCAL_ACCEPTED_FINDINGS.is_file() or LOCAL_ACCEPTED_FINDINGS.is_symlink():
+        refusal = _local_list_refusal()
+        if refusal is not None:
+            return f"{LOCAL_ACCEPTED_FINDINGS}: {refusal}"
         return ["--body-file", str(LOCAL_ACCEPTED_FINDINGS)], str(LOCAL_ACCEPTED_FINDINGS)
     return None
 
@@ -548,7 +577,10 @@ def main() -> int:
         differences.append("model: the local default, not CI's")
     accepted_args: list[str] = []
     source = accepted_findings_source()
-    if source is not None:
+    if isinstance(source, str):
+        print(f"PARITY WARNING: accepted review findings not read: {source}.")
+        differences.append("accepted findings: not read, so waived findings block here")
+    elif source is not None:
         fetch_args, label = source
         accepted = output.with_name(f"{output.stem}-accepted.json")
         if accepted.is_symlink() or accepted.exists():
