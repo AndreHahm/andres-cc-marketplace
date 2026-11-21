@@ -1,0 +1,26 @@
+{
+  "eval_id": 21,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Resolver step 3 asks whether to continue without Codex or stop",
+      "passed": true,
+      "evidence": "Question \"Proceed without Codex, with Claude and pi cross-examining each other, or stop the review?\" with options \"Proceed without Codex\" / \"Stop review\"."
+    },
+    {
+      "text": "States the run is not single-model mode: Phase 2 runs between Claude and pi",
+      "passed": true,
+      "evidence": "\"pi did, so Phase 2 runs\"; \"single_model_mode is not set\". The agent noted resolver step 3's sub-bullet ('take the full single-model path') could be read literally to skip that Phase 2."
+    },
+    {
+      "text": "pi is skipped for batch 2 only, with the timeout recorded and no retry; batch 1 and 3 envelopes are kept",
+      "passed": true,
+      "evidence": "\"pi challenger, batch 2: skipped. A Phase 1 typed failure means no Phase 2 dispatch for that vendor and batch\"; \"There is no timeout retry for an optional model\"; batches 1 and 3 valid and challenged."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

@@ -4,6 +4,18 @@ Extracted from SKILL.md's Inputs section per plugin-rulebook's R13 (SKILL.md gre
 Critical threshold). SKILL.md keeps the actual commands and the one-line pointers to each rationale
 below; this file holds the fuller explanations.
 
+## Why the diff uses the merge-base as a single ref, never `$BASE...HEAD`
+
+`git diff A...B` only shows *committed* differences between the merge-base and `B`; it never includes
+staged or unstaged working-tree changes. Since this skill's own stated purpose is reviewing "the current
+diff" / "the local working diff" (see SKILL.md's intro and "When to Use"), a two-dot diff would silently
+skip any uncommitted work-in-progress — including the common case of reviewing before the first commit
+is even made. A single-ref `git diff <merge-base>` includes the working tree (index and unstaged changes
+both) on top of the merge-base.
+
+The command is built as an **argv array**, not a string, so a `$SCOPE` containing spaces or glob
+characters survives intact.
+
 ## Why untracked files must be intent-added before diffing
 
 A brand-new file that was never `git add`ed shows up in `git status` as `??` but produces *no* output

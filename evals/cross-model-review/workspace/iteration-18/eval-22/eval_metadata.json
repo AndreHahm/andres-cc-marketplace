@@ -1,0 +1,26 @@
+{
+  "eval_id": 22,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {
+      "text": "F1 High and F2 High",
+      "type": "functionality",
+      "target": "references/optional-models.md"
+    },
+    {
+      "text": "F3 Low/contested despite three-model Phase 1 agreement",
+      "type": "functionality",
+      "target": "references/optional-models.md"
+    },
+    {
+      "text": "F4 Medium",
+      "type": "functionality",
+      "target": "references/optional-models.md"
+    },
+    {
+      "text": "Each challenger received every other model's findings for its batch, grouped by reviewer",
+      "type": "functionality",
+      "target": "references/optional-models.md"
+    }
+  ]
+}

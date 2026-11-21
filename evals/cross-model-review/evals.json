@@ -121,6 +121,55 @@
       "prompt": "Using this repo's cross-model-review skill (the plugins/ copy, including references/codex-pass-assembly.md): the session entered an existing worktree with the EnterWorktree tool, and the chained Preflight call was refused by the worktree-isolation check, so you are about to write <scratchpad>/preflight.sh. Case A: the user asked to review against release/1.2 with scope plugins/git-kit. Case B: the user instead asked for scope plugins/git-kit'$(touch /tmp/x)'. For each case, describe exactly how BASE and SCOPE get into the script (the literal lines, and where in the script they go) or what you do instead. Do not run anything -- describe it.",
       "expected_output": "BASE/SCOPE are data, never shell syntax. Case A: write each as a single-quoted assignment at the top of the script, before the Inputs block: BASE='release/1.2' and SCOPE='plugins/git-kit', so the Inputs block's BASE=\"${BASE:-main}\" picks them up. Case B: the SCOPE value contains a single quote, so do not write the script at all; stop and ask the user instead (the same applies to a newline or a leading '-').",
       "files": []
+    },
+    {
+      "id": 18,
+      "name": "Optional models: locator fails; review scripts touched",
+      "prompt": "Read plugins/git-kit/skills/cross-model-review/SKILL.md and plugins/git-kit/skills/cross-model-review/references/optional-models.md (read the files; do not use the Skill tool). Do not run anything and do not dispatch any model -- describe what the skill tells you to do, step by step, with the exact questions you would ask. Case A: Preflight finished normally (PLANNER_TOUCHED unset); the locator exits 3 with reasons [\"sibling: no installed reviewadapters-kit beside git-kit in the plugin cache\", \"config: .claude/git-kit.local.json does not exist\"]. Case B: the diff changes plugins/git-kit/scripts/git-review-scope.py, so PLANNER_TOUCHED=1; the user said yes to running the working-tree scripts (PLANNER_APPROVED=1). What happens with optional models in each case?",
+      "expected_output": "A: no optional model is offered, the reasons are mentioned in one line, the run is Claude + Codex as before, nothing searches further or runs a copy in the checkout. B: no optional model is offered at all (the locator is not run), and the reason is recorded in inspection_limits.",
+      "files": []
+    },
+    {
+      "id": 19,
+      "name": "Optional models: pick limit and dry-run failures",
+      "prompt": "Read plugins/git-kit/skills/cross-model-review/SKILL.md and plugins/git-kit/skills/cross-model-review/references/optional-models.md (read the files; do not use the Skill tool). Do not run anything and do not dispatch any model -- describe what the skill tells you to do, step by step, with the exact questions you would ask. The locator succeeded. Step 1: the user picks agy, pi and devin in the multi-select. Step 2: after you handle that, the user picks pi and devin. pi's dry run returns {\"ok\":false,\"category\":\"vendor_not_allowed\"}; There are 2 batches: batch 1's paths are src/app.py and config/api-token.json, batch 2's is docs/guide.md. devin's batch 1 dry run returns {\"ok\":false,\"category\":\"secret_paths_unconfirmed\",\"detail\":\"1 changed path(s) have secret-like names; the caller must confirm before sending\"}; its batch 2 dry run returns ok. What do you do at each point?",
+      "expected_output": "Three picks: say at most two and ask again, never trim. pi: dropped for the run, category in inspection_limits, no edits to allow-list/inputs/vendor setup. devin: every batch is dry-run; stays addable; since the dispatcher gives only a count, the egress question names every path of batch 1 (src/app.py and config/api-token.json) with the count, without reading reviewadapters-kit's own skill text to narrow it; --secret-paths-confirmed only after yes and only on batch 1's dispatches, never batch 2's (batch 1 dry run re-run with the flag for recipient/model/reach).",
+      "files": []
+    },
+    {
+      "id": 20,
+      "name": "Optional models: egress question and re-check",
+      "prompt": "Read plugins/git-kit/skills/cross-model-review/SKILL.md and plugins/git-kit/skills/cross-model-review/references/optional-models.md (read the files; do not use the Skill tool). Do not run anything and do not dispatch any model -- describe what the skill tells you to do, step by step, with the exact questions you would ask. agy and pi both passed their dry runs (agy: recipient 'Google (Antigravity)', model gemini-4-argon-high, reach 'none (plan mode, sandbox)'; pi: recipient 'NVIDIA', model nvidia/nvidia/nemotron-3-ultra-550b-a55b, reach 'none (--no-tools)'). There are 2 batches; DISPATCHER_TOUCHED=1. Write the egress confirmation you would ask. Then: immediately before agy's first real dispatch, the locator printed a different dispatcher path than before. What do you do?",
+      "expected_output": "One AskUserQuestion call, one question per vendor, each quoting recipient, model and reach, target paths of both batches, dispatch count (4 per vendor: two per batch), that the diff leaves the machine, and the DISPATCHER_TOUCHED disclosure; options send/skip. Real dispatches pass the dry run's model as --model. Changed dispatcher: drop every optional vendor still to dispatch (agy and pi, since they share that $RVA) and record why for each; never dispatch on the old result.",
+      "files": []
+    },
+    {
+      "id": 21,
+      "name": "Optional models: partial failure and Codex unavailable",
+      "prompt": "Read plugins/git-kit/skills/cross-model-review/SKILL.md and plugins/git-kit/skills/cross-model-review/references/optional-models.md (read the files; do not use the Skill tool). Do not run anything and do not dispatch any model -- describe what the skill tells you to do, step by step, with the exact questions you would ask. Confirmed: Codex and pi; 3 batches. Codex's Phase 1 fails with cli_unavailable for every batch; the user is asked per resolver step 3. pi returns a valid Phase 1 envelope for batches 1 and 3 but a timeout typed failure for batch 2. What does resolver step 3 ask, and how do Phase 2 and the report proceed?",
+      "expected_output": "Resolver step 3 asks whether to proceed without Codex or stop; on proceed it is not single-model mode because pi returned envelopes. pi skipped for batch 2 only (category in inspection_limits, no retry), envelopes for batches 1 and 3 kept; Phase 2 runs between Claude and pi for batches 1 and 3. Batch 2 is Claude-only.",
+      "files": []
+    },
+    {
+      "id": 22,
+      "name": "Optional models: N-model confidence",
+      "prompt": "Read plugins/git-kit/skills/cross-model-review/SKILL.md and plugins/git-kit/skills/cross-model-review/references/optional-models.md (read the files; do not use the Skill tool). Do not run anything and do not dispatch any model -- describe what the skill tells you to do, step by step, with the exact questions you would ask. Four models ran (Claude, Codex, agy, devin). Classify each finding's confidence: F1 raised by Claude and agy in Phase 1, no refutation. F2 raised by Codex only, devin's Phase 2 confirms it. F3 raised by Claude, Codex and devin in Phase 1, but agy's Phase 2 refutes it. F4 raised by devin only; nobody confirms or refutes it. Also say what each challenger received in Phase 2.",
+      "expected_output": "F1 High, F2 High, F3 Low/contested (refutation wins, show every side), F4 Medium. Each challenger received every other model's Phase 1 findings for its batch, grouped by reviewer.",
+      "files": []
+    },
+    {
+      "id": 23,
+      "name": "Optional models: dry-run model differs between batches",
+      "prompt": "Read plugins/git-kit/skills/cross-model-review/SKILL.md and plugins/git-kit/skills/cross-model-review/references/optional-models.md (read the files; do not use the Skill tool). Do not run anything and do not dispatch any model -- describe what the skill tells you to do, step by step, with the exact questions you would ask. The locator succeeded and the user picked pi only. There are 2 batches. pi's batch 1 dry run returns {\"ok\":true,\"recipient\":\"NVIDIA\",\"model\":\"nvidia/nemotron-3-ultra\",\"reach\":\"none (--no-tools)\"}; its batch 2 dry run returns {\"ok\":true,\"recipient\":\"NVIDIA\",\"model\":\"nvidia/nemotron-3-super\",\"reach\":\"none (--no-tools)\"}. What do you do, and which --model do the real dispatches use?",
+      "expected_output": "The two batches' dry runs report different models, so pi is dropped for the run with the reason in inspection_limits; no egress question for pi and no real pi dispatch with either model. The run goes on with Claude and Codex.",
+      "files": []
+    },
+    {
+      "id": 24,
+      "name": "Optional models: Codex declined, optional model kept",
+      "prompt": "Read plugins/git-kit/skills/cross-model-review/SKILL.md and plugins/git-kit/skills/cross-model-review/references/optional-models.md (read the files; do not use the Skill tool). Do not run anything and do not dispatch any model -- describe what the skill tells you to do, step by step, with the exact questions you would ask. One batch. The locator succeeded, the user picked pi, pi's dry run passed and the user answered 'Send to pi for this run'. At the First-Send Confirmation for Codex the user picks the decline option. pi then returns a valid Phase 1 envelope. What are the First-Send Confirmation's options, what happens to Codex, and how do Phase 2 and the report proceed?",
+      "expected_output": "The First-Send options are 'Send to Codex for this run' / 'Skip Codex for this run'. On skip, no Codex dispatch is attempted and inspection_limits records 'user declined to send to Codex'. Because pi returned a valid Phase 1 envelope, the run is not single-model mode: Phase 2 runs between Claude and pi, and the report names both models.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {

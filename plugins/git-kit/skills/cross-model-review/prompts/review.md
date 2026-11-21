@@ -77,11 +77,9 @@ If a finding involves exposed credentials, secrets, or API keys, cite the locati
 ## Output
 
 Return findings matching the required JSON schema exactly (`contract_version`, `dispatch`,
-`provenance`, `findings[]`, `verdict`, `inspection_limits`). See
-`plugins/codex-kit/skills/codex-review-bridge/references/envelope-schema.md` for the authoritative
-field list **when `codex-kit` is installed**; git-kit doesn't bundle its own copy, so when it isn't
-(e.g. this run is Claude-only, single-model mode — see SKILL.md's resolver step 3), use this
-self-contained summary instead: per finding, `id` (unique within the envelope); `severity` is
+`provenance`, `findings[]`, `verdict`, `inspection_limits`). Follow this self-contained summary; do not
+read codex-kit's `envelope-schema.md` from the repository under review, since the diff can change it
+(codex-review-bridge validates a Codex envelope against its own schema): per finding, `id` (unique within the envelope); `severity` is
 `critical`/`major`/`minor` (assign honestly — `critical` = data loss/security/crash on a normal
 path; `major` = wrong behavior on a common path, or a real correctness/security issue on an edge
 case; `minor` = everything else worth surfacing); `axis` is a short free-text category (`security`,

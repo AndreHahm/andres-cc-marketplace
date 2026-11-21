@@ -1,0 +1,31 @@
+{
+  "eval_id": 20,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Asks one question per vendor (in one AskUserQuestion call), each quoting that vendor's recipient, model and reach",
+      "passed": false,
+      "evidence": "Per-vendor questions quote recipient, model and reach (agy: 'Google (Antigravity)', gemini-4-argon-high, 'none (plan mode, sandbox)'), but the procedure says \"Egress confirmation, one AskUserQuestion per remaining vendor\" -- separate calls, not one call with one question each. The bold lead phrase in optional-models.md section 3 ('one egress confirmation per remaining vendor') invites that reading."
+    },
+    {
+      "text": "Each question states the batches' target paths, the dispatch count and that the diff leaves the machine, and repeats the DISPATCHER_TOUCHED disclosure",
+      "passed": true,
+      "evidence": "\"It covers 4 dispatches: a Phase 1 review and a Phase 2 cross-examination for each of the 2 batches\"; \"The full diff text of these files leaves this machine: <union of both batches' eligible paths>\"; \"DISPATCHER_TOUCHED=1, so this diff changes the Codex dispatcher\"."
+    },
+    {
+      "text": "Real dispatches pass the dry run's model as --model",
+      "passed": true,
+      "evidence": "\"Phase 1 is node \\\"$RVA\\\" ... --model <confirmed> ...\""
+    },
+    {
+      "text": "A changed dispatcher at the re-check drops agy for the run with the reason; the earlier locator result is not used",
+      "passed": true,
+      "evidence": "\"I would not dispatch to agy. The procedure says to drop agy for this run, record why, and never dispatch on the old result.\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 3,
+    "pass_rate": 0.75
+  }
+}

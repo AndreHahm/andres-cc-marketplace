@@ -42,9 +42,11 @@ activation. This file holds the deeper concrete-scenario and quality-gate checkl
 9. Every changed file is a deletion or an invalid-charset path (Preflight step 2's eligible list is
    empty) → single-model mode is entered proactively, before any dispatch attempt, with
    `inspection_limits` recording "zero Codex-eligible paths" rather than "Codex unavailable."
-10. The First-Send Confirmation is answered "Stay Claude-native for this run" → single-model mode is
-    entered immediately, with `inspection_limits` recording "user declined to send to Codex," never a
-    dispatch attempt on the declined path.
+10. The First-Send Confirmation is answered "Skip Codex for this run" → no Codex dispatch is ever
+    attempted, and `inspection_limits` records "user declined to send to Codex". With no confirmed
+    optional model, single-model mode is entered immediately; when a confirmed optional model returns a
+    valid Phase 1 envelope, Phase 2 runs between Claude and that model instead (as scenario 45 does for
+    an unavailable Codex).
 11. Codex's Phase 2 dispatch returns an envelope with `dispatch.reviewer: "challenger-reviewer"`
     (exactly the `--reviewer-type` it was invoked with, per `refute.md`'s corrected instruction) →
     the bridge's `semanticallyValidate` accepts it; a hand-picked alternate name like
@@ -75,8 +77,8 @@ activation. This file holds the deeper concrete-scenario and quality-gate checkl
     Preflight exclusion is still preferred since it also stops the symlink's content from being sent
     to Codex at all, not just its citation from surviving); Claude's own native review still covers it.
 19. `codex-kit` is genuinely not installed (single-model mode) → Claude's native pass still produces
-    a correctly-shaped envelope using `review.md`'s self-contained field summary, without needing to
-    read `envelope-schema.md` (which doesn't exist in this scenario since git-kit doesn't bundle it).
+    a correctly-shaped envelope using `review.md`'s self-contained field summary, the contract in every
+    case (git-kit doesn't bundle `envelope-schema.md`, and the checkout's copy is never read).
 20. The review scope includes an untracked file → after this run finishes, `git status` on the real
     repository still shows it as `??`, exactly as before the run — no lingering intent-to-add entry,
     since `git add -N` ran against a throwaway `GIT_INDEX_FILE`, never `.git/index`.
@@ -179,6 +181,39 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
     approved per call, never session-wide, and every `$RUN` file is still written by the helper. No
     scratchpad, or a call still refused in that form, stops the run with a report. A session that did not
     use `EnterWorktree` never uses `Write`.
+39. The locator exits 3 (no installed reviewadapters-kit, or every candidate refused) → no optional
+    model is offered, the reasons are mentioned in one line, and the run is Claude and Codex exactly as
+    before; nothing searches further or runs a copy inside the checkout (`references/optional-models.md`
+    section 1; the locator's own cases are in `tests/marketplace_ci/test_git_review_locate_rva.py`).
+40. The locator succeeds and the user picks three models → the skill says at most two may be picked and
+    asks again; it never trims the list itself. No pick → Claude and Codex only.
+41. A picked vendor's dry run returns `vendor_not_allowed` (or `cli_unavailable`) → that vendor is
+    dropped for the run with its category in `inspection_limits`; the allow-list, inputs and vendor setup
+    are never edited to make it pass, and the other picked vendor still goes on.
+42. A dry run returns `secret_paths_unconfirmed` (it gives only a count) → every batch is dry-run, the
+    vendor stays addable, its egress question names every path of the flagged batch with the batch and
+    the dispatcher's count (never narrowed by reading reviewadapters-kit's own text), and `--secret-paths-confirmed` is
+    passed only after a yes and only for those batches, in Phase 1 and Phase 2.
+43. Two vendors pass the dry run → one `AskUserQuestion` call with one question per vendor, each quoting
+    that dry run's `recipient`, `model` and `reach`, the batches' target paths, the dispatch count, and
+    the same `DISPATCHER_TOUCHED`/`PLANNER_TOUCHED`/`REVIEW_UNVERIFIED`/`REFUTE_UNVERIFIED` disclosures as
+    Codex's confirmation, before that vendor's first real dispatch. A declined vendor is never
+    dispatched and is recorded as "user declined to send to <V>". Every real dispatch passes the
+    dry run's model as `--model`.
+44. An optional model's Phase 1 dispatch fails for one batch → that vendor is skipped for that batch
+    only; every other envelope is kept and Phase 2 runs for the remaining models.
+45. Codex is unavailable but one optional model returned a valid Phase 1 envelope → resolver step 3
+    asks whether to continue without Codex; on yes, Phase 2 runs between Claude and that model and the
+    run is not single-model mode.
+46. Phase 3 with three or four models → a finding raised independently by two models, or raised by one
+    and confirmed by another, is High; any refutation makes it Low/contested; anything else is Medium.
+    Each challenger received every other model's findings for its batch, grouped by reviewer.
+47. `PLANNER_TOUCHED=1` (the diff changes the review scripts, the locator among them) → no optional
+    model is offered, even after the user approved running the working-tree scripts, and the reason is
+    in `inspection_limits`.
+48. The locator is run again immediately before a vendor's first real dispatch and now fails, or prints
+    a different `dispatcher` → that vendor is dropped for the run with the reason; the earlier result is
+    never used for a dispatch.
 
 ## Quality gates
 
@@ -198,6 +233,9 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
 - [ ] No code is edited before Phase 3's closing `AskUserQuestion` is answered
 - [ ] Single-model mode always skips Phase 1's Codex pass and all of Phase 2 — never dispatches Codex
       after the user chose to proceed single-model
+- [ ] No optional model is ever dispatched without its own per-vendor egress confirmation in this
+      invocation, and never from a reviewadapters-kit path the locator did not print
+- [ ] A run with no optional model picked behaves exactly as a Claude + Codex run
 - [ ] A Codex-bound instruction file never embeds diff text for a file Preflight step 2 excluded from
       `--target-paths` — a batch's `.codex.diff` files are used for every Codex-facing embed (or
       `$RUN/codex_unscoped.diff` in the planner-unavailable fallback, `scoped-review.md` section 7),
@@ -224,8 +262,8 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
       silently fails to match the extended-regex pattern
 - [ ] A dispatch is never attempted when Preflight step 2's eligible-files list is empty — single-model
       mode is entered proactively instead
-- [ ] "Stay Claude-native for this run" at the First-Send Confirmation always enters single-model mode
-      immediately — never leaves Phase 1/2 to still attempt or wait on a declined Codex dispatch
+- [ ] "Skip Codex for this run" at the First-Send Confirmation never attempts or waits on a Codex
+      dispatch; it enters single-model mode only when no optional model returned a valid Phase 1 envelope
 - [ ] Codex's `dispatch.reviewer` always echoes the exact `--reviewer-type` value it was dispatched
       with — `refute.md` never asserts a substituted name like `codex-challenger`
 - [ ] Preflight step 6's trust check always covers `assets/` as well as `scripts/` under
@@ -247,8 +285,8 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
 - [ ] Preflight step 2's symlink-containment check always resolves `$REPO_ROOT` inline via
       `git rev-parse --show-toplevel`, never the `$REPO_ROOT` variable — step 4 hasn't assigned it yet
       at that point in the sequence
-- [ ] review.md's self-contained field summary is used whenever `envelope-schema.md` is unavailable
-      (codex-kit not installed) — Claude's native pass is never left without a field contract to follow
+- [ ] review.md's self-contained field summary is always the envelope contract; codex-kit's `envelope-schema.md` is never read from the repository under review, so Claude's native pass is never left without a field
+      contract to follow, whether or not codex-kit is installed
 - [ ] `git add -N` always runs against a throwaway `GIT_INDEX_FILE` (`git-review-intent-add.sh` sets
       it to `<run-dir>/index` itself) — the real `.git/index` is never
       touched, and a `git status` on the real repo after the run shows every previously-untracked
@@ -275,7 +313,7 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
       `$INTENT_ADD_REFUSED`, which stops the review at Preflight step 1, never as "nothing to review"
 - [ ] The review scope planner is always run through the fixed-shape wrapper named by `allowed-tools`'s exact `bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope-run.sh` grant, spelled out literally in Preflight step 1, never through an array, and always resolved from the installed plugin root through `${CLAUDE_PLUGIN_ROOT:-.claude}` (the `.claude/` mirror when the variable is empty, a form deliberately left ungranted so it prompts), never from the `plugins/` folder of the repository under review; the wrapper accepts no `--repo`, `--output` or `--diff-dir`
 - [ ] The throwaway index is seeded only through `git-review-copy-index.sh` (one file to `$RUN/index`, no overwrite), never through a bare `cp` or a `Bash(cp:*)` grant
-- [ ] Every file the model authors or assembles is written through `git-review-write-run-file.sh` (one file directly under `$RUN`, parts only from `$RUN` or the two fixed prompts); the only other writes are Preflight's own `git show`/`git diff` redirects to fixed `$RUN` names; `allowed-tools` has no `Write` entry. The one exception, only in an `EnterWorktree` session after an isolation-check refusal, is `Write` to the session's scratchpad directory for the Preflight script or the helper's stdin text, never into the repository or `$RUN`; in that session every call that needs `GIT_INDEX_FILE` or a `CODEX_KIT_REVIEW_*` variable sets it as a prefix assignment on its own command
+- [ ] Every file the model authors or assembles is written through `git-review-write-run-file.sh` (one file directly under `$RUN`, parts only from `$RUN` or the two fixed prompts); the only other writes are Preflight's own `git show`/`git diff` redirects and an optional model's `node "$RVA"` stdout redirects (`<V>_fresh_eyes.<N>.json`, `<V>_challenger.<N>.json`), all to fixed `$RUN` names; `allowed-tools` has no `Write` entry. The one exception, only in an `EnterWorktree` session after an isolation-check refusal, is `Write` to the session's scratchpad directory for the Preflight script or the helper's stdin text, never into the repository or `$RUN`; in that session every call that needs `GIT_INDEX_FILE` or a `CODEX_KIT_REVIEW_*` variable sets it as a prefix assignment on its own command
 - [ ] An `<untracked_files>` block always ends with the untrusted-data sentence, and Phase 2's closing boundary names those files' contents too
 - [ ] A failed planner never leaves the run without a defined path: section 7 of `scoped-review.md` builds the unscoped group from the safe-charset changed names
 - [ ] A planner failure is never treated as a pass; the user chooses unscoped or stop
@@ -315,6 +353,27 @@ Moved here from SKILL.md's Testing & Validation section, which keeps only the la
   flagged the values as written into script text unquoted. Full Pipeline, baseline arm reading the text
   before the fix, both arms `claude-haiku-5-5`: `with_skill` 3/3, baseline 1/3 (+66.7 points). The
   baseline also stopped on the hostile value; it double-quoted the clean one inside the Inputs block.
+- **2026-11-20, `iteration-17` and `iteration-18`:** add evals 18-22 for scenarios 39-48 (issue #541 Part B,
+  optional models), `with_skill` only, claude-opus-5-5, Read-only dry runs. Iteration 17: 16/17; the miss
+  was a separate egress question per vendor instead of one call. After three wording fixes, iteration 18
+  re-ran evals 20-22: 11/11. Two later wording fixes (resolver step 3's single-model sub-bullet, the
+  section step labels) were not re-run; see `iteration-18/NOTE.md`.
+- **2026-11-20, `iteration-19`:** re-run evals 19-21 after the pre-PR `cross-model-review` fixes (every
+  batch dry-run, caller-named secret hits, per-batch `--secret-paths-confirmed`, Codex decline with an
+  optional model), `with_skill` only, claude-opus-5-5: 11/11. Three wording fixes after the run were not
+  re-run; see `iteration-19/NOTE.md`.
+- **2026-11-20, `iteration-20`:** re-run evals 19-21 and add eval 23 after PR #804's round-1 review fixes
+  (a changed dispatcher drops every optional vendor, a model mismatch between batches drops the vendor,
+  per-batch Phase 2 without Codex), `with_skill` only, claude-opus-5-5: 15/15. This also re-ran
+  iteration 19's post-run edits. One locator note in section 1 was added after the run and not re-run;
+  see `iteration-20/NOTE.md`.
+- **2026-11-20, `iteration-21`:** re-run eval 19 after PR #804's round-2 fix (a flagged batch's egress
+  question names every path; reviewadapters-kit's own text is never read), `with_skill` only,
+  claude-opus-5-5: 4/4. The envelope-contract boundary (`review.md`'s summary only, never codex-kit's
+  schema file from the checkout) was added after this run, covered by the quality gate, not by an eval.
+- **2026-11-20, `iteration-22`:** add eval 24 after PR #804's round-4 fix (the First-Send option is
+  "Skip Codex for this run"; declining Codex keeps a confirmed optional model's Phase 2), `with_skill`
+  only, claude-opus-5-5: 3/3; see `iteration-22/NOTE.md`.
 
 All of these are dry runs of the committed text, not live dispatches, and include no live run of the
 scoped flow (one ran 2026-10-14 for PR #567, see the #568 report).

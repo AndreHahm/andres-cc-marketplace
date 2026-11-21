@@ -1,18 +1,18 @@
 ---
 name: cross-model-review
 description: >-
-  Reviews the current diff adversarially across two model vendors before a PR is created (draft or
-  ready) or a draft is flipped to ready. Claude reviews natively; Codex independently
-  through codex-kit (codex-review-bridge; codex-windows-guardrails if no sandboxed profile). Both
-  cross-examine each other's findings (fresh-eyes persona, then challenger persona). Surfaces a
+  Reviews the current diff adversarially across model vendors before a PR is created (draft or
+  ready) or a draft is flipped to ready. Claude reviews natively; Codex through codex-kit
+  (codex-review-bridge; codex-windows-guardrails if no sandbox); optionally up to two of agy, pi,
+  devin through an installed reviewadapters-kit. All cross-examine each other's findings. Surfaces a
   ranked, confidence-scored table, asks which findings to act on, and never applies fixes.
-  It runs helper scripts and a Codex subprocess, with the permissions listed under Boundaries.
+  It runs helper scripts and vendor subprocesses (permissions: see Boundaries).
   Use for an adversarial review, a cross-model or second-opinion review of the working diff, a
   pre-PR gate, or high-confidence findings before opening or readying a PR. Not
   `collaborating-on-a-pr`'s reviewer actions, nor `codex-review-recovery`'s stuck-check recovery, nor
   `handling-review-findings`'s triage of posted PR findings — it never touches GitHub state. Not a
   Codex-only opinion on a design or document (`codex-peer-review`, `codex-verify`, if installed).
-allowed-tools: ["Bash(git rev-parse:*)", "Bash(git merge-base:*)", "Bash(git ls-files:*)", "Bash(mktemp:*)", "Bash(date:*)", "Bash(printf:*)", "Bash(grep:*)", "Bash(echo:*)", "Bash(realpath:*)", "Bash(test:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-copy-index.sh:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-intent-add.sh:*)", "Bash(umask:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-write-run-file.sh:*)", "Bash(node plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope-run.sh:*)", "Read", "Grep", "Glob", "AskUserQuestion"]
+allowed-tools: ["Bash(git rev-parse:*)", "Bash(git merge-base:*)", "Bash(git ls-files:*)", "Bash(mktemp:*)", "Bash(date:*)", "Bash(printf:*)", "Bash(grep:*)", "Bash(echo:*)", "Bash(realpath:*)", "Bash(test:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-copy-index.sh:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-intent-add.sh:*)", "Bash(umask:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-write-run-file.sh:*)", "Bash(node plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope-run.sh:*)", "Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-locate-rva.py:*)", "Read", "Grep", "Glob", "AskUserQuestion"]
 ---
 
 # Cross-model review
@@ -22,15 +22,15 @@ independently, then each tries to **cross-examine** the other's findings. A find
 comes from whether it survives that cross-examination. This kills the two failure modes of solo LLM
 review: self-ratification (a model won't critique its own work) and confident false positives.
 
-**Claude is always the native reviewer, in this session, using its own tools.** Codex is always the
+**Claude is always the native reviewer, in this session, using its own tools.** Codex is the default
 second reviewer, dispatched as an independent subprocess through codex-kit — never invoked ad hoc
-via a raw `codex exec`.
+via a raw `codex exec`; up to two optional models may join (`references/optional-models.md`).
 
 **This skill has no `Write` grant** (it cannot be limited to a path). Every file the model authors goes
 through `scripts/git-review-write-run-file.sh` (`references/codex-pass-assembly.md`, "Writing a run
-file") into `$RUN`, this skill's scratch dir; Preflight's `git` redirects write fixed names there. Never write to any path inside
+file") into `$RUN`, this skill's scratch dir; Preflight's `git` redirects and the optional-model dispatches' stdout redirects (`references/optional-models.md` section 4) write fixed names there. Never write to any path inside
 the repository itself, and never to `.claude/codex-windows-guardrails.local.json` in particular — this skill never
-enables that override on the user's behalf (see "Deliberately NOT done"). The one deliberate exception is `git add -N`
+enables that override on the user's behalf (see `references/deliberately-not-done.md`). The one deliberate exception is `git add -N`
 (Inputs section, below) — and even that never touches the repository's real index: it runs against a throwaway
 `GIT_INDEX_FILE`, so no state from this skill's run persists anywhere the user's own later `git add`/`git commit` could
 see it. After `EnterWorktree`, an isolation-check refusal allows `Write` to the session scratchpad only (`references/codex-pass-assembly.md`).
@@ -38,8 +38,9 @@ see it. After `EnterWorktree`, an isolation-check refusal allows `Write` to the 
 ## Quick Start
 
 1. Preflight: build the throwaway index, plan the scope (the planner decides which files each reviewer
-   reads and what is left out), and materialize trusted reviewer instructions from `$BASE`.
-2. Phase 1: Claude and Codex review independently; Codex gets one dispatch per batch of slices.
+   reads and what is left out), materialize trusted reviewer instructions from `$BASE`, and offer
+   optional models (`references/optional-models.md`).
+2. Phase 1: Claude, Codex and any confirmed optional model review independently, one dispatch per batch.
 3. Phase 2: each side cross-examines the other's findings.
 4. Phase 3: a ranked, confidence-scored table with every exclusion disclosed; nothing is edited.
 
@@ -81,28 +82,19 @@ This skill is triggered conversationally, not through slash-command argument syn
 `BASE`/`SCOPE` from what the invoking request actually says (e.g. "review this against release/1.2"
 → `BASE=release/1.2`) before Preflight step 1 runs; absent any such signal, use the defaults above.
 
-Build the **canonical diff command** once in preflight and reuse it everywhere below — never
-re-spell the diff inline. Build it as an **argv array**, not a string, so a `$SCOPE` containing
-spaces or glob characters survives intact. **Use the merge-base as a single ref, not the two-dot
-`$BASE...HEAD` form** — `git diff A...B` only shows *committed* differences between the merge-base
-and `B`; it never includes staged or unstaged working-tree changes. Since this skill's own stated
-purpose is reviewing "the current diff" / "the local working diff" (see the intro and "When to
-Use"), a two-dot diff would silently skip any uncommitted work-in-progress — including the common
-case of reviewing before the first commit is even made. A single-ref `git diff <merge-base>`
-includes the working tree (index and unstaged changes both) on top of the merge-base.
+Build the **canonical diff command** once in preflight, as an **argv array**, and reuse it everywhere
+below — never re-spell the diff inline. **Use the merge-base as a single ref, never `$BASE...HEAD`**:
+the two-dot form drops every uncommitted change (see `references/diff-mechanics-rationale.md`).
 
 **Intent-add untracked files before diffing, or they never appear at all** — `git diff` produces no
 output at all for untracked content until `git add -N` intent-adds it. See
 `references/diff-mechanics-rationale.md` for the full empirical verification.
 
-**Do this against a throwaway index, never the repository's real one.** `git add -N` against the
-real `.git/index` is a persistent mutation that outlives this skill's own run — a later, unrelated
-`git commit -a` would commit that file's full content, even though it was genuinely untracked before
-this report-only review touched it. Point `GIT_INDEX_FILE` at a path inside a freshly `mktemp -d`'d
-scratch dir (`$RUN`, resolved here rather than in Preflight step 3 — see
-`references/index-seeding-rationale.md` for why `mktemp -u` alone isn't safe), exported once and
-inherited by every later git command here. Capture the untracked list **first**, against the
-still-real index — the throwaway path doesn't exist yet until the `export` line runs:
+**Do this against a throwaway index, never the repository's real one** (a real-index `git add -N`
+outlives the run): point `GIT_INDEX_FILE` at a path inside a freshly `mktemp -d`'d `$RUN`, resolved
+here rather than in Preflight step 3 (`references/index-seeding-rationale.md` has both reasons).
+Capture the untracked list **first**, against the still-real index — the throwaway path doesn't
+exist yet until the `export` line runs:
 
 ```bash
 umask 077
@@ -233,6 +225,10 @@ as a scratchpad script instead (`references/codex-pass-assembly.md`, "In an Ente
    `$DISPATCHER_TOUCHED=1`, disclose it explicitly at the First-Send Confirmation below and record in
    Phase 3's `inspection_limits` that the Codex dispatcher itself wasn't trust-boundary-verified
    against `$BASE` for this run.
+7. **Optional models (agy, pi, devin), after the chain returns:** locate the installed reviewadapters-kit
+   (`python3 -I "${CLAUDE_PLUGIN_ROOT:-.claude}/scripts/git-review-locate-rva.py" --repo "$REPO_ROOT"`),
+   ask which to add (at most two), dry-run each and confirm its egress per vendor, exactly as
+   `references/optional-models.md` sections 1-3 say. No usable copy, or no pick: Claude and Codex only.
 
 ## Codex dispatch resolver
 
@@ -271,14 +267,13 @@ node plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.
    CLI itself missing, and **`codex-kit` not being installed at all** (`node` then fails at the OS
    level before either script produces its own typed-failure JSON — the same `cli_unavailable`
    fallback case `codex-backend.md` names explicitly): tell the user Codex is unavailable for this
-   run and ask via `AskUserQuestion` whether to proceed single-model (Claude only — loses the
-   cross-vendor benefit, findings default to Medium confidence since nothing cross-examines them) or
-   stop.
-   - **On Phase 1's Codex call failing for a batch**: that batch is Claude-only. If **no** batch has a
+   run and ask via `AskUserQuestion` whether to proceed without Codex (single-model unless an optional
+   model returned a valid Phase 1 envelope; then Claude and that model cross-examine each other) or stop.
+   - **On Phase 1's Codex call failing for a batch**: that batch has no Codex side. If **no** batch has a
      valid Codex Phase 1 envelope (judged once every dispatched Phase 1 call has returned, so the order
-     batches ran in, or whether they ran in parallel, does not change the outcome), take the
-     full single-model path: skip every remaining Codex dispatch and follow the single-model paths in
-     Phase 2/3. Otherwise keep every finished batch's envelopes, still dispatch the remaining batches, and
+     batches ran in, or whether they ran in parallel, does not change the outcome; ask step 3's question
+     once, then), skip every remaining Codex dispatch; follow the single-model paths in Phase 2/3 only if no
+     optional model returned a valid Phase 1 envelope either (`references/optional-models.md` section 5). Otherwise keep every finished batch's envelopes, still dispatch the remaining batches, and
      run Phase 2 only for batches with a valid Phase 1 envelope.
    - **On Phase 2's Codex call failing** (Phase 1's Codex dispatch already succeeded): **partial
      failure, not full single-model — never discard the already-completed envelopes.** See
@@ -300,14 +295,14 @@ choose "don't ask again" for it), with an unanswerable question counting as decl
 trust-boundary-verified against `$BASE`; and (d) if Preflight step 5 set `REVIEW_UNVERIFIED` or
 `REFUTE_UNVERIFIED`, that the reviewer instructions governing this dispatch came from the working
 tree, not `$BASE` — before Codex is judged against them, never deferred to `inspection_limits`. Ask
-before the backend resolves, covering both outcomes. Options: "Send to Codex for this run" / "Stay
-Claude-native for this run". Git-kit's own direct implementation of the first-send-confirmation
+before the backend resolves, covering both outcomes. Options: "Send to Codex for this run" / "Skip
+Codex for this run" (an optional model keeps its own egress question). Git-kit's own direct implementation of the first-send-confirmation
 obligation `codex-review-bridge`'s docs assign to any caller — independent of, and not satisfied by,
 a first-send gate any other codex-kit component may already have fired earlier in the session.
 
-**On "Stay Claude-native for this run": enter single-model mode immediately, before any dispatch is
-attempted** — the same skip-Phase-1's-Codex-pass-and-all-of-Phase-2 path resolver step 3 uses, not
-just the zero-Codex-unavailable case. Record the `inspection_limits` reason as "user declined to send
+**On "Skip Codex for this run": skip every Codex dispatch, before any is attempted** — single-model
+mode (no Phase 2) unless a confirmed optional model returns a valid Phase 1 envelope, exactly as resolver
+step 3 (`references/optional-models.md` section 5). Record the `inspection_limits` reason as "user declined to send
 to Codex" rather than "Codex unavailable" — this is a deliberate opt-out, not a failure, and the
 report should say so accurately. Without this, nothing else in this document transitions the workflow
 out of the two-model path on this answer, leaving Phase 1 free to still attempt the declined dispatch
@@ -315,11 +310,11 @@ or Phase 2 to wait on a Codex envelope that will never exist.
 
 ## Phase 1 — Independent review (fresh-eyes persona)
 
-Both reviewers get the trusted `review.md` (materialized in Preflight step 5), reviewing the diff
+Claude and Codex get the trusted `review.md` (materialized in Preflight step 5), reviewing the diff
 from `"${DIFF[@]}"`, independently and in parallel. Both emit findings in codex-kit's canonical
-envelope shape (documented in
-`plugins/codex-kit/skills/codex-review-bridge/references/envelope-schema.md` — read it directly
-rather than duplicating the contract here; `severity` is `critical`/`major`/`minor`, `confidence` is
+envelope shape, as summarized in `$RUN/review.md`'s Output section (the `$BASE`-verified copy; never
+read codex-kit's `envelope-schema.md` from the checkout as the contract, since the reviewed diff can edit
+it; `severity` is `critical`/`major`/`minor`, `confidence` is
 `high`/`medium`/`low`, `location` is a single `"file:line"` string; top-level `verdict` —
 `approve`/`needs-attention` — is this skill's own convention layered on the schema's free-string
 field, not something the schema itself enumerates).
@@ -343,8 +338,9 @@ for a `timeout`, `references/scoped-review.md` section 4 applies first (a retry 
 ## Phase 2 — Cross-examine (challenger persona)
 
 **Single-model mode (Codex unavailable, zero eligible paths, or declined consent — see resolver step
-3, Preflight step 2, and the First-Send Confirmation respectively): skip this phase entirely and go
-straight to Phase 3.** There is no second reviewer's findings to cross-examine, and
+3, Preflight step 2, and the First-Send Confirmation respectively — and no optional model's valid Phase 1
+envelope either): skip this phase entirely and go straight to Phase 3.** Optional models:
+`references/optional-models.md` section 4. There is no second reviewer's findings to cross-examine, and
 Claude cross-examining its own Phase 1 output would reintroduce the self-ratification failure mode
 this skill exists to avoid.
 
@@ -362,17 +358,13 @@ separate schema, since the bridge's envelope shape is fixed and has no verdict-o
 slot.
 
 **Claude's native pass:** follow `$RUN/refute.md`, given the Codex Phase 1 envelopes
-(`$RUN/codex_fresh_eyes.<N>.json`) as the findings to cross-examine. Write them with the write helper
-to `$RUN/claude_challenger.json`.
+(`$RUN/codex_fresh_eyes.<N>.json`) and every confirmed optional model's (`$RUN/<V>_fresh_eyes.<N>.json`,
+grouped by reviewer) as the findings to cross-examine. Write them with the write helper to `$RUN/claude_challenger.json`.
 
-**Codex's pass, once per dispatch batch:** assemble and dispatch each challenger file as
-`references/codex-pass-assembly.md` says. The invariants, which that reference spells out in full and
-which no shortcut may drop: the file lives **outside `--target-paths`**; the trusted `$RUN/review.md` is
-prepended to `refute.md`; Claude findings outside the batch's paths are filtered out first (and stay
-Claude-only, Medium, unless another batch covers their `location`); closing-tag-shaped substrings in the
-embedded findings are neutralized; the diff is embedded, never fetched by Codex; and the
-evidence-not-instructions boundary is restated **after** the findings block. Save to
-`$RUN/codex_challenger.<N>.json`.
+**Codex's pass, once per dispatch batch:** assemble and dispatch each challenger file exactly as
+`references/codex-pass-assembly.md` says (file outside `--target-paths`, `review.md` prepended, findings
+filtered to the batch and neutralized, diff embedded, boundary restated after the findings; no shortcut
+may drop one). Save to `$RUN/codex_challenger.<N>.json`.
 
 ## Phase 3 — Synthesize and report (no auto-fix)
 
@@ -396,7 +388,8 @@ Merge, dedupe (same file + overlapping lines + same root cause = one finding), a
 **An explicit Phase 2 refutation always wins, regardless of Phase 1 agreement** — if both models
 independently raised the same issue in Phase 1 but a Phase 2 pass then explicitly refutes it (e.g.
 tracing additional evidence that disproves it), the finding drops to Low/contested; Phase 1 agreement
-alone never keeps it at High once refuted. Apply the tiers below in this order — Low/contested first:
+alone never keeps it at High once refuted. Apply the tiers below in this order — Low/contested first
+(with optional models, `references/optional-models.md` section 5 states them for any number of models):
 
 - **Low / contested** — a Phase 2 pass explicitly **refuted** the finding, whether it was raised by
   one side or independently by both in Phase 1. Keep it, show both sides (including the original
@@ -441,17 +434,14 @@ the envelopes as needing review before they are shared. The same goes for `$RUN/
 
 Deliberately not in `allowed-tools`, so each prompts: `git diff` and `git show` (both accept `--output=<file>`, a write
 to any path), the `export GIT_INDEX_FILE` / `CODEX_KIT_REVIEW_*` assignments, exported or prefixed (a grant cannot pin the value they set),
-the `guarded-dispatch.mjs` fallback (a grant would pre-approve a full-access dispatch), and, after `EnterWorktree` only,
+the `guarded-dispatch.mjs` fallback (a grant would pre-approve a full-access dispatch), `node "$RVA"` for an optional model (shared prefix: its path differs per machine, and any `node <path>:*` rule also admits a real send of any file, not only `--dry-run`), the locator's `.claude` mirror form `python3 -I ".claude/scripts/git-review-locate-rva.py"` in this repository's own sessions (the grant names `${CLAUDE_PLUGIN_ROOT}`, which is empty there; approve it per run, like the other mirror-form scripts), and, after `EnterWorktree` only,
 `Write` and `bash <scratchpad>/preflight.sh` (`Write` cannot be limited to a path; the script path varies, so its grant
 would be `Bash(bash:*)`, which also admits `bash -c` and any script; one approval covers every command in the script,
 and the scratchpad `Write` may not prompt at all). `git add -N` runs only through `scripts/git-review-intent-add.sh`.
 These prompt unless your own settings or permission mode already allow them. For `git diff`, `git show` and `bash` the
 reason is a shared prefix: any prefix rule for them also admits `--output` or `-c`. Approve each run once and do not
-add a persistent allow rule for them; approve `Write` for the single call only, never for the session.
-
-## Deliberately NOT done
-
-See `references/deliberately-not-done.md` (extracted per plugin-rulebook's R13 line-count threshold).
+add a persistent allow rule for them; approve `Write` for the single call only, never for the session. Approve each
+`node "$RVA"` dispatch once, after reading its rendered command at the prompt, and never add an allow rule for it.
 
 ## Reference Guide
 
@@ -459,7 +449,8 @@ See `references/deliberately-not-done.md` (extracted per plugin-rulebook's R13 l
 |---|---|
 | `references/scoped-review.md` | Planner run, folder pick, dispatch batches, timeouts, completed slices, round two |
 | `references/codex-pass-assembly.md` | Per-batch Codex eligibility, Phase 1 and Phase 2 instruction files |
-| `references/testing-scenarios.md` | The 38 scenarios, the quality-gate checklist and the run history |
+| `references/optional-models.md` | Locating reviewadapters-kit, the agy/pi/devin pick, egress, dispatch, N-model confidence |
+| `references/testing-scenarios.md` | The 48 scenarios, the quality-gate checklist and the run history |
 | `references/resolver-failure-handling.md`, `references/dispatcher-trust-pattern.md` | Partial failure; why the dispatcher-touched check is built the way it is (planner trust is in `references/scoped-review.md`) |
 | `references/diff-mechanics-rationale.md`, `references/index-seeding-rationale.md`, `references/embed-diff-not-run-rationale.md`, `references/symlink-exclusion-rationale.md`, `references/self-authored-envelope-fields.md`, `references/deliberately-not-done.md` | Why the Inputs and Preflight steps are built the way they are |
 | `scripts/smoke_test.py`, `scripts/preflight_fixtures_test.py` | Structural self-check; Preflight chain run against scratch repositories |
@@ -479,12 +470,12 @@ See `references/deliberately-not-done.md` (extracted per plugin-rulebook's R13 l
 - "get a codex second opinion on this design" → `codex-peer-review`; "verify plan.md" → `codex-verify`
 
 **Concrete scenarios to check, and quality gates:** see
-`references/testing-scenarios.md` (extracted per R13): 38 numbered scenarios and the quality-gate
+`references/testing-scenarios.md` (extracted per R13): 48 numbered scenarios and the quality-gate
 checklist, covering single-model mode, `$MERGE_BASE` containment, dispatcher trust, reviewer identity,
 closing-tag neutralization, partial-failure preservation, scoped review and more.
 `scripts/preflight_fixtures_test.py` runs the Preflight chain, planner step included, against scratch
 repositories.
 
-**Last dated run record:** `2026-11-18, evals/cross-model-review/workspace/iteration-15/` — evals 13-16, scenario 38
-(refused chained Preflight; heredoc refusal, then timeout; folder-pick re-run; normal-session control), both arms
-claude-opus-5-5: `with_skill` 17/17, baseline (`main`'s text) 5/17; `iteration-16`, eval 17 (single-quoted `BASE`/`SCOPE`), claude-haiku-5-5: 3/3 vs 1/3. Skill-following dry runs, no Codex dispatch. Earlier runs and their open items are under "Run history" in `references/testing-scenarios.md`.
+**Last dated run record:** `2026-11-20, evals/cross-model-review/workspace/iteration-17/` to `iteration-22/` — evals 18-24,
+scenarios 39-48 (optional models), `with_skill` only, claude-opus-5-5: 16/17, then 17/17; iteration 19 re-ran evals 19-21 after
+the pre-PR review fixes, 11/11; iteration 20 re-ran 19-21 and added 23 after PR #804's round-1 fixes, 15/15; iteration 21 re-ran 19 after round 2, 4/4; iteration 22 added 24 (Codex declined, optional model kept), 3/3. Plan-only dry runs, no Codex or vendor dispatch. Wording edits made after a run and not re-run are listed per iteration under "Run history". Earlier runs (iterations 15-16 included) and their open items are under "Run history" in `references/testing-scenarios.md`.

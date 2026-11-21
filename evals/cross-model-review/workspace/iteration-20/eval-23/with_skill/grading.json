@@ -1,0 +1,27 @@
+{
+  "eval_id": 23,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Notices that the two batches' dry runs report different models and drops pi for the run, with the reason in inspection_limits",
+      "passed": true,
+      "evidence": "'The two dry runs report different models ... a different one drops the vendor. pi is dropped for this run'; inspection_limits: 'pi: dropped at the dry run: batch 1 reported nvidia/nemotron-3-ultra, batch 2 reported nvidia/nemotron-3-super'."
+    },
+    {
+      "text": "Asks no egress question for pi and dispatches pi with neither model",
+      "passed": true,
+      "evidence": "'No vendor remains, so I ask no egress question'; 'Phase 1 and Phase 2 send nothing to pi ... no --model value is ever passed'."
+    },
+    {
+      "text": "Continues the run with Claude and Codex only",
+      "passed": true,
+      "evidence": "'Phases 1-3 then run between Claude and Codex as usual'."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  },
+  "notes": "Gaps named by the agent (not changed): which dry run is 'the first' when they run in parallel (outcome unaffected); no category name for the mismatch in inspection_limits; whether to tell the user at once; the egress question is skipped only by inference when no vendor remains."
+}

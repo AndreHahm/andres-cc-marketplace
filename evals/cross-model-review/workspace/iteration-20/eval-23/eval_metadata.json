@@ -1,0 +1,21 @@
+{
+  "eval_id": 23,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {
+      "text": "Notices that the two batches' dry runs report different models and drops pi for the run, with the reason in inspection_limits",
+      "type": "functionality",
+      "target": "references/optional-models.md"
+    },
+    {
+      "text": "Asks no egress question for pi and dispatches pi with neither model",
+      "type": "functionality",
+      "target": "references/optional-models.md"
+    },
+    {
+      "text": "Continues the run with Claude and Codex only",
+      "type": "functionality",
+      "target": "references/optional-models.md"
+    }
+  ]
+}

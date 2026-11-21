@@ -5,13 +5,18 @@ grew past the 500-line Critical threshold). SKILL.md keeps the two-case split in
 the fuller reasoning for each.
 
 - **On Phase 1's Codex call failing** (no batch has a valid Phase 1 envelope, judged once every
-  dispatched Phase 1 call has returned): "single-model" means the full single-model path — skip every remaining Codex
-  dispatch (Phase 1's Codex pass, already failed, and all of Phase 2 entirely) and follow the
-  single-model paths called out in Phase 2 and Phase 3.
+  dispatched Phase 1 call has returned): skip every remaining Codex dispatch (Phase 1's Codex pass,
+  already failed, and Codex's Phase 2). If no confirmed optional model returned a valid Phase 1 envelope
+  either, that is the full single-model path: skip all of Phase 2 and follow the single-model paths in
+  Phase 2 and Phase 3. Otherwise Phase 2 still runs between Claude and that model, for each batch with
+  that model's valid Phase 1 envelope only; a batch with none is Claude-only, its Claude findings Medium
+  (`references/optional-models.md` section 5).
 - **On Phase 1's Codex call failing for one batch while another batch already succeeded**: a partial
-  failure at batch level. Mark only that batch Claude-only (its Claude findings stay Medium), keep every
-  finished batch's envelopes, still dispatch the remaining batches, and run Phase 2 only for batches with
-  a valid Phase 1 envelope. The user is still asked once, at resolver step 3, whether to continue.
+  failure at batch level. That batch has no Codex side: it is Claude-only (its Claude findings stay
+  Medium) only if no confirmed optional model returned a valid Phase 1 envelope for it; otherwise Phase 2
+  runs between Claude and that model for the batch (`references/optional-models.md` section 4). Keep
+  every finished batch's envelopes, still dispatch the remaining batches, and run Codex's Phase 2 only
+  for batches with a valid Codex Phase 1 envelope. The user is still asked once, at resolver step 3, whether to continue.
 - **On Phase 2's Codex call failing** (Phase 1's Codex dispatch already succeeded —
   `$RUN/codex_fresh_eyes.<N>.json` exists for that batch, and Claude's own native Phase 2 pass may have too): this is a
   **partial failure, not full single-model mode — do not discard the already-completed envelopes.**
