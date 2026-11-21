@@ -1488,6 +1488,16 @@ def line_fingerprint(text: str) -> str:
     return hashlib.sha256(collapsed.encode("utf-8")).hexdigest()[:_FINGERPRINT_LEN]
 
 
+def git_lines(text: str) -> list[str]:
+    """`text` split into lines the way git and the reviewers number them: on `\\n` only.
+    `str.splitlines()` also splits on form feed, U+2028 and others, which would put a flagged
+    line's fingerprint on another line's text."""
+    lines = text.split("\n")
+    if lines and lines[-1] == "":
+        lines.pop()
+    return lines
+
+
 def fingerprint_at(repo: Path, rev: str, path: str, line: object) -> str | None:
     """The fingerprint of `path`'s line `line` at `rev`: `-` for a finding without a line, None
     when the line cannot be read there (no such file, a binary file, a line past the end)."""
@@ -1499,7 +1509,7 @@ def fingerprint_at(repo: Path, rev: str, path: str, line: object) -> str | None:
         return None
     if b"\0" in blob:
         return None
-    lines = blob.decode("utf-8", errors="replace").splitlines()
+    lines = git_lines(blob.decode("utf-8", errors="replace"))
     if line > len(lines):
         return None
     return line_fingerprint(lines[line - 1])
@@ -1812,13 +1822,23 @@ def carry_findings(
             carried["reporters"] = sorted(set(named))
         if any(isinstance(r, str) and not _CARRY_FIELD.fullmatch(r) for r in reviewers):
             raise CarryError("a blocking finding has no usable reviewer")
+        # An entry carried before issue #808 is `reviewer: carried` with no `origin_reviewer` key,
+        # so who raised it is unknown: its waiver needs a maintainer's confirmation, as a
+        # security-reviewer one does (R7).
+        origin_unknown = entry.get("reviewer") == "carried" and "origin_reviewer" not in entry
+        if origin_unknown:
+            # Recorded as a reporter, so the requirement survives the merge into this run's
+            # result and every later carry, not only this one decision.
+            carried["reporters"] = sorted({*carried.get("reporters", []), _SECURITY_REVIEWER})
+            if len(carried["reporters"]) > _MAX_CARRIED_REPORTERS:
+                raise CarryError("a blocking finding has too many reporters to carry")
         waiver, why_not = find_waiver(
             waivers,
             rule=rule,
             path=path,
             line=line,
             fingerprint=fingerprint,
-            reviewers=reviewers,
+            reviewers=[*reviewers, _SECURITY_REVIEWER] if origin_unknown else reviewers,
             confirmed=confirmed,
         )
         if waiver is not None:
@@ -1882,13 +1902,20 @@ def merge_carried_findings(result: object, carried: object, expected_count: str)
         raise CarryError("a carried finding is not an object")
     if sum(1 for e in carried if "waiver" not in e) != int(expected_count):
         raise CarryError("the carried findings do not match their count")
-    present = {
-        finding_waiver_key(f.get("rule"), f.get("path"), f.get("line"))
-        for f in findings
-        if isinstance(f, dict)
-        and (f.get("blocking") is True or isinstance(f.get("waiver"), str))
-        and f.get("suppressed") is not True
-    }
+    # This run's own blocking and waived findings, by key. A carried finding with the same key is
+    # not added again, but its reviewers are added to the current one's `reporters`, so a carried
+    # security-reviewer finding keeps asking for a maintainer's confirmation (R7). A blocking
+    # carried finding is never absorbed by a waived current one: the stricter decision stays.
+    findings = [dict(f) if isinstance(f, dict) else f for f in findings]
+    present: dict[tuple[str, str, int], list[dict]] = {}
+    for f in findings:
+        if (
+            isinstance(f, dict)
+            and (f.get("blocking") is True or isinstance(f.get("waiver"), str))
+            and f.get("suppressed") is not True
+        ):
+            key = finding_waiver_key(f.get("rule"), f.get("path"), f.get("line"))
+            present.setdefault(key, []).append(f)
     added: list[dict] = []
     for entry in carried:
         rule, path, line = entry.get("rule"), entry.get("path"), entry.get("line")
@@ -1925,9 +1952,20 @@ def merge_carried_findings(result: object, carried: object, expected_count: str)
         if waiver is not None and not (isinstance(waiver, str) and _CARRY_FIELD.fullmatch(waiver)):
             raise CarryError("a carried finding has no usable waiver line")
         key = finding_waiver_key(rule, path, line)
-        if key in present:
+        covering = [
+            f for f in present.get(key, []) if waiver is not None or f.get("blocking") is True
+        ]
+        if covering:
+            names = {reviewer, *reporters} - {None, "carried"}
+            current = covering[0]
+            listed = current.get("reporters")
+            known: list = listed if isinstance(listed, list) else []
+            union = sorted({*(r for r in known if isinstance(r, str)), *names})
+            if len(union) > _MAX_CARRIED_REPORTERS:
+                raise CarryError("a carried finding has too many reporters to merge")
+            if set(union) != set(known):
+                current["reporters"] = union
             continue
-        present.add(key)
         added.append(
             {
                 "reviewer": "carried",
@@ -1945,10 +1983,11 @@ def merge_carried_findings(result: object, carried: object, expected_count: str)
                 "source": "carried",
             }
         )
+        present.setdefault(key, []).append(added[-1])
     merged = dict(result)
     merged["carried_findings"] = sum(1 for a in added if a["blocking"])
+    merged["findings"] = [*findings, *added]
     if added:
-        merged["findings"] = [*findings, *added]
         merged["status"] = "findings"
     if merged["carried_findings"]:
         merged["blocking"] = True

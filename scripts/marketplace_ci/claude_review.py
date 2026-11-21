@@ -426,6 +426,8 @@ def apply_waivers(
 def head_line_reader(repo: str, head_sha: str, gh: Gh) -> Callable[[str, int], str | None]:
     """Reads one line of a file at the head through the contents API (the publish job checks
     out only the base SHA). None when the file or line cannot be read."""
+    from scripts.marketplace_ci.review import git_lines
+
     cache: dict[str, list[str] | None] = {}
 
     def read(path: str, line: int) -> str | None:
@@ -439,7 +441,7 @@ def head_line_reader(repo: str, head_sha: str, gh: Gh) -> Callable[[str, int], s
                 ],
                 None,
             )
-            cache[path] = got.stdout.splitlines() if got.returncode == 0 else None
+            cache[path] = git_lines(got.stdout) if got.returncode == 0 else None
         lines = cache[path]
         if lines is None or not 1 <= line <= len(lines):
             return None

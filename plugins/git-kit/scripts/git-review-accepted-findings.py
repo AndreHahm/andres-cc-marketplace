@@ -107,7 +107,9 @@ def _read_regular(path: Path, limit: int) -> str | None:
     if not stat.S_ISREG(info.st_mode) or info.st_size > limit:
         return None
     try:
-        return path.read_text(encoding="utf-8", errors="replace")
+        # newline="": no universal-newline translation, so a lone "\r" is not a line break.
+        with open(path, encoding="utf-8", errors="replace", newline="") as handle:
+            return handle.read()
     except OSError:
         return None
 
@@ -140,7 +142,11 @@ def working_tree_fingerprint(path: str, line: int) -> str | None:
     text = _read_regular(current, _MAX_FILE_BYTES)
     if text is None:
         return None
-    lines = text.splitlines()
+    # On "\n" only, as git and the reviewers number lines (CI's `git_lines`): splitlines() also
+    # splits on form feed and U+2028 and would fingerprint another line.
+    lines = text.split("\n")
+    if lines and lines[-1] == "":
+        lines.pop()
     return line_fingerprint(lines[line - 1]) if line <= len(lines) else None
 
 

@@ -428,7 +428,12 @@ review` is the gate after the PR exists and reviews only the delta, to cut OpenA
   `blocking: false` and the `waiver` line it matched, carried ones included (the carried list holds them
   next to the blocking ones; `carried_blocking` counts only the blocking ones), so the next run carries it
   again and, once the waiver line is removed, it blocks again (issue #808; this closes the earlier M1
-  residual where a removed waiver dropped the finding for good). Caps: an anchor result with more than 500
+  residual where a removed waiver dropped the finding for good). When a carried finding has the same rule,
+  path and line as one of this run's own findings, the stricter decision stays: a waived current finding
+  never absorbs a blocking carried one (both are kept), and a carried finding a current one covers adds its
+  reviewers to that finding's `reporters`, so a carried `security-reviewer` finding still needs a
+  confirmation. An entry carried before issue #808 (`reviewer: carried` with no `origin_reviewer`) has no
+  recorded origin, so its waiver needs a maintainer's confirmation too. Caps: an anchor result with more than 500
   findings fails closed (`error`), and a carried finding's rule, path, `severity`, reviewer and waiver line
   are limited to 300 characters each. A carried finding whose file git cannot compare with the anchor
   reports `error` too, rather than being dropped.
