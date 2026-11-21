@@ -614,12 +614,29 @@ def sandbox_rerun_hint(output: Path) -> str | None:
     probe_was_down = isinstance(probe_log, list) and any(
         isinstance(line, str) and ": down" in line for line in probe_log
     )
+    # Reviewers the fallback cannot take (their path list is over its limit, issue #816) run
+    # sandboxed whatever the flag, so --sandbox-down cannot help them.
+    results = data.get("reviewer_results")
+    results = results if isinstance(results, dict) else {}
+    over_cap = {
+        name
+        for name, entry in results.items()
+        if isinstance(entry, dict) and entry.get("fallback_over_cap") is True
+    }
     # Per reviewer: one that already ran unsandboxed would just repeat that mode with
     # --sandbox-down. A down probe alone does not mean a reviewer ran unsandboxed, so the others
     # keep the advice.
-    already = [name for name in names if name in ran]
-    fresh = [name for name in names if name not in ran]
+    capped = [name for name in names if name in over_cap]
+    already = [name for name in names if name in ran and name not in over_cap]
+    fresh = [name for name in names if name not in ran and name not in over_cap]
     lines = []
+    if capped:
+        lines.append(
+            f"PARITY: {', '.join(capped)} reported a Codex sandbox failure, and --sandbox-down "
+            "cannot help: the path list is over the unsandboxed fallback's path limit, so they "
+            "always run in the sandbox. Fix the sandbox (quit the Codex desktop app and rerun) "
+            "or split the change."
+        )
     if already:
         lines.append(
             f"PARITY: {', '.join(already)} reported a Codex sandbox failure although they already "

@@ -134,8 +134,10 @@ alongside `cross-model-review`.
   A reviewer that read nothing is never reported as clean, the result file keeps the findings of the
   reviewers that did complete (`completed_reviewer_findings`), and a reviewer that ran unsandboxed is
   named in `reviewer_results` and in `provenance.unsandboxed_reviewers`. The fallback takes the paths as one
-  argument of at most 20,000 characters: a reviewer over that ran in the sandbox anyway, which the startup
-  line says and `reviewer_results` marks `fallback_over_cap` (issue #816); `provenance.sandbox_probe`
+  argument of at most 20,000 characters, so a reviewer over that always runs in the sandbox:
+  `reviewer_results` marks it `fallback_over_cap` on every run with the fallback allowed, the startup line
+  names it when the probe reports the sandbox down, and the wrapper does not suggest `--sandbox-down` for
+  it (issue #816); `provenance.sandbox_probe`
   lists what each probe saw. When a run exits 2 because reviewers failed on the sandbox, the wrapper
   names them and suggests rerunning with `--sandbox-down`.
 - Related: #525 (CI blocks on pre-existing findings in touched files) affects CI and this round equally.
