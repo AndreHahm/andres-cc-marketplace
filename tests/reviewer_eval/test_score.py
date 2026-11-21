@@ -185,8 +185,11 @@ def test_cli_reports_an_invalid_corpus(tmp_path: Path, capsys: pytest.CaptureFix
 
 
 _HEAD = "a" * 40
-# Every run file carries both pins unless a test overrides them; --stability refuses a run without.
+# Every run file carries both pins, a base and reviewed paths unless a test overrides them;
+# --stability refuses a run without any of them.
 _PINS = {"configured_model": "gpt-6-luna", "pinned_cli_version": "0.170.0"}
+_BASE = "b" * 40
+_OMIT = object()
 
 
 def _run_file(
@@ -198,7 +201,7 @@ def _run_file(
     reviewer: str = "security",
     reporters: list[str] | None = None,
     provenance: dict | None = None,
-    reviewed_paths: list[str] | None = None,
+    reviewed_paths: object = ("a.py",),
 ) -> str:
     findings = []
     for path in blocking_paths:
@@ -208,9 +211,10 @@ def _run_file(
         findings.append(finding)
     result: dict = {"findings": findings}
     if head is not None:
-        result["provenance"] = {"head_sha": head, **_PINS, **(provenance or {})}
-    if reviewed_paths is not None:
-        result["reviewed_paths"] = reviewed_paths
+        result["provenance"] = {"head_sha": head, "base_sha": _BASE, **_PINS, **(provenance or {})}
+    if reviewed_paths is not _OMIT:
+        is_sequence = isinstance(reviewed_paths, (list, tuple))
+        result["reviewed_paths"] = list(reviewed_paths) if is_sequence else reviewed_paths
     if roster is not None:
         result["reviewers"] = list(roster)
     path = tmp_path / name
@@ -414,8 +418,9 @@ def test_cli_stability_rejects_runs_with_a_different_review_context(
     tmp_path: Path, capsys: pytest.CaptureFixture, field: str
 ):
     # Same head, but the reviewer was given a different base, model pin or CLI pin: not a repeat.
-    runs = [_run_file(tmp_path, f"run{n}.json", [], provenance={field: "one"}) for n in range(4)]
-    runs.append(_run_file(tmp_path, "run4.json", [], provenance={field: "two"}))
+    one, two = ("c" * 40, "d" * 40) if field == "base_sha" else ("one", "two")
+    runs = [_run_file(tmp_path, f"run{n}.json", [], provenance={field: one}) for n in range(4)]
+    runs.append(_run_file(tmp_path, "run4.json", [], provenance={field: two}))
     assert score.main(["--stability", *runs, "--reviewer", "security"]) == 1
     captured = capsys.readouterr()
     assert captured.out == ""
@@ -459,14 +464,40 @@ def test_cli_stability_rejects_runs_without_a_recorded_pin(
 def test_cli_stability_rejects_a_field_present_in_one_run_and_absent_in_another(
     tmp_path: Path, capsys: pytest.CaptureFixture
 ):
-    runs = [
-        _run_file(tmp_path, f"run{n}.json", [], provenance={"base_sha": "b" * 40}) for n in range(4)
-    ]
-    runs.append(_run_file(tmp_path, "old.json", []))
+    runs = [_run_file(tmp_path, f"run{n}.json", []) for n in range(4)]
+    runs.append(_run_file(tmp_path, "old.json", [], provenance={"base_sha": None}))
     assert score.main(["--stability", *runs, "--reviewer", "security"]) == 1
     captured = capsys.readouterr()
     assert "old.json" in captured.err
     assert "base_sha" in captured.err
+
+
+@pytest.mark.parametrize("base", [None, "", "B" * 40, "b" * 39])
+def test_cli_stability_rejects_runs_without_a_valid_base(
+    tmp_path: Path, capsys: pytest.CaptureFixture, base: object
+):
+    # Five runs that all lack the base agree on it, but say nothing about the range they reviewed.
+    runs = [
+        _run_file(tmp_path, f"run{n}.json", [], provenance={"base_sha": base}) for n in range(5)
+    ]
+    assert score.main(["--stability", *runs, "--reviewer", "security"]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "run0.json" in captured.err
+    assert "base_sha" in captured.err
+
+
+@pytest.mark.parametrize("paths", [_OMIT, None, "a.py", [1], ["a.py", None]])
+def test_cli_stability_rejects_runs_without_reviewed_paths(
+    tmp_path: Path, capsys: pytest.CaptureFixture, paths: object
+):
+    # Runs that all omit or garble the reviewed paths agree on None, but say nothing about scope.
+    runs = [_run_file(tmp_path, f"run{n}.json", [], reviewed_paths=paths) for n in range(5)]
+    assert score.main(["--stability", *runs, "--reviewer", "security"]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "run0.json" in captured.err
+    assert "reviewed_paths" in captured.err
 
 
 def test_cli_stability_rejects_runs_that_reviewed_different_paths(

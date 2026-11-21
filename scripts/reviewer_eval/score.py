@@ -167,6 +167,14 @@ def _print_stability(paths: list[str], reviewer: str) -> int:
                 value = provenance.get(pin)
                 if not isinstance(value, str) or not value.strip():
                     raise ValueError(f"no provenance.{pin}, so the run is not under a recorded pin")
+            # Likewise for the base and the reviewed paths: runs that all lack them would agree.
+            base = provenance.get("base_sha")
+            if not isinstance(base, str) or not _HEAD_SHA.fullmatch(base):
+                raise ValueError("provenance.base_sha must be 40 lowercase hex characters")
+            if not _is_str_list(result.get("reviewed_paths")):
+                raise ValueError(
+                    "reviewed_paths must be a list of strings, the paths the run reviewed"
+                )
             context = _review_context(result, provenance)
             if first_context is None:
                 first_context = context
