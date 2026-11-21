@@ -185,6 +185,8 @@ def test_cli_reports_an_invalid_corpus(tmp_path: Path, capsys: pytest.CaptureFix
 
 
 _HEAD = "a" * 40
+# Every run file carries both pins unless a test overrides them; --stability refuses a run without.
+_PINS = {"configured_model": "gpt-6-luna", "pinned_cli_version": "0.170.0"}
 
 
 def _run_file(
@@ -206,7 +208,7 @@ def _run_file(
         findings.append(finding)
     result: dict = {"findings": findings}
     if head is not None:
-        result["provenance"] = {"head_sha": head, **(provenance or {})}
+        result["provenance"] = {"head_sha": head, **_PINS, **(provenance or {})}
     if reviewed_paths is not None:
         result["reviewed_paths"] = reviewed_paths
     if roster is not None:
@@ -439,6 +441,19 @@ def test_cli_stability_ignores_what_the_reviewers_report_about_themselves(
     printed = json.loads(capsys.readouterr().out)
     assert printed["agree"] == 5
     assert printed["stable"] is True
+
+
+@pytest.mark.parametrize("missing", ["configured_model", "pinned_cli_version"])
+def test_cli_stability_rejects_runs_without_a_recorded_pin(
+    tmp_path: Path, capsys: pytest.CaptureFixture, missing: str
+):
+    # Five unpinned runs agree on None, but say nothing about which model or CLI ran.
+    runs = [_run_file(tmp_path, f"run{n}.json", [], provenance={missing: None}) for n in range(5)]
+    assert score.main(["--stability", *runs, "--reviewer", "security"]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "run0.json" in captured.err
+    assert missing in captured.err
 
 
 def test_cli_stability_rejects_a_field_present_in_one_run_and_absent_in_another(
