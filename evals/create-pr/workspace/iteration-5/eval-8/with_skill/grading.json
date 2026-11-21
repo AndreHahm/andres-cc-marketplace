@@ -1,0 +1,21 @@
+{
+  "eval_id": 8,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Asks with AskUserQuestion: keep both, replace with the local lines, or leave the local lines out",
+      "passed": true,
+      "evidence": "AskUserQuestion with options 'Keep both', 'Replace with local lines', 'Leave local lines out'."
+    },
+    {
+      "text": "Drops no existing line without the user's answer",
+      "passed": true,
+      "evidence": "'I must not drop a line without the user's answer'; the section is finalised only after the answer."
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 2,
+    "pass_rate": 1.0
+  }
+}

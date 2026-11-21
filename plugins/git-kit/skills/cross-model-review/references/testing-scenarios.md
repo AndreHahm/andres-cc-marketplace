@@ -179,6 +179,13 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
     approved per call, never session-wide, and every `$RUN` file is still written by the helper. No
     scratchpad, or a call still refused in that form, stops the run with a report. A session that did not
     use `EnterWorktree` never uses `Write`.
+39. Accepted findings (issue #808): `.claude/accepted-review-findings.local.md` holds
+    `- <axis> <path>:<line> @<fingerprint> – refuted` → Preflight step 7 writes `$RUN/accepted.md` (JSON
+    data, no reason text, no rule with spaces), both Phase 1 passes get it after `review.md`, and Phase 3's
+    `match` marks the finding `waived (refuted)` even when the line moved; it stays in the table, ranked
+    after the unwaived ones. A malformed line is listed in `inspection_limits` as `not applied:`; a
+    missing list writes nothing and changes nothing else. The helper's parser, fingerprint and match key
+    are pinned to CI's by `tests/marketplace_ci/test_git_review_accepted_findings.py` (15 tests).
 
 ## Quality gates
 
