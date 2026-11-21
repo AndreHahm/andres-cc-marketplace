@@ -354,6 +354,32 @@ def check_run(run) -> None:
     )
     check("leftover mutants/ refused: exit 2", code == 2 and "already holds mutants" in err, err)
     (root / "mutants").rmdir()
+    # Native Windows (#788): refused before any subprocess starts and before setup.cfg is written.
+    started_commands: list[object] = []
+    saved_platform, saved_subprocess_run = sys.platform, run.subprocess.run
+    try:
+        sys.platform = "win32"
+        run.subprocess.run = lambda *a, **kw: started_commands.append(a)
+        code, _, err = call(
+            run.main,
+            ["--root", str(root), "--list", str(write_list(root, good)), "--module", "mod"],
+        )
+        list_code, list_out, _ = call(
+            run.main, ["--root", str(root), "--list", str(write_list(root, good)), "--list-modules"]
+        )
+    finally:
+        sys.platform = saved_platform
+        run.subprocess.run = saved_subprocess_run
+    check(
+        "native Windows refused: exit 3, points to WSL, nothing started",
+        code == 3 and "WSL" in err and not started_commands and not (root / "setup.cfg").exists(),
+        err,
+    )
+    check(
+        "native Windows still lists modules (no subprocess needed)",
+        list_code == 0 and json.loads(list_out) == ["scripts/pkg/mod.py"],
+        list_out,
+    )
     check(
         "real key accepted",
         bool(

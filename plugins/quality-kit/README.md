@@ -64,7 +64,8 @@ CLI authenticated for the project; its pre-PR scan (`sonar analyze`) sends proje
 period is undocumented, so it asks first. For coverage, `uv` (the tier script needs PyYAML and defusedxml and
 runs as `uv run --no-project --no-config --with pyyaml==6.0.3 --with defusedxml==0.7.1`); Codecov reads need nothing for a public repository and a personal
 `CODECOV_API_TOKEN` for a private one. For mutation testing, `uv` (mutmut and PyYAML come from
-`uv run --with mutmut==3.8.1 --with pyyaml==6.0.3`) and the project's own test dependencies.
+`uv run --with mutmut==3.8.1 --with pyyaml==6.0.3`) and the project's own test dependencies. mutmut needs
+`fork`, so on Windows run it inside WSL: the runner exits 3 on native Windows.
 
 ## Language
 

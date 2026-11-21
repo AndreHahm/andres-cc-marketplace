@@ -34,8 +34,9 @@ Usage (mutmut and PyYAML come from uv):
                                                needs the same configuration, so it is written again)
 
 Exit codes: mutmut's own exit status from `mutmut run` (0 when it finished, whatever survived), or
-that of `export-cicd-stats` when the run returned 0; 2 invalid input; 3 PyYAML or mutmut missing, or
-no python3 next to the running interpreter that is that interpreter; 4 red baseline.
+that of `export-cicd-stats` when the run returned 0; 2 invalid input; 3 PyYAML or mutmut missing,
+no python3 next to the running interpreter that is that interpreter, or native Windows (mutmut needs
+fork; run it inside WSL); 4 red baseline.
 """
 
 from __future__ import annotations
@@ -297,6 +298,15 @@ def main(argv: list[str] | None = None) -> int:
         return EXIT_INPUT
     except ModuleNotFoundError as exc:
         print(f"qlty-mutation-run: {exc}", file=sys.stderr)
+        return EXIT_NO_PACKAGE
+    # mutmut 3.8.1 needs os.fork, and on Windows a bare "python3" is not looked up in the PATH that
+    # python_env passes, so it could start another interpreter or one planted in the run tree.
+    if sys.platform == "win32":
+        print(
+            "qlty-mutation-run: native Windows is not supported (mutmut needs fork);"
+            " run it inside WSL",
+            file=sys.stderr,
+        )
         return EXIT_NO_PACKAGE
     if importlib.util.find_spec("mutmut") is None:
         print(

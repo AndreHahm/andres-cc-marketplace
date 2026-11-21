@@ -21,6 +21,10 @@ All notable changes to this plugin are documented here.
   `sonar` record reads first; the text moved unchanged.
 
 ### Fixed
+- `qlty-mutation-run.py` refuses native Windows (exit 3, pointing to WSL) before it starts any subprocess (issue
+  #788). There a bare `python3` is not looked up in the `PATH` the runner passes, so it could start another
+  interpreter or one planted in the run tree, and mutmut 3.8.1 needs `fork` anyway. Under WSL all four calls were
+  checked live to start the venv's own interpreter, with a planted `python3` in the run tree never run.
 - Codacy ignores used the hex `issueId`, which `--ignore-issue` rejects, or, when it starts with digits, reads by
   that numeric prefix as a different issue (issue #760). The Codacy findings record (schema `2.0.0`) now carries
   the numeric `resultDataId` as `issue_id` and the hex id as `issue_key`, for matching only.
