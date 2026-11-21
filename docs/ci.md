@@ -1093,7 +1093,9 @@ alike but cannot guarantee they agree, because the model is still non-determinis
     changes a symlink under `scripts/` or at the top level, since the result records paths, not file modes,
     and a branch whose tree has two paths that differ only in case, which a case-insensitive checkout
     (Windows, macOS) writes to one file that CI's case-sensitive checks would not flag; `advisory` itself
-    matches every name without case. These checks see committed changes only: anything uncommitted,
+    matches every name without case. It refuses a run during which `HEAD` changed, and reads a result with
+    neither field (a branch's `run-codex-review` older than this change) as advisory. These checks see
+    committed changes only: anything uncommitted,
     untracked or gitignored in the local working tree still runs unflagged, which CI's fresh checkout does
     not have. The wrapper is branch code too.
 

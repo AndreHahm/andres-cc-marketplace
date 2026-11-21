@@ -312,7 +312,8 @@ def _advisory_reason(path: str) -> str | None:
 
 def review_advisory(paths: Iterable[str], added: Iterable[str] = ()) -> dict:
     """The result's `advisory`: the change touches the review-dispatch code, adds a file that can
-    shadow it (`added`: paths the branch adds or retypes, as CI's shadow check sees them), or
+    shadow it (`added`: every path the branch adds or changes, a superset of what CI's shadow
+    check reads, since git_state folds a type change into a modification), or
     touches a reviewer-steering file or a dispatched reviewer's own definition. The reviewers
     then judged a change to what runs or steers them, so a clean result is advisory."""
     hits = {p: reason for p in set(paths) if (reason := _advisory_reason(p)) is not None}

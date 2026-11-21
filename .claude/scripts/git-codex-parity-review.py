@@ -412,6 +412,11 @@ def main() -> int:
         return 2
     print(f"PARITY: base {base_sha[:12]} (tip of origin/main, as CI's base.sha).")
 
+    # The checks below read HEAD's tree; the review must run on that same tree.
+    head = _head_sha()
+    if head is None:
+        print("PARITY: could not resolve HEAD; cannot run.")
+        return 2
     touched = tier1_touches(base_sha)
     if touched is None:
         print("PARITY WARNING: could not check whether review-dispatch files changed.")
@@ -536,6 +541,9 @@ def main() -> int:
             "PARITY WARNING: --sandbox-down was given but the fallback is unavailable; "
             "sandbox only."
         )
+    if _head_sha() != head:
+        print(_HEAD_MOVED)
+        return 2
     result = _run_in_group(argv, env=env, timeout=RUN_TIMEOUT_SECONDS)
     if result is None:
         print("PARITY: run-codex-review could not be started or timed out.", file=sys.stderr)
@@ -547,6 +555,9 @@ def main() -> int:
             hint = sandbox_rerun_hint(output)
             if hint:
                 print(hint)
+        return 2
+    if _head_sha() != head:
+        print(_HEAD_MOVED)
         return 2
     # Fail closed: an exit status alone is not evidence that a review ran and what it concluded.
     data = _read_result(output)
@@ -725,6 +736,19 @@ def _case_key(path: str) -> str:
     return unicodedata.normalize("NFC", path).upper().casefold()
 
 
+_HEAD_MOVED = (
+    "PARITY: HEAD changed during this run, so the review did not cover the tree the "
+    "trust-boundary checks inspected; cannot run. Run again on a settled checkout."
+)
+
+
+def _head_sha() -> str | None:
+    done = _run(["git", "rev-parse", "--verify", "HEAD^{commit}"])
+    if done is None or done.returncode != 0:
+        return None
+    return done.stdout.strip() or None
+
+
 def _git_z(argv: list[str]) -> list[str] | None:
     done = _run(["git", *argv], encoding="utf-8", errors="surrogateescape")
     if done is None or done.returncode != 0:
@@ -748,7 +772,9 @@ def shadow_touches(base_sha: str) -> tuple[list[str], list[str]] | None:
     links = sorted(
         path
         for meta, path in zip(raw[::2], raw[1::2], strict=True)
-        if meta.split(" ")[1:2] == ["120000"] and (path.startswith("scripts/") or "/" not in path)
+        # Folded like every other name here: `Scripts/` is scripts/ on a case-insensitive checkout.
+        if meta.split(" ")[1:2] == ["120000"]
+        and (_case_key(path).startswith("scripts/") or "/" not in path)
     )
     return names, links
 
@@ -760,7 +786,15 @@ def coverage_and_advisory(data: dict, expected: list[str] | None) -> tuple[list[
     a branch could clear them. `expected` is what the base-anchored checks (`tier1_touches`,
     `shadow_touches`) found: every path in it must be in the result's advisory paths, or the result
     is not trusted. None (a check could not run) leaves the field unverified, so the result is
-    advisory whatever it says."""
+    advisory whatever it says. A result with neither field (`_read_result`'s legacy case) is
+    always advisory: nothing in it says what it covered."""
+    if not any(key in data for key in _RESULT_DICT_KEYS):
+        return [
+            "PARITY WARNING: the result has no `coverage` or `advisory` field (this branch's "
+            "run-codex-review is older than issue #713), so neither could be checked.",
+            "PARITY: ADVISORY: treat a clean result as advisory, not a full pass "
+            "(the result file's `coverage` and `advisory` fields).",
+        ], None
     coverage, advisory = data["coverage"], data["advisory"]
     missing = sorted(set(expected or ()) - set(advisory["paths"]))
     if missing:
@@ -810,6 +844,10 @@ def _read_result(output: Path) -> dict | None:
         return None
     if not all(isinstance(data.get(key), list) for key in _RESULT_LIST_KEYS):
         return None
+    if not any(key in data for key in _RESULT_DICT_KEYS):
+        # A dispatcher older than issue #713 (an installed wrapper on a branch cut before it)
+        # writes neither field; `coverage_and_advisory` then reports the result as advisory.
+        return data
     if not (_valid_coverage(data.get("coverage")) and _valid_advisory(data.get("advisory"))):
         return None
     return data

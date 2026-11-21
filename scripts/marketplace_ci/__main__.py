@@ -1659,7 +1659,8 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
         return _fail_run_codex_review(args, f"cannot resolve base SHA {base_sha!r}")
 
     try:
-        changed = collapse_identical_mirrors(repo, compute_pr_delta(repo, base_sha), base_sha)
+        full_delta = compute_pr_delta(repo, base_sha)
+        changed = collapse_identical_mirrors(repo, full_delta, base_sha)
     except PrDeltaError as exc:
         return _fail_run_codex_review(args, str(exc))
 
@@ -1907,11 +1908,13 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
     # What a clean result does not cover (issue #713). Neither changes the gate or the exit code.
     # Coverage is over what the reviewers saw; advisory is over the whole PR delta, since it is
     # about what the branch changes. Its shadow check reads every path the branch adds or changes
-    # (git_state folds a type change into "M", so added-only would miss a retyped file).
+    # (git_state folds a type change into "M", so added-only would miss a retyped file). It reads
+    # the uncollapsed delta: an identical .claude/ mirror is reviewed once, but still changed.
     try:
         coverage_field = general_correctness_coverage(scope.paths, [r.reviewer for r in reports])
         advisory_field = review_advisory(
-            _changed_path_set(changed), [c.new_path for c in changed if c.new_path is not None]
+            _changed_path_set(full_delta),
+            [c.new_path for c in full_delta if c.new_path is not None],
         )
     except Exception as exc:  # fail closed, like the classification above
         return _fail_run_codex_review(args, f"coverage/advisory failed: {exc!r}", reports)

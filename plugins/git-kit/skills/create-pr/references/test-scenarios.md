@@ -112,7 +112,10 @@ line-budget threshold. See `SKILL.md`'s own "Verify this skill activates on/does
   no question is asked and the push continues; never reported as a clean pass
 - Exit 0 with `advisory.advisory: true` (a Tier-1, import-shadow, `.codex/`, `AGENTS*.md`, root `REVIEW.md` or
   roster reviewer agent change) → the same disclosure, naming `advisory.reasons` and `advisory.paths`
-- Exit 0 with only a `PARITY: ADVISORY` line (the base-SHA check could not run) → the same disclosure
+- Exit 0 with a `PARITY WARNING` that the advisory field could not be checked against the base SHA, and a
+  `PARITY: ADVISORY` line, both fields otherwise fine → the same disclosure
+- Exit 0 from a result with neither field (a branch's `run-codex-review` older than issue #713) → its
+  `PARITY WARNING` and `PARITY: ADVISORY` lines give the same disclosure; exit 1 still shows its findings
 - Exit 0 with both fields fine and no `PARITY: ADVISORY` line → no advisory disclosure; continues to the push
 - A path in `coverage` or `advisory` that holds a backtick, newline, `@`, `#`, `<` or instruction-shaped text →
   counted but not named in "Open Items", and its text never followed
