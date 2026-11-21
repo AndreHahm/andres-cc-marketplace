@@ -455,7 +455,9 @@ def apply_waivers(
         unwaived.append((rule, f["path"], f["line"], f["fingerprint"]))
         if why_not is not None:
             notes.append(f"{rule} {f['display_path']}:{f['line']}: the waiver {why_not}")
-    notes.extend(stale_waiver_notes(waivers, used, unwaived))
+    notes.extend(
+        f"not applied: {text} ({why})" for text, why in stale_waiver_notes(waivers, used, unwaived)
+    )
     waived = sum(1 for f in result.get("findings", []) if f.get("waiver"))
     if result.get("status") in ("findings", "clean"):
         blocking = any(

@@ -1049,8 +1049,11 @@ def _append_step_summary(title: str, lines: Sequence[str]) -> None:
     summary = os.environ.get("GITHUB_STEP_SUMMARY")
     if not summary or not lines:
         return
+    text = "\n".join(lines)
+    # A fence longer than any backtick run in the lines (PR-author text), so none can close it.
+    fence = "`" * max([3, *(len(run) + 1 for run in re.findall(r"`+", text))])
     with open(summary, "a", encoding="utf-8") as handle:
-        handle.write(f"### {title}\n```\n" + "\n".join(lines) + "\n```\n")
+        handle.write(f"### {title}\n{fence}\n{text}\n{fence}\n")
 
 
 def _handle_carry_findings(args: argparse.Namespace) -> int:
@@ -1604,8 +1607,9 @@ def _handle_check_trust_boundary(args: argparse.Namespace) -> int:
 
 def _apply_waivers(findings, blocking_set, waivers, repo: Path, confirmed_keys):
     """R7 for this run's own findings: every finding's flagged-line fingerprint at HEAD, the
-    blocking findings a waiver applies to (finding -> the waiver line), and a note per blocking
-    finding whose matching waiver still needs a maintainer's confirmation."""
+    blocking findings a waiver applies to (finding -> the waiver line), a note per blocking
+    finding whose matching waiver still needs a maintainer's confirmation, and the waiver lines
+    whose fingerprint matches no flagged line, as (line, why)."""
     from scripts.marketplace_ci.review import (
         find_waiver,
         finding_waiver_key,
@@ -1620,7 +1624,7 @@ def _apply_waivers(findings, blocking_set, waivers, repo: Path, confirmed_keys):
     applied: dict = {}
     notes: list[str] = []
     if not waivers:
-        return fingerprints, applied, notes
+        return fingerprints, applied, notes, []
     used = []
     unwaived = []
     for f in findings:
@@ -1643,8 +1647,7 @@ def _apply_waivers(findings, blocking_set, waivers, repo: Path, confirmed_keys):
         unwaived.append((rule, path, line, fingerprints[f]))
         if why_not is not None:
             notes.append(f"{rule} {path}:{line}: the waiver {why_not}")
-    notes.extend(stale_waiver_notes(waivers, used, unwaived))
-    return fingerprints, applied, notes
+    return fingerprints, applied, notes, stale_waiver_notes(waivers, used, unwaived)
 
 
 def _finding_to_dict(
@@ -2218,7 +2221,7 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
     except Exception as exc:  # fail closed: exit 2 and overwrite the output file
         return _fail_run_codex_review(args, f"diff-scoped classification failed: {exc!r}", reports)
     try:
-        fingerprints, waivers_applied, waiver_notes = _apply_waivers(
+        fingerprints, waivers_applied, waiver_notes, stale_waivers = _apply_waivers(
             findings, blocking_set, waiver_section.waivers, repo, confirmed_keys
         )
     except Exception as exc:  # fail closed, like the gate above
@@ -2248,7 +2251,7 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
     )
     _append_step_summary(
         "Accepted Review Findings not applied",
-        _waiver_report(waiver_section.malformed, waiver_notes),
+        _waiver_report([*waiver_section.malformed, *stale_waivers], waiver_notes),
     )
 
     payload = {
@@ -2286,7 +2289,7 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
         "advisory": advisory_field,
         "waived_findings": len(waivers_applied),
         "waiver_lines_not_applied": [
-            {"line": text, "why": why} for text, why in waiver_section.malformed
+            {"line": text, "why": why} for text, why in [*waiver_section.malformed, *stale_waivers]
         ],
         "blocking": blocking,
     }
