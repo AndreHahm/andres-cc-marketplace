@@ -123,6 +123,11 @@ class Reviewer:
     # by review.py (DELTA_VALIDATE); the other labels document routes that stay hand-written there,
     # and a test checks that every reviewer those routes name is in ROSTER.
     selector: str
+    # True only for a reviewer whose instructions check the logic of arbitrary code (logic
+    # errors, design decisions, unverified claims), not a plugin-component or named-pattern
+    # catalogue. A clean result on non-plugin code with no such reviewer dispatched says so in
+    # its `coverage` field (issue #713).
+    checks_general_correctness: bool = False
 
     @property
     def instruction_file(self) -> str:
@@ -149,6 +154,10 @@ def reviewers_for_selector(selector: str) -> tuple[str, ...]:
     if not names:
         raise ContractError(f"unknown selector: {selector!r}")
     return names
+
+
+def general_correctness_reviewers() -> frozenset[str]:
+    return frozenset(r.name for r in ROSTER if r.checks_general_correctness)
 
 
 # --- exceptions registry --------------------------------------------------------

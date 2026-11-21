@@ -45,6 +45,7 @@ import re
 import signal
 import subprocess
 import sys
+import unicodedata
 from pathlib import Path
 
 WORKFLOW = Path(".github/workflows/marketplace-ci.yml")
@@ -421,6 +422,41 @@ def main() -> int:
             "executes the branch's own copy of that code with your Codex credentials; treat a "
             "clean result as non-authoritative."
         )
+    collisions = case_collisions()
+    if collisions is None:
+        print("PARITY: could not list this branch's tree to check for case collisions; cannot run.")
+        return 2
+    if collisions:
+        print(
+            "PARITY: this branch has paths that differ only in case "
+            f"({_render_paths(collisions)}). On a case-insensitive checkout they are one file on "
+            "disk, which the trust-boundary checks cannot see; cannot run."
+        )
+        return 2
+    shadows = shadow_touches(base_sha)
+    if shadows is None:
+        print("PARITY WARNING: could not check whether this branch adds an import shadow.")
+    else:
+        shadow_names, symlinks = shadows
+        if symlinks:
+            # The result records paths, not file modes, so it could never account for these.
+            print(
+                "PARITY: this branch adds or changes a symlink under scripts/ or at the top level "
+                f"({_render_paths(symlinks)}). CI refuses to dispatch on it, and this run could "
+                "not verify what the symlink stands in for; cannot run."
+            )
+            return 2
+        if shadow_names:
+            print(
+                "PARITY WARNING: this branch adds files that can shadow a review-dispatch module "
+                f"({_render_paths(shadow_names)}). CI hard-refuses to dispatch on these; treat a "
+                "clean result as non-authoritative."
+            )
+    # What the result's `advisory.paths` must include, from base-anchored checks; None when either
+    # check could not run, which leaves the result's own field unverified.
+    expected = (
+        None if touched is None or shadows is None else sorted(set(touched) | set(shadows[0]))
+    )
 
     if (output.parent.resolve() / output.name).is_relative_to(Path.cwd().resolve()):
         print(f"PARITY: --output {output} is inside the checkout; use a scratch directory.")
@@ -513,13 +549,20 @@ def main() -> int:
                 print(hint)
         return 2
     # Fail closed: an exit status alone is not evidence that a review ran and what it concluded.
-    blocking = _read_blocking(output)
-    if blocking is None:
+    data = _read_result(output)
+    if data is None:
         print(f"PARITY: exit {result.returncode} but no valid result at {output}; cannot run.")
         return 2
+    blocking = data["blocking"]
     if blocking != (result.returncode == 1):
         print(f"PARITY: exit {result.returncode} contradicts the result (blocking={blocking}).")
         return 2
+    lines, contradiction = coverage_and_advisory(data, expected)
+    if contradiction:
+        print(contradiction)
+        return 2
+    for line in lines:
+        print(line)
     return result.returncode
 
 
@@ -590,14 +633,163 @@ def sandbox_rerun_hint(output: Path) -> str | None:
 # Keys every completed run-codex-review result carries (scripts/marketplace_ci/__main__.py
 # builds the payload; a drift test checks each is still written there).
 _RESULT_LIST_KEYS = ("reviewed_paths", "reviewers", "structural_findings", "findings")
+# What a clean result does not cover (issue #713); shapes checked by `_valid_coverage` and
+# `_valid_advisory`.
+_RESULT_DICT_KEYS = ("coverage", "advisory")
 
 
-def _read_blocking(output: Path) -> bool | None:
-    """`blocking` of a completed run-codex-review result, or None if the file isn't one.
+def _str_list(value: object) -> bool:
+    return isinstance(value, list) and all(isinstance(item, str) for item in value)
+
+
+def _valid_coverage(value: object) -> bool:
+    return (
+        isinstance(value, dict)
+        and isinstance(value.get("complete"), bool)
+        and _str_list(value.get("uncovered_paths"))
+        and _str_list(value.get("general_correctness_reviewers"))
+        and value["complete"] == (not value["uncovered_paths"])
+    )
+
+
+def _valid_advisory(value: object) -> bool:
+    return (
+        isinstance(value, dict)
+        and isinstance(value.get("advisory"), bool)
+        and _str_list(value.get("paths"))
+        and _str_list(value.get("reasons"))
+        and value["advisory"] == bool(value["paths"])
+    )
+
+
+# At most this many paths go into one printed line; the result file keeps them all.
+_PRINTED_PATHS_CAP = 20
+
+
+def _render_paths(paths: list[str]) -> str:
+    """Paths for a printed line. They are branch-controlled file names (a newline, a backtick or
+    instruction-shaped text is a legal name), so each is printed JSON-quoted and ASCII-escaped:
+    one name can never end the line, forge a `PARITY:` line, or fail to encode."""
+    shown = ", ".join(json.dumps(p) for p in paths[:_PRINTED_PATHS_CAP])
+    rest = len(paths) - _PRINTED_PATHS_CAP
+    return f"{shown} (and {rest} more)" if rest > 0 else shown
+
+
+# Copies of review.py's SCRIPTS_SHADOW_PATTERN and TOP_LEVEL_SHADOW_PATTERN, the two name patterns
+# CI's "adds an importable top-level shadow" step greps for. This wrapper does not import the
+# branch's review.py (that is the code under suspicion); a drift test keeps the three copies equal.
+_SCRIPTS_SHADOW_PATTERN = (
+    r"^scripts/(.*/)?__pycache__(/|$)|^scripts/.*\.(pyc|pyw|pyd|so)$|^scripts/.*/__init__\.|"
+    r"^scripts/marketplace_ci/(__init__|__main__|review|review_contract|review_verifiers|"
+    r"git_state|registry|sync_plan|conversion|prefix_check|pr_policy)(/|$)"
+)
+_TOP_LEVEL_SHADOW_PATTERN = r"^[^/]+\.(py|pyc|pyw|pyd|so)$|^[^/]+/__init__\.[^/]+$|^\.venv(/|$)"
+# Without case, as review.py matches them: see `case_collisions` for why.
+_SHADOW_RE = re.compile(
+    f"(?:{_SCRIPTS_SHADOW_PATTERN})|(?:{_TOP_LEVEL_SHADOW_PATTERN})", re.DOTALL | re.IGNORECASE
+)
+
+
+def case_collisions() -> list[str] | None:
+    """Paths in HEAD's tree (files and every directory above them) that equal another HEAD path
+    once case is folded, or None when git could not say. On a case-insensitive checkout (Windows,
+    macOS) both land on one file on disk, so a branch's `Scripts/marketplace_ci/review.py` can
+    overwrite the real `scripts/...` module while every name check here, made for CI's
+    case-sensitive Linux, sees an unrelated new path. Refused on every platform, so the verdict
+    does not depend on the file system."""
+    files = _git_z(["ls-tree", "-r", "-z", "--name-only", "HEAD"])
+    if files is None:
+        return None
+    paths = set(files)
+    for file in files:
+        parts = file.split("/")
+        paths.update("/".join(parts[:i]) for i in range(1, len(parts)))
+    groups: dict[str, set[str]] = {}
+    for path in paths:
+        groups.setdefault(_case_key(path), set()).add(path)
+    return sorted(p for group in groups.values() if len(group) > 1 for p in group)
+
+
+def _case_key(path: str) -> str:
+    """A key two names share when a case-insensitive file system may store them as one: NFC (macOS
+    normalizes), then upper() (NTFS compares by simple uppercase, so dotless `ı` equals `i`), then
+    casefold(). Broader than any one file system, which only adds refusals."""
+    return unicodedata.normalize("NFC", path).upper().casefold()
+
+
+def _git_z(argv: list[str]) -> list[str] | None:
+    done = _run(["git", *argv], encoding="utf-8", errors="surrogateescape")
+    if done is None or done.returncode != 0:
+        return None
+    return [field for field in done.stdout.split("\0") if field]
+
+
+def shadow_touches(base_sha: str) -> tuple[list[str], list[str]] | None:
+    """(added files that can shadow a review-dispatch module, symlinks added or changed under
+    scripts/ or at the top level) since the merge-base with `base_sha`, or None when git could not
+    say. A port of CI's refuse step of the same name: committed changes only, like CI."""
+    merge_base = _run(["git", "merge-base", base_sha, "HEAD"])
+    if merge_base is None or merge_base.returncode != 0 or not merge_base.stdout.strip():
+        return None
+    base = merge_base.stdout.strip()
+    added = _git_z(["diff", "-z", "--no-renames", "--name-only", "--diff-filter=AT", base, "HEAD"])
+    raw = _git_z(["diff", "-z", "--raw", "--no-renames", "--diff-filter=ATM", base, "HEAD"])
+    if added is None or raw is None or len(raw) % 2:
+        return None
+    names = sorted(p for p in added if _SHADOW_RE.search(p))
+    links = sorted(
+        path
+        for meta, path in zip(raw[::2], raw[1::2], strict=True)
+        if meta.split(" ")[1:2] == ["120000"] and (path.startswith("scripts/") or "/" not in path)
+    )
+    return names, links
+
+
+def coverage_and_advisory(data: dict, expected: list[str] | None) -> tuple[list[str], str | None]:
+    """(lines to print, a contradiction message or None) for a result `_read_result` accepted.
+
+    The result's `coverage` and `advisory` come from the branch's own copy of run-codex-review, so
+    a branch could clear them. `expected` is what the base-anchored checks (`tier1_touches`,
+    `shadow_touches`) found: every path in it must be in the result's advisory paths, or the result
+    is not trusted. None (a check could not run) leaves the field unverified, so the result is
+    advisory whatever it says."""
+    coverage, advisory = data["coverage"], data["advisory"]
+    missing = sorted(set(expected or ()) - set(advisory["paths"]))
+    if missing:
+        return [], (
+            "PARITY: the result contradicts the base-SHA trust-boundary check: it does not mark "
+            f"{_render_paths(missing)} as advisory; cannot run."
+        )
+    lines = []
+    if expected is None:
+        lines.append(
+            "PARITY WARNING: the result's advisory field could not be checked against the base SHA."
+        )
+    if not coverage["complete"]:
+        lines.append(
+            "PARITY WARNING: no dispatched reviewer checks general correctness, so this code was "
+            f"not reviewed for logic errors: {_render_paths(coverage['uncovered_paths'])}."
+        )
+    if advisory["advisory"]:
+        lines.append(
+            "PARITY WARNING: this branch changes what runs or steers the reviewers ("
+            f"{', '.join(advisory['reasons'])}: {_render_paths(advisory['paths'])})."
+        )
+    if lines:
+        lines.append(
+            "PARITY: ADVISORY: treat a clean result as advisory, not a full pass "
+            "(the result file's `coverage` and `advisory` fields)."
+        )
+    return lines, None
+
+
+def _read_result(output: Path) -> dict | None:
+    """A completed run-codex-review result, parsed once, or None if the file isn't one.
 
     Completed means the payload `_handle_run_codex_review` writes: a non-empty string `mode`, the
-    list fields above, and a boolean `blocking`. Anything else (missing, unreadable, truncated, or
-    the entry point's `error` payload) is not evidence that a review ran.
+    list fields above, well-formed `coverage` and `advisory` objects, and a boolean `blocking`.
+    Anything else (missing, unreadable, truncated, or the entry point's `error` payload) is not
+    evidence that a review ran.
     """
     try:
         data = json.loads(output.read_text(encoding="utf-8"))
@@ -610,7 +802,9 @@ def _read_blocking(output: Path) -> bool | None:
         return None
     if not all(isinstance(data.get(key), list) for key in _RESULT_LIST_KEYS):
         return None
-    return blocking
+    if not (_valid_coverage(data.get("coverage")) and _valid_advisory(data.get("advisory"))):
+        return None
+    return data
 
 
 def fallback_touches(base_sha: str) -> list[str] | None:
