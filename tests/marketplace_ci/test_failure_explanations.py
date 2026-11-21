@@ -170,3 +170,26 @@ def test_render_names_the_fallback_path_cap_for_a_sandbox_cause():
     )
     other = render_could_not_run([_failed("a-reviewer", "setup refresh")])
     assert "Why no fallback" not in other
+
+
+@pytest.mark.parametrize("error", ["setup refresh", "Codex sandbox probe failed (x)"])
+def test_render_drops_the_fallback_advice_when_every_reviewer_is_over_the_path_cap(error):
+    """Issue #816: the fallback cannot take these reviewers' path lists, so the next step must not
+    recommend it."""
+    over = ReviewerReport(
+        reviewer="a-reviewer", status="failed", error=error, fallback_over_cap=True
+    )
+    text = render_could_not_run([over])
+    action = next(line for line in text.splitlines() if line.startswith("  What to do:"))
+    assert "--sandbox-down" not in action and "unsandboxed fallback" not in action
+    assert "split the change" in action
+
+
+def test_render_keeps_the_fallback_advice_for_reviewers_under_the_path_cap():
+    over = ReviewerReport(
+        reviewer="a-reviewer", status="failed", error="setup refresh", fallback_over_cap=True
+    )
+    text = render_could_not_run([over, _failed("b-reviewer", "setup refresh")])
+    action = next(line for line in text.splitlines() if line.startswith("  What to do:"))
+    assert "--sandbox-down" in action
+    assert "not for a-reviewer" in action

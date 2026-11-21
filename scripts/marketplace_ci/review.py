@@ -2566,6 +2566,11 @@ FAILURE_CATALOGUE: dict[str, FailureExplanation] = {
     ),
 }
 SANDBOX_FAILURE_CODES = frozenset({"sandbox_setup_refresh_failed", "sandbox_probe_failed"})
+# The next step for a sandbox failure of a reviewer the fallback cannot take (issue #816).
+_OVER_CAP_ACTION = (
+    "quit the Codex desktop app and rerun; the unsandboxed route cannot take this path list, "
+    "so if it still fails, split the change into smaller PRs"
+)
 
 
 def classify_failure(error: str | None) -> str:
@@ -2630,13 +2635,20 @@ def render_could_not_run(
         if code in SANDBOX_FAILURE_CODES and fallback_note:
             lines.append(f"  Why no fallback: {fallback_note}")
         over_cap = [r.reviewer for r in members if r.fallback_over_cap]
+        action = info.action
         if code in SANDBOX_FAILURE_CODES and over_cap:
             lines.append(
                 f"  Why no fallback: {', '.join(over_cap)}: its path list is over the unsandboxed "
                 f"fallback's {_MAX_GUARDED_TARGET_PATHS_CHARS}-character limit"
             )
+            # The catalogue's sandbox actions point at the fallback, which cannot take these
+            # reviewers (issue #816).
+            if len(over_cap) == len(members):
+                action = _OVER_CAP_ACTION[:1].upper() + _OVER_CAP_ACTION[1:] + "."
+            else:
+                action = f"{info.action} (not for {', '.join(over_cap)}: {_OVER_CAP_ACTION})"
         lines.append(f"  Cause: {info.cause}")
-        lines.append(f"  What to do: {info.action}")
+        lines.append(f"  What to do: {action}")
         lines.append(f"  Raw detail: {members[0].error or 'none'}")
     return "\n".join(lines)
 
