@@ -286,8 +286,9 @@ Before creating a PR, check for uncommitted changes:
    applies the same trust check as those reviews: no output when there is no list, and exit 3, with the
    reason, when the list must not be read (a symlink on its path, a copy tracked by git, which the branch
    and not the author supplied, git unable to tell, or a file it cannot read).
-   On exit 3, copy nothing and ask via `AskUserQuestion` whether to open the PR with "None" in the
-   section or to stop. Otherwise copy each printed waiver line, unchanged, into the body's
+   On exit 3, or any other non-zero exit (the script could not run, for example a path that does not
+   resolve), copy nothing, say which exit and output you got, and ask via `AskUserQuestion` whether to
+   open the PR with "None" in the section or to stop. Otherwise copy each printed waiver line, unchanged, into the body's
    `## Accepted Review Findings` section, in place of "None", and say which `not applied:` lines you
    left out. Never `Read` the file directly. A line already in the template's own section (anything but
    an HTML comment or "None") came with the branch, not from the author: in every case (local lines, no

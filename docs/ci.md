@@ -418,8 +418,9 @@ review` is the gate after the PR exists and reviews only the delta, to cut OpenA
   when a user whose `role_name` is `maintain` or `admin` (not `permission`, which reports maintain as
   `write`) has posted a PR comment line `- confirmed <rule> <path> @<fingerprint>` that was never edited
   (`created_at == updated_at`, since a user with write access can edit another user's comment;
-  `parse_confirmations`; a line inside a fenced code block, an HTML comment or a block quote is an
-  example and confirms nothing); without it the finding keeps blocking and the summary says the confirmation is
+  `parse_confirmations`; the line is a top-level bullet above the comment's first fence run, `<!--`,
+  `-->` or line starting with an HTML tag, since anything below one may render as an example; a block
+  quote never counts); without it the finding keeps blocking and the summary says the confirmation is
   missing. A confirmation names the fingerprint, so it lapses when the flagged line's text changes (not on a
   whitespace-only edit), and an
   earlier-format line cannot be confirmed. Every anchor carries (R10). A blocking entry the

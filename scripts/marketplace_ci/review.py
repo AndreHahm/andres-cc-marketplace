@@ -1457,7 +1457,9 @@ _WAIVER_LIKE = re.compile(
 )
 _HTML_COMMENT = re.compile(r"<!--.*?(?:-->|\Z)", re.DOTALL)
 _CONTROL_CHARS = re.compile(r"[\x00-\x1f\x7f]")
-_FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
+# parse_confirmations stops at the first line that could start code, raw HTML or a comment.
+_CONFIRMATION_STOP = re.compile(r"`{3,}|~{3,}|<!--|-->")
+_HTML_LINE = re.compile(r"^ {0,3}<[A-Za-z/!?]")
 _MAX_WAIVERS = 200
 _SECURITY_REVIEWER = "security-reviewer"
 
@@ -1599,6 +1601,11 @@ def read_waiver_section(pr_body: str, issue_is_open: Callable[[int], bool]) -> W
         if kind == "deferred":
             number = int(m["issue"]) if m["issue"] else None
             if number is not None and number not in looked_up:
+                # Closed or missing issues do not count toward the cap above, so the lookups
+                # have their own.
+                if len(looked_up) >= _MAX_WAIVERS:
+                    malformed.append((text, f"more than {_MAX_WAIVERS} distinct deferred issues"))
+                    continue
                 looked_up[number] = issue_is_open(number)
             if number is None or not looked_up[number]:
                 malformed.append((text, "deferred needs an open issue of this repository"))
@@ -1654,7 +1661,7 @@ def confirmation_key(rule: str, path: str, fingerprint: str | None) -> tuple[str
 
 
 _CONFIRMATION_LINE = re.compile(
-    r"^\s*[-*]\s+confirmed\s+(?P<rule>\S(?:.*?\S)?)\s+(?P<path>\S+)\s+"
+    r"^ {0,3}[-*]\s+confirmed\s+(?P<rule>\S(?:.*?\S)?)\s+(?P<path>\S+)\s+"
     rf"@(?P<fp>[0-9a-f]{{{_FINGERPRINT_LEN}}}|-)\s*$",
     re.IGNORECASE,
 )
@@ -1662,26 +1669,20 @@ _CONFIRMATION_LINE = re.compile(
 
 def parse_confirmations(comment_body: str) -> set[tuple[str, str, str]]:
     """The waivers one comment confirms, one line each: `- confirmed <rule> <path> @<fingerprint>`.
-    A confirmation names the fingerprint, so it lapses when the flagged line's text changes."""
+    A confirmation names the fingerprint, so it lapses when the flagged line's text changes.
+
+    Only lines above the first one that could start code, raw HTML or a comment count: a fence
+    run (three backticks or tildes) anywhere on a line, `<!--` or `-->` anywhere, or a line that
+    starts with an HTML tag. Markdown lets each of these turn later lines into an example
+    (a fence on a list item's own line, a stray `<!--`, a `<pre>` block), so rather than track
+    every way GitHub renders them, nothing after one is a confirmation. That fails closed: a
+    real confirmation below one is not counted and the finding keeps blocking. A block quote
+    or a line indented 4 or more spaces never matches, since the bullet must start the line."""
     keys: set[tuple[str, str, str]] = set()
-    fence: str | None = None
-    # A line inside an HTML comment or a fenced code block is an example, not a confirmation; a
-    # block quote never matches, since the line must start with the bullet.
     # On "\n" only, as GitHub renders lines: splitlines() also splits on U+2028 and form feed.
-    for raw in _HTML_COMMENT.sub("", comment_body or "").replace("\r\n", "\n").split("\n"):
-        opened = _FENCE.match(raw)
-        if opened is not None:
-            marker, rest = opened.group(1), opened.group(2)
-            if fence is None:
-                fence = marker
-                continue
-            # Only a bare fence of the same kind and at least the same length closes one
-            # (CommonMark); "```python" inside an open block is code.
-            if marker[0] == fence[0] and len(marker) >= len(fence) and not rest.strip():
-                fence = None
-            continue
-        if fence is not None:
-            continue
+    for raw in (comment_body or "").replace("\r\n", "\n").split("\n"):
+        if _CONFIRMATION_STOP.search(raw) or _HTML_LINE.match(raw):
+            break
         m = _CONFIRMATION_LINE.match(raw)
         if m is not None:
             keys.add(confirmation_key(m["rule"], m["path"], m["fp"].lower()))
@@ -1724,12 +1725,13 @@ def stale_waiver_notes(
     waivers: Sequence[Waiver],
     used: Iterable[Waiver],
     unwaived: Iterable[tuple[str, str, int, str | None]],
-) -> list[str]:
+) -> list[tuple[str, str]]:
     """R7 reports every section line that is not applied. A waiver that applied to no finding
     while an unwaived finding has its rule and path, but another line's text, most likely names
     a line that changed since: say so, with the fingerprint the line has now."""
     applied = {id(w) for w in used}
-    notes: list[str] = []
+    unwaived = list(unwaived)
+    notes: list[tuple[str, str]] = []
     for waiver in waivers:
         if id(waiver) in applied or waiver.fingerprint in (None, "-"):
             continue
@@ -1742,8 +1744,11 @@ def stale_waiver_notes(
         )
         if current:
             notes.append(
-                f"{waiver.text}: its fingerprint matches no flagged line of {waiver.rule} "
-                f"{waiver.path} (now: {', '.join(current)}); the line changed or another is meant"
+                (
+                    waiver.text,
+                    f"its fingerprint matches no flagged line of {waiver.rule} {waiver.path} "
+                    f"(now: {', '.join(current)}); the line changed or another is meant",
+                )
             )
     return notes
 

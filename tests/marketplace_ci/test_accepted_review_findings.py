@@ -8,6 +8,8 @@ import json
 import subprocess
 from types import SimpleNamespace
 
+import pytest
+
 from scripts.marketplace_ci import __main__ as main_module
 from scripts.marketplace_ci.__main__ import _apply_waivers, _waiver_hint, main
 from scripts.marketplace_ci.review import (
@@ -467,7 +469,7 @@ def test_a_fresh_finding_on_a_changed_file_is_waived_by_fingerprint(git_repo):
     waivers = read_waiver_section(
         _section(f"- tool-scoping s/SKILL.md:15 @{FP} – refuted"), _never_open
     ).waivers
-    fingerprints, applied, notes = _apply_waivers(
+    fingerprints, applied, notes, _ = _apply_waivers(
         [moved, edited_head], {moved, edited_head}, waivers, git_repo.root, set()
     )
     assert fingerprints[moved] == FP
@@ -481,7 +483,7 @@ def test_a_fresh_security_finding_without_confirmation_keeps_blocking(git_repo):
     waivers = read_waiver_section(
         _section(f"- tool-scoping s/SKILL.md:15 @{FP} – accepted"), _never_open
     ).waivers
-    _, applied, notes = _apply_waivers([finding], {finding}, waivers, git_repo.root, set())
+    _, applied, notes, stale = _apply_waivers([finding], {finding}, waivers, git_repo.root, set())
     assert applied == {}
     assert "needs a maintainer's confirmation" in notes[0]
 
@@ -817,7 +819,9 @@ def test_a_confirmation_inside_a_code_block_or_comment_confirms_nothing():
     assert parse_confirmations(f"~~~md\n{line}\n~~~\n") == set()
     assert parse_confirmations(f"<!--\n{line}\n-->\n") == set()
     assert parse_confirmations(f"> {line}\n") == set()
-    assert parse_confirmations(f"```\nx\n```\n{line}\n") == {("R6", "a_py", FP)}
+    # Nothing below a code block counts, even after it closes (fail closed).
+    assert parse_confirmations(f"```\nx\n```\n{line}\n") == set()
+    assert parse_confirmations(f"{line}\n```\nx\n```\n") == {("R6", "a_py", FP)}
 
 
 def test_a_waiver_with_a_stale_fingerprint_is_reported(git_repo):
@@ -826,9 +830,11 @@ def test_a_waiver_with_a_stale_fingerprint_is_reported(git_repo):
     waivers = read_waiver_section(
         _section(f"- tool-scoping s/SKILL.md:15 @{'0' * 32} – accepted"), _never_open
     ).waivers
-    _, applied, notes = _apply_waivers([finding], {finding}, waivers, git_repo.root, set())
-    assert applied == {}
-    assert len(notes) == 1 and "matches no flagged line" in notes[0] and f"3 @{FP}" in notes[0]
+    _, applied, notes, stale = _apply_waivers([finding], {finding}, waivers, git_repo.root, set())
+    assert applied == {} and notes == []
+    assert (
+        len(stale) == 1 and "matches no flagged line" in stale[0][1] and f"3 @{FP}" in stale[0][1]
+    )
 
 
 def test_deferred_issues_are_looked_up_once_and_not_past_the_cap():
@@ -868,10 +874,53 @@ def test_the_head_line_reader_reads_bytes_and_keeps_git_line_numbers():
     assert binary("y", 1) is None
 
 
-def test_a_fence_closes_only_on_a_bare_marker_and_lines_split_like_github():
+def test_a_fence_hides_what_follows_and_lines_split_like_github():
     line = f"- confirmed R6 a_py @{FP}"
     # "```python" inside an open block is code, so the block is still open.
     assert parse_confirmations(f"```\n```python\n{line}\n```\n") == set()
     # A U+2028 is not a line break on GitHub: the line is not a bullet of its own.
     assert parse_confirmations(f"text {line}\n") == set()
-    assert parse_confirmations(f"```\nx\n```\r\n{line}\r\n") == {("R6", "a_py", FP)}
+    assert parse_confirmations(f"ok\r\n{line}\r\n") == {("R6", "a_py", FP)}
+
+
+def test_a_fence_indented_in_a_list_item_still_hides_a_confirmation():
+    line = f"- confirmed R6 a_py @{FP}"
+    assert parse_confirmations(f"- Example:\n    ```\n    {line}\n    ```\n") == set()
+    # A confirmation is a top-level bullet; a nested one is not counted.
+    assert parse_confirmations(f"- note\n    {line}\n") == set()
+    assert parse_confirmations(f"   {line}\n") == {("R6", "a_py", FP)}
+
+
+def test_distinct_closed_deferred_issues_have_their_own_lookup_cap():
+    calls = []
+
+    def is_open(n):
+        calls.append(n)
+        return False
+
+    lines = [f"- R6 a_py:{i} @{FP} – deferred #{i}" for i in range(1, 206)]
+    section = read_waiver_section(_section(*lines), is_open)
+    assert len(calls) == 200 and section.waivers == ()
+    assert sum("distinct deferred issues" in why for _, why in section.malformed) == 5
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        "- ```\n  {line}\n  ```\n",  # a fence opened on a list item's own line
+        "1. ~~~\n   {line}\n   ~~~\n",
+        "see `<!--`\n```\n-->\n{line}\n```\n",  # a stray comment opener hides the fence
+        "<pre>\n{line}\n</pre>\n",  # a raw HTML block
+        "<div>\n{line}\n</div>\n",
+    ],
+)
+def test_no_code_html_or_comment_spelling_lets_an_example_count(body):
+    assert parse_confirmations(body.format(line=f"- confirmed R6 a_py @{FP}")) == set()
+
+
+def test_the_job_summary_fence_outlasts_backticks_in_the_lines(tmp_path, monkeypatch):
+    summary = tmp_path / "summary.md"
+    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(summary))
+    main_module._append_step_summary("t", ["not applied: - R6 a_py:3 ```` – x"])
+    text = summary.read_text(encoding="utf-8")
+    assert text.startswith("### t\n`````\n") and text.endswith("\n`````\n")
