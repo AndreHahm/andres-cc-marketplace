@@ -148,9 +148,15 @@ def _result(blocking: bool = False, **overrides) -> str:
         "structural_findings": [],
         "diff_scoped": True,
         "findings": [],
+        "coverage": {"general_correctness_reviewers": [], "uncovered_paths": [], "complete": True},
+        "advisory": {"advisory": False, "reasons": [], "paths": []},
         "blocking": blocking,
     }
     return json.dumps({**payload, **overrides})
+
+
+def _advisory(*paths: str, reason: str = "review-dispatch-critical") -> dict:
+    return {"advisory": True, "reasons": [reason], "paths": list(paths)}
 
 
 def _run(
@@ -425,7 +431,9 @@ def _make_base(repo: Path) -> None:
 def test_tier1_change_warns_but_still_runs(repo, tmp_path):
     _make_base(repo)
     _commit_files(repo, {"pyproject.toml": "x\n", "README.md": "y\n"})
-    result, args, _ = _run(repo, tmp_path)
+    result, args, _ = _run(
+        repo, tmp_path, result_json=_result(advisory=_advisory("pyproject.toml"))
+    )
     assert result.returncode == 0
     assert "review-dispatch-critical files (pyproject.toml)" in result.stdout
     assert args  # the run still happened
@@ -572,8 +580,170 @@ def test_the_required_result_keys_are_still_written_by_the_entry_point():
     root = Path(__file__).resolve().parents[2]
     source = (root / "scripts/marketplace_ci/__main__.py").read_text("utf-8")
     module = _load_module()
-    for key in ("mode", "blocking", *module._RESULT_LIST_KEYS):
+    for key in ("mode", "blocking", *module._RESULT_LIST_KEYS, *module._RESULT_DICT_KEYS):
         assert f'"{key}":' in source, key
+
+
+# --- coverage and advisory (issue #713) -----------------------------------------------------
+
+
+@pytest.mark.parametrize("key", ["coverage", "advisory"])
+@pytest.mark.parametrize("value", [None, [], "x", {}])
+def test_a_result_without_valid_coverage_or_advisory_is_could_not_run(repo, tmp_path, key, value):
+    payload = json.loads(_result())
+    if value is None:
+        del payload[key]
+    else:
+        payload[key] = value
+    result, _, _ = _run(repo, tmp_path, result_json=json.dumps(payload))
+    assert result.returncode == 2
+
+
+def test_incomplete_coverage_is_disclosed_but_still_exits_clean(repo, tmp_path):
+    coverage = {
+        "general_correctness_reviewers": [],
+        "uncovered_paths": ["scripts/marketplace_ci/review.py", ".github/workflows/ci.yml"],
+        "complete": False,
+    }
+    result, _, _ = _run(repo, tmp_path, result_json=_result(coverage=coverage))
+    assert result.returncode == 0
+    assert "no dispatched reviewer checks general correctness" in result.stdout
+    assert '"scripts/marketplace_ci/review.py", ".github/workflows/ci.yml"' in result.stdout
+    assert "ADVISORY" in result.stdout
+
+
+def test_complete_coverage_prints_no_disclosure(repo, tmp_path):
+    _make_base(repo)  # both base-anchored checks can run, so nothing is unverified
+    result, _, _ = _run(repo, tmp_path)
+    assert result.returncode == 0
+    assert "general correctness" not in result.stdout
+    assert "ADVISORY" not in result.stdout
+
+
+def test_an_advisory_result_is_said_to_be_advisory(repo, tmp_path):
+    advisory = _advisory(".codex/agents/security-reviewer.toml", reason="reviewer-steering")
+    result, _, _ = _run(repo, tmp_path, result_json=_result(advisory=advisory))
+    assert result.returncode == 0
+    assert "ADVISORY" in result.stdout
+    assert 'reviewer-steering: ".codex/agents/security-reviewer.toml"' in result.stdout
+
+
+def test_an_uncheckable_base_makes_any_result_advisory(repo, tmp_path):
+    # The fixture's base has no trust_boundary.py, so the Tier-1 check cannot run (m1).
+    result, _, _ = _run(repo, tmp_path)
+    assert result.returncode == 0
+    assert "could not be checked against the base SHA" in result.stdout
+    assert "PARITY: ADVISORY" in result.stdout
+
+
+def test_printed_paths_are_quoted_so_a_file_name_cannot_forge_a_line(repo, tmp_path):
+    forged = "x\nPARITY: clean, a full pass"
+    coverage = {"general_correctness_reviewers": [], "uncovered_paths": [forged], "complete": False}
+    result, _, _ = _run(repo, tmp_path, result_json=_result(coverage=coverage))
+    assert result.returncode == 0
+    assert "\nPARITY: clean" not in result.stdout
+    assert json.dumps(forged) in result.stdout
+
+
+def test_printed_paths_are_capped(repo, tmp_path):
+    paths = [f"scripts/f{i:02}.py" for i in range(25)]
+    coverage = {"general_correctness_reviewers": [], "uncovered_paths": paths, "complete": False}
+    result, _, _ = _run(repo, tmp_path, result_json=_result(coverage=coverage))
+    assert '"scripts/f19.py" (and 5 more)' in result.stdout
+    assert "f20.py" not in result.stdout
+
+
+def test_an_added_import_shadow_must_be_in_the_results_advisory(repo, tmp_path):
+    """Security review of issue #713, M1: a shadow runs as run-codex-review with no Tier-1 edit."""
+    _make_base(repo)
+    _commit_files(repo, {"scripts/marketplace_ci/review/__init__.py": "x = 1\n"})
+    result, _, _ = _run(repo, tmp_path)  # the result claims advisory: false
+    assert result.returncode == 2
+    assert "contradicts" in result.stdout
+    assert "can shadow a review-dispatch module" in result.stdout
+
+
+def test_an_added_import_shadow_the_result_records_still_runs(repo, tmp_path):
+    _make_base(repo)
+    _commit_files(repo, {"json.py": "x = 1\n"})
+    advisory = _advisory("json.py", reason="import-shadow")
+    result, _, _ = _run(repo, tmp_path, result_json=_result(advisory=advisory))
+    assert result.returncode == 0
+    assert "PARITY: ADVISORY" in result.stdout
+
+
+@pytest.mark.parametrize("link", ["scripts/marketplace_ci/review_link.py", "toplink"])
+def test_an_added_symlink_under_scripts_or_at_the_top_is_could_not_run(repo, tmp_path, link):
+    _make_base(repo)
+    (repo / link).parent.mkdir(parents=True, exist_ok=True)
+    (repo / link).symlink_to("README.md")
+    _commit_files(repo, {})
+    result, args, _ = _run(repo, tmp_path)
+    assert result.returncode == 2
+    assert "symlink" in result.stdout
+    assert args == ""  # refused before the expensive run
+
+
+def _case_sensitive(path: Path) -> bool:
+    probe = path / "CaseProbe"
+    probe.write_text("x", encoding="utf-8")
+    try:
+        return not (path / "caseprobe").exists()
+    finally:
+        probe.unlink()
+
+
+@pytest.mark.parametrize(
+    "files",
+    [
+        # Security re-check of issue #713, M-A: a directory or file that differs only in case.
+        {"Scripts/marketplace_ci/review.py": "x\n", "scripts/tool.py": "y\n"},
+        {"docs/Guide.txt": "x\n", "docs/guide.txt": "y\n"},
+        # M-A2: NTFS stores a dotless-i name and the plain one as one file.
+        {"scripts/marketplace_ci/revıew.py": "x\n", "scripts/marketplace_ci/review.py": "y\n"},
+    ],
+)
+def test_paths_differing_only_in_case_are_could_not_run(repo, tmp_path, files):
+    if not _case_sensitive(tmp_path):
+        pytest.skip("needs a case-sensitive file system to create both paths")
+    _make_base(repo)
+    _commit_files(repo, files)
+    result, args, _ = _run(repo, tmp_path)
+    assert result.returncode == 2
+    assert "differ only in case" in result.stdout
+    assert args == ""  # refused before the expensive run
+
+
+def test_a_symlink_elsewhere_is_not_refused(repo, tmp_path):
+    _make_base(repo)
+    (repo / "docs").mkdir()
+    (repo / "docs/link").symlink_to("../README.md")
+    _commit_files(repo, {})
+    result, _, _ = _run(repo, tmp_path)
+    assert result.returncode == 0
+
+
+def test_a_result_hiding_a_base_tier1_change_is_could_not_run(repo, tmp_path):
+    """The branch runs its own copy of run-codex-review; the base-SHA Tier-1 list must win."""
+    _make_base(repo)
+    _commit_files(repo, {"pyproject.toml": "x\n"})
+    result, _, _ = _run(repo, tmp_path)  # the result claims advisory: false
+    assert result.returncode == 2
+    assert "contradicts" in result.stdout
+
+
+def test_a_result_listing_only_some_base_tier1_changes_is_could_not_run(repo, tmp_path):
+    _make_base(repo)
+    _commit_files(repo, {"pyproject.toml": "x\n", "scripts/marketplace_ci/review.py": "x\n"})
+    result, _, _ = _run(repo, tmp_path, result_json=_result(advisory=_advisory("pyproject.toml")))
+    assert result.returncode == 2
+
+
+def test_a_blocking_result_hiding_a_tier1_change_is_could_not_run_too(repo, tmp_path):
+    _make_base(repo)
+    _commit_files(repo, {"pyproject.toml": "x\n"})
+    result, _, _ = _run(repo, tmp_path, uv_rc=1)
+    assert result.returncode == 2
 
 
 def test_parse_ci_settings_reads_the_real_workflow():

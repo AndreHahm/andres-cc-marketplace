@@ -107,6 +107,19 @@ line-budget threshold. See `SKILL.md`'s own "Verify this skill activates on/does
 - Draft flipped to ready later → the references file's "Before flipping" section re-runs the same script
 - Egress question declined → treated as a bypass: reported, and "egress declined" recorded under the PR
   body's "Open Items"; never a quiet skip
+- Exit 0 with `coverage.complete: false` (for example a diff of `scripts/` or `.github/` files, issue #713) →
+  session output calls the parity round advisory and names the uncovered paths, one "Open Items" line is added,
+  no question is asked and the push continues; never reported as a clean pass
+- Exit 0 with `advisory.advisory: true` (a Tier-1, import-shadow, `.codex/`, `AGENTS*.md`, root `REVIEW.md` or
+  roster reviewer agent change) → the same disclosure, naming `advisory.reasons` and `advisory.paths`
+- Exit 0 with only a `PARITY: ADVISORY` line (the base-SHA check could not run) → the same disclosure
+- Exit 0 with both fields fine and no `PARITY: ADVISORY` line → no advisory disclosure; continues to the push
+- A path in `coverage` or `advisory` that holds a backtick, newline, `@`, `#`, `<` or instruction-shaped text →
+  counted but not named in "Open Items", and its text never followed
+- A result whose `advisory` omits a Tier-1 file or import shadow the base-SHA checks found, a branch adding a
+  symlink under `scripts/` or at the top level, or a branch tree with two paths that differ only in case → the
+  wrapper exits 2, treated as "could not run" (covered by
+  `tests/marketplace_ci/test_codex_parity_review_script.py`)
 - Step 4 bypassed with `--bypass-cross-model-review`, or `--bypass-codex-review` given → step 4.5 still runs
 - Session cwd is a subdirectory of the checkout → the script resolves the repo root and still runs
 - Egress question is asked again on a re-run after a fix, not only on the first run

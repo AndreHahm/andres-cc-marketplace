@@ -1070,7 +1070,32 @@ alike but cannot guarantee they agree, because the model is still non-determinis
 - `diff_scoped` — `true` when the changed lines were computed, `false` for the fail-closed fallback;
 - per finding, `components` (the other locations a cross-file finding cites, which can be what put it in the diff),
   `in_diff` (on a changed line or in a changed-in-full path; `null` when `diff_scoped` is `false`)
-  and `blocking` (whether that finding failed the job).
+  and `blocking` (whether that finding failed the job);
+- on a completed review, `coverage` and `advisory` (issue #713). They say what a clean result does not cover
+  and change neither the gate, `status`, `blocking` nor the exit code:
+  - `coverage` is `{general_correctness_reviewers, uncovered_paths, complete}`. `uncovered_paths` lists every
+    reviewed path that is not Markdown, wherever it lives (scripts and hooks inside `plugins/` and `.claude/`
+    as much as `scripts/`, tests, workflows and root config), when no dispatched reviewer is marked
+    `checks_general_correctness` in `review_contract.ROSTER`. No roster reviewer is marked today: the
+    rulebook, dependency, security and component reviewers do not check arbitrary code for logic errors, and
+    `scripts-reviewer` checks a closed list of named patterns.
+  - `advisory` is `{advisory, reasons, paths}` over the whole PR delta. A path counts when it is a Tier-1 file
+    (`review-dispatch-critical`; `review.py` keeps a copy of `TIER1_FILES` that a test holds equal), an added
+    or changed file matching one of the two name patterns of the "adds an importable top-level shadow" step
+    (`import-shadow`; a test holds both patterns equal to the workflow's), a reviewer-steering file as R10
+    names them (`reviewer-steering`: anything under `.codex/`, `AGENTS*.md` at any depth, the root
+    `REVIEW.md`, the last two matched without case), or a roster reviewer's own agent file under
+    `plugins/plugin-devkit/agents/` or `.claude/agents/` (`reviewer-definition`). The reviewers then judged
+    a change to what runs or steers them, so a clean result is advisory. CI refuses to dispatch on a Tier-1
+    change or an import shadow before this runs, so the field matters most to git-kit's local parity review.
+    That wrapper runs the Tier-1 check and a port of the shadow step against the base SHA itself, refuses
+    (exit 2) a result whose `advisory` leaves out a path they found. It also refuses a branch that adds or
+    changes a symlink under `scripts/` or at the top level, since the result records paths, not file modes,
+    and a branch whose tree has two paths that differ only in case, which a case-insensitive checkout
+    (Windows, macOS) writes to one file that CI's case-sensitive checks would not flag; `advisory` itself
+    matches every name without case. These checks see committed changes only: anything uncommitted,
+    untracked or gitignored in the local working tree still runs unflagged, which CI's fresh checkout does
+    not have. The wrapper is branch code too.
 
 `ReviewResult.blocking` (used only by the `check-review-output` command on a single reviewer's envelope) is
 unchanged and still counts any Critical/Major.

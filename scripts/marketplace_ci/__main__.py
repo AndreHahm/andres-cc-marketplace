@@ -1626,8 +1626,10 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
         dispatch_reviewers,
         fallback_files_changed,
         gate_decision,
+        general_correctness_coverage,
         probe_sandbox,
         render_could_not_run,
+        review_advisory,
         run_delta_structural_checks,
         snapshot_fallback_files,
         snapshot_intact,
@@ -1902,6 +1904,17 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
     except Exception as exc:  # fail closed: exit 2 and overwrite the output file
         return _fail_run_codex_review(args, f"diff-scoped classification failed: {exc!r}", reports)
     blocking = bool(blocking_set)
+    # What a clean result does not cover (issue #713). Neither changes the gate or the exit code.
+    # Coverage is over what the reviewers saw; advisory is over the whole PR delta, since it is
+    # about what the branch changes. Its shadow check reads every path the branch adds or changes
+    # (git_state folds a type change into "M", so added-only would miss a retyped file).
+    try:
+        coverage_field = general_correctness_coverage(scope.paths, [r.reviewer for r in reports])
+        advisory_field = review_advisory(
+            _changed_path_set(changed), [c.new_path for c in changed if c.new_path is not None]
+        )
+    except Exception as exc:  # fail closed, like the classification above
+        return _fail_run_codex_review(args, f"coverage/advisory failed: {exc!r}", reports)
 
     payload = {
         "mode": scope.mode,
@@ -1932,6 +1945,8 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
             )
             for f in findings
         ],
+        "coverage": coverage_field,
+        "advisory": advisory_field,
         "blocking": blocking,
     }
     output_text = json.dumps(payload, indent=2)

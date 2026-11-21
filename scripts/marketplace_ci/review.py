@@ -9,6 +9,7 @@ or trust reviewer prose beyond that envelope's own typed fields.
 from __future__ import annotations
 
 import contextlib
+import fnmatch
 import json
 import os
 import posixpath
@@ -27,6 +28,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, replace
 from pathlib import Path
 
+from scripts.marketplace_ci import review_contract
 from scripts.marketplace_ci.conversion import plan_exports
 from scripts.marketplace_ci.git_state import ChangedPath, parse_name_status_z
 from scripts.marketplace_ci.registry import Registry
@@ -34,6 +36,7 @@ from scripts.marketplace_ci.review_contract import (
     SEVERITY_MAPPINGS,
     ContractError,
     ExceptionEntry,
+    general_correctness_reviewers,
     match_exception,
     normalize_risk,
     normalize_rule_class,
@@ -185,6 +188,142 @@ def _audit_types_for(paths: Iterable[str]) -> set[str]:
     if any(p.startswith(_HOOKS_MIRROR_SOURCE_PREFIX) and p.endswith(".json") for p in paths):
         audit_types.add("hook-reviewer")
     return audit_types
+
+
+# --- coverage and advisory status (issue #713) ----------------------------------------------
+#
+# Two fields of the run-codex-review result. Neither changes the gate, `status`, `blocking` or the
+# exit code; they say what a clean result does and does not cover, so a caller (create-pr's
+# parity step) can treat it as advisory instead of a full pass.
+
+
+# Classified by file type, not location: Markdown (documentation, and the skill/agent/command/rule
+# files the component reviewers are built for) is the only kind a roster reviewer covers. Every
+# other file -- scripts and hooks inside plugins/ and .claude/ as much as scripts/, tests/,
+# .github/ and root config -- is code no roster reviewer checks for general correctness
+# (scripts-reviewer checks a closed list of named patterns only).
+def _is_code(path: str) -> bool:
+    return not path.lower().endswith(".md")
+
+
+def general_correctness_coverage(
+    paths: Iterable[str],
+    reviewers: Iterable[str],
+    *,
+    general_reviewers: Iterable[str] | None = None,
+) -> dict:
+    """The result's `coverage`: whether a dispatched reviewer checks the reviewed code (every
+    non-Markdown path) for general correctness. `uncovered_paths` lists that code when none does."""
+    general = (
+        general_correctness_reviewers() if general_reviewers is None else set(general_reviewers)
+    )
+    covering = sorted(set(reviewers) & set(general))
+    uncovered = [] if covering else sorted({p for p in paths if _is_code(p)})
+    return {
+        "general_correctness_reviewers": covering,
+        "uncovered_paths": uncovered,
+        "complete": not uncovered,
+    }
+
+
+# A copy of trust_boundary.TIER1_FILES: run-codex-review may not import trust_boundary
+# (tests/marketplace_ci/test_import_isolation.py's allowlist), so the two are kept equal by
+# tests/marketplace_ci/test_review_coverage_advisory.py instead.
+ADVISORY_DISPATCH_FILES = frozenset(
+    {
+        "scripts/__init__.py",
+        "scripts/marketplace_ci/__init__.py",
+        "scripts/marketplace_ci/__main__.py",
+        "scripts/marketplace_ci/review.py",
+        "scripts/marketplace_ci/review_contract.py",
+        "scripts/marketplace_ci/review_verifiers.py",
+        "scripts/marketplace_ci/git_state.py",
+        "scripts/marketplace_ci/registry.py",
+        "scripts/marketplace_ci/sync_plan.py",
+        "scripts/marketplace_ci/conversion.py",
+        "scripts/marketplace_ci/prefix_check.py",
+        "scripts/marketplace_ci/pr_policy.py",
+        "pyproject.toml",
+        "uv.lock",
+        "uv.toml",
+        ".python-version",
+        ".python-versions",
+        "plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs",
+        "plugins/codex-kit/scripts/lib/codex-exec.mjs",
+        "plugins/codex-kit/scripts/lib/cdx-process.mjs",
+        "scripts/marketplace_ci/token_shapes.json",
+        "scripts/marketplace_ci/review_exceptions.yaml",
+        "scripts/marketplace_ci/git_output_grants.py",
+        "scripts/marketplace_ci/git_output_grants_baseline.json",
+        "plugins/codex-kit/scripts/lib/cdx-token-shapes.json",
+    }
+)
+# Where a roster reviewer's own definition lives: the canonical agent and its .claude/ mirror.
+# The exported .codex/agents/<name>.toml is covered by the `.codex/` steering prefix.
+_REVIEWER_SOURCE_DIRS = ("plugins/plugin-devkit/agents/", ".claude/agents/")
+
+# Added files that can stand in for a review-dispatch module without editing a Tier-1 file: the
+# same two name patterns the workflow's "Refuse automated Codex dispatch when this PR adds an
+# importable top-level shadow" step greps for (a same-named package, an extension or bytecode
+# file or a __pycache__ entry under scripts/; a top-level module, package marker or .venv).
+# tests/marketplace_ci/test_review_coverage_advisory.py checks both still appear verbatim in the
+# workflow and in git-kit's parity wrapper, which ports the same check against the base SHA.
+SCRIPTS_SHADOW_PATTERN = (
+    r"^scripts/(.*/)?__pycache__(/|$)|^scripts/.*\.(pyc|pyw|pyd|so)$|^scripts/.*/__init__\.|"
+    r"^scripts/marketplace_ci/(__init__|__main__|review|review_contract|review_verifiers|"
+    r"git_state|registry|sync_plan|conversion|prefix_check|pr_policy)(/|$)"
+)
+TOP_LEVEL_SHADOW_PATTERN = r"^[^/]+\.(py|pyc|pyw|pyd|so)$|^[^/]+/__init__\.[^/]+$|^\.venv(/|$)"
+# Every name below is matched without case: on a case-insensitive checkout (Windows, macOS) a
+# branch's `Scripts/...` or `.Codex/config.toml` lands on disk as the lower-case path that runs or
+# is loaded. Broader than CI (Linux, case-sensitive), which only adds advisory flags.
+_SHADOW_RE = re.compile(
+    f"(?:{SCRIPTS_SHADOW_PATTERN})|(?:{TOP_LEVEL_SHADOW_PATTERN})", re.DOTALL | re.IGNORECASE
+)
+
+
+def _case_key(path: str) -> str:
+    """The same key git-kit's parity wrapper groups case collisions by: NFC (macOS normalizes),
+    then upper() (NTFS compares by simple uppercase, so dotless `ı` equals `i`), then casefold()."""
+    return unicodedata.normalize("NFC", path).upper().casefold()
+
+
+_ADVISORY_DISPATCH_FOLDED = frozenset(_case_key(p) for p in ADVISORY_DISPATCH_FILES)
+
+
+def _advisory_reason(path: str) -> str | None:
+    folded = _case_key(path)
+    if folded in _ADVISORY_DISPATCH_FOLDED:
+        return "review-dispatch-critical"
+    # R10's reviewer-steering files: what Codex may load as instructions or configuration.
+    if (
+        folded.startswith(".codex/")
+        or folded == "review.md"
+        or fnmatch.fnmatchcase(posixpath.basename(folded), "agents*.md")
+    ):
+        return "reviewer-steering"
+    for directory in _REVIEWER_SOURCE_DIRS:
+        if folded.startswith(directory) and folded[len(directory) :] in {
+            f"{r.name}.md" for r in review_contract.ROSTER
+        }:
+            return "reviewer-definition"
+    return None
+
+
+def review_advisory(paths: Iterable[str], added: Iterable[str] = ()) -> dict:
+    """The result's `advisory`: the change touches the review-dispatch code, adds a file that can
+    shadow it (`added`: paths the branch adds or retypes, as CI's shadow check sees them), or
+    touches a reviewer-steering file or a dispatched reviewer's own definition. The reviewers
+    then judged a change to what runs or steers them, so a clean result is advisory."""
+    hits = {p: reason for p in set(paths) if (reason := _advisory_reason(p)) is not None}
+    for path in set(added):
+        if path not in hits and _SHADOW_RE.search(path):
+            hits[path] = "import-shadow"
+    return {
+        "advisory": bool(hits),
+        "reasons": sorted(set(hits.values())),
+        "paths": sorted(hits),
+    }
 
 
 # The rulebook-content files a reviewer agent's own instructions Glob/Read

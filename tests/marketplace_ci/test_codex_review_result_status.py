@@ -385,3 +385,77 @@ def test_every_reviewer_is_briefed_with_the_registry(monkeypatch, review_repo, t
     rc, _ = _run(monkeypatch, review_repo, tmp_path, bridge)
     assert rc == 0
     assert briefed == [True] * len(ROSTER)
+
+
+def _commit_on(root, files: dict[str, str]) -> None:
+    for name, text in files.items():
+        path = root / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+    subprocess.run(["git", "add", "-A"], cwd=root, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "more"], cwd=root, check=True)
+
+
+def test_a_plugin_hook_change_is_code_but_not_advisory(monkeypatch, review_repo, tmp_path):
+    # CHANGED is a plugin hooks.json: code no roster reviewer checks for logic (issue #713, M2).
+    rc, payload = _run(monkeypatch, review_repo, tmp_path, _answers(CLEAN))
+    assert rc == 0
+    assert payload["coverage"] == {
+        "general_correctness_reviewers": [],
+        "uncovered_paths": [CHANGED],
+        "complete": False,
+    }
+    assert payload["advisory"] == {"advisory": False, "reasons": [], "paths": []}
+
+
+def test_an_added_import_shadow_makes_the_result_advisory(monkeypatch, review_repo, tmp_path):
+    root, _ = review_repo
+    _commit_on(root, {"json.py": "x = 1\n"})  # a top-level stdlib shadow
+    rc, payload = _run(monkeypatch, review_repo, tmp_path, _answers(CLEAN))
+    assert rc == 0
+    assert payload["advisory"]["reasons"] == ["import-shadow"]
+    assert payload["advisory"]["paths"] == ["json.py"]
+
+
+def test_a_coverage_failure_is_could_not_run(monkeypatch, review_repo, tmp_path):
+    from scripts.marketplace_ci import review
+
+    def boom(*_args, **_kwargs):
+        raise RuntimeError("broken")
+
+    monkeypatch.setattr(review, "review_advisory", boom)
+    rc, payload = _run(monkeypatch, review_repo, tmp_path, _answers(CLEAN))
+    assert rc == 2
+    assert payload["status"] == "could_not_run"
+    assert "coverage/advisory failed" in payload["error"]
+
+
+def test_a_clean_review_of_ci_code_says_it_was_not_checked_for_correctness(
+    monkeypatch, review_repo, tmp_path
+):
+    """Issue #713: CI and script changes came back clean with no reviewer able to judge them."""
+    root, _ = review_repo
+    _commit_on(root, {".github/workflows/ci.yml": "on: push\n", "scripts/tool.py": "x = 1\n"})
+    rc, payload = _run(monkeypatch, review_repo, tmp_path, _answers(CLEAN))
+    # Fields only: the gate, the status and the exit code are unchanged.
+    assert rc == 0 and payload["status"] == "clean" and payload["blocking"] is False
+    assert payload["coverage"]["complete"] is False
+    assert payload["coverage"]["uncovered_paths"] == [
+        ".github/workflows/ci.yml",
+        CHANGED,
+        "scripts/tool.py",
+    ]
+
+
+def test_a_change_to_a_reviewer_definition_makes_the_result_advisory(
+    monkeypatch, review_repo, tmp_path
+):
+    root, _ = review_repo
+    _commit_on(root, {".codex/agents/security-reviewer.toml": 'developer_instructions = "x"\n'})
+    rc, payload = _run(monkeypatch, review_repo, tmp_path, _answers(CLEAN))
+    assert rc == 0 and payload["status"] == "clean"
+    assert payload["advisory"] == {
+        "advisory": True,
+        "reasons": ["reviewer-steering"],
+        "paths": [".codex/agents/security-reviewer.toml"],
+    }
