@@ -396,12 +396,27 @@ review` is the gate after the PR exists and reviews only the delta, to cut OpenA
   when the anchor cannot be fetched) keeps blocking without a new Codex call, unless the PR body waives it
   in its `## Accepted Review Findings` section (in both PR templates, which both write out the conventions
   below; `git-kit`'s `create-pr` asset does not name this repository's CI; it also
-  lists accepted third-party findings, which CI ignores unless one matches a carried finding), one line per
-  finding: `- <rule> <path>:<line> – accepted|residual|deferred #<issue>`, optionally followed by
-  `: <reason>` (`-` for a finding without a rule, `0` without a line; the rule may contain spaces, the path may not; `#<issue>` is
-  required only for `deferred`, and must be an open issue of this repository, checked through the API). The job
-  summary prints the line to copy for each carried finding, or, when its path contains whitespace, a note
-  that it cannot be waived. Every anchor carries (R10). A blocking entry the
+  lists accepted third-party findings, which CI ignores unless one matches one of its own findings), one line
+  per finding: `- <rule> <path>:<line> @<fingerprint> – accepted|residual|deferred #<issue>|refuted`,
+  optionally followed by `: <reason>` (`-` for a finding without a rule, `0` and `@-` without a line; the rule
+  may contain spaces, the path may not; `#<issue>` is required only for `deferred`, and must be an open issue
+  of this repository, checked through the API). The fingerprint is the first 32 hex digits of the SHA-256 of
+  the flagged line's text with whitespace collapsed (`line_fingerprint`), so a waiver matches on rule, path
+  and fingerprint and survives the line moving or the claim being reworded; editing the flagged line changes
+  the fingerprint, and the finding is reviewed and blocks again. A line without `@<fingerprint>` (the earlier
+  format) matches the exact rule, path and line. The job summary prints the line to copy, fingerprint
+  included, for each blocking finding, or, when its path contains whitespace, a note that it cannot be
+  waived, and lists every section line that was not applied with the reason (an unknown kind, a bad
+  fingerprint, a closed or missing `deferred` issue, or a line not in the form): a mistake is reported, never
+  silently ignored, and does not fail the job on its own. A waiver for a finding on a gate-critical path
+  (R3, `is_gate_critical`, also tested on the normalized spelling), on a path not spelled the canonical way,
+  or one `security-reviewer` raised (any reporter; carried findings keep their `reporters`) counts only
+  when a user whose `role_name` is `maintain` or `admin` (not `permission`, which reports maintain as
+  `write`) has posted a PR comment line `- confirmed <rule> <path> @<fingerprint>` that was never edited
+  (`created_at == updated_at`, since a user with write access can edit another user's comment;
+  `parse_confirmations`); without it the finding keeps blocking and the summary says the confirmation is
+  missing. A confirmation names the fingerprint, so it lapses when the flagged line changes, and an
+  earlier-format line cannot be confirmed. Every anchor carries (R10). A blocking entry the
   step cannot read, or more than 500 findings, reports `error`. The PR
   body is read live from the API, so a re-run cannot bring back a removed waiver. `publish` fails while `carried_blocking` is not `0`, and fails closed when
   it could not be computed. So a label or body edit after a failed review no longer clears it (R8).
@@ -421,13 +436,27 @@ review` is the gate after the PR exists and reviews only the delta, to cut OpenA
   be fetched: those runs write no record, so once that anchor run leaves the 30-run window a run finds no
   anchor, carries nothing and reviews the whole PR again (R9). A result that cannot be merged (the carry
   reported `error`, the list and count disagree, or the dispatch step never ran to an end) is rewritten as
-  `could_not_run`, which is never an anchor. A finding that was waived when a run carried it is not
-  recorded in that run's result, so removing the waiver later does not bring it back once that run is the
-  anchor. Accepted residual (M1): an author can add an `accepted` waiver, push a commit that does not touch
-  the flagged file, then remove the waiver; the finding is dropped for good and the final body shows no
-  waiver. Caps: an anchor result with more than 500 findings fails closed (`error`), and a carried finding's
-  rule, path and `severity` are limited to 300 characters each. A carried finding whose file git cannot
-  compare with the anchor reports `error` too, rather than being dropped.
+  `could_not_run`, which is never an anchor. A waived finding is recorded in the run's result with
+  `blocking: false` and the `waiver` line it matched, carried ones included (the carried list holds them
+  next to the blocking ones; `carried_blocking` counts only the blocking ones), so the next run carries it
+  again and, once the waiver line is removed, it blocks again (issue #808; this closes the earlier M1
+  residual where a removed waiver dropped the finding for good). Caps: an anchor result with more than 500
+  findings fails closed (`error`), and a carried finding's rule, path, `severity`, reviewer and waiver line
+  are limited to 300 characters each. A carried finding whose file git cannot compare with the anchor
+  reports `error` too, rather than being dropped.
+- **Waivers on new findings (R7, issue #808).** `codex-review`'s `Read the PR's accepted review findings
+  (R7)` step runs `fetch-accepted-findings` after the Tier-1 refusals and before the Node and Codex setup,
+  with `gh` by absolute path: it writes the live PR body, the open issues its `deferred` lines name and the
+  maintainer-confirmed keys to one JSON file, so the dispatch step needs no token. `run-codex-review
+  --accepted-findings` reads it, records every finding's `fingerprint` at `HEAD`, and records a blocking
+  finding a waiver applies to as waived (`waived_findings` counts them, `waiver_lines_not_applied` lists the
+  lines that were not applied). A file that cannot be read fails the run. The valid waiver lines that need no
+  confirmation, whose rule has no spaces and whose path is plain (`briefable_waivers`), also go to every
+  model reviewer except `security-reviewer` as an `[accepted review findings]` briefing (one JSON line
+  each: rule, path, line, fingerprint and kind, never the free-text reason), framed as data, so a reviewer
+  leaves out a finding already accepted; CI's own matching still decides what blocks. Accepted residual: anyone who can edit the
+  PR body can waive a finding that needs no confirmation; the waiver is visible in the body and the waived
+  finding in each run's result.
 - **Drafts (R14).** On a draft PR, `compute-scope` reports `bypass_eligible=true` without a lookup, no
   Codex call is made, and `publish` passes as skipped. The workflow listens to `ready_for_review`; that
   event has no anchor, so the whole PR delta minus the exclusions is reviewed, on every move to ready
@@ -610,7 +639,8 @@ otherwise report the opposite of. Each entry has `rule`, `path` (a glob: `**/` c
 and `?` stay inside one segment), `reason` and `authority` (the repo file that states the exception).
 
 - It suppresses **script** findings only: a script finding for that rule on a matching path is kept with
-  `suppressed: true` and the entry cited, and never blocks. A model finding is never suppressed.
+  `suppressed: true` and the entry cited, and never blocks. A registry entry never suppresses a model
+  finding; only the PR's own waiver line can waive one (R7, above), and it stays visible in the result.
 - It is appended to every model reviewer's instruction as a `[documented exceptions]` briefing, so the
   reviewer is told the decision exists. The entries are rendered as one JSON-escaped line each and framed as
   repository data, never instructions. The briefing says an entry covers only the exact rule and paths it
@@ -656,7 +686,8 @@ the Phase 2 verifier set; `docs/review-rule-inventory.md` lists every rule a scr
 planned. `run-codex-review` runs the verifiers in-process, next to the structural check and before any
 reviewer is dispatched, and adds their findings to the model reviewers' findings before aggregation. A script
 finding carries `source: "script"`, so the computed gate can block on it (Critical or Major on a changed
-line, like any other finding) and a registry entry can suppress it; a model finding is never suppressed.
+line, like any other finding) and a registry entry can suppress it; a registry entry never suppresses a model
+finding (a waiver line can, R7).
 
 - **What it reads.** The PR's files as committed at `HEAD`, through git objects: never the working tree,
   never a symlink, nothing larger than 1 MB each or 20 MB in total (sizes are checked with
