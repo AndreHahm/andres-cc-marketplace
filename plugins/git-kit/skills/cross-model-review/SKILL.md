@@ -12,7 +12,7 @@ description: >-
   `collaborating-on-a-pr`'s reviewer actions, nor `codex-review-recovery`'s stuck-check recovery, nor
   `handling-review-findings`'s triage of posted PR findings — it never touches GitHub state. Not a
   Codex-only opinion on a design or document (`codex-peer-review`, `codex-verify`, if installed).
-allowed-tools: ["Bash(git rev-parse:*)", "Bash(git merge-base:*)", "Bash(git ls-files:*)", "Bash(mktemp:*)", "Bash(date:*)", "Bash(printf:*)", "Bash(grep:*)", "Bash(echo:*)", "Bash(realpath:*)", "Bash(test:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-copy-index.sh:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-intent-add.sh:*)", "Bash(umask:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-write-run-file.sh:*)", "Bash(node plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope-run.sh:*)", "Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-accepted-findings.py:*)", "Read", "Grep", "Glob", "AskUserQuestion"]
+allowed-tools: ["Bash(git rev-parse:*)", "Bash(git merge-base:*)", "Bash(git ls-files:*)", "Bash(mktemp:*)", "Bash(date:*)", "Bash(printf:*)", "Bash(grep:*)", "Bash(echo:*)", "Bash(realpath:*)", "Bash(test:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-copy-index.sh:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-intent-add.sh:*)", "Bash(umask:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-write-run-file.sh:*)", "Bash(node plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope-run.sh:*)", 'Bash(python3 -I "${CLAUDE_PLUGIN_ROOT}/scripts/git-review-accepted-findings.py":*)', "Read", "Grep", "Glob", "AskUserQuestion"]
 ---
 
 # Cross-model review
@@ -235,7 +235,7 @@ as a scratchpad script instead (`references/codex-pass-assembly.md`, "In an Ente
    against `$BASE` for this run.
 7. **Brief the accepted findings (issue #808)** from the gitignored
    `.claude/accepted-review-findings.local.md`:
-   `python3 -I "${CLAUDE_PLUGIN_ROOT:-.claude}/scripts/git-review-accepted-findings.py" brief --run-dir "$RUN"`,
+   `python3 -I "${CLAUDE_PLUGIN_ROOT}/scripts/git-review-accepted-findings.py" brief --run-dir "$RUN"`,
    from `$REPO_ROOT`. A failure is an inspection limit, never a stop (`references/accepted-findings.md`).
 
 ## Codex dispatch resolver
