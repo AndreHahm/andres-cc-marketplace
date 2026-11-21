@@ -4,6 +4,7 @@
   "runner": "local run-codex-review, Linux, ChatGPT login (not CI's API key)",
   "configured_model": "gpt-6-luna",
   "pinned_cli_version": "0.170.0",
+  "observed_cli_version": "codex-cli 0.170.0, from codex --version run once before the runs; not recorded in the run files",
   "rule": "stable when at least 4 of 5 repeats give the same blocking set",
   "heads": [
     {
