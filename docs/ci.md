@@ -440,7 +440,11 @@ review` is the gate after the PR exists and reviews only the delta, to cut OpenA
   `blocking: false` and the `waiver` line it matched, carried ones included (the carried list holds them
   next to the blocking ones; `carried_blocking` counts only the blocking ones), so the next run carries it
   again and, once the waiver line is removed, it blocks again (issue #808; this closes the earlier M1
-  residual where a removed waiver dropped the finding for good). When a carried finding has the same rule,
+  residual where a removed waiver dropped the finding for good). A change to the file releases a blocking
+  carried finding (the file is reviewed again), but not a waived one: while a line with its fingerprint
+  still exists at the head (`locate_fingerprint`, the nearest one when several match), it is carried at
+  that line, so a waiver removed after the file changed still makes it block; once the flagged line's
+  text is edited or removed, it is dropped and the changed line is reviewed. When a carried finding has the same rule,
   path and line as one of this run's own findings, the stricter decision stays: a waived current finding
   never absorbs a blocking carried one (both are kept), and a carried finding a current one covers adds its
   reviewers to that finding's `reporters`, so a carried `security-reviewer` finding still needs a

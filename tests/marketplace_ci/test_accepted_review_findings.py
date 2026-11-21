@@ -239,6 +239,75 @@ def _anchor_result(*entries):
     return {"status": "findings", "findings": list(entries)}
 
 
+def _waived_entry(line=15):
+    return {
+        "rule": "tool-scoping",
+        "path": "s/SKILL.md",
+        "line": line,
+        "blocking": False,
+        "severity": "Major",
+        "reviewer": "skill-reviewer",
+        "fingerprint": FP,
+        "waiver": f"- tool-scoping s/SKILL.md:{line} @{FP} – accepted",
+    }
+
+
+def test_a_waived_finding_survives_a_change_to_its_file_while_its_line_exists(git_repo):
+    # The file changes after the anchor (two lines added above the flagged one): the waived
+    # finding is still carried, at its new line, so removing the waiver makes it block again.
+    base = _commit(git_repo, "base", **{"s/SKILL.md": "x\n"})
+    anchor = _commit(git_repo, "pr 1", **{"s/SKILL.md": "\n" * 14 + GRANT + "\n"})
+    _commit(git_repo, "pr 2", **{"s/SKILL.md": "new\nlines\n" + "\n" * 14 + GRANT + "\n"})
+    result = _anchor_result(_waived_entry())
+    body = _section(f"- tool-scoping s/SKILL.md:15 @{FP} – accepted")
+    kept = carry_findings(git_repo.root, base, anchor, result, body, _never_open)
+    assert kept.blocking == ()
+    assert [(f["line"], f["fingerprint"]) for f in kept.waived] == [(17, FP)]
+    unwaived = carry_findings(git_repo.root, base, anchor, result, "", _never_open)
+    assert [(f["line"], f["fingerprint"]) for f in unwaived.blocking] == [(17, FP)]
+
+
+def test_a_relocated_security_finding_still_needs_a_confirmation(git_repo):
+    base = _commit(git_repo, "base", **{"s/SKILL.md": "x\n"})
+    anchor = _commit(git_repo, "pr 1", **{"s/SKILL.md": "\n" * 14 + GRANT + "\n"})
+    _commit(git_repo, "pr 2", **{"s/SKILL.md": "new\nlines\n" + "\n" * 14 + GRANT + "\n"})
+    entry = {**_waived_entry(), "reporters": ["security-reviewer"]}
+    body = _section(f"- tool-scoping s/SKILL.md:15 @{FP} – accepted")
+    plain = carry_findings(git_repo.root, base, anchor, _anchor_result(entry), body, _never_open)
+    assert [f["line"] for f in plain.blocking] == [17] and plain.waived == ()
+    assert "confirmation" in plain.notes[0]
+    confirmed = carry_findings(
+        git_repo.root,
+        base,
+        anchor,
+        _anchor_result(entry),
+        body,
+        _never_open,
+        {("tool-scoping", "s/SKILL.md", FP)}.__contains__,
+    )
+    assert confirmed.blocking == () and [f["line"] for f in confirmed.waived] == [17]
+
+
+def test_a_waived_finding_whose_line_was_edited_is_not_carried(git_repo):
+    base = _commit(git_repo, "base", **{"s/SKILL.md": "x\n"})
+    anchor = _commit(git_repo, "pr 1", **{"s/SKILL.md": "\n" * 14 + GRANT + "\n"})
+    _commit(git_repo, "pr 2", **{"s/SKILL.md": "\n" * 14 + "allowed-tools: Read\n"})
+    outcome = carry_findings(
+        git_repo.root, base, anchor, _anchor_result(_waived_entry()), "", _never_open
+    )
+    assert outcome.blocking == () and outcome.waived == ()
+
+
+def test_a_blocking_finding_is_still_released_when_its_file_changes(git_repo):
+    base = _commit(git_repo, "base", **{"s/SKILL.md": "x\n"})
+    anchor = _commit(git_repo, "pr 1", **{"s/SKILL.md": "\n" * 14 + GRANT + "\n"})
+    _commit(git_repo, "pr 2", **{"s/SKILL.md": "new\n" + "\n" * 14 + GRANT + "\n"})
+    entry = {**_waived_entry(), "blocking": True}
+    del entry["waiver"]
+    outcome = carry_findings(git_repo.root, base, anchor, _anchor_result(entry), "", _never_open)
+    assert outcome.blocking == () and outcome.waived == ()
+
+
 def test_a_carried_entry_of_unknown_origin_needs_a_confirmation(git_repo):
     # An anchor written before issue #808 records a carried finding as `reviewer: carried` with
     # no origin or reporters: it may have been security-reviewer's, so a waiver needs a
