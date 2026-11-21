@@ -1515,6 +1515,41 @@ def fingerprint_at(repo: Path, rev: str, path: str, line: object) -> str | None:
     return line_fingerprint(lines[line - 1])
 
 
+def locate_fingerprint(
+    repo: Path,
+    rev: str,
+    path: str,
+    fingerprint: object,
+    near: int,
+    cache: dict[str, list[str] | None] | None = None,
+) -> int | None:
+    """The line of `path` at `rev` whose fingerprint is `fingerprint`, the one nearest to line
+    `near` when several match: 0 for `-` while the file still exists, None when no line matches
+    or the file cannot be read there. `cache` keeps each path's line fingerprints (None for an
+    unreadable file) across calls for the same `rev`."""
+    if not (isinstance(fingerprint, str) and _FINGERPRINT.fullmatch(fingerprint)):
+        return None
+    if cache is None:
+        cache = {}
+    if path not in cache:
+        try:
+            blob = _run_git(repo, "show", f"{rev}:{path}")
+        except RuntimeError:
+            blob = None
+        if blob is None or b"\0" in blob:
+            cache[path] = None
+        else:
+            text = blob.decode("utf-8", errors="replace")
+            cache[path] = [line_fingerprint(line) for line in git_lines(text)]
+    prints = cache[path]
+    if prints is None:
+        return None
+    if fingerprint == "-":
+        return 0
+    hits = [i for i, fp in enumerate(prints, 1) if fp == fingerprint]
+    return min(hits, key=lambda i: (abs(i - near), i)) if hits else None
+
+
 def _section_text(pr_body: str) -> str | None:
     match = _WAIVER_SECTION.search(pr_body or "")
     if match is None:
@@ -1775,6 +1810,7 @@ def carry_findings(
         raise CarryError(f"anchor result has more than {_MAX_CARRIED_INPUT} findings")
     waivers = read_waiver_section(pr_body, issue_is_open).waivers
     unchanged: dict[str, bool] = {}
+    head_prints: dict[str, list[str] | None] = {}
     blocking: list[dict] = []
     waived: list[dict] = []
     notes: list[str] = []
@@ -1799,13 +1835,24 @@ def carry_findings(
                     # Unknown is not "changed": dropping the finding would fail open.
                     raise CarryError(f"cannot compare {path} with the anchor")
                 unchanged[path] = now == then
-            if not unchanged[path]:
-                continue
+        is_waived = isinstance(entry.get("waiver"), str)
+        if resolved and not unchanged[path] and not is_waived:
+            # A changed file releases a blocking finding: the file is reviewed again.
+            continue
         fingerprint = entry.get("fingerprint")
         if not (isinstance(fingerprint, str) and _FINGERPRINT.fullmatch(fingerprint)):
             fingerprint = fingerprint_at(repo, anchor_sha, path, line) if resolved else None
             if line == 0:
                 fingerprint = "-"
+        if resolved and not unchanged[path]:
+            # A waived finding is kept while its flagged line still exists, found at the head by
+            # its fingerprint, so removing the waiver later makes it block again (R7). A reviewer
+            # need not report it anew, so dropping it here would lose it for good. An edited or
+            # removed line is a different finding and is reviewed as one.
+            moved = locate_fingerprint(repo, "HEAD", path, fingerprint, line, head_prints)
+            if moved is None:
+                continue
+            line = moved
         reviewers = _entry_reviewers(entry)
         carried: dict = {"rule": rule, "path": path, "line": line}
         carried["severity"] = _carry_severity(entry)
