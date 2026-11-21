@@ -442,22 +442,11 @@ End by asking which findings, if any, to fix. **Do not edit code until the user 
 Convergence between the models is not correctness — the job here is to surface a ranked,
 cross-examined list, not to declare the diff clean.
 
-`$RUN` is not deleted after this — both models' findings JSON, which may quote diff content, persist under the OS temp
-directory until cleaned up. This skill has no scoped delete capability; say so rather than implying cleanup, and treat
-the envelopes as needing review before they are shared. The same goes for `$RUN/full.diff` (a full copy of the diff, including uncommitted content), the manifests, the
-`diffs-*` folders and the instruction files, and, after `EnterWorktree`, the scratchpad's `preflight.sh` and stdin files. The throwaway `$GIT_INDEX_FILE` is likewise left in place; `umask 077` (Inputs section) keeps it user-readable-only.
+`$RUN` is not deleted after this — both models' findings JSON, which may quote diff content, persist under the OS temp directory until cleaned up. This skill has no scoped delete capability; say so rather than implying cleanup, and treat the envelopes as needing review before they are shared. The same goes for `$RUN/full.diff` (a full copy of the diff, including uncommitted content), the manifests, the `diffs-*` folders and the instruction files, and, after `EnterWorktree`, the scratchpad's `preflight.sh` and stdin files. The throwaway `$GIT_INDEX_FILE` is likewise left in place; `umask 077` (Inputs section) keeps it user-readable-only.
 
 ## Boundaries
 
-Deliberately not in `allowed-tools`, so each prompts: `git diff` and `git show` (both accept `--output=<file>`, a write
-to any path), the `export GIT_INDEX_FILE` / `CODEX_KIT_REVIEW_*` assignments, exported or prefixed (a grant cannot pin the value they set),
-the `guarded-dispatch.mjs` fallback (a grant would pre-approve a full-access dispatch), and, after `EnterWorktree` only,
-`Write` and `bash <scratchpad>/preflight.sh` (`Write` cannot be limited to a path; the script path varies, so its grant
-would be `Bash(bash:*)`, which also admits `bash -c` and any script; one approval covers every command in the script,
-and the scratchpad `Write` may not prompt at all). `git add -N` runs only through `scripts/git-review-intent-add.sh`.
-These prompt unless your own settings or permission mode already allow them. For `git diff`, `git show` and `bash` the
-reason is a shared prefix: any prefix rule for them also admits `--output` or `-c`. Approve each run once and do not
-add a persistent allow rule for them; approve `Write` for the single call only, never for the session.
+Deliberately not in `allowed-tools`, so each prompts: `git diff` and `git show` (both accept `--output=<file>`, a write to any path), the `export GIT_INDEX_FILE` / `CODEX_KIT_REVIEW_*` assignments, exported or prefixed (a grant cannot pin the value they set), the `guarded-dispatch.mjs` fallback (a grant would pre-approve a full-access dispatch), and, after `EnterWorktree` only, `Write` and `bash <scratchpad>/preflight.sh` (`Write` cannot be limited to a path; the script path varies, so its grant would be `Bash(bash:*)`, which also admits `bash -c` and any script; one approval covers every command in the script, and the scratchpad `Write` may not prompt at all). `git add -N` runs only through `scripts/git-review-intent-add.sh`. These prompt unless your own settings or permission mode already allow them. For `git diff`, `git show` and `bash` the reason is a shared prefix: any prefix rule for them also admits `--output` or `-c`. Approve each run once and do not add a persistent allow rule for them; approve `Write` for the single call only, never for the session.
 
 ## Deliberately NOT done
 
@@ -495,6 +484,4 @@ closing-tag neutralization, partial-failure preservation, scoped review and more
 `scripts/preflight_fixtures_test.py` runs the Preflight chain, planner step included, against scratch
 repositories.
 
-**Last dated run record:** `2026-11-18, evals/cross-model-review/workspace/iteration-15/` — evals 13-16, scenario 38
-(refused chained Preflight; heredoc refusal, then timeout; folder-pick re-run; normal-session control), both arms
-claude-opus-5-5: `with_skill` 17/17, baseline (`main`'s text) 5/17; `2026-11-21, iteration-17`, eval 18 (accepted findings, scenario 39), `with_skill` only, 7/7; `iteration-16`, eval 17 (single-quoted `BASE`/`SCOPE`), claude-haiku-5-5: 3/3 vs 1/3. Skill-following dry runs, no Codex dispatch. Earlier runs and their open items are under "Run history" in `references/testing-scenarios.md`.
+**Last dated run record:** `2026-11-18, evals/cross-model-review/workspace/iteration-15/` — evals 13-16, scenario 38 (refused chained Preflight; heredoc refusal, then timeout; folder-pick re-run; normal-session control), both arms claude-opus-5-5: `with_skill` 17/17, baseline (`main`'s text) 5/17; `2026-11-21, iteration-17`, eval 18 (accepted findings, scenario 39), `with_skill` only, 7/7; `iteration-16`, eval 17 (single-quoted `BASE`/`SCOPE`), claude-haiku-5-5: 3/3 vs 1/3. Skill-following dry runs, no Codex dispatch. Earlier runs and their open items are under "Run history" in `references/testing-scenarios.md`.
