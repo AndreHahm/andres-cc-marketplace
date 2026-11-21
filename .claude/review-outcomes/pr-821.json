@@ -1,0 +1,22 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4651880140",
+      "line": 584,
+      "note": "Mixed-cap rerun hint said --sandbox-down starts every reviewer; scoped to fallback-eligible reviewers in 6110eaf5. CodeRabbit outside-diff comment was the same defect.",
+      "path": "plugins/git-kit/scripts/git-codex-parity-review.py",
+      "pr": 821,
+      "recorded_at": "2026-11-21T10:51:24+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4651880179",
+      "line": 1041,
+      "note": "Hint fixture used a reviewer split dispatch cannot produce; switched to rulebook-checker vs full-scope and added a dispatcher split test in 6110eaf5.",
+      "path": "tests/marketplace_ci/test_codex_parity_review_script.py",
+      "pr": 821,
+      "recorded_at": "2026-11-21T10:51:24+00:00"
+    }
+  ]
+}
