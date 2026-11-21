@@ -154,8 +154,11 @@ a reviewer reports it anew, until the flagged code changes (issue #808).
   finding in the job summary, ready to copy into a waiver line. A waiver matches a finding when the rule and
   path are equal and the fingerprint of the finding's flagged line equals the waiver's. The line number in
   the waiver is informational, so a waiver survives the flagged line moving, and a reviewer rewording its
-  claim. When the flagged line's own text changes, the fingerprint no longer matches and the finding is
-  reviewed and blocks again: that is what "materially different" means here. A finding with no line uses
+  claim. For the same reason, lines with identical text (whitespace collapsed) in one file share a
+  fingerprint: a waiver covers a finding with its rule on any of them, and so does a maintainer's
+  confirmation. Fix the other copies, or accept them knowingly, before writing such a waiver. When the
+  flagged line's own text changes, the fingerprint no longer matches and the finding is reviewed and
+  blocks again: that is what "materially different" means here. A finding with no line uses
   `0` and the fingerprint `-`; it then matches on rule and path alone. A waiver line without a fingerprint
   (the earlier format) matches on rule, path and exact line, as before.
 - **Maintainer-only acceptance for gate-critical and security findings.** A waiver for a finding on a
