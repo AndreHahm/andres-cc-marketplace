@@ -29,6 +29,7 @@ import json
 import os
 import re
 import stat
+import subprocess
 import sys
 from pathlib import Path
 
@@ -114,7 +115,73 @@ def _read_regular(path: Path, limit: int) -> str | None:
         return None
 
 
+def _list_refusal() -> str | None:
+    """Why the local list must not be read, or None. A symlink anywhere on its path could
+    redirect the read outside the checkout, and a copy git tracks was committed by whoever wrote
+    the branch, not the author's own list (like commit's trust check of git-kit.local.json)."""
+    current = Path(".")
+    for part in LOCAL_LIST.parts:
+        current = current / part
+        if current.is_symlink():
+            return f"{current} is a symlink"
+    if not current.exists():
+        return None
+    names = _tracked_names()
+    if names is None:
+        return "git could not tell whether it is tracked"
+    # Case-folded: on a case-insensitive filesystem `.CLAUDE/Accepted-…` is the same file.
+    target = LOCAL_LIST.as_posix().casefold()
+    if any(name.casefold() == target for name in names):
+        return "it is tracked by git"
+    return None
+
+
+def _git(*args: str) -> tuple[int, str, str] | None:
+    """`git <args>`'s exit code, stdout and stderr, or None when git cannot run. It reads the
+    real index, never cross-model-review's throwaway GIT_INDEX_FILE: if that copy failed, it is
+    empty and a committed list would look untracked."""
+    env = {k: v for k, v in os.environ.items() if k != "GIT_INDEX_FILE"}
+    try:
+        done = subprocess.run(
+            ["git", *args],
+            capture_output=True,
+            text=True,
+            errors="surrogateescape",
+            env=env,
+            timeout=60,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return done.returncode, done.stdout, done.stderr
+
+
+def _tracked_names() -> list[str] | None:
+    """Every path git tracks under `.claude/` in any letter case, in the index and in HEAD's
+    tree, or None when git cannot tell."""
+    index = _git("ls-files", "-z", "--", ":(top,icase).claude/")
+    if index is None or index[0] != 0:
+        return None
+    names = index[1].split("\0")
+    head = _git("rev-parse", "--verify", "-q", "HEAD^{tree}")
+    if head is None:
+        return None
+    # `--verify -q` exits 1 with no output when HEAD has no commit yet; then only the index counts.
+    if head[0] == 1 and not head[2].strip():
+        return [n for n in names if n]
+    if head[0] != 0:
+        return None
+    tree = _git("ls-tree", "-r", "-z", "--name-only", "HEAD")
+    if tree is None or tree[0] != 0:
+        return None
+    return [n for n in (*names, *tree[1].split("\0")) if n]
+
+
 def _load_list() -> tuple[list[dict], list[str]]:
+    refusal = _list_refusal()
+    if refusal is not None:
+        print(f"git-review-accepted-findings: {LOCAL_LIST} not read: {refusal}", file=sys.stderr)
+        return [], []
     text = _read_regular(LOCAL_LIST, _MAX_LIST_BYTES)
     return parse(text) if text is not None else ([], [])
 

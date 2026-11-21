@@ -6,6 +6,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -79,12 +80,20 @@ def test_the_match_key_is_the_same_as_ci(rule, path, line, fingerprint):
     assert ours == theirs
 
 
+def _git(root, *args):
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    subprocess.run(["git", "-C", str(root), *args], check=True, capture_output=True, env=env)
+
+
 @pytest.fixture
 def checkout(tmp_path, monkeypatch):
+    _git(tmp_path, "init", "-q")
     (tmp_path / ".claude").mkdir()
     (tmp_path / "s").mkdir()
     (tmp_path / "s/SKILL.md").write_text("\n" * 20 + GRANT + "\n", encoding="utf-8")
     monkeypatch.chdir(tmp_path)
+    for name in [k for k in os.environ if k.startswith("GIT_")]:
+        monkeypatch.delenv(name)
     return tmp_path
 
 
@@ -147,6 +156,73 @@ def test_brief_writes_data_only_and_reports_skipped_lines(checkout, tmp_path, ca
     assert json.loads(text.splitlines()[2][2:])["rule"] == "tool-scoping"
     # never overwrites
     assert helper.main(["brief", "--run-dir", str(run)]) == 2
+
+
+LIST_LINE = f"- tool-scoping s/SKILL.md:21 @{FP} – accepted\n"
+
+
+def test_the_list_is_read_when_untracked(checkout):
+    (checkout / ".claude/accepted-review-findings.local.md").write_text(LIST_LINE, encoding="utf-8")
+    waivers, _ = helper._load_list()
+    assert [w["path"] for w in waivers] == ["s/SKILL.md"]
+    # Also once HEAD exists (the check then reads HEAD's tree too).
+    _git(checkout, "add", "s/SKILL.md")
+    _git(checkout, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "base")
+    waivers, _ = helper._load_list()
+    assert [w["path"] for w in waivers] == ["s/SKILL.md"]
+
+
+def test_the_list_is_never_read_through_a_symlinked_directory(checkout, tmp_path, capsys):
+    # A symlinked `.claude` would redirect the read outside the checkout.
+    elsewhere = tmp_path.parent / f"{tmp_path.name}-elsewhere"
+    elsewhere.mkdir()
+    (elsewhere / "accepted-review-findings.local.md").write_text(LIST_LINE, encoding="utf-8")
+    (checkout / ".claude").rmdir()
+    (checkout / ".claude").symlink_to(elsewhere)
+    assert helper._load_list() == ([], [])
+    assert "symlink" in capsys.readouterr().err
+
+
+def test_a_tracked_list_is_not_read(checkout, capsys):
+    # A branch can force-add the gitignored file; a tracked copy is not the author's own list.
+    (checkout / ".claude/accepted-review-findings.local.md").write_text(LIST_LINE, encoding="utf-8")
+    _git(checkout, "add", "-f", ".claude/accepted-review-findings.local.md")
+    assert helper._load_list() == ([], [])
+    assert "tracked" in capsys.readouterr().err
+
+
+def _commit_all(root):
+    _git(root, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "branch")
+
+
+def test_a_committed_list_is_not_read_when_the_index_copy_is_missing(
+    checkout, tmp_path, monkeypatch, capsys
+):
+    # cross-model-review hands the helper a throwaway GIT_INDEX_FILE; if its copy failed, that
+    # index is empty, and the check must still see the committed list (real index, then HEAD).
+    (checkout / ".claude/accepted-review-findings.local.md").write_text(LIST_LINE, encoding="utf-8")
+    _git(checkout, "add", "-f", ".claude/accepted-review-findings.local.md")
+    _commit_all(checkout)
+    monkeypatch.setenv("GIT_INDEX_FILE", str(tmp_path.parent / f"{tmp_path.name}-no-index"))
+    assert helper._load_list() == ([], [])
+    assert "tracked" in capsys.readouterr().err
+    # HEAD alone is enough: the list is committed, though no index lists it.
+    _git(checkout, "rm", "-q", "--cached", ".claude/accepted-review-findings.local.md")
+    monkeypatch.delenv("GIT_INDEX_FILE")
+    assert helper._load_list() == ([], [])
+
+
+def test_a_tracked_list_under_another_case_is_not_read(checkout, capsys):
+    # On a case-insensitive filesystem a committed `.CLAUDE/Accepted-…` is the file opened by
+    # the lowercase name, so any tracked spelling that casefolds to the list path refuses it.
+    if (checkout / ".CLAUDE").exists():
+        pytest.skip("case-insensitive filesystem: .CLAUDE and .claude are one directory")
+    (checkout / ".CLAUDE").mkdir()
+    (checkout / ".CLAUDE/Accepted-Review-Findings.local.md").write_text(LIST_LINE, encoding="utf-8")
+    _git(checkout, "add", "-f", ".CLAUDE/Accepted-Review-Findings.local.md")
+    (checkout / ".claude/accepted-review-findings.local.md").write_text(LIST_LINE, encoding="utf-8")
+    assert helper._load_list() == ([], [])
+    assert "tracked" in capsys.readouterr().err
 
 
 @pytest.mark.skipif(not hasattr(os, "getuid"), reason="POSIX mode bits")
