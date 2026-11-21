@@ -49,8 +49,11 @@ uv run python -m scripts.reviewer_eval.score --stability run1.json run2.json run
 Each file must be a different run (the same file twice, under any path or link, is refused) and
 must carry a `provenance.head_sha` (40 lowercase hex characters) and a `reviewers` roster that
 lists `--reviewer`. All files must also match the first one on the head, the base (`base_sha`), the
-reviewed paths and the model and CLI (`model`, `cli_version`, `configured_model`,
-`pinned_cli_version`); a field one run records and another does not counts as different.
+reviewed paths and the recorded model and CLI pins (`configured_model`, `pinned_cli_version`); a
+field one run records and another does not counts as different. The reviewers' own report about
+themselves (`model`, `cli_version`) is not compared: under the same pins it varied between runs
+(`cli_version` was `""`, `unknown` and `codex-cli 0.170.0` in five runs of one head), so it is not
+evidence of what ran.
 Otherwise the command exits 1 and names the file. A merged finding counts for every reviewer in its
 `reporters`. It prints the head (`head_sha`), how many runs gave the same blocking set (`agree`)
 and whether that is stable (at least 4 of 5; `null` until five runs are given). No repeated runs
