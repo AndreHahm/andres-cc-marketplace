@@ -461,9 +461,10 @@ def test_cli_stability_rejects_runs_without_a_recorded_pin(
     assert missing in captured.err
 
 
-def test_cli_stability_rejects_a_field_present_in_one_run_and_absent_in_another(
+def test_cli_stability_names_the_one_run_without_a_base(
     tmp_path: Path, capsys: pytest.CaptureFixture
 ):
+    # Four valid runs and one without a base: the error names that run, not the first.
     runs = [_run_file(tmp_path, f"run{n}.json", []) for n in range(4)]
     runs.append(_run_file(tmp_path, "old.json", [], provenance={"base_sha": None}))
     assert score.main(["--stability", *runs, "--reviewer", "security"]) == 1

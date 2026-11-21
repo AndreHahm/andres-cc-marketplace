@@ -80,15 +80,18 @@ runs under different installed CLIs apart. For this baseline, `codex --version` 
 that.
 
 To repeat, run this in a checkout of each head, with `codex` 0.170.0 on `PATH` and `BASE_SHA` set
-to that head's `base_sha` from `baseline.json` (its merge-base with `main` when the runs were made).
-The runs go one after another, each to its own file: `--output` overwrites an existing file. Without
-`CODEX_KIT_REVIEW_MODEL` the run records no `configured_model`, and `--stability` refuses it.
+to that head's full 40-character `base_sha` from `baseline.json` (its merge-base with `main` when the
+runs were made): `run-codex-review` records the argument as given, and `--stability` refuses a short
+SHA (#818). The runs go one after another, each to its own file in the gitignored `.temp/`:
+`--output` overwrites an existing file. Without `CODEX_KIT_REVIEW_MODEL` the run records no
+`configured_model`, and `--stability` refuses it.
 
 ```bash
+mkdir -p .temp/stability
 for n in 1 2 3 4 5; do
   CODEX_KIT_REVIEW_MODEL=gpt-6-luna CODEX_KIT_REVIEW_TIMEOUT_MS=720000 \
     uv run python -m scripts.marketplace_ci run-codex-review \
-    --base-sha "$BASE_SHA" --output "run$n.json"
+    --base-sha "$BASE_SHA" --output ".temp/stability/run$n.json"
 done
 ```
 
