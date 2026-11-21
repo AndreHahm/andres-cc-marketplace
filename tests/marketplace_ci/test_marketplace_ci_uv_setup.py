@@ -16,7 +16,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[2]
 JOBS = yaml.safe_load((ROOT / ".github/workflows/marketplace-ci.yml").read_text("utf-8"))["jobs"]
 SETUP_UV = "astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2"
-UV_VERSION = "0.12.21"
+UV_VERSION = "0.13.7"
 
 
 def _uses_uv(step: dict) -> bool:

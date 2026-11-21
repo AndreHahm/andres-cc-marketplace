@@ -115,7 +115,7 @@ should be a dedicated one in its own Console workspace (R9) that is cheap to rot
 inherits the key in its environment, contained by the read-only tools, the blocked reads outside the
 checkout and the `/proc` deny; and whether a nested `CLAUDE.md` in a PR-supplied directory loads with no
 settings sources has not been tested live (the prompt names it untrusted either way). Every job installs uv with `astral-sh/setup-uv` (pinned
-by SHA, uv `0.12.21`), not `pip install uv`, and sync with `--no-build` (the two source-only packages
+by SHA, uv `0.13.7`), not `pip install uv`, and sync with `--no-build` (the two source-only packages
 `csscompressor` and `jsmin`, which these steps never use, are left out) and run `uv run --no-sync`, so no
 package's setup code runs, as in `marketplace-ci.yml`'s review-helpers job.
 

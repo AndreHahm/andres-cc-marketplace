@@ -16,6 +16,8 @@ All notable changes to this plugin are documented here.
   `--with-requirements` do not check hashes (a wrong hash installed anyway with uv 0.12.21). The weekly mutation job
   takes mutmut from a locked `mutation` dependency group. A test now runs the tier's trusted-restore step for each
   state of the base branch.
+- `assets/qlty-coverage-workflow.yml` installs uv 0.13.7 (was 0.12.21), the version the repository's uv pre-commit
+  hooks run (issue #774).
 - The weekly mutation job's timeout is 15 minutes, set from its first run (each module took 0.4 to 3.1 minutes).
 - `resolving-analysis-findings` keeps its Sonar rungs and decision rights in `references/sonar-mechanisms.md`, which a
   `sonar` record reads first; the text moved unchanged.

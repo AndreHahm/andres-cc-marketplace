@@ -130,7 +130,7 @@ def test_uv_is_pinned_and_runs_no_package_setup_code():
         runs = [s.get("run", "") for s in steps]
         assert not any("pip install" in r for r in runs), job
         setup = [s for s in steps if str(s.get("uses", "")).startswith("astral-sh/setup-uv@")]
-        assert len(setup) == 1 and setup[0]["with"]["version"] == "0.12.21", job
+        assert len(setup) == 1 and setup[0]["with"]["version"] == "0.13.7", job
         syncs = [r for r in runs if r.startswith("uv sync")]
         assert len(syncs) == 1 and "--no-build" in syncs[0] and "--locked" in syncs[0], job
         uv_runs = [line for r in runs for line in r.splitlines() if "uv run" in line]
@@ -152,7 +152,7 @@ def test_setup_uv_never_looks_up_a_python_from_the_checkout(workflow):
     assert len(setups) == 3, workflow
     for name, step in setups:
         assert step["with"] == {
-            "version": "0.12.21",
+            "version": "0.13.7",
             "enable-cache": "false",
             "python-version": "3.13",
         }, name

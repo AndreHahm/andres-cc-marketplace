@@ -116,7 +116,7 @@ jobs:
           python-version: "3.13"
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # ratchet:astral-sh/setup-uv@v10.3.3
         with:
-          version: "0.12.21"
+          version: "0.13.7"
           enable-cache: "false"
           python-version: "3.13"
 
@@ -321,7 +321,7 @@ jobs:
           python-version: "3.13"
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # ratchet:astral-sh/setup-uv@v10.3.3
         with:
-          version: "0.12.21"
+          version: "0.13.7"
           enable-cache: "false"
           python-version: "3.13"
       # --locked and --no-build as in the Windows job below; --no-sync keeps uv run from syncing again.
@@ -364,7 +364,7 @@ jobs:
           python-version: "3.13"
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # ratchet:astral-sh/setup-uv@v10.3.3
         with:
-          version: "0.12.21"
+          version: "0.13.7"
           enable-cache: "false"
           python-version: "3.13"
       # --no-build runs no package's setup code. csscompressor and jsmin ship only as source, so
@@ -517,7 +517,7 @@ jobs:
           python-version: "3.13"
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # ratchet:astral-sh/setup-uv@v10.3.3
         with:
-          version: "0.12.21"
+          version: "0.13.7"
           enable-cache: "false"
           python-version: "3.13"
       - run: uv sync --locked --group dev --no-build --no-install-package csscompressor --no-install-package jsmin
@@ -616,7 +616,7 @@ jobs:
           python-version: "3.13"
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # ratchet:astral-sh/setup-uv@v10.3.3
         with:
-          version: "0.12.21"
+          version: "0.13.7"
           enable-cache: "false"
           python-version: "3.13"
 
@@ -925,7 +925,7 @@ jobs:
           python-version: "3.13"
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # ratchet:astral-sh/setup-uv@v10.3.3
         with:
-          version: "0.12.21"
+          version: "0.13.7"
           enable-cache: "false"
           python-version: "3.13"
 
@@ -1393,7 +1393,7 @@ jobs:
           python-version: "3.13"
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # ratchet:astral-sh/setup-uv@v10.3.3
         with:
-          version: "0.12.21"
+          version: "0.13.7"
           enable-cache: "false"
           python-version: "3.13"
 
@@ -1945,7 +1945,7 @@ jobs:
           python-version: "3.13"
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # ratchet:astral-sh/setup-uv@v10.3.3
         with:
-          version: "0.12.21"
+          version: "0.13.7"
           enable-cache: "false"
           python-version: "3.13"
 

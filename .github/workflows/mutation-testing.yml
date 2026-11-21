@@ -42,7 +42,7 @@ jobs:
         uses: ./.github/actions/track-rerun
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # ratchet:astral-sh/setup-uv@v10.3.3
         with:
-          version: "0.12.21"
+          version: "0.13.7"
           enable-cache: "false"
           python-version: "3.13"
       # Locked and build-free (SonarCloud S8544): pyyaml comes from uv.lock, not an unlocked --with.
@@ -88,7 +88,7 @@ jobs:
           python-version: "3.13"
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # ratchet:astral-sh/setup-uv@v10.3.3
         with:
-          version: "0.12.21"
+          version: "0.13.7"
           enable-cache: "false"
           python-version: "3.13"
       # mutmut comes from the `mutation` group, so uv.lock's hashes cover it and its dependencies.

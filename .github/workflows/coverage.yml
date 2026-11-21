@@ -75,7 +75,7 @@ jobs:
           python-version: "3.13"
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # ratchet:astral-sh/setup-uv@v10.3.3
         with:
-          version: "0.12.21"
+          version: "0.13.7"
           enable-cache: "false"
           python-version: "3.13"
       - run: uv sync --locked --group dev --no-build --no-install-package csscompressor --no-install-package jsmin
@@ -213,7 +213,7 @@ jobs:
           path: ${{ runner.temp }}/coverage
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # ratchet:astral-sh/setup-uv@v10.3.3
         with:
-          version: "0.12.21"
+          version: "0.13.7"
           enable-cache: "false"
           python-version: "3.13"
       # No token in this step's environment: it runs PR-controlled input through the script. -I keeps
