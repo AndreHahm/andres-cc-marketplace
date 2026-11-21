@@ -161,6 +161,14 @@ def test_fingerprint_at_reads_the_line_at_a_revision(git_repo):
     assert fingerprint_at(git_repo.root, head, "a_py", None) == "-"
 
 
+def test_fingerprint_lines_are_counted_on_newline_only(git_repo):
+    # A form feed, U+2028 or a lone carriage return is not a line break for git or a reviewer.
+    head = _commit(git_repo, "c", a_py="one\x0c more\nlast  x\r\nthird\rstill\n")
+    assert fingerprint_at(git_repo.root, head, "a_py", 2) == line_fingerprint("last  x")
+    assert fingerprint_at(git_repo.root, head, "a_py", 3) == line_fingerprint("third\rstill")
+    assert fingerprint_at(git_repo.root, head, "a_py", 4) is None
+
+
 # --- Maintainer confirmation -----------------------------------------------------------------
 
 
@@ -229,6 +237,42 @@ def test_confirmations_come_only_from_write_capable_users(monkeypatch):
 
 def _anchor_result(*entries):
     return {"status": "findings", "findings": list(entries)}
+
+
+def test_a_carried_entry_of_unknown_origin_needs_a_confirmation(git_repo):
+    # An anchor written before issue #808 records a carried finding as `reviewer: carried` with
+    # no origin or reporters: it may have been security-reviewer's, so a waiver needs a
+    # maintainer's confirmation (R7).
+    base = _commit(git_repo, "base", **{"s/SKILL.md": "x\n"})
+    anchor = _commit(git_repo, "pr 1", **{"s/SKILL.md": "\n" * 14 + GRANT + "\n"})
+    entry = {
+        "rule": "tool-scoping",
+        "path": "s/SKILL.md",
+        "line": 15,
+        "blocking": True,
+        "severity": "Major",
+        "reviewer": "carried",
+    }
+    body = _section(f"- tool-scoping s/SKILL.md:15 @{FP} – accepted")
+    outcome = carry_findings(git_repo.root, base, anchor, _anchor_result(entry), body, _never_open)
+    assert outcome.waived == () and len(outcome.blocking) == 1
+    assert "confirmation" in outcome.notes[0]
+    confirmed = carry_findings(
+        git_repo.root,
+        base,
+        anchor,
+        _anchor_result(entry),
+        body,
+        _never_open,
+        {("tool-scoping", "s/SKILL.md", FP)}.__contains__,
+    )
+    assert confirmed.blocking == () and len(confirmed.waived) == 1
+    # The requirement survives the merge into this run's result and the next run's carry.
+    merged = merge_carried_findings(
+        {"status": "clean", "findings": [], "blocking": False}, list(outcome.blocking), "1"
+    )
+    later = carry_findings(git_repo.root, base, anchor, merged, body, _never_open)
+    assert later.waived == () and len(later.blocking) == 1
 
 
 def test_a_waived_carried_finding_keeps_its_record_and_blocks_once_unwaived(git_repo):
@@ -517,3 +561,55 @@ def test_the_claude_prompt_carries_the_accepted_findings():
     assert build_prompt("x {{ACCEPTED_FINDINGS}} y", values) == "x [accepted] y"
     empty = prompt_values(scope, "rules", "sec", "general", "b" * 40, "h" * 40)
     assert empty["ACCEPTED_FINDINGS"] == "None."
+
+
+def _security_carried(**extra):
+    return {
+        "rule": "security",
+        "path": "a_py",
+        "line": 3,
+        "severity": "Major",
+        "reviewer": "security-reviewer",
+        "reporters": ["security-reviewer"],
+        **extra,
+    }
+
+
+def test_a_waived_finding_never_absorbs_a_blocking_carried_one_with_the_same_key():
+    # A new, waived finding of another reviewer at the same rule, path and line as a carried,
+    # unconfirmed security-reviewer finding: both stay in the result, so the next run still
+    # carries the security finding and still asks for a maintainer's confirmation (R7).
+    own = {
+        "reviewer": "fresh-eyes-reviewer",
+        "reporters": ["fresh-eyes-reviewer"],
+        "rule": "security",
+        "path": "a_py",
+        "line": 3,
+        "severity": "Major",
+        "blocking": False,
+        "waiver": f"- security a_py:3 @{FP} – accepted",
+    }
+    result = {"status": "findings", "findings": [own], "blocking": False}
+    merged = merge_carried_findings(result, [_security_carried(fingerprint=FP)], "1")
+    assert merged["blocking"] is True and merged["carried_findings"] == 1
+    kept = [f for f in merged["findings"] if f.get("source") == "carried"]
+    assert [(f["origin_reviewer"], f["blocking"]) for f in kept] == [("security-reviewer", True)]
+    assert result["findings"] == [own]
+
+
+def test_a_carried_finding_covered_by_a_blocking_one_adds_its_reporters():
+    own = {
+        "reviewer": "fresh-eyes-reviewer",
+        "reporters": ["fresh-eyes-reviewer"],
+        "rule": "security",
+        "path": "a_py",
+        "line": 3,
+        "severity": "Major",
+        "blocking": True,
+    }
+    merged = merge_carried_findings(
+        {"status": "findings", "findings": [own], "blocking": True}, [_security_carried()], "1"
+    )
+    (only,) = merged["findings"]
+    assert only["reporters"] == ["fresh-eyes-reviewer", "security-reviewer"]
+    assert own["reporters"] == ["fresh-eyes-reviewer"]  # the input is not changed

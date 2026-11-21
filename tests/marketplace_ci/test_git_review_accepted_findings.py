@@ -111,6 +111,17 @@ def test_match_marks_a_moved_finding_as_waived(checkout, capsys):
     ]
 
 
+def test_working_tree_lines_are_counted_like_ci(checkout):
+    # A form feed, U+2028 or a lone carriage return is not a line break, as in CI's git_lines.
+    text = "one\x0c more\nlast  x\r\nthird\rstill\n"
+    (checkout / "f.txt").write_bytes(text.encode("utf-8"))
+    ci = review.git_lines(text)
+    assert len(ci) == 3
+    for line in (1, 2, 3, 4):
+        want = review.line_fingerprint(ci[line - 1]) if line <= len(ci) else None
+        assert helper.working_tree_fingerprint("f.txt", line) == want
+
+
 def test_match_never_reads_through_a_symlink_or_outside_the_checkout(checkout):
     (checkout / "link").symlink_to(checkout / "s")
     assert helper.working_tree_fingerprint("link/SKILL.md", 21) is None
