@@ -265,6 +265,34 @@ def _origin_slug() -> str | None:
     return match.group(1) if match else None
 
 
+# R17 (issue #808): the accepted findings before a pull request exists, in the same line format as
+# the PR body's `## Accepted Review Findings` section. Gitignored (`**/*.local.*`).
+LOCAL_ACCEPTED_FINDINGS = Path(".claude/accepted-review-findings.local.md")
+
+
+def _open_pr_number() -> str | None:
+    """The number of the open pull request for this branch, or None (none, or gh unavailable)."""
+    result = _run(
+        ["gh", "pr", "view", "--json", "number,state", "--jq", 'select(.state == "OPEN") | .number']
+    )
+    if result is None or result.returncode != 0:
+        return None
+    number = result.stdout.strip()
+    return number if number.isdigit() else None
+
+
+def accepted_findings_source() -> tuple[list[str], str] | None:
+    """`fetch-accepted-findings`' arguments for the list CI would read (R17): the open pull
+    request's body when there is one, else the local file, else None. The second item names the
+    source for the log."""
+    slug, number = _origin_slug(), _open_pr_number()
+    if slug and number:
+        return ["--repo", slug, "--pr-number", number], f"the body of PR #{number}"
+    if LOCAL_ACCEPTED_FINDINGS.is_file() and not LOCAL_ACCEPTED_FINDINGS.is_symlink():
+        return ["--body-file", str(LOCAL_ACCEPTED_FINDINGS)], str(LOCAL_ACCEPTED_FINDINGS)
+    return None
+
+
 def _gh_variable(name: str) -> str | None:
     """A repository variable's raw value, or None when it is unset or `gh` cannot read it."""
     slug = _origin_slug()
@@ -518,6 +546,24 @@ def main() -> int:
         else:
             print("PARITY WARNING: no model variable known for CI; using the local default.")
         differences.append("model: the local default, not CI's")
+    accepted_args: list[str] = []
+    source = accepted_findings_source()
+    if source is not None:
+        fetch_args, label = source
+        accepted = output.with_name(f"{output.stem}-accepted.json")
+        if accepted.is_symlink() or accepted.exists():
+            print(f"PARITY: {accepted} already exists; pass a new --output path.")
+            return 2
+        fetched = _run(
+            ["uv", "run", "python", "-m", "scripts.marketplace_ci", "fetch-accepted-findings",
+             *fetch_args, "--output", str(accepted)]
+        )  # fmt: skip
+        if fetched is not None and fetched.returncode == 0:
+            accepted_args = ["--accepted-findings", str(accepted)]
+            print(f"PARITY: accepted review findings from {label}.")
+        else:
+            print(f"PARITY WARNING: could not read the accepted review findings from {label}.")
+            differences.append("accepted findings: not read, so waived findings block here")
     if differences:
         print(
             "PARITY NOTE: this run is not a prediction of CI's result "
@@ -527,7 +573,7 @@ def main() -> int:
     argv = [
         "uv", "run", "python", "-m", "scripts.marketplace_ci", "run-codex-review",
         "--base-sha", base_sha, "--instructions-dir", str(instructions_dir),
-        "--output", str(output),
+        *accepted_args, "--output", str(output),
     ]  # fmt: skip
     use_fallback, fallback_note = fallback_decision(base_sha)
     if fallback_note:

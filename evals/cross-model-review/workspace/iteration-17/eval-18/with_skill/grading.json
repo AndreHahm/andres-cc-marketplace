@@ -1,0 +1,46 @@
+{
+  "eval_id": 18,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Step 7 runs the helper's `brief --run-dir \"$RUN\"` command from the repository root",
+      "passed": true,
+      "evidence": "Quotes `python3 -I \"${CLAUDE_PLUGIN_ROOT:-.claude}/scripts/git-review-accepted-findings.py\" brief --run-dir \"$RUN\"`, run from $REPO_ROOT."
+    },
+    {
+      "text": "Says accepted.md holds the valid line as data and never the free-text reason",
+      "passed": true,
+      "evidence": "'Each valid line becomes one JSON object (rule, path, line, fingerprint, kind). The free-text reason is never written.'"
+    },
+    {
+      "text": "Both Phase 1 passes get accepted.md after review.md (Codex via @accepted.md in its instruction file)",
+      "passed": true,
+      "evidence": "'$RUN/accepted.md comes after review.md and before the diff. For Codex it is @accepted.md.'"
+    },
+    {
+      "text": "Phase 3 runs the helper's `match` command over the envelopes",
+      "passed": true,
+      "evidence": "Quotes the match command naming every envelope."
+    },
+    {
+      "text": "M1 is marked waived (refuted), kept in the table, ranked after unwaived findings, not dropped",
+      "passed": true,
+      "evidence": "'marked waived (refuted), ranked after every unwaived finding, and is never dropped.'"
+    },
+    {
+      "text": "F2 is not waived and the report shows the waiver line the author could add, with a fingerprint",
+      "passed": true,
+      "evidence": "'It is unwaived... I show the author the line to add: - R6 b.py:9 @<fingerprint> – ...'"
+    },
+    {
+      "text": "The `declined` line is reported as not applied (inspection_limits)",
+      "passed": true,
+      "evidence": "'I report it under inspection_limits as an unapplied line, with the exact text.' Noted gap: the reference did not say an unknown kind counts as unreadable (fixed after this run)."
+    }
+  ],
+  "summary": {
+    "assertions_total": 7,
+    "assertions_passed": 7,
+    "pass_rate": 1.0
+  }
+}

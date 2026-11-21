@@ -1,0 +1,16 @@
+{
+  "eval_id": 8,
+  "skill_path": "plugins/git-kit/skills/create-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "Asks with AskUserQuestion: keep both, replace with the local lines, or leave the local lines out",
+      "type": "functionality",
+      "target": "SKILL.md"
+    },
+    {
+      "text": "Drops no existing line without the user's answer",
+      "type": "functionality",
+      "target": "SKILL.md"
+    }
+  ]
+}

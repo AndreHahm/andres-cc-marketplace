@@ -189,7 +189,7 @@ def _run(
     _stub(
         bin_dir,
         "gh",
-        f'echo "$@" > "{log}.gh"\n'
+        f'echo "$@" >> "{log}.gh"\n'
         '[ "$2" = "list" ] || { echo "unknown command" >&2; exit 1; }\n'
         # The selector names the variable asked for; answer the timeout one separately.
         'case "$*" in *CODEX_KIT_REVIEW_TIMEOUT_MS*)\n'
@@ -225,6 +225,36 @@ def test_clean_run_uses_ci_settings(repo, tmp_path):
     assert "run-codex-review --base-sha" in args
     assert "CODEX_KIT_REVIEW_TIMEOUT_MS=600000" in uv_env
     assert "CODEX_KIT_REVIEW_MODEL=gpt-x" in uv_env
+
+
+def test_no_pull_request_and_no_local_list_passes_no_accepted_findings(repo, tmp_path):
+    result, args, _ = _run(repo, tmp_path)
+    assert result.returncode == 0
+    assert "--accepted-findings" not in args
+
+
+def test_the_local_list_reaches_the_review_before_a_pull_request_exists(repo, tmp_path):
+    """R17 (issue #808): with no open PR, the gitignored local file is the accepted list."""
+    (repo / ".claude").mkdir()
+    (repo / ".claude/accepted-review-findings.local.md").write_text(
+        "- R6 a.py:3 – accepted\n", encoding="utf-8"
+    )
+    result, args, _ = _run(repo, tmp_path)
+    assert result.returncode == 0
+    assert "PARITY: accepted review findings from .claude/accepted-review-findings.local.md" in (
+        result.stdout
+    )
+    assert f"--accepted-findings {tmp_path / 'out-accepted.json'}" in args
+
+
+def test_an_unreadable_accepted_list_is_reported_as_a_difference(repo, tmp_path):
+    (repo / ".claude").mkdir()
+    (repo / ".claude/accepted-review-findings.local.md").write_text("x\n", encoding="utf-8")
+    # The uv stub fails every call, the fetch included.
+    result, args, _ = _run(repo, tmp_path, uv_rc=1)
+    assert "PARITY WARNING: could not read the accepted review findings" in result.stdout
+    assert "accepted findings: not read" in result.stdout
+    assert "--accepted-findings" not in args
 
 
 def test_blocking_findings_exit_1(repo, tmp_path):
