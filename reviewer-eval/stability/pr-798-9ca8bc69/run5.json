@@ -1,0 +1,166 @@
+{
+  "mode": "full",
+  "reviewed_paths": [
+    ".claude/review-outcomes/pr-798.json",
+    "evals/session-handoff/evals.json",
+    "evals/session-handoff/workspace/iteration-6/NOTE.md",
+    "evals/session-handoff/workspace/iteration-6/eval-10/eval_metadata.json",
+    "evals/session-handoff/workspace/iteration-6/eval-10/with_skill/grading.json",
+    "evals/session-handoff/workspace/iteration-6/eval-10/with_skill/outputs/response.md",
+    "evals/session-handoff/workspace/iteration-6/eval-11/eval_metadata.json",
+    "evals/session-handoff/workspace/iteration-6/eval-11/with_skill/grading.json",
+    "evals/session-handoff/workspace/iteration-6/eval-11/with_skill/outputs/response.md",
+    "evals/session-handoff/workspace/iteration-6/eval-12/eval_metadata.json",
+    "evals/session-handoff/workspace/iteration-6/eval-12/with_skill/grading.json",
+    "evals/session-handoff/workspace/iteration-6/eval-12/with_skill/outputs/response.md",
+    "evals/session-handoff/workspace/iteration-6/eval-13/eval_metadata.json",
+    "evals/session-handoff/workspace/iteration-6/eval-13/with_skill/grading.json",
+    "evals/session-handoff/workspace/iteration-6/eval-13/with_skill/outputs/response.md",
+    "evals/session-handoff/workspace/iteration-6/eval-14/eval_metadata.json",
+    "evals/session-handoff/workspace/iteration-6/eval-14/with_skill/grading.json",
+    "evals/session-handoff/workspace/iteration-6/eval-14/with_skill/outputs/response.md",
+    "evals/session-handoff/workspace/iteration-6/eval-15/eval_metadata.json",
+    "evals/session-handoff/workspace/iteration-6/eval-15/with_skill/grading.json",
+    "evals/session-handoff/workspace/iteration-6/eval-15/with_skill/outputs/response.md",
+    "evals/session-handoff/workspace/iteration-6/eval-16/eval_metadata.json",
+    "evals/session-handoff/workspace/iteration-6/eval-16/with_skill/grading.json",
+    "evals/session-handoff/workspace/iteration-6/eval-16/with_skill/outputs/response.md",
+    "evals/session-handoff/workspace/iteration-6/eval-17/eval_metadata.json",
+    "evals/session-handoff/workspace/iteration-6/eval-17/with_skill/grading.json",
+    "evals/session-handoff/workspace/iteration-6/eval-17/with_skill/outputs/response.md",
+    "evals/session-handoff/workspace/iteration-6/eval-4/eval_metadata.json",
+    "evals/session-handoff/workspace/iteration-6/eval-4/with_skill/grading.json",
+    "evals/session-handoff/workspace/iteration-6/eval-4/with_skill/outputs/response.md",
+    "evals/session-handoff/workspace/iteration-6/eval-5/eval_metadata.json",
+    "evals/session-handoff/workspace/iteration-6/eval-5/with_skill/grading.json",
+    "evals/session-handoff/workspace/iteration-6/eval-5/with_skill/outputs/response.md",
+    "evals/session-handoff/workspace/iteration-6/eval-6/eval_metadata.json",
+    "evals/session-handoff/workspace/iteration-6/eval-6/with_skill/grading.json",
+    "evals/session-handoff/workspace/iteration-6/eval-6/with_skill/outputs/response.md",
+    "evals/session-handoff/workspace/iteration-6/eval-7/eval_metadata.json",
+    "evals/session-handoff/workspace/iteration-6/eval-7/with_skill/grading.json",
+    "evals/session-handoff/workspace/iteration-6/eval-7/with_skill/outputs/response.md",
+    "evals/session-handoff/workspace/iteration-6/eval-8/eval_metadata.json",
+    "evals/session-handoff/workspace/iteration-6/eval-8/with_skill/grading.json",
+    "evals/session-handoff/workspace/iteration-6/eval-8/with_skill/outputs/response.md",
+    "evals/session-handoff/workspace/iteration-6/eval-9/eval_metadata.json",
+    "evals/session-handoff/workspace/iteration-6/eval-9/with_skill/grading.json",
+    "evals/session-handoff/workspace/iteration-6/eval-9/with_skill/outputs/response.md",
+    "plugins/session-kit/skills/session-handoff/SKILL.md",
+    "plugins/session-kit/skills/session-handoff/references/handoff-template.md",
+    "plugins/session-kit/skills/session-handoff/references/resume-checklist.md",
+    "plugins/session-kit/skills/session-handoff/scripts/check_staleness.py",
+    "plugins/session-kit/skills/session-handoff/scripts/create_handoff.py",
+    "plugins/session-kit/skills/session-handoff/scripts/list_handoffs.py",
+    "plugins/session-kit/skills/session-handoff/scripts/smoke_test.py",
+    "plugins/session-kit/skills/session-handoff/scripts/validate_handoff.py",
+    "plugins/session-kit/tests/test_handoff_template_v2.py"
+  ],
+  "reviewers": [
+    "dependency-reviewer",
+    "plugin-rulebook-checker",
+    "security-reviewer",
+    "skill-reviewer"
+  ],
+  "reviewer_attempts": {
+    "dependency-reviewer": 1,
+    "plugin-rulebook-checker": 1,
+    "security-reviewer": 1,
+    "skill-reviewer": 1
+  },
+  "status": "findings",
+  "reviewer_results": {
+    "dependency-reviewer": {
+      "status": "clean",
+      "attempts": 1
+    },
+    "plugin-rulebook-checker": {
+      "status": "clean",
+      "attempts": 1
+    },
+    "security-reviewer": {
+      "status": "clean",
+      "attempts": 1
+    },
+    "skill-reviewer": {
+      "status": "findings",
+      "attempts": 1
+    }
+  },
+  "provenance": {
+    "head_sha": "9ca8bc698b5550b322a9f27476f7be8ffe14b07e",
+    "merge_ref_sha": "9ca8bc698b5550b322a9f27476f7be8ffe14b07e",
+    "base_sha": "6dd235f3fa485189774de61cd0bcbc258dfa628e",
+    "configured_model": "gpt-6-luna",
+    "pinned_cli_version": "0.170.0",
+    "model": "GPT-6",
+    "cli_version": "unknown"
+  },
+  "structural_findings": [],
+  "verifiers": [
+    {
+      "name": "grant-to-body",
+      "status": "clean",
+      "findings": 0,
+      "checked": 1
+    },
+    {
+      "name": "measurement",
+      "status": "clean",
+      "findings": 0,
+      "checked": 1
+    },
+    {
+      "name": "path-and-mirror",
+      "status": "clean",
+      "findings": 0,
+      "checked": 3
+    },
+    {
+      "name": "structure",
+      "status": "clean",
+      "findings": 0,
+      "checked": 17
+    },
+    {
+      "name": "call-graph",
+      "status": "clean",
+      "findings": 0,
+      "checked": 1
+    },
+    {
+      "name": "removed-identifier",
+      "status": "clean",
+      "findings": 0,
+      "checked": 0
+    }
+  ],
+  "diff_scoped": true,
+  "exceptions_loaded": 3,
+  "findings": [
+    {
+      "reviewer": "skill-reviewer",
+      "severity": "Minor",
+      "rule": "size",
+      "path": "plugins/session-kit/skills/session-handoff/SKILL.md",
+      "line": null,
+      "evidence": "The skill is 299 lines. The active thresholds in plugins/plugin-devkit/skills/plugin-rulebook/assets/settings.json set the R13 weak-warning threshold at 100 lines and soft-warning at 300; this is an informational weak warning.",
+      "remediation": "Consider moving nonessential detail to references if the skill grows; no immediate change is required.",
+      "reporters": [
+        "skill-reviewer"
+      ],
+      "components": [],
+      "in_diff": true,
+      "blocking": false,
+      "confidence": "high",
+      "evidence_type": null,
+      "rule_class": "judgment",
+      "risk": null,
+      "source": "model",
+      "gate": "notice",
+      "suppressed": false,
+      "exception": null
+    }
+  ],
+  "blocking": false
+}
