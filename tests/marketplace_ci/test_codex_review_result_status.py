@@ -447,6 +447,40 @@ def test_a_clean_review_of_ci_code_says_it_was_not_checked_for_correctness(
     ]
 
 
+def test_advisory_keeps_a_mirror_the_reviewer_dispatch_collapses(
+    monkeypatch, review_repo, tmp_path
+):
+    # PR #820 review: dispatch reviews an identical .claude/ mirror once, under its canonical
+    # path, but advisory is over the whole PR delta, so the mirror must still be listed.
+    from scripts.marketplace_ci import review
+    from scripts.marketplace_ci.review import ReviewerReport
+
+    root, _ = review_repo
+    mirror = ".claude/agents/security-reviewer.md"
+    (root / ".claude/agents").mkdir(parents=True, exist_ok=True)
+    (root / mirror).write_text("x\n", encoding="utf-8")
+    # -f: a global gitignore may exclude .claude/, which CI's runner does not.
+    subprocess.run(["git", "add", "-f", mirror], cwd=root, check=True)
+    _commit_on(root, {"plugins/plugin-devkit/agents/security-reviewer.md": "x\n"})
+    real_collapse = review.collapse_identical_mirrors
+    monkeypatch.setattr(
+        review,
+        "collapse_identical_mirrors",
+        lambda repo, changed, base: tuple(
+            c for c in real_collapse(repo, changed, base) if c.new_path != mirror
+        ),
+    )
+    reports = [
+        ReviewerReport(
+            reviewer="security-reviewer", status="completed", output=json.loads(CLEAN), attempts=1
+        )
+    ]
+    rc, payload, _ = _run_with_reports(monkeypatch, review_repo, tmp_path, reports)
+    assert rc == 0
+    assert mirror in payload["advisory"]["paths"]
+    assert mirror not in payload["reviewed_paths"]
+
+
 def test_a_change_to_a_reviewer_definition_makes_the_result_advisory(
     monkeypatch, review_repo, tmp_path
 ):

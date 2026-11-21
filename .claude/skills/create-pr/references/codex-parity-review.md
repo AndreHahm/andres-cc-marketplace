@@ -45,7 +45,7 @@ by a 60 s timeout, so a stalled network falls through to a warning or exit 2.
 |---|---|---|
 | 0 | Clean | Read the `--output` JSON's `coverage` and `advisory`, and look for a `PARITY: ADVISORY` line (below). None of them: continue to the push. Otherwise the result is **advisory**: continue, but never report it as a clean pass |
 | 1 | A valid result with `blocking: true` | Read the `--output` JSON: `findings[]` with `blocking: true`, plus `structural_findings[]`. Show path, line, severity, rule. Ask fix / re-run / bypass |
-| 2 | Could not run (Codex missing, `origin/main` unresolved, dispatch failed, timeout, a missing, malformed or contradictory result file, a result whose `advisory` leaves out a Tier-1 file or import shadow the base-SHA checks found, or a branch that adds or changes a symlink under `scripts/` or at the top level) | **Never a pass.** Ask retry / bypass |
+| 2 | Could not run (Codex missing, `origin/main` unresolved, dispatch failed, timeout, a missing, malformed or contradictory result file, a result whose `advisory` leaves out a Tier-1 file or import shadow the base-SHA checks found, a branch that adds or changes a symlink under `scripts/` or at the top level, or `HEAD` changing during the run) | **Never a pass.** Ask retry / bypass |
 | 3 | No marketplace CI in this checkout | Skip the step and state that in session output |
 
 ## Advisory clean results (issue #713)
@@ -59,8 +59,10 @@ code, so read them on every exit 0:
 - `advisory.advisory: true`: the branch changes the review-dispatch code, adds a file that can shadow it,
   or changes a reviewer-steering file or a dispatched reviewer's own definition (`advisory.reasons`,
   `advisory.paths`), so the reviewers judged a change to what runs or steers them.
-- A `PARITY: ADVISORY` line on its own: the wrapper could not check `advisory` against the base SHA, so the
-  field is unverified, whatever it says.
+- A `PARITY: ADVISORY` line with both fields fine: the wrapper could not check `advisory` against the base
+  SHA (its `PARITY WARNING` says so), so the field is unverified, whatever it says. A result with neither
+  field comes from a branch's `run-codex-review` older than issue #713: the wrapper says so and the result is
+  advisory too, while exit 1 and exit 2 keep their meaning.
 
 The wrapper prints a `PARITY WARNING` line for each and a final `PARITY: ADVISORY` line. For any of them, say
 in session output that the parity round is advisory and why, and add one line to the PR body's existing

@@ -693,6 +693,49 @@ def test_an_added_symlink_under_scripts_or_at_the_top_is_could_not_run(repo, tmp
     assert args == ""  # refused before the expensive run
 
 
+def test_a_symlink_under_a_case_variant_scripts_directory_is_refused(repo, monkeypatch):
+    # PR #820 review: with only `Scripts/` in the tree there is no case collision, and on a
+    # case-insensitive checkout the link sits under the real scripts/ directory. Called directly:
+    # on this case-sensitive file system the renamed tree has no scripts/ for a full run.
+    _make_base(repo)
+    base = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=repo, capture_output=True, text=True, check=True
+    ).stdout.strip()
+    subprocess.run(["git", "mv", "scripts", "Scripts"], cwd=repo, check=True)
+    (repo / "Scripts/link").symlink_to("README.md")
+    _commit_files(repo, {})
+    monkeypatch.chdir(repo)
+    shadows = _load_module().shadow_touches(base)
+    assert shadows is not None
+    assert "Scripts/link" in shadows[1]
+
+
+def test_a_head_that_moves_during_the_run_is_could_not_run(repo, tmp_path):
+    # PR #820 review: the checks inspected one tree and the review would have run on another.
+    race = "git -c user.name=t -c user.email=t@t commit -q --allow-empty -m race\n"
+    result, args, _ = _run(repo, tmp_path, uv_prelude=race)
+    assert args  # the run happened
+    assert result.returncode == 2
+    assert "HEAD changed" in result.stdout
+
+
+@pytest.mark.parametrize(
+    ("uv_rc", "blocking", "expected"), [(0, False, 0), (1, True, 1), (0, True, 2), (1, False, 2)]
+)
+def test_a_result_from_a_dispatcher_older_than_the_fields_is_read_as_advisory(
+    repo, tmp_path, uv_rc, blocking, expected
+):
+    # PR #820 review: an installed wrapper meets a branch cut before issue #713. Its result has
+    # neither field; the core fields and the exit status are still checked, never a clean pass.
+    payload = json.loads(_result(blocking))
+    del payload["coverage"], payload["advisory"]
+    result, _, _ = _run(repo, tmp_path, uv_rc=uv_rc, result_json=json.dumps(payload))
+    assert result.returncode == expected
+    if expected != 2:
+        assert "older than issue #713" in result.stdout
+        assert "PARITY: ADVISORY" in result.stdout
+
+
 def _case_sensitive(path: Path) -> bool:
     probe = path / "CaseProbe"
     probe.write_text("x", encoding="utf-8")
