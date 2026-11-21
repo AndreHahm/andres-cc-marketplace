@@ -279,8 +279,25 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
+          # R17 (issue #808): the PR body's accepted findings, read by the base's code. A base
+          # without the command (before #808 merged) reviews without them; a read that fails is
+          # a warning, since this review is advisory.
+          accepted="$RUNNER_TEMP/claude-scope/accepted-findings.json"
+          accepted_args=()
+          if uv run --no-sync python -m scripts.marketplace_ci fetch-accepted-findings --help >/dev/null 2>&1; then
+            if uv run --no-sync python -m scripts.marketplace_ci fetch-accepted-findings \
+                --repo "$REPO" --pr-number "$PR_NUMBER" --gh /usr/bin/gh --output "$accepted"; then
+              accepted_args=(--accepted-findings "$accepted")
+            else
+              rm -f -- "$accepted"
+              echo "::warning::the PR's accepted review findings could not be read; reviewing without them"
+            fi
+          fi
           trusted="$RUNNER_TEMP/claude-trusted"
           mkdir -p "$trusted"
           git show "$BASE_SHA:.github/claude-review/prompt.md" > "$trusted/prompt.md" \
@@ -293,7 +310,8 @@ jobs:
             --scope "$RUNNER_TEMP/claude-scope/scope.json" --template "$trusted/prompt.md" \
             --review-md "$trusted/REVIEW.md" --security-md "$trusted/security-reviewer.md" \
             --base-sha "$BASE_SHA" --head-sha "$HEAD_SHA" \
-            --out-dir "$RUNNER_TEMP/claude-scope/prompts" --github-output "$GITHUB_OUTPUT"
+            --out-dir "$RUNNER_TEMP/claude-scope/prompts" --github-output "$GITHUB_OUTPUT" \
+            "${accepted_args[@]}"
           # R5: the pull request's own patch for the reviewed paths (the review job cannot read .git).
           uv run --no-sync python -m scripts.marketplace_ci claude-review-patch \
             --scope "$RUNNER_TEMP/claude-scope/scope.json" \
@@ -581,6 +599,11 @@ jobs:
           REVIEW_JOB: ${{ needs.claude-review.result }}
         run: |
           rc=0
+          # R17: the accepted findings the scope job read, when there are any (see that step).
+          accepted_args=()
+          if [ -f "$RUNNER_TEMP/claude-scope/accepted-findings.json" ]; then
+            accepted_args=(--accepted-findings "$RUNNER_TEMP/claude-scope/accepted-findings.json")
+          fi
           uv run --no-sync python -m scripts.marketplace_ci publish-claude-review \
             --switched-off "${SWITCHED_OFF:-false}" \
             --scope "$RUNNER_TEMP/claude-scope/scope.json" \
@@ -588,7 +611,7 @@ jobs:
             --review-job "$REVIEW_JOB" --model "${MODEL:-unknown}" \
             --head-sha "$HEAD_SHA" --run-attempt "$RUN_ATTEMPT" \
             --repo "$REPO" --pr-number "$PR_NUMBER" \
-            --result-out "$RUNNER_TEMP/claude-review-result.json" || rc=$?
+            --result-out "$RUNNER_TEMP/claude-review-result.json" "${accepted_args[@]}" || rc=$?
           echo "rc=$rc" >> "$GITHUB_OUTPUT"
 
       - name: Upload the review result

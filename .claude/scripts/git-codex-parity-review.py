@@ -265,6 +265,67 @@ def _origin_slug() -> str | None:
     return match.group(1) if match else None
 
 
+# R17 (issue #808): the accepted findings before a pull request exists, in the same line format as
+# the PR body's `## Accepted Review Findings` section. Gitignored (`**/*.local.*`).
+LOCAL_ACCEPTED_FINDINGS = Path(".claude/accepted-review-findings.local.md")
+
+
+_NO_PR = "no pull requests found"
+
+
+def _open_pr_number() -> str | None:
+    """The number of the open pull request for this branch, `""` when there is none, or None
+    when gh cannot tell (not installed, not signed in, no network): only gh's own "no pull
+    requests found" answer, or a pull request that is not open, counts as none."""
+    result = _run(
+        ["gh", "pr", "view", "--json", "number,state", "--jq", 'select(.state == "OPEN") | .number']
+    )
+    if result is None:
+        return None
+    number = result.stdout.strip()
+    if result.returncode == 0:
+        return number if number.isdigit() or not number else None
+    return "" if result.returncode == 1 and _NO_PR in result.stderr else None
+
+
+def _local_list_refusal() -> str | None:
+    """Why the local list must not be read, by cross-model-review's helper rule (a symlink on its
+    path, a copy git tracks, or git unable to tell), or None."""
+    helper = Path(__file__).with_name("git-review-accepted-findings.py")
+    try:
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location("git_review_accepted_findings", helper)
+        if spec is None or spec.loader is None:
+            raise ImportError(helper)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module._list_refusal()
+    except Exception as exc:  # the helper is missing or broken: fail closed
+        return f"its trust check could not run ({type(exc).__name__})"
+
+
+def accepted_findings_source() -> tuple[list[str], str] | str | None:
+    """`fetch-accepted-findings`' arguments for the list CI would read (R17): the open pull
+    request's body when there is one, else the local file, else None. The second item names the
+    source for the log. A string instead says why no list is read although one may apply."""
+    slug, number = _origin_slug(), _open_pr_number()
+    if number is None or (number and not slug):
+        return "could not tell whether this branch has an open pull request"
+    if number:
+        return ["--repo", slug or "", "--pr-number", number], f"the body of PR #{number}"
+    if LOCAL_ACCEPTED_FINDINGS.is_file() or LOCAL_ACCEPTED_FINDINGS.is_symlink():
+        refusal = _local_list_refusal()
+        if refusal is not None:
+            return f"{LOCAL_ACCEPTED_FINDINGS}: {refusal}"
+        # With the repository, a `deferred` line's issue is checked as CI will once a PR exists.
+        repo_args = ["--repo", slug] if slug else []
+        return [*repo_args, "--body-file", str(LOCAL_ACCEPTED_FINDINGS)], str(
+            LOCAL_ACCEPTED_FINDINGS
+        )
+    return None
+
+
 def _gh_variable(name: str) -> str | None:
     """A repository variable's raw value, or None when it is unset or `gh` cannot read it."""
     slug = _origin_slug()
@@ -518,6 +579,27 @@ def main() -> int:
         else:
             print("PARITY WARNING: no model variable known for CI; using the local default.")
         differences.append("model: the local default, not CI's")
+    accepted_args: list[str] = []
+    source = accepted_findings_source()
+    if isinstance(source, str):
+        print(f"PARITY WARNING: accepted review findings not read: {source}.")
+        differences.append("accepted findings: not read, so waived findings block here")
+    elif source is not None:
+        fetch_args, label = source
+        accepted = output.with_name(f"{output.stem}-accepted.json")
+        if accepted.is_symlink() or accepted.exists():
+            print(f"PARITY: {accepted} already exists; pass a new --output path.")
+            return 2
+        fetched = _run(
+            ["uv", "run", "python", "-m", "scripts.marketplace_ci", "fetch-accepted-findings",
+             *fetch_args, "--output", str(accepted)]
+        )  # fmt: skip
+        if fetched is not None and fetched.returncode == 0:
+            accepted_args = ["--accepted-findings", str(accepted)]
+            print(f"PARITY: accepted review findings from {label}.")
+        else:
+            print(f"PARITY WARNING: could not read the accepted review findings from {label}.")
+            differences.append("accepted findings: not read, so waived findings block here")
     if differences:
         print(
             "PARITY NOTE: this run is not a prediction of CI's result "
@@ -527,7 +609,7 @@ def main() -> int:
     argv = [
         "uv", "run", "python", "-m", "scripts.marketplace_ci", "run-codex-review",
         "--base-sha", base_sha, "--instructions-dir", str(instructions_dir),
-        "--output", str(output),
+        *accepted_args, "--output", str(output),
     ]  # fmt: skip
     use_fallback, fallback_note = fallback_decision(base_sha)
     if fallback_note:

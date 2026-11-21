@@ -14,7 +14,8 @@ import math
 import re
 import subprocess  # nosec B404  # list-form git and gh calls only, no shell (docs/ci.md)
 import tempfile
-from collections.abc import Callable, Mapping, Sequence
+import urllib.parse
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -100,7 +101,13 @@ def build_prompt(template: str, values: Mapping[str, str]) -> str:
 
 
 def prompt_values(
-    scope: Mapping, review_md: str, security_md: str, review_name: str, base_sha: str, head_sha: str
+    scope: Mapping,
+    review_md: str,
+    security_md: str,
+    review_name: str,
+    base_sha: str,
+    head_sha: str,
+    accepted: str = "",
 ) -> dict[str, str]:
     paths = [e["path"] for e in scope["paths"] if e.get("status") != "D"]
     deleted = [e["path"] for e in scope["paths"] if e.get("status") == "D"]
@@ -113,6 +120,9 @@ def prompt_values(
         "DELETED_PATHS": json.dumps(deleted, indent=2),
         "REVIEW_MD": review_md,
         "SECURITY_REVIEWER_MD": security_md if review_name == "security" else "",
+        # R17: the pull request's accepted findings, rendered as data (render_accepted_findings_
+        # briefing); empty when there are none.
+        "ACCEPTED_FINDINGS": accepted or "None.",
     }
 
 
@@ -362,6 +372,84 @@ def decide(
     return result
 
 
+def finding_rule(f: Mapping) -> str:
+    """The rule a waiver line names a Claude finding by (R17): the pass that raised it."""
+    return f"claude-{f.get('pass')}"
+
+
+def apply_waivers(
+    result: dict,
+    waivers: Sequence,
+    confirmed: Iterable[tuple[str, str, str]],
+    read_line: Callable[[str, int], str | None],
+) -> list[str]:
+    """R17: marks each Critical or Major finding of `result` that a waiver of the pull request
+    body matches (R7's key: rule, path and the flagged line's fingerprint at the head) as
+    waived, and recomputes the status. A security-pass finding needs a maintainer's
+    confirmation like a `security-reviewer` one. Returns a note per finding whose matching
+    waiver could not apply."""
+    from scripts.marketplace_ci.review import find_waiver, line_fingerprint
+
+    keys = set(confirmed)
+    notes: list[str] = []
+    for f in result.get("findings", []):
+        if f["severity"] not in BLOCKING or not f["in_scope"]:
+            continue
+        text = read_line(f["path"], f["line"])
+        f["fingerprint"] = None if text is None else line_fingerprint(text)
+        rule = finding_rule(f)
+        reviewers = [rule, *(["security-reviewer"] if f["pass"] == "security" else [])]
+        waiver, why_not = find_waiver(
+            waivers,
+            rule=rule,
+            path=f["path"],
+            line=f["line"],
+            fingerprint=f["fingerprint"],
+            reviewers=reviewers,
+            confirmed=keys.__contains__,
+        )
+        if waiver is not None:
+            f["waiver"] = waiver.text[:300]
+        elif why_not is not None:
+            notes.append(f"{rule} {f['display_path']}:{f['line']}: the waiver {why_not}")
+    if result.get("status") in ("findings", "clean"):
+        blocking = any(
+            f["severity"] in BLOCKING and not f.get("waiver") for f in result.get("findings", [])
+        )
+        result["status"] = "findings" if blocking else "clean"
+        if not blocking and result.get("verdict") == "Changes Requested":
+            result["verdict"] = "LGTM"
+    result["waived_findings"] = sum(1 for f in result.get("findings", []) if f.get("waiver"))
+    return notes
+
+
+def head_line_reader(repo: str, head_sha: str, gh: Gh) -> Callable[[str, int], str | None]:
+    """Reads one line of a file at the head through the contents API (the publish job checks
+    out only the base SHA). None when the file or line cannot be read."""
+    from scripts.marketplace_ci.review import git_lines
+
+    cache: dict[str, list[str] | None] = {}
+
+    def read(path: str, line: int) -> str | None:
+        if path not in cache:
+            quoted = urllib.parse.quote(path, safe="/")
+            got = gh(
+                [
+                    "-H",
+                    "Accept: application/vnd.github.raw+json",
+                    f"repos/{repo}/contents/{quoted}?ref={head_sha}",
+                ],
+                None,
+            )
+            cache[path] = git_lines(got.stdout) if got.returncode == 0 else None
+        lines = cache[path]
+        if lines is None or not 1 <= line <= len(lines):
+            return None
+        return lines[line - 1]
+
+    return read
+
+
 def summary_body(result: Mapping, unplaced: Sequence[Mapping]) -> str:
     def money(p: Mapping) -> str:
         return "n/a" if p.get("cost_usd") is None else f"${p['cost_usd']:.2f}"
@@ -386,11 +474,32 @@ def summary_body(result: Mapping, unplaced: Sequence[Mapping]) -> str:
         "Advisory only: this check never blocks a merge. Findings are not carried to later runs.",
     ]
     rows = [
-        f"| {f['severity']} | {f['pass']} | `{f['display_path']}:{f['line']}` | "
-        + f["title"].replace("|", "\\|")
-        + " |"
+        f"| {f['severity']}{' (waived)' if f.get('waiver') else ''} | {f['pass']} | "
+        f"`{f['display_path']}:{f['line']}` | " + f["title"].replace("|", "\\|") + " |"
         for f in result["findings"]
     ]
+    hints = [
+        f"- {finding_rule(f)} {f['path']}:{f['line']} @{f['fingerprint']} – "
+        "accepted|residual|deferred #<issue>|refuted"
+        for f in result["findings"]
+        if f["severity"] in BLOCKING
+        and f["in_scope"]
+        and not f.get("waiver")
+        and f.get("fingerprint")
+        # only a path shown unchanged, so a PR-chosen name cannot break out of the block
+        and f["path"] == f["display_path"]
+        and not any(ch.isspace() or ch == "`" for ch in f["path"])
+    ]
+    if hints:
+        footer = [
+            "",
+            "To accept a finding, add its line to the PR body's `## Accepted Review Findings`:",
+            "",
+            "```",
+            *hints,
+            "```",
+            *footer,
+        ]
     extra = [f"- `{f['display_path']}:{f['line']}` {f['title']}" for f in unplaced]
     # Bounded (MAX_SUMMARY): rows are dropped from the end until the body fits, with a note.
     dropped = 0
@@ -435,7 +544,7 @@ def publish(result: Mapping, *, repo: str, pr_number: int, gh: Gh = _gh) -> list
     warnings: list[str] = []
     unplaced = []
     for f in result["findings"]:
-        if f["severity"] not in BLOCKING:
+        if f["severity"] not in BLOCKING or f.get("waiver"):
             continue
         if not f["in_scope"]:
             unplaced.append(f)

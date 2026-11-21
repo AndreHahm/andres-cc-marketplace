@@ -8,6 +8,9 @@ the intent and `docs/ci.md` must be corrected.
 **Problem (issue #639):** the CI review sent the whole pull request to the OpenAI API on every run, including
 force-pushes, label and body edits, and re-runs. API cost and run time were too high.
 
+R7 and R17 also cover the other reviewers that read a pull request's accepted findings (issue #808): the
+Claude delta review, the local parity review, `cross-model-review` and third-party reviewers.
+
 **Open point:** the cost and run-time goals have no measurable acceptance criterion yet. This is not a
 requirement.
 
@@ -120,9 +123,10 @@ Status: approved
 
 ## R7. Blocking findings carry forward until fixed or waived
 
-After a run with blocking findings, those findings keep blocking later runs until the flagged file changes,
-the finding is waived, or a valid bypass clears it (R12), however many runs pass in between (the accepted
-residuals here and under R5 and R9 are the exceptions):
+After a run with blocking findings, those findings keep blocking later runs until they are fixed, waived, or
+cleared by a valid bypass (R12), however many runs pass in between (the accepted residuals here and under R5
+and R9 are the exceptions). A waived finding does not block again, whether CI carries it from the anchor or
+a reviewer reports it anew, until the flagged code changes (issue #808).
 
 - **Carry forward.** CI reads the anchor run's blocking findings from its `codex-review-result` artifact. A
   finding whose file is unchanged since the anchor blocks again, without a new Codex call. A finding whose
@@ -132,23 +136,62 @@ residuals here and under R5 and R9 are the exceptions):
   into its `codex-review-skip` record (R5). A run whose carried findings cannot be recorded reports
   `could_not_run` or fails, and is not an anchor. An anchor result with more than 500 findings, or a field
   longer than 300 characters, cannot be carried and blocks (fail closed).
-- **Waivers.** An accepted risk, a disclosed residual or a deferred finding is not carried when the pull
-  request body lists it in a section `## Accepted Review Findings`, one line per finding:
-  `- <rule> <path>:<line> – accepted|residual|deferred #<issue>`, optionally followed by
-  `: <reason or link>`. `#<issue>` is required only for `deferred`, and that issue must be open in this
-  repository, checked through the GitHub API. Anyone who can edit the pull request body can waive a finding; the waiver is visible in the body
-  while it is in effect (see the accepted residual below).
+- **Waivers.** A finding is waived when the pull request body lists it in a section
+  `## Accepted Review Findings`, one line per finding:
+  `- <rule> <path>:<line> @<fingerprint> – accepted|residual|deferred #<issue>|refuted`, optionally followed
+  by `: <reason or link>`. `accepted` is an accepted risk, `residual` a disclosed limitation, `deferred` a
+  finding filed as an open issue, and `refuted` a finding the author showed is not a defect (issue #480).
+  `#<issue>` is required only for `deferred`, and that issue must be open in this repository, checked through
+  the GitHub API.
+- **A waiver applies to new findings, not only to carried ones.** After the reviewers run, CI matches every
+  blocking finding, fresh or carried, against the waivers. A matched finding is recorded in the run's result
+  as waived, with the waiver line it matched, and does not block. This replaces `docs/ci.md`'s rule that a
+  model finding is never suppressed: a waiver is not a suppression by a registry, it is the author's
+  recorded decision on that one finding, and it stays visible in the result.
+- **The match key: rule, path and the flagged line's fingerprint.** The fingerprint is a hash of the
+  flagged line's text at the reviewed head, with whitespace collapsed, 32 hex digits long so an author
+  cannot make two different lines share one. CI prints it next to every blocking
+  finding in the job summary, ready to copy into a waiver line. A waiver matches a finding when the rule and
+  path are equal and the fingerprint of the finding's flagged line equals the waiver's. The line number in
+  the waiver is informational, so a waiver survives the flagged line moving, and a reviewer rewording its
+  claim. For the same reason, lines with identical text (whitespace collapsed) in one file share a
+  fingerprint: a waiver covers a finding with its rule on any of them, and so does a maintainer's
+  confirmation. Fix the other copies, or accept them knowingly, before writing such a waiver. When the
+  flagged line's own text changes, the fingerprint no longer matches and the finding is reviewed and
+  blocks again: that is what "materially different" means here. A finding with no line uses
+  `0` and the fingerprint `-`; it then matches on rule and path alone. A waiver line without a fingerprint
+  (the earlier format) matches on rule, path and exact line, as before.
+- **Maintainer-only acceptance for gate-critical and security findings.** A waiver for a finding on a
+  gate-critical path (R3), on a path not spelled the canonical way, or one raised by `security-reviewer`
+  (by any of the reviewers that reported it), counts only when a user whose role is maintain or admin
+  has posted a pull request comment confirming that waiver line, and has not edited it since. The
+  confirmation is bound to the line, including its fingerprint, not to a head, so it survives pushes
+  until the flagged line changes. Without it, the finding keeps blocking, and the job
+  summary says that a confirmation is missing. Every other waiver needs no confirmation: anyone who can
+  edit the pull request body can waive it (see the accepted residual below).
+- **Malformed lines are reported.** A non-empty line in the section that is not a valid waiver line, that
+  uses an unknown kind, or whose `deferred` issue is missing or closed, is listed in the job summary with the
+  reason, and is not applied. It does not fail the job on its own. A line for a third-party reviewer (below)
+  is not malformed.
 - **One section for every reviewer.** The section is part of both pull request templates. `git-kit`'s
   `create-pr` asset carries it without naming this repository's CI; both write out the waiver conventions
   (`-` for a finding without a rule, `0` without a line, no spaces in paths). The section
   also lists accepted third-party findings (CodeRabbit, Devin, the Codex connector, human reviewers) in the
-  same shape, with the reviewer's name in place of the rule. CI only acts on lines whose rule, path and line match one of its own
-  carried findings.
-- **Accepted residual:** a waived finding is not written into the run's result. An author who adds an
-  `accepted` waiver, pushes a commit that does not touch the flagged file, then removes the waiver, drops
-  the finding for good, and the final body shows no waiver.
+  same shape, with the reviewer's name in place of the rule and no fingerprint. CI's gate acts only on lines
+  that match its own findings; every reviewer reads the whole section (R17).
+- **Waivers reach the reviewers as data.** CI passes the section's valid lines that need no confirmation
+  to each model reviewer except `security-reviewer`, as data, not instructions, so a reviewer can leave out
+  a finding already waived. A waiver that needs a maintainer's confirmation is never passed on, so it
+  cannot talk a reviewer out of reporting the finding the confirmation is for. The reviewer's choice is not
+  trusted: CI's own matching above decides what blocks.
+- **Accepted residual:** anyone who can edit the pull request body can waive a finding that does not need a
+  maintainer's confirmation. The waiver is visible in the body while it is in effect, and the waived
+  finding is visible in each run's result. When the waiver line is removed, the finding blocks again on the
+  next run that carries or re-reports it.
 
-Status: approved (maintainer, 2026-11-16, issue #753)
+Status: approved (maintainer, 2026-11-21, issue #808; replaces the version approved on 2026-11-16, issue #753;
+the maintain-or-admin confirmation and the 32-digit fingerprint chosen by the maintainer after the
+security review)
 
 ## R8. Events without new commits make no Codex call
 
@@ -306,3 +349,30 @@ Status: approved (maintainer, issue #704; path set chosen 2026-11-13)
   (R10), the protection is human review.
 
 Status: approved (maintainer, 2026-11-20, issue #793)
+
+## R17. Every reviewer reads the same accepted findings (issue #808)
+
+The waivers of R7 are one list. Every reviewer reads it, so a finding accepted once is not raised again by
+any of them. Each reviewer gets the list as data, never as instructions.
+
+- **Before a pull request exists:** the list is a local, gitignored file in the working tree,
+  `.claude/accepted-review-findings.local.md`, in the same line format as R7. `cross-model-review` and the
+  local parity review read it. When `create-pr` opens the pull request, it copies the file's lines into the
+  body's `## Accepted Review Findings` section, and asks before it overwrites lines already there.
+- **Once a pull request exists:** the pull request body's section is the list. The local parity review reads
+  it from the pull request when one exists for the branch, and falls back to the local file otherwise.
+- **The CI Codex delta review** applies the list as R7 says.
+- **The Claude delta review** (advisory) gets the list in its prompt and marks a finding that matches a
+  waiver as waived, by the same match key as R7, rather than reporting it as new.
+- **The local parity review and `cross-model-review`** match their findings by the same key as R7, and show a
+  matched finding as waived, not as blocking.
+- **Third-party reviewers** (the Codex connector, CodeRabbit, Devin) read neither the local file nor, as far
+  as is known, the pull request body. They get the list through the channel each one reads: guidance in
+  `AGENTS.md` (Codex connector) and `REVIEW.md` or the bot's own configuration (CodeRabbit, Devin) telling
+  them to read the body's `## Accepted Review Findings` section and not to raise a listed finding again.
+  Which of these channels each bot actually honors must be checked live before it is documented; where a
+  bot cannot be configured, `docs/ci.md` states that limit for that bot.
+- **Accepted residual:** a third-party reviewer is outside CI's gate. If it raises an accepted finding again,
+  that finding blocks nothing, and is answered through `handling-review-findings`.
+
+Status: approved (maintainer, 2026-11-21, issue #808)

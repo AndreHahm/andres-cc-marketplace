@@ -1,0 +1,41 @@
+{
+  "eval_id": 18,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {
+      "text": "Step 7 runs the helper's `brief --run-dir \"$RUN\"` command from the repository root",
+      "type": "functionality",
+      "target": "SKILL.md"
+    },
+    {
+      "text": "Says accepted.md holds the valid line as data and never the free-text reason",
+      "type": "functionality",
+      "target": "SKILL.md"
+    },
+    {
+      "text": "Both Phase 1 passes get accepted.md after review.md (Codex via @accepted.md in its instruction file)",
+      "type": "functionality",
+      "target": "SKILL.md"
+    },
+    {
+      "text": "Phase 3 runs the helper's `match` command over the envelopes",
+      "type": "functionality",
+      "target": "SKILL.md"
+    },
+    {
+      "text": "M1 is marked waived (refuted), kept in the table, ranked after unwaived findings, not dropped",
+      "type": "functionality",
+      "target": "SKILL.md"
+    },
+    {
+      "text": "F2 is not waived and the report shows the waiver line the author could add, with a fingerprint",
+      "type": "functionality",
+      "target": "SKILL.md"
+    },
+    {
+      "text": "The `declined` line is reported as not applied (inspection_limits)",
+      "type": "functionality",
+      "target": "SKILL.md"
+    }
+  ]
+}

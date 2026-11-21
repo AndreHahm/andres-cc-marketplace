@@ -47,12 +47,16 @@
 
 <!-- Review findings this PR deliberately leaves in place, from any reviewer: CI's Codex delta
      review, CodeRabbit, Devin, the Codex connector, a human reviewer. One line per finding:
-       - <rule or reviewer> <path>:<line> – accepted|residual|deferred #<issue>: <reason or link>
+       - <rule or reviewer> <path>:<line> @<fingerprint> – accepted|residual|deferred #<issue>|refuted: <reason or link>
      accepted = an accepted risk; residual = a disclosed limitation; deferred = filed as an open
-     issue (the #<issue> is required). For a CI Codex delta review finding, use its rule (`-` when
-     it has none) and line (`0` when it has none) exactly as the compute-scope job summary prints
-     them: CI then stops blocking on it (docs/ci.md, "CI review delta"; R7). A path with spaces
-     cannot be matched. Use "None" if none. -->
+     issue (the #<issue> is required); refuted = shown not to be a defect. For a CI Codex delta
+     review finding, copy the line the job summary prints, rule (`-` when it has none), line (`0`
+     when it has none) and `@<fingerprint>` (`@-` without a line) included: CI then stops blocking
+     on it, also when it is reported again after the file changes, until the flagged line itself
+     changes (docs/ci.md, "CI review delta"; R7). A finding on a gate-critical path or from
+     security-reviewer also needs a maintainer's comment `- confirmed <rule> <path> @<fingerprint>`.
+     Lines that are not applied are listed in the job summary. Every reviewer reads this section
+     (R17). A path with spaces cannot be matched. Use "None" if none. -->
 
 ## Open Items (disclosed, not blocking)
 

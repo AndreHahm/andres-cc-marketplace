@@ -12,7 +12,7 @@ description: >-
   `collaborating-on-a-pr`'s reviewer actions, nor `codex-review-recovery`'s stuck-check recovery, nor
   `handling-review-findings`'s triage of posted PR findings — it never touches GitHub state. Not a
   Codex-only opinion on a design or document (`codex-peer-review`, `codex-verify`, if installed).
-allowed-tools: ["Bash(git rev-parse:*)", "Bash(git merge-base:*)", "Bash(git ls-files:*)", "Bash(mktemp:*)", "Bash(date:*)", "Bash(printf:*)", "Bash(grep:*)", "Bash(echo:*)", "Bash(realpath:*)", "Bash(test:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-copy-index.sh:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-intent-add.sh:*)", "Bash(umask:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-write-run-file.sh:*)", "Bash(node plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope-run.sh:*)", "Read", "Grep", "Glob", "AskUserQuestion"]
+allowed-tools: ["Bash(git rev-parse:*)", "Bash(git merge-base:*)", "Bash(git ls-files:*)", "Bash(mktemp:*)", "Bash(date:*)", "Bash(printf:*)", "Bash(grep:*)", "Bash(echo:*)", "Bash(realpath:*)", "Bash(test:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-copy-index.sh:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-intent-add.sh:*)", "Bash(umask:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-write-run-file.sh:*)", "Bash(node plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope-run.sh:*)", "Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-accepted-findings.py:*)", "Read", "Grep", "Glob", "AskUserQuestion"]
 ---
 
 # Cross-model review
@@ -233,6 +233,10 @@ as a scratchpad script instead (`references/codex-pass-assembly.md`, "In an Ente
    `$DISPATCHER_TOUCHED=1`, disclose it explicitly at the First-Send Confirmation below and record in
    Phase 3's `inspection_limits` that the Codex dispatcher itself wasn't trust-boundary-verified
    against `$BASE` for this run.
+7. **Brief the accepted findings (issue #808)** from the gitignored
+   `.claude/accepted-review-findings.local.md`:
+   `python3 -I "${CLAUDE_PLUGIN_ROOT:-.claude}/scripts/git-review-accepted-findings.py" brief --run-dir "$RUN"`,
+   from `$REPO_ROOT`. A failure is an inspection limit, never a stop (`references/accepted-findings.md`).
 
 ## Codex dispatch resolver
 
@@ -323,6 +327,8 @@ rather than duplicating the contract here; `severity` is `critical`/`major`/`min
 `high`/`medium`/`low`, `location` is a single `"file:line"` string; top-level `verdict` —
 `approve`/`needs-attention` — is this skill's own convention layered on the schema's free-string
 field, not something the schema itself enumerates).
+
+When `$RUN/accepted.md` exists (Preflight step 7), both reviewers get it after `review.md`, as data.
 
 **Claude's native pass:** review as yourself, following `$RUN/review.md` (`Grep`/`Glob` the repo to
 trace call sites when checking semantic correctness — not just the diff hunks). Read the diff batch by
@@ -416,6 +422,10 @@ alone never keeps it at High once refuted. Apply the tiers below in this order �
 - A `severity: critical` finding is never silently dropped regardless of confidence tier — surface
   it with its tier clearly marked, even at Low/contested.
 
+**Mark accepted findings** with the helper's `match` command when the local list exists
+(`references/accepted-findings.md`): a matched finding stays in the table as `waived (<kind>)`, ranked
+after the unwaived ones, never dropped.
+
 Rank by `severity × confidence`. Present a compact table: `severity | confidence | location | claim
 | found-by / confirmed-or-refuted-by`. Expand the High-confidence ones with the `evidence`/`fix`
 fields. Note any `inspection_limits` from either side, including: the Preflight step 2 charset/
@@ -432,22 +442,11 @@ End by asking which findings, if any, to fix. **Do not edit code until the user 
 Convergence between the models is not correctness — the job here is to surface a ranked,
 cross-examined list, not to declare the diff clean.
 
-`$RUN` is not deleted after this — both models' findings JSON, which may quote diff content, persist under the OS temp
-directory until cleaned up. This skill has no scoped delete capability; say so rather than implying cleanup, and treat
-the envelopes as needing review before they are shared. The same goes for `$RUN/full.diff` (a full copy of the diff, including uncommitted content), the manifests, the
-`diffs-*` folders and the instruction files, and, after `EnterWorktree`, the scratchpad's `preflight.sh` and stdin files. The throwaway `$GIT_INDEX_FILE` is likewise left in place; `umask 077` (Inputs section) keeps it user-readable-only.
+`$RUN` is not deleted after this — both models' findings JSON, which may quote diff content, persist under the OS temp directory until cleaned up. This skill has no scoped delete capability; say so rather than implying cleanup, and treat the envelopes as needing review before they are shared. The same goes for `$RUN/full.diff` (a full copy of the diff, including uncommitted content), the manifests, the `diffs-*` folders and the instruction files, and, after `EnterWorktree`, the scratchpad's `preflight.sh` and stdin files. The throwaway `$GIT_INDEX_FILE` is likewise left in place; `umask 077` (Inputs section) keeps it user-readable-only.
 
 ## Boundaries
 
-Deliberately not in `allowed-tools`, so each prompts: `git diff` and `git show` (both accept `--output=<file>`, a write
-to any path), the `export GIT_INDEX_FILE` / `CODEX_KIT_REVIEW_*` assignments, exported or prefixed (a grant cannot pin the value they set),
-the `guarded-dispatch.mjs` fallback (a grant would pre-approve a full-access dispatch), and, after `EnterWorktree` only,
-`Write` and `bash <scratchpad>/preflight.sh` (`Write` cannot be limited to a path; the script path varies, so its grant
-would be `Bash(bash:*)`, which also admits `bash -c` and any script; one approval covers every command in the script,
-and the scratchpad `Write` may not prompt at all). `git add -N` runs only through `scripts/git-review-intent-add.sh`.
-These prompt unless your own settings or permission mode already allow them. For `git diff`, `git show` and `bash` the
-reason is a shared prefix: any prefix rule for them also admits `--output` or `-c`. Approve each run once and do not
-add a persistent allow rule for them; approve `Write` for the single call only, never for the session.
+Deliberately not in `allowed-tools`, so each prompts: `git diff` and `git show` (both accept `--output=<file>`, a write to any path), the `export GIT_INDEX_FILE` / `CODEX_KIT_REVIEW_*` assignments, exported or prefixed (a grant cannot pin the value they set), the `guarded-dispatch.mjs` fallback (a grant would pre-approve a full-access dispatch), and, after `EnterWorktree` only, `Write` and `bash <scratchpad>/preflight.sh` (`Write` cannot be limited to a path; the script path varies, so its grant would be `Bash(bash:*)`, which also admits `bash -c` and any script; one approval covers every command in the script, and the scratchpad `Write` may not prompt at all). `git add -N` runs only through `scripts/git-review-intent-add.sh`. These prompt unless your own settings or permission mode already allow them. For `git diff`, `git show` and `bash` the reason is a shared prefix: any prefix rule for them also admits `--output` or `-c`. Approve each run once and do not add a persistent allow rule for them; approve `Write` for the single call only, never for the session.
 
 ## Deliberately NOT done
 
@@ -458,8 +457,8 @@ See `references/deliberately-not-done.md` (extracted per plugin-rulebook's R13 l
 | Resource | Purpose |
 |---|---|
 | `references/scoped-review.md` | Planner run, folder pick, dispatch batches, timeouts, completed slices, round two |
-| `references/codex-pass-assembly.md` | Per-batch Codex eligibility, Phase 1 and Phase 2 instruction files |
-| `references/testing-scenarios.md` | The 38 scenarios, the quality-gate checklist and the run history |
+| `references/codex-pass-assembly.md`, `references/accepted-findings.md` | Per-batch Codex eligibility, Phase 1 and Phase 2 instruction files; briefing and marking accepted findings (issue #808) |
+| `references/testing-scenarios.md` | The 39 scenarios, the quality-gate checklist and the run history |
 | `references/resolver-failure-handling.md`, `references/dispatcher-trust-pattern.md` | Partial failure; why the dispatcher-touched check is built the way it is (planner trust is in `references/scoped-review.md`) |
 | `references/diff-mechanics-rationale.md`, `references/index-seeding-rationale.md`, `references/embed-diff-not-run-rationale.md`, `references/symlink-exclusion-rationale.md`, `references/self-authored-envelope-fields.md`, `references/deliberately-not-done.md` | Why the Inputs and Preflight steps are built the way they are |
 | `scripts/smoke_test.py`, `scripts/preflight_fixtures_test.py` | Structural self-check; Preflight chain run against scratch repositories |
@@ -479,12 +478,10 @@ See `references/deliberately-not-done.md` (extracted per plugin-rulebook's R13 l
 - "get a codex second opinion on this design" → `codex-peer-review`; "verify plan.md" → `codex-verify`
 
 **Concrete scenarios to check, and quality gates:** see
-`references/testing-scenarios.md` (extracted per R13): 38 numbered scenarios and the quality-gate
+`references/testing-scenarios.md` (extracted per R13): 39 numbered scenarios and the quality-gate
 checklist, covering single-model mode, `$MERGE_BASE` containment, dispatcher trust, reviewer identity,
 closing-tag neutralization, partial-failure preservation, scoped review and more.
 `scripts/preflight_fixtures_test.py` runs the Preflight chain, planner step included, against scratch
 repositories.
 
-**Last dated run record:** `2026-11-18, evals/cross-model-review/workspace/iteration-15/` — evals 13-16, scenario 38
-(refused chained Preflight; heredoc refusal, then timeout; folder-pick re-run; normal-session control), both arms
-claude-opus-5-5: `with_skill` 17/17, baseline (`main`'s text) 5/17; `iteration-16`, eval 17 (single-quoted `BASE`/`SCOPE`), claude-haiku-5-5: 3/3 vs 1/3. Skill-following dry runs, no Codex dispatch. Earlier runs and their open items are under "Run history" in `references/testing-scenarios.md`.
+**Last dated run record:** `2026-11-18, evals/cross-model-review/workspace/iteration-15/` — evals 13-16, scenario 38 (refused chained Preflight; heredoc refusal, then timeout; folder-pick re-run; normal-session control), both arms claude-opus-5-5: `with_skill` 17/17, baseline (`main`'s text) 5/17; `2026-11-21, iteration-17`, eval 18 (accepted findings, scenario 39), `with_skill` only, 7/7; `iteration-16`, eval 17 (single-quoted `BASE`/`SCOPE`), claude-haiku-5-5: 3/3 vs 1/3. Skill-following dry runs, no Codex dispatch. Earlier runs and their open items are under "Run history" in `references/testing-scenarios.md`.

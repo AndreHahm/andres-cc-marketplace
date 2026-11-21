@@ -171,6 +171,7 @@ def _run(
     result_json: str | None = "auto",
     uv_prelude: str = "",
     output_name: str = "out.json",
+    pr_view: str = "none",
 ):
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir(exist_ok=True)
@@ -185,11 +186,18 @@ def _run(
         "uv",
         f'echo "$@ " > "{log}.args"\nenv > "{log}.env"\n{uv_prelude}{write_result}exit {uv_rc}',
     )
+    # `pr view` answers as gh 2.105.0 does with no pull request ("none"), or fails like an auth or
+    # network error ("fail").
+    pr_answer = {
+        "none": 'echo "no pull requests found for branch \\"b\\"" >&2; exit 1',
+        "fail": 'echo "HTTP 401: Bad credentials" >&2; exit 1',
+    }[pr_view]
     # Mirrors gh 2.45.0: `variable list --json` exists, `variable get` does not.
     _stub(
         bin_dir,
         "gh",
-        f'echo "$@" > "{log}.gh"\n'
+        f'echo "$@" >> "{log}.gh"\n'
+        f'if [ "$1 $2" = "pr view" ]; then {pr_answer}; fi\n'
         '[ "$2" = "list" ] || { echo "unknown command" >&2; exit 1; }\n'
         # The selector names the variable asked for; answer the timeout one separately.
         'case "$*" in *CODEX_KIT_REVIEW_TIMEOUT_MS*)\n'
@@ -225,6 +233,91 @@ def test_clean_run_uses_ci_settings(repo, tmp_path):
     assert "run-codex-review --base-sha" in args
     assert "CODEX_KIT_REVIEW_TIMEOUT_MS=600000" in uv_env
     assert "CODEX_KIT_REVIEW_MODEL=gpt-x" in uv_env
+
+
+def test_no_pull_request_and_no_local_list_passes_no_accepted_findings(repo, tmp_path):
+    result, args, _ = _run(repo, tmp_path)
+    assert result.returncode == 0
+    assert "--accepted-findings" not in args
+
+
+def test_the_local_list_reaches_the_review_before_a_pull_request_exists(repo, tmp_path):
+    """R17 (issue #808): with no open PR, the gitignored local file is the accepted list."""
+    (repo / ".claude").mkdir()
+    (repo / ".claude/accepted-review-findings.local.md").write_text(
+        "- R6 a.py:3 – accepted\n", encoding="utf-8"
+    )
+    result, args, _ = _run(repo, tmp_path)
+    assert result.returncode == 0
+    assert "PARITY: accepted review findings from .claude/accepted-review-findings.local.md" in (
+        result.stdout
+    )
+    assert f"--accepted-findings {tmp_path / 'out-accepted.json'}" in args
+
+
+def test_the_local_list_is_fetched_with_the_repository_so_deferred_lines_are_checked(
+    repo, tmp_path
+):
+    # Without --repo, fetch-accepted-findings rejects every `deferred` line locally, though CI
+    # accepts one whose issue is open once the PR exists.
+    subprocess.run(
+        ["git", "remote", "add", "origin", "https://github.com/o/r.git"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    (repo / ".claude").mkdir()
+    (repo / ".claude/accepted-review-findings.local.md").write_text(
+        "- R6 a.py:3 – deferred #12\n", encoding="utf-8"
+    )
+    calls = tmp_path / "uv-calls.txt"
+    result, _, _ = _run(repo, tmp_path, uv_prelude=f'echo "$@" >> "{calls}"\n')
+    assert result.returncode == 0
+    fetch = [c for c in calls.read_text().splitlines() if "fetch-accepted-findings" in c]
+    assert len(fetch) == 1
+    assert "--repo o/r --body-file .claude/accepted-review-findings.local.md" in fetch[0]
+
+
+def test_a_failed_pull_request_lookup_reads_no_list(repo, tmp_path):
+    # A failed `gh pr view` is not "no pull request": an open PR's body may differ from the local
+    # list, so neither is read and the run says so.
+    (repo / ".claude").mkdir()
+    (repo / ".claude/accepted-review-findings.local.md").write_text(
+        "- R6 a.py:3 – accepted\n", encoding="utf-8"
+    )
+    result, args, _ = _run(repo, tmp_path, pr_view="fail")
+    assert "PARITY WARNING: accepted review findings not read" in result.stdout
+    assert "could not tell whether this branch has an open pull request" in result.stdout
+    assert "accepted findings: not read" in result.stdout
+    assert "--accepted-findings" not in args
+
+
+def test_a_tracked_local_list_is_not_used(repo, tmp_path):
+    # Same rule as cross-model-review's helper: a tracked copy was written by the branch.
+    (repo / ".claude").mkdir()
+    (repo / ".claude/accepted-review-findings.local.md").write_text(
+        "- R6 a.py:3 – accepted\n", encoding="utf-8"
+    )
+    subprocess.run(
+        ["git", "add", "-f", ".claude/accepted-review-findings.local.md"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    result, args, _ = _run(repo, tmp_path)
+    assert "PARITY WARNING: accepted review findings not read" in result.stdout
+    assert "tracked by git" in result.stdout
+    assert "--accepted-findings" not in args
+
+
+def test_an_unreadable_accepted_list_is_reported_as_a_difference(repo, tmp_path):
+    (repo / ".claude").mkdir()
+    (repo / ".claude/accepted-review-findings.local.md").write_text("x\n", encoding="utf-8")
+    # The uv stub fails every call, the fetch included.
+    result, args, _ = _run(repo, tmp_path, uv_rc=1)
+    assert "PARITY WARNING: could not read the accepted review findings" in result.stdout
+    assert "accepted findings: not read" in result.stdout
+    assert "--accepted-findings" not in args
 
 
 def test_blocking_findings_exit_1(repo, tmp_path):

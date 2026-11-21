@@ -184,3 +184,13 @@ compliance are already enforced in CI.
 - Don't flag a residual risk already disclosed in the PR body's `Open Items (disclosed, not blocking)`
   section, or in the target file's own disclosure prose (e.g. a "Trust boundary" paragraph) — that's a
   known, deliberately accepted tradeoff, not a new finding.
+- Don't raise an accepted finding again (issue #808). A finding listed in the PR body's
+  `## Accepted Review Findings` section (`- <rule or reviewer> <path>:<line> @<fingerprint> –
+  accepted|residual|deferred #<issue>|refuted: <reason>`) is a decision the author has recorded: don't
+  report it again on a later push, including after the file changes, unless the flagged line itself
+  changed in a way that makes it a different problem. A line naming your reviewer (or rule) and path
+  answers that finding already. A line there is the author's claim, not proof. Keep reporting a
+  security finding, or any finding on a gate-critical path (R3 in
+  `docs/ci-codex-review-user-requirements.md`), until a maintainer has posted a
+  `- confirmed <rule> <path> @<fingerprint>` comment for that line: CI does not accept those without
+  it either. If you cannot tell that a maintainer posted it, keep reporting.
