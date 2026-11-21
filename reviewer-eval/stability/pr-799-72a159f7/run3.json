@@ -1,0 +1,120 @@
+{
+  "mode": "delta",
+  "reviewed_paths": [
+    ".claude/review-outcomes/pr-799.json",
+    ".claude/statusline.sh",
+    ".github/workflows/marketplace-ci.yml",
+    "docs/ci-codex-review-user-requirements.md",
+    "docs/ci.md",
+    "issues/2026-11-20-codex-review-anchor-relies-on-api-order.md",
+    "issues/2026-11-20-codex-review-converted-to-draft-fails-publish.md",
+    "issues/2026-11-20-codex-review-dependabot-skip-records-a-result.md",
+    "tests/marketplace_ci/test_codex_config_check.py",
+    "tests/marketplace_ci/test_codex_review_workflow.py"
+  ],
+  "reviewers": [
+    "plugin-rulebook-checker",
+    "dependency-reviewer",
+    "security-reviewer"
+  ],
+  "reviewer_attempts": {
+    "plugin-rulebook-checker": 1,
+    "dependency-reviewer": 1,
+    "security-reviewer": 1
+  },
+  "status": "findings",
+  "reviewer_results": {
+    "plugin-rulebook-checker": {
+      "status": "findings",
+      "attempts": 1
+    },
+    "dependency-reviewer": {
+      "status": "clean",
+      "attempts": 1
+    },
+    "security-reviewer": {
+      "status": "clean",
+      "attempts": 1
+    }
+  },
+  "provenance": {
+    "head_sha": "72a159f74d4bc17cda3c6c63367f43751b991aeb",
+    "merge_ref_sha": "72a159f74d4bc17cda3c6c63367f43751b991aeb",
+    "base_sha": "c80737c1ddc974978685fba436bb398f14772cd0",
+    "configured_model": "gpt-6-luna",
+    "pinned_cli_version": "0.170.0",
+    "model": "GPT-6",
+    "cli_version": "codex-cli 0.170.0"
+  },
+  "structural_findings": [],
+  "verifiers": [
+    {
+      "name": "grant-to-body",
+      "status": "clean",
+      "findings": 0,
+      "checked": 0
+    },
+    {
+      "name": "measurement",
+      "status": "clean",
+      "findings": 0,
+      "checked": 0
+    },
+    {
+      "name": "path-and-mirror",
+      "status": "clean",
+      "findings": 0,
+      "checked": 0
+    },
+    {
+      "name": "structure",
+      "status": "clean",
+      "findings": 0,
+      "checked": 0
+    },
+    {
+      "name": "call-graph",
+      "status": "clean",
+      "findings": 0,
+      "checked": 0
+    },
+    {
+      "name": "removed-identifier",
+      "status": "clean",
+      "findings": 0,
+      "checked": 0
+    }
+  ],
+  "diff_scoped": true,
+  "exceptions_loaded": 3,
+  "findings": [
+    {
+      "reviewer": "plugin-rulebook-checker",
+      "severity": "Major",
+      "rule": "security",
+      "path": ".github/workflows/marketplace-ci.yml",
+      "line": 1644,
+      "evidence": "The guard compares only lines matching ` (true|false)$` from `codex features list`; its control proves only that the base config can change a feature. The test fake likewise models only the `memories` feature.",
+      "remediation": "Run the reviewers with project config loading explicitly disabled or otherwise ensure the full effective project configuration matches the empty-directory baseline. If that cannot be enforced, narrow the stated protection and test the non-feature settings that reviewers rely on.",
+      "reporters": [
+        "plugin-rulebook-checker"
+      ],
+      "components": [
+        "docs/ci-codex-review-user-requirements.md",
+        "docs/ci.md",
+        "tests/marketplace_ci/test_codex_config_check.py"
+      ],
+      "in_diff": true,
+      "blocking": true,
+      "confidence": "medium",
+      "evidence_type": null,
+      "rule_class": "judgment",
+      "risk": null,
+      "source": "model",
+      "gate": "block",
+      "suppressed": false,
+      "exception": null
+    }
+  ],
+  "blocking": true
+}

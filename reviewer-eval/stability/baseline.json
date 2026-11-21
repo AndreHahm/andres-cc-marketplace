@@ -1,0 +1,118 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-21",
+  "runner": "local run-codex-review, Linux, ChatGPT login (not CI's API key)",
+  "configured_model": "gpt-6-luna",
+  "pinned_cli_version": "0.170.0",
+  "rule": "stable when at least 4 of 5 repeats give the same blocking set",
+  "heads": [
+    {
+      "pr": 798,
+      "head_sha": "9ca8bc698b5550b322a9f27476f7be8ffe14b07e",
+      "base_sha": "6dd235f3fa485189774de61cd0bcbc258dfa628e",
+      "runs": [
+        "run1.json",
+        "run2.json",
+        "run3.json",
+        "run4.json",
+        "run5.json"
+      ],
+      "reviewers": [
+        {
+          "reviewer": "dependency-reviewer",
+          "repeats": 5,
+          "agree": 5,
+          "stable": true
+        },
+        {
+          "reviewer": "plugin-rulebook-checker",
+          "repeats": 5,
+          "agree": 5,
+          "stable": true
+        },
+        {
+          "reviewer": "security-reviewer",
+          "repeats": 5,
+          "agree": 5,
+          "stable": true
+        },
+        {
+          "reviewer": "skill-reviewer",
+          "repeats": 5,
+          "agree": 4,
+          "stable": true
+        }
+      ]
+    },
+    {
+      "pr": 799,
+      "head_sha": "72a159f74d4bc17cda3c6c63367f43751b991aeb",
+      "base_sha": "c80737c1ddc974978685fba436bb398f14772cd0",
+      "runs": [
+        "run1.json",
+        "run2.json",
+        "run3.json",
+        "run4.json",
+        "run5.json"
+      ],
+      "reviewers": [
+        {
+          "reviewer": "plugin-rulebook-checker",
+          "repeats": 5,
+          "agree": 4,
+          "stable": true
+        },
+        {
+          "reviewer": "dependency-reviewer",
+          "repeats": 5,
+          "agree": 5,
+          "stable": true
+        },
+        {
+          "reviewer": "security-reviewer",
+          "repeats": 5,
+          "agree": 5,
+          "stable": true
+        }
+      ]
+    },
+    {
+      "pr": 805,
+      "head_sha": "27b8481fb2ae170f0c4f28a4b166312ba39061dd",
+      "base_sha": "b5aa67b7682a936207c54565401a5a73f5d8d466",
+      "runs": [
+        "run1.json",
+        "run2.json",
+        "run3.json",
+        "run4.json",
+        "run5.json"
+      ],
+      "reviewers": [
+        {
+          "reviewer": "plugin-rulebook-checker",
+          "repeats": 5,
+          "agree": 5,
+          "stable": true
+        },
+        {
+          "reviewer": "dependency-reviewer",
+          "repeats": 5,
+          "agree": 5,
+          "stable": true
+        },
+        {
+          "reviewer": "security-reviewer",
+          "repeats": 5,
+          "agree": 4,
+          "stable": true
+        },
+        {
+          "reviewer": "skill-reviewer",
+          "repeats": 5,
+          "agree": 5,
+          "stable": true
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,95 @@
+{
+  "mode": "delta",
+  "reviewed_paths": [
+    ".claude/review-outcomes/pr-805.json",
+    "plugins/codex-kit/CHANGELOG.md",
+    "plugins/codex-kit/scripts/smoke-tests/cdx-README.md",
+    "plugins/codex-kit/scripts/smoke-tests/codex-windows-guardrails-preflight.mjs",
+    "plugins/codex-kit/skills/codex-windows-guardrails/SKILL.md",
+    "plugins/codex-kit/skills/codex-windows-guardrails/references/preflight-checks.md",
+    "plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.mjs"
+  ],
+  "reviewers": [
+    "plugin-rulebook-checker",
+    "dependency-reviewer",
+    "security-reviewer",
+    "skill-reviewer"
+  ],
+  "reviewer_attempts": {
+    "plugin-rulebook-checker": 1,
+    "dependency-reviewer": 1,
+    "security-reviewer": 1,
+    "skill-reviewer": 1
+  },
+  "status": "clean",
+  "reviewer_results": {
+    "plugin-rulebook-checker": {
+      "status": "clean",
+      "attempts": 1
+    },
+    "dependency-reviewer": {
+      "status": "clean",
+      "attempts": 1
+    },
+    "security-reviewer": {
+      "status": "clean",
+      "attempts": 1
+    },
+    "skill-reviewer": {
+      "status": "clean",
+      "attempts": 1
+    }
+  },
+  "provenance": {
+    "head_sha": "27b8481fb2ae170f0c4f28a4b166312ba39061dd",
+    "merge_ref_sha": "27b8481fb2ae170f0c4f28a4b166312ba39061dd",
+    "base_sha": "b5aa67b7682a936207c54565401a5a73f5d8d466",
+    "configured_model": "gpt-6-luna",
+    "pinned_cli_version": "0.170.0",
+    "model": "GPT-6",
+    "cli_version": "unknown"
+  },
+  "structural_findings": [],
+  "verifiers": [
+    {
+      "name": "grant-to-body",
+      "status": "clean",
+      "findings": 0,
+      "checked": 1
+    },
+    {
+      "name": "measurement",
+      "status": "clean",
+      "findings": 0,
+      "checked": 1
+    },
+    {
+      "name": "path-and-mirror",
+      "status": "clean",
+      "findings": 0,
+      "checked": 2
+    },
+    {
+      "name": "structure",
+      "status": "clean",
+      "findings": 0,
+      "checked": 18
+    },
+    {
+      "name": "call-graph",
+      "status": "clean",
+      "findings": 0,
+      "checked": 1
+    },
+    {
+      "name": "removed-identifier",
+      "status": "clean",
+      "findings": 0,
+      "checked": 0
+    }
+  ],
+  "diff_scoped": true,
+  "exceptions_loaded": 3,
+  "findings": [],
+  "blocking": false
+}

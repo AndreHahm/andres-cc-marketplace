@@ -11,6 +11,8 @@ never changes a reviewer prompt, pin or weight.
 |---|---|
 | `corpus/pr-<pr>-<head8>.json` | One labelled case per (PR, head commit). Validated by `scripts/reviewer_eval/corpus.py`. |
 | `archive/pr-<pr>/<head8>-<run id>-<artifact id>.json` | The CI `codex-review-result` of one run, copied unchanged. |
+| `stability/pr-<pr>-<head8>/run<n>.json` | One local repeat run of that head, the `run-codex-review` result unchanged. |
+| `stability/baseline.json` | The stability baseline: per head and reviewer, how many repeats agreed, with the pins used. |
 
 Run `uv run python -m scripts.reviewer_eval.corpus validate` to check every case.
 
@@ -56,8 +58,19 @@ themselves (`model`, `cli_version`) is not compared: under the same pins it vari
 evidence of what ran.
 Otherwise the command exits 1 and names the file. A merged finding counts for every reviewer in its
 `reporters`. It prints the head (`head_sha`), how many runs gave the same blocking set (`agree`)
-and whether that is stable (at least 4 of 5; `null` until five runs are given). No repeated runs
-exist yet, so there is no baseline.
+and whether that is stable (at least 4 of 5; `null` until five runs are given).
+
+### Baseline (2026-11-21)
+
+`stability/baseline.json` holds five repeats on each of three heads (PRs #798, #799 and #805),
+with `configured_model` `gpt-6-luna` and `pinned_cli_version` `0.170.0`. Every (head, reviewer)
+pair was stable: 5 of 5 agreed, except `skill-reviewer` on #798, `plugin-rulebook-checker` on #799
+and `security-reviewer` on #805 (4 of 5 each, where one run added a blocking finding the other four
+did not raise). The runs were made locally (`run-codex-review --base-sha <merge-base>`, no
+`--ci-delta`) with a ChatGPT login, not CI's API key, so the auth path differs from CI's.
+PR #579's heads were not used: the dispatcher reads its reviewer files from the checkout, so they
+would have measured the October roster. PRs #800 and #806 were tried and dropped: neither started
+any reviewer. To repeat, run the same command five times in a checkout of each head.
 
 ## Case format
 
