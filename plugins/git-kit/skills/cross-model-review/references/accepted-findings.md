@@ -48,6 +48,13 @@ way, or the line is missing) and the matching waiver line (or null).
 
 ## Trust
 
-The list is the author's own claim, read from the working tree. The helper is under
+The list is the author's own claim, read from the working tree. The helper does not read it, and says
+why on stderr (an inspection limit, never a stop), when a symlink is anywhere on its path (a symlinked
+`.claude/` could redirect the read outside the checkout) or when git tracks it or cannot tell whether it
+does: a tracked copy was committed by whoever wrote the branch, so it is not the author's own list. It asks
+the real index (never the throwaway `GIT_INDEX_FILE`, which is empty if its copy failed) and `HEAD`'s tree,
+and counts a tracked path in any letter case (a case-insensitive filesystem opens `.CLAUDE/Accepted-…`
+under the lowercase name). The
+helper is under
 `plugins/git-kit/scripts/`, so `PLANNER_TOUCHED` already stops a run whose diff changes it until the user
 approves.
