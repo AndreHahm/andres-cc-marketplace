@@ -448,7 +448,8 @@ review` is the gate after the PR exists and reviews only the delta, to cut OpenA
   reports `error` too, rather than being dropped.
 - **Waivers on new findings (R7, issue #808).** `codex-review`'s `Read the PR's accepted review findings
   (R7)` step runs `fetch-accepted-findings` after the Tier-1 refusals and before the Node and Codex setup,
-  with `gh` by absolute path: it writes the live PR body, the open issues its `deferred` lines name and the
+  with `gh` by absolute path: it writes the live PR body's `## Accepted Review Findings` section (never the
+  rest of the body, since the file can be uploaded as an artifact), the open issues its `deferred` lines name and the
   maintainer-confirmed keys to one JSON file, so the dispatch step needs no token. `run-codex-review
   --accepted-findings` reads it, records every finding's `fingerprint` at `HEAD`, and records a blocking
   finding a waiver applies to as waived (`waived_findings` counts them, `waiver_lines_not_applied` lists the
