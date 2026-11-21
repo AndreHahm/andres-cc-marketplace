@@ -1844,6 +1844,7 @@ def carry_findings(
             fingerprint = fingerprint_at(repo, anchor_sha, path, line) if resolved else None
             if line == 0:
                 fingerprint = "-"
+        anchor_line = line
         if resolved and not unchanged[path]:
             # A waived finding is kept while its flagged line still exists, found at the head by
             # its fingerprint, so removing the waiver later makes it block again (R7). A reviewer
@@ -1892,6 +1893,21 @@ def carry_findings(
             carried["waiver"] = waiver.text[:300]
             waived.append(carried)
             continue
+        if why_not is None and line != anchor_line:
+            # A waiver in the earlier format names the exact line, so it stops matching once the
+            # flagged line moves; say so rather than block without a reason.
+            stale = any(
+                w.fingerprint is None
+                and w.rule == rule
+                and w.path == path
+                and w.line == anchor_line
+                for w in waivers
+            )
+            if stale:
+                why_not = (
+                    f"names line {anchor_line}, but the flagged line is now {line}: "
+                    f"write it as `- {rule} {path}:{line} @{fingerprint} – <kind>`"
+                )
         if why_not is not None:
             notes.append(f"{rule} {path}:{line}: the waiver {why_not}")
         blocking.append(carried)
