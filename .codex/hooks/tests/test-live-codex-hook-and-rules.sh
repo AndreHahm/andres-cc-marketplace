@@ -9,14 +9,13 @@
 #   hook probe  git -C nonexistent-issue-803 stash          only the hook blocks it; harmless if run
 #
 # A PASS needs Codex's own evidence: the rule's justification `PROJECT RULE LOADED`, and the hook's
-# own block message. The hook message can only appear if the hooks.json command string ran in a
-# POSIX shell (it uses `$(...)`, `||` and `{ ...; }`) and that shell started bash on the script, so
-# it also answers which kind of shell Codex uses to launch the hook. A generic rejection without
+# own block message. The hook message can only appear if Codex ran the hook entry (`command`, or
+# `commandWindows` on Windows) and it started bash on the script. A generic rejection without
 # either text is reported INCONCLUSIVE, not PASS.
 #
 # Prerequisites, all in your normal Codex setup: the project is trusted, the project PreToolUse hook
-# is trusted in /hooks (trust is recorded per absolute hooks.json path, so a worktree may need its
-# own), Codex is logged in, and jq is on PATH. It makes one model call and costs tokens.
+# is trusted in /hooks, Codex is logged in, and jq is on PATH. It makes one model call and costs
+# tokens. In a linked worktree Codex loads the main checkout's hooks.json, so this tests that copy.
 #
 # Usage: bash .codex/hooks/tests/test-live-codex-hook-and-rules.sh [timeout-seconds [codex-exec-args...]]
 # Arguments after the timeout go to `codex exec` unchanged, e.g. -c 'default_permissions=":workspace"'.
@@ -93,7 +92,7 @@ fi
 if grep -q "${HOOK_MSG}" "${OUT}"; then
     report PASS "hook: project hook blocked the probe (bash ran the hook script)"
 elif ran "nonexistent-issue-803 stash" | grep -q .; then
-    report FAIL "hook: the probe ran; the project hook did not block it (first check that this hooks.json path is trusted in /hooks)"
+    report FAIL "hook: the probe ran; the project hook did not block it (check /hooks trust; a worktree runs the main checkout's hooks.json)"
 elif grep -q "cannot locate the repository root" "${OUT}"; then
     report FAIL "hook: hooks.json could not resolve the repository root"
 else

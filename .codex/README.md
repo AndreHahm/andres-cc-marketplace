@@ -180,7 +180,7 @@ Project hooks also need the project itself to be trusted: Codex loads hooks, and
 
 What we observed (Codex CLI 0.170.0, Windows; not stated in the docs):
 
-- Trust is saved in `~/.codex/config.toml` as `[hooks.state.'<absolute path to hooks.json>:pre_tool_use:0:0'] trusted_hash = "sha256:..."`. It is tied to the absolute path of `hooks.json`, so a git worktree's copy has its own entry and may need trusting separately. The docs add that a linked worktree's project layer can read hooks from the main checkout.
+- Trust is saved in `~/.codex/config.toml` as `[hooks.state.'<absolute path to hooks.json>:pre_tool_use:0:0'] trusted_hash = "sha256:..."`. In a linked git worktree, `/hooks` lists and Codex loads the main checkout's `hooks.json`, not the worktree's copy, so the main checkout's trust entry covers every worktree. A `hooks.json` change on a branch takes effect only once the main checkout has it.
 - The docs don't say whether editing `block-dangerous-command.sh` itself (not the `hooks.json` entry) requires re-trusting. They only say so for scripts bundled in a plugin. Re-check `/hooks` after editing the script.
 - `codex exec --dangerously-bypass-hook-trust` runs enabled hooks without saved trust for that one invocation. Use it only for automation that vets the hook sources itself.
 
@@ -208,9 +208,9 @@ On Windows, run it with Git Bash. From PowerShell, a bare `bash` can start WSL i
 & "C:\Program Files\Git\bin\bash.exe" .codex/hooks/tests/test-live-codex-hook-and-rules.sh
 ```
 
-The hook's own `BLOCKED:` message can only appear if Codex ran the `hooks.json` command string in a POSIX shell that started bash on the script. A generic rejection is reported as INCONCLUSIVE, not PASS. The script makes one model call, so it costs tokens. It needs a trusted project, a trusted hook, a Codex login and `jq`. Exit codes: 0 all PASS, 1 a FAIL, 3 INCONCLUSIVE.
+The hook's own `BLOCKED:` message can only appear if Codex ran the hook entry (`command`, or `commandWindows` on Windows) and it started bash on the script. Run from a worktree, the check tests the main checkout's `hooks.json` (see [Hook trust](#hook-trust)). A generic rejection is reported as INCONCLUSIVE, not PASS. The script makes one model call, so it costs tokens. It needs a trusted project, a trusted hook, a Codex login and `jq`. Exit codes: 0 all PASS, 1 a FAIL, 3 INCONCLUSIVE.
 
-On Windows, Codex's shell tool (`exec_command`) runs commands as `pwsh.exe -Command '...'`, as observed in a `codex exec` transcript. The docs say `exec_command` is matched as `Bash`, so the `^Bash$` matcher still applies. The docs do not say which shell runs a hook's own `command` string on Windows; the live check answers that (issue #803).
+On Windows, Codex's shell tool (`exec_command`) runs commands as `pwsh.exe -Command '...'`, as observed in a `codex exec` transcript. The docs say `exec_command` is matched as `Bash`, so the `^Bash$` matcher still applies. The docs do not say which shell runs a hook's own `command` string on Windows. With only the bash-syntax `command`, a live run let the hook probe through. Under PowerShell that string is a parse error (exit 1), and Codex treats any exit other than 2 as a non-blocking error. `hooks.json` therefore adds a fail-closed PowerShell `commandWindows` that starts Git Bash on the script (issue #803); the live check confirms it once the main checkout has it.
 
 ## Usage
 
