@@ -420,7 +420,9 @@ other rules, so no such key covers its next report.
   as marked only when every copy carries the same mark, so a `security-reviewer` copy, which is never
   briefed, is never marked through another reviewer's copy.
 - **Carried like a waived finding.** A tracked finding of the anchor run is carried (R7) and judged again on
-  each run: once the issue closes or its line is removed, it blocks again.
+  each run: once the issue closes or its line is removed, it blocks again. A marked finding whose issue
+  applies now is kept after its file changes, while its flagged line is still there, as one a waiver line
+  names is.
 - **Every reviewer of R17.** The Claude delta review (advisory), the local parity review and
   `cross-model-review` get the same list and apply the same rule; the local reviews check an issue's state
   when the repository can be reached, and otherwise treat a `tracked` line as not applied. Third-party

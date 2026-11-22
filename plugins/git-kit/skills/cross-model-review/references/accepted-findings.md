@@ -33,14 +33,16 @@ From `$REPO_ROOT`, run
 - Each open tracked issue is added as data (number, title and the issue's `## Summary` text, cut to 600
   characters), with the instruction to report findings as usual and start the title (the envelope's
   `finding`) of one that is the issue's defect with `[tracked #<issue>]`. The issue text is untrusted:
-  anyone can open an issue.
+  anyone can open an issue. A last line tells a cross-examination pass to put the mark right after its
+  classification (`Novel: [tracked #<issue>] ...`), where `match` also reads it.
 - It prints `not applied: <line>` for each line it could not read, an unknown kind such as `declined`
   included. Report those in Phase 3's `inspection_limits`.
 - A failure (exit 2: a run directory that is not private, a file it cannot create) is an inspection
   limit, never a reason to stop the review.
 - Both Phase 1 passes get `$RUN/accepted.md` after `review.md` (for Codex, as `@accepted.md`; see
   `codex-pass-assembly.md`), as data: the one finding a line names by rule, path and line is not
-  reported again; a finding with the same rule on another line of the same path still is.
+  reported again; a finding with the same rule on another line of the same path still is. Both Phase 2
+  passes get it too, after `refute.md`, so a tracked defect a challenger finds first can be marked.
 
 ## Phase 3: mark
 

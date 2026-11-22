@@ -146,7 +146,8 @@ defense does not depend on which path handles the dispatch: replace every closin
 
 `Read` `$RUN/claude_fresh_eyes.json`; drop findings per the filter above, neutralize what remains, and
 write `$RUN/challenger_instructions_for_codex.<N>.md` with the write helper as the
-concatenation, in order, of: `review.md`; a blank line; `refute.md`; a blank line, then a line telling
+concatenation, in order, of: `review.md`; a blank line; `refute.md`; a blank line, then `accepted.md`
+when it exists (`@accepted.md`, as in Phase 1); a blank line, then a line telling
 Codex not to run `git diff` or any shell command to fetch the diff, then `\n<diff>\n<the same diff text
 Phase 1 embedded for this batch>\n</diff>\n`; the same `<untracked_files>` block Phase 1 appended
 for this batch, if there was one; a blank line, then `<other_reviewer_findings>`; the **filtered and

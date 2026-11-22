@@ -1462,3 +1462,19 @@ def test_publish_claude_review_warns_on_a_malformed_tracked_list(tmp_path, monke
     main(args)
     assert "the accepted review findings could not be read" in capsys.readouterr().out
     assert out.is_file()
+
+
+def test_a_marked_finding_on_a_changed_file_is_kept_while_its_issue_applies(git_repo):
+    """Cross-model review round 2: like a waiver line, a declared issue keeps a marked finding."""
+    base = _commit(git_repo, "base", **{"s/SKILL.md": "x\n"})
+    anchor = _commit(git_repo, "pr 1", **{"s/SKILL.md": "\n" * 14 + GRANT + "\n"})
+    _commit(git_repo, "pr 2", **{"s/SKILL.md": "new\n" + "\n" * 14 + GRANT + "\n"})
+    result = _anchor_result(_tracked_entry())
+    kept = carry_findings(
+        git_repo.root, base, anchor, result, _section("- tracked #7"), _open_7_and_8
+    )
+    assert kept.blocking == ()
+    assert [(f["line"], f["waiver"]) for f in kept.waived] == [(16, "tracked #7")]
+    # Undeclared, the changed file releases it as before.
+    released = carry_findings(git_repo.root, base, anchor, result, "", _never_open)
+    assert released.blocking == () and released.waived == ()

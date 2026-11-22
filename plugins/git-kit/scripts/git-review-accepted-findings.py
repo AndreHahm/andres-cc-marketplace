@@ -147,6 +147,25 @@ def tracked_mark(title: object) -> int | None:
     return int(m["issue"]) if m else None
 
 
+# cross-model-review's challenger passes start a finding with its classification (`Novel:`,
+# `Confirms F1:`, `Refutes F2:`); the mark then follows it. CI's reviewers use no such prefix.
+_CLASSIFICATION = re.compile(r"^\s*(?:novel|confirms?|refutes?)\b[^:\[\n]{0,40}:\s*", re.IGNORECASE)
+CHALLENGER_MARK_NOTE = (
+    "In a cross-examination pass, whose finding text starts with its classification, put the "
+    "mark right after it: `Novel: [tracked #<number>] ...` or "
+    "`Confirms F1: [tracked #<number>] ...`."
+)
+
+
+def finding_mark(title: object) -> int | None:
+    """`tracked_mark`, also after a challenger's leading classification."""
+    mark = tracked_mark(title)
+    if mark is not None or not isinstance(title, str):
+        return mark
+    prefix = _CLASSIFICATION.match(title)
+    return tracked_mark(title[prefix.end() :]) if prefix else None
+
+
 def issue_summary(body: object) -> str:
     """The text of an issue's `## Summary` section, or its first paragraph without one, cleaned
     and cut to 600 characters (as CI's `issue_summary`)."""
@@ -470,6 +489,8 @@ def cmd_brief(run_dir: str) -> int:
         else:
             records.append(record)
     tracked_briefing = render_tracked_issues_briefing(records)
+    if tracked_briefing:
+        tracked_briefing += "\n" + CHALLENGER_MARK_NOTE
     # Issue #814, as CI's `render_accepted_findings_briefing`: a model cannot check a
     # fingerprint, so only a waiver whose flagged line is still in the working tree is briefed,
     # under the line it is on now; one in the earlier format (no fingerprint) never is.
@@ -543,7 +564,7 @@ def cmd_match(envelopes: list[str]) -> int:
                 (w["text"] for w in waivers if matches(w, axis, path, line, fingerprint)), None
             )
             # R18: a mark applies when the list declares that issue and it is open.
-            mark = tracked_mark(finding.get("finding"))
+            mark = finding_mark(finding.get("finding"))
             note = None
             if waiver is None and mark is not None:
                 if mark not in declared:

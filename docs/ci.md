@@ -495,8 +495,10 @@ review` is the gate after the PR exists and reviews only the delta, to cut OpenA
   Otherwise the job summary says why the mark did not apply. `aggregate_findings` keeps a mark only when
   every copy of a finding carries it, `briefable_tracked` drops an issue whose text could not be read
   (briefed as nothing, applied to nothing, listed as not applied), and `tracked_issue_record` turns square
-  brackets into round ones so issue text cannot spell the briefing's delimiters. Such a finding is carried as waived with its mark, so it blocks again once the issue closes or its
-  line is removed. The job summary lists the tracked findings. The Claude delta review and the local
+  brackets into round ones so issue text cannot spell the briefing's delimiters. Such a finding is
+  carried as waived with its mark, so it blocks again once the issue closes or its line is removed; like a
+  finding a waiver line names, a marked one whose issue applies is kept after its file changes while
+  `locate_fingerprint` still finds its line. The job summary lists the tracked findings. The Claude delta review and the local
   parity review get the same briefing and rule through the same commands; `cross-model-review`'s helper
   reads the issue of the `origin` repository through `gh` (named explicitly, never gh's default) and
   applies no confirmation, as for its waivers. Accepted residual (R18): a reviewer can mark a different

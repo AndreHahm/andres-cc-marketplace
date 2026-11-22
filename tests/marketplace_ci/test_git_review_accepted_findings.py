@@ -487,3 +487,32 @@ def test_open_issue_reads_only_an_open_issue_of_origin_through_gh(monkeypatch):
 def test_the_origin_repository_is_read_from_the_remote(monkeypatch, url, slug):
     monkeypatch.setattr(helper, "_git", lambda *a: (0, url + "\n", ""))
     assert helper.origin_repository() == slug
+
+
+@pytest.mark.parametrize(
+    ("title", "issue"),
+    [
+        ("Novel: [tracked #7] scoped by rule", 7),
+        ("Confirms F1: [tracked #7] x", 7),
+        ("refutes C2 (partly): [tracked #7] x", 7),
+        ("[tracked #7] x", 7),
+        ("Novel: see [tracked #7]", None),
+        ("Note: [tracked #7] x", None),
+        (None, None),
+    ],
+)
+def test_match_reads_a_mark_after_a_challenger_classification(title, issue):
+    assert helper.finding_mark(title) == issue
+
+
+def test_brief_tells_a_challenger_where_the_mark_goes(checkout, tmp_path, monkeypatch):
+    run = tmp_path / "run"
+    run.mkdir(mode=0o700)
+    (checkout / ".claude/accepted-review-findings.local.md").write_text(
+        "- tracked #7\n", encoding="utf-8"
+    )
+    _issues(monkeypatch, **{"7": {"number": 7, "title": "T", "summary": "S"}})
+    assert helper.main(["brief", "--run-dir", str(run)]) == 0
+    text = (run / "accepted.md").read_text(encoding="utf-8")
+    assert text.rstrip().endswith(helper.CHALLENGER_MARK_NOTE)
+    assert "[end tracked issues]" in text
