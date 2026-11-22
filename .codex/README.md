@@ -193,7 +193,13 @@ What we observed (Codex CLI 0.170.0, Windows; not stated in the docs):
 - `git -C nonexistent-issue-803 stash`, which only the hook blocks
 
 ```bash
-bash .codex/hooks/tests/test-live-codex-hook-and-rules.sh [timeout-seconds]
+bash .codex/hooks/tests/test-live-codex-hook-and-rules.sh [timeout-seconds [codex-exec-args...]]
+```
+
+Arguments after the timeout go to `codex exec` unchanged. On Windows (Codex 0.170), `codex exec` with this repo's `ah-workspace` profile can take several minutes to start: with any deny-read entry in the profile, each sandboxed file read during skill loading costs about 0.7 s, and the `**/` globs add a scan of the workspace to each one. The built-in `:workspace` profile has no deny entries and starts in seconds. It does not change the hook or the rules, so the live check can use it:
+
+```bash
+bash .codex/hooks/tests/test-live-codex-hook-and-rules.sh 300 -c 'default_permissions=":workspace"'
 ```
 
 On Windows, run it with Git Bash. From PowerShell, a bare `bash` can start WSL instead (the script refuses to run there):
