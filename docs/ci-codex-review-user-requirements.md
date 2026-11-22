@@ -178,7 +178,8 @@ a reviewer reports it anew, until the flagged code changes (issue #808).
   (`-` for a finding without a rule, `0` without a line, no spaces in paths). The section
   also lists accepted third-party findings (CodeRabbit, Devin, the Codex connector, human reviewers) in the
   same shape, with the reviewer's name in place of the rule and no fingerprint. CI's gate acts only on lines
-  that match its own findings; every reviewer reads the whole section (R17).
+  that match its own findings. Every reviewer that reads the pull request body reads the whole section
+  (R17); CI's model reviewers get only the waivers passed on as the next two bullets say.
 - **Waivers reach the reviewers as data.** CI passes the section's valid lines that need no confirmation
   to each model reviewer except `security-reviewer`, as data, not instructions, so a reviewer can leave out
   a finding already waived. A waiver that needs a maintainer's confirmation is never passed on, so it
