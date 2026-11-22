@@ -215,6 +215,16 @@
       "path": "scripts/marketplace_ci/review.py",
       "pr": 822,
       "recorded_at": "2026-11-21T23:23:11+00:00"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "7069408324",
+      "line": 192,
+      "note": "Informational, Claude delta review on 225ddcb1: the maintainer approved R7 on 2026-11-21 (confirmed in session); recording approval in the Status line is the repo convention",
+      "path": "docs/ci-codex-review-user-requirements.md",
+      "pr": 822,
+      "recorded_at": "2026-11-22T09:13:06+00:00",
+      "rule": "claude-general"
     }
   ]
 }
