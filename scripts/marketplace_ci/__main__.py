@@ -1105,7 +1105,12 @@ def _handle_carry_findings(args: argparse.Namespace) -> int:
     `{"count": N, "carried": [...]}`. Each carried finding is printed with the waiver line that
     would accept it. Exits 0 on a decision, 2 when the inputs cannot be read (the caller must
     treat that as blocking)."""
-    from scripts.marketplace_ci.review import CarryError, carry_findings, read_waiver_section
+    from scripts.marketplace_ci.review import (
+        CarryError,
+        briefable_tracked,
+        carry_findings,
+        read_waiver_section,
+    )
 
     carried: list[dict] = []
     waived: list[dict] = []
@@ -1137,6 +1142,11 @@ def _handle_carry_findings(args: argparse.Namespace) -> int:
                 confirmations = _confirmed_waivers(args.repo, args.pr_number)
             return key in confirmations
 
+        # R18: as on the fresh path, a tracked issue applies only while its text can be read.
+        declared = read_waiver_section(body, issue_is_open).tracked
+        readable = (
+            briefable_tracked(_tracked_issue_records(args.repo, declared)) if declared else ()
+        )
         try:
             outcome = carry_findings(
                 Path.cwd(),
@@ -1146,6 +1156,7 @@ def _handle_carry_findings(args: argparse.Namespace) -> int:
                 body,
                 issue_is_open,
                 confirmed,
+                readable,
             )
         except CarryError as exc:
             print(f"carry-findings: {exc}", file=sys.stderr)
@@ -1484,13 +1495,14 @@ def _handle_publish_claude_review(args: argparse.Namespace) -> int:
 
         try:
             body, open_issues, confirmed = _load_accepted_findings(args.accepted_findings)
+            records = _load_tracked_issues(args.accepted_findings)
         except (OSError, ValueError) as exc:
             print(f"::warning::the accepted review findings could not be read: {exc}")
         else:
             from scripts.marketplace_ci.review import briefable_tracked
 
             section = read_waiver_section(body, open_issues.__contains__)
-            readable = set(briefable_tracked(_load_tracked_issues(args.accepted_findings)))
+            readable = set(briefable_tracked(records))
             tracked = tuple(n for n in section.tracked if n in readable)
             reader = head_line_reader(args.repo, args.head_sha, lambda a, _p=None: _gh_raw(a))
             notes = apply_waivers(result, section.waivers, confirmed, reader, tracked)

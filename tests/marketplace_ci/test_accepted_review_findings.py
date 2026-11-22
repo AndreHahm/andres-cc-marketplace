@@ -1380,3 +1380,85 @@ def test_an_issue_whose_text_could_not_be_read_is_not_applied():
         {"number": 9, "title": "", "summary": "S"},
     ]
     assert briefable_tracked(records) == (7, 9)
+
+
+def test_closed_tracked_issues_count_toward_the_lookup_cap():
+    """Cross-model review of PR for #832: closed numbers must not buy unlimited lookups."""
+    looked_up = []
+
+    def is_open(n):
+        looked_up.append(n)
+        return n == 99
+
+    lines = [f"- tracked #{n}" for n in range(1, 21)] + ["- tracked #99"]
+    section = read_waiver_section(_section(*lines), is_open)
+    assert looked_up == list(range(1, 11))
+    assert section.tracked == ()
+    assert sum(why == "more than 10 tracked issues" for _, why in section.malformed) == 11
+
+
+def test_a_carried_tracked_finding_needs_a_readable_issue(git_repo):
+    base = _commit(git_repo, "base", **{"s/SKILL.md": "x\n"})
+    anchor = _commit(git_repo, "pr 1", **{"s/SKILL.md": "\n" * 14 + GRANT + "\n"})
+    result = _anchor_result(_tracked_entry())
+    body = _section("- tracked #7")
+    unread = carry_findings(
+        git_repo.root, base, anchor, result, body, _open_7_and_8, readable_tracked=()
+    )
+    assert len(unread.blocking) == 1 and unread.waived == ()
+    read = carry_findings(
+        git_repo.root, base, anchor, result, body, _open_7_and_8, readable_tracked=(7,)
+    )
+    assert read.blocking == () and read.waived[0]["waiver"] == "tracked #7"
+
+
+def test_carry_findings_cli_applies_only_readable_tracked_issues(monkeypatch, git_repo, tmp_path):
+    base = _commit(git_repo, "base", **{"s/SKILL.md": "x\n"})
+    anchor = _commit(git_repo, "pr 1", **{"s/SKILL.md": "\n" * 14 + GRANT + "\n"})
+    result = tmp_path / "anchor.json"
+    result.write_text(json.dumps(_anchor_result(_tracked_entry())), encoding="utf-8")
+    body = tmp_path / "body.txt"
+    body.write_text(_section("- tracked #7"), encoding="utf-8")
+    monkeypatch.chdir(git_repo.root)
+    monkeypatch.setattr(main_module, "_issue_is_open", lambda repo, n, gh="gh": n == 7)
+
+    def records(title):
+        return lambda repo, numbers, gh="gh": [
+            {"number": n, "title": title, "summary": ""} for n in numbers
+        ]
+
+    counts = {}
+    for title in ("T", ""):
+        monkeypatch.setattr(main_module, "_tracked_issue_records", records(title))
+        out = tmp_path / f"carried-{bool(title)}.json"
+        args = [
+            "carry-findings", "--base-sha", base, "--anchor-sha", anchor,
+            "--anchor-result", str(result), "--pr-body-file", str(body),
+            "--repo", "o/r", "--json-output", str(out),
+        ]  # fmt: skip
+        assert main(args) == 0
+        counts[bool(title)] = json.loads(out.read_text(encoding="utf-8"))["count"]
+    assert counts == {True: 0, False: 1}
+
+
+def test_publish_claude_review_warns_on_a_malformed_tracked_list(tmp_path, monkeypatch, capsys):
+    from scripts.marketplace_ci import claude_review
+
+    accepted = tmp_path / "accepted.json"
+    accepted.write_text(
+        json.dumps(
+            {"body": "", "open_issues": [], "confirmed": [], "tracked_issues": [{"number": True}]}
+        ),
+        "utf-8",
+    )
+    monkeypatch.setattr(claude_review, "decide", lambda **_kw: _claude_result(_claude_finding()))
+    monkeypatch.setattr(claude_review, "publish", lambda *a, **k: [])
+    out = tmp_path / "result.json"
+    args = [
+        "publish-claude-review", "--switched-off", "false", "--review-job", "success",
+        "--model", "m", "--head-sha", "h" * 40, "--run-attempt", "1", "--repo", "o/r",
+        "--pr-number", "1", "--result-out", str(out), "--accepted-findings", str(accepted),
+    ]  # fmt: skip
+    main(args)
+    assert "the accepted review findings could not be read" in capsys.readouterr().out
+    assert out.is_file()
