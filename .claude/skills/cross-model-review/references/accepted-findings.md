@@ -19,6 +19,15 @@ as open in the current repository; otherwise the helper prints it as `not applie
 digits of the SHA-256 of the flagged line's text, whitespace collapsed) and match key (rule, path, then
 fingerprint; a line without a fingerprint matches the exact line) are CI's.
 
+## Which list applies (issue #834)
+
+Once the branch has an open PR, its body's `## Accepted Review Findings` section is the list, as in CI
+(R17): `brief` and `match` read it through `gh pr view`, ignore the local file, and say so on stderr. A body
+without that heading has no accepted findings. With no open PR they read the local file. When `gh` cannot
+tell whether there is one (not installed, not signed in, no network), they read the local file and say on
+stderr that it may differ from the PR body: report that as an inspection limit. `lines` always reads the
+local file, since `create-pr` copies it into a new PR's body.
+
 ## Preflight step 7: brief
 
 From `$REPO_ROOT`, run
@@ -46,7 +55,7 @@ From `$REPO_ROOT`, run
 
 ## Phase 3: mark
 
-When the local list exists, run
+When the local list exists or the branch has an open PR, run
 `python3 -I "${CLAUDE_PLUGIN_ROOT}/scripts/git-review-accepted-findings.py" match <envelopes>`
 from `$REPO_ROOT`, naming every envelope Phase 3 reads. It prints, per finding, its `axis`, `location`,
 the flagged line's fingerprint in the working tree (null when the path is unusual, a symlink is on the
@@ -66,7 +75,8 @@ way, or the line is missing) and the matching waiver line (or null).
 
 ## Trust
 
-The list is the author's own claim, read from the working tree. The helper does not read it, and says
+The local list is the author's own claim, read from the working tree (a PR body is what CI reads, so it is
+trusted as CI trusts it). The helper does not read the local list, and says
 why on stderr (an inspection limit, never a stop), when a symlink is anywhere on its path (a symlinked
 `.claude/` could redirect the read outside the checkout) or when git tracks it or cannot tell whether it
 does: a tracked copy was committed by whoever wrote the branch, so it is not the author's own list. It asks

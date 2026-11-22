@@ -233,8 +233,8 @@ as a scratchpad script instead (`references/codex-pass-assembly.md`, "In an Ente
    `$DISPATCHER_TOUCHED=1`, disclose it explicitly at the First-Send Confirmation below and record in
    Phase 3's `inspection_limits` that the Codex dispatcher itself wasn't trust-boundary-verified
    against `$BASE` for this run.
-7. **Brief the accepted findings (issue #808)** from the gitignored
-   `.claude/accepted-review-findings.local.md`:
+7. **Brief the accepted findings (issue #808)** from the open PR's body when the branch has one
+   (issue #834), else from the gitignored `.claude/accepted-review-findings.local.md`:
    `python3 -I "${CLAUDE_PLUGIN_ROOT}/scripts/git-review-accepted-findings.py" brief --run-dir "$RUN"`,
    from `$REPO_ROOT`. A failure is an inspection limit, never a stop (`references/accepted-findings.md`).
 
@@ -422,8 +422,8 @@ alone never keeps it at High once refuted. Apply the tiers below in this order �
 - A `severity: critical` finding is never silently dropped regardless of confidence tier — surface
   it with its tier clearly marked, even at Low/contested.
 
-**Mark accepted findings** with the helper's `match` command when the local list exists
-(`references/accepted-findings.md`): a matched finding stays in the table as `waived (<kind>)`, ranked
+**Mark accepted findings** with the helper's `match` command when the local list exists or the branch
+has an open PR (`references/accepted-findings.md`): a matched finding stays in the table as `waived (<kind>)`, ranked
 after the unwaived ones, never dropped.
 
 Rank by `severity × confidence`. Present a compact table: `severity | confidence | location | claim

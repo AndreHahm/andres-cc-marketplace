@@ -85,6 +85,12 @@ def _git(root, *args):
     subprocess.run(["git", "-C", str(root), *args], check=True, capture_output=True, env=env)
 
 
+@pytest.fixture(autouse=True)
+def no_pull_request(monkeypatch):
+    """No test asks gh: by default the branch has no open pull request."""
+    monkeypatch.setattr(helper, "open_pull_request", lambda: ("", ""))
+
+
 @pytest.fixture
 def checkout(tmp_path, monkeypatch):
     _git(tmp_path, "init", "-q")
@@ -575,3 +581,113 @@ def test_open_issue_reads_the_issue_text_as_utf8(monkeypatch):
     monkeypatch.setattr(helper, "origin_repository", lambda: "o/r")
     monkeypatch.setattr(helper, "_open_issues", {})
     assert helper.open_issue(1) == {"number": 1, "title": "Résumé", "summary": "Łączenie"}
+
+
+# Issue #834 (R17): once the branch has an open pull request, its body's section is the list.
+OPEN_PULL_REQUEST = helper.open_pull_request
+PR_BODY = (
+    "## Summary\nx\n\n## Accepted Review Findings\n"
+    f"- tool-scoping s/SKILL.md:15 @{FP} – refuted: needed\n"
+    "- tracked #7: known\n\n## Test plan\n- R6 a_py:3 – accepted\n"
+)
+
+
+def test_brief_and_match_read_the_open_pull_requests_body(checkout, monkeypatch, capsys):
+    # The local list waives another finding; only the body's waiver applies.
+    (checkout / ".claude/accepted-review-findings.local.md").write_text(
+        "- R6 a_py:3 – accepted\n", encoding="utf-8"
+    )
+    monkeypatch.setattr(helper, "open_pull_request", lambda: ("12", PR_BODY))
+    waivers, skipped, tracked = helper._load_list()
+    assert [w["rule"] for w in waivers] == ["tool-scoping"]
+    assert skipped == [] and [n for n, _ in tracked] == [7]
+    assert "body of PR #12" in capsys.readouterr().err
+    envelope = _envelope(
+        checkout,
+        {"id": "M1", "axis": "tool-scoping", "location": "s/SKILL.md:21"},
+        {"id": "M2", "axis": "R6", "location": "a_py:3"},
+    )
+    assert helper.main(["match", envelope]) == 0
+    report = json.loads(capsys.readouterr().out)
+    assert [(r["id"], bool(r["waiver"])) for r in report] == [("M1", True), ("M2", False)]
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        "",
+        "no section here\n- R6 a_py:3 – accepted\n",
+        "<!--\n## Accepted Review Findings\n-->\n- R6 a_py:3 – accepted\n",
+    ],
+)
+def test_a_body_without_the_section_has_no_list_like_ci(checkout, monkeypatch, body):
+    (checkout / ".claude/accepted-review-findings.local.md").write_text(LIST_LINE, encoding="utf-8")
+    monkeypatch.setattr(helper, "open_pull_request", lambda: ("12", body))
+    assert helper._load_list() == ([], [], [])
+    assert review.read_waiver_section(body, lambda _n: True).waivers == ()
+
+
+def test_the_body_is_parsed_like_ci(monkeypatch):
+    monkeypatch.setattr(helper, "open_pull_request", lambda: ("12", PR_BODY))
+    ours = helper._load_list()[0]
+    theirs = review.read_waiver_section(PR_BODY, lambda _n: True).waivers
+    assert [(w["rule"], w["path"], w["line"], w["fingerprint"]) for w in ours] == [
+        (w.rule, w.path, w.line, w.fingerprint) for w in theirs
+    ]
+
+
+def test_without_an_answer_from_gh_the_local_list_is_read_with_a_note(
+    checkout, monkeypatch, capsys
+):
+    (checkout / ".claude/accepted-review-findings.local.md").write_text(LIST_LINE, encoding="utf-8")
+    monkeypatch.setattr(helper, "open_pull_request", lambda: None)
+    assert [w["path"] for w in helper._load_list()[0]] == ["s/SKILL.md"]
+    assert "could not tell" in capsys.readouterr().err
+
+
+def test_lines_reads_the_local_list_even_with_an_open_pull_request(checkout, monkeypatch, capsys):
+    (checkout / ".claude/accepted-review-findings.local.md").write_text(LIST_LINE, encoding="utf-8")
+    monkeypatch.setattr(helper, "open_pull_request", lambda: ("12", PR_BODY))
+    assert helper.main(["lines"]) == 0
+    assert capsys.readouterr().out == LIST_LINE
+
+
+def _gh_answer(returncode, stdout="", stderr=""):
+    from types import SimpleNamespace
+
+    return lambda cmd, **_kw: SimpleNamespace(returncode=returncode, stdout=stdout, stderr=stderr)
+
+
+URL = "https://github.com/o/r/pull/12"
+
+
+def _view(state, url=URL, body="b"):
+    return json.dumps({"state": state, "url": url, "body": body})
+
+
+@pytest.mark.parametrize(
+    ("answer", "want"),
+    [
+        (_gh_answer(0, _view("OPEN")), ("12", "b")),
+        (_gh_answer(0, _view("MERGED")), ("", "")),
+        (_gh_answer(0, _view("CLOSED")), ("", "")),
+        (_gh_answer(1, stderr='no pull requests found for branch "x"'), ("", "")),
+        (_gh_answer(1, stderr="gh auth login"), None),
+        (_gh_answer(4, stderr="no pull requests found"), None),
+        (_gh_answer(0, "not json"), None),
+        (_gh_answer(0, _view("OPEN", url="https://x/pull/1")), None),
+        (_gh_answer(0, _view("OPEN", body=None)), None),
+        (_gh_answer(0, json.dumps(["OPEN"])), None),
+    ],
+)
+def test_open_pull_request_tells_open_none_and_unknown_apart(monkeypatch, answer, want):
+    monkeypatch.setattr(helper.subprocess, "run", answer)
+    assert OPEN_PULL_REQUEST() == want
+
+
+def test_open_pull_request_is_unknown_without_gh(monkeypatch):
+    def missing(cmd, **_kw):
+        raise FileNotFoundError(cmd[0])
+
+    monkeypatch.setattr(helper.subprocess, "run", missing)
+    assert OPEN_PULL_REQUEST() is None

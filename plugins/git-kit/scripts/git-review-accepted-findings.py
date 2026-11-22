@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
-"""Accepted review findings for cross-model-review, before a pull request exists (issue #808).
+"""Accepted review findings for cross-model-review (issue #808).
 
 Reads the gitignored local list `.claude/accepted-review-findings.local.md` at the repository root,
 in the line format of a pull request's `## Accepted Review Findings` section:
 
     - <rule> <path>:<line> @<fingerprint> – accepted|residual|deferred #<issue>|refuted: <reason>
     - tracked #<issue>: <reason>
+
+Once the branch has an open pull request, its body's section is the list (R17, issue #834):
+`brief` and `match` read that section instead, through `gh pr view`. When gh cannot tell whether
+there is one (not installed, not signed in, no network), they read the local list and say so on
+stderr. `lines` always reads the local list: create-pr copies it into a new pull request's body.
 
 A `tracked` line (R18, issue #832) names an open issue that tracks a known defect. It applies only
 when `gh` can read the issue and it is open; otherwise it is reported as not applied.
@@ -366,8 +371,69 @@ def _tracked_names() -> list[str] | None:
     return [n for n in (*names, *tree[1].split("\0")) if n]
 
 
+_NO_PR = "no pull requests found"
+_PR_URL = re.compile(r"https://github\.com/[A-Za-z0-9._-]+/[A-Za-z0-9._-]+/pull/(?P<n>[0-9]{1,9})")
+
+
+def open_pull_request() -> tuple[str, str] | None:
+    """The number and body of this branch's open pull request, `("", "")` when there is none,
+    or None when gh cannot tell (as git-codex-parity-review.py's `_open_pr`): only gh's own "no
+    pull requests found" answer, or a pull request that is not open, counts as none."""
+    try:
+        done = subprocess.run(
+            ["gh", "pr", "view", "--json", "state,url,body"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=60,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if done.returncode != 0:
+        return ("", "") if done.returncode == 1 and _NO_PR in done.stderr else None
+    try:
+        data = json.loads(done.stdout)
+    except ValueError:
+        return None
+    if not isinstance(data, dict) or not isinstance(data.get("state"), str):
+        return None
+    if data["state"] != "OPEN":
+        return "", ""
+    url, body = data.get("url"), data.get("body")
+    match = _PR_URL.fullmatch(url) if isinstance(url, str) else None
+    if match is None or not isinstance(body, str):
+        return None
+    return match["n"], body
+
+
+def _parse_body(body: str) -> tuple[list[dict], list[str], list[tuple[int, str]]]:
+    """A pull request body's list. Unlike the local list, it needs the heading, as in CI: a body
+    without the section has no accepted findings."""
+    if _HEADING.search(_HTML_COMMENT.sub("", body)) is None:
+        return [], [], []
+    waivers, skipped = parse(body)
+    tracked, over = parse_tracked(body)
+    return waivers, [*skipped, *over], tracked
+
+
 def _load_list() -> tuple[list[dict], list[str], list[tuple[int, str]]]:
-    """The waiver lines, the lines not applied and the `tracked` lines of the local list."""
+    """The waiver lines, the lines not applied and the `tracked` lines of the list: the open
+    pull request's body when the branch has one (R17), else the local list."""
+    pr = open_pull_request()
+    if pr is not None and pr[0]:
+        print(
+            f"git-review-accepted-findings: read the list from the body of PR #{pr[0]}",
+            file=sys.stderr,
+        )
+        return _parse_body(pr[1])
+    if pr is None:
+        print(
+            "git-review-accepted-findings: gh could not tell whether this branch has an open "
+            f"pull request; read {LOCAL_LIST}, which may differ from a pull request's body",
+            file=sys.stderr,
+        )
     refusal = _list_refusal()
     if refusal is not None:
         print(f"git-review-accepted-findings: {LOCAL_LIST} not read: {refusal}", file=sys.stderr)
