@@ -45,9 +45,10 @@ decision() { codex execpolicy check --rules "$1" -- "${@:2}" | jq -r '.decision 
     { echo "FAIL: ${RULES} does not forbid 'echo ${SENTINEL}'" >&2; exit 1; }
 [[ "$(decision "${RULES}" git -C nonexistent-issue-803 stash)" == none ]] ||
     { echo "FAIL: a project rule matches the hook probe, so a block would not prove the hook ran" >&2; exit 1; }
+user_sentinel=""
 for f in "${CODEX_HOME:-${HOME}/.codex}"/rules/*.rules; do
-    [[ -f "${f}" ]] && grep -q "${SENTINEL}" "${f}" &&
-        echo "WARN: ${f} also holds the sentinel; a rule PASS no longer proves the project layer loaded"
+    [[ -f "${f}" ]] && grep -q "${SENTINEL}" "${f}" && user_sentinel="${f}" &&
+        echo "WARN: ${f} also holds the sentinel; the rules result can only be INCONCLUSIVE"
 done
 
 OUT=$(mktemp "${TMPDIR:-/tmp}/codex-live-XXXXXX")
@@ -62,12 +63,16 @@ rc=$?
 shell=$(grep -o -m1 '[A-Za-z0-9_.-]*\(pwsh\|powershell\|bash\|cmd\)\.exe' "${OUT}" || true)
 echo "codex exec exit ${rc}; tool-command shell seen in transcript: ${shell:-not reported}"
 
-# Commands Codex actually ran, with their exit codes. The transcript also holds stderr lines that are
-# not JSON, so read raw lines and parse only the JSON ones.
-ran() {
-    jq -rR --arg c "$1" 'fromjson? | select(.item.type? == "command_execution") | .item
-        | select((.command // "") | contains($c)) | "\(.exit_code // "none")"' "${OUT}" 2>/dev/null
+# Command items for a command. The transcript also holds stderr lines that are not JSON, so read raw
+# lines and parse only the JSON ones. A started item has no exit code yet and does not count as a run.
+items() {
+    jq -cR --arg c "$1" 'fromjson? | select(.item.type? == "command_execution") | .item
+        | select((.command // "") | contains($c)) | select(.exit_code != null)' "${OUT}" 2>/dev/null
 }
+# Exit codes of the finished runs of a command.
+ran() { items "$1" | jq -r '.exit_code'; }
+# Whether a finished run of a command printed a hook BLOCKED: message in its own output.
+blocked() { items "$1" | jq -e 'select((.aggregated_output // "") | contains("BLOCKED:"))' >/dev/null; }
 
 status=0
 report() { printf '%-12s %s\n' "$1" "$2"; [[ "$1" == FAIL ]] && status=1;
@@ -75,13 +80,15 @@ report() { printf '%-12s %s\n' "$1" "$2"; [[ "$1" == FAIL ]] && status=1;
 
 if ran "rev-parse --is-inside-work-tree" | grep -qx 0; then
     report PASS "control: ran (the hook does not block every command)"
-elif grep -q "rev-parse --is-inside-work-tree" "${OUT}" && grep -q "BLOCKED:" "${OUT}"; then
+elif blocked "rev-parse --is-inside-work-tree"; then
     report FAIL "control: blocked; the hook may be failing closed on every command"
 else
     report INCONCLUSIVE "control: no successful run found in the transcript"
 fi
 
-if grep -q "${RULE_MSG}" "${OUT}"; then
+if grep -q "${RULE_MSG}" "${OUT}" && [[ -n "${user_sentinel}" ]]; then
+    report INCONCLUSIVE "rules: justification seen, but ${user_sentinel} also holds the sentinel"
+elif grep -q "${RULE_MSG}" "${OUT}"; then
     report PASS "rules: project rule matched (justification '${RULE_MSG}' seen)"
 elif ran "echo ${SENTINEL}" | grep -qx 0; then
     report FAIL "rules: 'echo ${SENTINEL}' ran; the project rules were not loaded"
@@ -91,10 +98,12 @@ fi
 
 if grep -q "${HOOK_MSG}" "${OUT}"; then
     report PASS "hook: project hook blocked the probe (bash ran the hook script)"
-elif ran "nonexistent-issue-803 stash" | grep -q .; then
-    report FAIL "hook: the probe ran; the project hook did not block it (check /hooks trust; a worktree runs the main checkout's hooks.json)"
 elif grep -q "cannot locate the repository root" "${OUT}"; then
     report FAIL "hook: hooks.json could not resolve the repository root"
+elif grep -q "cannot find Git Bash or the command-policy script" "${OUT}"; then
+    report FAIL "hook: commandWindows could not find Git Bash or the hook script"
+elif ran "nonexistent-issue-803 stash" | grep -q .; then
+    report FAIL "hook: the probe ran; the project hook did not block it (check /hooks trust; a worktree runs the main checkout's hooks.json)"
 else
     report INCONCLUSIVE "hook: no hook message and no run of the probe"
 fi
