@@ -98,7 +98,7 @@ def _section(text: str) -> str:
 
 def parse(text: str) -> tuple[list[dict], list[str]]:
     """The valid waiver lines and the other non-empty lines. A `deferred` line is valid here
-    without checking its issue (no GitHub access); CI checks it once a pull request exists.
+    without checking its issue; `_parse_body` checks it for a pull request body, as CI does.
     A `tracked` line is neither (see `parse_tracked`)."""
     text = _section(text)
     waivers: list[dict] = []
@@ -123,6 +123,7 @@ def parse(text: str) -> tuple[list[dict], list[str]]:
                 "line": int(m["line"]),
                 "fingerprint": fp,
                 "kind": m["kind"].lower(),
+                "issue": int(m["issue"]) if m["issue"] else None,
                 "text": stripped[:300],
                 "raw": stripped,
             }
@@ -232,7 +233,7 @@ def render_tracked_issues_briefing(records: list[dict]) -> str:
     )
 
 
-_open_issues: dict[int, dict | None] = {}
+_open_issues: dict[tuple[str | None, int], tuple[str, str] | None] = {}
 _ORIGIN = re.compile(r"(?:github\.com[:/])([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+?)(?:\.git)?/?$")
 
 
@@ -246,16 +247,20 @@ def origin_repository() -> str | None:
     return match.group(1) if match else None
 
 
-def open_issue(number: int) -> dict | None:
-    """The issue's record when `gh` reads it as an open issue (not a pull request) of the
-    `origin` repository and its text can be read, else None: without GitHub access, or with an
-    issue whose title and summary are empty, a `tracked` line does not apply."""
-    if number not in _open_issues:
-        record = None
-        slug = origin_repository()
+_ORIGIN_REPO = "origin"  # the `repo` default of the lookups below: the `origin` remote's repository
+
+
+def _open_issue_fields(number: int, repo: str | None) -> tuple[str, str] | None:
+    """The title and body of an open issue (not a pull request) of `repo` (`owner/repo` on
+    github.com; `_ORIGIN_REPO` for origin's), read through gh and kept per repository, or None:
+    without GitHub access, an unknown repository or a closed issue."""
+    slug = origin_repository() if repo == _ORIGIN_REPO else repo
+    key = (slug, number)
+    if key not in _open_issues:
+        fields = None
         try:
             if slug is None:
-                raise OSError("no github.com origin")
+                raise OSError("no github.com repository")
             done = subprocess.run(
                 [
                     "gh",
@@ -274,13 +279,27 @@ def open_issue(number: int) -> dict | None:
             if done.returncode == 0:
                 state, is_pr, title, body = json.loads(done.stdout)
                 if state == "open" and is_pr is False:
-                    record = tracked_issue_record(number, title, body)
-                    if not (record["title"] or record["summary"]):
-                        record = None
+                    fields = (title, body)
         except (OSError, subprocess.SubprocessError, ValueError, TypeError):
-            record = None
-        _open_issues[number] = record
-    return _open_issues[number]
+            fields = None
+        _open_issues[key] = fields
+    return _open_issues[key]
+
+
+def open_issue(number: int, repo: str | None = _ORIGIN_REPO) -> dict | None:
+    """The issue's record when `gh` reads it as an open issue (not a pull request) of `repo`
+    (origin's by default) and its text can be read, else None: without GitHub access, or with an
+    issue whose title and summary are empty, a `tracked` line does not apply."""
+    fields = _open_issue_fields(number, repo)
+    if fields is None:
+        return None
+    record = tracked_issue_record(number, *fields)
+    return record if record["title"] or record["summary"] else None
+
+
+def issue_is_open(number: int, repo: str | None) -> bool:
+    """True for an open issue (not a pull request) of `repo`, as CI's `_issue_is_open`."""
+    return number > 0 and _open_issue_fields(number, repo) is not None
 
 
 def matches(waiver: dict, rule: str, path: str, line: int, fingerprint: str | None) -> bool:
@@ -374,16 +393,20 @@ def _tracked_names() -> list[str] | None:
 
 
 _NO_PR = "no pull requests found"
-_PR_URL = re.compile(r"https://github\.com/[A-Za-z0-9._-]+/[A-Za-z0-9._-]+/pull/(?P<n>[0-9]{1,9})")
+_PR_URL = re.compile(
+    r"https://(?P<host>[A-Za-z0-9.-]+)/(?P<repo>[A-Za-z0-9._-]+/[A-Za-z0-9._-]+)/pull/[0-9]{1,9}"
+)
 
 
-def open_pull_request() -> tuple[str, str] | None:
-    """The number and body of this branch's open pull request, `("", "")` when there is none,
-    or None when gh cannot tell (as git-codex-parity-review.py's `_open_pr`): only gh's own "no
-    pull requests found" answer, or a pull request that is not open, counts as none."""
+def open_pull_request() -> tuple[str, str, str | None] | None:
+    """The number, body and `owner/repo` (None off github.com) of this branch's open pull
+    request, `("", "", None)` when there is none, or None when gh cannot tell (as
+    git-codex-parity-review.py's `_open_pr`): only gh's own "no pull requests found" answer, or a
+    pull request that is not open, counts as none. The repository comes from the pull request's
+    own URL, never from `origin`: gh may resolve the branch against another repository."""
     try:
         done = subprocess.run(
-            ["gh", "pr", "view", "--json", "state,url,body"],
+            ["gh", "pr", "view", "--json", "state,number,url,body"],
             capture_output=True,
             text=True,
             encoding="utf-8",
@@ -394,7 +417,7 @@ def open_pull_request() -> tuple[str, str] | None:
     except (OSError, subprocess.SubprocessError):
         return None
     if done.returncode != 0:
-        return ("", "") if done.returncode == 1 and _NO_PR in done.stderr else None
+        return ("", "", None) if done.returncode == 1 and _NO_PR in done.stderr else None
     try:
         data = json.loads(done.stdout)
     except ValueError:
@@ -402,22 +425,34 @@ def open_pull_request() -> tuple[str, str] | None:
     if not isinstance(data, dict) or not isinstance(data.get("state"), str):
         return None
     if data["state"] != "OPEN":
-        return "", ""
-    url, body = data.get("url"), data.get("body")
+        return "", "", None
+    number, url, body = data.get("number"), data.get("url"), data.get("body")
     match = _PR_URL.fullmatch(url) if isinstance(url, str) else None
-    if match is None or not isinstance(body, str):
+    if (
+        match is None
+        or not isinstance(body, str)
+        or type(number) is not int
+        or not 0 < number < 10**9
+    ):
         return None
-    return match["n"], body
+    return str(number), body, match["repo"] if match["host"] == "github.com" else None
 
 
-def _parse_body(body: str) -> tuple[list[dict], list[str], list[tuple[int, str]]]:
+def _parse_body(body: str, repo: str | None) -> tuple[list[dict], list[str], list[tuple[int, str]]]:
     """A pull request body's list. Unlike the local list, it needs the heading, as in CI: a body
-    without the section has no accepted findings."""
+    without the section has no accepted findings. As in CI, a `deferred` line applies only while
+    its issue is an open issue of the pull request's repository `repo`."""
     if _HEADING.search(_HTML_COMMENT.sub("", body)) is None:
         return [], [], []
     waivers, skipped = parse(body)
     tracked, over = parse_tracked(body)
-    return waivers, [*skipped, *over], tracked
+    applied = []
+    for waiver in waivers:
+        if waiver["kind"] == "deferred" and not issue_is_open(waiver["issue"], repo):
+            skipped.append(f"{waiver['raw']} (#{waiver['issue']} is not an open issue)")
+        else:
+            applied.append(waiver)
+    return applied, [*skipped, *over], tracked
 
 
 def _load_list(
@@ -429,21 +464,23 @@ def _load_list(
 
 def _load(
     for_briefing: bool = False,
-) -> tuple[list[dict], list[str], list[tuple[int, str]], bool]:
-    """As `_load_list`, plus whether the list is a pull request body: the open pull request's
-    body when the branch has one (R17), else the local list.
+) -> tuple[list[dict], list[str], list[tuple[int, str]], bool, str | None]:
+    """As `_load_list`, plus whether the list is a pull request body and the repository its
+    issues are looked up in: the open pull request's body and repository when the branch has
+    one (R17), else the local list and `origin` (`_ORIGIN_REPO`).
 
     Whoever opened the pull request wrote the body, and CI applies a waiver or tracked mark on a
     gate-critical path or for security-reviewer only after a maintainer's confirmation, a check
-    this copy does not have. So `for_briefing` leaves out a body's waiver lines, and `match`
-    reports a body's matches as unconfirmed."""
+    this copy does not make. So `for_briefing` leaves out a body's waiver lines, and `match`
+    reports a body's matches as unconfirmed (confirmation not checked here)."""
     pr = open_pull_request()
     if pr is not None and pr[0]:
+        number, body, repo = pr
         print(
-            f"git-review-accepted-findings: read the list from the body of PR #{pr[0]}",
+            f"git-review-accepted-findings: read the list from the body of PR #{number}",
             file=sys.stderr,
         )
-        waivers, skipped, tracked = _parse_body(pr[1])
+        waivers, skipped, tracked = _parse_body(body, repo)
         if for_briefing and waivers:
             print(
                 f"git-review-accepted-findings: {len(waivers)} waiver line(s) of the pull "
@@ -451,7 +488,7 @@ def _load(
                 file=sys.stderr,
             )
             waivers = []
-        return waivers, skipped, tracked, True
+        return waivers, skipped, tracked, True, repo
     if pr is None:
         print(
             "git-review-accepted-findings: gh could not tell whether this branch has an open "
@@ -461,13 +498,13 @@ def _load(
     refusal = _list_refusal()
     if refusal is not None:
         print(f"git-review-accepted-findings: {LOCAL_LIST} not read: {refusal}", file=sys.stderr)
-        return [], [], [], False
+        return [], [], [], False, _ORIGIN_REPO
     text = _read_regular(LOCAL_LIST, _MAX_LIST_BYTES)
     if text is None:
-        return [], [], [], False
+        return [], [], [], False, _ORIGIN_REPO
     waivers, skipped = parse(text)
     tracked, over = parse_tracked(text)
-    return waivers, [*skipped, *over], tracked, False
+    return waivers, [*skipped, *over], tracked, False, _ORIGIN_REPO
 
 
 def _safe_relative(path: str) -> bool:
@@ -573,14 +610,15 @@ def cmd_brief(run_dir: str) -> int:
     ):
         print("git-review-accepted-findings: the run directory is not private", file=sys.stderr)
         return 2
-    waivers, skipped, tracked = _load_list(for_briefing=True)
+    waivers, skipped, tracked, from_body, repo = _load(for_briefing=True)
     for line in skipped:
         print(f"not applied: {line}")
     records = []
     for number, raw in tracked:
-        record = open_issue(number)
+        record = open_issue(number, repo)
         if record is None:
-            print(f"not applied: {raw} (gh cannot read #{number} as an open issue of origin)")
+            where = "the pull request's repository" if from_body else "origin"
+            print(f"not applied: {raw} (gh cannot read #{number} as an open issue of {where})")
         else:
             records.append(record)
     tracked_briefing = render_tracked_issues_briefing(records)
@@ -633,7 +671,7 @@ def cmd_brief(run_dir: str) -> int:
 
 
 def cmd_match(envelopes: list[str]) -> int:
-    waivers, _, tracked, from_body = _load()
+    waivers, _, tracked, from_body, repo = _load()
     declared = {number for number, _ in tracked}
     entries: list[tuple[str, dict, str, str, int]] = []
     for name in envelopes:
@@ -673,7 +711,7 @@ def cmd_match(envelopes: list[str]) -> int:
                 note = f"marked tracked #{mark}, but another copy of it is not marked the same"
             elif mark not in declared:
                 note = f"marked tracked #{mark}, but the list has no `- tracked #{mark}` line"
-            elif open_issue(mark) is None:
+            elif open_issue(mark, repo) is None:
                 note = f"marked tracked #{mark}, but gh cannot read it as an open issue"
             else:
                 waiver = f"tracked #{mark}"

@@ -88,7 +88,7 @@ def _git(root, *args):
 @pytest.fixture(autouse=True)
 def no_pull_request(monkeypatch):
     """No test asks gh: by default the branch has no open pull request."""
-    monkeypatch.setattr(helper, "open_pull_request", lambda: ("", ""))
+    monkeypatch.setattr(helper, "open_pull_request", lambda: ("", "", None))
 
 
 @pytest.fixture
@@ -391,7 +391,7 @@ def test_the_issue_summary_and_briefing_are_the_same_as_ci(body):
 
 
 def _issues(monkeypatch, **records):
-    def fake(number):
+    def fake(number, repo=helper._ORIGIN_REPO):
         return records.get(str(number))
 
     monkeypatch.setattr(helper, "open_issue", fake)
@@ -599,7 +599,7 @@ def test_brief_and_match_read_the_open_pull_requests_body(checkout, monkeypatch,
     (checkout / ".claude/accepted-review-findings.local.md").write_text(
         "- R6 a_py:3 – accepted\n", encoding="utf-8"
     )
-    monkeypatch.setattr(helper, "open_pull_request", lambda: ("12", PR_BODY))
+    monkeypatch.setattr(helper, "open_pull_request", lambda: ("12", PR_BODY, "o/r"))
     waivers, skipped, tracked = helper._load_list()
     assert [w["rule"] for w in waivers] == ["tool-scoping"]
     assert skipped == [] and [n for n, _ in tracked] == [7]
@@ -626,13 +626,13 @@ def test_brief_and_match_read_the_open_pull_requests_body(checkout, monkeypatch,
 )
 def test_a_body_without_the_section_has_no_list_like_ci(checkout, monkeypatch, body):
     (checkout / ".claude/accepted-review-findings.local.md").write_text(LIST_LINE, encoding="utf-8")
-    monkeypatch.setattr(helper, "open_pull_request", lambda: ("12", body))
+    monkeypatch.setattr(helper, "open_pull_request", lambda: ("12", body, "o/r"))
     assert helper._load_list() == ([], [], [])
     assert review.read_waiver_section(body, lambda _n: True).waivers == ()
 
 
 def test_the_body_is_parsed_like_ci(monkeypatch):
-    monkeypatch.setattr(helper, "open_pull_request", lambda: ("12", PR_BODY))
+    monkeypatch.setattr(helper, "open_pull_request", lambda: ("12", PR_BODY, "o/r"))
     ours = helper._load_list()[0]
     theirs = review.read_waiver_section(PR_BODY, lambda _n: True).waivers
     assert [(w["rule"], w["path"], w["line"], w["fingerprint"]) for w in ours] == [
@@ -653,8 +653,10 @@ def test_brief_never_briefs_a_pull_request_bodys_waivers(checkout, tmp_path, mon
     # Whoever opened the pull request wrote its body; its waivers only mark, in match.
     run = tmp_path / "run"
     run.mkdir(mode=0o700)
-    monkeypatch.setattr(helper, "open_pull_request", lambda: ("12", PR_BODY))
-    monkeypatch.setattr(helper, "open_issue", lambda n: {"number": n, "title": "T", "summary": "S"})
+    monkeypatch.setattr(helper, "open_pull_request", lambda: ("12", PR_BODY, "o/r"))
+    monkeypatch.setattr(
+        helper, "open_issue", lambda n, repo=None: {"number": n, "title": "T", "summary": "S"}
+    )
     assert helper.main(["brief", "--run-dir", str(run)]) == 0
     captured = capsys.readouterr()
     assert "1 waiver line(s) of the pull request body not briefed" in captured.err
@@ -665,7 +667,7 @@ def test_brief_never_briefs_a_pull_request_bodys_waivers(checkout, tmp_path, mon
 
 def test_lines_reads_the_local_list_even_with_an_open_pull_request(checkout, monkeypatch, capsys):
     (checkout / ".claude/accepted-review-findings.local.md").write_text(LIST_LINE, encoding="utf-8")
-    monkeypatch.setattr(helper, "open_pull_request", lambda: ("12", PR_BODY))
+    monkeypatch.setattr(helper, "open_pull_request", lambda: ("12", PR_BODY, "o/r"))
     assert helper.main(["lines"]) == 0
     assert capsys.readouterr().out == LIST_LINE
 
@@ -679,22 +681,26 @@ def _gh_answer(returncode, stdout="", stderr=""):
 URL = "https://github.com/o/r/pull/12"
 
 
-def _view(state, url=URL, body="b"):
-    return json.dumps({"state": state, "url": url, "body": body})
+def _view(state, url=URL, body="b", number=12):
+    return json.dumps({"state": state, "number": number, "url": url, "body": body})
 
 
 @pytest.mark.parametrize(
     ("answer", "want"),
     [
-        (_gh_answer(0, _view("OPEN")), ("12", "b")),
-        (_gh_answer(0, _view("MERGED")), ("", "")),
-        (_gh_answer(0, _view("CLOSED")), ("", "")),
-        (_gh_answer(1, stderr='no pull requests found for branch "x"'), ("", "")),
+        (_gh_answer(0, _view("OPEN")), ("12", "b", "o/r")),
+        # GitHub Enterprise: the body applies, its issues are not looked up (issue #834, Devin).
+        (_gh_answer(0, _view("OPEN", url="https://ghe.example/t/p/pull/12")), ("12", "b", None)),
+        (_gh_answer(0, _view("MERGED")), ("", "", None)),
+        (_gh_answer(0, _view("CLOSED")), ("", "", None)),
+        (_gh_answer(1, stderr='no pull requests found for branch "x"'), ("", "", None)),
         (_gh_answer(1, stderr="gh auth login"), None),
         (_gh_answer(4, stderr="no pull requests found"), None),
         (_gh_answer(0, "not json"), None),
         (_gh_answer(0, _view("OPEN", url="https://x/pull/1")), None),
         (_gh_answer(0, _view("OPEN", body=None)), None),
+        (_gh_answer(0, _view("OPEN", number="12")), None),
+        (_gh_answer(0, _view("OPEN", number=0)), None),
         (_gh_answer(0, json.dumps(["OPEN"])), None),
     ],
 )
@@ -709,3 +715,73 @@ def test_open_pull_request_is_unknown_without_gh(monkeypatch):
 
     monkeypatch.setattr(helper.subprocess, "run", missing)
     assert OPEN_PULL_REQUEST() is None
+
+
+DEFERRED_BODY = (
+    "## Accepted Review Findings\n"
+    f"- tool-scoping s/SKILL.md:15 @{FP} – deferred #5: filed\n"
+    "- R6 a_py:3 – deferred #6: filed\n"
+)
+
+
+def _issue_states(monkeypatch, open_in):
+    """gh answers an issue as open only for the `owner/repo` and numbers in `open_in`."""
+    from types import SimpleNamespace
+
+    asked = []
+
+    def fake_run(cmd, **_kw):
+        asked.append(cmd[2])
+        number = int(cmd[2].rsplit("/", 1)[1])
+        state = "open" if number in open_in.get(repo_of(cmd[2]), ()) else "closed"
+        return SimpleNamespace(returncode=0, stdout=json.dumps([state, False, "T", ""]), stderr="")
+
+    def repo_of(path):
+        return "/".join(path.split("/")[1:3])
+
+    monkeypatch.setattr(helper.subprocess, "run", fake_run)
+    monkeypatch.setattr(helper, "_open_issues", {})
+    return asked
+
+
+def test_a_body_deferred_line_needs_an_open_issue_of_the_pr_repository_like_ci(monkeypatch, capsys):
+    # Issue #834 (CI delta review, Major): a deferred line applies only while its issue is open,
+    # and the issue is looked up in the pull request's repository, never in origin.
+    monkeypatch.setattr(helper, "open_pull_request", lambda: ("12", DEFERRED_BODY, "up/stream"))
+    monkeypatch.setattr(helper, "origin_repository", lambda: "fork/stream")
+    asked = _issue_states(monkeypatch, {"up/stream": {5}, "fork/stream": {6}})
+    waivers, skipped, _ = helper._load_list()
+    assert [w["issue"] for w in waivers] == [5]
+    assert skipped == ["- R6 a_py:3 – deferred #6: filed (#6 is not an open issue)"]
+    assert all(path.startswith("repos/up/stream/") for path in asked)
+    theirs = review.read_waiver_section(DEFERRED_BODY, lambda n: n == 5).waivers
+    assert [w.path for w in theirs] == [w["path"] for w in waivers]
+
+
+def test_a_body_on_another_host_looks_up_no_issue(monkeypatch):
+    monkeypatch.setattr(helper, "open_pull_request", lambda: ("12", DEFERRED_BODY, None))
+    asked = _issue_states(monkeypatch, {})
+    assert helper._load_list()[0] == [] and asked == []
+
+
+def test_tracked_issues_of_a_body_are_looked_up_in_the_pr_repository(
+    checkout, tmp_path, monkeypatch, capsys
+):
+    # Issue #834 (Devin, Codex connector): `tracked #N` of a body names an issue of the PR's
+    # repository; a same-numbered issue of origin (a fork) is another issue.
+    run = tmp_path / "run"
+    run.mkdir(mode=0o700)
+    monkeypatch.setattr(helper, "open_pull_request", lambda: ("12", PR_BODY, "up/stream"))
+    monkeypatch.setattr(helper, "origin_repository", lambda: "fork/stream")
+    asked = _issue_states(monkeypatch, {"up/stream": {7}})
+    assert helper.main(["brief", "--run-dir", str(run)]) == 0
+    assert "tracked issues briefed: 1" in capsys.readouterr().out
+    assert asked == ["repos/up/stream/issues/7"]
+
+
+def test_issue_lookups_are_kept_per_repository(monkeypatch):
+    monkeypatch.setattr(helper, "origin_repository", lambda: "fork/stream")
+    _issue_states(monkeypatch, {"up/stream": {7}})
+    assert helper.issue_is_open(7, "up/stream") is True
+    assert helper.issue_is_open(7, helper._ORIGIN_REPO) is False
+    assert helper.issue_is_open(0, "up/stream") is False
