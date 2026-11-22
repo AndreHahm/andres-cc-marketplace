@@ -1,0 +1,94 @@
+{
+  "entries": [
+    {
+      "disposition": "declined",
+      "finding": "4659251226",
+      "line": 2198,
+      "note": "Needs an R8 exception (requirements decision); R7's deferred waiver covers the reported finding; documented in R18 and docs/ci.md.",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 842,
+      "recorded_at": "2026-11-22T18:27:48+00:00",
+      "rule": "devin-late-tracked-declaration"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4659251269",
+      "line": 258,
+      "note": "cea88816: gh output decoded as UTF-8 in both issue-text reads plus PR-body and confirmation reads.",
+      "path": "plugins/git-kit/scripts/git-review-accepted-findings.py",
+      "pr": 842,
+      "recorded_at": "2026-11-22T18:27:48+00:00",
+      "rule": "devin-utf8-issue-text"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4659251410",
+      "line": 425,
+      "note": "cea88816: R18 and docs/ci.md note issue state is read when a run starts.",
+      "path": "docs/ci-codex-review-user-requirements.md",
+      "pr": 842,
+      "recorded_at": "2026-11-22T18:27:48+00:00",
+      "rule": "devin-issue-closure-no-rerun"
+    },
+    {
+      "disposition": "declined",
+      "finding": "4659251474",
+      "line": 150,
+      "note": "Already disclosed in the PR body's Open Items.",
+      "path": "plugins/git-kit/skills/cross-model-review/references/codex-pass-assembly.md",
+      "pr": 842,
+      "recorded_at": "2026-11-22T18:27:48+00:00",
+      "rule": "devin-missing-skill-eval"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4659251522",
+      "line": 1355,
+      "note": "cea88816: test generates and checks the security prompt.",
+      "path": "tests/marketplace_ci/test_accepted_review_findings.py",
+      "pr": 842,
+      "recorded_at": "2026-11-22T18:27:48+00:00",
+      "rule": "devin-security-prompt-test"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4659299249",
+      "line": 575,
+      "note": "cea88816: cmd_match groups copies across envelopes.",
+      "path": "plugins/git-kit/scripts/git-review-accepted-findings.py",
+      "pr": 842,
+      "recorded_at": "2026-11-22T18:27:48+00:00",
+      "rule": "coderabbit-every-copy-local"
+    },
+    {
+      "disposition": "declined",
+      "finding": "4659299252",
+      "line": 2333,
+      "note": "Same point-in-time read as R7 deferred; a re-check needs GitHub access in the credential-free reviewer job.",
+      "path": "scripts/marketplace_ci/__main__.py",
+      "pr": 842,
+      "recorded_at": "2026-11-22T18:27:48+00:00",
+      "rule": "coderabbit-recheck-issue-state"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4659299257",
+      "line": 466,
+      "note": "cea88816: apply_waivers groups copies by rule, path and line.",
+      "path": "scripts/marketplace_ci/claude_review.py",
+      "pr": 842,
+      "recorded_at": "2026-11-22T18:27:48+00:00",
+      "rule": "coderabbit-every-copy-claude"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "coderabbit-review-outside-diff-review.py-2347",
+      "line": 2347,
+      "note": "cea88816: merge_carried_findings and carry_findings block on differing carried marks.",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 842,
+      "recorded_at": "2026-11-22T18:27:48+00:00",
+      "rule": "coderabbit-every-copy-carried"
+    }
+  ]
+}
