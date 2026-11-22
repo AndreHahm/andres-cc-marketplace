@@ -1467,10 +1467,13 @@ _WAIVER_SECTION = re.compile(r"^##\s+Accepted Review Findings\s*$", re.IGNORECAS
 _WAIVER_KINDS = ("accepted", "residual", "deferred", "refuted")
 _FINGERPRINT_LEN = 32
 _FINGERPRINT = re.compile(rf"[0-9a-f]{{{_FINGERPRINT_LEN}}}|-")
+# Line and issue numbers are at most 9 digits: a longer one is reported as malformed, never
+# passed to int(), which raises past Python's digit limit (PR #842).
 _WAIVER_LINE = re.compile(
-    r"^\s*[-*]\s+(?P<rule>\S(?:.*?\S)?)\s+(?P<path>\S+?):(?P<line>[0-9]+)"
+    r"^\s*[-*]\s+(?P<rule>\S(?:.*?\S)?)\s+(?P<path>\S+?):(?P<line>[0-9]{1,9})"
     rf"(?:\s+@(?P<fp>[0-9a-f]{{{_FINGERPRINT_LEN}}}|-))?\s+[-–—]+\s+"
-    r"(?P<kind>accepted|residual|deferred|refuted)(?![\w-])(?:\s+#(?P<issue>[0-9]+)(?![\w-]))?",
+    r"(?P<kind>accepted|residual|deferred|refuted)(?![\w-])"
+    r"(?:\s+#(?P<issue>[0-9]{1,9})(?![\w-]))?",
     re.IGNORECASE,
 )
 # The same shape with any kind word and any `@` token, to say why a line is not a waiver.
@@ -1486,7 +1489,7 @@ _MAX_WAIVERS = 200
 _SECURITY_REVIEWER = "security-reviewer"
 # R18: `- tracked #<issue>`, optionally followed by `: <reason>`.
 _TRACKED_LINE = re.compile(
-    r"^\s*[-*]\s+tracked\s+#(?P<issue>[0-9]+)(?![\w-])\s*(?::.*)?$", re.IGNORECASE
+    r"^\s*[-*]\s+tracked\s+#(?P<issue>[0-9]{1,9})(?![\w-])\s*(?::.*)?$", re.IGNORECASE
 )
 MAX_TRACKED_ISSUES = 10
 

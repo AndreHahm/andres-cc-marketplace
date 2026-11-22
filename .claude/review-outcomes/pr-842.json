@@ -82,6 +82,16 @@
     },
     {
       "disposition": "fixed",
+      "finding": "4659383391",
+      "line": 448,
+      "note": "4eebeef7: the Claude mark check counts every in-scope copy, any severity.",
+      "path": "scripts/marketplace_ci/claude_review.py",
+      "pr": 842,
+      "recorded_at": "2026-11-22T18:50:11+00:00",
+      "rule": "coderabbit-every-copy-claude-severity"
+    },
+    {
+      "disposition": "fixed",
       "finding": "coderabbit-review-outside-diff-review.py-2347",
       "line": 2347,
       "note": "cea88816: merge_carried_findings and carry_findings block on differing carried marks.",

@@ -1566,6 +1566,22 @@ def test_a_marked_finding_on_a_changed_file_is_kept_while_its_issue_applies(git_
     assert released.blocking == () and released.waived == ()
 
 
+def test_a_line_or_issue_number_over_nine_digits_is_malformed_not_a_crash():
+    """PR #842: thousands of digits made int() raise; such a line is now just malformed."""
+    huge = "9" * 5000
+    section = read_waiver_section(
+        _section(
+            f"- tracked #{huge}",
+            f"- R6 a_py:3 – deferred #{huge}",
+            f"- R6 a_py:{huge} – accepted",
+            "- tracked #123456789",
+        ),
+        lambda n: n == 123456789,
+    )
+    assert section.waivers == () and section.tracked == (123456789,)
+    assert len(section.malformed) == 3
+
+
 def _locale_decoding_run(answer):
     """A `subprocess.run` stand-in that decodes `gh`'s UTF-8 output the way text mode does: with
     the `encoding` the caller passed, else a legacy Windows locale's cp1252 (PR #842 round 1)."""

@@ -550,6 +550,18 @@ def test_brief_tells_a_challenger_where_the_mark_goes(checkout, tmp_path, monkey
     assert "[end tracked issues]" in text
 
 
+def test_a_number_over_nine_digits_is_not_applied_not_a_crash(checkout, capsys):
+    """PR #842: thousands of digits made int() raise; such a line is now just not applied."""
+    huge = "9" * 5000
+    (checkout / ".claude/accepted-review-findings.local.md").write_text(
+        f"- tracked #{huge}\n- R6 a_py:3 – deferred #{huge}\n- R6 a_py:{huge} – accepted\n",
+        encoding="utf-8",
+    )
+    assert helper.main(["lines"]) == 0
+    out = capsys.readouterr().out
+    assert out.count("not applied: ") == 3
+
+
 def test_open_issue_reads_the_issue_text_as_utf8(monkeypatch):
     """PR #842 round 1: `gh` prints UTF-8, which a legacy Windows locale would misread."""
     from types import SimpleNamespace
