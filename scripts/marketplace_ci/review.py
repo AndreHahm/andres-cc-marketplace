@@ -2121,7 +2121,13 @@ def carry_findings(
         # of the body applies to it now: then it is carried as waived, so a reviewer that leaves
         # it out does not lose it, and removing the waiver makes it block again (R7).
         released = resolved and not unchanged[path] and not is_waived
-        if released and not any(w.rule == rule and w.path == path for w in waivers):
+        # A marked finding whose issue applies now is kept like one a waiver line names (R18).
+        tracked_now = entry.get("tracked_issue") in tracked
+        if (
+            released
+            and not tracked_now
+            and not any(w.rule == rule and w.path == path for w in waivers)
+        ):
             continue
         fingerprint = entry.get("fingerprint")
         if not (isinstance(fingerprint, str) and _FINGERPRINT.fullmatch(fingerprint)):
