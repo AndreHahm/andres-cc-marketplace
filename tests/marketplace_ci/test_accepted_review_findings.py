@@ -546,9 +546,29 @@ def test_the_briefing_names_one_line_and_only_waivers_still_at_the_head(git_repo
     assert "by rule and path" not in instruction
     assert "rule, path and line" in instruction
     assert "same rule on another line of the same path" in instruction
+    assert "another rule on the named line" in instruction
+    assert "different problem" not in instruction  # the key cannot tell two problems apart
     # Nothing left to brief: no briefing at all.
     stale = [w for w in waivers if w.path == "s/b.md" and w.line == 1]
     assert render_accepted_findings_briefing(stale, lambda *_a: None) == ""
+
+
+def test_a_path_that_became_a_directory_is_not_read_as_file_text(git_repo):
+    """PR #841 review: `git show <rev>:<dir>` prints the directory's listing; `cat-file blob`
+    refuses it, so neither a waiver for the old file nor a finding on it reads the listing."""
+    from scripts.marketplace_ci.review import locate_fingerprint
+
+    _commit(git_repo, "file", **{"s/b.md": "x\n"})
+    _git(git_repo.root, "rm", "-q", "s/b.md")
+    _commit(git_repo, "dir", **{"s/b.md/inner.md": "y\n"})
+    assert locate_fingerprint(git_repo.root, "HEAD", "s/b.md", "-", 0) is None
+    assert (
+        locate_fingerprint(git_repo.root, "HEAD", "s/b.md", line_fingerprint("inner.md"), 3) is None
+    )
+    assert fingerprint_at(git_repo.root, "HEAD", "s/b.md", 3) is None
+    # a regular file still reads as before
+    assert locate_fingerprint(git_repo.root, "HEAD", "s/b.md/inner.md", "-", 0) == 0
+    assert fingerprint_at(git_repo.root, "HEAD", "s/b.md/inner.md", 1) == line_fingerprint("y")
 
 
 def test_the_claude_prompts_brief_only_waivers_still_at_the_head_sha(git_repo, monkeypatch):

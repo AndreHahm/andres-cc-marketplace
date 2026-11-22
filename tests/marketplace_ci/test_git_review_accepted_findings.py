@@ -179,6 +179,7 @@ def test_brief_names_one_line_and_only_waivers_still_in_the_working_tree(checkou
         ("R7", "s/SKILL.md", 0),
     ]
     assert "same rule on another line of the same path" in lines[1]
+    assert "another rule on the named line" in lines[1] and "different problem" not in lines[1]
     assert "by rule (axis) and path" not in lines[1]
 
 
