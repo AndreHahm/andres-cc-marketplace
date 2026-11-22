@@ -614,6 +614,7 @@ _GATES = {
     "REVIEW_STATUS": "clean",
     "CARRIED_BLOCKING": "0",
     "BYPASS_LABEL_RUN": "false",
+    "RECHECK": "0",
     "IS_DRAFT": "false",
     "EVENT_HEAD_SHA": "a" * 40,
 }
@@ -739,6 +740,16 @@ _PQ_SKIP_DEPENDABOT = {**_PQ_SKIP_BYPASSED, "BYPASSED": "false", "SKIP_CODEX_REV
         ("#758 skipped node-tests", {"NODE_TESTS_RESULT": "skipped"}, False),
         ("#758 cancelled node-tests", {"NODE_TESTS_RESULT": "cancelled"}, False),
         ("#758 node-tests result missing", {"NODE_TESTS_RESULT": ""}, False),
+        ("R19 a waiver lapsed during the run", {"RECHECK": "lapsed"}, False),
+        ("R19 the waivers could not be re-checked", {"RECHECK": "error"}, False),
+        ("R19 re-check result missing", {"RECHECK": ""}, False),
+        ("R19 base predates the re-check", {"RECHECK": "unsupported"}, True),
+        ("R19 a valid bypass needs no re-check", {"RECHECK": "", "BYPASSED": "true"}, True),
+        (
+            "R19 a draft skip needs no re-check",
+            {**_SKIPPED, "IS_DRAFT": "true", "BYPASS_ELIGIBLE": "true", "RECHECK": ""},
+            True,
+        ),  # fmt: skip
         (
             "#758 the Codex bypass does not clear a failed node-tests",
             {"NODE_TESTS_RESULT": "failure", "BYPASSED": "true"},
@@ -930,6 +941,106 @@ def test_publish_on_a_dependabot_skipped_codex_review(
     }
     result = subprocess.run(["bash", "-e", str(script)], env=env, capture_output=True, text=True)
     assert (result.returncode == 0) is passes, (result.stdout, result.stderr)
+
+
+def _recheck_script() -> str:
+    jobs = yaml.safe_load(_WORKFLOW.read_text(encoding="utf-8"))["jobs"]
+    steps = [
+        s
+        for s in jobs["publish"]["steps"]
+        if s.get("name") == "Re-check the waivers the run applied (R19)"
+    ]
+    assert len(steps) == 1
+    return steps[0]["run"]
+
+
+_FAKE_UV = """#!/bin/sh
+case "$*" in
+  *" --help"*) exit 2 ;;
+  *fetch-accepted-findings*) exit "$FAKE_FETCH" ;;
+  *recheck-waivers*) echo "lapsed: R6 a:1: gone"; exit "$FAKE_RECHECK" ;;
+esac
+exit 9
+"""
+
+# `git grep` at the base SHA: 0 the base has the re-check, 1 it does not, anything else failed.
+_FAKE_GIT = """#!/bin/sh
+[ "$1" = grep ] && [ "$5" = "$BASE_SHA" ] || exit 99
+exit "$FAKE_BASE"
+"""
+
+
+def test_the_base_lookups_grep_for_the_real_subcommand_names():
+    """R19: the publish steps tell a base without the re-check from its code by grepping for the
+    subcommand's quoted name. A name spelled another way would read as "unsupported", a pass."""
+    main_py = (_WORKFLOW.parents[2] / "scripts/marketplace_ci/__main__.py").read_text("utf-8")
+    claude = (_WORKFLOW.parent / "claude-review-ci.yml").read_text(encoding="utf-8")
+    for name, workflow in (
+        ("recheck-waivers", _recheck_script()),
+        ("narrow-accepted-findings", claude),
+    ):
+        literal = f'"{name}"'
+        assert f"add_parser(\n        {literal}," in main_py or f"add_parser({literal}" in main_py
+        assert f"grep -q -F '{literal}'" in workflow
+
+
+@pytest.mark.parametrize(
+    ("case", "files", "env", "status"),
+    [
+        ("all waivers hold", ("result",), {}, "0"),
+        ("a waiver lapsed", ("result", "carried"), {"FAKE_RECHECK": "1"}, "lapsed"),
+        ("unreadable input", ("result",), {"FAKE_RECHECK": "2"}, "error"),
+        ("fresh read fails", ("result",), {"FAKE_FETCH": "1"}, "error"),
+        ("base predates the re-check", ("result",), {"FAKE_BASE": "1"}, "unsupported"),
+        ("base lookup fails", ("result",), {"FAKE_BASE": "128"}, "error"),
+        ("result artifact missing", (), {}, "error"),
+        ("carried artifact missing", ("result",), {"CARRIED_BLOCKING": "0"}, "error"),
+        ("nothing to re-check", (), {"CODEX_RESULT": "skipped"}, "0"),
+        ("failed review without a result", (), {"CODEX_RESULT": "failure"}, "0"),
+    ],
+)
+def test_publish_recheck_status(case, files, env, status, tmp_path):
+    runner = tmp_path / "runner"
+    for name, rel in (("result", "result/codex-review-result.json"),
+                      ("carried", "carried/carried-findings.json")):  # fmt: skip
+        if name in files:
+            (runner / "recheck" / rel).parent.mkdir(parents=True)
+            (runner / "recheck" / rel).write_text("[]", encoding="utf-8")
+    (runner / "recheck").mkdir(parents=True, exist_ok=True)
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    for name, text in (("uv", _FAKE_UV), ("git", _FAKE_GIT)):
+        (bin_dir / name).write_text(text, encoding="utf-8")
+        (bin_dir / name).chmod(0o755)
+    script = tmp_path / "recheck.sh"
+    script.write_text(_recheck_script(), encoding="utf-8")
+    output, summary = tmp_path / "out", tmp_path / "summary"
+    base = {
+        "PATH": f"{bin_dir}:{os.environ['PATH']}",
+        "RUNNER_TEMP": str(runner),
+        "GITHUB_OUTPUT": str(output),
+        "GITHUB_STEP_SUMMARY": str(summary),
+        "REPO": "o/r",
+        "PR_NUMBER": "7",
+        "CODEX_RESULT": "success",
+        "SCOPE_RESULT": "success",
+        "CARRIED_BLOCKING": "",
+        "BASE_SHA": "b" * 40,
+        "FAKE_BASE": "0",
+        "FAKE_FETCH": "0",
+        "FAKE_RECHECK": "0",
+    }
+    result = subprocess.run(
+        ["bash", "-eo", "pipefail", str(script)],
+        env={**base, **env},
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, (case, result.stdout, result.stderr)
+    assert output.read_text(encoding="utf-8").strip() == f"status={status}", case
+    if status == "lapsed":
+        # indented as a code block, so waiver text cannot end it
+        assert "\n    lapsed: R6 a:1: gone\n" in summary.read_text(encoding="utf-8")
 
 
 def _fake_gh(tmp_path, live: str) -> str:

@@ -500,7 +500,8 @@ review` is the gate after the PR exists and reviews only the delta, to cut OpenA
   carried as waived with its mark, so it blocks again once the issue closes or its line is removed; like a
   finding a waiver line names, a marked one whose issue applies is kept after its file changes while
   `locate_fingerprint` still finds its line. The job summary lists the tracked findings. As for
-  `deferred`, issue state is read once, when a run starts: closing an issue takes effect at the next run, and
+  `deferred`, issue state is read when a run starts and again when its result is published (R19 below):
+  closing an issue takes effect at the next run, or at this one if it has not published yet, and
   a `tracked` line added after a run does not mark a finding it already reported, since a body edit makes no
   Codex call (R8); a `– deferred #<issue>` waiver line names that finding. The Claude delta review and the local
   parity review get the same briefing and rule through the same commands; `cross-model-review`'s helper
@@ -508,6 +509,40 @@ review` is the gate after the PR exists and reviews only the delta, to cut OpenA
   applies no confirmation, as for its waivers. Accepted residual (R18): a reviewer can mark a different
   defect with a broadly worded issue, on a path needing no confirmation or one a maintainer confirmed for
   that issue, and issue text can talk a briefed reviewer into leaving a finding out.
+- **Waivers re-checked at publish (R19, issue #833).** `compute-scope` and `codex-review` read the waivers,
+  confirmations and issue states when the run starts, and removing a confirmation or closing an issue
+  starts no run. So `publish` (which has `issues: read`) downloads the `codex-review-result` and
+  `carried-findings` artifacts, runs `fetch-accepted-findings` again with its base-restored code, and
+  `recheck-waivers` re-matches every entry those files recorded as waived (`recheck_applied_waivers`):
+  only the waiver line the run applied, as recorded (its first 300 characters), or the same tracked
+  issue counts, re-checked with `find_waiver`/`find_tracked` against the fresh section, open issues and
+  confirmations, so a line added during the run does not take the applied one's place. A carried entry of
+  unknown origin (`_origin_unknown`: `reviewer: carried` with no or an empty `origin_reviewer`) still needs
+  a confirmation; that is stricter than `carry_findings`' own test, since the carried list's copy never
+  has the key, so it can only block a waiver the carry let through (a carried finding whose anchor entry
+  named no reviewer), never pass one. A
+  reviewer may leave a briefed finding out, so `run-codex-review` records the waiver lines it briefed
+  (`briefed_waivers`, from the same `briefed_waivers` function the briefing uses; none when only
+  `security-reviewer` ran), and `recheck_briefed_waivers` requires each to still be a valid line. So that
+  a later run without a Codex call (R8) does not lose a lapsed one, `carry_findings` turns the anchor's
+  `briefed_waivers` into waived entries (`_briefed_entries`, reviewer `briefed-waiver`, `Major`, skipped
+  when the anchor already records that rule, path and fingerprint): carried as waived while the waiver
+  holds, blocking once it lapses, and dropped once its flagged line changes. Nobody can tell whether the
+  reviewer would have reported it, so a later review that does not report it does not release it: restore
+  the waiver line, change the flagged line, or attest a bypass. The lines are recorded uncut, so a long
+  one can still be parsed when carried; they count toward the carry's 500-entry input cap. The Claude delta review does
+  not re-check the waivers it briefs (advisory; R19 says so). A waiver
+  that no longer holds fails `Publish Codex policy result` and is listed in the job summary (as an
+  indented block, so waiver text cannot end it); an artifact that should exist but cannot be downloaded,
+  a result without a findings list (other than `could_not_run`), or a fresh read that fails, fails it
+  too. The re-check is skipped on a valid bypass. Whether the base branch has `recheck-waivers` is read
+  from its code (`git grep` at the base SHA), not from a command that can fail for other reasons: on a
+  base without it (only the PR that adds it) the re-check passes with a note, and a lookup that fails
+  fails closed. The Claude delta review's publish step runs `fetch-accepted-findings` again and
+  `narrow-accepted-findings` (`narrow_accepted_findings`) to keep only the waiver lines, tracked issues,
+  open issues and confirmations both reads hold, before it marks anything waived; a fresh read that fails
+  marks nothing waived. Accepted residual: a waiver withdrawn after the publishing step has read it takes
+  effect at the next run.
 - **Every reviewer reads the same list (R17, issue #808).** Before a pull request exists the list is the
   gitignored `.claude/accepted-review-findings.local.md` (same line format, heading optional);
   `create-pr` copies its lines into the body. Where each reviewer reads it:

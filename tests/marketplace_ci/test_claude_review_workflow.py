@@ -109,7 +109,11 @@ def test_every_job_has_least_privilege_and_a_timeout():
         "issues": "read",
     }
     assert JOBS["claude-review"]["permissions"] == {"contents": "read", "pull-requests": "read"}
-    assert JOBS["claude-publish"]["permissions"] == {"contents": "read", "pull-requests": "write"}
+    assert JOBS["claude-publish"]["permissions"] == {
+        "contents": "read",
+        "pull-requests": "write",
+        "issues": "read",
+    }
     for spec in JOBS.values():
         assert isinstance(spec["timeout-minutes"], int)
     assert JOBS["claude-review"]["timeout-minutes"] == cr.REVIEW_JOB_TIMEOUT_MINUTES

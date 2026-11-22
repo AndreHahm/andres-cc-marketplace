@@ -79,6 +79,9 @@ CRITICAL_HANDLERS = (
     "_handle_resolve_attested_actor",
     # the shared anchor lookup both review workflows run from base-restored code
     "_handle_find_review_anchor",
+    # R19's re-checks, run by both publish jobs from base-restored code
+    "_handle_recheck_waivers",
+    "_handle_narrow_accepted_findings",
 )
 
 # The workflow's own hard-refuse gate pathspec -- a superset of TIER1_MODULES'
@@ -153,6 +156,28 @@ def test_resolve_attested_actor_never_imports_tier2_modules():
             "/nonexistent/comments.json",
             "--head-sha",
             "x",
+        ]
+    )
+
+
+def test_recheck_waivers_never_imports_tier2_modules(tmp_path):
+    accepted = tmp_path / "accepted.json"
+    accepted.write_text('{"body": "", "open_issues": [], "confirmed": []}', encoding="utf-8")
+    _assert_only_tier1_and_actually_ran(["recheck-waivers", "--accepted-findings", str(accepted)])
+
+
+def test_narrow_accepted_findings_never_imports_tier2_modules(tmp_path):
+    accepted = tmp_path / "accepted.json"
+    accepted.write_text('{"body": "", "open_issues": [], "confirmed": []}', encoding="utf-8")
+    _assert_only_tier1_and_actually_ran(
+        [
+            "narrow-accepted-findings",
+            "--start",
+            str(accepted),
+            "--fresh",
+            str(accepted),
+            "--output",
+            str(tmp_path / "out.json"),
         ]
     )
 
