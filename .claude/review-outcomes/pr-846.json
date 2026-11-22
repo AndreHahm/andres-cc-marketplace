@@ -1,0 +1,57 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4659884072",
+      "note": "fixed in 8e859bcd",
+      "pr": 846,
+      "recorded_at": "2026-11-22T21:02:18+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4659884129",
+      "note": "fixed in 8e859bcd",
+      "pr": 846,
+      "recorded_at": "2026-11-22T21:02:19+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4659884200",
+      "note": "fixed in 8e859bcd",
+      "pr": 846,
+      "recorded_at": "2026-11-22T21:02:20+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4659884284",
+      "note": "fixed in 8e859bcd",
+      "pr": 846,
+      "recorded_at": "2026-11-22T21:02:20+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4659885224",
+      "note": "fixed in 8e859bcd",
+      "pr": 846,
+      "recorded_at": "2026-11-22T21:02:19+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-delta-review-418",
+      "note": "deferred PR-body waiver now needs an open issue of the PR repository; fixed in 8e859bcd",
+      "path": "plugins/git-kit/scripts/git-review-accepted-findings.py",
+      "pr": 846,
+      "recorded_at": "2026-11-22T21:02:21+00:00",
+      "rule": "correctness"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "ci-delta-review-690",
+      "note": "unconfirmed flag kept by design, no copy of the CI confirmation policy; wording clarified in 8e859bcd",
+      "path": "plugins/git-kit/scripts/git-review-accepted-findings.py",
+      "pr": 846,
+      "recorded_at": "2026-11-22T21:02:21+00:00",
+      "rule": "correctness"
+    }
+  ]
+}
