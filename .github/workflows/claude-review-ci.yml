@@ -42,7 +42,7 @@ jobs:
       switched_off: ${{ steps.settings.outputs.switched_off }}
       model: ${{ steps.settings.outputs.model }}
       pass_minutes: ${{ steps.settings.outputs.pass_minutes }}
-      has_paths: ${{ steps.scope.outputs.has_paths }}
+      general: ${{ steps.prompts.outputs.general }}
       security: ${{ steps.prompts.outputs.security }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
@@ -207,10 +207,11 @@ jobs:
           CLAUDE_KIT_REVIEW_TIMEOUT_MS: ${{ vars.CLAUDE_KIT_REVIEW_TIMEOUT_MS }}
         run: uv run --no-sync python -m scripts.marketplace_ci claude-review-settings --github-output "$GITHUB_OUTPUT"
 
-      # R3: the PR head the newest earlier run of this workflow reviewed, through the lookup the
-      # Codex review shares (find-review-anchor), never from anything the PR author can edit.
-      # A lookup that cannot run leaves no anchor: the whole PR is reviewed.
-      - name: Find the last reviewed head
+      # R3: each pass's anchor, the PR head the newest earlier run of this workflow in which that
+      # pass finished reviewed, through the lookup the Codex review shares (find-review-anchor),
+      # never from anything the PR author can edit. A lookup that cannot run leaves that pass no
+      # anchor: it reviews the whole PR.
+      - name: Find the last reviewed heads
         id: anchor
         if: steps.settings.outputs.switched_off == 'false'
         env:
@@ -222,60 +223,66 @@ jobs:
           EVENT_ACTION: ${{ github.event.action }}
           IS_DRAFT: ${{ github.event.pull_request.draft }}
         run: |
-          if ! uv run --no-sync python -m scripts.marketplace_ci find-review-anchor --profile claude \
-              --repo "$REPO" --run-id "$RUN_ID" --pr-number "$PR_NUMBER" --head-ref "$HEAD_REF" \
-              --event-action "$EVENT_ACTION" --is-draft "$IS_DRAFT" --temp-dir "$RUNNER_TEMP/anchor" \
-              --github-output "$RUNNER_TEMP/anchor-output"; then
-            echo "::warning::the anchor lookup could not run; no anchor, the whole PR is reviewed"
-            : > "$RUNNER_TEMP/anchor-output"
-          fi
-          anchor=$(sed -n 's/^sha=//p' "$RUNNER_TEMP/anchor-output" | tail -n 1)
-          if ! printf '%s' "$anchor" | grep -Eq '^[0-9a-f]{40}$'; then
-            anchor=""
-          fi
-          # An anchor this checkout cannot get (force-pushed away) is no anchor: R3 reviews the
-          # whole PR then, rather than skipping what changed since. The fetch is retried after 1
-          # and 3 seconds, like the Codex review's (Codex R9), so a short git error does not cost a
-          # whole-PR review.
-          if [ -n "$anchor" ] && ! git cat-file -e "$anchor^{commit}" 2>/dev/null; then
-            fetched=false
-            for delay in 1 3 0; do
-              if git fetch --no-tags --quiet "https://github.com/$REPO" "$anchor"; then
-                fetched=true
-                break
-              fi
-              sleep "$delay"
-            done
-            if [ "$fetched" != true ]; then
-              echo "::notice::last reviewed head $anchor cannot be fetched; the whole PR is reviewed"
+          for pass in general security; do
+            out="$RUNNER_TEMP/anchor-output-$pass"
+            if ! uv run --no-sync python -m scripts.marketplace_ci find-review-anchor --profile claude \
+                --pass "$pass" --repo "$REPO" --run-id "$RUN_ID" --pr-number "$PR_NUMBER" \
+                --head-ref "$HEAD_REF" --event-action "$EVENT_ACTION" --is-draft "$IS_DRAFT" \
+                --temp-dir "$RUNNER_TEMP/anchor-$pass" --github-output "$out"; then
+              echo "::warning::the $pass pass's anchor lookup could not run; no anchor, it reviews the whole PR"
+              : > "$out"
+            fi
+            anchor=$(sed -n 's/^sha=//p' "$out" | tail -n 1)
+            if ! printf '%s' "$anchor" | grep -Eq '^[0-9a-f]{40}$'; then
               anchor=""
             fi
-          fi
-          echo "anchor: ${anchor:-none (whole PR is reviewed)}"
-          echo "sha=$anchor" >> "$GITHUB_OUTPUT"
+            # An anchor this checkout cannot get (force-pushed away) is no anchor: R3 reviews the
+            # whole PR then, rather than skipping what changed since. The fetch is retried after 1
+            # and 3 seconds, like the Codex review's (Codex R9), so a short git error does not cost
+            # a whole-PR review.
+            if [ -n "$anchor" ] && ! git cat-file -e "$anchor^{commit}" 2>/dev/null; then
+              fetched=false
+              for delay in 1 3 0; do
+                if git fetch --no-tags --quiet "https://github.com/$REPO" "$anchor"; then
+                  fetched=true
+                  break
+                fi
+                sleep "$delay"
+              done
+              if [ "$fetched" != true ]; then
+                echo "::notice::the $pass pass's last reviewed head $anchor cannot be fetched; it reviews the whole PR"
+                anchor=""
+              fi
+            fi
+            echo "$pass anchor: ${anchor:-none (whole PR is reviewed)}"
+            echo "${pass}_sha=$anchor" >> "$GITHUB_OUTPUT"
+          done
 
-      # R3, R4: the reviewed paths, narrowed to what changed since the anchor, with the Claude
-      # exclusion set (tests, fixtures and nested evals are reviewed).
+      # R3, R4: each pass's reviewed paths, narrowed to what changed since its anchor, with the
+      # Claude exclusion set (tests, fixtures and nested evals are reviewed).
       - name: Compute the reviewed paths
         id: scope
         if: steps.settings.outputs.switched_off == 'false'
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          ANCHOR_SHA: ${{ steps.anchor.outputs.sha }}
+          GENERAL_ANCHOR: ${{ steps.anchor.outputs.general_sha }}
+          SECURITY_ANCHOR: ${{ steps.anchor.outputs.security_sha }}
         run: |
+          set -euo pipefail
           mkdir -p "$RUNNER_TEMP/claude-scope"
-          uv run --no-sync python -m scripts.marketplace_ci check-scope-bypass --base-sha "$BASE_SHA" \
-            --ci-delta --review-exclusions claude --anchor-sha "$ANCHOR_SHA" \
-            --emit-review-paths "$RUNNER_TEMP/claude-scope/scope.json" > /dev/null
-          count=$(jq '.paths | length' "$RUNNER_TEMP/claude-scope/scope.json")
-          echo "reviewed paths: $count"
-          echo "has_paths=$([ "$count" -gt 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          for pair in "scope:$GENERAL_ANCHOR" "security-scope:$SECURITY_ANCHOR"; do
+            name="${pair%%:*}"; anchor="${pair#*:}"
+            uv run --no-sync python -m scripts.marketplace_ci check-scope-bypass --base-sha "$BASE_SHA" \
+              --ci-delta --review-exclusions claude --anchor-sha "$anchor" \
+              --emit-review-paths "$RUNNER_TEMP/claude-scope/$name.json" > /dev/null
+            echo "$name: $(jq '.paths | length' "$RUNNER_TEMP/claude-scope/$name.json") reviewed paths"
+          done
 
       # R5: the prompt template, REVIEW.md and the security-reviewer instructions come from the
       # base SHA, never from the PR.
       - name: Build the reviewer prompts from the base SHA
         id: prompts
-        if: steps.scope.outputs.has_paths == 'true'
+        if: steps.scope.outcome == 'success'
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
@@ -290,15 +297,20 @@ jobs:
           git show "$BASE_SHA:.claude/agents/security-reviewer.md" > "$trusted/security-reviewer.md" \
             || { echo "::error::the base SHA has no .claude/agents/security-reviewer.md"; exit 1; }
           uv run --no-sync python -m scripts.marketplace_ci claude-review-prompts \
-            --scope "$RUNNER_TEMP/claude-scope/scope.json" --template "$trusted/prompt.md" \
+            --scope "$RUNNER_TEMP/claude-scope/scope.json" \
+            --security-scope "$RUNNER_TEMP/claude-scope/security-scope.json" --template "$trusted/prompt.md" \
             --review-md "$trusted/REVIEW.md" --security-md "$trusted/security-reviewer.md" \
             --base-sha "$BASE_SHA" --head-sha "$HEAD_SHA" \
             --out-dir "$RUNNER_TEMP/claude-scope/prompts" --github-output "$GITHUB_OUTPUT"
-          # R5: the pull request's own patch for the reviewed paths (the review job cannot read .git).
-          uv run --no-sync python -m scripts.marketplace_ci claude-review-patch \
-            --scope "$RUNNER_TEMP/claude-scope/scope.json" \
-            --base-sha "$BASE_SHA" --head-sha "$HEAD_SHA" \
-            --out "$RUNNER_TEMP/claude-scope/prompts/delta.diff"
+          # R5: the pull request's own patch for each pass's reviewed paths (the review job cannot
+          # read .git); the review job places each at the one path prompt.md names before its pass.
+          for pair in "general:scope" "security:security-scope"; do
+            pass="${pair%%:*}"; name="${pair#*:}"
+            uv run --no-sync python -m scripts.marketplace_ci claude-review-patch \
+              --scope "$RUNNER_TEMP/claude-scope/$name.json" \
+              --base-sha "$BASE_SHA" --head-sha "$HEAD_SHA" \
+              --out "$RUNNER_TEMP/claude-scope/prompts/$pass.diff"
+          done
 
       - name: Upload the review scope
         if: steps.scope.outcome == 'success'
@@ -312,8 +324,10 @@ jobs:
   claude-review:
     name: Run Claude review passes
     needs: claude-scope
-    # R3: nothing left to review means no API call.
-    if: needs.claude-scope.outputs.switched_off == 'false' && needs.claude-scope.outputs.has_paths == 'true'
+    # R3: nothing left to review for either pass means no API call.
+    if: >-
+      needs.claude-scope.outputs.switched_off == 'false' &&
+      (needs.claude-scope.outputs.general == 'true' || needs.claude-scope.outputs.security == 'true')
     runs-on: ubuntu-latest
     # Both passes at the full per-pass timeout plus setup (R8). claude_review.py's
     # REVIEW_JOB_TIMEOUT_MINUTES must match; the settings check refuses a timeout that does not fit.
@@ -379,13 +393,15 @@ jobs:
         run: uv sync --locked --no-config --no-install-project --only-group headless-review --no-build
 
       # R5: the patch goes inside the reviewed tree (Claude may read nothing outside it), placed after
-      # the checkout so no pull request file can stand in for it. prompt.md names this path.
-      - name: Place the reviewed patch in the checkout
+      # the checkout so no pull request file can stand in for it. prompt.md names this path; each
+      # pass gets its own patch there (R3), placed right before it.
+      - name: Place the general pass's patch in the checkout
+        if: needs.claude-scope.outputs.general == 'true'
         run: |
           set -euo pipefail
           rm -rf -- pr/.claude-review-input
           mkdir -- pr/.claude-review-input
-          cp -- "$RUNNER_TEMP/claude-scope/prompts/delta.diff" pr/.claude-review-input/delta.diff
+          cp -- "$RUNNER_TEMP/claude-scope/prompts/general.diff" pr/.claude-review-input/delta.diff
 
       # Right before each API call: the PR must still be ready, at the head this run reviews. A
       # failed lookup is reported as such, never as a moved head. /usr/bin/gh by absolute path, so
@@ -414,7 +430,7 @@ jobs:
       # this route's own (ANTHROPIC_API_KEY_SDK); an unset one fails the pass.
       - name: General pass
         id: general
-        if: steps.live_general.outputs.state == 'ok'
+        if: needs.claude-scope.outputs.general == 'true' && steps.live_general.outputs.state == 'ok'
         continue-on-error: true
         timeout-minutes: ${{ fromJSON(needs.claude-scope.outputs.pass_minutes) }}
         working-directory: trusted
@@ -431,6 +447,14 @@ jobs:
             --route sdk --pass general --model "$MODEL" \
             --prompt "$RUNNER_TEMP/claude-scope/prompts/general.md" \
             --checkout "$GITHUB_WORKSPACE/pr" --out "$RUNNER_TEMP/claude-raw/general.json"
+
+      - name: Place the security pass's patch in the checkout
+        if: needs.claude-scope.outputs.security == 'true' && steps.live_general.outputs.state == 'ok'
+        run: |
+          set -euo pipefail
+          rm -rf -- pr/.claude-review-input
+          mkdir -- pr/.claude-review-input
+          cp -- "$RUNNER_TEMP/claude-scope/prompts/security.diff" pr/.claude-review-input/delta.diff
 
       - name: Re-check the pull request before the security pass
         id: live_security
@@ -452,7 +476,7 @@ jobs:
           echo "pull request state: $state"
           echo "state=$state" >> "$GITHUB_OUTPUT"
 
-      # R5: a second pass, with its own caps (R9), when the delta has a gate-critical path.
+      # R5: a second pass, with its own caps (R9), when its delta (R3) has a gate-critical path.
       - name: Security pass
         id: security
         if: steps.live_security.outputs.state == 'ok'
@@ -479,13 +503,15 @@ jobs:
         env:
           LIVE_GENERAL: ${{ steps.live_general.outputs.state }}
           LIVE_SECURITY: ${{ steps.live_security.outputs.state }}
+          NEED_GENERAL: ${{ needs.claude-scope.outputs.general }}
+          NEED_SECURITY: ${{ needs.claude-scope.outputs.security }}
         run: |
           set -euo pipefail
           raw="$RUNNER_TEMP/claude-raw"
           mkdir -p "$raw"
-          for pair in "general:$LIVE_GENERAL" "security:$LIVE_SECURITY"; do
-            pass="${pair%%:*}"; state="${pair#*:}"
-            if [ "$state" = "ok" ] && [ ! -s "$raw/$pass.json" ]; then
+          for pair in "general:$LIVE_GENERAL:$NEED_GENERAL" "security:$LIVE_SECURITY:$NEED_SECURITY"; do
+            IFS=: read -r pass state need <<< "$pair"
+            if [ "$need" = "true" ] && [ "$state" = "ok" ] && [ ! -s "$raw/$pass.json" ]; then
               jq -n --arg pass "$pass" \
                 '{pass: $pass, outcome: "failure", result: null, secret_found: false, structured_output: ""}' \
                 > "$raw/$pass.json"
@@ -584,6 +610,7 @@ jobs:
           uv run --no-sync python -m scripts.marketplace_ci publish-claude-review \
             --switched-off "${SWITCHED_OFF:-false}" \
             --scope "$RUNNER_TEMP/claude-scope/scope.json" \
+            --security-scope "$RUNNER_TEMP/claude-scope/security-scope.json" \
             --raw "$RUNNER_TEMP/claude-raw/claude-review-raw.json" \
             --review-job "$REVIEW_JOB" --model "${MODEL:-unknown}" \
             --head-sha "$HEAD_SHA" --run-attempt "$RUN_ATTEMPT" \

@@ -183,7 +183,7 @@ def test_each_pass_runs_the_sdk_route_with_its_caps():
         assert step["env"]["MODEL"] == "${{ needs.claude-scope.outputs.model }}"
         assert step["continue-on-error"] is True
         assert "pass_minutes" in step["timeout-minutes"]
-    assert hr.MAX_TURNS == {"general": 50, "security": 25}
+    assert hr.MAX_TURNS == {"general": 50, "security": 50}
     assert hr.MAX_BUDGET_USD == 1.00
 
 
@@ -234,7 +234,7 @@ def test_the_trusted_restores_are_compute_scopes_own_blocks():
     )
     for later in (
         "Check the Claude review settings",
-        "Find the last reviewed head",
+        "Find the last reviewed heads",
         "Compute the reviewed paths",
         "Build the reviewer prompts from the base SHA",
     ):
@@ -252,31 +252,45 @@ def test_reviewer_instructions_come_from_the_base_sha():
 
 
 def test_the_reviewer_gets_the_patch_inside_the_checkout():
-    """R5: Claude cannot read .git, so the scope job writes the PR's patch and the review job
-    places it in the checkout after the checkout, where prompt.md tells Claude to read it."""
+    """R5: Claude cannot read .git, so the scope job writes each pass's patch (R3: its own delta)
+    and the review job places it in the checkout after the checkout, before that pass's re-check,
+    at the one path prompt.md tells Claude to read."""
     build = _step("claude-scope", "Build the reviewer prompts from the base SHA")["run"]
     assert "claude-review-patch" in build
-    assert '--out "$RUNNER_TEMP/claude-scope/prompts/delta.diff"' in build
-    place = _step("claude-review", "Place the reviewed patch in the checkout")
+    assert 'for pair in "general:scope" "security:security-scope"; do' in build
+    assert '--out "$RUNNER_TEMP/claude-scope/prompts/$pass.diff"' in build
     names = [s.get("name") for s in _steps("claude-review")]
     checkout = names.index("Check out the PR's own head commit")
-    first_pass = min(names.index(s.get("name")) for s in _pass_steps())
-    assert checkout < names.index(place["name"]) < first_pass
-    assert (
-        f'cp -- "$RUNNER_TEMP/claude-scope/prompts/delta.diff" pr/{cr.PATCH_PATH}' in place["run"]
-    )
-    assert "rm -rf -- pr/.claude-review-input" in place["run"]
+    for review_pass, action in (("general", "General pass"), ("security", "Security pass")):
+        place = _step("claude-review", f"Place the {review_pass} pass's patch in the checkout")
+        recheck = f"Re-check the pull request before the {review_pass} pass"
+        assert checkout < names.index(place["name"]) == names.index(recheck) - 1
+        assert names.index(action) == names.index(recheck) + 1
+        assert f"needs.claude-scope.outputs.{review_pass} == 'true'" in place["if"]
+        assert (
+            f'cp -- "$RUNNER_TEMP/claude-scope/prompts/{review_pass}.diff" pr/{cr.PATCH_PATH}'
+            in place["run"]
+        )
+        assert "rm -rf -- pr/.claude-review-input" in place["run"]
     template = (ROOT / ".github/claude-review/prompt.md").read_text("utf-8")
     assert f"`{cr.PATCH_PATH}`" in template
 
 
 def test_the_scope_uses_the_shared_anchor_lookup_and_the_claude_exclusions():
-    assert (
-        "find-review-anchor --profile claude"
-        in _step("claude-scope", "Find the last reviewed head")["run"]
-    )
+    """R3: one anchor lookup and one scope per pass."""
+    anchor = _step("claude-scope", "Find the last reviewed heads")["run"]
+    assert "for pass in general security; do" in anchor
+    assert "find-review-anchor --profile claude" in anchor and '--pass "$pass"' in anchor
     run = _step("claude-scope", "Compute the reviewed paths")["run"]
     assert "--ci-delta --review-exclusions claude" in run and "--emit-review-paths" in run
+    assert 'for pair in "scope:$GENERAL_ANCHOR" "security-scope:$SECURITY_ANCHOR"; do' in run
+    env = _step("claude-scope", "Compute the reviewed paths")["env"]
+    assert env["GENERAL_ANCHOR"] == "${{ steps.anchor.outputs.general_sha }}"
+    assert env["SECURITY_ANCHOR"] == "${{ steps.anchor.outputs.security_sha }}"
+    prompts = _step("claude-scope", "Build the reviewer prompts from the base SHA")["run"]
+    assert '--security-scope "$RUNNER_TEMP/claude-scope/security-scope.json"' in prompts
+    publish = _step("claude-publish", "Publish the review")["run"]
+    assert '--security-scope "$RUNNER_TEMP/claude-scope/security-scope.json"' in publish
 
 
 @pytest.mark.parametrize(
@@ -299,15 +313,26 @@ def test_the_anchor_fetch_is_retried_before_the_whole_pr_is_reviewed(
             f'[ "$n" -gt {failed_fetches} ]'
         ),
         "sleep": "exit 0",
-        # find-review-anchor writes the anchor it found to its --github-output file.
-        "uv": f'echo "sha={"b" * 40}" > "$RUNNER_TEMP/anchor-output"',
+        # find-review-anchor writes the anchor it found to its --github-output file: one for the
+        # general pass, none for the security pass (so only the general one is fetched).
+        "uv": (
+            f'echo "$*" >> "{tmp_path}/lookups"\n'
+            'out=""; pass=""; prev=""\n'
+            'for a in "$@"; do\n'
+            '  [ "$prev" = --github-output ] && out="$a"\n'
+            '  [ "$prev" = --pass ] && pass="$a"\n'
+            '  prev="$a"\n'
+            "done\n"
+            f'if [ "$pass" = general ]; then echo "sha={"b" * 40}" > "$out"; else : > "$out"; fi'
+        ),
     }
     for name, body in tools.items():
         tool = bin_dir / name
         tool.write_text(f"#!/bin/sh\n{body}\n", encoding="utf-8")
         tool.chmod(0o755)
     script = tmp_path / "anchor.sh"
-    script.write_text(_step("claude-scope", "Find the last reviewed head")["run"], encoding="utf-8")
+    anchor_step = _step("claude-scope", "Find the last reviewed heads")
+    script.write_text(anchor_step["run"], encoding="utf-8")
     output = tmp_path / "out"
     env = {
         "PATH": f"{bin_dir}:{os.environ['PATH']}",
@@ -317,8 +342,10 @@ def test_the_anchor_fetch_is_retried_before_the_whole_pr_is_reviewed(
     }
     run = subprocess.run(["bash", "-e", str(script)], env=env, capture_output=True, text=True)
     assert run.returncode == 0, run.stderr
-    assert output.read_text(encoding="utf-8") == f"sha={anchor_out}\n"
+    assert output.read_text(encoding="utf-8") == f"general_sha={anchor_out}\nsecurity_sha=\n"
     assert (int(count.read_text("utf-8")) if count.exists() else 0) == fetches
+    lookups = (tmp_path / "lookups").read_text("utf-8").splitlines()
+    assert ["--pass general" in lookups[0], "--pass security" in lookups[1]] == [True, True]
 
 
 def test_a_cancelled_run_publishes_nothing():
@@ -338,8 +365,16 @@ def test_the_publish_job_is_the_anchor_profiles_producer():
 
 
 def test_nothing_to_review_makes_no_api_call():
+    """R3: the review job runs only when at least one pass has something new to review."""
     cond = JOBS["claude-review"]["if"]
-    assert "has_paths == 'true'" in cond and "switched_off == 'false'" in cond
+    assert "switched_off == 'false'" in cond
+    assert (
+        "(needs.claude-scope.outputs.general == 'true' || "
+        "needs.claude-scope.outputs.security == 'true')"
+    ) in cond
+    assert _step("claude-review", "General pass")["if"].startswith(
+        "needs.claude-scope.outputs.general == 'true' &&"
+    )
 
 
 _HEAD = "a" * 40
@@ -383,20 +418,25 @@ def test_a_failed_lookup_is_never_reported_as_a_moved_head(
 
 @pytest.mark.skipif(shutil.which("jq") is None, reason="the collect step uses jq")
 @pytest.mark.parametrize(
-    ("general", "security", "skipped", "outcomes"),
+    ("general", "security", "need", "skipped", "outcomes"),
     [
-        ("ok", "", None, ["failure"]),
-        ("ok", "lookup_failed", "lookup_failed", ["failure"]),
-        ("head_moved", "", "head_moved", []),
-        ("", "", None, []),
+        ("ok", "", "true:false", None, ["failure"]),
+        ("ok", "lookup_failed", "true:true", "lookup_failed", ["failure"]),
+        ("head_moved", "", "true:true", "head_moved", []),
+        ("", "", "true:false", None, []),
+        # R3: a pass with nothing new to review left no record and is not recorded as failed
+        ("ok", "ok", "false:true", None, ["failure"]),
+        ("ok", "", "false:false", None, []),
     ],
 )
 def test_the_collect_step_records_a_pass_that_left_no_record(
-    tmp_path, general, security, skipped, outcomes
+    tmp_path, general, security, need, skipped, outcomes
 ):
     run = _step("claude-review", "Collect the passes")["run"]
+    need_general, need_security = need.split(":")
     env = {"PATH": os.environ["PATH"], "RUNNER_TEMP": str(tmp_path),
-           "LIVE_GENERAL": general, "LIVE_SECURITY": security}  # fmt: skip
+           "LIVE_GENERAL": general, "LIVE_SECURITY": security,
+           "NEED_GENERAL": need_general, "NEED_SECURITY": need_security}  # fmt: skip
     subprocess.run(["bash", "-c", run], env=env, check=True, capture_output=True)
     raw = json.loads((tmp_path / "claude-review-raw.json").read_text("utf-8"))
     assert raw["skipped"] == skipped

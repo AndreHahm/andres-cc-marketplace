@@ -30,6 +30,15 @@ _TIMEOUT = re.compile(r"[1-9][0-9]{0,8}")
 SEVERITIES = ("Critical", "Major", "Minor", "Informational")
 BLOCKING = frozenset({"Critical", "Major"})
 VERDICTS = ("LGTM", "Changes Requested")
+# The review passes, in run order (R5); each has its own anchor (R3).
+PASSES = ("general", "security")
+
+
+class _SameScope:
+    """decide()'s default for an omitted security scope: the general one (one-scope callers)."""
+
+
+SAME_SCOPE = _SameScope()
 # 30 findings of at most 2000 + 300 + 200 characters keep a pass's structured output well under
 # Linux's 128 KiB limit on one environment string (the record step reads it from one).
 MAX_FINDINGS = 30
@@ -268,16 +277,25 @@ def decide(
     *,
     switched_off: bool = False,
     scope: Mapping | None,
+    security_scope: Mapping | None | _SameScope = SAME_SCOPE,
     raw: Mapping | None,
     review_job: str,
     model: str,
     head_sha: str,
     run_attempt: str,
 ) -> dict:
-    """The run's result (R6's machine-readable file). `review_job` is the review job's result
+    """The run's result (R6's machine-readable file). `scope` is the general pass's scope and
+    `security_scope` the security pass's (R3: each pass has its own anchor; the general one only
+    when omitted, SAME_SCOPE). None for either means it could not be computed: the run could not
+    run and anchors no pass, so a missing security scope never lets the general scope decide
+    that the security pass had nothing to review. `review_job` is the review job's result
     (`success`, `failure`, `cancelled`, `skipped`). Status: `clean`, `findings` (a Critical or
-    Major finding in either pass), `could_not_run` or `skipped` (no review happened). Only
-    `clean` and `findings` make this run an anchor (R3)."""
+    Major finding in either pass), `could_not_run` or `skipped` (no review happened).
+    `finished_passes` names the passes this run is an anchor for (R3): one that finished, or had
+    nothing new to review, in a run that reached its passes. A finished pass keeps its findings
+    even when the other pass could not run, so they are posted (R6)."""
+    if isinstance(security_scope, _SameScope):
+        security_scope = scope
     result: dict = {
         "status": "could_not_run",
         "verdict": None,
@@ -285,26 +303,37 @@ def decide(
         "run_attempt": int(run_attempt),
         "anchor_sha": (scope or {}).get("anchor_sha", ""),
         "anchor_status": (scope or {}).get("anchor_status", ""),
+        "security_anchor_sha": (security_scope or {}).get("anchor_sha", ""),
+        "security_anchor_status": (security_scope or {}).get("anchor_status", ""),
         "reviewed_paths": [e["path"] for e in (scope or {}).get("paths", [])],
+        "security_reviewed_paths": [e["path"] for e in (security_scope or {}).get("paths", [])],
         "model": model,
         "security_review": False,
         "passes": {},
+        "finished_passes": [],
         "findings": [],
         "reason": "",
     }
     if switched_off:
         result.update(status="skipped", reason="switched off (CLAUDE_CI_REVIEW_BYPASS=1)")
         return result
-    if scope is None:
+    if scope is None or security_scope is None:
         result["reason"] = "the review scope could not be computed"
         return result
-    if not scope["paths"]:
-        result.update(status="clean", verdict="LGTM", reason="nothing new to review")
+    needed = {"general": bool(scope["paths"]), "security": needs_security_pass(security_scope)}
+    if not any(needed.values()):
+        result.update(
+            status="clean", verdict="LGTM", reason="nothing new to review",
+            finished_passes=list(PASSES),
+        )  # fmt: skip
         return result
     if review_job != "success" or raw is None:
         result["reason"] = f"the review job did not complete ({review_job})"
         return result
-    reviewed = frozenset(result["reviewed_paths"])
+    reviewed = {
+        "general": frozenset(result["reviewed_paths"]),
+        "security": frozenset(result["security_reviewed_paths"]),
+    }
     skips = {
         "draft": "the pull request became a draft",
         "head_moved": "a newer push landed before the review started",
@@ -324,7 +353,7 @@ def decide(
             if not isinstance(record, dict) or record.get("outcome") != "success":
                 continue
             try:
-                _, findings = parse_pass(record, reviewed)
+                _, findings = parse_pass(record, reviewed.get(record.get("pass"), frozenset()))
             except InvalidReview:
                 continue
             result["passes"][record.get("pass")] = _pass_cost(record)
@@ -339,21 +368,30 @@ def decide(
                 "result artifact"
             )
         return result
-    expected = ["general", *(["security"] if needs_security_pass(scope) else [])]
-    result["security_review"] = "security" in expected
+    result["security_review"] = needed["security"]
     records = {r.get("pass"): r for r in raw.get("passes", []) if isinstance(r, dict)}
     verdicts = []
-    for name in expected:
+    failures = []
+    for name in PASSES:
+        if not needed[name]:
+            # nothing new for this pass since its anchor (R3): this head is reviewed for it
+            result["finished_passes"].append(name)
+            continue
         record = records.get(name, {"pass": name, "outcome": "missing"})
         result["passes"][name] = _pass_cost(record)
         try:
-            verdict, findings = parse_pass(record, reviewed)
+            verdict, findings = parse_pass(record, reviewed[name])
         except InvalidReview as exc:
-            result["reason"] = str(exc)
-            result["findings"] = []
-            return result
+            failures.append(str(exc))
+            continue
+        result["finished_passes"].append(name)
         verdicts.append(verdict)
         result["findings"].extend(findings)
+    if failures:
+        # R6, R7: the run could not run, but a pass that finished keeps its findings, which are
+        # posted, since this run becomes that pass's anchor (R3).
+        result["reason"] = "; ".join(failures)
+        return result
     blocking = any(f["severity"] in BLOCKING for f in result["findings"])
     result["status"] = "findings" if blocking else "clean"
     result["verdict"] = (
@@ -377,6 +415,19 @@ def summary_body(result: Mapping, unplaced: Sequence[Mapping]) -> str:
         f"- **Reviewed head:** {result['head_sha']}",
         f"- **Anchor:** {result['anchor_sha'] or 'none (whole PR)'}"
         + (f" ({result['anchor_status']})" if result["anchor_sha"] else ""),
+        *(
+            [
+                f"- **Security pass anchor:** {result['security_anchor_sha'] or 'none (whole PR)'}"
+                + (
+                    f" ({result['security_anchor_status']})"
+                    if result["security_anchor_sha"]
+                    else ""
+                )
+            ]
+            if result.get("security_review")
+            and result.get("security_anchor_sha", "") != result["anchor_sha"]
+            else []
+        ),
         f"- **Model:** {result['model']}",
         f"- **Security pass:** {'ran' if result['security_review'] else 'not needed'}",
         f"- **Cost:** {costs}",

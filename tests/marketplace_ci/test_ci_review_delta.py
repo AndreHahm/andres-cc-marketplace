@@ -1401,7 +1401,13 @@ def _write(path, data):
 
 
 def _run_lookup(
-    tmp_path, candidates, created="2026-01-01T01:00:00Z", profile="codex", ready=(), pr=True
+    tmp_path,
+    candidates,
+    created="2026-01-01T01:00:00Z",
+    profile="codex",
+    ready=(),
+    pr=True,
+    review_pass=None,
 ):
     """Run the shared anchor lookup (find-review-anchor, `profile`; for codex through
     compute-scope's own step) for run 3 (created at `created`) over `candidates`, newest first.
@@ -1490,7 +1496,8 @@ def _run_lookup(
              "--profile", profile, "--repo", "o/r", "--run-id", "3", "--pr-number", "7",
              "--head-ref", "feat/x", "--event-action", "synchronize", "--is-draft", "false",
              "--temp-dir", str(tmp_path / "anchor-tmp"), "--github-output", str(out),
-             "--result-out", str(anchor_result)],
+             "--result-out", str(anchor_result),
+             *(["--pass", review_pass] if review_pass else [])],
             env=env, cwd=_REPO_ROOT, check=True, capture_output=True,
         )  # fmt: skip
     anchor = out.read_text(encoding="utf-8").strip().removeprefix("sha=")
@@ -2036,6 +2043,58 @@ def test_the_claude_anchor_lookup(tmp_path, case, jobs2, artifacts2, anchor):
     assert result == (
         artifacts2.get("claude-review-result") if anchor == _SHA2 else _CLAUDE_RESULT1
     )
+
+
+# Claude review R3 (issue #836): each pass anchors on the newest run in which that pass finished.
+_FAILED_SECURITY = {**_RESULT2, "status": "could_not_run", "finished_passes": ["general"]}
+
+
+@pytest.mark.parametrize(
+    ("case", "artifact2", "review_pass", "anchor"),
+    [
+        # the security pass hit its cap: the run anchors the general pass only
+        ("cap, general", _FAILED_SECURITY, "general", _SHA2),
+        ("cap, security", _FAILED_SECURITY, "security", _SHA1),
+        ("both finished", {**_RESULT2, "finished_passes": ["general", "security"]}, "security",
+         _SHA2),
+        # a recorded list is authoritative: a clean status does not add a pass it leaves out
+        ("clean, general only", {**_RESULT2, "finished_passes": ["general"]}, "security", _SHA1),
+        ("not a list", {**_RESULT2, "finished_passes": "general security"}, "general", _SHA1),
+        ("skipped", {**_RESULT2, "status": "skipped", "finished_passes": []}, "general", _SHA1),
+        # a result written before passes were recorded: its status decides, for either pass
+        ("old clean", _RESULT2, "security", _SHA2),
+        ("old could not run", {**_RESULT2, "status": "could_not_run"}, "general", _SHA1),
+        # no --pass: the status decides, whatever the list says
+        ("no pass", _FAILED_SECURITY, None, _SHA1),
+    ],
+)  # fmt: skip
+def test_the_claude_anchor_lookup_per_pass(tmp_path, case, artifact2, review_pass, anchor):
+    got, _ = _run_lookup(
+        tmp_path,
+        [
+            {"id": 2, "sha": _SHA2, "attempt": 2, "artifacts": {"claude-review-result": artifact2},
+             "jobs": [{"name": "Claude delta review", "conclusion": "failure"}]},
+            {"id": 1, "sha": _SHA1, "jobs": _CLAUDE_JOBS,
+             "artifacts": {"claude-review-result": _CLAUDE_RESULT1}},
+        ],
+        profile="claude",
+        review_pass=review_pass,
+    )  # fmt: skip
+    assert got == anchor, case
+
+
+def test_a_pass_is_only_valid_with_the_claude_profile(tmp_path):
+    out = tmp_path / "out.txt"
+    assert main(["find-review-anchor", "--profile", "codex", "--pass", "general", "--repo", "o/r",
+                 "--run-id", "3", "--pr-number", "7", "--head-ref", "x",
+                 "--event-action", "synchronize", "--is-draft", "false",
+                 "--temp-dir", str(tmp_path / "t"), "--github-output", str(out)]) == 2  # fmt: skip
+    assert not out.exists()
+    with pytest.raises(ValueError, match="no pass"):
+        review_module.find_review_anchor(
+            ANCHOR_PROFILES["codex"], repo="o/r", run_id=3, pr_number=7, head_ref="x",
+            event_action="synchronize", is_draft=False, temp_dir=tmp_path, review_pass="general",
+        )  # fmt: skip
 
 
 @pytest.mark.parametrize(("action", "draft"), [("opened", "false"), ("ready_for_review", "false"),

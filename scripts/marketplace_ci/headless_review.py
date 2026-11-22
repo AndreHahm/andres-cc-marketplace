@@ -33,7 +33,7 @@ from pathlib import Path
 HEADLESS_ROUTES = ("sdk", "api")
 ROUTES = (*HEADLESS_ROUTES, "action")
 PASSES = ("general", "security")
-MAX_TURNS = {"general": 50, "security": 25}
+MAX_TURNS = {"general": 50, "security": 50}
 # R9 of docs/ci-claude-review-user-requirements.md: $1.00 per pass.
 MAX_BUDGET_USD = 1.00
 # The api route's own token cap per pass (input, cache and output tokens together).

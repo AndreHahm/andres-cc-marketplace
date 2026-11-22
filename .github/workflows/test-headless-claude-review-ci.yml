@@ -42,7 +42,7 @@ jobs:
       switched_off: ${{ steps.settings.outputs.switched_off }}
       model: ${{ steps.settings.outputs.model }}
       pass_minutes: ${{ steps.settings.outputs.pass_minutes }}
-      has_paths: ${{ steps.scope.outputs.has_paths }}
+      has_paths: ${{ steps.prompts.outputs.general }}
       security: ${{ steps.prompts.outputs.security }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
@@ -228,28 +228,33 @@ jobs:
             anchor=""
           fi
           echo "anchor: ${anchor:-none (whole PR is reviewed)}"
-          echo "sha=$anchor" >> "$GITHUB_OUTPUT"
+          # One anchor for both passes (the Claude review's are per pass, R3), so both patches match.
+          echo "general_sha=$anchor" >> "$GITHUB_OUTPUT"
+          echo "security_sha=$anchor" >> "$GITHUB_OUTPUT"
 
       - name: Compute the reviewed paths
         id: scope
         if: steps.settings.outputs.switched_off == 'false'
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          ANCHOR_SHA: ${{ steps.anchor.outputs.sha }}
+          GENERAL_ANCHOR: ${{ steps.anchor.outputs.general_sha }}
+          SECURITY_ANCHOR: ${{ steps.anchor.outputs.security_sha }}
         run: |
+          set -euo pipefail
           mkdir -p "$RUNNER_TEMP/claude-scope"
-          uv run --no-sync python -m scripts.marketplace_ci check-scope-bypass --base-sha "$BASE_SHA" \
-            --ci-delta --review-exclusions claude --anchor-sha "$ANCHOR_SHA" \
-            --emit-review-paths "$RUNNER_TEMP/claude-scope/scope.json" > /dev/null
-          count=$(jq '.paths | length' "$RUNNER_TEMP/claude-scope/scope.json")
-          echo "reviewed paths: $count"
-          echo "has_paths=$([ "$count" -gt 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          for pair in "scope:$GENERAL_ANCHOR" "security-scope:$SECURITY_ANCHOR"; do
+            name="${pair%%:*}"; anchor="${pair#*:}"
+            uv run --no-sync python -m scripts.marketplace_ci check-scope-bypass --base-sha "$BASE_SHA" \
+              --ci-delta --review-exclusions claude --anchor-sha "$anchor" \
+              --emit-review-paths "$RUNNER_TEMP/claude-scope/$name.json" > /dev/null
+            echo "$name: $(jq '.paths | length' "$RUNNER_TEMP/claude-scope/$name.json") reviewed paths"
+          done
 
       # R5: the prompt template, REVIEW.md and the security-reviewer instructions come from the
       # base SHA, never from the PR.
       - name: Build the reviewer prompts from the base SHA
         id: prompts
-        if: steps.scope.outputs.has_paths == 'true'
+        if: steps.scope.outcome == 'success'
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
@@ -264,15 +269,20 @@ jobs:
           git show "$BASE_SHA:.claude/agents/security-reviewer.md" > "$trusted/security-reviewer.md" \
             || { echo "::error::the base SHA has no .claude/agents/security-reviewer.md"; exit 1; }
           uv run --no-sync python -m scripts.marketplace_ci claude-review-prompts \
-            --scope "$RUNNER_TEMP/claude-scope/scope.json" --template "$trusted/prompt.md" \
+            --scope "$RUNNER_TEMP/claude-scope/scope.json" \
+            --security-scope "$RUNNER_TEMP/claude-scope/security-scope.json" --template "$trusted/prompt.md" \
             --review-md "$trusted/REVIEW.md" --security-md "$trusted/security-reviewer.md" \
             --base-sha "$BASE_SHA" --head-sha "$HEAD_SHA" \
             --out-dir "$RUNNER_TEMP/claude-scope/prompts" --github-output "$GITHUB_OUTPUT"
-          # R5: the pull request's own patch for the reviewed paths (the review job cannot read .git).
-          uv run --no-sync python -m scripts.marketplace_ci claude-review-patch \
-            --scope "$RUNNER_TEMP/claude-scope/scope.json" \
-            --base-sha "$BASE_SHA" --head-sha "$HEAD_SHA" \
-            --out "$RUNNER_TEMP/claude-scope/prompts/delta.diff"
+          # R5: the pull request's own patch for each pass's reviewed paths (the review job cannot
+          # read .git); the review job places each at the one path prompt.md names before its pass.
+          for pair in "general:scope" "security:security-scope"; do
+            pass="${pair%%:*}"; name="${pair#*:}"
+            uv run --no-sync python -m scripts.marketplace_ci claude-review-patch \
+              --scope "$RUNNER_TEMP/claude-scope/$name.json" \
+              --base-sha "$BASE_SHA" --head-sha "$HEAD_SHA" \
+              --out "$RUNNER_TEMP/claude-scope/prompts/$pass.diff"
+          done
 
       - name: Upload the review scope
         if: steps.scope.outcome == 'success'
@@ -387,7 +397,7 @@ jobs:
           set -euo pipefail
           rm -rf -- pr/.claude-review-input
           mkdir -- pr/.claude-review-input
-          cp -- "$RUNNER_TEMP/claude-scope/prompts/delta.diff" pr/.claude-review-input/delta.diff
+          cp -- "$RUNNER_TEMP/claude-scope/prompts/general.diff" pr/.claude-review-input/delta.diff
 
       - name: Re-check the pull request before the general pass
         id: live_general
@@ -577,7 +587,7 @@ jobs:
           set -euo pipefail
           rm -rf -- .claude-review-input
           mkdir -- .claude-review-input
-          cp -- "$RUNNER_TEMP/claude-scope/prompts/delta.diff" .claude-review-input/delta.diff
+          cp -- "$RUNNER_TEMP/claude-scope/prompts/general.diff" .claude-review-input/delta.diff
 
       - name: Read the reviewer prompts
         id: prompts
@@ -704,7 +714,7 @@ jobs:
           prompt: ${{ steps.prompts.outputs.security }}
           claude_args: >-
             --model ${{ needs.headless-scope.outputs.model }}
-            --max-turns 25
+            --max-turns 50
             --max-budget-usd 1.00
             --tools "Read,Grep,Glob"
             --allowedTools "Read,Grep,Glob"

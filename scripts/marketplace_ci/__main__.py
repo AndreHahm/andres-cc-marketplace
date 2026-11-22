@@ -1128,9 +1128,11 @@ def _handle_claude_review_settings(args: argparse.Namespace) -> int:
 
 
 def _handle_claude_review_prompts(args: argparse.Namespace) -> int:
-    """Claude review R5: the general prompt, and the security prompt when the reviewed delta
-    has a gate-critical path, from the base SHA's template, REVIEW.md and security-reviewer
-    instructions. Appends security=true|false to --github-output."""
+    """Claude review R5: the general prompt when the general pass has paths to review, and the
+    security prompt when the security pass's delta (--security-scope, R3's own anchor; --scope
+    when omitted) has a gate-critical path, from the base SHA's template, REVIEW.md and
+    security-reviewer instructions. Appends general= and security=true|false to
+    --github-output."""
     from scripts.marketplace_ci.claude_review import (
         build_prompt,
         needs_security_pass,
@@ -1141,14 +1143,24 @@ def _handle_claude_review_prompts(args: argparse.Namespace) -> int:
     template = Path(args.template).read_text(encoding="utf-8")
     review_md = Path(args.review_md).read_text(encoding="utf-8")
     security_md = Path(args.security_md).read_text(encoding="utf-8")
+    security_scope = (
+        json.loads(Path(args.security_scope).read_text(encoding="utf-8"))
+        if args.security_scope
+        else scope
+    )
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    security = needs_security_pass(scope)
-    for name in ("general", "security") if security else ("general",):
-        values = prompt_values(scope, review_md, security_md, name, args.base_sha, args.head_sha)
-        (out_dir / f"{name}.md").write_text(build_prompt(template, values), encoding="utf-8")
+    needed = {"general": bool(scope["paths"]), "security": needs_security_pass(security_scope)}
+    scopes = {"general": scope, "security": security_scope}
+    for name in ("general", "security"):
+        if needed[name]:
+            values = prompt_values(
+                scopes[name], review_md, security_md, name, args.base_sha, args.head_sha
+            )
+            (out_dir / f"{name}.md").write_text(build_prompt(template, values), encoding="utf-8")
     with open(args.github_output, "a", encoding="utf-8") as out:
-        out.write(f"security={'true' if security else 'false'}\n")
+        for name in ("general", "security"):
+            out.write(f"{name}={'true' if needed[name] else 'false'}\n")
     return 0
 
 
@@ -1186,9 +1198,15 @@ def _handle_publish_claude_review(args: argparse.Namespace) -> int:
     scope = load(args.scope)
     if scope is not None and not isinstance(scope.get("paths"), list):
         scope = None
+    # R3: the security pass's own scope; the general one only when the flag is omitted. A given
+    # but missing or invalid file is None, so the run could not run and anchors no pass.
+    security_scope = load(args.security_scope) if args.security_scope else scope
+    if security_scope is not None and not isinstance(security_scope.get("paths"), list):
+        security_scope = None
     result = decide(
         switched_off=args.switched_off == "true",
         scope=scope,
+        security_scope=security_scope,
         raw=load(args.raw),
         review_job=args.review_job,
         model=args.model,
@@ -1257,6 +1275,9 @@ def _handle_find_review_anchor(args: argparse.Namespace) -> int:
 
     from scripts.marketplace_ci.review import ANCHOR_PROFILES, find_review_anchor
 
+    if args.review_pass and args.profile != "claude":
+        print("::error::--pass is only valid with --profile claude")
+        return 2
     temp_dir = Path(args.temp_dir)
     temp_dir.mkdir(parents=True, exist_ok=True)
     anchor, result = find_review_anchor(
@@ -1268,6 +1289,7 @@ def _handle_find_review_anchor(args: argparse.Namespace) -> int:
         event_action=args.event_action,
         is_draft=args.is_draft == "true",
         temp_dir=temp_dir,
+        review_pass=args.review_pass or None,
     )
     if anchor and result is not None and args.result_out:
         shutil.copyfile(result, args.result_out)
@@ -2161,6 +2183,13 @@ def build_parser() -> argparse.ArgumentParser:
     find_anchor.add_argument("--temp-dir", required=True, metavar="DIR")
     find_anchor.add_argument("--github-output", required=True, metavar="PATH")
     find_anchor.add_argument("--result-out", default="", metavar="PATH")
+    find_anchor.add_argument(
+        "--pass",
+        dest="review_pass",
+        default="",
+        choices=("", "general", "security"),
+        help="the claude profile's pass whose anchor to find (Claude R3); claude profile only",
+    )
     find_anchor.set_defaults(handler=_handle_find_review_anchor)
 
     claude_settings = subparsers.add_parser(
@@ -2174,6 +2203,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     for flag in ("--scope", "--template", "--review-md", "--security-md", "--out-dir"):
         claude_prompts.add_argument(flag, required=True, metavar="PATH")
+    claude_prompts.add_argument("--security-scope", default="", metavar="PATH")
     claude_prompts.add_argument("--base-sha", required=True, metavar="SHA")
     claude_prompts.add_argument("--head-sha", required=True, metavar="SHA")
     claude_prompts.add_argument("--github-output", required=True, metavar="PATH")
@@ -2193,6 +2223,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     claude_publish.add_argument("--switched-off", default="false", choices=("true", "false"))
     claude_publish.add_argument("--scope", default="", metavar="PATH")
+    claude_publish.add_argument("--security-scope", default="", metavar="PATH")
     claude_publish.add_argument("--raw", default="", metavar="PATH")
     claude_publish.add_argument("--review-job", required=True)
     claude_publish.add_argument("--model", required=True)
