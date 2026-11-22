@@ -81,74 +81,273 @@ END {
 }'
 }
 
-# CMD_CODE with the quoted value of a message or pattern option blanked (`-m "use --amend"`
-# becomes `-m ""`), for the forbidden-git check only, so text inside a message is not
-# read as a flag. The scanner tracks quotes like bash (single, double, $'...', backslash).
-# A line is not blanked when it holds `$(`, a backtick, `${` or `$'`, or names a shell,
-# ssh, eval, source or a command runner; once a quote is left open at the end of a line,
-# no later line is blanked, since bash is still inside that string.
-blank_flag_values() {
-    awk -v BINMODE=3 -v sq="'" -v dq='"' '
-# Index of the quote q that closes a string opened before position i, or 0 if none
-# on this line. esc: a backslash escapes the next character (double and ANSI-C quotes).
-function close_at(s, i, q, esc,    n, c) {
-    n = length(s)
-    while (i <= n) {
-        c = substr(s, i, 1)
-        if (esc && c == "\\") { i += 2; continue }
-        if (c == q) return i
-        i++
-    }
-    return 0
+# Splits the command into words the way bash does (issues #838, #840). The substitution
+# copies below each handle one kind of quote or escape, so a word that mixes them (an escaped
+# space beside a single-quoted backslash, `x.y='a b\'c\ d`) was read differently from bash.
+# mode=norm prints the normalized copy: each word as bash reads it, with quote characters
+# dropped; a backslash-newline removed outside single quotes; an unquoted backslash and the
+# next character as that character; single quotes literal; in double quotes, a backslash
+# escaping only $ ` " \ and newline; $'...' decoded. Inside a word, a character that a check
+# could read as structure (space, separator, quote, backslash, $, braces) becomes `_`, so the
+# word stays one word. Code inside $( ), backticks and <( ) keeps its spaces. The copy stops
+# at a heredoc (<<), whose body the other copies still check. It only adds a copy, so
+# it can only block more.
+# mode=blank prints the command unchanged except for the value of a message or pattern
+# option (`commit -m "use --amend"` becomes `-m ""`), for the forbidden-git check only, so
+# text inside a message is not read as a flag. A value is blanked only where the words are
+# certain: a top-level git command, after assignments or `env` with assignments, with the
+# subcommand found past git's global options, and only commit -m/--message, tag
+# -m/--message and clean -e/--exclude after options known to take no value. An unknown
+# option stops blanking for that command (`commit -F x -m` would make -m the file). Blanking
+# stops for the rest of the command at anything not modeled here: $( ), a backtick, ${ },
+# <( ), a heredoc, [[ ]], case, alias, function or a parenthesis inside a command; a word
+# holding an unquoted $ or glob character stops it for that command, since expansion could
+# split it. An unclosed quote cancels all blanking.
+# BINMODE=3 keeps CRs on Windows gawk; a CR is an ordinary character in bash, written `_`.
+split_words() {
+    awk -v BINMODE=3 -v mode="$1" -v sq="'" -v dq='"' '
+function nc(c) { return index(SP, c) ? "_" : c }
+function hexval(d) { return d == "" ? -1 : index("0123456789abcdef", tolower(d)) - 1 }
+function chrv(v) {
+    if (v == 0) return "NUL"
+    return (v >= 32 && v < 127) ? nc(chr[v]) : "_"
 }
-# Copy line s, blanking an option value when blank is set. An unclosed quote sets open
-# and returns s unchanged.
-function scan(s, blank,    out, i, n, c, j, q, esc, start, rest) {
-    out = ""; n = length(s); i = 1
+function emit(x) { out = out x; if (inword) wn = wn x }
+function push(t) { depth++; st[depth] = t; pd[depth] = 0 }
+function startword() {
+    if (!depth && !inword) { inword = 1; ws = i; wn = ""; wg = 0 }
+    wb = 0
+}
+function endword() {
+    if (depth || !inword) return
+    inword = 0
+    if (wn == "[[" || wn == "case" || wn == "alias" || wn == "function" || wn == "coproc" ||
+        wn == "select") bail = 1
+    if (redir) { redir = 0; return }
+    nk++; cs[nk] = ws; ce[nk] = i; cn[nk] = wn; cg[nk] = wg
+}
+function endcmd() {
+    if (depth) return
+    if (mode == "blank" && !bail) blank_cmd()
+    nk = 0; redir = 0
+}
+function raw(k) { return substr(s, cs[k], ce[k] - cs[k]) }
+function span(a, b) { nb++; sa[nb] = a; sb[nb] = b }
+function blank_cmd(    k, set, v, long, longb, o, r, re) {
+    for (k = 1; k <= nk; k++) if (cg[k]) return
+    k = 1
+    while (k <= nk && raw(k) ~ /^[A-Za-z_][A-Za-z0-9_]*=/) k++
+    if (k <= nk && raw(k) == "env") {
+        k++
+        while (k <= nk && raw(k) ~ /^[A-Za-z_][A-Za-z0-9_]*=/) k++
+    }
+    if (k > nk || (cn[k] != "git" && cn[k] !~ /\/git$/)) return
+    # git global options: the first list takes the next word as its value, the second takes
+    # none. Any other option stops blanking, since its value could be read as the subcommand.
+    for (k++; k <= nk && cn[k] ~ /^-/; k++) {
+        if (cn[k] ~ /^(-C|-c|--git-dir|--work-tree|--namespace|--super-prefix|--config-env|--attr-source|--shallow-file)$/) k++
+        else if (cn[k] !~ /^(-p|-P|--paginate|--no-pager|--bare|--no-replace-objects|--no-lazy-fetch|--no-optional-locks|--no-advice|--literal-pathspecs|--glob-pathspecs|--noglob-pathspecs|--icase-pathspecs)$/ &&
+            cn[k] !~ /^--(git-dir|work-tree|namespace|super-prefix|config-env|attr-source|shallow-file)=/) return
+    }
+    if (k > nk) return
+    # set: short options that take no value and may share a cluster with v.
+    if (cn[k] == "commit") {
+        set = "asneqviopz"; v = "m"; long = "--message"
+        longb = "|--all|--signoff|--no-signoff|--no-verify|--verify|--edit|--no-edit|--quiet|"
+        longb = longb "--verbose|--include|--only|--patch|--null|--dry-run|--short|--branch|"
+        longb = longb "--porcelain|--long|--reset-author|--allow-empty|--allow-empty-message|"
+        longb = longb "--no-post-rewrite|--status|--no-status|--no-gpg-sign|"
+    } else if (cn[k] == "tag") {
+        set = "asf"; v = "m"; long = "--message"; longb = "|--annotate|--sign|--force|"
+    } else if (cn[k] == "clean") {
+        set = "dfinqxX"; v = "e"; long = "--exclude"
+        longb = "|--force|--dry-run|--quiet|--interactive|"
+    } else return
+    re = "^-[" set "]*" v
+    for (k++; k <= nk; k++) {
+        o = cn[k]
+        if (o == "--") return
+        if (o !~ /^-/) continue
+        if (o ~ (re "$") || o == long) {
+            if (k < nk) span(cs[k + 1], ce[k + 1])
+            k++
+            continue
+        }
+        r = raw(k)
+        if (o ~ re) {
+            if (!match(r, re)) return
+            span(cs[k] + RLENGTH, ce[k])
+            continue
+        }
+        if (index(o, long "=") == 1) {
+            if (index(r, long "=") != 1) return
+            span(cs[k] + length(long) + 1, ce[k])
+            continue
+        }
+        if (o ~ ("^-[" set "]+$") || index(longb, "|" o "|")) continue
+        return
+    }
+}
+BEGIN {
+    SP = " \t\r\n\v\f;&|<>()" sq dq "`\\${}"
+    for (k = 32; k < 127; k++) chr[k] = sprintf("%c", k)
+}
+{ s = (NR > 1) ? s "\n" $0 : $0 }
+END {
+    n = length(s); i = 1; wb = 1
     while (i <= n) {
-        c = substr(s, i, 1)
-        if (c == "\\") { out = out substr(s, i, 2); i += 2; continue }
-        if (blank && c ~ /[;&|]/) { open = 1; return s }
-        if (blank && (i == 1 || substr(s, i - 1, 1) ~ /[ \t]/)) {
-            rest = substr(s, i)
-            if (match(rest, "^(-a?m|--message|-e|--exclude|--list|-l)(=|[ \t]+)[" sq dq "]")) {
-                q = substr(rest, RLENGTH, 1)
-                j = close_at(s, i + RLENGTH, q, q == dq)
-                if (!j) { open = 1; return s }
-                out = out substr(rest, 1, RLENGTH) q
-                i = j + 1
+        c = substr(s, i, 1); c2 = substr(s, i + 1, 1)
+        ctx = depth ? st[depth] : "c"
+        if (ctx == "d") {
+            if (c == dq) { depth--; i++; continue }
+            if (c == "\\") {
+                if (c2 == "\n") { i += 2; continue }
+                if (c2 != "" && index("$`\\" dq, c2)) { emit(nc(c2)); i += 2; continue }
+                emit("_"); i++; continue
+            }
+        } else if (ctx == "r") {
+            if (c == "}") { depth--; emit("}"); i++; continue }
+            if (c == "\\") { emit("_"); i += 2; continue }
+            if (!(c == "$" && (c2 == "{" || c2 == "(")) && c != "`") { emit(nc(c)); i++; continue }
+        } else {
+            # Code: top level, or inside $( ), backticks or <( ).
+            if (ctx == "b" && c == "`") { depth--; emit("`"); i++; wb = 0; continue }
+            if (c == "\\") {
+                if (c2 == "\n") { i += 2; continue }
+                startword()
+                if (c2 == "") { emit("_"); i++ } else { emit(nc(c2)); i += 2 }
                 continue
             }
+            if (c == sq) {
+                startword()
+                j = index(substr(s, i + 1), sq)
+                if (j) { t = substr(s, i + 1, j - 1); i += j + 1 }
+                else { t = substr(s, i + 1); i = n + 1; unclean = 1 }
+                for (m = 1; m <= length(t); m++) emit(nc(substr(t, m, 1)))
+                continue
+            }
+            if (c == "$" && c2 == sq) {
+                startword()
+                # bash finds the end first: a backslash pairs with the next character, and
+                # the first unpaired quote ends the string. Only then are escapes decoded,
+                # so no escape can read past the end (`$'\c'` ends at its last quote).
+                for (q = i + 2; q <= n && substr(s, q, 1) != sq; q++)
+                    if (substr(s, q, 1) == "\\") q++
+                if (q > n) unclean = 1
+                j = i + 2; nul = 0
+                while (j < q && j <= n) {
+                    e = substr(s, j, 1)
+                    if (e != "\\") { if (!nul) emit(nc(e)); j++; continue }
+                    e = substr(s, j + 1, 1); j += 2
+                    if (e == "x" || e == "u" || e == "U") {
+                        lim = (e == "x") ? 2 : (e == "u") ? 4 : 8
+                        val = 0
+                        for (m = 0; m < lim && (h = hexval(substr(s, j, 1))) >= 0; m++) {
+                            val = val * 16 + h; j++
+                        }
+                        x = m ? chrv(val) : "_" e
+                    } else if (e ~ /^[0-7]$/) {
+                        val = e + 0
+                        for (m = 1; m < 3 && substr(s, j, 1) ~ /^[0-7]$/; m++) {
+                            val = val * 8 + substr(s, j, 1); j++
+                        }
+                        x = chrv(val % 256)
+                    } else if (e == "c") {
+                        if (j + 1 < q && substr(s, j, 2) == "\\\\") j += 2
+                        else if (j < q) j++
+                        x = "_"
+                    }
+                    else if (e == "") { x = "_" }
+                    else if (index("abefnrtvE", e)) x = "_"
+                    else if (e == "\\" || e == sq || e == dq || e == "?") x = nc(e)
+                    else x = "_" nc(e)
+                    # bash ends a $'\'...'\'' string at a NUL.
+                    if (x == "NUL") nul = 1
+                    else if (!nul) emit(x)
+                }
+                i = q + 1; continue
+            }
+            if (c == dq) { startword(); push("d"); i++; continue }
+            if (c == "#" && wb) {
+                j = index(substr(s, i), "\n")
+                i = j ? i + j - 1 : n + 1
+                continue
+            }
+            if (c == " " || c == "\t") { endword(); emit(c); i++; wb = 1; continue }
+            if (c == "\n") { endword(); endcmd(); emit(c); i++; wb = 1; continue }
+            if (c == "<" && c2 == "<") {
+                if (substr(s, i + 2, 1) != "<") { endword(); bail = 1; stopped = 1; break }
+                endword(); emit("<<<"); i += 3; if (!depth) redir = 1; wb = 1; continue
+            }
+            if ((c == "<" || c == ">") && c2 == "(") {
+                startword(); bail = 1; push("p"); emit(c "("); i += 2; wb = 1; continue
+            }
+            if (c == "<" || c == ">" || (c == "&" && c2 == ">")) {
+                # A file descriptor number written against the operator is not a word.
+                if (!depth && inword && raw_digits()) inword = 0
+                else endword()
+                j = i + 1
+                if (c == "&" || (c == ">" && index(">&|", c2)) || (c == "<" && index("&>", c2))) j++
+                if (c == "&" && substr(s, j, 1) == ">") j++
+                emit(substr(s, i, j - i)); i = j
+                if (!depth) redir = 1
+                wb = 1; continue
+            }
+            if (c == "(") {
+                if (depth) pd[depth]++
+                else {
+                    if (inword || nk > 0 || c2 == "(") bail = 1
+                    pd0++
+                }
+                endword(); emit(c); i++; wb = 1; continue
+            }
+            if (c == ")") {
+                if (depth) {
+                    if (pd[depth] > 0) { pd[depth]--; emit(c); i++; wb = 1; continue }
+                    if (ctx == "p") { depth--; emit(c); i++; wb = 0; continue }
+                    emit(c); i++; continue
+                }
+                endword()
+                if (pd0 > 0) pd0--; else bail = 1
+                endcmd(); emit(c); i++; wb = 1; continue
+            }
+            if (c == ";" || c == "&" || c == "|") { endword(); endcmd(); emit(c); i++; wb = 1; continue }
         }
-        start = i
-        if (c == "$" && substr(s, i + 1, 1) == sq) { q = sq; esc = 1; i++ }
-        else if (c == sq) { q = sq; esc = 0 }
-        else if (c == dq) { q = dq; esc = 1 }
-        else { out = out c; i++; continue }
-        j = close_at(s, i + 1, q, esc)
-        if (!j) { open = 1; return s }
-        out = out substr(s, start, j - start + 1)
-        i = j + 1
+        # Shared by every context: substitutions, and an ordinary character.
+        if (c == "$" && c2 == "(") {
+            startword(); bail = 1; push("p")
+            if (substr(s, i + 2, 1) == "(") { emit("$(("); i += 3 } else { emit("$("); i += 2 }
+            wb = 1; continue
+        }
+        if (c == "$" && c2 == "{") { startword(); bail = 1; push("r"); emit("${"); i += 2; continue }
+        if (c == "`") { startword(); bail = 1; push("b"); emit(c); i++; wb = 1; continue }
+        if (ctx == "d") {
+            # "$o" or "$@" is a word of unknown value: it could be an option that takes one.
+            if (c == "$" && c2 ~ /^[A-Za-z0-9_@*#?$!-]$/) wg = 1
+            emit(nc(c)); i++; continue
+        }
+        startword()
+        if (!depth && index("$*?[{~", c)) wg = 1
+        emit((c == "\r" || c == "\v" || c == "\f") ? "_" : c)
+        i++
     }
-    return out
+    if (depth) unclean = 1
+    if (!stopped) { endword(); endcmd() }
+    if (mode == "norm") { print out; exit }
+    if (unclean) { print s; exit }
+    r = ""; p = 1
+    for (k = 1; k <= nb; k++) { r = r substr(s, p, sa[k] - p) dq dq; p = sb[k] }
+    print r substr(s, p)
 }
-{
-    if (open) { print; next }
-    # A line that is not one plain git command, or that holds anything whose quoting
-    # this scanner does not model (command or parameter substitution, a backtick, ANSI-C
-    # quoting, a heredoc, a shell or runner name), is printed as is and ends blanking
-    # for the rest of the command.
-    if ($0 !~ /^[ \t]*([^ \t;&|]*\/)?git[ \t]/ ||
-        $0 ~ ("\\$\\(|`|\\$\\{|\\$" sq "|<<") ||
-        $0 ~ /(^|[^A-Za-z0-9_.-])(bash|sh|zsh|dash|ksh|fish|pwsh|powershell|ssh|eval|source|watch|su|script|flock|parallel|xargs|trap|foreach)([^A-Za-z0-9_.-]|$)/) {
-        open = 1; print; next
-    }
-    print scan($0, 1)
-}'
+function raw_digits() { return substr(s, ws, i - ws) ~ /^[0-9]+$/ }'
 }
 
-CMD_CODE=$(strip_heredocs <<<"${CMD}")
-CMD_FLAGS=$(blank_flag_values <<<"${CMD_CODE}")
+# Fail closed like jq above: a missing or failing awk must not let the command through.
+command -v awk >/dev/null 2>&1 || block "awk is required by the command-policy hook."
+CMD_CODE=$(strip_heredocs <<<"${CMD}") || block "Could not read the command."
+CMD_FLAGS=$(split_words blank <<<"${CMD_CODE}") || block "Could not read the command."
+CMD_WORDS=$(split_words norm <<<"${CMD_CODE}") || block "Could not read the command."
+FLAGS_WORDS=$(split_words norm <<<"${CMD_FLAGS}") || block "Could not read the command."
 
 # Every check reads one line at a time, so `git -C x \` + newline + `reset --hard` would
 # slip past them. Each check also reads copies with backslash-newline pairs joined. Not
@@ -174,6 +373,12 @@ for JOIN in '' ' '; do
         CMD_FLAGS+=$'\n'"${JOINED_FLAGS}"
     fi
 done
+# The normalized copies from split_words, on lines of their own, so every check also reads
+# each word as bash reads it (`git -c x.y='a b\'c\ d stash` becomes
+# `git -c x.y=a_b_c_d stash`, `$'st\x61sh'` becomes `stash`).
+CMD+=$'\n'"${CMD_WORDS}"
+CMD_CODE+=$'\n'"${CMD_WORDS}"
+CMD_FLAGS+=$'\n'"${FLAGS_WORDS}"
 
 # Here-strings, not `printf | grep -q`: under pipefail, grep -q exiting early
 # can kill printf with SIGPIPE on a long command and turn a match into a miss.
@@ -214,7 +419,7 @@ COMMAND_PREFIX='(^|;[[:space:]]*|&&[[:space:]]*|[|][|][[:space:]]*|[|][[:space:]
 # The exec-policy rules match exact tokens, so they cannot catch these forms; the hook does.
 GIT_OPT_VALUE="([^[:space:];&|\"']|\"[^\"]*\"|'[^']*')+"
 GIT_OPT="([[:space:]]+-[Cc][[:space:]]+${GIT_OPT_VALUE}"
-GIT_OPT+="|[[:space:]]+--(git-dir|work-tree|namespace|exec-path|super-prefix|config-env)"
+GIT_OPT+="|[[:space:]]+--(git-dir|work-tree|namespace|exec-path|super-prefix|config-env|attr-source|shallow-file)"
 GIT_OPT+="[[:space:]]+${GIT_OPT_VALUE}"
 # Any other option, which may carry an attached quoted value (`--git-dir="a b"`).
 GIT_OPT+="|[[:space:]]+-${GIT_OPT_VALUE})"
