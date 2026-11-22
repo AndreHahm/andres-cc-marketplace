@@ -514,7 +514,9 @@ review` is the gate after the PR exists and reviews only the delta, to cut OpenA
   starts no run. So `publish` (which has `issues: read`) downloads the `codex-review-result` and
   `carried-findings` artifacts, runs `fetch-accepted-findings` again with its base-restored code, and
   `recheck-waivers` re-matches every entry those files recorded as waived (`recheck_applied_waivers`):
-  only the waiver line the run applied, as recorded (its first 300 characters), or the same tracked
+  only the waiver line the run applied, as recorded whole in `waiver_line` (`waiver` keeps 300
+  characters, which a long rule and path can fill before the kind and issue; a result without
+  `waiver_line`, written before it existed, is matched by those 300), or the same tracked
   issue counts, re-checked with `find_waiver`/`find_tracked` against the fresh section, open issues and
   confirmations, so a line added during the run does not take the applied one's place. A carried entry of
   unknown origin (`_origin_unknown`: `reviewer: carried` with no or an empty `origin_reviewer`) still needs

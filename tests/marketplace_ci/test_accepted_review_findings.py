@@ -1739,6 +1739,48 @@ def test_a_deferred_issue_closed_during_the_run_blocks_at_publish():
     assert _recheck([entry], line) != []
 
 
+def test_a_long_waiver_is_rechecked_by_its_whole_line_not_its_first_300_characters():
+    """A line that shares the applied line's first 300 characters but names another issue does
+    not take its place: the result records the whole line (`waiver_line`)."""
+    rule = "r" * 280
+    applied = f"- {rule} s/SKILL.md:15 @{FP} – deferred #12"
+    swapped = f"- {rule} s/SKILL.md:15 @{FP} – deferred #13"
+    assert applied[:300] == swapped[:300]
+    entry = {**_waived_entry(), "rule": rule, "waiver": applied[:300], "waiver_line": applied}
+    assert _recheck([entry], applied, open_issues=[12]) == []
+    assert _recheck([entry], swapped, open_issues=[13]) != []
+    # an unreadable whole line counts as lapsed (fail closed)
+    assert _recheck([{**entry, "waiver_line": 7}], applied, open_issues=[12]) != []
+
+
+def test_a_fresh_result_entry_records_the_whole_waiver_line():
+    from dataclasses import replace
+
+    from scripts.marketplace_ci.__main__ import _finding_to_dict
+
+    line = f"- {'r' * 280} s/SKILL.md:15 @{FP} – accepted"
+    out = _finding_to_dict(_finding("s/SKILL.md", 15), True, False, waiver=line)
+    assert (out["waiver"], out["waiver_line"]) == (line[:300], line)
+    # R18 applies `tracked #7` only to a finding its reviewer marked with issue 7
+    marked = replace(_finding("s/SKILL.md", 15), tracked_issue=7)
+    tracked = _finding_to_dict(marked, True, False, waiver="tracked #7")
+    assert (tracked["waiver"], tracked["waiver_line"]) == ("tracked #7", None)
+
+
+def test_a_long_waiver_line_travels_whole_through_the_carry_and_the_merge(git_repo):
+    base = _commit(git_repo, "base", **{"s/SKILL.md": "x\n"})
+    anchor = _commit(git_repo, "pr 1", **{"s/SKILL.md": "\n" * 14 + GRANT + "\n"})
+    rule = "r" * 280
+    line = f"- {rule} s/SKILL.md:15 @{FP} – accepted"
+    entry = {**_waived_entry(), "rule": rule, "waiver": line[:300]}
+    outcome = carry_findings(
+        git_repo.root, base, anchor, _anchor_result(entry), _section(line), _never_open
+    )
+    assert [(f["waiver"], f["waiver_line"]) for f in outcome.waived] == [(line[:300], line)]
+    merged = merge_carried_findings({"status": "clean", "findings": []}, list(outcome.waived), "0")
+    assert [f["waiver_line"] for f in merged["findings"]] == [line]
+
+
 def test_a_tracked_waiver_is_rechecked_by_issue_and_confirmation():
     entry = {**_waived_entry(), "waiver": "tracked #7", "tracked_issue": 7}
     assert _recheck([entry], "- tracked #7", open_issues=[7]) == []
