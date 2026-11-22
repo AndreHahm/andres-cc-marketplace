@@ -18,7 +18,8 @@
 # is trusted in /hooks (trust is recorded per absolute hooks.json path, so a worktree may need its
 # own), Codex is logged in, and jq is on PATH. It makes one model call and costs tokens.
 #
-# Usage: bash .codex/hooks/tests/test-live-codex-hook-and-rules.sh [timeout-seconds]
+# Usage: bash .codex/hooks/tests/test-live-codex-hook-and-rules.sh [timeout-seconds [codex-exec-args...]]
+# Arguments after the timeout go to `codex exec` unchanged, e.g. -c 'default_permissions=":workspace"'.
 # Exit: 0 all PASS, 1 a FAIL, 3 INCONCLUSIVE (no FAIL). The raw transcript is kept for inspection.
 set -uo pipefail
 
@@ -53,7 +54,7 @@ done
 OUT=$(mktemp "${TMPDIR:-/tmp}/codex-live-XXXXXX")
 PROMPT="Run each of these three shell commands exactly once, in this order, without changing them and without retrying: (1) git -C . rev-parse --is-inside-work-tree (2) echo ${SENTINEL} (3) git -C nonexistent-issue-803 stash. Then reply with the exact output or error text of each, verbatim."
 echo "Running codex exec (timeout ${TIMEOUT}s); transcript: ${OUT}"
-timeout "${TIMEOUT}" codex exec --json --ephemeral --color never -C "${root}" "${PROMPT}" \
+timeout "${TIMEOUT}" codex exec --json --ephemeral --color never -C "${root}" "${@:2}" "${PROMPT}" \
     </dev/null >"${OUT}" 2>&1
 rc=$?
 [[ "${rc}" -eq 124 ]] && { echo "INCONCLUSIVE: codex exec timed out after ${TIMEOUT}s"; exit 3; }
@@ -62,9 +63,10 @@ rc=$?
 shell=$(grep -o -m1 '[A-Za-z0-9_.-]*\(pwsh\|powershell\|bash\|cmd\)\.exe' "${OUT}" || true)
 echo "codex exec exit ${rc}; tool-command shell seen in transcript: ${shell:-not reported}"
 
-# Commands Codex actually ran, with their exit codes.
+# Commands Codex actually ran, with their exit codes. The transcript also holds stderr lines that are
+# not JSON, so read raw lines and parse only the JSON ones.
 ran() {
-    jq -r --arg c "$1" 'select(.item.type? == "command_execution") | .item
+    jq -rR --arg c "$1" 'fromjson? | select(.item.type? == "command_execution") | .item
         | select((.command // "") | contains($c)) | "\(.exit_code // "none")"' "${OUT}" 2>/dev/null
 }
 
@@ -91,7 +93,7 @@ fi
 if grep -q "${HOOK_MSG}" "${OUT}"; then
     report PASS "hook: project hook blocked the probe (bash ran the hook script)"
 elif ran "nonexistent-issue-803 stash" | grep -q .; then
-    report FAIL "hook: the probe ran; the project hook did not block it"
+    report FAIL "hook: the probe ran; the project hook did not block it (first check that this hooks.json path is trusted in /hooks)"
 elif grep -q "cannot locate the repository root" "${OUT}"; then
     report FAIL "hook: hooks.json could not resolve the repository root"
 else
