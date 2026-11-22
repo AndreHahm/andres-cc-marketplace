@@ -2061,6 +2061,11 @@ def _entry_reviewers(entry: dict) -> list[object]:
     return named
 
 
+def _carried_copy_key(entry: Mapping[str, object]) -> tuple[str, str, str]:
+    """An anchor entry's (rule, path, line) as text, for grouping its copies before validation."""
+    return (str(entry.get("rule")), str(entry.get("path")), str(entry.get("line")))
+
+
 def carry_findings(
     repo: Path,
     base_sha: str,
@@ -2095,6 +2100,19 @@ def carry_findings(
     blocking: list[dict] = []
     waived: list[dict] = []
     notes: list[str] = []
+    # R18: carried copies of one finding (rule, path, anchor line) keep a mark only when every
+    # copy carries the same one, as `merge_carried_findings` records a mismatch.
+    copy_marks: dict[tuple[str, str, str], set[object]] = {}
+    for entry in findings:
+        if (
+            isinstance(entry, dict)
+            and entry.get("suppressed") is not True
+            and (entry.get("blocking") is True or isinstance(entry.get("waiver"), str))
+        ):
+            mark = entry.get("tracked_issue")
+            copy_marks.setdefault(_carried_copy_key(entry), set()).add(
+                mark if isinstance(mark, int) else None
+            )
     for entry in findings:
         if not isinstance(entry, dict) or entry.get("suppressed") is True:
             continue
@@ -2189,13 +2207,24 @@ def carry_findings(
             carried["waiver"] = waiver.text[:300]
             waived.append(carried)
             continue
-        issue, why_not_tracked = find_tracked(
-            tracked,
-            carried.get("tracked_issue"),
-            path=path,
-            reviewers=[*reviewers, _SECURITY_REVIEWER] if origin_unknown else reviewers,
-            confirmed=confirmed,
-        )
+        if len(copy_marks[_carried_copy_key(entry)]) == 1:
+            issue, why_not_tracked = find_tracked(
+                tracked,
+                carried.get("tracked_issue"),
+                path=path,
+                reviewers=[*reviewers, _SECURITY_REVIEWER] if origin_unknown else reviewers,
+                confirmed=confirmed,
+            )
+        else:
+            issue, why_not_tracked = (
+                None,
+                (
+                    None
+                    if carried.get("tracked_issue") is None
+                    else f"is marked tracked #{carried['tracked_issue']}, "
+                    "but another copy of it is not marked the same"
+                ),
+            )
         if issue is not None:
             carried["waiver"] = tracked_waiver_text(issue)
             waived.append(carried)
@@ -2251,6 +2280,18 @@ def _carry_severity(entry: dict) -> str:
     if not _CARRY_FIELD.fullmatch(severity):
         raise CarryError("a blocking finding has no usable severity")
     return severity
+
+
+def _tracked_marks_differ(waiver: object, mark: object, current: Mapping[str, object]) -> bool:
+    """True when a carried finding waived as tracked and the current finding it would merge into,
+    also waived as tracked, name different issues (R18's every-copy rule)."""
+
+    def tracked(text: object) -> bool:
+        return isinstance(text, str) and text.startswith("tracked #")
+
+    return (
+        tracked(waiver) and tracked(current.get("waiver")) and current.get("tracked_issue") != mark
+    )
 
 
 def merge_carried_findings(result: object, carried: object, expected_count: str) -> dict:
@@ -2334,6 +2375,10 @@ def merge_carried_findings(result: object, carried: object, expected_count: str)
         covering = [
             f for f in present.get(key, []) if waiver is not None or f.get("blocking") is True
         ]
+        if covering and _tracked_marks_differ(waiver, mark, covering[0]):
+            # R18: every copy carries the same mark. A carried copy tracked under another issue
+            # than the current one is not absorbed; it is added below as blocking.
+            covering, waiver = [], None
         if covering:
             names = {reviewer, *reporters} - {None, "carried"}
             current = covering[0]

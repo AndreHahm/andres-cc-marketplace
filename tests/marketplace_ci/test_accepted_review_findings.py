@@ -1214,6 +1214,55 @@ def test_a_tracked_carried_finding_blocks_again_once_its_issue_closes(git_repo):
     assert any("marked tracked #7" in note for note in closed.notes)
 
 
+def test_a_carried_copy_tracked_under_another_issue_blocks_the_merged_result():
+    """PR #842 round 1 (CodeRabbit): R18's every-copy rule also holds between the carried copy
+    and the current one; matching marks merge as before."""
+
+    def current(issue):
+        return _tracked_entry(blocking=False, waiver=f"tracked #{issue}", tracked_issue=issue)
+
+    def carried(issue, waiver=True):
+        extra = {"waiver": f"tracked #{issue}"} if waiver else {}
+        return {**_tracked_entry(tracked_issue=issue), **extra}
+
+    def result(issue):
+        return {"status": "clean", "findings": [current(issue)], "blocking": False}
+
+    differ = merge_carried_findings(result(12), [carried(13)], "0")
+    assert differ["blocking"] is True and differ["carried_findings"] == 1
+    added = differ["findings"][-1]
+    assert added["reviewer"] == "carried" and added["blocking"] is True
+    assert added["waiver"] is None and added["tracked_issue"] == 13
+
+    same = merge_carried_findings(result(12), [carried(12)], "0")
+    assert same["blocking"] is False and len(same["findings"]) == 1
+    # The carried copy's issue closed: carry_findings sends it without a waiver, and it blocks.
+    closed = merge_carried_findings(result(12), [carried(13, waiver=False)], "1")
+    assert closed["blocking"] is True and closed["findings"][-1]["blocking"] is True
+
+
+def test_carried_copies_with_different_marks_keep_blocking_on_the_next_run(git_repo):
+    """The merged record holds a #12 and a #13 copy of one finding: the next carry tracks neither,
+    so the conflict does not clear by itself one run later."""
+    base = _commit(git_repo, "base", **{"s/SKILL.md": "x\n"})
+    anchor = _commit(git_repo, "pr 1", **{"s/SKILL.md": "\n" * 14 + GRANT + "\n"})
+    result = _anchor_result(
+        _tracked_entry(blocking=False, waiver="tracked #12", tracked_issue=12),
+        _tracked_entry(reviewer="carried", origin_reviewer="skill-reviewer", tracked_issue=13),
+    )
+    body = _section("- tracked #12", "- tracked #13")
+    outcome = carry_findings(git_repo.root, base, anchor, result, body, lambda n: n in (12, 13))
+    assert outcome.waived == () and len(outcome.blocking) == 2
+    assert sum("another copy" in note for note in outcome.notes) == 2
+    # Same mark on every copy: both stay tracked, as before.
+    same = _anchor_result(
+        _tracked_entry(blocking=False, waiver="tracked #12", tracked_issue=12),
+        _tracked_entry(tracked_issue=12),
+    )
+    outcome = carry_findings(git_repo.root, base, anchor, same, body, lambda n: n in (12, 13))
+    assert outcome.blocking == () and len(outcome.waived) == 2
+
+
 def test_a_carried_tracked_finding_on_a_gate_critical_path_needs_a_confirmation(git_repo):
     from scripts.marketplace_ci.review import tracked_confirmation_key
 
@@ -1334,6 +1383,30 @@ def test_a_claude_finding_marked_tracked_is_waived_and_shown_as_tracked():
     assert "Major (tracked #7)" in summary_body(result, [])
 
 
+def test_claude_copies_of_one_finding_are_tracked_only_when_every_copy_has_the_same_mark():
+    """PR #842 round 1 (CodeRabbit): R18's every-copy rule in the Claude review too."""
+    from scripts.marketplace_ci.claude_review import apply_waivers
+
+    def copies(*marks):
+        return [{**_claude_finding(), "title": f"[tracked #{m}] t" if m else "t"} for m in marks]
+
+    mixed = copies(7, 8)
+    result = _claude_result(*mixed)
+    notes = apply_waivers(result, (), set(), lambda path, line: GRANT, (7, 8))
+    assert not any(f.get("waiver") for f in mixed) and result["status"] == "findings"
+    assert len(notes) == 2 and all("another copy" in n for n in notes)
+
+    marked_and_unmarked = copies(7, None)
+    result = _claude_result(*marked_and_unmarked)
+    apply_waivers(result, (), set(), lambda path, line: GRANT, (7,))
+    assert not any(f.get("waiver") for f in marked_and_unmarked)
+
+    same = copies(7, 7)
+    result = _claude_result(*same)
+    assert apply_waivers(result, (), set(), lambda path, line: GRANT, (7,)) == []
+    assert all(f["waiver"] == "tracked #7" for f in same) and result["status"] == "clean"
+
+
 def test_the_claude_prompts_brief_the_tracked_issues_to_the_general_pass_only(
     git_repo, monkeypatch, tmp_path
 ):
@@ -1351,8 +1424,11 @@ def test_the_claude_prompts_brief_the_tracked_issues_to_the_general_pass_only(
         encoding="utf-8",
     )
     scope = tmp_path / "scope.json"
+    # A gate-critical path makes the security prompt too, so its lack of a briefing is checked.
     scope.write_text(json.dumps({"anchor_sha": "", "anchor_status": "none", "paths": [
-        {"status": "M", "path": "a_py", "gate_critical": False}]}), encoding="utf-8")  # fmt: skip
+        {"status": "M", "path": "a_py", "gate_critical": False},
+        {"status": "M", "path": "scripts/marketplace_ci/review.py", "gate_critical": True},
+    ]}), encoding="utf-8")  # fmt: skip
     template = tmp_path / "t.md"
     template.write_text("{{ACCEPTED_FINDINGS}}", encoding="utf-8")
     review_md = tmp_path / "r.md"
@@ -1369,6 +1445,9 @@ def test_the_claude_prompts_brief_the_tracked_issues_to_the_general_pass_only(
     assert main(args) == 0
     general = (out_dir / "general.md").read_text(encoding="utf-8")
     assert "[tracked issues]" in general and '"number": 7' in general
+    assert "security=true" in out.read_text(encoding="utf-8")
+    security = (out_dir / "security.md").read_text(encoding="utf-8")
+    assert "[tracked issues]" not in security and '"number": 7' not in security
 
 
 def test_an_issue_whose_text_could_not_be_read_is_not_applied():
@@ -1478,3 +1557,48 @@ def test_a_marked_finding_on_a_changed_file_is_kept_while_its_issue_applies(git_
     # Undeclared, the changed file releases it as before.
     released = carry_findings(git_repo.root, base, anchor, result, "", _never_open)
     assert released.blocking == () and released.waived == ()
+
+
+def _locale_decoding_run(answer):
+    """A `subprocess.run` stand-in that decodes `gh`'s UTF-8 output the way text mode does: with
+    the `encoding` the caller passed, else a legacy Windows locale's cp1252 (PR #842 round 1)."""
+
+    def run(cmd, **kw):
+        raw = answer(cmd).encode("utf-8")
+        text = raw.decode(kw.get("encoding") or "cp1252", kw.get("errors") or "strict")
+        return subprocess.CompletedProcess(cmd, 0, stdout=text, stderr="")
+
+    return run
+
+
+def test_issue_text_pr_body_and_confirmations_are_read_as_utf8(tmp_path, monkeypatch):
+    from scripts.marketplace_ci.__main__ import (
+        _confirmed_waivers,
+        _load_accepted_findings,
+        _tracked_issue_records,
+    )
+
+    issue = json.dumps(["Résumé", "Łączenie"], ensure_ascii=False)
+    monkeypatch.setattr(main_module.subprocess, "run", _locale_decoding_run(lambda cmd: issue))
+    assert _tracked_issue_records("o/r", [7]) == [
+        {"number": 7, "title": "Résumé", "summary": "Łączenie"}
+    ]
+
+    comment = json.dumps(
+        {"login": "maint", "body": f"Łączenie\n- confirmed R6 a_py @{FP}"}, ensure_ascii=False
+    )
+    answers = _locale_decoding_run(
+        lambda cmd: "maintain" if cmd[-3].endswith("/permission") else comment
+    )
+    monkeypatch.setattr(main_module.subprocess, "run", answers)
+    assert _confirmed_waivers("o/r", "7") == {("R6", "a_py", FP)}
+
+    monkeypatch.setattr(main_module, "_issue_is_open", lambda repo, n, gh="gh": False)
+    monkeypatch.setattr(main_module, "_confirmed_waivers", lambda repo, pr, gh: set())
+    body = _section("- R7 b_py:4 – accepted: Łączenie")
+    monkeypatch.setattr(main_module.subprocess, "run", _locale_decoding_run(lambda cmd: body))
+    out = tmp_path / "accepted.json"
+    args = ["fetch-accepted-findings", "--repo", "o/r", "--pr-number", "7", "--gh", "gh"]
+    assert main([*args, "--output", str(out)]) == 0
+    text, _, _ = _load_accepted_findings(str(out))
+    assert "Łączenie" in text

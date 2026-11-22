@@ -919,6 +919,8 @@ def _tracked_issue_records(repo: str, numbers, gh: str = "gh") -> list[dict]:
             [gh, "api", f"repos/{repo}/issues/{number}", "--jq", "[.title, .body]"],
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
         )
         title = body = None
         if fetched.returncode == 0:
@@ -954,6 +956,8 @@ def _confirmed_waivers(repo: str, pr_number: str, gh: str = "gh") -> set[tuple[s
         ],
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
     )
     if listed.returncode != 0:
         return set()
@@ -1008,6 +1012,8 @@ def _handle_fetch_accepted_findings(args: argparse.Namespace) -> int:
             [args.gh, "api", f"repos/{args.repo}/pulls/{args.pr_number}", "--jq", '.body // ""'],
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
         )
         if fetched.returncode != 0:
             print("fetch-accepted-findings: cannot read the pull request body", file=sys.stderr)
