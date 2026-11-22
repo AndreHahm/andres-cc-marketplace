@@ -1,0 +1,44 @@
+{
+  "entries": [
+    {
+      "disposition": "accepted",
+      "finding": "4657471065",
+      "note": "Filed as #840: the fix attempt reopened bypasses in security review, so it was discarded at the user's choice.",
+      "path": ".codex/hooks/block-dangerous-command.sh",
+      "pr": 839,
+      "recorded_at": "2026-11-22T10:06:49+00:00"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "4657472706",
+      "note": "Filed as #840: the fix attempt reopened bypasses in security review, so it was discarded at the user's choice.",
+      "path": ".codex/hooks/block-dangerous-command.sh",
+      "pr": 839,
+      "recorded_at": "2026-11-22T10:06:50+00:00"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "4657472757",
+      "note": "Filed as #840: the fix attempt reopened bypasses in security review, so it was discarded at the user's choice.",
+      "path": ".codex/hooks/block-dangerous-command.sh",
+      "pr": 839,
+      "recorded_at": "2026-11-22T10:06:50+00:00"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "4657472822",
+      "note": "Filed as #840: the fix attempt reopened bypasses in security review, so it was discarded at the user's choice.",
+      "path": ".codex/hooks/block-dangerous-command.sh",
+      "pr": 839,
+      "recorded_at": "2026-11-22T10:06:51+00:00"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "4657472872",
+      "note": "Filed as #840: the fix attempt reopened bypasses in security review, so it was discarded at the user's choice.",
+      "path": ".codex/hooks/block-dangerous-command.sh",
+      "pr": 839,
+      "recorded_at": "2026-11-22T10:06:52+00:00"
+    }
+  ]
+}
