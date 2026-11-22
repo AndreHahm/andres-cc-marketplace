@@ -62,8 +62,10 @@ Status: approved
 - When nothing is left to review, no API call is made.
 - Each pass has its own anchor: the newest earlier run in which that pass finished, whether or not it
   found something (R7), and whatever the other pass did. The result file records which passes finished.
-  A pass that was cancelled, could not run or was skipped does not make that run an anchor for that
-  pass. Each pass reviews its own delta; a pass with nothing left to review makes no API call.
+  A pass that was cancelled or could not run, and every pass of a run whose review was skipped
+  (switched off, a draft, or the pull request moved before a pass), does not make that run an anchor
+  for that pass. Each pass reviews its own delta; a pass with nothing new to review since its anchor
+  makes no API call and counts as finished, so the run becomes its anchor.
 - The anchor never comes from a pull request comment or anything else the author can edit.
 
 Status: approved (no trust check, the ready filter and the fetch retry, as Codex R10, R14 and R9, by the maintainer, 2026-11-16, issue #753; per-pass anchor by the maintainer, 2026-11-22, issue #836)
