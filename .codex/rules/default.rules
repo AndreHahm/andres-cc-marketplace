@@ -3,6 +3,15 @@
 # Copy to ~/.codex/rules/default.rules. Rules govern requests to run commands
 # outside the sandbox; hooks and sandboxing still matter for in-sandbox commands.
 
+# Sentinel: shows whether Codex loaded this project rules file (see README "Checking that project
+# rules load" and hooks/tests/test-live-codex-hook-and-rules.sh). Forbids only this exact command.
+# Leave it out of a ~/.codex/rules copy, or the live check can no longer tell the layers apart.
+prefix_rule(
+    pattern = ["echo", "CODEX_PROJECT_RULE_TEST"],
+    decision = "forbidden",
+    justification = "PROJECT RULE LOADED",
+)
+
 # System commands and shell utils
 # Prefix rules match whole tokens, so only common spellings are listed here;
 # the PreToolUse hook catches other combined flags such as `-rfv`.
