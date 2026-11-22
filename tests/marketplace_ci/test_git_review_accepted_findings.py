@@ -124,6 +124,8 @@ def test_match_marks_a_moved_finding_as_waived(checkout, capsys):
         ("M1", True, True),
         ("M2", False, False),
     ]
+    # The author's own local list is not a pull request body.
+    assert not any(r["unconfirmed"] for r in report)
 
 
 def test_working_tree_lines_are_counted_like_ci(checkout):
@@ -610,6 +612,8 @@ def test_brief_and_match_read_the_open_pull_requests_body(checkout, monkeypatch,
     assert helper.main(["match", envelope]) == 0
     report = json.loads(capsys.readouterr().out)
     assert [(r["id"], bool(r["waiver"])) for r in report] == [("M1", True), ("M2", False)]
+    # A body's match lacks CI's maintainer confirmation, so it is never ranked as accepted.
+    assert [r["unconfirmed"] for r in report] == [True, False]
 
 
 @pytest.mark.parametrize(

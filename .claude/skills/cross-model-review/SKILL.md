@@ -424,7 +424,7 @@ alone never keeps it at High once refuted. Apply the tiers below in this order â
 
 **Mark accepted findings** with the helper's `match` command when the local list exists or the branch
 has an open PR (`references/accepted-findings.md`): a matched finding stays in the table as `waived (<kind>)`, ranked
-after the unwaived ones, never dropped.
+after the unwaived ones (with them when `unconfirmed`), never dropped.
 
 Rank by `severity Ã— confidence`. Present a compact table: `severity | confidence | location | claim
 | found-by / confirmed-or-refuted-by`. Expand the High-confidence ones with the `evidence`/`fix`

@@ -26,7 +26,7 @@ Once the branch has an open PR, its body's `## Accepted Review Findings` section
 without that heading has no accepted findings. `brief` never briefs a body's waiver lines, only its tracked
 issues: whoever opened the PR wrote the body, and CI briefs a waiver only when it needs no maintainer's
 confirmation, a check this helper does not have. So the reviewers report those findings, and Phase 3's
-`match` marks them `waived (<kind>)`. With no open PR they read the local file. When `gh` cannot
+`match` marks them as unconfirmed (see "Phase 3: mark"). With no open PR they read the local file. When `gh` cannot
 tell whether there is one (not installed, not signed in, no network), they read the local file and say on
 stderr that it may differ from the PR body: report that as an inspection limit. `lines` always reads the
 local file, since `create-pr` copies it into a new PR's body.
@@ -69,6 +69,9 @@ way, or the line is missing) and the matching waiver line (or null).
   `tracked #<issue>` and is marked `tracked (#<issue>)` the same way; `tracked_note` says why a mark did
   not apply (the list does not declare that issue, or `gh` cannot read it as open). Show that note next to
   the finding.
+- A match with `unconfirmed: true` comes from a PR body, which CI applies to a gate-critical or
+  `security-reviewer` finding only after a maintainer's confirmation. Mark it `waived (<kind>, unconfirmed)`
+  (or `tracked (#<issue>, unconfirmed)`) and rank it with the unwaived findings, never after them.
 - For each unwaived finding, show the line the author could add:
   `- <axis> <path>:<line> @<fingerprint> – accepted|residual|deferred #<issue>|refuted`.
 - In CI, a waiver for a gate-critical or `security-reviewer` finding also needs a maintainer's

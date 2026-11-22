@@ -29,7 +29,8 @@ Three commands, all run from the repository root:
 - `match ENVELOPE...` prints a JSON list naming, for each finding of the given codex-kit
   envelopes, its `axis`, `location`, the flagged line's fingerprint in the working tree, and the
   waiver line that matches it (or null): `tracked #<issue>` for a finding whose title is marked with
-  an open tracked issue of the list. `tracked_note` says why a mark did not apply.
+  an open tracked issue of the list. `tracked_note` says why a mark did not apply. `unconfirmed`
+  is true for a match from a pull request body, which lacks CI's maintainer confirmation.
 
 The match key, fingerprint and line format are the same as this marketplace's CI
 (`scripts/marketplace_ci/review.py`: `line_fingerprint`, `read_waiver_section`, `waiver_matches`,
@@ -422,12 +423,20 @@ def _parse_body(body: str) -> tuple[list[dict], list[str], list[tuple[int, str]]
 def _load_list(
     for_briefing: bool = False,
 ) -> tuple[list[dict], list[str], list[tuple[int, str]]]:
-    """The waiver lines, the lines not applied and the `tracked` lines of the list: the open
-    pull request's body when the branch has one (R17), else the local list.
+    """The waiver lines, the lines not applied and the `tracked` lines of the list."""
+    return _load(for_briefing)[:3]
 
-    `for_briefing` leaves out a body's waiver lines. Whoever opened the pull request wrote the
-    body, and CI briefs a waiver only when it needs no maintainer's confirmation (gate-critical
-    paths, security-reviewer); this copy has no such check, so a body's waivers only mark."""
+
+def _load(
+    for_briefing: bool = False,
+) -> tuple[list[dict], list[str], list[tuple[int, str]], bool]:
+    """As `_load_list`, plus whether the list is a pull request body: the open pull request's
+    body when the branch has one (R17), else the local list.
+
+    Whoever opened the pull request wrote the body, and CI applies a waiver or tracked mark on a
+    gate-critical path or for security-reviewer only after a maintainer's confirmation, a check
+    this copy does not have. So `for_briefing` leaves out a body's waiver lines, and `match`
+    reports a body's matches as unconfirmed."""
     pr = open_pull_request()
     if pr is not None and pr[0]:
         print(
@@ -442,7 +451,7 @@ def _load_list(
                 file=sys.stderr,
             )
             waivers = []
-        return waivers, skipped, tracked
+        return waivers, skipped, tracked, True
     if pr is None:
         print(
             "git-review-accepted-findings: gh could not tell whether this branch has an open "
@@ -452,13 +461,13 @@ def _load_list(
     refusal = _list_refusal()
     if refusal is not None:
         print(f"git-review-accepted-findings: {LOCAL_LIST} not read: {refusal}", file=sys.stderr)
-        return [], [], []
+        return [], [], [], False
     text = _read_regular(LOCAL_LIST, _MAX_LIST_BYTES)
     if text is None:
-        return [], [], []
+        return [], [], [], False
     waivers, skipped = parse(text)
     tracked, over = parse_tracked(text)
-    return waivers, [*skipped, *over], tracked
+    return waivers, [*skipped, *over], tracked, False
 
 
 def _safe_relative(path: str) -> bool:
@@ -624,7 +633,7 @@ def cmd_brief(run_dir: str) -> int:
 
 
 def cmd_match(envelopes: list[str]) -> int:
-    waivers, _, tracked = _load_list()
+    waivers, _, tracked, from_body = _load()
     declared = {number for number, _ in tracked}
     entries: list[tuple[str, dict, str, str, int]] = []
     for name in envelopes:
@@ -677,6 +686,8 @@ def cmd_match(envelopes: list[str]) -> int:
                 "fingerprint": fingerprint,
                 "waiver": waiver,
                 "tracked_note": note,
+                # A pull request body's match lacks CI's maintainer confirmation (issue #834).
+                "unconfirmed": from_body and waiver is not None,
             }
         )
     print(json.dumps(report, indent=2))
