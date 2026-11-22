@@ -240,6 +240,8 @@ B	git -c merge.ff=false pull
 B	git -c pull.rebase pull
 B	git -c branch.main.rebase pull
 A	GIT_CONFIG_GLOBAL=~/alias.cfg git status
+A	git log --grep 'example -c alias.x=value'
+A	rg 'git -c pull.rebase=true' docs
 A	gcc -c alias.c
 A	tar -c alias.txt
 A	make -C alias.d

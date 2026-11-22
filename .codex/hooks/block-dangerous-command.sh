@@ -101,8 +101,10 @@ END {
 # option stops blanking for that command (`commit -F x -m` would make -m the file). Blanking
 # stops for the rest of the command at anything not modeled here: $( ), a backtick, ${ },
 # <( ), a heredoc, [[ ]], case, alias, function or a parenthesis inside a command; a word
-# holding an unquoted $ or glob character stops it for that command, since expansion could
-# split it. An unclosed quote cancels all blanking.
+# holding an unquoted $ or glob character, or a $ parameter inside double quotes, stops it for
+# that command, since expansion could split it or turn it into an option. A word over 256
+# characters stops it wherever it would be read as the git word, an option or the subcommand.
+# An unclosed quote cancels all blanking.
 # BINMODE=3 keeps CRs on Windows gawk; a CR is an ordinary character in bash, written `_`.
 split_words() {
     awk -v BINMODE=3 -v mode="$1" -v sq="'" -v dq='"' '
@@ -502,11 +504,12 @@ ABBREV_GIT_RE+="|pull([^;&|]*[[:space:]])?-[a-zA-Z]*r${GIT_SUB_END}"
 # check: config read from a file (`include.path`, GIT_CONFIG_GLOBAL, another --git-dir) and
 # keys that run a command (core.pager, core.editor, core.sshCommand, core.hooksPath,
 # GIT_PAGER, GIT_SSH_COMMAND, GIT_EXTERNAL_DIFF), and a key held in a variable, are not checked.
-# The -c and --config-env forms need a word boundary and `=` after the key, so `gcc -c alias.c`
-# or `make -C alias.d` is not read as one; a rebase key may also stand alone, since git reads
+# The -c and --config-env forms must follow `git` and its global options at the start of a
+# command, and need `=` after the key, so `gcc -c alias.c`, `make -C alias.d` or a search for
+# `-c alias.x=` in text is not read as one; a rebase key may also stand alone, since git reads
 # `-c pull.rebase` as true. A GIT_CONFIG_KEY_<n> value is the bare key.
 CONFIG_KEYS='(clean\.requireforce|pull\.(rebase|ff)|merge\.ff|branch\.[^[:space:]=]*\.rebase|alias\.[^[:space:]=]*)'
-CONFIG_OPT='(^|[[:space:]])(-c[[:space:]]*|--config-env[=[:space:]]+)'
+CONFIG_OPT="${SEGMENT_START}git${GIT_OPT}*[[:space:]]+(-c[[:space:]]*|--config-env[=[:space:]]+)"
 UNSAFE_CONFIG_RE="${CONFIG_OPT}${CONFIG_KEYS}="
 UNSAFE_CONFIG_RE+="|${CONFIG_OPT}(pull|branch\.[^[:space:]=]*)\.rebase([[:space:]]|\$)"
 UNSAFE_CONFIG_RE+="|GIT_CONFIG_(KEY_[0-9]+|PARAMETERS)=[^[:space:]]*${CONFIG_KEYS}"
