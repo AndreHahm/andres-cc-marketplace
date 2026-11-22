@@ -1609,6 +1609,7 @@ def read_waiver_section(pr_body: str, issue_is_open: Callable[[int], bool]) -> W
     waivers: list[Waiver] = []
     malformed: list[tuple[str, str]] = []
     tracked: list[int] = []
+    declared: set[int] = set()
     looked_up: dict[int, bool] = {}
     for raw in section.splitlines():
         text = raw.strip()
@@ -1617,12 +1618,14 @@ def read_waiver_section(pr_body: str, issue_is_open: Callable[[int], bool]) -> W
         t = _TRACKED_LINE.match(raw)
         if t is not None:
             number = int(t["issue"])
-            if number in tracked:
+            if number in declared:
                 continue
-            # The cap first, so a line past it starts no issue lookup (R18).
-            if len(tracked) >= MAX_TRACKED_ISSUES:
+            # The cap first, over every distinct declared number, open or not, so a body full
+            # of closed or missing numbers starts at most 10 issue lookups (R18).
+            if len(declared) >= MAX_TRACKED_ISSUES:
                 malformed.append((text, f"more than {MAX_TRACKED_ISSUES} tracked issues"))
                 continue
+            declared.add(number)
             if number not in looked_up:
                 looked_up[number] = number > 0 and issue_is_open(number)
             if not looked_up[number]:
@@ -2066,6 +2069,7 @@ def carry_findings(
     pr_body: str,
     issue_is_open: Callable[[int], bool],
     confirmed: Callable[[tuple[str, str, str]], bool] = _never_confirmed,
+    readable_tracked: Collection[int] | None = None,
 ) -> CarryOutcome:
     """The anchor run's blocking and waived findings whose file has not changed since the anchor
     (or the anchor cannot be resolved here, so that cannot be told, Codex R9), split by whether a
@@ -2073,7 +2077,8 @@ def carry_findings(
     check). An entry that cannot be read (no usable path or rule, more entries than can be
     checked) raises CarryError rather than silently not blocking. Each returned entry holds
     `rule`, `path`, `line` and `severity`, plus `fingerprint` and `reviewer` when known, and a
-    waived one its `waiver` line."""
+    waived one its `waiver` line. `readable_tracked`, when given, is the declared tracked issues
+    whose text could be read (`briefable_tracked`); only those apply (R18), as on the fresh path."""
     resolved = anchor_resolved(repo, anchor_sha)
     # An anchor result without a findings list is unreadable, not clean (run-codex-review always
     # writes one).
@@ -2084,6 +2089,7 @@ def carry_findings(
         raise CarryError(f"anchor result has more than {_MAX_CARRIED_INPUT} findings")
     section = read_waiver_section(pr_body, issue_is_open)
     waivers = section.waivers
+    tracked = tuple(n for n in section.tracked if readable_tracked is None or n in readable_tracked)
     unchanged: dict[str, bool] = {}
     head_prints: dict[str, list[str] | None] = {}
     blocking: list[dict] = []
@@ -2178,7 +2184,7 @@ def carry_findings(
             waived.append(carried)
             continue
         issue, why_not_tracked = find_tracked(
-            section.tracked,
+            tracked,
             carried.get("tracked_issue"),
             path=path,
             reviewers=[*reviewers, _SECURITY_REVIEWER] if origin_unknown else reviewers,

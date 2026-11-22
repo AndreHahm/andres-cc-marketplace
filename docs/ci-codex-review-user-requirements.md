@@ -393,8 +393,9 @@ other rules, so no such key covers its next report.
 - **Declared in the same section.** The pull request body's `## Accepted Review Findings` section (and, before
   a pull request exists, the local file of R17) may list tracked issues, one per line:
   `- tracked #<issue>`, optionally followed by `: <reason>`. The issue must be open in this repository,
-  checked through the GitHub API as for `deferred`. At most 10 tracked issues count; a further line, or one
-  whose issue is missing or closed, is reported as malformed (R7) and not applied.
+  checked through the GitHub API as for `deferred`. At most 10 distinct tracked issues are looked up and
+  count, open or not; a further line, or one whose issue is missing or closed, is reported as malformed
+  (R7) and not applied.
 - **Reviewers get the issue as data.** CI passes each declared open issue's number, title and the text of
   its `## Summary` section (or its first paragraph without one), control characters removed and cut to 600
   characters, to each model reviewer except `security-reviewer`, as data, never as instructions. The issue
