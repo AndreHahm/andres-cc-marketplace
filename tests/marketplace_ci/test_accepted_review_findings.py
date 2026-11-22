@@ -1401,6 +1401,13 @@ def test_claude_copies_of_one_finding_are_tracked_only_when_every_copy_has_the_s
     apply_waivers(result, (), set(), lambda path, line: GRANT, (7,))
     assert not any(f.get("waiver") for f in marked_and_unmarked)
 
+    # PR #842 round 1 follow-up: an unmarked Minor copy counts as a copy too.
+    major = {**_claude_finding(), "title": "[tracked #7] t"}
+    minor = {**_claude_finding(severity="Minor"), "title": "t"}
+    result = _claude_result(major, minor)
+    apply_waivers(result, (), set(), lambda path, line: GRANT, (7,))
+    assert "waiver" not in major and result["status"] == "findings"
+
     same = copies(7, 7)
     result = _claude_result(*same)
     assert apply_waivers(result, (), set(), lambda path, line: GRANT, (7,)) == []

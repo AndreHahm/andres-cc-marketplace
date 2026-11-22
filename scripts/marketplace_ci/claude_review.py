@@ -442,10 +442,11 @@ def apply_waivers(
     used: list = []
     unwaived: list[tuple[str, str, int, str | None]] = []
     # R18: copies of one finding (rule, path, line) count as marked only when every copy carries
-    # the same mark, as `aggregate_findings` decides for the Codex review.
+    # the same mark, as `aggregate_findings` decides for the Codex review: whatever a copy's
+    # severity, so an unmarked Minor copy keeps a marked Major one from being waived.
     copy_marks: dict[tuple[str, str, int], set[int | None]] = {}
     for f in result.get("findings", []):
-        if f["severity"] in BLOCKING and f["in_scope"]:
+        if f["in_scope"]:
             key = (finding_rule(f), f["path"], f["line"])
             copy_marks.setdefault(key, set()).add(tracked_mark(f.get("title")))
     for f in result.get("findings", []):
