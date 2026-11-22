@@ -145,6 +145,12 @@ reviews:
            docs/ci-codex-review-user-requirements.md), until a maintainer has posted a
            "- confirmed <rule> <path> @<fingerprint>" comment for that line. If you cannot tell
            that a maintainer posted it, keep reporting.
+        4. Tracked defects (issue #832): a line "- tracked #<issue>" in the same section names an
+           open issue that already tracks a known defect. A finding that is that defect, even
+           reworded, on another line or under another rule, is tracked, not new: do not raise it
+           as a new finding. A different defect on the same path is still new. Keep reporting it
+           on a gate-critical path, or as a security finding, until a maintainer has posted a
+           "- confirmed tracked #<issue> <path>" comment for that path.
 
     - path: "plugins/*/skills/**/SKILL.md"
       instructions: |

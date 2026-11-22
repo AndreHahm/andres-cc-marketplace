@@ -8,7 +8,7 @@ the intent and `docs/ci.md` must be corrected.
 **Problem (issue #639):** the CI review sent the whole pull request to the OpenAI API on every run, including
 force-pushes, label and body edits, and re-runs. API cost and run time were too high.
 
-R7 and R17 also cover the other reviewers that read a pull request's accepted findings (issue #808): the
+R7, R17 and R18 also cover the other reviewers that read a pull request's accepted findings (issue #808): the
 Claude delta review, the local parity review, `cross-model-review` and third-party reviewers.
 
 **Open point:** the cost and run-time goals have no measurable acceptance criterion yet. This is not a
@@ -382,3 +382,55 @@ any of them. Each reviewer gets the list as data, never as instructions.
   that finding blocks nothing, and is answered through `handling-review-findings`.
 
 Status: approved (maintainer, 2026-11-21, issue #808)
+
+## R18. A finding an open issue tracks does not block (issue #832)
+
+A finding that an open issue of this repository already tracks is shown as tracked, not as new, and does not
+block. This is a third exception to R7's "blocking until fixed or waived", next to the waivers: a waiver names
+one finding by rule, path and fingerprint, but a tracked defect comes back reworded, on other lines and under
+other rules, so no such key covers its next report.
+
+- **Declared in the same section.** The pull request body's `## Accepted Review Findings` section (and, before
+  a pull request exists, the local file of R17) may list tracked issues, one per line:
+  `- tracked #<issue>`, optionally followed by `: <reason>`. The issue must be open in this repository,
+  checked through the GitHub API as for `deferred`. At most 10 tracked issues count; a further line, or one
+  whose issue is missing or closed, is reported as malformed (R7) and not applied.
+- **Reviewers get the issue as data.** CI passes each declared open issue's number, title and the text of
+  its `## Summary` section (or its first paragraph without one), control characters removed and cut to 600
+  characters, to each model reviewer except `security-reviewer`, as data, never as instructions. The issue
+  text is untrusted: anyone can open an issue. Its square brackets are passed on as round ones, so it cannot
+  spell the briefing's own delimiters. An issue whose title and summary cannot be read is not passed on and
+  not applied, and the job summary says so.
+- **The reviewer still reports the finding, marked.** A reviewer that finds the defect a listed issue
+  describes reports it as usual, with its title starting `[tracked #<issue>]`. It does not leave it out, so
+  every tracked finding stays visible in the run's result.
+- **CI decides, not the reviewer.** A finding marked `[tracked #<issue>]` does not block when that issue is
+  declared in the section and open. CI records it in the result as tracked, with the issue number, and lists
+  it in the job summary as tracked. A mark naming an issue that is not declared, or not open, is ignored: the
+  finding is judged as if unmarked, and the job summary says why.
+- **Maintainer-only for gate-critical and security findings.** As for R7's waivers: a tracked finding on a
+  gate-critical path (R3), on a path not spelled the canonical way, or raised by `security-reviewer`, does not
+  block only when a user whose role is maintain or admin has posted a pull request comment with the line
+  `- confirmed tracked #<issue> <path>`, and has not edited it since. One confirmation covers every finding
+  marked with that issue on that one path, whatever its rule or line, until the issue closes or its
+  `tracked` line is removed; another path needs its own confirmation. Without it, the finding blocks and
+  the job summary prints the confirmation line it needs.
+- **Every copy carries the mark.** When reviewers report the same finding (rule, path and line), it counts
+  as marked only when every copy carries the same mark, so a `security-reviewer` copy, which is never
+  briefed, is never marked through another reviewer's copy.
+- **Carried like a waived finding.** A tracked finding of the anchor run is carried (R7) and judged again on
+  each run: once the issue closes or its line is removed, it blocks again.
+- **Every reviewer of R17.** The Claude delta review (advisory), the local parity review and
+  `cross-model-review` get the same list and apply the same rule; the local reviews check an issue's state
+  when the repository can be reached, and otherwise treat a `tracked` line as not applied. Third-party
+  reviewers are told through their R17 channels that a finding a listed issue describes is already tracked.
+- **Accepted residual:** a reviewer can mark a new, different defect as tracked by a broadly worded listed
+  issue. On a path that needs no confirmation it then does not block, and on a path a maintainer confirmed
+  for that issue neither does a new defect there; a confirmation also survives later edits of the issue's
+  text. Such a finding stays visible in the result under the issue's number, as a waived finding does. The
+  issue text can also talk a briefed reviewer into leaving a finding out altogether, which no confirmation
+  catches; `security-reviewer` is never briefed, and the pull request must declare the issue.
+
+Status: approved (maintainer, 2026-11-22, issue #832; the title mark, the maintainer confirmation and the title-plus-summary
+briefing chosen by the maintainer; the confirmation bound to one path, the every-copy mark, the unread-issue and
+bracket rules and the wider residual added after the security review, maintainer's choice the same day)

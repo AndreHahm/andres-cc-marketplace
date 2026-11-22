@@ -15,7 +15,7 @@ import re
 import subprocess  # nosec B404  # list-form git and gh calls only, no shell (docs/ci.md)
 import tempfile
 import urllib.parse
-from collections.abc import Callable, Iterable, Mapping, Sequence
+from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -420,13 +420,22 @@ def apply_waivers(
     waivers: Sequence,
     confirmed: Iterable[tuple[str, str, str]],
     read_line: Callable[[str, int], str | None],
+    tracked: Collection[int] = (),
 ) -> list[str]:
     """R17: marks each Critical or Major finding of `result` that a waiver of the pull request
     body matches (R7's key: rule, path and the flagged line's fingerprint at the head) as
     waived, and recomputes the status. A security-pass finding needs a maintainer's
-    confirmation like a `security-reviewer` one. Returns a note per finding whose matching
-    waiver could not apply."""
-    from scripts.marketplace_ci.review import find_waiver, line_fingerprint, stale_waiver_notes
+    confirmation like a `security-reviewer` one. A finding whose title is marked
+    `[tracked #<issue>]` with one of the section's `tracked` issues is waived as tracked (R18).
+    Returns a note per finding whose matching waiver or mark could not apply."""
+    from scripts.marketplace_ci.review import (
+        find_tracked,
+        find_waiver,
+        line_fingerprint,
+        stale_waiver_notes,
+        tracked_mark,
+        tracked_waiver_text,
+    )
 
     keys = set(confirmed)
     notes: list[str] = []
@@ -452,9 +461,21 @@ def apply_waivers(
             f["waiver"] = waiver.text[:300]
             used.append(waiver)
             continue
+        issue, why_not_tracked = find_tracked(
+            tracked,
+            tracked_mark(f.get("title")),
+            path=f["path"],
+            reviewers=reviewers,
+            confirmed=keys.__contains__,
+        )
+        if issue is not None:
+            f["waiver"] = tracked_waiver_text(issue)
+            continue
         unwaived.append((rule, f["path"], f["line"], f["fingerprint"]))
         if why_not is not None:
             notes.append(f"{rule} {f['display_path']}:{f['line']}: the waiver {why_not}")
+        if why_not_tracked is not None:
+            notes.append(f"{rule} {f['display_path']}:{f['line']}: the finding {why_not_tracked}")
     notes.extend(
         f"not applied: {text} ({why})" for text, why in stale_waiver_notes(waivers, used, unwaived)
     )
@@ -469,6 +490,13 @@ def apply_waivers(
             result["verdict"] = "LGTM"
     result["waived_findings"] = waived
     return notes
+
+
+def _waived_label(f: Mapping) -> str:
+    waiver = f.get("waiver")
+    if not waiver:
+        return ""
+    return f" ({waiver})" if waiver.startswith("tracked #") else " (waived)"
 
 
 def head_line_reader(repo: str, head_sha: str, gh: Gh) -> Callable[[str, int], str | None]:
@@ -541,7 +569,7 @@ def summary_body(result: Mapping, unplaced: Sequence[Mapping]) -> str:
         "Advisory only: this check never blocks a merge. Findings are not carried to later runs.",
     ]
     rows = [
-        f"| {f['severity']}{' (waived)' if f.get('waiver') else ''} | {f['pass']} | "
+        f"| {f['severity']}{_waived_label(f)} | {f['pass']} | "
         f"`{f['display_path']}:{f['line']}` | " + f["title"].replace("|", "\\|") + " |"
         for f in result["findings"]
     ]

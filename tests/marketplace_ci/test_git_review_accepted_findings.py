@@ -199,12 +199,12 @@ LIST_LINE = f"- tool-scoping s/SKILL.md:21 @{FP} – accepted\n"
 
 def test_the_list_is_read_when_untracked(checkout):
     (checkout / ".claude/accepted-review-findings.local.md").write_text(LIST_LINE, encoding="utf-8")
-    waivers, _ = helper._load_list()
+    waivers, _, _ = helper._load_list()
     assert [w["path"] for w in waivers] == ["s/SKILL.md"]
     # Also once HEAD exists (the check then reads HEAD's tree too).
     _git(checkout, "add", "s/SKILL.md")
     _git(checkout, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "base")
-    waivers, _ = helper._load_list()
+    waivers, _, _ = helper._load_list()
     assert [w["path"] for w in waivers] == ["s/SKILL.md"]
 
 
@@ -215,7 +215,7 @@ def test_the_list_is_never_read_through_a_symlinked_directory(checkout, tmp_path
     (elsewhere / "accepted-review-findings.local.md").write_text(LIST_LINE, encoding="utf-8")
     (checkout / ".claude").rmdir()
     (checkout / ".claude").symlink_to(elsewhere)
-    assert helper._load_list() == ([], [])
+    assert helper._load_list() == ([], [], [])
     assert "symlink" in capsys.readouterr().err
 
 
@@ -223,7 +223,7 @@ def test_a_tracked_list_is_not_read(checkout, capsys):
     # A branch can force-add the gitignored file; a tracked copy is not the author's own list.
     (checkout / ".claude/accepted-review-findings.local.md").write_text(LIST_LINE, encoding="utf-8")
     _git(checkout, "add", "-f", ".claude/accepted-review-findings.local.md")
-    assert helper._load_list() == ([], [])
+    assert helper._load_list() == ([], [], [])
     assert "tracked" in capsys.readouterr().err
 
 
@@ -240,12 +240,12 @@ def test_a_committed_list_is_not_read_when_the_index_copy_is_missing(
     _git(checkout, "add", "-f", ".claude/accepted-review-findings.local.md")
     _commit_all(checkout)
     monkeypatch.setenv("GIT_INDEX_FILE", str(tmp_path.parent / f"{tmp_path.name}-no-index"))
-    assert helper._load_list() == ([], [])
+    assert helper._load_list() == ([], [], [])
     assert "tracked" in capsys.readouterr().err
     # HEAD alone is enough: the list is committed, though no index lists it.
     _git(checkout, "rm", "-q", "--cached", ".claude/accepted-review-findings.local.md")
     monkeypatch.delenv("GIT_INDEX_FILE")
-    assert helper._load_list() == ([], [])
+    assert helper._load_list() == ([], [], [])
 
 
 def test_a_tracked_list_under_another_case_is_not_read(checkout, capsys):
@@ -257,7 +257,7 @@ def test_a_tracked_list_under_another_case_is_not_read(checkout, capsys):
     (checkout / ".CLAUDE/Accepted-Review-Findings.local.md").write_text(LIST_LINE, encoding="utf-8")
     _git(checkout, "add", "-f", ".CLAUDE/Accepted-Review-Findings.local.md")
     (checkout / ".claude/accepted-review-findings.local.md").write_text(LIST_LINE, encoding="utf-8")
-    assert helper._load_list() == ([], [])
+    assert helper._load_list() == ([], [], [])
     assert "tracked" in capsys.readouterr().err
 
 
@@ -331,3 +331,159 @@ def test_lines_refuses_a_tracked_or_symlinked_list(checkout, tmp_path, capsys):
     assert helper.main(["lines"]) == 3
     captured = capsys.readouterr()
     assert captured.out == "" and "symlink" in captured.err
+
+
+# --- Tracked issues (R18, issue #832) --------------------------------------------------------
+
+TRACKED_LINES = [
+    "- tracked #7: the briefing is scoped by rule and path",
+    "- TRACKED #8",
+    "- tracked #7",
+    "- tracked #7x",
+    f"- tool-scoping s/SKILL.md:15 @{FP} – accepted",
+]
+
+
+def test_tracked_lines_parse_like_ci():
+    body = "## Accepted Review Findings\n" + "\n".join(TRACKED_LINES) + "\n"
+    tracked, over = helper.parse_tracked(body)
+    theirs = review.read_waiver_section(body, lambda _n: True)
+    assert [n for n, _ in tracked] == list(theirs.tracked) == [7, 8]
+    assert over == []
+    waivers, skipped = helper.parse(body)
+    assert [w["rule"] for w in waivers] == ["tool-scoping"]
+    assert skipped == ["- tracked #7x"]
+    many = "\n".join(f"- tracked #{n}" for n in range(1, 13))
+    tracked, over = helper.parse_tracked(many)
+    assert len(tracked) == review.MAX_TRACKED_ISSUES and over == ["- tracked #11", "- tracked #12"]
+
+
+@pytest.mark.parametrize(
+    "title", ["[tracked #814] x", "  [Tracked  #5] x", "[tracked #0] x", "see [tracked #5]", None]
+)
+def test_the_tracked_mark_is_read_like_ci(title):
+    assert helper.tracked_mark(title) == review.tracked_mark(title)
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        "## Summary\nA finding\ntracks.\n\nMore.\n## Environment\nx",
+        "# Title\n\nFirst para\nline two.\n\nSecond.",
+        "<!-- hidden -->\n## Summary\nshown\x07 text",
+        "## Summary\n" + "word " * 200,
+        None,
+    ],
+)
+def test_the_issue_summary_and_briefing_are_the_same_as_ci(body):
+    assert helper.issue_summary(body) == review.issue_summary(body)
+    ours = helper.render_tracked_issues_briefing([helper.tracked_issue_record(7, "T\tx", body)])
+    theirs = review.render_tracked_issues_briefing([review.tracked_issue_record(7, "T\tx", body)])
+    assert ours == theirs
+
+
+def _issues(monkeypatch, **records):
+    def fake(number):
+        return records.get(str(number))
+
+    monkeypatch.setattr(helper, "open_issue", fake)
+
+
+def test_brief_adds_open_tracked_issues_and_reports_the_others(
+    checkout, tmp_path, capsys, monkeypatch
+):
+    run = tmp_path / "run"
+    run.mkdir(mode=0o700)
+    (checkout / ".claude/accepted-review-findings.local.md").write_text(
+        "- tracked #7\n- tracked #9\n", encoding="utf-8"
+    )
+    _issues(monkeypatch, **{"7": {"number": 7, "title": "T", "summary": "S"}})
+    assert helper.main(["brief", "--run-dir", str(run)]) == 0
+    out = capsys.readouterr().out
+    assert "not applied: - tracked #9 (gh cannot read #9 as an open issue of origin)" in out
+    text = (run / "accepted.md").read_text(encoding="utf-8")
+    assert text.startswith("[tracked issues]")
+    assert [json.loads(line[2:]) for line in text.splitlines() if line.startswith("- {")] == [
+        {"number": 7, "title": "T", "summary": "S"}
+    ]
+
+
+def test_match_marks_a_tracked_finding_and_says_why_a_mark_did_not_apply(
+    checkout, capsys, monkeypatch
+):
+    (checkout / ".claude/accepted-review-findings.local.md").write_text(
+        "- tracked #7\n- tracked #8\n", encoding="utf-8"
+    )
+    _issues(monkeypatch, **{"7": {"number": 7, "title": "T", "summary": "S"}})
+    envelope = _envelope(
+        checkout,
+        {"id": "M1", "axis": "a", "location": "s/SKILL.md:1", "finding": "[tracked #7] x"},
+        {"id": "M2", "axis": "a", "location": "s/SKILL.md:1", "finding": "[tracked #8] x"},
+        {"id": "M3", "axis": "a", "location": "s/SKILL.md:1", "finding": "[tracked #9] x"},
+        {"id": "M4", "axis": "a", "location": "s/SKILL.md:1", "finding": "x"},
+    )
+    assert helper.main(["match", envelope]) == 0
+    report = {
+        r["id"]: (r["waiver"], r["tracked_note"]) for r in json.loads(capsys.readouterr().out)
+    }
+    assert report["M1"] == ("tracked #7", None)
+    assert report["M2"][0] is None and "gh cannot read it" in report["M2"][1]
+    assert report["M3"][0] is None and "no `- tracked #9` line" in report["M3"][1]
+    assert report["M4"] == (None, None)
+
+
+def test_lines_prints_the_tracked_lines_for_create_pr(checkout, capsys):
+    (checkout / ".claude/accepted-review-findings.local.md").write_text(
+        f"- tracked #7: filed\n- tool-scoping s/SKILL.md:15 @{FP} – accepted\n",
+        encoding="utf-8",
+    )
+    assert helper.main(["lines"]) == 0
+    assert capsys.readouterr().out.splitlines() == [
+        f"- tool-scoping s/SKILL.md:15 @{FP} – accepted",
+        "- tracked #7: filed",
+    ]
+
+
+def test_open_issue_reads_only_an_open_issue_of_origin_through_gh(monkeypatch):
+    from types import SimpleNamespace
+
+    answers = {
+        "1": ["open", False, "T", "## Summary\nS"],
+        "2": ["closed", False, "T", ""],
+        "3": ["open", True, "T", ""],
+        "5": ["open", False, "", ""],
+    }
+    asked = []
+
+    def fake_run(cmd, **_kw):
+        asked.append(cmd[2])
+        number = cmd[2].rsplit("/", 1)[1]
+        if number not in answers:
+            return SimpleNamespace(returncode=1, stdout="", stderr="not found")
+        return SimpleNamespace(returncode=0, stdout=json.dumps(answers[number]), stderr="")
+
+    monkeypatch.setattr(helper.subprocess, "run", fake_run)
+    monkeypatch.setattr(helper, "origin_repository", lambda: "o/r")
+    monkeypatch.setattr(helper, "_open_issues", {})
+    assert helper.open_issue(1) == {"number": 1, "title": "T", "summary": "S"}
+    assert [helper.open_issue(n) for n in (2, 3, 4, 5)] == [None, None, None, None]
+    assert asked[0] == "repos/o/r/issues/1"
+    # Without a github.com origin nothing is asked and nothing applies.
+    monkeypatch.setattr(helper, "origin_repository", lambda: None)
+    monkeypatch.setattr(helper, "_open_issues", {})
+    asked.clear()
+    assert helper.open_issue(1) is None and asked == []
+
+
+@pytest.mark.parametrize(
+    ("url", "slug"),
+    [
+        ("git@github.com:Owner/repo.git", "Owner/repo"),
+        ("https://github.com/Owner/re.po.git", "Owner/re.po"),
+        ("https://github.com/Owner/repo", "Owner/repo"),
+        ("https://gitlab.com/Owner/repo.git", None),
+    ],
+)
+def test_the_origin_repository_is_read_from_the_remote(monkeypatch, url, slug):
+    monkeypatch.setattr(helper, "_git", lambda *a: (0, url + "\n", ""))
+    assert helper.origin_repository() == slug

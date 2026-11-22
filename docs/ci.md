@@ -482,6 +482,26 @@ review` is the gate after the PR exists and reviews only the delta, to cut OpenA
   the reviewer to report a finding with the same rule on another line of the same path. Accepted residual: anyone who can edit the
   PR body can waive a finding that needs no confirmation; the waiver is visible in the body and the waived
   finding in each run's result.
+- **Tracked issues (R18, issue #832).** A section line `- tracked #<issue>` (at most 10, the issue open
+  through `gh`, else listed as not applied) declares an open issue that tracks a known defect.
+  `fetch-accepted-findings` adds each one's number, title and `issue_summary` (its `## Summary` text or
+  first paragraph, cleaned, at most 600 characters) to the JSON file as `tracked_issues`, and every model
+  reviewer except `security-reviewer` gets them as a `[tracked issues]` briefing, as data: report findings
+  as usual, and start the title of one that is an issue's defect with `[tracked #<issue>]`.
+  `validate_review_output` reads that mark into `Finding.tracked_issue` (`tracked_issue` in the result).
+  A blocking finding no waiver matches is waived with the line `tracked #<issue>` when `find_tracked`
+  holds: the issue is declared and open, and on a path that needs a confirmation (as for a waiver) a
+  maintainer posted `- confirmed tracked #<issue> <path>` for that path (`tracked_confirmation_key`).
+  Otherwise the job summary says why the mark did not apply. `aggregate_findings` keeps a mark only when
+  every copy of a finding carries it, `briefable_tracked` drops an issue whose text could not be read
+  (briefed as nothing, applied to nothing, listed as not applied), and `tracked_issue_record` turns square
+  brackets into round ones so issue text cannot spell the briefing's delimiters. Such a finding is carried as waived with its mark, so it blocks again once the issue closes or its
+  line is removed. The job summary lists the tracked findings. The Claude delta review and the local
+  parity review get the same briefing and rule through the same commands; `cross-model-review`'s helper
+  reads the issue of the `origin` repository through `gh` (named explicitly, never gh's default) and
+  applies no confirmation, as for its waivers. Accepted residual (R18): a reviewer can mark a different
+  defect with a broadly worded issue, on a path needing no confirmation or one a maintainer confirmed for
+  that issue, and issue text can talk a briefed reviewer into leaving a finding out.
 - **Every reviewer reads the same list (R17, issue #808).** Before a pull request exists the list is the
   gitignored `.claude/accepted-review-findings.local.md` (same line format, heading optional);
   `create-pr` copies its lines into the body. Where each reviewer reads it:

@@ -98,6 +98,33 @@ def test_dispatch_briefs_only_waivers_located_at_head_and_never_security(
     assert [(e["rule"], e["line"]) for e in briefed] == [("R6", 9)]
 
 
+def test_dispatch_briefs_tracked_issues_to_every_reviewer_but_security(
+    monkeypatch, repo, change, dependency_index, completed
+):
+    """R18 (issue #832): the declared open tracked issues reach every model reviewer as data,
+    never security-reviewer."""
+    texts = {}
+
+    def fake_run(argv, **kw):
+        if "--reviewer-type" in argv:
+            name = argv[argv.index("--reviewer-type") + 1]
+            texts[name] = Path(argv[argv.index("--instruction-file") + 1]).read_text("utf-8")
+            return completed(0)
+        return completed(0, stdout=_FAKE_TOML_CONTENT)
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    scope = derive_review_scope([change("plugins/demo-kit/skills/x/SKILL.md")], dependency_index())
+    tracked = [{"number": 814, "title": "Scoped by rule and path", "summary": "The briefing."}]
+    dispatch_reviewers(scope, base_sha="deadbeef", repo=repo, tracked_issues=tracked)
+
+    assert "[tracked issues]" not in texts["security-reviewer"]
+    for name in ("plugin-rulebook-checker", "dependency-reviewer", "skill-reviewer"):
+        briefed = [
+            json.loads(line[2:]) for line in texts[name].splitlines() if line.startswith("- {")
+        ]
+        assert briefed == tracked, name
+
+
 def _bridge_instruction_files(monkeypatch, completed):
     """Record every --instruction-file path the bridge is invoked with."""
     seen = []
