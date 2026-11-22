@@ -1,0 +1,13 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4657009539",
+      "line": 66,
+      "note": "R3 now separates a pass with nothing new (finished, anchors) from a skipped or failed one; wording only (199b5c32)",
+      "path": "docs/ci-claude-review-user-requirements.md",
+      "pr": 837,
+      "recorded_at": "2026-11-22T06:52:40+00:00"
+    }
+  ]
+}
