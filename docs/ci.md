@@ -526,7 +526,8 @@ review` is the gate after the PR exists and reviews only the delta, to cut OpenA
   `security-reviewer` ran), and `recheck_briefed_waivers` requires each to still be a valid line. So that
   a later run without a Codex call (R8) does not lose a lapsed one, `carry_findings` turns the anchor's
   `briefed_waivers` into waived entries (`_briefed_entries`, reviewer `briefed-waiver`, `Major`, skipped
-  when the anchor already records that rule, path and fingerprint): carried as waived while the waiver
+  when the anchor already records that rule, path and fingerprint in an entry the carry keeps, so a
+  suppressed or non-blocking report does not hide it): carried as waived while the waiver
   holds, blocking once it lapses, and dropped once its flagged line changes. Nobody can tell whether the
   reviewer would have reported it, so a later review that does not report it does not release it: restore
   the waiver line, change the flagged line, or attest a bypass. The lines are recorded uncut, so a long

@@ -2211,16 +2211,20 @@ BRIEFED_REVIEWER = "briefed-waiver"
 def _briefed_entries(briefed: object, findings: Sequence[object]) -> list[dict]:
     """R19: the anchor result's `briefed_waivers` as waived entries, so `carry_findings` carries
     each like a waived finding: a reviewer may have left its finding out of the result. A line
-    the anchor's findings already record (same rule, path and fingerprint) is not added twice.
+    the anchor's findings already record (same rule, path and fingerprint) in an entry the carry
+    keeps is not added twice.
     A briefed waiver never needs a confirmation (`briefable_waivers`), so its entry names a
     reviewer that is not security-reviewer. Anything unreadable raises CarryError (fail closed)."""
     if not isinstance(briefed, list):
         raise CarryError("anchor result's briefed waivers are not a list")
-    # Keyed as a waiver line names a finding (a finding without a rule is `-`).
+    # Keyed as a waiver line names a finding (a finding without a rule is `-`). Only an entry the
+    # carry keeps counts: a suppressed one, or one neither blocking nor waived, is dropped by it.
     recorded = {
         (*finding_waiver_key(e.get("rule"), e.get("path"), e.get("line"))[:2], e.get("fingerprint"))
         for e in findings
         if isinstance(e, dict)
+        and e.get("suppressed") is not True
+        and (e.get("blocking") is True or isinstance(e.get("waiver"), str))
     }
     entries: list[dict] = []
     for text in briefed:
