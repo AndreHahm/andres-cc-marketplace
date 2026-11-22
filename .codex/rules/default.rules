@@ -4,7 +4,8 @@
 # outside the sandbox; hooks and sandboxing still matter for in-sandbox commands.
 
 # Sentinel: shows whether Codex loaded this project rules file (see README "Checking that project
-# rules load" and hooks/tests/test-live-codex-hook-and-rules.sh). Forbids only this exact command.
+# rules load" and hooks/tests/test-live-codex-hook-and-rules.sh). Forbids only this command, also
+# with more arguments after it.
 # Leave it out of a ~/.codex/rules copy, or the live check can no longer tell the layers apart.
 prefix_rule(
     pattern = ["echo", "CODEX_PROJECT_RULE_TEST"],
