@@ -151,33 +151,61 @@ CMD_CODE=$(strip_heredocs <<<"${CMD}")
 CMD_FLAGS=$(blank_flag_values <<<"${CMD_CODE}")
 
 # Every check reads one line at a time, so `git -C x \` + newline + `reset --hard` would
-# slip past them. Each check also reads a copy with backslash-newline pairs joined. Not
+# slip past them. Each check also reads copies with backslash-newline pairs joined. Not
 # every such pair is a continuation (`echo x\\` or a comment ending in a backslash), so
-# the lines as written are kept, never replaced. The joined copy goes through the
-# heredoc filter and the flag scanner on its own, so no state carries over between the
-# two copies.
-CMD_JOINED=${CMD//$'\\\n'/ }
-if [[ "${CMD_JOINED}" != "${CMD}" ]]; then
-    JOINED_CODE=$(strip_heredocs <<<"${CMD_JOINED}")
-    JOINED_FLAGS=$(blank_flag_values <<<"${JOINED_CODE}")
-    CMD+=$'\n'"${CMD_JOINED}"
-    CMD_CODE+=$'\n'"${JOINED_CODE}"
-    CMD_FLAGS+=$'\n'"${JOINED_FLAGS}"
-fi
+# the lines as written are kept, never replaced. bash removes the pair with nothing, so
+# one copy joins that way (`git re\` + newline + `base` is `git rebase`, issue #802); a
+# second joins with a space, for a pair after a space whose surrounding whitespace a
+# check may need. The code copy is joined after the heredoc filter, not before: bash
+# does not join lines inside a quoted heredoc body, so joining first could merge away
+# the body's end (`x\` + newline + `EOF`) and hide the command after it. The flags copy
+# is likewise joined after the flag scanner: the join does not count backslashes, so a
+# quoted `\\` + newline would become `\"` and the scanner would misread where a quote ends.
+ORIGINAL_CMD=${CMD}
+ORIGINAL_CODE=${CMD_CODE}
+ORIGINAL_FLAGS=${CMD_FLAGS}
+for JOIN in '' ' '; do
+    CMD_JOINED=${ORIGINAL_CMD//$'\\\n'/"${JOIN}"}
+    if [[ "${CMD_JOINED}" != "${ORIGINAL_CMD}" ]]; then
+        JOINED_CODE=${ORIGINAL_CODE//$'\\\n'/"${JOIN}"}
+        JOINED_FLAGS=${ORIGINAL_FLAGS//$'\\\n'/"${JOIN}"}
+        CMD+=$'\n'"${CMD_JOINED}"
+        CMD_CODE+=$'\n'"${JOINED_CODE}"
+        CMD_FLAGS+=$'\n'"${JOINED_FLAGS}"
+    fi
+done
 
 # Here-strings, not `printf | grep -q`: under pipefail, grep -q exiting early
 # can kill printf with SIGPIPE on a long command and turn a match into a miss.
+# Every check also reads two copies for backslashes. bash removes an unquoted one before an
+# ordinary character, so one copy removes every backslash: `git re\base` is the rebase
+# subcommand and `--ha\rd` is `--hard`. An escaped space or separator stays inside its word
+# (`git -c x.y=a\ b stash` sets `x.y` to `a b`), so the other copy turns a backslash and the
+# character after it into one ordinary character (`a_b`), and the option value stays whole.
+# The backslash itself is never what a check looks for.
 matches() {
-    grep -qiE "$1" <<<"${CMD}"
+    grep -qiE "$1" <<<"${CMD}" || grep -qiE "$1" <<<"${CMD//\\/}" ||
+        grep -qiE "$1" <<<"${CMD//\\?/_}"
 }
-# The anchored checks also read a copy with every quote character removed: bash removes
+# The anchored checks also read copies with every quote character removed: bash removes
 # them before git sees the words, so `git -C . "stash"` or `st''ash` is the stash subcommand.
+# Each backslash copy is read with and without quotes, for a word that mixes the two
+# (`st\a"sh"`).
 QUOTE_CHARS="[\"']"
+matches_unquoted() {
+    local copy
+    for copy in "$2" "${2//\\/}" "${2//\\?/_}"; do
+        grep -qiE "$1" <<<"${copy}" || grep -qiE "$1" <<<"${copy//${QUOTE_CHARS}/}" ||
+            continue
+        return 0
+    done
+    return 1
+}
 matches_code() {
-    grep -qiE "$1" <<<"${CMD_CODE}" || grep -qiE "$1" <<<"${CMD_CODE//${QUOTE_CHARS}/}"
+    matches_unquoted "$1" "${CMD_CODE}"
 }
 matches_flags() {
-    grep -qiE "$1" <<<"${CMD_FLAGS}" || grep -qiE "$1" <<<"${CMD_FLAGS//${QUOTE_CHARS}/}"
+    matches_unquoted "$1" "${CMD_FLAGS}"
 }
 
 COMMAND_PREFIX='(^|;[[:space:]]*|&&[[:space:]]*|[|][|][[:space:]]*|[|][[:space:]]*)'
@@ -198,12 +226,15 @@ GIT_CMD="git${GIT_OPT}*[[:space:]]+"
 # them around commands. After a real start, a segment may carry `(`, `!`, shell
 # keywords (`if`, `then`, ...), variable assignments (`GIT_EDITOR=true`), command
 # wrappers with their options and option values (`env -u HOME`, `timeout -s KILL 60`,
-# the same list as RM_WRAPPER below) and a path (`/usr/bin/git`).
+# the same list as RM_WRAPPER below) and a path (`/usr/bin/git`). An assignment or
+# option value may be quoted (`X="a b" git ...`, `env -u "a b" git ...`).
+WORD_PART="[^[:space:];&|\"']|\"[^\"]*\"|'[^']*'"
+WORD_START="[^-[:space:];&|\"']|\"[^\"]*\"|'[^']*'"
 SEGMENT_START='(^|[;&|{]|[$<][(]|=`)([[:space:]]|[(!]|(if|then|do|else|elif|while|until)[[:space:]])*'
-SEGMENT_START+='([A-Za-z_][A-Za-z0-9_]*=[^[:space:];&|]*[[:space:]]+)*'
+SEGMENT_START+="([A-Za-z_][A-Za-z0-9_]*=(${WORD_PART})*[[:space:]]+)*"
 SEGMENT_START+='((xargs|command|builtin|env|nice|nohup|time|exec|timeout|doas)'
-SEGMENT_START+='([[:space:]]+(-[^[:space:];&|]*([[:space:]]+[^-[:space:];&|][^[:space:];&|]*)?'
-SEGMENT_START+='|[0-9][^[:space:];&|]*|[A-Za-z_][A-Za-z0-9_]*=[^[:space:];&|]*))*'
+SEGMENT_START+="([[:space:]]+(-(${WORD_PART})*([[:space:]]+(${WORD_START})(${WORD_PART})*)?"
+SEGMENT_START+="|[0-9](${WORD_PART})*|[A-Za-z_][A-Za-z0-9_]*=(${WORD_PART})*))*"
 SEGMENT_START+='[[:space:]]+)*([^[:space:];&|]*/)?'
 GIT_AT_START="${SEGMENT_START}${GIT_CMD}"
 # The same, but only with at least one global option before the subcommand.
@@ -261,7 +292,8 @@ FETCH_TO_SHELL_RE+='(bash|sh|zsh|iex|invoke-expression)([[:space:]]|$)'
 RM_WRAPPER='(xargs|command|builtin|env|nice|nohup|time|exec|timeout|doas)'
 RM_RE="${COMMAND_PREFIX}(${RM_WRAPPER}[[:space:]]([^;&|]*[[:space:]])?)?"
 RM_RE+="([^[:space:];&|]*/)?[\"']?rm[\"']?[[:space:]][^;&|]*"
-RM_SEGMENTS=$(grep -oiE "${RM_RE}" <<<"${CMD}" || true)
+# Also read with backslashes removed, like `matches`: `\rm -rf` and `rm -r\f` are rm -rf.
+RM_SEGMENTS=$(grep -oiE "${RM_RE}" <<<"${CMD}"$'\n'"${CMD//\\/}" || true)
 while IFS= read -r segment; do
     [[ -z "${segment}" ]] && continue
     if grep -qiE '(^|[[:space:]])-[a-zA-Z]*[rR]|--recursive' <<<"${segment}" &&

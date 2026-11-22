@@ -121,6 +121,36 @@ B	pnpm -r exec npm publish
 # --- backslash-newline continuation (a native Windows jq.exe writes these newlines as CRLF)
 B	git -C x \\\nreset --hard
 B	git -C x \\\nstash
+# bash removes the backslash-newline pair with nothing, so a word split by one is joined (issue #802).
+B	git re\\\nbase main
+B	git -C . sta\\\nsh
+# A quoted heredoc body is not joined by bash: `x\` + newline + `EOF` still ends it, so the split
+# command after it runs.
+B	cat > f <<'EOF'\nx\\\nEOF\ngit re\\\nbase main\nEOF
+# --- a backslash inside a word: bash removes it, so the word is the forbidden one
+B	git re\\base main
+B	git reset --ha\\rd
+B	git -C . st\\ash
+B	git -C "a b" st\\ash
+B	git -C . st\\a"sh"
+B	git push --fo\\rce
+B	\\rm -rf build
+B	r\\m -rf build
+B	rm -r\\f build
+# An escaped space or separator stays inside the option value or assignment.
+B	git -c x.y=a\\ b stash
+B	git -c x.y=a\\ b rebase main
+B	git -c x.y=a\\ b reset --hard
+B	git -c x.y=a\\;b stash
+B	X=a\\ b git rebase main
+B	npm --prefix a\\ b publish
+# A quoted assignment or wrapper value before the command.
+B	X="a b" git rebase main
+B	X='a b' git -C . stash
+B	env X="a b" git rebase main
+B	env -u "a b" git -C . stash
+# A quoted `\\` + newline is no continuation; the next line's `\` + newline is one.
+B	git -C . commit -m "a\\\\\n" ; git -C . sta\\\nsh ; echo "'" \\'
 # --- heredocs: only an allowlisted whole command (cat > FILE <<'EOF', or a commit message
 # through "$(cat <<'EOF'") loses its body; every other body is checked as code.
 A	cat > note.md <<'EOF'\ngit rebase main\nEOF
