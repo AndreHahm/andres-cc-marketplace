@@ -1875,6 +1875,22 @@ def briefable_waivers(waivers: Sequence[Waiver]) -> tuple[Waiver, ...]:
     )
 
 
+def briefed_waivers(
+    waivers: Sequence[Waiver], locate: Callable[[str, str, int], int | None]
+) -> tuple[tuple[Waiver, int], ...]:
+    """The waivers `render_accepted_findings_briefing` briefs, each with the line it is on now:
+    the `briefable_waivers` with a fingerprint that `locate` still finds (issue #814). A run's
+    result records them, so the publish step can re-check them (R19)."""
+    located: list[tuple[Waiver, int]] = []
+    for waiver in briefable_waivers(waivers):
+        if waiver.fingerprint is None:
+            continue
+        line = locate(waiver.path, waiver.fingerprint, waiver.line)
+        if line is not None:
+            located.append((waiver, line))
+    return tuple(located)
+
+
 def render_accepted_findings_briefing(
     waivers: Sequence[Waiver], locate: Callable[[str, str, int], int | None]
 ) -> str:
@@ -1889,13 +1905,7 @@ def render_accepted_findings_briefing(
     format (no fingerprint) is never briefed, since nothing ties it to a line's text. The
     instruction then names one finding per line by rule, path and line, so a new finding with
     the same rule elsewhere in the same file is still reported."""
-    located: list[tuple[Waiver, int]] = []
-    for waiver in briefable_waivers(waivers):
-        if waiver.fingerprint is None:
-            continue
-        line = locate(waiver.path, waiver.fingerprint, waiver.line)
-        if line is not None:
-            located.append((waiver, line))
+    located = briefed_waivers(waivers, locate)
     if not located:
         return ""
     lines = [
@@ -2064,9 +2074,179 @@ def _entry_reviewers(entry: dict) -> list[object]:
     return named
 
 
+def _origin_unknown(entry: Mapping[str, object]) -> bool:
+    """For the publish re-check (R19): a carried entry that does not name who raised it, with no
+    `origin_reviewer` or an empty one. Its waiver needs a maintainer's confirmation, as a
+    security-reviewer one does (R7). Stricter than carry_findings' own test (no `origin_reviewer`
+    key at all), because the carried list's copy of an entry never has the key: the difference
+    can only block a waiver carry_findings let through, never pass one it blocked."""
+    return entry.get("reviewer") == "carried" and not entry.get("origin_reviewer")
+
+
+def recheck_briefed_waivers(briefed: Iterable[object], section: WaiverSection) -> list[str]:
+    """R19 for the waivers a run passed to its reviewers as data (R7): a reviewer may have left
+    the finding out, so no result entry records it as waived. Each briefed line must still be a
+    valid waiver line of the section read again at publish (a `deferred` one with its issue still
+    open). A briefed waiver never needs a confirmation (`briefable_waivers`)."""
+    valid = {w.text for w in section.waivers}
+    notes: list[str] = []
+    for text in briefed:
+        if not isinstance(text, str):
+            notes.append("a briefed waiver cannot be read")
+        elif text not in valid:
+            notes.append(
+                f"the waiver `{text}` was passed to the reviewers but no longer applies (its "
+                "line was removed or its deferred issue closed)"
+            )
+    return notes
+
+
+def recheck_applied_waivers(
+    entries: Iterable[object],
+    section: WaiverSection,
+    confirmed: Callable[[tuple[str, str, str]], bool],
+) -> list[str]:
+    """R19: the waivers a run's result applied, re-checked against the section, the issue states
+    and the confirmations read again when the result is published. One note per waived entry whose
+    waiver no longer holds; an entry that cannot be read counts as lapsed (fail closed). Only the
+    waiver line the run applied counts: a line added during the run does not take its place."""
+    notes: list[str] = []
+    for entry in entries:
+        if not isinstance(entry, dict):
+            notes.append("a result entry is not an object")
+            continue
+        applied = entry.get("waiver")
+        if applied is None:
+            continue
+        rule, path, line = finding_waiver_key(
+            entry.get("rule"), entry.get("path"), entry.get("line")
+        )
+        if not isinstance(applied, str) or not isinstance(entry.get("path"), str) or not path:
+            notes.append(f"{rule} {path}:{line}: its recorded waiver cannot be read")
+            continue
+        reviewers = _entry_reviewers(entry)
+        # As in carry_findings: an entry of unknown origin needs a confirmation (R7).
+        if _origin_unknown(entry):
+            reviewers.append(_SECURITY_REVIEWER)
+        mark = entry.get("tracked_issue")
+        if (
+            isinstance(mark, int)
+            and not isinstance(mark, bool)
+            and applied == tracked_waiver_text(mark)
+        ):
+            issue, _ = find_tracked(
+                section.tracked, mark, path=path, reviewers=reviewers, confirmed=confirmed
+            )
+            if issue is None:
+                notes.append(
+                    f"{rule} {path}:{line}: `{applied}` no longer applies (its line was removed, "
+                    "its issue closed, or its confirmation withdrawn or edited)"
+                )
+            continue
+        fingerprint = entry.get("fingerprint")
+        same_line = [w for w in section.waivers if w.text[:300] == applied]
+        waiver, _ = find_waiver(
+            same_line,
+            rule=rule,
+            path=path,
+            line=line,
+            fingerprint=fingerprint if isinstance(fingerprint, str) else None,
+            reviewers=reviewers,
+            confirmed=confirmed,
+        )
+        if waiver is None:
+            notes.append(
+                f"{rule} {path}:{line}: the waiver `{applied}` no longer applies (its line was "
+                "removed, its deferred issue closed, or its confirmation withdrawn or edited)"
+            )
+    return notes
+
+
+def narrow_accepted_findings(start: Mapping[str, object], fresh: Mapping[str, object]) -> dict:
+    """R19 for a reviewer that applies waivers while it publishes (the Claude delta review): the
+    `fetch-accepted-findings` payload read when the run started, cut to what the payload read
+    again at publish still holds. A waiver line, a tracked issue, an open issue and a confirmation
+    are kept only when both payloads have them, so nothing added during the run applies."""
+
+    def issues(payload: Mapping[str, object]) -> set[int]:
+        raw = payload.get("open_issues")
+        if not isinstance(raw, list):
+            return set()
+        return {n for n in raw if isinstance(n, int) and not isinstance(n, bool)}
+
+    start_open, fresh_open = issues(start), issues(fresh)
+    open_issues = start_open & fresh_open
+    start_section = read_waiver_section(str(start.get("body", "")), start_open.__contains__)
+    fresh_section = read_waiver_section(str(fresh.get("body", "")), fresh_open.__contains__)
+    fresh_texts = {w.text for w in fresh_section.waivers}
+    kept = [w.text for w in start_section.waivers if w.text in fresh_texts]
+    tracked = [n for n in start_section.tracked if n in fresh_section.tracked]
+    lines = [*kept, *(f"- tracked #{n}" for n in tracked)]
+
+    def keys(payload: Mapping[str, object]) -> set[tuple[str, ...]]:
+        raw = payload.get("confirmed", [])
+        return {tuple(k) for k in raw if isinstance(k, list)} if isinstance(raw, list) else set()
+
+    records = start.get("tracked_issues", [])
+    return {
+        "body": "## Accepted Review Findings\n" + "".join(f"{line}\n" for line in lines),
+        "open_issues": sorted(open_issues),
+        "confirmed": sorted(list(k) for k in keys(start) & keys(fresh)),
+        "tracked_issues": [
+            r
+            for r in (records if isinstance(records, list) else [])
+            if isinstance(r, dict) and r.get("number") in tracked
+        ],
+    }
+
+
 def _carried_copy_key(entry: Mapping[str, object]) -> tuple[str, str, str]:
     """An anchor entry's (rule, path, line) as text, for grouping its copies before validation."""
     return (str(entry.get("rule")), str(entry.get("path")), str(entry.get("line")))
+
+
+BRIEFED_REVIEWER = "briefed-waiver"
+
+
+def _briefed_entries(briefed: object, findings: Sequence[object]) -> list[dict]:
+    """R19: the anchor result's `briefed_waivers` as waived entries, so `carry_findings` carries
+    each like a waived finding: a reviewer may have left its finding out of the result. A line
+    the anchor's findings already record (same rule, path and fingerprint) is not added twice.
+    A briefed waiver never needs a confirmation (`briefable_waivers`), so its entry names a
+    reviewer that is not security-reviewer. Anything unreadable raises CarryError (fail closed)."""
+    if not isinstance(briefed, list):
+        raise CarryError("anchor result's briefed waivers are not a list")
+    # Keyed as a waiver line names a finding (a finding without a rule is `-`).
+    recorded = {
+        (*finding_waiver_key(e.get("rule"), e.get("path"), e.get("line"))[:2], e.get("fingerprint"))
+        for e in findings
+        if isinstance(e, dict)
+    }
+    entries: list[dict] = []
+    for text in briefed:
+        if not isinstance(text, str):
+            raise CarryError("a briefed waiver is not text")
+        # Parsed for its key only; whether it still applies is decided against the body later.
+        parsed = read_waiver_section(f"## Accepted Review Findings\n{text}\n", lambda _n: True)
+        if len(parsed.waivers) != 1 or parsed.waivers[0].fingerprint is None:
+            raise CarryError("a briefed waiver cannot be read")
+        w = parsed.waivers[0]
+        if (w.rule, w.path, w.fingerprint) in recorded:
+            continue
+        recorded.add((w.rule, w.path, w.fingerprint))
+        entries.append(
+            {
+                "rule": w.rule,
+                "path": w.path,
+                "line": w.line,
+                "fingerprint": w.fingerprint,
+                "severity": "Major",
+                "reviewer": BRIEFED_REVIEWER,
+                "blocking": False,
+                "waiver": text,
+            }
+        )
+    return entries
 
 
 def carry_findings(
@@ -2093,6 +2273,10 @@ def carry_findings(
     findings = anchor_result.get("findings") if isinstance(anchor_result, dict) else None
     if not isinstance(findings, list):
         raise CarryError("anchor result has no findings list")
+    # R19: a briefed waiver may stand for a finding a reviewer left out, so it is carried as a
+    # waived finding: it blocks once its waiver lapses, even on a run that makes no Codex call.
+    briefed = anchor_result.get("briefed_waivers", []) if isinstance(anchor_result, dict) else []
+    findings = [*findings, *_briefed_entries(briefed, findings)]
     if len(findings) > _MAX_CARRIED_INPUT:
         raise CarryError(f"anchor result has more than {_MAX_CARRIED_INPUT} findings")
     section = read_waiver_section(pr_body, issue_is_open)

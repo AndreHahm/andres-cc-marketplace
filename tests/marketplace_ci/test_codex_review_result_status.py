@@ -493,3 +493,37 @@ def test_a_change_to_a_reviewer_definition_makes_the_result_advisory(
         "reasons": ["reviewer-steering"],
         "paths": [".codex/agents/security-reviewer.toml"],
     }
+
+
+def test_the_result_records_the_waivers_its_reviewers_were_briefed_with(
+    monkeypatch, review_repo, tmp_path
+):
+    """R19: a reviewer may leave a briefed finding out, so the result names the briefed lines
+    for the publish step to re-check. A waiver whose line is gone at HEAD is not briefed."""
+    from scripts.marketplace_ci.review import line_fingerprint
+
+    root, base_sha = review_repo
+    briefed = f"- R6 README.md:1 @{line_fingerprint('original')} – accepted"
+    gone = f"- R6 README.md:2 @{line_fingerprint('no such line')} – accepted"
+    accepted = tmp_path / "accepted.json"
+    accepted.write_text(
+        json.dumps(
+            {
+                "body": f"## Accepted Review Findings\n{briefed}\n{gone}\n",
+                "open_issues": [],
+                "confirmed": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+    real_run = subprocess.run
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        lambda argv, **kw: _answers(CLEAN)(argv) if argv[0] == "node" else real_run(argv, **kw),
+    )
+    monkeypatch.chdir(root)
+    out = tmp_path / "result.json"
+    args = ["run-codex-review", "--base-sha", base_sha, "--output", str(out)]
+    assert main([*args, "--accepted-findings", str(accepted)]) == 0
+    assert json.loads(out.read_text(encoding="utf-8"))["briefed_waivers"] == [briefed]

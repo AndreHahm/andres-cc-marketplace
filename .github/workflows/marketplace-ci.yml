@@ -1886,6 +1886,8 @@ jobs:
       contents: read
       # Re-read the live draft flag and head (R14).
       pull-requests: read
+      # R19: re-read the confirmation comments and the deferred and tracked issues.
+      issues: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
         with:
@@ -2239,6 +2241,100 @@ jobs:
             echo "bypassed=false" >> "$GITHUB_OUTPUT"
           fi
 
+      # R19 (issue #833): the waivers, confirmations and issue states were read when the run
+      # started, and deleting a comment or closing an issue starts no run. So every waiver the
+      # review result and the carried list applied is re-checked here, with this job's
+      # base-restored code, against the section, comments and issues read again now. A waiver that
+      # no longer holds blocks; one added during the run is not applied (the next run sees it).
+      - name: Download the review result for the waiver re-check (R19)
+        if: >-
+          steps.bypass.outputs.bypassed != 'true'
+          && (needs.codex-review.result == 'success' || needs.codex-review.result == 'failure')
+        continue-on-error: true
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # ratchet:actions/download-artifact@v8.0.2
+        with:
+          name: codex-review-result
+          path: ${{ runner.temp }}/recheck/result
+      - name: Download the carried findings for the waiver re-check (R19)
+        if: >-
+          steps.bypass.outputs.bypassed != 'true'
+          && needs.compute-scope.result == 'success'
+          && needs.compute-scope.outputs.carried_blocking != 'error'
+        continue-on-error: true
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # ratchet:actions/download-artifact@v8.0.2
+        with:
+          name: carried-findings
+          path: ${{ runner.temp }}/recheck/carried
+      - name: Re-check the waivers the run applied (R19)
+        id: recheck
+        if: steps.bypass.outputs.bypassed != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          CODEX_RESULT: ${{ needs.codex-review.result }}
+          SCOPE_RESULT: ${{ needs.compute-scope.result }}
+          CARRIED_BLOCKING: ${{ needs.compute-scope.outputs.carried_blocking }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          dir="$RUNNER_TEMP/recheck"
+          status=error
+          results=()
+          missing=""
+          # A review that succeeded left a result; a failed one fails the decision anyway.
+          if [ -f "$dir/result/codex-review-result.json" ]; then
+            results+=(--result "$dir/result/codex-review-result.json")
+          elif [ "$CODEX_RESULT" = "success" ]; then
+            missing="the codex-review-result artifact"
+          fi
+          # compute-scope uploads its carried list whenever it computed a count.
+          if [ -f "$dir/carried/carried-findings.json" ]; then
+            results+=(--result "$dir/carried/carried-findings.json")
+          elif [ "$SCOPE_RESULT" = "success" ] && printf '%s' "$CARRIED_BLOCKING" | grep -Eq '^[0-9]+$'; then
+            missing="the carried-findings artifact"
+          fi
+          if [ -n "$missing" ]; then
+            echo "::error::$missing could not be downloaded, so its waivers cannot be re-checked (R19)"
+          elif [ "${#results[@]}" -eq 0 ]; then
+            status=0
+          else
+            # Whether the base branch has the re-check, read from its code, not from a command
+            # that can fail for other reasons: only the PR that adds the re-check runs on a base
+            # without it. A lookup that fails is an error, never "unsupported".
+            base_rc=0
+            git grep -q -F '"recheck-waivers"' "$BASE_SHA" -- scripts/marketplace_ci/__main__.py || base_rc=$?
+            if [ "$base_rc" -eq 1 ]; then
+              status=unsupported
+            elif [ "$base_rc" -ne 0 ]; then
+              echo "::error::cannot read the base branch's code to find the waiver re-check (git grep exit $base_rc)"
+            elif uv run python -m scripts.marketplace_ci fetch-accepted-findings \
+                --repo "$REPO" --pr-number "$PR_NUMBER" --gh /usr/bin/gh \
+                --output "$dir/accepted.json"; then
+              set +e
+              uv run python -m scripts.marketplace_ci recheck-waivers \
+                --accepted-findings "$dir/accepted.json" "${results[@]}" > "$dir/lapsed.txt"
+              rc=$?
+              set -e
+              if [ "$rc" -eq 0 ]; then
+                status=0
+              elif [ "$rc" -eq 1 ]; then
+                status=lapsed
+                {
+                  echo "### Waivers that no longer hold (R19)"
+                  echo "This run applied these waivers, or passed them to its reviewers, but they were removed, their issue closed or their confirmation withdrawn or edited before the result was published:"
+                  echo
+                  # Indented as a code block: a line of waiver text cannot end an indented block.
+                  sed 's/^/    /' "$dir/lapsed.txt"
+                } >> "$GITHUB_STEP_SUMMARY"
+                cat "$dir/lapsed.txt"
+              fi
+            else
+              echo "::error::the PR's accepted review findings could not be read again (R19)"
+            fi
+          fi
+          echo "waiver re-check: $status"
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+
       - name: Determine final policy result
         env:
           BYPASSED: ${{ steps.bypass.outputs.bypassed }}
@@ -2248,6 +2344,7 @@ jobs:
           REVIEW_STATUS: ${{ needs.codex-review.outputs.review_status }}
           CARRIED_BLOCKING: ${{ needs.compute-scope.outputs.carried_blocking }}
           BYPASS_LABEL_RUN: ${{ needs.compute-scope.outputs.bypass_label_run }}
+          RECHECK: ${{ steps.recheck.outputs.status }}
           IS_DRAFT: ${{ github.event.pull_request.draft }}
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
@@ -2351,6 +2448,18 @@ jobs:
             echo "The bypass label was added without a valid SHA-bound attestation for this head -- failing closed."
             exit 1
           fi
+          # R19: every waiver the review result and the carried list applied must still hold now.
+          case "$RECHECK" in
+            0) ;;
+            unsupported)
+              echo "The base branch predates the waiver re-check (R19): waivers were judged when this run started." ;;
+            lapsed)
+              echo "A waiver this run applied no longer holds (R19). See the job summary for which."
+              exit 1 ;;
+            *)
+              echo "The waivers this run applied could not be re-checked (recheck=${RECHECK:-none}) -- failing closed."
+              exit 1 ;;
+          esac
           # R7: blocking findings of the last reviewed run whose file is unchanged and that the PR
           # body does not waive. "error" (or anything not a number) means they were not computed.
           if [ "$CARRIED_BLOCKING" != "0" ]; then

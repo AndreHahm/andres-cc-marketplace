@@ -1051,6 +1051,8 @@ def _load_accepted_findings(path: str):
     """The body, open-issue check and confirmed keys `fetch-accepted-findings` wrote. Raises
     ValueError on anything malformed, which the caller turns into a failed run."""
     data = json.loads(Path(path).read_text(encoding="utf-8"))
+    if not isinstance(data, dict):
+        raise ValueError(f"{path} is not a fetch-accepted-findings result")
     body, issues, confirmed = data.get("body"), data.get("open_issues"), data.get("confirmed")
     if not (
         isinstance(body, str)
@@ -1064,6 +1066,69 @@ def _load_accepted_findings(path: str):
     ):
         raise ValueError(f"{path} is not a fetch-accepted-findings result")
     return body, set(issues), {tuple(key) for key in confirmed}
+
+
+def _handle_recheck_waivers(args: argparse.Namespace) -> int:
+    """R19: re-check every waiver the given result files applied, and every waiver a result says
+    it briefed to its reviewers, against `--accepted-findings`, read when the result is
+    published. Prints one line per waiver that no longer holds. Exits 0 when all hold, 1 when one
+    does not, 2 when an input cannot be read (the caller blocks)."""
+    from scripts.marketplace_ci.review import (
+        read_waiver_section,
+        recheck_applied_waivers,
+        recheck_briefed_waivers,
+    )
+
+    try:
+        body, open_issues, confirmed = _load_accepted_findings(args.accepted_findings)
+    except (OSError, ValueError) as exc:
+        print(f"recheck-waivers: cannot read the accepted findings: {exc}", file=sys.stderr)
+        return 2
+    section = read_waiver_section(body, open_issues.__contains__)
+    notes: list[str] = []
+    for path in args.result:
+        try:
+            data = json.loads(Path(path).read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            print(f"recheck-waivers: cannot read {path}: {exc}", file=sys.stderr)
+            return 2
+        # A codex-review result holds its findings in `findings`; the carried list is bare. Only a
+        # `could_not_run` result may lack them (it fails the policy result on its own).
+        briefed: object = []
+        if isinstance(data, dict):
+            entries = data.get("findings")
+            if entries is None and data.get("status") == "could_not_run":
+                entries = []
+            briefed = data.get("briefed_waivers", [])
+        else:
+            entries = data
+        if not isinstance(entries, list) or not isinstance(briefed, list):
+            print(f"recheck-waivers: {path} has no list of findings", file=sys.stderr)
+            return 2
+        notes.extend(recheck_applied_waivers(entries, section, confirmed.__contains__))
+        notes.extend(recheck_briefed_waivers(briefed, section))
+    for note in dict.fromkeys(notes):
+        print(f"lapsed: {note}")
+    return 1 if notes else 0
+
+
+def _handle_narrow_accepted_findings(args: argparse.Namespace) -> int:
+    """R19 for the Claude delta review: write the accepted findings that both `--start` and
+    `--fresh` (both `fetch-accepted-findings` output) hold. Exits 2 when either cannot be read."""
+    from scripts.marketplace_ci.review import narrow_accepted_findings
+
+    payloads = []
+    for path in (args.start, args.fresh):
+        try:
+            _load_accepted_findings(path)
+            _load_tracked_issues(path)
+            payloads.append(json.loads(Path(path).read_text(encoding="utf-8")))
+        except (OSError, ValueError) as exc:
+            print(f"narrow-accepted-findings: cannot read {path}: {exc}", file=sys.stderr)
+            return 2
+    narrowed = narrow_accepted_findings(payloads[0], payloads[1])
+    Path(args.output).write_text(json.dumps(narrowed, indent=2) + "\n", encoding="utf-8")
+    return 0
 
 
 def _load_tracked_issues(path: str) -> list[dict]:
@@ -2338,6 +2403,22 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
             confirmed_keys,
             applicable_tracked,
         )
+        # R19: the waivers the reviewers were briefed with, found at HEAD as dispatch_reviewers
+        # found them, so the publish step can re-check a waiver whose finding a reviewer left
+        # out. security-reviewer is never briefed, so a run of it alone briefed nothing.
+        from scripts.marketplace_ci.review import briefed_waivers, locate_fingerprint
+
+        head_prints: dict[str, list[str] | None] = {}
+        briefed = (
+            briefed_waivers(
+                waiver_section.waivers,
+                lambda path, fp, near: locate_fingerprint(
+                    repo, "HEAD", path, fp, near, head_prints
+                ),
+            )
+            if any(r.reviewer != "security-reviewer" for r in reports)
+            else ()
+        )
     except Exception as exc:  # fail closed, like the gate above
         return _fail_run_codex_review(args, f"waiver matching failed: {exc!r}", reports)
     blocking_set = {f for f in blocking_set if f not in waivers_applied}
@@ -2410,6 +2491,8 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
         "coverage": coverage_field,
         "advisory": advisory_field,
         "waived_findings": len(waivers_applied),
+        # Uncut: a cut line could not be parsed again when a later run carries it (R19).
+        "briefed_waivers": [waiver.text for waiver, _ in briefed],
         "waiver_lines_not_applied": [
             {"line": text, "why": why}
             for text, why in [*waiver_section.malformed, *unread_tracked, *stale_waivers]
@@ -2802,6 +2885,35 @@ def build_parser() -> argparse.ArgumentParser:
     )
     fetch_accepted.add_argument("--output", required=True, metavar="PATH")
     fetch_accepted.set_defaults(handler=_handle_fetch_accepted_findings)
+
+    recheck_waivers = subparsers.add_parser(
+        "recheck-waivers",
+        help="re-check the waivers a review result applied against fresh accepted findings (R19)",
+    )
+    recheck_waivers.add_argument(
+        "--accepted-findings",
+        required=True,
+        metavar="PATH",
+        help="fetch-accepted-findings' JSON, read when the result is published",
+    )
+    recheck_waivers.add_argument(
+        "--result",
+        action="append",
+        default=[],
+        metavar="PATH",
+        help="a codex-review-result or carried-findings file whose waived entries to re-check "
+        "(repeatable)",
+    )
+    recheck_waivers.set_defaults(handler=_handle_recheck_waivers)
+
+    narrow_accepted = subparsers.add_parser(
+        "narrow-accepted-findings",
+        help="keep only the accepted findings both the run's start and publish read (R19)",
+    )
+    narrow_accepted.add_argument("--start", required=True, metavar="PATH")
+    narrow_accepted.add_argument("--fresh", required=True, metavar="PATH")
+    narrow_accepted.add_argument("--output", required=True, metavar="PATH")
+    narrow_accepted.set_defaults(handler=_handle_narrow_accepted_findings)
 
     check_trust_boundary = subparsers.add_parser(
         "check-trust-boundary",

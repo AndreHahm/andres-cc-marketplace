@@ -270,6 +270,51 @@ def test_a_waived_finding_survives_a_change_to_its_file_while_its_line_exists(gi
     assert [(f["line"], f["fingerprint"]) for f in unwaived.blocking] == [(17, FP)]
 
 
+def test_a_briefed_waiver_is_carried_and_blocks_once_it_lapses(git_repo):
+    """R19 (security review N1): a reviewer may have left out a briefed finding, so the anchor's
+    briefed lines are carried as waived findings. A later run with no Codex call still blocks
+    once the waiver lapses (line removed or deferred issue closed)."""
+    base = _commit(git_repo, "base", **{"s/SKILL.md": "x\n"})
+    anchor = _commit(git_repo, "pr 1", **{"s/SKILL.md": "\n" * 14 + GRANT + "\n"})
+    line = f"- tool-scoping s/SKILL.md:15 @{FP} – deferred #12"
+    result = {"status": "clean", "findings": [], "briefed_waivers": [line]}
+    held = carry_findings(git_repo.root, base, anchor, result, _section(line), lambda n: n == 12)
+    assert held.blocking == ()
+    assert [(f["path"], f["line"], f["waiver"]) for f in held.waived] == [("s/SKILL.md", 15, line)]
+    closed = carry_findings(git_repo.root, base, anchor, result, _section(line), _never_open)
+    assert [(f["path"], f["line"]) for f in closed.blocking] == [("s/SKILL.md", 15)]
+    removed = carry_findings(git_repo.root, base, anchor, result, "", _never_open)
+    assert [f["reviewer"] for f in removed.blocking] == ["briefed-waiver"]
+    # the carried copy is merged into the next result as waived, so the chain keeps it
+    merged = merge_carried_findings({"status": "clean", "findings": []}, list(held.waived), "0")
+    again = carry_findings(git_repo.root, base, anchor, merged, "", _never_open)
+    assert [(f["path"], f["line"]) for f in again.blocking] == [("s/SKILL.md", 15)]
+
+
+def test_a_briefed_waiver_already_recorded_is_not_carried_twice(git_repo):
+    base = _commit(git_repo, "base", **{"s/SKILL.md": "x\n"})
+    anchor = _commit(git_repo, "pr 1", **{"s/SKILL.md": "\n" * 14 + GRANT + "\n"})
+    result = {**_anchor_result(_waived_entry()), "briefed_waivers": [_waived_entry()["waiver"]]}
+    outcome = carry_findings(git_repo.root, base, anchor, result, "", _never_open)
+    assert len(outcome.blocking) == 1
+    # a finding without a rule is named `-` by its waiver line
+    ruleless = {**_waived_entry(), "rule": None, "waiver": f"- - s/SKILL.md:15 @{FP} – accepted"}
+    result = {**_anchor_result(ruleless), "briefed_waivers": [ruleless["waiver"]]}
+    outcome = carry_findings(git_repo.root, base, anchor, result, "", _never_open)
+    assert len(outcome.blocking) == 1
+
+
+def test_an_unreadable_briefed_waiver_fails_the_carry(git_repo):
+    from scripts.marketplace_ci.review import CarryError
+
+    base = _commit(git_repo, "base", **{"s/SKILL.md": "x\n"})
+    anchor = _commit(git_repo, "pr 1", **{"s/SKILL.md": "\n" * 14 + GRANT + "\n"})
+    for briefed in ("not a list", [3], ["- not a waiver"], ["- R6 a_py:3 – accepted"]):
+        result = {"status": "clean", "findings": [], "briefed_waivers": briefed}
+        with pytest.raises(CarryError):
+            carry_findings(git_repo.root, base, anchor, result, "", _never_open)
+
+
 def test_a_relocated_security_finding_still_needs_a_confirmation(git_repo):
     base = _commit(git_repo, "base", **{"s/SKILL.md": "x\n"})
     anchor = _commit(git_repo, "pr 1", **{"s/SKILL.md": "\n" * 14 + GRANT + "\n"})
@@ -1625,3 +1670,197 @@ def test_issue_text_pr_body_and_confirmations_are_read_as_utf8(tmp_path, monkeyp
     assert main([*args, "--output", str(out)]) == 0
     text, _, _ = _load_accepted_findings(str(out))
     assert "Łączenie" in text
+
+
+# --- R19: waivers re-checked when the result is published (issue #833) ------------------------
+
+_LINE = f"- tool-scoping s/SKILL.md:15 @{FP} – accepted"
+_OTHER_LINE = f"- tool-scoping s/SKILL.md:15 @{FP} – accepted: reworded"
+
+
+def _recheck(entries, *lines, open_issues=(), confirmed=()):
+    from scripts.marketplace_ci.review import recheck_applied_waivers
+
+    section = read_waiver_section(_section(*lines), set(open_issues).__contains__)
+    return recheck_applied_waivers(entries, section, set(confirmed).__contains__)
+
+
+def test_a_waiver_still_in_the_section_still_holds_at_publish():
+    assert _recheck([_waived_entry()], _LINE) == []
+
+
+def test_a_waiver_removed_during_the_run_blocks_at_publish():
+    notes = _recheck([_waived_entry()])
+    assert len(notes) == 1 and "no longer applies" in notes[0] and "s/SKILL.md:15" in notes[0]
+
+
+def test_a_waiver_added_during_the_run_does_not_replace_the_one_applied():
+    # The applied line is gone; a line with the same key but other text was added mid-run.
+    assert _recheck([_waived_entry()], _OTHER_LINE) != []
+
+
+def test_unwaived_and_non_waiver_entries_are_not_rechecked():
+    blocking = {**_waived_entry(), "waiver": None, "blocking": True}
+    assert _recheck([blocking, {"rule": "x", "path": "p", "line": 1}]) == []
+
+
+def test_a_withdrawn_confirmation_blocks_a_security_waiver_at_publish():
+    entry = {**_waived_entry(), "reviewer": "security-reviewer"}
+    key = ("tool-scoping", "s/SKILL.md", FP)
+    assert _recheck([entry], _LINE, confirmed=[key]) == []
+    assert _recheck([entry], _LINE) != []
+
+
+def test_a_carried_entry_of_unknown_origin_needs_its_confirmation_at_publish():
+    entry = {**_waived_entry(), "reviewer": "carried"}
+    assert _recheck([entry], _LINE) != []
+    assert _recheck([entry], _LINE, confirmed=[("tool-scoping", "s/SKILL.md", FP)]) == []
+
+
+def test_a_deferred_issue_closed_during_the_run_blocks_at_publish():
+    line = f"- tool-scoping s/SKILL.md:15 @{FP} – deferred #12"
+    entry = {**_waived_entry(), "waiver": line}
+    assert _recheck([entry], line, open_issues=[12]) == []
+    assert _recheck([entry], line) != []
+
+
+def test_a_tracked_waiver_is_rechecked_by_issue_and_confirmation():
+    entry = {**_waived_entry(), "waiver": "tracked #7", "tracked_issue": 7}
+    assert _recheck([entry], "- tracked #7", open_issues=[7]) == []
+    assert _recheck([entry], "- tracked #7") != []  # the issue closed
+    assert _recheck([entry], open_issues=[7]) != []  # the line was removed
+    secure = {**entry, "reviewer": "security-reviewer"}
+    key = ("tracked #7", "s/SKILL.md", "")
+    assert _recheck([secure], "- tracked #7", open_issues=[7], confirmed=[key]) == []
+    assert _recheck([secure], "- tracked #7", open_issues=[7]) != []
+
+
+def test_a_carried_entry_with_an_empty_origin_needs_its_confirmation_at_publish():
+    # Stricter than carry_findings: the carried list's copy never has the origin key.
+    entry = {**_waived_entry(), "reviewer": "carried", "origin_reviewer": None}
+    assert _recheck([entry], _LINE) != []
+    named = {**entry, "origin_reviewer": "skill-reviewer"}
+    assert _recheck([named], _LINE) == []
+
+
+def test_a_briefed_waiver_must_still_be_in_the_section_at_publish():
+    from scripts.marketplace_ci.review import recheck_briefed_waivers
+
+    deferred = f"- tool-scoping s/SKILL.md:15 @{FP} – deferred #12"
+
+    def section(*lines, open_issues=()):
+        return read_waiver_section(_section(*lines), set(open_issues).__contains__)
+
+    assert recheck_briefed_waivers([_LINE], section(_LINE)) == []
+    assert recheck_briefed_waivers([_LINE], section()) != []  # removed
+    assert recheck_briefed_waivers([_LINE], section(_OTHER_LINE)) != []  # replaced
+    assert recheck_briefed_waivers([deferred], section(deferred, open_issues=[12])) == []
+    assert recheck_briefed_waivers([deferred], section(deferred)) != []  # issue closed
+    assert recheck_briefed_waivers([3], section(_LINE)) != []
+
+
+def test_recheck_waivers_cli_rechecks_briefed_lines_and_needs_a_findings_list(tmp_path):
+    still = _accepted_file(tmp_path, "still.json", _LINE)
+    gone = _accepted_file(tmp_path, "gone.json")
+
+    def result(name, payload):
+        path = tmp_path / name
+        path.write_text(json.dumps(payload), "utf-8")
+        return ["recheck-waivers", "--result", str(path), "--accepted-findings"]
+
+    briefed = result(
+        "briefed.json", {"status": "clean", "findings": [], "briefed_waivers": [_LINE]}
+    )
+    assert main([*briefed, str(still)]) == 0
+    assert main([*briefed, str(gone)]) == 1
+    # Only a could_not_run result may lack its findings list.
+    assert main([*result("cnr.json", {"status": "could_not_run"}), str(still)]) == 0
+    assert main([*result("bare.json", {"status": "clean"}), str(still)]) == 2
+    assert main([*result("bad.json", {"findings": [], "briefed_waivers": 3}), str(still)]) == 2
+
+
+def test_an_unreadable_waived_entry_counts_as_lapsed():
+    assert _recheck([{**_waived_entry(), "waiver": 3}], _LINE) != []
+    assert _recheck([{**_waived_entry(), "path": None}], _LINE) != []
+    assert _recheck(["not an object"], _LINE) != []
+
+
+def _accepted_file(tmp_path, name, *lines, open_issues=(), confirmed=(), tracked=()):
+    path = tmp_path / name
+    payload = {
+        "body": "## Accepted Review Findings\n" + "".join(f"{line}\n" for line in lines),
+        "open_issues": sorted(open_issues),
+        "confirmed": [list(k) for k in confirmed],
+        "tracked_issues": [{"number": n, "title": "t", "summary": "s"} for n in tracked],
+    }
+    path.write_text(json.dumps(payload), "utf-8")
+    return path
+
+
+def test_recheck_waivers_cli_exits_by_whether_every_waiver_holds(tmp_path, capsys):
+    result = tmp_path / "result.json"
+    result.write_text(json.dumps({"status": "findings", "findings": [_waived_entry()]}), "utf-8")
+    carried = tmp_path / "carried.json"
+    carried.write_text(json.dumps([_waived_entry()]), "utf-8")
+    still = _accepted_file(tmp_path, "still.json", _LINE)
+    gone = _accepted_file(tmp_path, "gone.json")
+    args = ["recheck-waivers", "--result", str(result), "--result", str(carried)]
+    assert main([*args, "--accepted-findings", str(still)]) == 0
+    assert main([*args, "--accepted-findings", str(gone)]) == 1
+    # the same lapsed waiver in both files is reported once
+    assert capsys.readouterr().out.count("lapsed: ") == 1
+    assert main([*args, "--accepted-findings", str(tmp_path / "missing.json")]) == 2
+    bad = tmp_path / "bad.json"
+    bad.write_text('{"findings": 3}', "utf-8")
+    assert main(["recheck-waivers", "--result", str(bad), "--accepted-findings", str(still)]) == 2
+
+
+def test_narrowing_keeps_only_what_start_and_publish_both_hold():
+    from scripts.marketplace_ci.review import narrow_accepted_findings
+
+    kept = f"- tool-scoping s/SKILL.md:15 @{FP} – deferred #12"
+    dropped = f"- tool-scoping s/SKILL.md:20 @{FP} – accepted"
+    added = f"- tool-scoping s/SKILL.md:30 @{FP} – accepted"
+
+    def payload(*lines, open_issues, confirmed, tracked):
+        return {
+            "body": _section(*lines),
+            "open_issues": list(open_issues),
+            "confirmed": [list(k) for k in confirmed],
+            "tracked_issues": [{"number": n, "title": "t", "summary": "s"} for n in tracked],
+        }
+
+    k1, k2 = ["a", "b", FP], ["c", "d", FP]
+    start = payload(kept, dropped, "- tracked #7", "- tracked #8",
+                    open_issues=[7, 8, 12], confirmed=[k1, k2], tracked=[7, 8])  # fmt: skip
+    fresh = payload(kept, added, "- tracked #7",
+                    open_issues=[7, 12, 99], confirmed=[k1], tracked=[7])  # fmt: skip
+    narrowed = narrow_accepted_findings(start, fresh)
+    section = read_waiver_section(narrowed["body"], set(narrowed["open_issues"]).__contains__)
+    assert [w.text for w in section.waivers] == [kept]
+    assert section.tracked == (7,)
+    assert narrowed["open_issues"] == [7, 12]
+    assert narrowed["confirmed"] == [k1]
+    assert [r["number"] for r in narrowed["tracked_issues"]] == [7]
+    # a deferred issue closed during the run drops its waiver
+    closed = narrow_accepted_findings(start, {**fresh, "open_issues": [7]})
+    assert (
+        read_waiver_section(closed["body"], set(closed["open_issues"]).__contains__).waivers == ()
+    )
+
+
+def test_narrow_accepted_findings_cli_writes_what_publish_reads(tmp_path):
+    from scripts.marketplace_ci.__main__ import _load_accepted_findings, _load_tracked_issues
+
+    start = _accepted_file(tmp_path, "start.json", _LINE, "- tracked #7", open_issues=[7],
+                           tracked=[7])  # fmt: skip
+    fresh = _accepted_file(tmp_path, "fresh.json", _LINE, open_issues=[7])
+    out = tmp_path / "narrowed.json"
+    args = ["narrow-accepted-findings", "--start", str(start), "--fresh", str(fresh)]
+    assert main([*args, "--output", str(out)]) == 0
+    body, open_issues, _ = _load_accepted_findings(str(out))
+    assert parse_waivers(body, open_issues.__contains__) == {("tool-scoping", "s/SKILL.md", 15)}
+    assert _load_tracked_issues(str(out)) == []
+    bad = tmp_path / "bad.json"
+    bad.write_text("[]", "utf-8")
+    assert main([*args[:-1], str(bad), "--output", str(out)]) == 2

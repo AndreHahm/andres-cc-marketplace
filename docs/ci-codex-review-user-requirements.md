@@ -8,7 +8,7 @@ the intent and `docs/ci.md` must be corrected.
 **Problem (issue #639):** the CI review sent the whole pull request to the OpenAI API on every run, including
 force-pushes, label and body edits, and re-runs. API cost and run time were too high.
 
-R7, R17 and R18 also cover the other reviewers that read a pull request's accepted findings (issue #808): the
+R7, R17, R18 and R19 also cover the other reviewers that read a pull request's accepted findings (issue #808): the
 Claude delta review, the local parity review, `cross-model-review` and third-party reviewers.
 
 **Open point:** the cost and run-time goals have no measurable acceptance criterion yet. This is not a
@@ -167,7 +167,8 @@ a reviewer reports it anew, until the flagged code changes (issue #808).
   has posted a pull request comment confirming that waiver line, and has not edited it since. The
   confirmation is bound to the line, including its fingerprint, not to a head, so it survives pushes
   until the flagged line changes. Without it, the finding keeps blocking, and the job
-  summary says that a confirmation is missing. Every other waiver needs no confirmation: anyone who can
+  summary says that a confirmation is missing. A waiver and its confirmation must still exist when the
+  result is published (R19). Every other waiver needs no confirmation: anyone who can
   edit the pull request body can waive it (see the accepted residual below).
 - **Malformed lines are reported.** A non-empty line in the section that is not a valid waiver line, that
   uses an unknown kind, or whose `deferred` issue is missing or closed, is listed in the job summary with the
@@ -423,9 +424,10 @@ other rules, so no such key covers its next report.
   each run: once the issue closes or its line is removed, it blocks again. A marked finding whose issue
   applies now is kept after its file changes, while its flagged line is still there, as one a waiver line
   names is.
-- **Judged when a run starts.** As for `deferred` (R7), an issue's state is read when a run starts: closing
-  the issue starts no run, so its findings block again from the next run (a push, or an `edited` or
-  `labeled` event). A `tracked` line added after a run marks nothing that run already reported unmarked,
+- **Judged when a run starts.** As for `deferred` (R7), an issue's state is read when a run starts, and
+  read again when the result is published (R19): closing the issue starts no run, so its findings block
+  again from the next run (a push, or an `edited` or `labeled` event), or from the current one if it is
+  closed before that run publishes. A `tracked` line added after a run marks nothing that run already reported unmarked,
   since a body edit makes no Codex call (R8); a waiver line `– deferred #<issue>` (R7) names that finding.
 - **Every reviewer of R17.** The Claude delta review (advisory), the local parity review and
   `cross-model-review` get the same list and apply the same rule; the local reviews check an issue's state
@@ -442,3 +444,37 @@ Status: approved (maintainer, 2026-11-22, issue #832; the title mark, the mainta
 briefing chosen by the maintainer; the confirmation bound to one path, the every-copy mark, the unread-issue and
 bracket rules and the wider residual added after the security review, maintainer's choice the same day; the
 "judged when a run starts" note added after PR #842's first review round, maintainer's choice)
+
+## R19. Waivers are re-checked when the result is published (issue #833)
+
+The waivers, maintainer confirmations and issue states of R7 and R18 are read when a run starts. A run ends
+after its reviewers finish, and deleting a comment or closing an issue starts no run. So the publishing step
+re-checks them before it lets a waiver decide anything.
+
+- **Re-read at publish.** After the review, the trusted policy job (`Publish Codex policy result`) reads
+  these again with the base SHA's code: the pull request body's `## Accepted Review Findings` section, the
+  maintainers' confirmation comments, and the state of the `deferred` and `tracked` issues.
+- **Only the waivers the run used.** It re-checks every waiver the run's result applied: to fresh findings,
+  to findings carried from the anchor (R7), and to findings marked as tracked (R18). It also re-checks every
+  waiver the run passed to its reviewers as data (R7), since a reviewer may have left that finding out of
+  the result: its line must still be in the section, with its `deferred` issue still open. Later runs carry
+  a briefed waiver like a waived finding (R7), so once it lapses it blocks, even on a run that makes no
+  Codex call (R8), until the waiver is restored or its flagged line changes.
+- **When a waiver still holds.** At publish time its line must still be in the section; its `deferred` or
+  `tracked` issue must still be open; and when it needs a maintainer's confirmation, a confirming comment
+  from a maintain or admin user must still exist and must not have been edited since.
+- **A lapsed waiver blocks.** A finding whose waiver no longer holds counts as blocking, so the policy
+  result fails. The job summary names the finding and the reason: line removed, confirmation withdrawn or
+  edited, or issue closed. A waiver that still holds passes as before.
+- **No new waivers at publish.** A waiver added during the run is not applied by this re-check. It takes
+  effect on the next run (R8).
+- **Fail closed.** If the re-read fails (an API error, or a body or comments that cannot be read), the
+  result fails.
+- **Claude delta review.** Its publish step re-checks the same way. A finding whose waiver lapsed is shown
+  as not waived. The Claude review stays advisory, so this changes no gate. It does not re-check the
+  waivers it briefs: a finding its reviewer left out under a waiver that has since lapsed is not shown.
+- **Accepted residual:** a waiver withdrawn after the publishing step has read it takes effect on the next
+  run only.
+
+Status: approved (maintainer, 2026-11-22, issue #833; the re-check and the carry of briefed waivers added
+after the security review, maintainer's choice the same day)
