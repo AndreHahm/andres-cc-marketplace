@@ -196,6 +196,12 @@ What we observed (Codex CLI 0.170.0, Windows; not stated in the docs):
 bash .codex/hooks/tests/test-live-codex-hook-and-rules.sh [timeout-seconds]
 ```
 
+On Windows, run it with Git Bash. From PowerShell, a bare `bash` can start WSL instead (the script refuses to run there):
+
+```powershell
+& "C:\Program Files\Git\bin\bash.exe" .codex/hooks/tests/test-live-codex-hook-and-rules.sh
+```
+
 The hook's own `BLOCKED:` message can only appear if Codex ran the `hooks.json` command string in a POSIX shell that started bash on the script. A generic rejection is reported as INCONCLUSIVE, not PASS. The script makes one model call, so it costs tokens. It needs a trusted project, a trusted hook, a Codex login and `jq`. Exit codes: 0 all PASS, 1 a FAIL, 3 INCONCLUSIVE.
 
 On Windows, Codex's shell tool (`exec_command`) runs commands as `pwsh.exe -Command '...'`, as observed in a `codex exec` transcript. The docs say `exec_command` is matched as `Bash`, so the `^Bash$` matcher still applies. The docs do not say which shell runs a hook's own `command` string on Windows; the live check answers that (issue #803).
