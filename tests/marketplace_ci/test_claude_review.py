@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 
 import pytest
@@ -631,26 +632,72 @@ def test_the_publish_cli_reads_the_security_scope(monkeypatch, tmp_path):
     assert result["security_anchor_sha"] == "d" * 40
 
 
-@pytest.mark.parametrize("content", [None, "not json", json.dumps({"paths": "a.py"})])
+_MISSING, _DIRECTORY, _EMPTY_FLAG, _UNREADABLE = "missing", "directory", "empty flag", "unreadable"
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        _MISSING,
+        _DIRECTORY,
+        _EMPTY_FLAG,
+        _UNREADABLE,
+        "not json",
+        "[]",
+        json.dumps({"paths": "a.py"}),
+        json.dumps({"paths": [{"status": "M"}]}),
+        json.dumps({"paths": [1]}),
+    ],
+)
 def test_an_unreadable_security_scope_fails_closed(monkeypatch, tmp_path, content):
-    """Review finding (issue #836): a given but missing or invalid --security-scope must not
-    fall back to the general scope, which could mark a needed security pass as finished."""
+    """Review findings (issue #836): a given but missing, empty, unreadable or invalid
+    --security-scope must not fall back to the general scope, which could mark a needed security
+    pass as finished, and must still write a could_not_run result rather than crash."""
+    if content == _UNREADABLE and hasattr(os, "geteuid") and os.geteuid() == 0:
+        pytest.skip("root can read a file without read permission")
     general = tmp_path / "g.json"
     general.write_text(json.dumps(_scope(_PLAIN)), "utf-8")
     security = tmp_path / "s.json"
-    if content is not None:
+    if content == _DIRECTORY:
+        security.mkdir()
+    elif content == _UNREADABLE:
+        security.write_text(json.dumps(_scope(_CRITICAL)), "utf-8")
+        security.chmod(0)
+    elif content not in (_MISSING, _EMPTY_FLAG):
         security.write_text(content, "utf-8")
     raw = tmp_path / "raw.json"
     raw.write_text(json.dumps({"passes": [_record("general"), _record("security")]}), "utf-8")
     monkeypatch.setattr(cr, "publish", lambda *_a, **_k: [])
     out = tmp_path / "result.json"
-    assert main(["publish-claude-review", "--scope", str(general), "--security-scope",
-                 str(security), "--raw", str(raw), "--review-job", "success", "--model", "m",
-                 "--head-sha", HEAD, "--run-attempt", "1", "--repo", "o/r", "--pr-number", "7",
-                 "--result-out", str(out)]) == 1  # fmt: skip
+    flag = "" if content == _EMPTY_FLAG else str(security)
+    try:
+        assert main(["publish-claude-review", "--scope", str(general), "--security-scope",
+                     flag, "--raw", str(raw), "--review-job", "success", "--model", "m",
+                     "--head-sha", HEAD, "--run-attempt", "1", "--repo", "o/r",
+                     "--pr-number", "7", "--result-out", str(out)]) == 1  # fmt: skip
+    finally:
+        if content == _UNREADABLE:
+            security.chmod(0o600)
     result = json.loads(out.read_text("utf-8"))
     assert (result["status"], result["finished_passes"]) == ("could_not_run", [])
     assert result["reason"] == "the review scope could not be computed"
+
+
+def test_a_general_scope_with_malformed_entries_writes_a_result(monkeypatch, tmp_path):
+    """Security review m1 (issue #836): a scope entry without a string path is no scope, so the
+    publisher writes a could_not_run result instead of failing before it."""
+    general = tmp_path / "g.json"
+    general.write_text(json.dumps({"anchor_sha": "", "paths": [{"status": "M"}]}), "utf-8")
+    raw = tmp_path / "raw.json"
+    raw.write_text(json.dumps({"passes": [_record("general")]}), "utf-8")
+    monkeypatch.setattr(cr, "publish", lambda *_a, **_k: [])
+    out = tmp_path / "result.json"
+    assert main(["publish-claude-review", "--scope", str(general), "--raw", str(raw),
+                 "--review-job", "success", "--model", "m", "--head-sha", HEAD,
+                 "--run-attempt", "1", "--repo", "o/r", "--pr-number", "7",
+                 "--result-out", str(out)]) == 1  # fmt: skip
+    result = json.loads(out.read_text("utf-8"))
+    assert (result["status"], result["finished_passes"]) == ("could_not_run", [])
 
 
 def test_only_an_omitted_security_scope_reuses_the_general_one():

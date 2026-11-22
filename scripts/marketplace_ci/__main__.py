@@ -1145,7 +1145,7 @@ def _handle_claude_review_prompts(args: argparse.Namespace) -> int:
     security_md = Path(args.security_md).read_text(encoding="utf-8")
     security_scope = (
         json.loads(Path(args.security_scope).read_text(encoding="utf-8"))
-        if args.security_scope
+        if args.security_scope is not None
         else scope
     )
     out_dir = Path(args.out_dir)
@@ -1186,23 +1186,32 @@ def _handle_publish_claude_review(args: argparse.Namespace) -> int:
     a review that could not run."""
     from scripts.marketplace_ci.claude_review import decide, publish
 
-    def load(path: str):
+    def load(path: str | None):
         if not path or not Path(path).is_file():
             return None
         try:
             data = json.loads(Path(path).read_text(encoding="utf-8"))
-        except ValueError:
+        except (OSError, ValueError):
             return None
         return data if isinstance(data, dict) else None
 
-    scope = load(args.scope)
-    if scope is not None and not isinstance(scope.get("paths"), list):
-        scope = None
+    def valid_scope(scope):
+        # A scope whose paths are not a list of entries with a string path is no scope, so the
+        # run writes a could_not_run result instead of failing before it.
+        paths = scope.get("paths") if scope is not None else None
+        if not isinstance(paths, list) or not all(
+            isinstance(e, dict) and isinstance(e.get("path"), str) for e in paths
+        ):
+            return None
+        return scope
+
+    scope = valid_scope(load(args.scope))
     # R3: the security pass's own scope; the general one only when the flag is omitted. A given
-    # but missing or invalid file is None, so the run could not run and anchors no pass.
-    security_scope = load(args.security_scope) if args.security_scope else scope
-    if security_scope is not None and not isinstance(security_scope.get("paths"), list):
-        security_scope = None
+    # but missing or invalid file (an empty value included) is None, so the run could not run
+    # and anchors no pass.
+    security_scope = (
+        valid_scope(load(args.security_scope)) if args.security_scope is not None else scope
+    )
     result = decide(
         switched_off=args.switched_off == "true",
         scope=scope,
@@ -2203,7 +2212,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     for flag in ("--scope", "--template", "--review-md", "--security-md", "--out-dir"):
         claude_prompts.add_argument(flag, required=True, metavar="PATH")
-    claude_prompts.add_argument("--security-scope", default="", metavar="PATH")
+    claude_prompts.add_argument("--security-scope", default=None, metavar="PATH")
     claude_prompts.add_argument("--base-sha", required=True, metavar="SHA")
     claude_prompts.add_argument("--head-sha", required=True, metavar="SHA")
     claude_prompts.add_argument("--github-output", required=True, metavar="PATH")
@@ -2223,7 +2232,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     claude_publish.add_argument("--switched-off", default="false", choices=("true", "false"))
     claude_publish.add_argument("--scope", default="", metavar="PATH")
-    claude_publish.add_argument("--security-scope", default="", metavar="PATH")
+    claude_publish.add_argument("--security-scope", default=None, metavar="PATH")
     claude_publish.add_argument("--raw", default="", metavar="PATH")
     claude_publish.add_argument("--review-job", required=True)
     claude_publish.add_argument("--model", required=True)
