@@ -1293,7 +1293,7 @@ def test_fetch_accepted_findings_records_the_tracked_issues(tmp_path, monkeypatc
     from scripts.marketplace_ci.__main__ import _load_tracked_issues
 
     body = tmp_path / "local.md"
-    body.write_text(_section("- tracked #7", "- tracked #9"), "utf-8")
+    body.write_text(_section("- tracked #7", "- tracked #9"), encoding="utf-8")
     out = tmp_path / "accepted.json"
     monkeypatch.setattr(main_module, "_issue_is_open", lambda repo, n, gh="gh": n == 7)
 
@@ -1314,10 +1314,10 @@ def test_a_file_without_tracked_issues_reads_as_none(tmp_path):
     from scripts.marketplace_ci.__main__ import _load_tracked_issues
 
     old = tmp_path / "old.json"
-    old.write_text(json.dumps({"body": "", "open_issues": [], "confirmed": []}), "utf-8")
+    old.write_text(json.dumps({"body": "", "open_issues": [], "confirmed": []}), encoding="utf-8")
     assert _load_tracked_issues(str(old)) == []
     bad = tmp_path / "bad.json"
-    bad.write_text(json.dumps({"tracked_issues": [{"number": True}]}), "utf-8")
+    bad.write_text(json.dumps({"tracked_issues": [{"number": True}]}), encoding="utf-8")
     with pytest.raises(ValueError):
         _load_tracked_issues(str(bad))
 
@@ -1348,15 +1348,15 @@ def test_the_claude_prompts_brief_the_tracked_issues_to_the_general_pass_only(
                 "tracked_issues": [{"number": 7, "title": "T", "summary": "S"}],
             }
         ),
-        "utf-8",
+        encoding="utf-8",
     )
     scope = tmp_path / "scope.json"
     scope.write_text(json.dumps({"anchor_sha": "", "anchor_status": "none", "paths": [
-        {"status": "M", "path": "a_py", "gate_critical": False}]}), "utf-8")  # fmt: skip
+        {"status": "M", "path": "a_py", "gate_critical": False}]}), encoding="utf-8")  # fmt: skip
     template = tmp_path / "t.md"
-    template.write_text("{{ACCEPTED_FINDINGS}}", "utf-8")
+    template.write_text("{{ACCEPTED_FINDINGS}}", encoding="utf-8")
     review_md = tmp_path / "r.md"
-    review_md.write_text("r", "utf-8")
+    review_md.write_text("r", encoding="utf-8")
     out_dir = tmp_path / "prompts"
     out = tmp_path / "gh_out"
     monkeypatch.chdir(git_repo.root)
@@ -1367,7 +1367,7 @@ def test_the_claude_prompts_brief_the_tracked_issues_to_the_general_pass_only(
         "--github-output", str(out), "--accepted-findings", str(accepted),
     ]  # fmt: skip
     assert main(args) == 0
-    general = (out_dir / "general.md").read_text("utf-8")
+    general = (out_dir / "general.md").read_text(encoding="utf-8")
     assert "[tracked issues]" in general and '"number": 7' in general
 
 
@@ -1449,7 +1449,7 @@ def test_publish_claude_review_warns_on_a_malformed_tracked_list(tmp_path, monke
         json.dumps(
             {"body": "", "open_issues": [], "confirmed": [], "tracked_issues": [{"number": True}]}
         ),
-        "utf-8",
+        encoding="utf-8",
     )
     monkeypatch.setattr(claude_review, "decide", lambda **_kw: _claude_result(_claude_finding()))
     monkeypatch.setattr(claude_review, "publish", lambda *a, **k: [])
