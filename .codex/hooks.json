@@ -8,7 +8,7 @@
             "type": "command",
             "command": "root=$(git rev-parse --show-toplevel) || { echo 'BLOCKED: cannot locate the repository root for the command-policy hook.' >&2; exit 2; }; bash \"$root/.codex/hooks/block-dangerous-command.sh\" || exit 2",
             "commandWindows": "[Console]::OutputEncoding = [Text.UTF8Encoding]::new($false); $r = git rev-parse --show-toplevel 2>$null; if ($LASTEXITCODE -ne 0 -or -not $r) { [Console]::Error.WriteLine('BLOCKED: cannot locate the repository root for the command-policy hook.'); exit 2 }; $b = Join-Path (git --exec-path) '../../../bin/bash.exe'; $s = Join-Path $r '.codex/hooks/block-dangerous-command.sh'; if (-not (Test-Path -LiteralPath $b -PathType Leaf) -or -not (Test-Path -LiteralPath $s -PathType Leaf)) { [Console]::Error.WriteLine('BLOCKED: cannot find Git Bash or the command-policy script for the hook.'); exit 2 }; $global:LASTEXITCODE = 2; try { [Console]::In.ReadToEnd() | & $b $s } catch { exit 2 }; if ($LASTEXITCODE -eq 0) { exit 0 } else { exit 2 }",
-            "timeout": 10,
+            "timeout": 30,
             "statusMessage": "Checking command policy"
           }
         ]
