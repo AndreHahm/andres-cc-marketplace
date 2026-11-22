@@ -192,11 +192,77 @@ B	git -C . commit -F msg -m "--amend"
 # A global option value is not the subcommand.
 B	git --shallow-file x stash
 B	git --shallow-file commit branch -m "--delete" x
+# A long message is still a value: blanked whole, though the stored word is cut.
+A	git -C . commit -m "fix the hook fix the hook fix the hook fix the hook fix the hook fix the hook fix the hook fix the hook fix the hook fix the hook fix the hook fix the hook fix the hook fix the hook fix the hook fix the hook fix the hook fix the hook fix the hook fix the hook fix the hook fix the hook fix the hook fix the hook fix the hook and drop the --amend path"
+# A word longer than the stored 256 characters has an unknown value.
+B	git -C . commit -aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaamx --amend
+B	git -C . commit -aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaF -m --amend
 B	git -C . commit -m $m "--amend"
 B	o=-F; git -C . commit "$o" -m --amend
 # Accepted false block: a message that holds a variable has an unknown value, as on main.
 B	git -C . commit -m "drop --amend from $script"
 B	f() { :; }; git -C . commit -m x "--amend"
+# git accepts an unambiguous prefix of a long option, with or without global options.
+B	git commit --am
+B	git -C . commit --ame
+B	git -C . branch --del x
+B	git tag --delete v1
+B	git -C . tag --del v1
+B	git -C . clean --forc
+B	git pull --reb
+B	git -C . pull --no-reb
+B	git pull --sq
+A	git branch --list
+A	git -C . tag --list
+A	git -C . branch --describe x
+A	git pull --ff-only
+A	git -C . commit --allow-empty -m "x"
+# A short-option cluster that holds a forbidden option.
+B	git -C . branch -Dq x
+B	git branch -dr origin/x
+B	git -C . pull -qr
+A	git branch -vv
+A	git pull -q
+# A setting for one command that turns off clean's force check or defines a shell alias.
+B	git -c clean.requireForce=false clean -d
+B	GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=clean.requireForce GIT_CONFIG_VALUE_0=false git clean -d
+B	git -c alias.x='!git stash' x
+B	git -c 'alias.x=!sh -c x' x
+# Any alias for one command: it can name a forbidden subcommand without a `!`.
+B	git -c alias.x=stash x
+B	git -c alias.x='reset --hard' x
+B	git -c alias.p='push --force' p
+B	V='!git stash' git --config-env=alias.x=V x
+B	GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=alias.x GIT_CONFIG_VALUE_0='!git stash' git x
+B	git -c pull.rebase=true pull
+B	git -c branch.main.rebase=true pull
+B	git -c merge.ff=false pull
+B	git -c pull.rebase pull
+B	git -c branch.main.rebase pull
+A	GIT_CONFIG_GLOBAL=~/alias.cfg git status
+A	gcc -c alias.c
+A	tar -c alias.txt
+A	make -C alias.d
+A	git -c core.editor=vim status
+A	git log --grep "alias.x=!"
+# A forbidden git command inside a string that a shell runs.
+B	bash -c 'git stash'
+B	sh -c "git merge x"
+B	bash -c 'cd x && git stash'
+B	ssh host 'git branch --del x'
+B	eval 'git -C . st\\ash'
+B	bash -c "echo 'start'; git stash"
+B	bash -c $'git stash'
+B	bash -c 'if :; then git stash; fi'
+B	bash -c 'X=1 git stash'
+B	bash -c 'cd x && env git stash'
+B	bash -c 'timeout 5 git stash'
+B	bash -c 'nice -n 5 git stash'
+B	eval git -C . stash
+A	bash -c 'git status'
+A	sh -c "git merge-base a b"
+# Accepted false block: text that names such a string, like the git reset --hard text check.
+B	echo "bash -c 'git stash' is blocked"
 # A quoted assignment or wrapper value before the command.
 B	X="a b" git rebase main
 B	X='a b' git -C . stash

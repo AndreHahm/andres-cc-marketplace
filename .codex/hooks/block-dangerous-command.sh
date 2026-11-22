@@ -112,10 +112,17 @@ function chrv(v) {
     if (v == 0) return "NUL"
     return (v >= 32 && v < 127) ? nc(chr[v]) : "_"
 }
-function emit(x) { out = out x; if (inword) wn = wn x }
+# Output is streamed and a word keeps at most 256 characters (only short option names are
+# compared), so a long command takes linear time, also in awks that copy on concatenation.
+# A word cut at the cap is marked: blank_cmd stops wherever it would compare one, but may
+# still blank one whole as a value, since the span comes from the raw text.
+function emit(x) {
+    if (mode == "norm") printf "%s", x
+    if (inword) { if (length(wn) < 256) wn = wn x; else wc = 1 }
+}
 function push(t) { depth++; st[depth] = t; pd[depth] = 0 }
 function startword() {
-    if (!depth && !inword) { inword = 1; ws = i; wn = ""; wg = 0 }
+    if (!depth && !inword) { inword = 1; ws = i; wn = ""; wg = 0; wc = 0 }
     wb = 0
 }
 function endword() {
@@ -124,7 +131,7 @@ function endword() {
     if (wn == "[[" || wn == "case" || wn == "alias" || wn == "function" || wn == "coproc" ||
         wn == "select") bail = 1
     if (redir) { redir = 0; return }
-    nk++; cs[nk] = ws; ce[nk] = i; cn[nk] = wn; cg[nk] = wg
+    nk++; cs[nk] = ws; ce[nk] = i; cn[nk] = wn; cg[nk] = wg; ct[nk] = wc
 }
 function endcmd() {
     if (depth) return
@@ -141,15 +148,16 @@ function blank_cmd(    k, set, v, long, longb, o, r, re) {
         k++
         while (k <= nk && raw(k) ~ /^[A-Za-z_][A-Za-z0-9_]*=/) k++
     }
-    if (k > nk || (cn[k] != "git" && cn[k] !~ /\/git$/)) return
+    if (k > nk || ct[k] || (cn[k] != "git" && cn[k] !~ /\/git$/)) return
     # git global options: the first list takes the next word as its value, the second takes
     # none. Any other option stops blanking, since its value could be read as the subcommand.
     for (k++; k <= nk && cn[k] ~ /^-/; k++) {
+        if (ct[k]) return
         if (cn[k] ~ /^(-C|-c|--git-dir|--work-tree|--namespace|--super-prefix|--config-env|--attr-source|--shallow-file)$/) k++
         else if (cn[k] !~ /^(-p|-P|--paginate|--no-pager|--bare|--no-replace-objects|--no-lazy-fetch|--no-optional-locks|--no-advice|--literal-pathspecs|--glob-pathspecs|--noglob-pathspecs|--icase-pathspecs)$/ &&
             cn[k] !~ /^--(git-dir|work-tree|namespace|super-prefix|config-env|attr-source|shallow-file)=/) return
     }
-    if (k > nk) return
+    if (k > nk || ct[k]) return
     # set: short options that take no value and may share a cluster with v.
     if (cn[k] == "commit") {
         set = "asneqviopz"; v = "m"; long = "--message"
@@ -166,7 +174,8 @@ function blank_cmd(    k, set, v, long, longb, o, r, re) {
     re = "^-[" set "]*" v
     for (k++; k <= nk; k++) {
         o = cn[k]
-        if (o == "--") return
+        # A cut word read as an option could end differently; a cut value is skipped above.
+        if (ct[k] || o == "--") return
         if (o !~ /^-/) continue
         if (o ~ (re "$") || o == long) {
             if (k < nk) span(cs[k + 1], ce[k + 1])
@@ -192,8 +201,14 @@ BEGIN {
     SP = " \t\r\n\v\f;&|<>()" sq dq "`\\${}"
     for (k = 32; k < 127; k++) chr[k] = sprintf("%c", k)
 }
-{ s = (NR > 1) ? s "\n" $0 : $0 }
+{ ln[NR] = $0 }
 END {
+    # Join the lines pairwise, so the copying stays near linear.
+    for (m = NR; m > 1; m = h) {
+        h = 0
+        for (k = 1; k <= m; k += 2) ln[++h] = (k < m) ? ln[k] "\n" ln[k + 1] : ln[k]
+    }
+    s = ln[1]
     n = length(s); i = 1; wb = 1
     while (i <= n) {
         c = substr(s, i, 1); c2 = substr(s, i + 1, 1)
@@ -220,10 +235,9 @@ END {
             }
             if (c == sq) {
                 startword()
-                j = index(substr(s, i + 1), sq)
-                if (j) { t = substr(s, i + 1, j - 1); i += j + 1 }
-                else { t = substr(s, i + 1); i = n + 1; unclean = 1 }
-                for (m = 1; m <= length(t); m++) emit(nc(substr(t, m, 1)))
+                for (j = i + 1; j <= n && substr(s, j, 1) != sq; j++) emit(nc(substr(s, j, 1)))
+                if (j > n) unclean = 1
+                i = j + 1
                 continue
             }
             if (c == "$" && c2 == sq) {
@@ -269,8 +283,7 @@ END {
             }
             if (c == dq) { startword(); push("d"); i++; continue }
             if (c == "#" && wb) {
-                j = index(substr(s, i), "\n")
-                i = j ? i + j - 1 : n + 1
+                while (i <= n && substr(s, i, 1) != "\n") i++
                 continue
             }
             if (c == " " || c == "\t") { endword(); emit(c); i++; wb = 1; continue }
@@ -333,11 +346,11 @@ END {
     }
     if (depth) unclean = 1
     if (!stopped) { endword(); endcmd() }
-    if (mode == "norm") { print out; exit }
+    if (mode == "norm") { printf "\n"; exit }
     if (unclean) { print s; exit }
-    r = ""; p = 1
-    for (k = 1; k <= nb; k++) { r = r substr(s, p, sa[k] - p) dq dq; p = sb[k] }
-    print r substr(s, p)
+    p = 1
+    for (k = 1; k <= nb; k++) { printf "%s", substr(s, p, sa[k] - p) dq dq; p = sb[k] }
+    print substr(s, p)
 }
 function raw_digits() { return substr(s, ws, i - ws) ~ /^[0-9]+$/ }'
 }
@@ -388,29 +401,45 @@ CMD_FLAGS+=$'\n'"${FLAGS_WORDS}"
 # (`git -c x.y=a\ b stash` sets `x.y` to `a b`), so the other copy turns a backslash and the
 # character after it into one ordinary character (`a_b`), and the option value stays whole.
 # The backslash itself is never what a check looks for.
-matches() {
-    grep -qiE "$1" <<<"${CMD}" || grep -qiE "$1" <<<"${CMD//\\/}" ||
-        grep -qiE "$1" <<<"${CMD//\\?/_}"
-}
 # The anchored checks also read copies with every quote character removed: bash removes
 # them before git sees the words, so `git -C . "stash"` or `st''ash` is the stash subcommand.
 # Each backslash copy is read with and without quotes, for a word that mixes the two
 # (`st\a"sh"`).
-QUOTE_CHARS="[\"']"
-matches_unquoted() {
-    local copy
-    for copy in "$2" "${2//\\/}" "${2//\\?/_}"; do
-        grep -qiE "$1" <<<"${copy}" || grep -qiE "$1" <<<"${copy//${QUOTE_CHARS}/}" ||
-            continue
-        return 0
-    done
-    return 1
+# The copies are built once and joined, one per line group, so each check is a single grep.
+# Every check matches within one line and every copy starts on a new line, so this reads the
+# same as one grep per copy, and a long command takes seconds less.
+# awk builds the copies: bash's own ${var//\\?/_} slows down sharply on a long command. In awk
+# as in bash, `.` also matches a newline, so a backslash-newline becomes `_` in that copy.
+# make_copies 0|1: the text, without backslashes, with each backslash pair as `_`; with 1,
+# each of those also without quote characters.
+make_copies() {
+    awk -v BINMODE=3 -v unq="$1" -v sq="'" -v dq='"' '
+{ ln[NR] = $0 }
+END {
+    for (m = NR; m > 1; m = h) {
+        h = 0
+        for (k = 1; k <= m; k += 2) ln[++h] = (k < m) ? ln[k] "\n" ln[k + 1] : ln[k]
+    }
+    c[1] = ln[1]; c[2] = c[1]; c[3] = c[1]
+    gsub(/\\/, "", c[2])
+    gsub(/\\./, "_", c[3])
+    for (k = 1; k <= 3; k++) {
+        print c[k]
+        if (unq) { t = c[k]; gsub("[" dq sq "]", "", t); print t }
+    }
+}'
+}
+MATCH_TEXT=$(make_copies 0 <<<"${CMD}") || block "Could not read the command."
+CODE_TEXT=$(make_copies 1 <<<"${CMD_CODE}") || block "Could not read the command."
+FLAGS_TEXT=$(make_copies 1 <<<"${CMD_FLAGS}") || block "Could not read the command."
+matches() {
+    grep -qiE "$1" <<<"${MATCH_TEXT}"
 }
 matches_code() {
-    matches_unquoted "$1" "${CMD_CODE}"
+    grep -qiE "$1" <<<"${CODE_TEXT}"
 }
 matches_flags() {
-    matches_unquoted "$1" "${CMD_FLAGS}"
+    grep -qiE "$1" <<<"${FLAGS_TEXT}"
 }
 
 COMMAND_PREFIX='(^|;[[:space:]]*|&&[[:space:]]*|[|][|][[:space:]]*|[|][[:space:]]*)'
@@ -437,7 +466,7 @@ WORD_PART="[^[:space:];&|\"']|\"[^\"]*\"|'[^']*'"
 WORD_START="[^-[:space:];&|\"']|\"[^\"]*\"|'[^']*'"
 SEGMENT_START='(^|[;&|{]|[$<][(]|=`)([[:space:]]|[(!]|(if|then|do|else|elif|while|until)[[:space:]])*'
 SEGMENT_START+="([A-Za-z_][A-Za-z0-9_]*=(${WORD_PART})*[[:space:]]+)*"
-SEGMENT_START+='((xargs|command|builtin|env|nice|nohup|time|exec|timeout|doas)'
+SEGMENT_START+='((xargs|command|builtin|env|nice|nohup|time|exec|timeout|doas|eval)'
 SEGMENT_START+="([[:space:]]+(-(${WORD_PART})*([[:space:]]+(${WORD_START})(${WORD_PART})*)?"
 SEGMENT_START+="|[0-9](${WORD_PART})*|[A-Za-z_][A-Za-z0-9_]*=(${WORD_PART})*))*"
 SEGMENT_START+='[[:space:]]+)*([^[:space:];&|]*/)?'
@@ -455,6 +484,47 @@ FORBIDDEN_GIT_RE+="|reflog[[:space:]]+(expire|delete)${GIT_SUB_END}"
 FORBIDDEN_GIT_RE+="|commit([^;&|]*[[:space:]])?--amend${GIT_SUB_END}"
 FORBIDDEN_GIT_RE+="|clean([^;&|]*[[:space:]])?(-[a-zA-Z]*f|--force)"
 FORBIDDEN_GIT_RE+="|pull([^;&|]*[[:space:]])?(--rebase|-r|--no-ff|--squash|--no-rebase)([=]|${GIT_SUB_END})"
+# git accepts any unambiguous prefix of a long option (`commit --am` is `--amend`), which the
+# exec-policy rules' exact tokens cannot match, so these are checked with or without global
+# options. Prefixes that git finds ambiguous (`push --forc`) are rejected by git itself.
+ABBREV_GIT_RE="commit([^;&|]*[[:space:]])?--am(e(n(d)?)?)?${GIT_SUB_END}"
+ABBREV_GIT_RE+="|(branch|tag)([^;&|]*[[:space:]])?--d(e(l(e(t(e)?)?)?)?)?${GIT_SUB_END}"
+ABBREV_GIT_RE+="|clean([^;&|]*[[:space:]])?--f(o(r(c(e)?)?)?)?${GIT_SUB_END}"
+ABBREV_GIT_RE+="|pull([^;&|]*[[:space:]])?--((no-)?reb(a(s(e)?)?)?|sq(u(a(s(h)?)?)?)?)([=]|${GIT_SUB_END})"
+# A short-option cluster that holds a forbidden one (`branch -Dq`, `pull -qr`).
+ABBREV_GIT_RE+="|branch([^;&|]*[[:space:]])?-[a-zA-Z]*[dD][a-zA-Z]*${GIT_SUB_END}"
+ABBREV_GIT_RE+="|pull([^;&|]*[[:space:]])?-[a-zA-Z]*r${GIT_SUB_END}"
+# A setting given for one command only (`git -c ...`, `--config-env`, GIT_CONFIG_* variables)
+# that turns off clean's force check, makes pull rebase or merge, or defines any alias (an
+# alias can name a forbidden subcommand, `alias.x=stash`, or run a shell, `alias.x=!cmd`).
+# The exec-policy rules cannot see it: the command no longer starts with `git clean`.
+# A persistent `git config` stays with the rules, which ask the user. Known limits of a text
+# check: config read from a file (`include.path`, GIT_CONFIG_GLOBAL, another --git-dir) and
+# keys that run a command (core.pager, core.editor, core.sshCommand, core.hooksPath,
+# GIT_PAGER, GIT_SSH_COMMAND, GIT_EXTERNAL_DIFF), and a key held in a variable, are not checked.
+# The -c and --config-env forms need a word boundary and `=` after the key, so `gcc -c alias.c`
+# or `make -C alias.d` is not read as one; a rebase key may also stand alone, since git reads
+# `-c pull.rebase` as true. A GIT_CONFIG_KEY_<n> value is the bare key.
+CONFIG_KEYS='(clean\.requireforce|pull\.(rebase|ff)|merge\.ff|branch\.[^[:space:]=]*\.rebase|alias\.[^[:space:]=]*)'
+CONFIG_OPT='(^|[[:space:]])(-c[[:space:]]*|--config-env[=[:space:]]+)'
+UNSAFE_CONFIG_RE="${CONFIG_OPT}${CONFIG_KEYS}="
+UNSAFE_CONFIG_RE+="|${CONFIG_OPT}(pull|branch\.[^[:space:]=]*)\.rebase([[:space:]]|\$)"
+UNSAFE_CONFIG_RE+="|GIT_CONFIG_(KEY_[0-9]+|PARAMETERS)=[^[:space:]]*${CONFIG_KEYS}"
+# A forbidden git command inside a string that a shell runs (`bash -c 'git stash'`, also after
+# other commands, keywords or assignments in the string). The exec-policy rules match only the
+# outer command. Every check reads one line, so a string split over lines, or one piped into a
+# shell (`echo 'git stash' | sh`), is not seen.
+SHELL_STRING_GIT_RE='(^|[^A-Za-z0-9_.-])(bash|sh|zsh|dash|ksh|eval|su|ssh)([[:space:]][^;&|"'"'"']*)?'
+SHELL_STRING_GIT_RE+="[[:space:]][\$]?[\"'](([^\"']|\"[^\"]*\"|'[^']*')*[;&|({][[:space:]]*)?"
+SHELL_STRING_GIT_RE+="((if|then|do|else|elif|while|until|!)[[:space:]]+"
+SHELL_STRING_GIT_RE+="|(xargs|command|builtin|env|nice|nohup|time|exec|timeout|doas|eval)"
+SHELL_STRING_GIT_RE+="([[:space:]]+(-[^[:space:]\"']*|[0-9][^[:space:]\"']*|[A-Za-z_][A-Za-z0-9_]*=[^[:space:]\"']*))*[[:space:]]+"
+SHELL_STRING_GIT_RE+="|[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*"
+SHELL_STRING_GIT_RE+="([^\"'[:space:];&|]*/)?"
+# Inside the string, the closing quote also ends a subcommand (`'git stash'`).
+GIT_SUB_END_Q='([[:space:]);}`"'"'"']|$)'
+SHELL_STRING_GIT_RE+="git${GIT_OPT}*[[:space:]]+(${FORBIDDEN_GIT_RE//"${GIT_SUB_END}"/"${GIT_SUB_END_Q}"}"
+SHELL_STRING_GIT_RE+="|${ABBREV_GIT_RE//"${GIT_SUB_END}"/"${GIT_SUB_END_Q}"})"
 # chmod that makes a file writable by others: an octal mode whose last digit has the
 # write bit (2, 3, 6, 7), or a symbolic clause for o or a that adds or sets w. default.rules
 # lists a few exact modes; it cannot test the bit, so the hook catches the rest.
@@ -494,11 +564,11 @@ FETCH_TO_SHELL_RE+='(bash|sh|zsh|iex|invoke-expression)([[:space:]]|$)'
 # Check the flags of each rm invocation only, so `rm x && cp -rf a b` passes.
 # An rm behind a common wrapper (`xargs rm -rf`, `command rm`) or given by path
 # (`/bin/rm`) counts too; the wrapper's own options are checked with it.
-RM_WRAPPER='(xargs|command|builtin|env|nice|nohup|time|exec|timeout|doas)'
+RM_WRAPPER='(xargs|command|builtin|env|nice|nohup|time|exec|timeout|doas|eval)'
 RM_RE="${COMMAND_PREFIX}(${RM_WRAPPER}[[:space:]]([^;&|]*[[:space:]])?)?"
 RM_RE+="([^[:space:];&|]*/)?[\"']?rm[\"']?[[:space:]][^;&|]*"
 # Also read with backslashes removed, like `matches`: `\rm -rf` and `rm -r\f` are rm -rf.
-RM_SEGMENTS=$(grep -oiE "${RM_RE}" <<<"${CMD}"$'\n'"${CMD//\\/}" || true)
+RM_SEGMENTS=$(grep -oiE "${RM_RE}" <<<"${MATCH_TEXT}" || true)
 while IFS= read -r segment; do
     [[ -z "${segment}" ]] && continue
     if grep -qiE '(^|[[:space:]])-[a-zA-Z]*[rR]|--recursive' <<<"${segment}" &&
@@ -541,6 +611,18 @@ fi
 
 if matches_flags "${GIT_WITH_OPTS_AT_START}(${FORBIDDEN_GIT_RE})"; then
     block "This git command is forbidden by the exec-policy rules, also with git -C or other global options."
+fi
+
+if matches_flags "${GIT_AT_START}(${ABBREV_GIT_RE})"; then
+    block "This git command is forbidden by the exec-policy rules, also with an abbreviated option."
+fi
+
+if matches_flags "${UNSAFE_CONFIG_RE}"; then
+    block "Do not set clean.requireForce or a shell alias for one git command; ask the user."
+fi
+
+if matches "${SHELL_STRING_GIT_RE}"; then
+    block "This git command is forbidden by the exec-policy rules, also inside a shell string."
 fi
 
 if matches_code "${PUBLISH_RE}"; then
