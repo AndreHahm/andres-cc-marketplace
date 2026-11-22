@@ -907,6 +907,29 @@ def _waiver_hint(rule: str, path: str, line: int, fingerprint: str | None = None
     return f"- {rule} {path}:{line}{mark} – accepted|residual|deferred #<issue>|refuted"
 
 
+def _tracked_issue_records(repo: str, numbers, gh: str = "gh") -> list[dict]:
+    """R18: each declared open tracked issue's number, title and summary, read through `gh api`.
+    An issue whose text cannot be read is still listed, with an empty title and summary: the
+    text only briefs the reviewers, it never decides what blocks."""
+    from scripts.marketplace_ci.review import tracked_issue_record
+
+    records = []
+    for number in numbers:
+        fetched = subprocess.run(
+            [gh, "api", f"repos/{repo}/issues/{number}", "--jq", "[.title, .body]"],
+            capture_output=True,
+            text=True,
+        )
+        title = body = None
+        if fetched.returncode == 0:
+            try:
+                title, body = json.loads(fetched.stdout)
+            except (ValueError, TypeError):
+                title = body = None
+        records.append(tracked_issue_record(number, title, body))
+    return records
+
+
 def _confirmed_waivers(repo: str, pr_number: str, gh: str = "gh") -> set[tuple[str, str, str]]:
     """The waiver keys confirmed in the pull request's comments by a user whose role is maintain
     or admin (R7), read through `gh api`. A comment edited after it was posted confirms nothing,
@@ -1003,7 +1026,7 @@ def _handle_fetch_accepted_findings(args: argparse.Namespace) -> int:
             open_issues.append(n)
         return is_open
 
-    read_waiver_section(body, issue_is_open)
+    tracked = read_waiver_section(body, issue_is_open).tracked
     confirmed = sorted(_confirmed_waivers(args.repo, args.pr_number, args.gh)) if has_pr else []
     # Keep only the section, not the whole body: the file is uploaded as an artifact, which would
     # keep text a later edit removes from the body. Every reader re-extracts the same section.
@@ -1012,6 +1035,7 @@ def _handle_fetch_accepted_findings(args: argparse.Namespace) -> int:
         "body": "" if section is None else "## Accepted Review Findings" + section,
         "open_issues": sorted(set(open_issues)),
         "confirmed": [list(key) for key in confirmed],
+        "tracked_issues": _tracked_issue_records(args.repo, tracked, args.gh),
     }
     Path(args.output).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     return 0
@@ -1034,6 +1058,26 @@ def _load_accepted_findings(path: str):
     ):
         raise ValueError(f"{path} is not a fetch-accepted-findings result")
     return body, set(issues), {tuple(key) for key in confirmed}
+
+
+def _load_tracked_issues(path: str) -> list[dict]:
+    """The tracked issues' records `fetch-accepted-findings` wrote (R18); none in a file written
+    before them. Raises ValueError on a malformed list."""
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    records = data.get("tracked_issues", []) if isinstance(data, dict) else None
+    if not (
+        isinstance(records, list)
+        and all(
+            isinstance(r, dict)
+            and isinstance(r.get("number"), int)
+            and not isinstance(r.get("number"), bool)
+            and isinstance(r.get("title"), str)
+            and isinstance(r.get("summary"), str)
+            for r in records
+        )
+    ):
+        raise ValueError(f"{path} has no usable tracked issues")
+    return records
 
 
 def _waiver_report(malformed, notes) -> list[str]:
@@ -1335,6 +1379,7 @@ def _handle_claude_review_prompts(args: argparse.Namespace) -> int:
             locate_fingerprint,
             read_waiver_section,
             render_accepted_findings_briefing,
+            render_tracked_issues_briefing,
         )
 
         body, open_issues, _ = _load_accepted_findings(args.accepted_findings)
@@ -1347,6 +1392,9 @@ def _handle_claude_review_prompts(args: argparse.Namespace) -> int:
                 Path.cwd(), args.head_sha, path, fp, near, head_prints
             ),
         )
+        # R18: the declared open tracked issues, in the same slot.
+        tracked = render_tracked_issues_briefing(_load_tracked_issues(args.accepted_findings))
+        accepted = "\n\n".join(p for p in (accepted, tracked) if p)
     for name in ("general", "security"):
         if needed[name]:
             # The security pass is never told what was accepted (R7: its findings need a
@@ -1439,9 +1487,13 @@ def _handle_publish_claude_review(args: argparse.Namespace) -> int:
         except (OSError, ValueError) as exc:
             print(f"::warning::the accepted review findings could not be read: {exc}")
         else:
+            from scripts.marketplace_ci.review import briefable_tracked
+
             section = read_waiver_section(body, open_issues.__contains__)
+            readable = set(briefable_tracked(_load_tracked_issues(args.accepted_findings)))
+            tracked = tuple(n for n in section.tracked if n in readable)
             reader = head_line_reader(args.repo, args.head_sha, lambda a, _p=None: _gh_raw(a))
-            notes = apply_waivers(result, section.waivers, confirmed, reader)
+            notes = apply_waivers(result, section.waivers, confirmed, reader, tracked)
             for line in _waiver_report(section.malformed, notes):
                 print(f"::warning::{line}")
     if result["status"] != "skipped":
@@ -1613,16 +1665,19 @@ def _handle_check_trust_boundary(args: argparse.Namespace) -> int:
     return 0
 
 
-def _apply_waivers(findings, blocking_set, waivers, repo: Path, confirmed_keys):
+def _apply_waivers(findings, blocking_set, waivers, repo: Path, confirmed_keys, tracked=()):
     """R7 for this run's own findings: every finding's flagged-line fingerprint at HEAD, the
     blocking findings a waiver applies to (finding -> the waiver line), a note per blocking
     finding whose matching waiver still needs a maintainer's confirmation, and the waiver lines
-    whose fingerprint matches no flagged line, as (line, why)."""
+    whose fingerprint matches no flagged line, as (line, why). A blocking finding marked with one
+    of `tracked`'s issues (R18) is waived with the line `tracked #<issue>`."""
     from scripts.marketplace_ci.review import (
+        find_tracked,
         find_waiver,
         finding_waiver_key,
         fingerprint_at,
         stale_waiver_notes,
+        tracked_waiver_text,
     )
 
     fingerprints = {}
@@ -1631,7 +1686,7 @@ def _apply_waivers(findings, blocking_set, waivers, repo: Path, confirmed_keys):
             fingerprints[f] = fingerprint_at(repo, "HEAD", f.path, f.line)
     applied: dict = {}
     notes: list[str] = []
-    if not waivers:
+    if not waivers and not any(f.tracked_issue is not None for f in findings):
         return fingerprints, applied, notes, []
     used = []
     unwaived = []
@@ -1652,9 +1707,21 @@ def _apply_waivers(findings, blocking_set, waivers, repo: Path, confirmed_keys):
             applied[f] = waiver.text[:300]
             used.append(waiver)
             continue
+        issue, why_not_tracked = find_tracked(
+            tracked,
+            f.tracked_issue,
+            path=path,
+            reviewers=[f.reviewer, *f.reporters],
+            confirmed=confirmed_keys.__contains__,
+        )
+        if issue is not None:
+            applied[f] = tracked_waiver_text(issue)
+            continue
         unwaived.append((rule, path, line, fingerprints[f]))
         if why_not is not None:
             notes.append(f"{rule} {path}:{line}: the waiver {why_not}")
+        if why_not_tracked is not None:
+            notes.append(f"{rule} {path}:{line}: the finding {why_not_tracked}")
     return fingerprints, applied, notes, stale_waiver_notes(waivers, used, unwaived)
 
 
@@ -1694,6 +1761,7 @@ def _finding_to_dict(
         ),
         "fingerprint": fingerprint,
         "waiver": waiver,
+        "tracked_issue": finding.tracked_issue,
     }
 
 
@@ -1960,14 +2028,28 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
     from scripts.marketplace_ci.review import read_waiver_section
 
     accepted_text, open_issues, confirmed_keys = "", set(), set()
+    tracked_issues: list[dict] = []
     if args.accepted_findings:
         try:
             accepted_text, open_issues, confirmed_keys = _load_accepted_findings(
                 args.accepted_findings
             )
+            tracked_issues = _load_tracked_issues(args.accepted_findings)
         except (OSError, ValueError) as exc:
             return _fail_run_codex_review(args, f"accepted findings unreadable: {exc}")
     waiver_section = read_waiver_section(accepted_text, open_issues.__contains__)
+    # R18: only the issues the section still declares, in its order, whose text could be read.
+    from scripts.marketplace_ci.review import briefable_tracked
+
+    by_number = {r["number"]: r for r in tracked_issues}
+    tracked_issues = [by_number[n] for n in waiver_section.tracked if n in by_number]
+    applicable_tracked = briefable_tracked(tracked_issues)
+    tracked_issues = [r for r in tracked_issues if r["number"] in applicable_tracked]
+    unread_tracked = [
+        (f"- tracked #{n}", "its title and summary could not be read")
+        for n in waiver_section.tracked
+        if n not in applicable_tracked
+    ]
 
     instructions_dir = Path(args.instructions_dir) if args.instructions_dir else None
     if instructions_dir is not None:
@@ -2104,6 +2186,7 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
             changed_paths=_changed_path_set(changed),
             exceptions=exceptions,
             accepted_findings=waiver_section.waivers,
+            tracked_issues=tracked_issues,
             allow_guardrails_fallback=allow_fallback,
             fallback_root=fallback_root,
             fallback_refusal=refusal,
@@ -2230,7 +2313,12 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
         return _fail_run_codex_review(args, f"diff-scoped classification failed: {exc!r}", reports)
     try:
         fingerprints, waivers_applied, waiver_notes, stale_waivers = _apply_waivers(
-            findings, blocking_set, waiver_section.waivers, repo, confirmed_keys
+            findings,
+            blocking_set,
+            waiver_section.waivers,
+            repo,
+            confirmed_keys,
+            applicable_tracked,
         )
     except Exception as exc:  # fail closed, like the gate above
         return _fail_run_codex_review(args, f"waiver matching failed: {exc!r}", reports)
@@ -2258,8 +2346,16 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
         ],
     )
     _append_step_summary(
+        "Findings tracked by an open issue (R18)",
+        [
+            f"{f.rule} {f.path}:{f.line or 0}: {waivers_applied[f]}"
+            for f in findings
+            if f in waivers_applied and waivers_applied[f].startswith("tracked #")
+        ],
+    )
+    _append_step_summary(
         "Accepted Review Findings not applied",
-        _waiver_report([*waiver_section.malformed, *stale_waivers], waiver_notes),
+        _waiver_report([*waiver_section.malformed, *unread_tracked, *stale_waivers], waiver_notes),
     )
 
     payload = {
@@ -2297,7 +2393,8 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
         "advisory": advisory_field,
         "waived_findings": len(waivers_applied),
         "waiver_lines_not_applied": [
-            {"line": text, "why": why} for text, why in [*waiver_section.malformed, *stale_waivers]
+            {"line": text, "why": why}
+            for text, why in [*waiver_section.malformed, *unread_tracked, *stale_waivers]
         ],
         "blocking": blocking,
     }

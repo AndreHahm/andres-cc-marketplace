@@ -195,4 +195,9 @@ compliance are already enforced in CI.
   security finding, or any finding on a gate-critical path (R3 in
   `docs/ci-codex-review-user-requirements.md`), until a maintainer has posted a
   `- confirmed <rule> <path> @<fingerprint>` comment for that line: CI does not accept those without
-  it either. If you cannot tell that a maintainer posted it, keep reporting.
+  it either. If you cannot tell that a maintainer posted it, keep reporting. A line `- tracked #<issue>`
+  in the same section names an open issue that already tracks a known defect (issue #832): a finding
+  that is that defect, even reworded, on another line or under another rule, is tracked, not new; don't
+  raise it as a new finding, and if you mention it, say in one line that #<issue> tracks it. A different
+  defect on the same path is still new. Keep reporting it on a gate-critical path, or as a security
+  finding, until a maintainer has posted a `- confirmed tracked #<issue> <path>` comment for that path.

@@ -56,7 +56,11 @@
      changes (docs/ci.md, "CI review delta"; R7). A finding on a gate-critical path or from
      security-reviewer also needs a maintainer's comment `- confirmed <rule> <path> @<fingerprint>`.
      Lines that are not applied are listed in the job summary. Every reviewer reads this section
-     (R17). A path with spaces cannot be matched. Use "None" if none. -->
+     (R17). A path with spaces cannot be matched. An open issue that tracks a known defect gets a
+     line of its own, `- tracked #<issue>: <reason>` (at most 10): reviewers mark a finding that is
+     that defect `[tracked #<issue>]`, and CI shows it as tracked instead of blocking (R18); on a
+     gate-critical path or from security-reviewer only after a maintainer's comment
+     `- confirmed tracked #<issue> <path>`. Use "None" if none. -->
 
 ## Open Items (disclosed, not blocking)
 

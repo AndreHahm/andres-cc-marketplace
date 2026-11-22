@@ -51,7 +51,9 @@
      line as printed: its rule (`-` when it has none), line (`0` when it has none) and
      `@<fingerprint>` (`@-` without a line), which keeps the waiver matching when the line moves.
      For another reviewer's finding, name the reviewer and leave out the fingerprint. A path with
-     spaces cannot be matched. Use "None" if none. -->
+     spaces cannot be matched. A line `- tracked #<issue>: <reason>` names an open issue that
+     tracks a known defect: reviewers that read this section treat a finding that is that defect
+     as tracked, not new. Use "None" if none. -->
 
 ## Open Items (disclosed, not blocking)
 
