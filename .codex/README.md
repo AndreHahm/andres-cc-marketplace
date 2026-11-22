@@ -107,7 +107,7 @@ cp rules/default.rules ~/.codex/rules/default.rules
 
 #### Checking that project rules load
 
-`rules/default.rules` starts with a sentinel rule. It forbids exactly `echo CODEX_PROJECT_RULE_TEST`, with the justification `PROJECT RULE LOADED`. Nothing else matches it, so it is harmless to ship.
+`rules/default.rules` starts with a sentinel rule. It forbids `echo CODEX_PROJECT_RULE_TEST`, with the justification `PROJECT RULE LOADED`. As a prefix rule it also matches that command with more arguments after it, and nothing else, so it is harmless to ship.
 
 Check that the file parses and the sentinel matches:
 
@@ -210,7 +210,7 @@ On Windows, run it with Git Bash. From PowerShell, a bare `bash` can start WSL i
 & "C:\Program Files\Git\bin\bash.exe" .codex/hooks/tests/test-live-codex-hook-and-rules.sh
 ```
 
-The hook's own `BLOCKED:` message can only appear if Codex ran the hook entry (`command`, or `commandWindows` on Windows) and it started bash on the script. Run from a worktree, the check tests the main checkout's `hooks.json` (see [Hook trust](#hook-trust)). A generic rejection is reported as INCONCLUSIVE, not PASS. The script makes one model call, so it costs tokens. It needs a trusted project, a trusted hook, a Codex login and `jq`. Exit codes: 0 all PASS, 1 a FAIL, 3 INCONCLUSIVE.
+The hook's own `BLOCKED:` message can only appear if Codex ran the hook entry (`command`, or `commandWindows` on Windows) and it started bash on the script. Run from a worktree, the check tests the main checkout's `hooks.json` (see [Hook trust](#hook-trust)). A generic rejection is reported as INCONCLUSIVE, not PASS. The script makes one model call, so it costs tokens. It needs a trusted project, a trusted hook, a Codex login, `jq` and `timeout` (GNU coreutils; Git Bash has it). Exit codes: 0 all PASS, 1 a FAIL, 3 INCONCLUSIVE.
 
 On Windows, Codex's shell tool (`exec_command`) runs commands as `pwsh.exe -Command '...'`, as observed in a `codex exec` transcript. The docs say `exec_command` is matched as `Bash`, so the `^Bash$` matcher still applies. The docs do not say which shell runs a hook's own `command` string on Windows. With only the bash-syntax `command`, a live run let the hook probe through. Under PowerShell that string is a parse error (exit 1), and Codex treats any exit other than 2 as a non-blocking error. `hooks.json` therefore adds a fail-closed PowerShell `commandWindows` that starts Git Bash on the script (issue #803); the live check confirms it once the main checkout has it.
 
