@@ -144,6 +144,59 @@ B	git -c x.y=a\\ b reset --hard
 B	git -c x.y=a\\;b stash
 B	X=a\\ b git rebase main
 B	npm --prefix a\\ b publish
+# Inside single quotes a backslash is literal, then an escaped space: one word (issue #838).
+B	git -c x.y='a b\\'c\\ d stash
+B	git -c x.y='a b\\'\\; stash
+B	git -c x.y='a b\\'c\\ d rebase main
+B	npm --prefix 'a b\\'c\\ d publish
+B	git -c x.y=a\\ b re\\base main
+B	git -c x.y=a\\ b st\\ash
+B	npm --prefix a\\ b pu\\blish
+# ANSI-C quoting is decoded.
+B	git -C . $'stash'
+B	git -C . $'st\\x61sh'
+B	git -C . $'st\\141sh'
+# A $'...' string ends at its first unpaired quote, also right after \\c.
+B	git -C . commit -m $'\\c' ; git -C . stash #'
+B	git -C . commit -m $'\\c\\\\' --amend #'
+# Escaped forms that another shell reads again stay blocked.
+B	/bin/sh -c 'git reset --ha\\rd'
+B	su -c 'git push --fo\\rce' u
+B	find . -execdir sh -c 'git reset \\-\\-hard' \\;
+B	echo >(git push --fo\\rce)
+B	git -c alias.x='!git push \\-\\-force' x
+# Accepted false block (issue #840): the hook cannot tell a search pattern from a string that
+# another shell runs (the alias above), so escaped text in quotes is read without backslashes.
+B	rg 'git reset \\-\\-hard' .codex
+B	rg 'git push \\-\\-force' .
+# A message value is found by words, so continued and prefixed commands keep it text (#840).
+A	git -C . commit \\\n-m "mention --amend later"
+A	git -C . commit -m \\\n"mention --amend later"
+A	GIT_AUTHOR_NAME="Jane Doe" git -C . commit -m "Document --amend behavior"
+A	env GIT_AUTHOR_NAME="Jane Doe" git -C . commit -m "Document --amend behavior"
+A	X=1 git -C . commit -m "a --amend"
+A	git -C . commit -am "use --amend later"
+A	git -C . commit -m "use --amend later" 2>&1
+A	git -C . commit --message="use --amend later"
+A	git -C . commit -m "--amend"
+A	git -C . tag -a v1 -m "drop -d later"
+# Only a value-taking option hides the next word: commit -e and branch -m take none (#840).
+B	git -C . commit -e "--amend"
+B	git -C . branch -m "--delete" x
+# Words bash joins or splits differently from the line are read as bash reads them.
+B	git -c x.y=a\\ grep commit -e "--amend"
+B	git -C . commit -mfix\\\n-m "--amend"
+B	git -C . commit -m a\\ #\\\n --amend
+# An option the scanner does not know, or an expansion, stops blanking.
+B	git -C . commit -F msg -m "--amend"
+# A global option value is not the subcommand.
+B	git --shallow-file x stash
+B	git --shallow-file commit branch -m "--delete" x
+B	git -C . commit -m $m "--amend"
+B	o=-F; git -C . commit "$o" -m --amend
+# Accepted false block: a message that holds a variable has an unknown value, as on main.
+B	git -C . commit -m "drop --amend from $script"
+B	f() { :; }; git -C . commit -m x "--amend"
 # A quoted assignment or wrapper value before the command.
 B	X="a b" git rebase main
 B	X='a b' git -C . stash
