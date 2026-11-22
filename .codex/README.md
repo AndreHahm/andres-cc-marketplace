@@ -105,6 +105,20 @@ mkdir -p ~/.codex/rules
 cp rules/default.rules ~/.codex/rules/default.rules
 ```
 
+#### Checking that project rules load
+
+`rules/default.rules` starts with a sentinel rule. It forbids exactly `echo CODEX_PROJECT_RULE_TEST`, with the justification `PROJECT RULE LOADED`. Nothing else matches it, so it is harmless to ship.
+
+Check that the file parses and the sentinel matches:
+
+```bash
+codex execpolicy check --pretty --rules .codex/rules/default.rules -- echo CODEX_PROJECT_RULE_TEST
+```
+
+The expected result is `"decision": "forbidden"`, with the justification `PROJECT RULE LOADED`. This check reads only the file passed with `--rules`. It does not show that a Codex session loads the file: Codex reads `<repo>/.codex/rules/` only when the project is trusted. To check that, ask a session in the repository to run `echo CODEX_PROJECT_RULE_TEST` and look for the rejection, or run the [live check](#live-check), which does exactly that.
+
+The live test only proves the project layer loaded if your user copy, `~/.codex/rules/default.rules`, lacks the sentinel. If you installed this file there, delete the sentinel rule from that copy; the live check warns when it finds one.
+
 #### `--yolo` mode
 
 **WARNING: Only enable YOLO mode in a sandbox such as a virtual machine or disposable cloud machine. Understand the risks of Codex running arbitrary commands.**
@@ -153,6 +167,38 @@ Copying the script does not register it. Add a `PreToolUse` entry to `~/.codex/h
 ```
 
 In this repository, `hooks.json` wires the hook up to the repo copy (resolved via `git rev-parse --show-toplevel`), so nothing needs to be copied for project use. Each hook has a `timeout` (seconds, default 600) and an optional `statusMessage` shown in the TUI while it runs.
+
+#### Hook trust
+
+A hook does not run until you trust it. Codex [skips every new or changed non-managed hook until you review and trust it](https://learn.chatgpt.com/docs/hooks), and prints a startup warning that points to `/hooks`:
+
+1. Start Codex in the repository and open `/hooks` (in the desktop app: Settings > Hooks).
+2. Review the `PreToolUse` entry from `.codex/hooks.json` and trust it.
+3. Do this again after every edit to that entry, and after adding a hook. Until then the guardrail is silently off.
+
+Project hooks also need the project itself to be trusted: Codex loads hooks, and `.codex/rules/`, only from trusted project layers. User hooks in `~/.codex/hooks.json` load in untrusted projects too.
+
+What we observed (Codex CLI 0.170.0, Windows; not stated in the docs):
+
+- Trust is saved in `~/.codex/config.toml` as `[hooks.state.'<absolute path to hooks.json>:pre_tool_use:0:0'] trusted_hash = "sha256:..."`. It is tied to the absolute path of `hooks.json`, so a git worktree's copy has its own entry and may need trusting separately. The docs add that a linked worktree's project layer can read hooks from the main checkout.
+- The docs don't say whether editing `block-dangerous-command.sh` itself (not the `hooks.json` entry) requires re-trusting. They only say so for scripts bundled in a plugin. Re-check `/hooks` after editing the script.
+- `codex exec --dangerously-bypass-hook-trust` runs enabled hooks without saved trust for that one invocation. Use it only for automation that vets the hook sources itself.
+
+#### Live check
+
+`hooks/tests/test-block-dangerous-command.sh` pipes JSON into the script directly. It does not show whether Codex launches the hook. `hooks/tests/test-live-codex-hook-and-rules.sh` starts a real `codex exec` session and asks it to run three commands:
+
+- a control command, which must run
+- `echo CODEX_PROJECT_RULE_TEST`, which only the project rules forbid (see [Checking that project rules load](#checking-that-project-rules-load))
+- `git -C nonexistent-issue-803 stash`, which only the hook blocks
+
+```bash
+bash .codex/hooks/tests/test-live-codex-hook-and-rules.sh [timeout-seconds]
+```
+
+The hook's own `BLOCKED:` message can only appear if Codex ran the `hooks.json` command string in a POSIX shell that started bash on the script. A generic rejection is reported as INCONCLUSIVE, not PASS. The script makes one model call, so it costs tokens. It needs a trusted project, a trusted hook, a Codex login and `jq`. Exit codes: 0 all PASS, 1 a FAIL, 3 INCONCLUSIVE.
+
+On Windows, Codex's shell tool (`exec_command`) runs commands as `pwsh.exe -Command '...'`, as observed in a `codex exec` transcript. The docs say `exec_command` is matched as `Bash`, so the `^Bash$` matcher still applies. The docs do not say which shell runs a hook's own `command` string on Windows; the live check answers that (issue #803).
 
 ## Usage
 
