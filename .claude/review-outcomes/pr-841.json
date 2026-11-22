@@ -1,0 +1,34 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4657715799",
+      "line": 141,
+      "note": "added the waived-line relocation note to the CodeRabbit guidance, fixed in f652470c",
+      "path": ".coderabbit.yaml",
+      "pr": 841,
+      "recorded_at": "2026-11-22T10:53:31+00:00",
+      "rule": "devin-analysis"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4657715865",
+      "line": 1793,
+      "note": "git show read a directory listing as file text; cat-file blob in locate_fingerprint and fingerprint_at, fixed in f652470c",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 841,
+      "recorded_at": "2026-11-22T10:53:30+00:00",
+      "rule": "devin-analysis"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4657737591",
+      "line": 46,
+      "note": "briefing wording now matches the one-key granularity (another rule on the named line), fixed in f652470c",
+      "path": ".github/claude-review/prompt.md",
+      "pr": 841,
+      "recorded_at": "2026-11-22T10:53:31+00:00",
+      "rule": "coderabbit-functional-correctness"
+    }
+  ]
+}
