@@ -56,6 +56,48 @@ def test_dispatch_calls_bridge_once_per_reviewer_with_instruction_file(
     }
 
 
+def test_dispatch_briefs_only_waivers_located_at_head_and_never_security(
+    monkeypatch, repo, change, dependency_index, completed
+):
+    """Issue #814: each waiver's line is located at the checkout's HEAD (where CI fingerprints
+    this run's findings) and a waiver whose line is gone is not briefed."""
+    fp = "a" * 32
+    waivers = review.read_waiver_section(
+        "## Accepted Review Findings\n"
+        f"- R6 plugins/demo-kit/skills/x/SKILL.md:3 @{fp} – accepted\n"
+        f"- R7 plugins/demo-kit/skills/x/gone.md:4 @{fp} – accepted\n",
+        lambda _n: False,
+    ).waivers
+    located = []
+
+    def fake_locate(root, rev, path, fingerprint, near, cache=None):
+        located.append((root, rev, path))
+        return 9 if path.endswith("SKILL.md") else None
+
+    monkeypatch.setattr(review, "locate_fingerprint", fake_locate)
+    texts = {}
+
+    def fake_run(argv, **kw):
+        if "--reviewer-type" in argv:
+            name = argv[argv.index("--reviewer-type") + 1]
+            texts[name] = Path(argv[argv.index("--instruction-file") + 1]).read_text("utf-8")
+            return completed(0)
+        return completed(0, stdout=_FAKE_TOML_CONTENT)
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    scope = derive_review_scope([change("plugins/demo-kit/skills/x/SKILL.md")], dependency_index())
+    dispatch_reviewers(scope, base_sha="deadbeef", repo=repo, accepted_findings=waivers)
+
+    assert {(rev, root) for root, rev, _ in located} == {("HEAD", repo)}
+    assert "[accepted review findings]" not in texts["security-reviewer"]
+    briefed = [
+        json.loads(line[2:])
+        for line in texts["skill-reviewer"].splitlines()
+        if line.startswith("- {")
+    ]
+    assert [(e["rule"], e["line"]) for e in briefed] == [("R6", 9)]
+
+
 def _bridge_instruction_files(monkeypatch, completed):
     """Record every --instruction-file path the bridge is invoked with."""
     seen = []

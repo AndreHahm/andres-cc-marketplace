@@ -1332,13 +1332,21 @@ def _handle_claude_review_prompts(args: argparse.Namespace) -> int:
     accepted = ""
     if args.accepted_findings:
         from scripts.marketplace_ci.review import (
+            locate_fingerprint,
             read_waiver_section,
             render_accepted_findings_briefing,
         )
 
         body, open_issues, _ = _load_accepted_findings(args.accepted_findings)
         waivers = read_waiver_section(body, open_issues.__contains__).waivers
-        accepted = render_accepted_findings_briefing(waivers)
+        # Issue #814: a waiver is briefed only while its flagged line is still at the head.
+        head_prints: dict[str, list[str] | None] = {}
+        accepted = render_accepted_findings_briefing(
+            waivers,
+            lambda path, fp, near: locate_fingerprint(
+                Path.cwd(), args.head_sha, path, fp, near, head_prints
+            ),
+        )
     for name in ("general", "security"):
         if needed[name]:
             # The security pass is never told what was accepted (R7: its findings need a

@@ -131,7 +131,8 @@ Status: approved (posting a finished pass's findings on a could-not-run run by t
   summary lists it as waived, and it does not fail the check. As in Codex R7, a waiver counts only with a
   maintainer's confirmation comment when the finding is on a gate-critical path (Codex R3), on a path not
   written the canonical way, or from the security pass. Only the general pass is told about the accepted
-  findings, and only about those that need no confirmation, as data without their free-text reason. The
+  findings, and only about those that need no confirmation and whose flagged line is still at the head,
+  as data without their free-text reason, one finding per rule, path and line (Codex R7, issue #814). The
   summary prints the waiver line, fingerprint included, for every other Critical or Major finding.
 
 Status: approved

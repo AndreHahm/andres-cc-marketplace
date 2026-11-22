@@ -184,6 +184,11 @@ a reviewer reports it anew, until the flagged code changes (issue #808).
   a finding already waived. A waiver that needs a maintainer's confirmation is never passed on, so it
   cannot talk a reviewer out of reporting the finding the confirmation is for. The reviewer's choice is not
   trusted: CI's own matching above decides what blocks.
+- **A passed-on waiver names one finding (issue #814).** A model reviewer cannot check a fingerprint, so CI
+  checks it before passing the waiver on: a waiver is passed on only when a line of its path at the reviewed
+  head still has its fingerprint, and it is passed on with the number of that line. A waiver without a
+  fingerprint is not passed on. The reviewer is told to leave out only the finding with that rule, path and
+  line, and to report any other finding, including one with the same rule on another line of the same path.
 - **Accepted residual:** anyone who can edit the pull request body can waive a finding that does not need a
   maintainer's confirmation. The waiver is visible in the body while it is in effect, and the waived
   finding is visible in each run's result. When the waiver line is removed, the finding blocks again on the

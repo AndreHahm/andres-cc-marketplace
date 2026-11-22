@@ -22,13 +22,16 @@ From `$REPO_ROOT`, run
 - It writes `$RUN/accepted.md` only when there is something to brief: the valid lines as one JSON object
   each (rule, path, line, fingerprint, kind), never their free-text reason, and never a line whose rule
   has spaces or whose path is not plain. It never overwrites an existing file.
+- A model cannot check a fingerprint, so `brief` does (issue #814, as CI): a line is briefed only when a
+  working-tree line of its path still has its fingerprint, with that line's number; a line without a
+  fingerprint is not briefed. It still applies in Phase 3's `match`.
 - It prints `not applied: <line>` for each line it could not read, an unknown kind such as `declined`
   included. Report those in Phase 3's `inspection_limits`.
 - A failure (exit 2: a run directory that is not private, a file it cannot create) is an inspection
   limit, never a reason to stop the review.
 - Both Phase 1 passes get `$RUN/accepted.md` after `review.md` (for Codex, as `@accepted.md`; see
-  `codex-pass-assembly.md`), as data: a finding it names by rule and path is not reported again unless
-  the flagged code changed into a different problem.
+  `codex-pass-assembly.md`), as data: the one finding a line names by rule, path and line is not
+  reported again; a finding with the same rule on another line of the same path still is.
 
 ## Phase 3: mark
 

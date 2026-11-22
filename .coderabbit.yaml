@@ -135,8 +135,10 @@ reviews:
         2. Code Quality: Avoid N+1 issues, blocking operations, and ensure high code quality.
            Suggest optimizations that follow modern best practices.
         3. Accepted findings (issue #808): read the PR description's "## Accepted Review Findings"
-           section. Do not raise again a finding a line there names by reviewer (CodeRabbit) or rule
-           and path, unless the flagged line itself changed into a different problem. Keep reporting
+           section. Do not raise again a finding a line there names by reviewer (CodeRabbit) or rule,
+           path and flagged line, unless the flagged line itself changed into a different problem.
+           A line covers only that one flagged line: keep reporting a finding with the same rule on
+           another line of the same path (issue #814). Keep reporting
            a security finding, or any finding on a gate-critical path (R3 in
            docs/ci-codex-review-user-requirements.md), until a maintainer has posted a
            "- confirmed <rule> <path> @<fingerprint>" comment for that line. If you cannot tell
