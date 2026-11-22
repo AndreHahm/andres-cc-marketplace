@@ -60,11 +60,13 @@ Status: approved
   `scripts/marketplace_ci` subcommand. Both workflows call it, each with its own workflow, job and result
   artifact names. Both reviews share the same anchor rules.
 - When nothing is left to review, no API call is made.
-- A run that reviewed counts as an anchor whether or not it found something (R7). A cancelled run, a run
-  that could not review, and a skipped run do not count.
+- Each pass has its own anchor: the newest earlier run in which that pass finished, whether or not it
+  found something (R7), and whatever the other pass did. The result file records which passes finished.
+  A pass that was cancelled, could not run or was skipped does not make that run an anchor for that
+  pass. Each pass reviews its own delta; a pass with nothing left to review makes no API call.
 - The anchor never comes from a pull request comment or anything else the author can edit.
 
-Status: approved (no trust check, the ready filter and the fetch retry, as Codex R10, R14 and R9, by the maintainer, 2026-11-16, issue #753)
+Status: approved (no trust check, the ready filter and the fetch retry, as Codex R10, R14 and R9, by the maintainer, 2026-11-16, issue #753; per-pass anchor by the maintainer, 2026-11-22, issue #836)
 
 ## R4. Paths excluded from the review
 
@@ -101,19 +103,21 @@ Status: approved
 
 ## R6. Where findings appear
 
-- Critical and Major findings are posted as inline review comments on the changed lines.
+- Critical and Major findings are posted as inline review comments on the changed lines. This includes a
+  pass that finished in a run whose other pass could not run (R7): its findings are posted, because that
+  run becomes the pass's anchor (R3). A run whose review was skipped posts none.
 - One summary comment per pull request carries the verdict, the reviewed head, the anchor, the model,
   whether the security pass ran, and the cost. Each run updates that comment instead of adding a new one.
 - Each run uploads a machine-readable result file (status, verdict, reviewed head, run attempt, anchor,
-  reviewed paths, model, cost per pass).
+  reviewed paths, model, cost per pass, and which passes finished).
 
-Status: approved
+Status: approved (posting a finished pass's findings on a could-not-run run by the maintainer, 2026-11-22, issue #836)
 
 ## R7. The check result
 
 - The check fails when the run found a Critical or Major finding, in either pass.
 - The check also fails when the review could not run: an invalid setting, an API error, a per-pass cap
-  (R9) reached, or a timeout. Such a run is not an anchor (R3).
+  (R9) reached, or a timeout. Such a run is not an anchor for the pass that could not run (R3).
 - Otherwise it passes, including when only Minor or Informational findings were raised.
 - The check is not required (R1), so a failure never blocks a merge.
 - Findings are not carried forward. A later run reviews only its own delta, so its check can pass while
@@ -138,13 +142,13 @@ Status: approved
 
 - The monthly limit of $200 is enforced by a spend limit on the Anthropic Console workspace that holds
   the API key. When it is reached, reviews fail as could-not-run (R7).
-- Each pass has its own cap: an estimated cost of $1.00, and 50 turns for the general pass or 25 for
-  the security pass. A pull request with a security pass can therefore cost up to about $2.00 per run.
-  The caps are starting values to tune from the recorded costs; the general pass's turn cap was raised
-  from 25 after PR #703's first funded run stopped at it (26 turns, $0.07).
+- Each pass has its own cap: an estimated cost of $1.00 and 50 turns. A pull request with a security
+  pass can therefore cost up to about $2.00 per run. The caps are starting values to tune from the
+  recorded costs; both passes' turn caps were raised from 25 after they stopped at it (the general pass
+  on PR #703, the security pass on PR #822, issue #836).
 - Every run records its cost per pass, so the model choice and the caps can be tuned from real numbers.
 
-Status: approved (the general pass's 50-turn cap approved by the owner on 2026-11-11, PR #703)
+Status: approved (the general pass's 50-turn cap approved by the owner on 2026-11-11, PR #703; the security pass's 50-turn cap on 2026-11-22, issue #836)
 
 ## R10. Kill switch (`CLAUDE_CI_REVIEW_BYPASS`)
 

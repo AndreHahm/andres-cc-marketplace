@@ -90,32 +90,46 @@ def test_the_prompts_cli_adds_a_security_prompt_only_for_a_gate_critical_delta(t
     review.write_text("rules", "utf-8")
     security.write_text("SECURITY-INSTRUCTIONS", "utf-8")
 
-    def run(scope):
+    def run(scope, security_scope=None):
         scope_file, out_dir, out = tmp_path / "s.json", tmp_path / "p", tmp_path / "o"
         scope_file.write_text(json.dumps(scope), "utf-8")
+        extra = []
+        if security_scope is not None:
+            security_file = tmp_path / "ss.json"
+            security_file.write_text(json.dumps(security_scope), "utf-8")
+            extra = ["--security-scope", str(security_file)]
         for f in out_dir.glob("*") if out_dir.exists() else []:
             f.unlink()
         out.write_text("", "utf-8")
         assert main(["claude-review-prompts", "--scope", str(scope_file), "--template",
                      str(template), "--review-md", str(review), "--security-md", str(security),
                      "--base-sha", "b" * 40, "--head-sha", HEAD, "--out-dir", str(out_dir),
-                     "--github-output", str(out)]) == 0  # fmt: skip
+                     "--github-output", str(out), *extra]) == 0  # fmt: skip
         return out.read_text("utf-8"), {f.name: f.read_text("utf-8") for f in out_dir.glob("*")}
 
     plain = {"status": "M", "path": "a.py", "gate_critical": False}
     gone = {"status": "D", "path": "old.py", "gate_critical": False}
     output, prompts = run(_scope(plain, gone))
-    assert output == "security=false\n"
+    assert output == "general=true\nsecurity=false\n"
     assert set(prompts) == {"general.md"}
     assert '"a.py"' in prompts["general.md"] and '"old.py"' in prompts["general.md"]
     assert "SECURITY-INSTRUCTIONS" not in prompts["general.md"]
 
     critical = {"status": "M", "path": ".github/workflows/x.yml", "gate_critical": True}
     output, prompts = run(_scope(plain, critical))
-    assert output == "security=true\n"
+    assert output == "general=true\nsecurity=true\n"
     assert set(prompts) == {"general.md", "security.md"}
     assert "SECURITY-INSTRUCTIONS" in prompts["security.md"]
     assert "SECURITY-INSTRUCTIONS" not in prompts["general.md"]
+
+    # R3: each pass's prompt names its own delta; a pass with nothing new gets no prompt
+    output, prompts = run(_scope(anchor="c" * 40), _scope(plain, critical, anchor="d" * 40))
+    assert output == "general=false\nsecurity=true\n"
+    assert set(prompts) == {"security.md"}
+    assert "x.yml" in prompts["security.md"]
+    output, prompts = run(_scope(plain, critical), _scope(plain))
+    assert output == "general=true\nsecurity=false\n"
+    assert set(prompts) == {"general.md"}
 
 
 def test_the_template_names_only_known_values():
@@ -507,3 +521,140 @@ def test_recorded_findings_after_a_skip_are_never_posted_inline():
     summary = [p for a, p in gh.calls if a[:3] == ["-X", "POST", "repos/o/r/issues/7/comments"]]
     assert len(summary) == 1 and "could_not_run" in summary[0]["body"]
     assert "1 Critical" in summary[0]["body"]
+
+
+# Issue #836: each pass has its own anchor (R3), and a pass that finished keeps its findings when
+# the other could not run (R6, R7).
+
+
+def test_a_run_whose_passes_all_finished_anchors_both():
+    raw = {"passes": [_record("general"), _record("security")]}
+    got = _decide(_scope(_PLAIN, _CRITICAL), raw)
+    assert got["status"] == "clean" and got["finished_passes"] == ["general", "security"]
+
+
+def test_a_capped_security_pass_keeps_the_general_passs_findings_and_anchor():
+    raw = {"passes": [_record("general", [_finding("Critical")]),
+                      _record("security", subtype="error_max_turns")]}  # fmt: skip
+    got = _decide(_scope(_PLAIN, _CRITICAL), raw)
+    assert (got["status"], got["verdict"]) == ("could_not_run", None)
+    assert "security pass stopped early (error_max_turns)" in got["reason"]
+    assert got["finished_passes"] == ["general"]
+    assert [(f["pass"], f["severity"]) for f in got["findings"]] == [("general", "Critical")]
+    assert set(got["passes"]) == {"general", "security"}
+    # posted inline, since this run becomes the general pass's anchor
+    gh = FakeGh()
+    cr.publish(got, repo="o/r", pr_number=7, gh=gh)
+    inline = [p for a, p in gh.calls if a[:3] == ["-X", "POST", "repos/o/r/pulls/7/comments"]]
+    assert [p["path"] for p in inline] == ["a.py"]
+
+
+def test_both_failing_passes_are_named_and_neither_anchors():
+    raw = {"passes": [_record("general", outcome="failure"),
+                      _record("security", subtype="error_max_turns")]}  # fmt: skip
+    got = _decide(_scope(_PLAIN, _CRITICAL), raw)
+    assert got["status"] == "could_not_run" and got["finished_passes"] == []
+    assert "general pass did not complete" in got["reason"]
+    assert "security pass stopped early" in got["reason"]
+
+
+def test_a_pass_with_nothing_new_since_its_anchor_finishes_without_a_record():
+    general = _scope(anchor="c" * 40)
+    security = _scope(_PLAIN, _CRITICAL, anchor="d" * 40)
+    got = _decide(general, {"passes": [_record("security", [_finding("Major", "scripts/x.py")])]},
+                  security_scope=security)  # fmt: skip
+    assert (got["status"], got["finished_passes"]) == ("findings", ["general", "security"])
+    assert got["security_review"] is True and set(got["passes"]) == {"security"}
+    assert (got["anchor_sha"], got["security_anchor_sha"]) == ("c" * 40, "d" * 40)
+    assert got["security_reviewed_paths"] == ["a.py", "scripts/x.py"]
+    # a capped security pass then anchors only the general pass
+    capped = _decide(general, {"passes": [_record("security", subtype="error_max_turns")]},
+                     security_scope=security)  # fmt: skip
+    assert (capped["status"], capped["finished_passes"]) == ("could_not_run", ["general"])
+
+
+def test_each_pass_places_findings_only_on_its_own_reviewed_paths():
+    general = _scope(_PLAIN)
+    security = _scope(_CRITICAL, anchor="d" * 40)
+    raw = {"passes": [_record("general", [_finding("Major", "scripts/x.py")]),
+                      _record("security", [_finding("Major", "a.py")])]}  # fmt: skip
+    got = _decide(general, raw, security_scope=security)
+    assert [f["in_scope"] for f in got["findings"]] == [False, False]
+
+
+def test_nothing_new_for_either_pass_anchors_both_without_an_api_call():
+    got = _decide(_scope(anchor="c" * 40), None, review_job="skipped",
+                  security_scope=_scope(_PLAIN, anchor="d" * 40))  # fmt: skip
+    assert (got["status"], got["finished_passes"]) == ("clean", ["general", "security"])
+    assert got["security_review"] is False
+
+
+@pytest.mark.parametrize(
+    ("raw", "review_job"),
+    [(None, "failure"), ({"skipped": "head_moved", "passes": [_record("general")]}, "success"),
+     ({"skipped": "draft", "passes": [_record("general")]}, "success")],
+)  # fmt: skip
+def test_a_run_that_did_not_reach_its_passes_anchors_none(raw, review_job):
+    got = _decide(_scope(_PLAIN, _CRITICAL), raw, review_job)
+    assert got["finished_passes"] == []
+
+
+def test_switched_off_anchors_none():
+    assert _decide(_scope(_PLAIN), None, switched_off=True)["finished_passes"] == []
+
+
+def test_the_summary_names_a_separate_security_anchor():
+    raw = {"passes": [_record("security")]}
+    got = _decide(_scope(anchor="c" * 40), raw, security_scope=_scope(_CRITICAL, anchor="d" * 40))
+    body = cr.summary_body(got, [])
+    assert f"**Anchor:** {'c' * 40}" in body
+    assert f"**Security pass anchor:** {'d' * 40} (narrowed)" in body
+    same = _decide(_scope(_PLAIN, _CRITICAL), {"passes": [_record("general"), _record("security")]})
+    assert "Security pass anchor" not in cr.summary_body(same, [])
+
+
+def test_the_publish_cli_reads_the_security_scope(monkeypatch, tmp_path):
+    general, security = tmp_path / "g.json", tmp_path / "s.json"
+    general.write_text(json.dumps(_scope(anchor="c" * 40)), "utf-8")
+    security.write_text(json.dumps(_scope(_CRITICAL, anchor="d" * 40)), "utf-8")
+    raw = tmp_path / "raw.json"
+    capped = {"passes": [_record("security", subtype="error_max_turns")]}
+    raw.write_text(json.dumps(capped), "utf-8")
+    monkeypatch.setattr(cr, "publish", lambda *_a, **_k: [])
+    out = tmp_path / "result.json"
+    assert main(["publish-claude-review", "--scope", str(general), "--security-scope",
+                 str(security), "--raw", str(raw), "--review-job", "success", "--model", "m",
+                 "--head-sha", HEAD, "--run-attempt", "1", "--repo", "o/r", "--pr-number", "7",
+                 "--result-out", str(out)]) == 1  # fmt: skip
+    result = json.loads(out.read_text("utf-8"))
+    assert (result["status"], result["finished_passes"]) == ("could_not_run", ["general"])
+    assert result["security_anchor_sha"] == "d" * 40
+
+
+@pytest.mark.parametrize("content", [None, "not json", json.dumps({"paths": "a.py"})])
+def test_an_unreadable_security_scope_fails_closed(monkeypatch, tmp_path, content):
+    """Review finding (issue #836): a given but missing or invalid --security-scope must not
+    fall back to the general scope, which could mark a needed security pass as finished."""
+    general = tmp_path / "g.json"
+    general.write_text(json.dumps(_scope(_PLAIN)), "utf-8")
+    security = tmp_path / "s.json"
+    if content is not None:
+        security.write_text(content, "utf-8")
+    raw = tmp_path / "raw.json"
+    raw.write_text(json.dumps({"passes": [_record("general"), _record("security")]}), "utf-8")
+    monkeypatch.setattr(cr, "publish", lambda *_a, **_k: [])
+    out = tmp_path / "result.json"
+    assert main(["publish-claude-review", "--scope", str(general), "--security-scope",
+                 str(security), "--raw", str(raw), "--review-job", "success", "--model", "m",
+                 "--head-sha", HEAD, "--run-attempt", "1", "--repo", "o/r", "--pr-number", "7",
+                 "--result-out", str(out)]) == 1  # fmt: skip
+    result = json.loads(out.read_text("utf-8"))
+    assert (result["status"], result["finished_passes"]) == ("could_not_run", [])
+    assert result["reason"] == "the review scope could not be computed"
+
+
+def test_only_an_omitted_security_scope_reuses_the_general_one():
+    raw = {"passes": [_record("general")]}
+    assert _decide(_scope(_PLAIN), raw)["finished_passes"] == ["general", "security"]
+    got = _decide(_scope(_PLAIN), raw, security_scope=None)
+    assert (got["status"], got["finished_passes"]) == ("could_not_run", [])

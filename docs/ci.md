@@ -67,20 +67,25 @@ Dependabot PR skip the whole workflow without failing. A newer push cancels a ru
 
 | Job | Check name | Secret | What it does |
 |---|---|---|---|
-| `claude-scope` | `Compute Claude review scope` | none | Kill-switch restore, PR-head checkout, the same base-SHA restore of `scripts/`, `pyproject.toml` and `uv.lock` as `compute-scope` (a test keeps the two blocks identical), then `claude-review-settings`, `find-review-anchor --profile claude`, `check-scope-bypass --ci-delta --review-exclusions claude --emit-review-paths` (which, for the Claude set, only writes the paths and skips the Codex bypass decision), `claude-review-prompts` and `claude-review-patch`. Uploads `claude-review-scope` (the reviewed paths, the prompts and the patch). |
-| `claude-review` | `Run Claude review passes` | `ANTHROPIC_API_KEY_SDK` | Checks out the PR head into `pr/` and the base SHA into `trusted/`, removes every symlink from `pr/`, fails unless the base SHA has `scripts/marketplace_ci/headless_review.py` (it never runs the PR's own copy), installs only the `headless-review` dependency group, and copies the patch into the checkout at `pr/.claude-review-input/delta.diff` (after the checkout, so no PR file can stand in for it). Right before each pass it re-checks with `/usr/bin/gh` that the PR is still ready and at the same head (a failed lookup is reported as `lookup_failed`, never as a moved head), then runs `headless-review-pass --route sdk` from `trusted/` (the Claude Agent SDK) once for the general pass and once more for the security pass. Each pass writes its own record (outcome, structured output, the result entry and token totals); a pass that leaves none (no key, a timeout, a crash) is recorded as failed. Uploads `claude-review-raw`. |
+| `claude-scope` | `Compute Claude review scope` | none | Kill-switch restore, PR-head checkout, the same base-SHA restore of `scripts/`, `pyproject.toml` and `uv.lock` as `compute-scope` (a test keeps the two blocks identical), then `claude-review-settings`, and for each pass `find-review-anchor --profile claude --pass <pass>` and `check-scope-bypass --ci-delta --review-exclusions claude --emit-review-paths` (which, for the Claude set, only writes the paths and skips the Codex bypass decision; `scope.json` for the general pass, `security-scope.json` for the security pass), then `claude-review-prompts` and `claude-review-patch` (one patch per pass). Uploads `claude-review-scope` (both scopes, the prompts and the patches). |
+| `claude-review` | `Run Claude review passes` | `ANTHROPIC_API_KEY_SDK` | Checks out the PR head into `pr/` and the base SHA into `trusted/`, removes every symlink from `pr/`, fails unless the base SHA has `scripts/marketplace_ci/headless_review.py` (it never runs the PR's own copy), installs only the `headless-review` dependency group, and before each pass copies that pass's patch into the checkout at `pr/.claude-review-input/delta.diff` (after the checkout, so no PR file can stand in for it). A pass with nothing new to review since its own anchor does not run. Right before each pass it re-checks with `/usr/bin/gh` that the PR is still ready and at the same head (a failed lookup is reported as `lookup_failed`, never as a moved head), then runs `headless-review-pass --route sdk` from `trusted/` (the Claude Agent SDK) once for the general pass and once more for the security pass. Each pass writes its own record (outcome, structured output, the result entry and token totals); a pass that leaves none (no key, a timeout, a crash) is recorded as failed. Uploads `claude-review-raw`. |
 | `claude-publish` | `Claude delta review` | none | Checks out the **base SHA** (it needs nothing from the PR), runs `publish-claude-review`, uploads `claude-review-result` and fails the check when the result says so. |
 
-**Scope (R3, R4).** The anchor is the head of the newest earlier run of this workflow whose `Claude delta
-review` job finished `success` or `failure` and left a `claude-review-result` of `findings` or `clean` naming
-that head and the latest attempt; the same rules as the Codex anchor (Codex R11's creation time, Codex R5's
-same-execution pairing). The anchor fetch is retried after 1 and 3 seconds, as Codex's is; an anchor that still
+**Scope (R3, R4).** Each pass has its own anchor (issue #836): the head of the newest earlier run of this
+workflow whose `Claude delta review` job finished `success` or `failure` and left a `claude-review-result`
+naming that head and the latest attempt, with that pass in its `finished_passes`, whatever the run's
+`status`; a result written before `finished_passes` existed counts for both passes when its status is
+`findings` or `clean`. The same rules as the Codex anchor apply (Codex R11's creation time, Codex R5's
+same-execution pairing); the Codex lookup is unchanged. So a security pass that hits its cap no longer makes
+the next run review the whole PR again for the general pass, and the general pass's findings from that run
+are posted. The anchor fetch is retried after 1 and 3 seconds, as Codex's is; an anchor that still
 cannot be fetched (force-pushed away) is dropped and the whole PR is reviewed, unlike the Codex review, which skips
 then. `claude-scope` holds `pull-requests: read` and `issues: read` for the ready-time read. As for Codex (its R10, R14), no trust check is made on the anchor,
 and runs created before the PR was last marked ready are no anchor. `--review-exclusions claude` keeps test
 directories, fixtures, test files and nested `evals/` in scope and leaves out only root `issues/`, `evals/`,
-`reviewer-eval/`, `.claude/review-outcomes/` and proven mirror copies. Nothing left to review means no API call: `claude-review` is
-skipped and the result is `clean` ("nothing new to review"), which is an anchor.
+`reviewer-eval/`, `.claude/review-outcomes/` and proven mirror copies. The general pass runs when its scope has a path, the
+security pass when its scope has a gate-critical path. Nothing left to review for either pass means no API
+call: `claude-review` is skipped and the result is `clean` ("nothing new to review"), an anchor for both.
 
 **What Claude may do (R5).** The prompts are built in `claude-scope` from the base SHA's
 `.github/claude-review/prompt.md`, `REVIEW.md` and `.claude/agents/security-reviewer.md`. The security pass
@@ -128,14 +133,18 @@ and control characters removed), posts each Critical and Major finding on a revi
 (rows that do not fit are counted, and the result artifact has them all). A cancelled run (a newer push)
 publishes nothing. The result file holds `status`
 (`clean`, `findings`, `could_not_run` or `skipped`), the verdict, `head_sha`, `run_attempt`, the anchor, the
-reviewed paths, the model, whether the security pass ran, cost and turns per pass, and the findings. The
+reviewed paths (and the security pass's anchor and paths), the model, whether the security pass ran, cost and turns per pass,
+`finished_passes` (the passes that finished or had nothing new to review, in a run that reached its passes:
+the passes this run is an anchor for), and the findings. The
 check fails on a Critical or Major finding in either pass, and on a review that could not run (an invalid
 setting, a failed scope job, an API error, a cap reached, a timeout, a newer push before the call, a failed
 PR lookup before a pass). When the re-check before the security pass stops the run (the PR moved, became a
 draft or could not be looked up), the general pass's findings are not posted inline, since the PR may have
 changed since: they are recorded as `recorded_findings` in `claude-review-result`, and the reason counts them
 by severity, which the summary comment of a `could_not_run` run shows (a `skipped` draft run posts nothing).
-Such a run is never an anchor, so the next run reviews those changes again. Findings are not carried to later runs.
+Such a run is never an anchor, so the next run reviews those changes again. When a pass finishes and the other
+cannot run (an API error, a cap, a malformed output), the run is `could_not_run`, but the finished pass's
+findings are posted inline like any others, since that run becomes the finished pass's anchor (R6). Findings are not carried to later runs.
 
 **Settings (R8, R9, R10).** Repository variables, validated by `claude-review-settings`:
 
@@ -146,8 +155,8 @@ Such a run is never an anchor, so the next run reviews those changes again. Find
 | `CLAUDE_KIT_REVIEW_TIMEOUT_MS` | `1200000` (20 min) | a positive whole number of milliseconds; each pass step gets that many minutes, rounded up. Two passes plus 10 minutes of setup must fit the review job's 50-minute limit (`REVIEW_JOB_TIMEOUT_MINUTES`), so at most `1200000` |
 
 Each pass is capped at an estimated $1.00 (`max_budget_usd`, Claude Code's client-side estimate, which can
-overshoot) and a turn cap: 50 for the general pass, which reads the whole delta, and 25 for the security
-pass; reaching either cap fails the pass as could-not-run. The monthly $200 limit is a spend
+overshoot) and a turn cap of 50 (the security pass's was 25 until issue #836, when it stopped at that cap on
+every run of PR #822); reaching either cap fails the pass as could-not-run. The monthly $200 limit is a spend
 limit on the Anthropic Console workspace that holds the key, set outside this repository.
 
 **Credits.** The monthly API credits that come with a Claude subscription do not cover Claude Code
@@ -161,7 +170,10 @@ shows its usage separately.
 **Bootstrapping.** The PR that adds this workflow cannot review itself: `claude-scope` and `claude-publish`
 both run the base SHA's `scripts/marketplace_ci/`, which lacks the new subcommands, so both fail with an
 unknown-subcommand error, no review runs, and no `claude-review-result` is written. The check is advisory,
-so this blocks nothing; the first real review runs on the next PR.
+so this blocks nothing; the first real review runs on the next PR. The same holds for any PR whose copy of
+the workflow passes a subcommand or option the base SHA's code does not have yet (issue #836's PR added
+`find-review-anchor --pass` and `--security-scope`): its own Claude check fails as could-not-run until the
+change is on the base.
 
 ## Test: headless Claude review (advisory)
 

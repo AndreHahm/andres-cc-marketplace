@@ -743,7 +743,7 @@ def test_the_action_route_places_the_patch_in_its_checkout():
     names = [s.get("name") for s in _steps("headless-review-action")]
     run = _action_step("Place the reviewed patch in the checkout")["run"]
     assert (
-        'cp -- "$RUNNER_TEMP/claude-scope/prompts/delta.diff" .claude-review-input/delta.diff'
+        'cp -- "$RUNNER_TEMP/claude-scope/prompts/general.diff" .claude-review-input/delta.diff'
         in run
     )
     assert "rm -rf -- .claude-review-input" in run

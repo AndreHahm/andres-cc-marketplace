@@ -3741,6 +3741,8 @@ class AnchorProfile:
     bypass: tuple[str, str] | None = None
     # (job, artifact): the scope job's record of a skipped review (Codex R7).
     skip: tuple[str, str] | None = None
+    # The passes that may each have their own anchor (Claude R3); empty: one anchor per run.
+    passes: tuple[str, ...] = ()
 
 
 ANCHOR_PROFILES = {
@@ -3755,6 +3757,7 @@ ANCHOR_PROFILES = {
         workflow_file="claude-review-ci.yml",
         review_job="Claude delta review",
         result_artifact="claude-review-result",
+        passes=("general", "security"),
     ),
 }
 
@@ -3831,8 +3834,13 @@ def find_review_anchor(
     event_action: str,
     is_draft: bool,
     temp_dir: Path,
+    review_pass: str | None = None,
 ) -> tuple[str, Path | None]:
-    """The anchor SHA ("" for none) and the result file it was taken from."""
+    """The anchor SHA ("" for none) and the result file it was taken from. With `review_pass`
+    (a profile with passes, Claude R3), the anchor of that pass: the newest run whose result
+    lists the pass in `finished_passes`, whatever the run's status."""
+    if review_pass is not None and review_pass not in profile.passes:
+        raise ValueError(f"the {profile.workflow_file} profile has no pass {review_pass!r}")
     # opened and ready_for_review review the whole PR (Codex R4, R14); a draft is not reviewed.
     if is_draft or event_action in ("opened", "ready_for_review"):
         return "", None
@@ -3970,12 +3978,22 @@ def find_review_anchor(
         record, path = download(artifact)
         if (
             isinstance(record, dict)
-            and record.get("status") in ("findings", "clean")
+            and _reviewed(record, review_pass)
             and isinstance(record.get("findings"), list)
             and same_execution(producer, record)
         ):
             return _checked_anchor(head_sha, path)
     return "", None
+
+
+def _reviewed(record: dict, review_pass: str | None) -> bool:
+    """Whether a result file makes its run an anchor: for a pass (Claude R3), when it lists that
+    pass in `finished_passes`; a file written before passes were recorded, and any lookup without
+    a pass, when its status is `findings` or `clean` (every pass finished)."""
+    finished = record.get("finished_passes")
+    if review_pass is not None and finished is not None:
+        return isinstance(finished, list) and review_pass in finished
+    return record.get("status") in ("findings", "clean")
 
 
 def _checked_anchor(head_sha, path: Path) -> tuple[str, Path | None]:
