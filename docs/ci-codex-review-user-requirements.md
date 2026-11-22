@@ -423,6 +423,10 @@ other rules, so no such key covers its next report.
   each run: once the issue closes or its line is removed, it blocks again. A marked finding whose issue
   applies now is kept after its file changes, while its flagged line is still there, as one a waiver line
   names is.
+- **Judged when a run starts.** As for `deferred` (R7), an issue's state is read when a run starts: closing
+  the issue starts no run, so its findings block again from the next run (a push, or an `edited` or
+  `labeled` event). A `tracked` line added after a run marks nothing that run already reported unmarked,
+  since a body edit makes no Codex call (R8); a waiver line `– deferred #<issue>` (R7) names that finding.
 - **Every reviewer of R17.** The Claude delta review (advisory), the local parity review and
   `cross-model-review` get the same list and apply the same rule; the local reviews check an issue's state
   when the repository can be reached, and otherwise treat a `tracked` line as not applied. Third-party
@@ -436,4 +440,5 @@ other rules, so no such key covers its next report.
 
 Status: approved (maintainer, 2026-11-22, issue #832; the title mark, the maintainer confirmation and the title-plus-summary
 briefing chosen by the maintainer; the confirmation bound to one path, the every-copy mark, the unread-issue and
-bracket rules and the wider residual added after the security review, maintainer's choice the same day)
+bracket rules and the wider residual added after the security review, maintainer's choice the same day; the
+"judged when a run starts" note added after PR #842's first review round, maintainer's choice)

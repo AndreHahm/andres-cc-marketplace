@@ -441,6 +441,13 @@ def apply_waivers(
     notes: list[str] = []
     used: list = []
     unwaived: list[tuple[str, str, int, str | None]] = []
+    # R18: copies of one finding (rule, path, line) count as marked only when every copy carries
+    # the same mark, as `aggregate_findings` decides for the Codex review.
+    copy_marks: dict[tuple[str, str, int], set[int | None]] = {}
+    for f in result.get("findings", []):
+        if f["severity"] in BLOCKING and f["in_scope"]:
+            key = (finding_rule(f), f["path"], f["line"])
+            copy_marks.setdefault(key, set()).add(tracked_mark(f.get("title")))
     for f in result.get("findings", []):
         if f["severity"] not in BLOCKING or not f["in_scope"]:
             continue
@@ -461,13 +468,22 @@ def apply_waivers(
             f["waiver"] = waiver.text[:300]
             used.append(waiver)
             continue
-        issue, why_not_tracked = find_tracked(
-            tracked,
-            tracked_mark(f.get("title")),
-            path=f["path"],
-            reviewers=reviewers,
-            confirmed=keys.__contains__,
-        )
+        mark = tracked_mark(f.get("title"))
+        if len(copy_marks[(rule, f["path"], f["line"])]) == 1:
+            issue, why_not_tracked = find_tracked(
+                tracked,
+                mark,
+                path=f["path"],
+                reviewers=reviewers,
+                confirmed=keys.__contains__,
+            )
+        else:
+            issue = None
+            why_not_tracked = (
+                None
+                if mark is None
+                else f"is marked tracked #{mark}, but another copy of it is not marked the same"
+            )
         if issue is not None:
             f["waiver"] = tracked_waiver_text(issue)
             continue

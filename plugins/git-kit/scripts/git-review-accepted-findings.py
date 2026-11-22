@@ -256,6 +256,8 @@ def open_issue(number: int) -> dict | None:
                 ],
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
                 timeout=60,
                 check=False,
             )
@@ -540,7 +542,7 @@ def cmd_brief(run_dir: str) -> int:
 def cmd_match(envelopes: list[str]) -> int:
     waivers, _, tracked = _load_list()
     declared = {number for number, _ in tracked}
-    report: list[dict] = []
+    entries: list[tuple[str, dict, str, str, int]] = []
     for name in envelopes:
         text = _read_regular(Path(name), _MAX_FILE_BYTES)
         try:
@@ -558,32 +560,41 @@ def cmd_match(envelopes: list[str]) -> int:
             axis = finding.get("axis") if isinstance(finding.get("axis"), str) else "-"
             if where is None:
                 continue
-            path, line = where
-            fingerprint = working_tree_fingerprint(path, line)
-            waiver = next(
-                (w["text"] for w in waivers if matches(w, axis, path, line, fingerprint)), None
-            )
-            # R18: a mark applies when the list declares that issue and it is open.
-            mark = finding_mark(finding.get("finding"))
-            note = None
-            if waiver is None and mark is not None:
-                if mark not in declared:
-                    note = f"marked tracked #{mark}, but the list has no `- tracked #{mark}` line"
-                elif open_issue(mark) is None:
-                    note = f"marked tracked #{mark}, but gh cannot read it as an open issue"
-                else:
-                    waiver = f"tracked #{mark}"
-            report.append(
-                {
-                    "envelope": Path(name).name,
-                    "id": finding.get("id"),
-                    "axis": axis,
-                    "location": finding.get("location"),
-                    "fingerprint": fingerprint,
-                    "waiver": waiver,
-                    "tracked_note": note,
-                }
-            )
+            entries.append((name, finding, axis, *where))
+    # R18: copies of one finding (axis, path, line) across all envelopes count as marked only
+    # when every copy carries the same mark, as CI's `aggregate_findings` decides.
+    copy_marks: dict[tuple[str, str, int], set[int | None]] = {}
+    for _, finding, axis, path, line in entries:
+        copy_marks.setdefault((axis, path, line), set()).add(finding_mark(finding.get("finding")))
+    report: list[dict] = []
+    for name, finding, axis, path, line in entries:
+        fingerprint = working_tree_fingerprint(path, line)
+        waiver = next(
+            (w["text"] for w in waivers if matches(w, axis, path, line, fingerprint)), None
+        )
+        # R18: a mark applies when the list declares that issue and it is open.
+        mark = finding_mark(finding.get("finding"))
+        note = None
+        if waiver is None and mark is not None:
+            if len(copy_marks[(axis, path, line)]) > 1:
+                note = f"marked tracked #{mark}, but another copy of it is not marked the same"
+            elif mark not in declared:
+                note = f"marked tracked #{mark}, but the list has no `- tracked #{mark}` line"
+            elif open_issue(mark) is None:
+                note = f"marked tracked #{mark}, but gh cannot read it as an open issue"
+            else:
+                waiver = f"tracked #{mark}"
+        report.append(
+            {
+                "envelope": Path(name).name,
+                "id": finding.get("id"),
+                "axis": axis,
+                "location": finding.get("location"),
+                "fingerprint": fingerprint,
+                "waiver": waiver,
+                "tracked_note": note,
+            }
+        )
     print(json.dumps(report, indent=2))
     return 0
 

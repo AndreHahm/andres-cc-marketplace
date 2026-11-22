@@ -418,9 +418,9 @@ def test_match_marks_a_tracked_finding_and_says_why_a_mark_did_not_apply(
     envelope = _envelope(
         checkout,
         {"id": "M1", "axis": "a", "location": "s/SKILL.md:1", "finding": "[tracked #7] x"},
-        {"id": "M2", "axis": "a", "location": "s/SKILL.md:1", "finding": "[tracked #8] x"},
-        {"id": "M3", "axis": "a", "location": "s/SKILL.md:1", "finding": "[tracked #9] x"},
-        {"id": "M4", "axis": "a", "location": "s/SKILL.md:1", "finding": "x"},
+        {"id": "M2", "axis": "a", "location": "s/SKILL.md:2", "finding": "[tracked #8] x"},
+        {"id": "M3", "axis": "a", "location": "s/SKILL.md:3", "finding": "[tracked #9] x"},
+        {"id": "M4", "axis": "a", "location": "s/SKILL.md:4", "finding": "x"},
     )
     assert helper.main(["match", envelope]) == 0
     report = {
@@ -430,6 +430,38 @@ def test_match_marks_a_tracked_finding_and_says_why_a_mark_did_not_apply(
     assert report["M2"][0] is None and "gh cannot read it" in report["M2"][1]
     assert report["M3"][0] is None and "no `- tracked #9` line" in report["M3"][1]
     assert report["M4"] == (None, None)
+
+
+def test_match_tracks_copies_across_envelopes_only_when_every_copy_has_the_same_mark(
+    checkout, tmp_path, capsys, monkeypatch
+):
+    """PR #842 round 1 (CodeRabbit): R18's every-copy rule, as CI's aggregate_findings."""
+    (checkout / ".claude/accepted-review-findings.local.md").write_text(
+        "- tracked #7\n", encoding="utf-8"
+    )
+    _issues(monkeypatch, **{"7": {"number": 7, "title": "T", "summary": "S"}})
+
+    def envelope(name, *findings):
+        path = tmp_path / name
+        path.write_text(json.dumps({"findings": list(findings)}), encoding="utf-8")
+        return str(path)
+
+    marked = {"axis": "a", "location": "s/SKILL.md:1", "finding": "[tracked #7] x"}
+    claude = envelope(
+        "claude.json", {**marked, "id": "C1"}, {**marked, "id": "C2", "location": "s/SKILL.md:2"}
+    )
+    codex = envelope(
+        "codex.json",
+        {"id": "X1", "axis": "a", "location": "s/SKILL.md:1", "finding": "x"},
+        {**marked, "id": "X2", "location": "s/SKILL.md:2"},
+    )
+    assert helper.main(["match", claude, codex]) == 0
+    report = {
+        r["id"]: (r["waiver"], r["tracked_note"]) for r in json.loads(capsys.readouterr().out)
+    }
+    assert report["C1"][0] is None and "another copy" in report["C1"][1]
+    assert report["X1"] == (None, None)
+    assert report["C2"] == ("tracked #7", None) and report["X2"] == ("tracked #7", None)
 
 
 def test_lines_prints_the_tracked_lines_for_create_pr(checkout, capsys):
@@ -516,3 +548,18 @@ def test_brief_tells_a_challenger_where_the_mark_goes(checkout, tmp_path, monkey
     text = (run / "accepted.md").read_text(encoding="utf-8")
     assert text.rstrip().endswith(helper.CHALLENGER_MARK_NOTE)
     assert "[end tracked issues]" in text
+
+
+def test_open_issue_reads_the_issue_text_as_utf8(monkeypatch):
+    """PR #842 round 1: `gh` prints UTF-8, which a legacy Windows locale would misread."""
+    from types import SimpleNamespace
+
+    def fake_run(cmd, **kw):
+        raw = json.dumps(["open", False, "Résumé", "Łączenie"], ensure_ascii=False).encode()
+        text = raw.decode(kw.get("encoding") or "cp1252", kw.get("errors") or "strict")
+        return SimpleNamespace(returncode=0, stdout=text, stderr="")
+
+    monkeypatch.setattr(helper.subprocess, "run", fake_run)
+    monkeypatch.setattr(helper, "origin_repository", lambda: "o/r")
+    monkeypatch.setattr(helper, "_open_issues", {})
+    assert helper.open_issue(1) == {"number": 1, "title": "Résumé", "summary": "Łączenie"}

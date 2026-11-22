@@ -493,12 +493,16 @@ review` is the gate after the PR exists and reviews only the delta, to cut OpenA
   holds: the issue is declared and open, and on a path that needs a confirmation (as for a waiver) a
   maintainer posted `- confirmed tracked #<issue> <path>` for that path (`tracked_confirmation_key`).
   Otherwise the job summary says why the mark did not apply. `aggregate_findings` keeps a mark only when
-  every copy of a finding carries it, `briefable_tracked` drops an issue whose text could not be read
+  every copy of a finding carries it (`claude_review.apply_waivers`, the local helper's `match` and, for
+  carried copies, `merge_carried_findings` and `carry_findings` apply the same rule), `briefable_tracked` drops an issue whose text could not be read
   (briefed as nothing, applied to nothing, listed as not applied), and `tracked_issue_record` turns square
   brackets into round ones so issue text cannot spell the briefing's delimiters. Such a finding is
   carried as waived with its mark, so it blocks again once the issue closes or its line is removed; like a
   finding a waiver line names, a marked one whose issue applies is kept after its file changes while
-  `locate_fingerprint` still finds its line. The job summary lists the tracked findings. The Claude delta review and the local
+  `locate_fingerprint` still finds its line. The job summary lists the tracked findings. As for
+  `deferred`, issue state is read once, when a run starts: closing an issue takes effect at the next run, and
+  a `tracked` line added after a run does not mark a finding it already reported, since a body edit makes no
+  Codex call (R8); a `– deferred #<issue>` waiver line names that finding. The Claude delta review and the local
   parity review get the same briefing and rule through the same commands; `cross-model-review`'s helper
   reads the issue of the `origin` repository through `gh` (named explicitly, never gh's default) and
   applies no confirmation, as for its waivers. Accepted residual (R18): a reviewer can mark a different
