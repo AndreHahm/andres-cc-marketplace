@@ -23,6 +23,13 @@
 set -uo pipefail
 
 TIMEOUT="${1:-300}"
+# From PowerShell or cmd, a bare `bash` can start WSL instead of Git Bash. WSL would test a different
+# Codex and git, and cannot read a Windows worktree's .git file.
+if grep -qi microsoft /proc/version 2>/dev/null; then
+    echo "FAIL: running under WSL; on Windows run this with Git Bash, e.g. from PowerShell:" >&2
+    printf '%s\n' '  & "C:\Program Files\Git\bin\bash.exe" .codex/hooks/tests/test-live-codex-hook-and-rules.sh' >&2
+    exit 1
+fi
 root=$(git rev-parse --show-toplevel) || { echo "FAIL: not inside a git repository" >&2; exit 1; }
 RULES="${root}/.codex/rules/default.rules"
 command -v codex >/dev/null 2>&1 || { echo "FAIL: codex is not on PATH" >&2; exit 1; }
