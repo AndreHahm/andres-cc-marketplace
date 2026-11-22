@@ -645,6 +645,20 @@ def test_without_an_answer_from_gh_the_local_list_is_read_with_a_note(
     assert "could not tell" in capsys.readouterr().err
 
 
+def test_brief_never_briefs_a_pull_request_bodys_waivers(checkout, tmp_path, monkeypatch, capsys):
+    # Whoever opened the pull request wrote its body; its waivers only mark, in match.
+    run = tmp_path / "run"
+    run.mkdir(mode=0o700)
+    monkeypatch.setattr(helper, "open_pull_request", lambda: ("12", PR_BODY))
+    monkeypatch.setattr(helper, "open_issue", lambda n: {"number": n, "title": "T", "summary": "S"})
+    assert helper.main(["brief", "--run-dir", str(run)]) == 0
+    captured = capsys.readouterr()
+    assert "1 waiver line(s) of the pull request body not briefed" in captured.err
+    assert "accepted findings briefed: 0; tracked issues briefed: 1" in captured.out
+    text = (run / "accepted.md").read_text(encoding="utf-8")
+    assert '"tool-scoping"' not in text and text.startswith("[tracked issues]")
+
+
 def test_lines_reads_the_local_list_even_with_an_open_pull_request(checkout, monkeypatch, capsys):
     (checkout / ".claude/accepted-review-findings.local.md").write_text(LIST_LINE, encoding="utf-8")
     monkeypatch.setattr(helper, "open_pull_request", lambda: ("12", PR_BODY))

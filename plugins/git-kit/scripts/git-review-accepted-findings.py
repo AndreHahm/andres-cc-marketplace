@@ -8,7 +8,8 @@ in the line format of a pull request's `## Accepted Review Findings` section:
     - tracked #<issue>: <reason>
 
 Once the branch has an open pull request, its body's section is the list (R17, issue #834):
-`brief` and `match` read that section instead, through `gh pr view`. When gh cannot tell whether
+`brief` and `match` read that section instead, through `gh pr view` (`brief` briefs only its
+tracked issues, never its waiver lines: those only mark, in `match`). When gh cannot tell whether
 there is one (not installed, not signed in, no network), they read the local list and say so on
 stderr. `lines` always reads the local list: create-pr copies it into a new pull request's body.
 
@@ -418,16 +419,30 @@ def _parse_body(body: str) -> tuple[list[dict], list[str], list[tuple[int, str]]
     return waivers, [*skipped, *over], tracked
 
 
-def _load_list() -> tuple[list[dict], list[str], list[tuple[int, str]]]:
+def _load_list(
+    for_briefing: bool = False,
+) -> tuple[list[dict], list[str], list[tuple[int, str]]]:
     """The waiver lines, the lines not applied and the `tracked` lines of the list: the open
-    pull request's body when the branch has one (R17), else the local list."""
+    pull request's body when the branch has one (R17), else the local list.
+
+    `for_briefing` leaves out a body's waiver lines. Whoever opened the pull request wrote the
+    body, and CI briefs a waiver only when it needs no maintainer's confirmation (gate-critical
+    paths, security-reviewer); this copy has no such check, so a body's waivers only mark."""
     pr = open_pull_request()
     if pr is not None and pr[0]:
         print(
             f"git-review-accepted-findings: read the list from the body of PR #{pr[0]}",
             file=sys.stderr,
         )
-        return _parse_body(pr[1])
+        waivers, skipped, tracked = _parse_body(pr[1])
+        if for_briefing and waivers:
+            print(
+                f"git-review-accepted-findings: {len(waivers)} waiver line(s) of the pull "
+                "request body not briefed; they are marked in Phase 3 only",
+                file=sys.stderr,
+            )
+            waivers = []
+        return waivers, skipped, tracked
     if pr is None:
         print(
             "git-review-accepted-findings: gh could not tell whether this branch has an open "
@@ -549,7 +564,7 @@ def cmd_brief(run_dir: str) -> int:
     ):
         print("git-review-accepted-findings: the run directory is not private", file=sys.stderr)
         return 2
-    waivers, skipped, tracked = _load_list()
+    waivers, skipped, tracked = _load_list(for_briefing=True)
     for line in skipped:
         print(f"not applied: {line}")
     records = []
