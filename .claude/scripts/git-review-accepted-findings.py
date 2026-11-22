@@ -47,10 +47,13 @@ from pathlib import Path
 LOCAL_LIST = Path(".claude/accepted-review-findings.local.md")
 FINGERPRINT_LEN = 32
 KINDS = ("accepted", "residual", "deferred", "refuted")
+# Line and issue numbers are at most 9 digits, as CI's: a longer one is not applied, never
+# passed to int(), which raises past Python's digit limit (PR #842).
 _WAIVER_LINE = re.compile(
-    r"^\s*[-*]\s+(?P<rule>\S(?:.*?\S)?)\s+(?P<path>\S+?):(?P<line>[0-9]+)"
+    r"^\s*[-*]\s+(?P<rule>\S(?:.*?\S)?)\s+(?P<path>\S+?):(?P<line>[0-9]{1,9})"
     rf"(?:\s+@(?P<fp>[0-9a-fA-F]{{{FINGERPRINT_LEN}}}|-))?\s+[-–—]+\s+"
-    r"(?P<kind>accepted|residual|deferred|refuted)(?![\w-])(?:\s+#(?P<issue>[0-9]+)(?![\w-]))?",
+    r"(?P<kind>accepted|residual|deferred|refuted)(?![\w-])"
+    r"(?:\s+#(?P<issue>[0-9]{1,9})(?![\w-]))?",
     re.IGNORECASE,
 )
 _HEADING = re.compile(r"^##\s+Accepted Review Findings\s*$", re.IGNORECASE | re.MULTILINE)
@@ -61,7 +64,7 @@ _MAX_LIST_BYTES = 256 * 1024
 _MAX_FILE_BYTES = 5 * 1024 * 1024
 # R18 (issue #832), as CI's review.py.
 _TRACKED_LINE = re.compile(
-    r"^\s*[-*]\s+tracked\s+#(?P<issue>[0-9]+)(?![\w-])\s*(?::.*)?$", re.IGNORECASE
+    r"^\s*[-*]\s+tracked\s+#(?P<issue>[0-9]{1,9})(?![\w-])\s*(?::.*)?$", re.IGNORECASE
 )
 _TRACKED_MARK = re.compile(r"^\s*\[tracked\s+#(?P<issue>[1-9][0-9]{0,8})\]", re.IGNORECASE)
 _SUMMARY_HEADING = re.compile(r"^#{1,6}\s+Summary\s*$", re.IGNORECASE)
