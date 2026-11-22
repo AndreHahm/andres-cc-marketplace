@@ -1,0 +1,49 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4659680960",
+      "line": 10,
+      "note": "stderr reasons on every block path; fixed in 545b12a1",
+      "path": ".codex/hooks.json",
+      "pr": 845,
+      "recorded_at": "2026-11-22T20:18:02+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4659681003",
+      "line": 100,
+      "note": "probe runs outrank transcript text; fixed in 545b12a1",
+      "path": ".codex/hooks/tests/test-live-codex-hook-and-rules.sh",
+      "pr": 845,
+      "recorded_at": "2026-11-22T20:18:03+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4659681064",
+      "line": 75,
+      "note": "dropped jq -e dependence; fixed in 545b12a1",
+      "path": ".codex/hooks/tests/test-live-codex-hook-and-rules.sh",
+      "pr": 845,
+      "recorded_at": "2026-11-22T20:18:04+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4659681128",
+      "line": 60,
+      "note": "timeout prerequisite check; fixed in 545b12a1",
+      "path": ".codex/hooks/tests/test-live-codex-hook-and-rules.sh",
+      "pr": 845,
+      "recorded_at": "2026-11-22T20:18:05+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4659681203",
+      "line": 12,
+      "note": "sentinel wording corrected; fixed in 545b12a1",
+      "path": ".codex/rules/default.rules",
+      "pr": 845,
+      "recorded_at": "2026-11-22T20:18:06+00:00"
+    }
+  ]
+}
