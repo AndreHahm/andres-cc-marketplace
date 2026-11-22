@@ -182,6 +182,8 @@ What we observed (Codex CLI 0.170.0, Windows; not stated in the docs):
 
 - Trust is saved in `~/.codex/config.toml` as `[hooks.state.'<absolute path to hooks.json>:pre_tool_use:0:0'] trusted_hash = "sha256:..."`. In a linked git worktree, `/hooks` lists and Codex loads the main checkout's `hooks.json`, not the worktree's copy, so the main checkout's trust entry covers every worktree. A `hooks.json` change on a branch takes effect only once the main checkout has it.
 - The docs don't say whether editing `block-dangerous-command.sh` itself (not the `hooks.json` entry) requires re-trusting. They only say so for scripts bundled in a plugin. Re-check `/hooks` after editing the script.
+- Both hook entries find the script through `git rev-parse --show-toplevel` in the directory Codex starts the hook in. The docs don't say whether that is the session root or a tool call's own `workdir`. If it is the `workdir`, a repository the agent created earlier could supply its own `block-dangerous-command.sh`. A missing script blocks, but a planted one runs: the hook is a guardrail, not a security boundary.
+- On Windows an allowed command takes about 6 s to check (Git Bash starts each tool slowly), so the hook `timeout` is 30 s, not 10 s. The docs don't say whether a timed-out hook blocks or allows the command.
 - `codex exec --dangerously-bypass-hook-trust` runs enabled hooks without saved trust for that one invocation. Use it only for automation that vets the hook sources itself.
 
 #### Live check
