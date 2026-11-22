@@ -23,7 +23,10 @@ fingerprint; a line without a fingerprint matches the exact line) are CI's.
 
 Once the branch has an open PR, its body's `## Accepted Review Findings` section is the list, as in CI
 (R17): `brief` and `match` read it through `gh pr view`, ignore the local file, and say so on stderr. A body
-without that heading has no accepted findings. With no open PR they read the local file. When `gh` cannot
+without that heading has no accepted findings. `brief` never briefs a body's waiver lines, only its tracked
+issues: whoever opened the PR wrote the body, and CI briefs a waiver only when it needs no maintainer's
+confirmation, a check this helper does not have. So the reviewers report those findings, and Phase 3's
+`match` marks them `waived (<kind>)`. With no open PR they read the local file. When `gh` cannot
 tell whether there is one (not installed, not signed in, no network), they read the local file and say on
 stderr that it may differ from the PR body: report that as an inspection limit. `lines` always reads the
 local file, since `create-pr` copies it into a new PR's body.
@@ -75,8 +78,8 @@ way, or the line is missing) and the matching waiver line (or null).
 
 ## Trust
 
-The local list is the author's own claim, read from the working tree (a PR body is what CI reads, so it is
-trusted as CI trusts it). The helper does not read the local list, and says
+The local list is the author's own claim, read from the working tree. A PR body is not: its waiver lines
+only mark findings, never brief (see "Which list applies"). The helper does not read the local list, and says
 why on stderr (an inspection limit, never a stop), when a symlink is anywhere on its path (a symlinked
 `.claude/` could redirect the read outside the checkout) or when git tracks it or cannot tell whether it
 does: a tracked copy was committed by whoever wrote the branch, so it is not the author's own list. It asks
