@@ -1787,7 +1787,7 @@ def _apply_waivers(findings, blocking_set, waivers, repo: Path, confirmed_keys, 
             confirmed=confirmed_keys.__contains__,
         )
         if waiver is not None:
-            applied[f] = waiver.text[:300]
+            applied[f] = waiver.text
             used.append(waiver)
             continue
         issue, why_not_tracked = find_tracked(
@@ -1817,7 +1817,12 @@ def _finding_to_dict(
     fingerprint: str | None = None,
     waiver: str | None = None,
 ) -> dict:
+    from scripts.marketplace_ci.review import tracked_waiver_text
+
     entry = decision.exception if decision is not None else None
+    # A waiver line is recorded cut to 300 characters for display, and whole for the publish
+    # re-check (R19); a tracked issue's `tracked #<issue>` has no line.
+    tracked = waiver is not None and waiver == tracked_waiver_text(finding.tracked_issue)
     return {
         "reviewer": finding.reviewer,
         "severity": finding.severity,
@@ -1843,7 +1848,8 @@ def _finding_to_dict(
             else None
         ),
         "fingerprint": fingerprint,
-        "waiver": waiver,
+        "waiver": waiver[:300] if waiver is not None else None,
+        "waiver_line": waiver if waiver is not None and not tracked else None,
         "tracked_issue": finding.tracked_issue,
     }
 

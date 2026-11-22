@@ -2029,6 +2029,9 @@ def render_tracked_issues_briefing(issues: Sequence[Mapping[str, object]]) -> st
 _MAX_CARRIED_INPUT = 500
 _MAX_CARRIED_REPORTERS = 20
 _CARRY_FIELD = re.compile(r"[^\x00-\x1f\x7f]{1,300}")
+# A whole waiver line (R19): one line of a pull request body, which GitHub caps at 65536
+# characters.
+_WAIVER_LINE_FIELD = re.compile(r"[^\x00-\x1f\x7f]{1,65536}")
 
 
 def finding_waiver_key(rule: object, path: object, line: object) -> tuple[str, str, int]:
@@ -2144,7 +2147,18 @@ def recheck_applied_waivers(
                 )
             continue
         fingerprint = entry.get("fingerprint")
-        same_line = [w for w in section.waivers if w.text[:300] == applied]
+        whole = entry.get("waiver_line")
+        if whole is not None and not isinstance(whole, str):
+            notes.append(f"{rule} {path}:{line}: its recorded waiver cannot be read")
+            continue
+        # `waiver` keeps 300 characters, which a long rule and path can fill before the kind and
+        # issue, so the whole line decides. A result written before `waiver_line` existed has
+        # only the 300 characters.
+        same_line = [
+            w
+            for w in section.waivers
+            if (w.text == whole if whole is not None else w.text[:300] == applied)
+        ]
         waiver, _ = find_waiver(
             same_line,
             rule=rule,
@@ -2396,6 +2410,8 @@ def carry_findings(
         )
         if waiver is not None:
             carried["waiver"] = waiver.text[:300]
+            # The whole line, so the publish re-check matches it exactly (R19).
+            carried["waiver_line"] = waiver.text
             waived.append(carried)
             continue
         if len(copy_marks[_carried_copy_key(entry)]) == 1:
@@ -2557,6 +2573,11 @@ def merge_carried_findings(result: object, carried: object, expected_count: str)
             raise CarryError("a carried finding has no usable reviewer")
         if waiver is not None and not (isinstance(waiver, str) and _CARRY_FIELD.fullmatch(waiver)):
             raise CarryError("a carried finding has no usable waiver line")
+        waiver_line = entry.get("waiver_line")
+        if waiver_line is not None and not (
+            isinstance(waiver_line, str) and _WAIVER_LINE_FIELD.fullmatch(waiver_line)
+        ):
+            raise CarryError("a carried finding has no usable whole waiver line")
         mark = entry.get("tracked_issue")
         if mark is not None and not (
             isinstance(mark, int) and not isinstance(mark, bool) and mark > 0
@@ -2595,6 +2616,7 @@ def merge_carried_findings(result: object, carried: object, expected_count: str)
                 "blocking": waiver is None,
                 "suppressed": False,
                 "waiver": waiver,
+                "waiver_line": waiver_line if waiver is not None else None,
                 "tracked_issue": mark,
                 "source": "carried",
             }
