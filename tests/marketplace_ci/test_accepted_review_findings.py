@@ -304,6 +304,21 @@ def test_a_briefed_waiver_already_recorded_is_not_carried_twice(git_repo):
     assert len(outcome.blocking) == 1
 
 
+def test_a_briefed_waiver_is_carried_when_the_anchor_records_its_finding_as_not_blocking(git_repo):
+    """A briefed reviewer may report the finding as not blocking, or as suppressed: the carry
+    drops that entry, so the briefed line is still carried and blocks once its waiver lapses."""
+    base = _commit(git_repo, "base", **{"s/SKILL.md": "x\n"})
+    anchor = _commit(git_repo, "pr 1", **{"s/SKILL.md": "\n" * 14 + GRANT + "\n"})
+    line = _waived_entry()["waiver"]
+    for kept_out in (
+        {**_waived_entry(), "waiver": None},
+        {**_waived_entry(), "blocking": True, "suppressed": True},
+    ):
+        result = {**_anchor_result(kept_out), "briefed_waivers": [line]}
+        outcome = carry_findings(git_repo.root, base, anchor, result, "", _never_open)
+        assert [f["reviewer"] for f in outcome.blocking] == ["briefed-waiver"]
+
+
 def test_an_unreadable_briefed_waiver_fails_the_carry(git_repo):
     from scripts.marketplace_ci.review import CarryError
 
