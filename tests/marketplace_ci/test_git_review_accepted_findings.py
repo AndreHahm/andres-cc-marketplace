@@ -158,6 +158,41 @@ def test_brief_writes_data_only_and_reports_skipped_lines(checkout, tmp_path, ca
     assert helper.main(["brief", "--run-dir", str(run)]) == 2
 
 
+def test_brief_names_one_line_and_only_waivers_still_in_the_working_tree(checkout, tmp_path):
+    """Issue #814, as CI: the moved line is briefed where it is now (21); a waiver whose line
+    text changed, one in the earlier format and one for a missing file are left out."""
+    run = tmp_path / "run"
+    run.mkdir(mode=0o700)
+    (checkout / ".claude/accepted-review-findings.local.md").write_text(
+        f"- tool-scoping s/SKILL.md:15 @{FP} – accepted\n"
+        f"- tool-scoping s/SKILL.md:3 @{'0' * 32} – accepted\n"
+        "- tool-scoping s/SKILL.md:21 – accepted\n"
+        "- R7 s/SKILL.md:0 @- – residual\n"
+        "- R7 s/gone.md:0 @- – residual\n",
+        encoding="utf-8",
+    )
+    assert helper.main(["brief", "--run-dir", str(run)]) == 0
+    lines = (run / "accepted.md").read_text(encoding="utf-8").splitlines()
+    entries = [json.loads(line[2:]) for line in lines if line.startswith("- {")]
+    assert [(e["rule"], e["path"], e["line"]) for e in entries] == [
+        ("tool-scoping", "s/SKILL.md", 21),
+        ("R7", "s/SKILL.md", 0),
+    ]
+    assert "same rule on another line of the same path" in lines[1]
+    assert "by rule (axis) and path" not in lines[1]
+
+
+def test_working_tree_locate_is_the_same_as_ci(checkout):
+    (checkout / "f.txt").write_text("a\nx\nb\nx\nc\n", encoding="utf-8")
+    _git(checkout, "add", "-A")
+    _git(checkout, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "c")
+    x = helper.line_fingerprint("x")
+    for fingerprint, near in ((x, 1), (x, 3), (x, 5), ("-", 0), ("0" * 32, 2)):
+        want = review.locate_fingerprint(checkout, "HEAD", "f.txt", fingerprint, near)
+        assert helper.working_tree_locate("f.txt", fingerprint, near) == want
+    assert helper.working_tree_locate("missing.txt", "-", 0) is None
+
+
 LIST_LINE = f"- tool-scoping s/SKILL.md:21 @{FP} – accepted\n"
 
 

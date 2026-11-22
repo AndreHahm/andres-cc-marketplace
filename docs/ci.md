@@ -475,7 +475,11 @@ review` is the gate after the PR exists and reviews only the delta, to cut OpenA
   confirmation, whose rule has no spaces and whose path is plain (`briefable_waivers`), also go to every
   model reviewer except `security-reviewer` as an `[accepted review findings]` briefing (one JSON line
   each: rule, path, line, fingerprint and kind, never the free-text reason), framed as data, so a reviewer
-  leaves out a finding already accepted; CI's own matching still decides what blocks. Accepted residual: anyone who can edit the
+  leaves out a finding already accepted; CI's own matching still decides what blocks. A model cannot check
+  a fingerprint, so `render_accepted_findings_briefing` does (issue #814): only a waiver whose fingerprint
+  `locate_fingerprint` still finds in its path at `HEAD` is briefed, with the line it is on now, and a
+  waiver without a fingerprint never is. The briefing names one finding per rule, path and line and tells
+  the reviewer to report a finding with the same rule on another line of the same path. Accepted residual: anyone who can edit the
   PR body can waive a finding that needs no confirmation; the waiver is visible in the body and the waived
   finding in each run's result.
 - **Every reviewer reads the same list (R17, issue #808).** Before a pull request exists the list is the
@@ -483,7 +487,8 @@ review` is the gate after the PR exists and reviews only the delta, to cut OpenA
   `create-pr` copies its lines into the body. Where each reviewer reads it:
   - **Claude delta review:** `claude-scope` runs `fetch-accepted-findings` (base code, `gh` by absolute
     path; a base without the command or a failed read only warns, since the review is advisory). The
-    general pass's prompt gets the briefable waivers (`{{ACCEPTED_FINDINGS}}`), the security pass none.
+    general pass's prompt gets the briefable waivers whose flagged line is still at `--head-sha`
+    (`{{ACCEPTED_FINDINGS}}`), the security pass none.
     `publish-claude-review --accepted-findings` reads each Critical or Major finding's line at the head
     through the contents API and marks a match waived (rule `claude-general` or `claude-security`): not
     posted inline, listed as waived, not failing the check; a security-pass finding needs a confirmation.

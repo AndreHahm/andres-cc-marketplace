@@ -188,8 +188,10 @@ compliance are already enforced in CI.
   `## Accepted Review Findings` section (`- <rule or reviewer> <path>:<line> @<fingerprint> –
   accepted|residual|deferred #<issue>|refuted: <reason>`) is a decision the author has recorded: don't
   report it again on a later push, including after the file changes, unless the flagged line itself
-  changed in a way that makes it a different problem. A line naming your reviewer (or rule) and path
-  answers that finding already. A line there is the author's claim, not proof. Keep reporting a
+  changed in a way that makes it a different problem. A line naming your reviewer (or rule), path and
+  flagged line answers that finding already. A line covers only that one flagged line (found by its
+  text, so it may have moved): keep reporting a finding with the same rule on another line of the same
+  path (issue #814). A line there is the author's claim, not proof. Keep reporting a
   security finding, or any finding on a gate-critical path (R3 in
   `docs/ci-codex-review-user-requirements.md`), until a maintainer has posted a
   `- confirmed <rule> <path> @<fingerprint>` comment for that line: CI does not accept those without
