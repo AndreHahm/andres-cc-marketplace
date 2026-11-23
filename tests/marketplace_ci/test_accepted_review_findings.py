@@ -2137,3 +2137,146 @@ def test_narrow_accepted_findings_cli_writes_what_publish_reads(tmp_path):
     bad = tmp_path / "bad.json"
     bad.write_text("[]", "utf-8")
     assert main([*args[:-1], str(bad), "--output", str(out)]) == 2
+
+
+# --- A finding on a file the pull request deletes (issue #835) ------------------------------
+
+_CONFIRMED = ("tool-scoping", "s/SKILL.md", FP)
+
+
+def _delete(git_repo, message, path):
+    _git(git_repo.root, "rm", "-q", path)
+    _git(git_repo.root, "commit", "-q", "-m", message)
+    return _git(git_repo.root, "rev-parse", "HEAD")
+
+
+def test_a_finding_on_a_deleted_file_is_fingerprinted_at_the_base_and_can_be_confirmed(git_repo):
+    base = _commit(git_repo, "base", **{"s/SKILL.md": "\n" * 14 + GRANT + "\n"})
+    _delete(git_repo, "pr deletes it", "s/SKILL.md")
+    finding = _finding("s/SKILL.md", 15, reviewer="security-reviewer")
+    waivers = read_waiver_section(_section(_LINE), _never_open).waivers
+    fingerprints, applied, notes, _ = _apply_waivers(
+        [finding], {finding}, waivers, git_repo.root, {_CONFIRMED}, (), base
+    )
+    assert fingerprints[finding] == FP
+    assert set(applied) == {finding} and notes == []
+    # Without the base, as before the fix: no fingerprint, so the waiver matches nothing.
+    fingerprints, applied, _, _ = _apply_waivers(
+        [finding], {finding}, waivers, git_repo.root, {_CONFIRMED}
+    )
+    assert fingerprints[finding] is None and applied == {}
+
+
+def test_a_path_missing_at_the_head_and_the_base_has_no_fingerprint(git_repo):
+    base = _commit(git_repo, "base", **{"other.md": "x\n"})
+    finding = _finding("s/SKILL.md", 15)
+    waivers = read_waiver_section(_section(_LINE), _never_open).waivers
+    fingerprints, applied, _, _ = _apply_waivers(
+        [finding], {finding}, waivers, git_repo.root, set(), (), base
+    )
+    assert fingerprints[finding] is None and applied == {}
+
+
+def test_a_file_present_at_the_head_is_never_fingerprinted_at_the_base(git_repo):
+    # The flagged line is past the end at the head: unreadable there, and the base's copy of the
+    # same file, which still has that line, must not stand in for it.
+    base = _commit(git_repo, "base", **{"s/SKILL.md": "\n" * 14 + GRANT + "\n"})
+    _commit(git_repo, "pr shortens it", **{"s/SKILL.md": "x\n"})
+    finding = _finding("s/SKILL.md", 15)
+    waivers = read_waiver_section(_section(_LINE), _never_open).waivers
+    fingerprints, applied, _, _ = _apply_waivers(
+        [finding], {finding}, waivers, git_repo.root, set(), (), base
+    )
+    assert fingerprints[finding] is None and applied == {}
+
+
+def test_a_file_name_with_pattern_characters_is_read_literally(git_repo):
+    from scripts.marketplace_ci.review import path_absent_at
+
+    base = _commit(git_repo, "base", **{"a[1].md": "\n" * 14 + GRANT + "\n", "a1.md": "y\n"})
+    _commit(git_repo, "pr shortens it", **{"a[1].md": "x\n"})
+    assert not path_absent_at(git_repo.root, "HEAD", "a[1].md")
+    # As a pattern, `a[1].m?` would match `a1.md`; read literally, no such file exists.
+    assert path_absent_at(git_repo.root, "HEAD", "a[1].m?")
+    assert path_absent_at(git_repo.root, "HEAD", "a?.md")
+    finding = _finding("a[1].md", 15)
+    fingerprints, _, _, _ = _apply_waivers([finding], {finding}, (), git_repo.root, set(), (), base)
+    assert fingerprints[finding] is None
+
+
+def test_a_waived_finding_on_a_file_deleted_after_the_anchor_is_carried(git_repo):
+    # The file changes after the anchor by being deleted: the waived finding is found at the base,
+    # where its fingerprint was taken, so it is still carried and blocks once unwaived.
+    base = _commit(git_repo, "base", **{"s/SKILL.md": "\n" * 14 + GRANT + "\n"})
+    anchor = _commit(git_repo, "pr 1", **{"s/SKILL.md": "edited\n" + "\n" * 13 + GRANT + "\n"})
+    _delete(git_repo, "pr 2 deletes it", "s/SKILL.md")
+    result = _anchor_result(_waived_entry())
+    kept = carry_findings(git_repo.root, base, anchor, result, _section(_LINE), _never_open)
+    assert kept.blocking == ()
+    assert [(f["line"], f["fingerprint"]) for f in kept.waived] == [(15, FP)]
+    unwaived = carry_findings(git_repo.root, base, anchor, result, "", _never_open)
+    assert [(f["line"], f["fingerprint"]) for f in unwaived.blocking] == [(15, FP)]
+
+
+def test_a_confirmed_deleted_file_waiver_still_holds_at_publish():
+    entry = {**_waived_entry(), "reviewer": "security-reviewer", "waiver_line": _LINE}
+    assert _recheck([entry], _LINE, confirmed=[_CONFIRMED]) == []
+    assert _recheck([entry], _LINE) != []
+
+
+_HEAD, _BASE, _MERGE_BASE = "a" * 40, "b" * 40, "c" * 40
+_MISSING = (1, b"gh: Not Found (HTTP 404)\n")
+_COMPARED = (0, _MERGE_BASE.encode() + b"\n")
+
+
+def _contents_api(by_ref, compare=_COMPARED, calls=None):
+    """A fake `gh api`: `by_ref` maps a contents ref to file bytes, or to the exit status and
+    stderr of a failure; `compare` is the compare API's exit status and merge base output.
+    `calls`, when given, collects each call's arguments."""
+
+    def gh(args, _payload=None):
+        if calls is not None:
+            calls.append(args)
+        if "/compare/" in args[0]:
+            return subprocess.CompletedProcess(args, compare[0], compare[1], b"")
+        got = by_ref[args[-1].rsplit("?ref=", 1)[1]]
+        if isinstance(got, bytes):
+            return subprocess.CompletedProcess(args, 0, got, b"")
+        return subprocess.CompletedProcess(args, got[0], b"", got[1])
+
+    return gh
+
+
+def test_the_head_line_reader_reads_a_deleted_file_at_the_merge_base():
+    from scripts.marketplace_ci.claude_review import head_line_reader
+
+    content = b"first\nsecond\n"
+    calls: list = []
+    gh = _contents_api({_HEAD: _MISSING, _MERGE_BASE: content}, calls=calls)
+    reader = head_line_reader("o/r", _HEAD, gh, _BASE)
+    assert reader("gone.md", 1) == "first"
+    assert reader("also-gone.md", 2) == "second"  # a second path reuses the merge base
+    assert sum("/compare/" in c[0] for c in calls) == 1
+    assert f"compare/{_BASE}...{_HEAD}" in calls[1][0]
+
+
+def test_the_head_line_reader_reads_nothing_in_place_of_an_unknown_or_unread_head():
+    from scripts.marketplace_ci.claude_review import head_line_reader
+
+    content = b"first\n"
+    # No base given: no fallback.
+    no_base = head_line_reader("o/r", _HEAD, _contents_api({_HEAD: _MISSING}))
+    assert no_base("gone.md", 1) is None
+    # A failure that is not a 404 is unknown, not a deletion.
+    error = (1, b"gh: Server Error (HTTP 502)\n")
+    flaky = head_line_reader(
+        "o/r", _HEAD, _contents_api({_HEAD: error, _MERGE_BASE: content}), _BASE
+    )
+    assert flaky("x.md", 1) is None
+    # A 404 because the head itself does not resolve: the compare API 404s too (security review
+    # of issue #835), so a file that exists at the head is never read at the base.
+    unknown = _contents_api({_HEAD: _MISSING, _MERGE_BASE: content}, compare=(1, b""))
+    assert head_line_reader("o/r", _HEAD, unknown, _BASE)("x.md", 1) is None
+    # An answer that is not a commit SHA is not used either.
+    odd = _contents_api({_HEAD: _MISSING, _MERGE_BASE: content}, compare=(0, b"null\n"))
+    assert head_line_reader("o/r", _HEAD, odd, _BASE)("x.md", 1) is None

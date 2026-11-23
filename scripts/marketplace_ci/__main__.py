@@ -1624,7 +1624,9 @@ def _handle_publish_claude_review(args: argparse.Namespace) -> int:
             section = read_waiver_section(body, open_issues.__contains__)
             readable = set(briefable_tracked(records))
             tracked = tuple(n for n in section.tracked if n in readable)
-            reader = head_line_reader(args.repo, args.head_sha, lambda a, _p=None: _gh_raw(a))
+            reader = head_line_reader(
+                args.repo, args.head_sha, lambda a, _p=None: _gh_raw(a), args.base_sha
+            )
             notes = apply_waivers(result, section.waivers, confirmed, reader, tracked)
             for line in _waiver_report(section.malformed, notes):
                 print(f"::warning::{line}")
@@ -1797,8 +1799,11 @@ def _handle_check_trust_boundary(args: argparse.Namespace) -> int:
     return 0
 
 
-def _apply_waivers(findings, blocking_set, waivers, repo: Path, confirmed_keys, tracked=()):
-    """R7 for this run's own findings: every finding's flagged-line fingerprint at HEAD, the
+def _apply_waivers(
+    findings, blocking_set, waivers, repo: Path, confirmed_keys, tracked=(), base_sha=None
+):
+    """R7 for this run's own findings: every finding's flagged-line fingerprint at HEAD (at
+    `base_sha` for a file the pull request deletes, issue #835), the
     blocking findings a waiver applies to (finding -> the waiver line), a note per blocking
     finding whose matching waiver still needs a maintainer's confirmation, and the waiver lines
     whose fingerprint matches no flagged line, as (line, why). A blocking finding marked with one
@@ -1806,8 +1811,8 @@ def _apply_waivers(findings, blocking_set, waivers, repo: Path, confirmed_keys, 
     from scripts.marketplace_ci.review import (
         find_tracked,
         find_waiver,
+        finding_fingerprint,
         finding_waiver_key,
-        fingerprint_at,
         stale_waiver_notes,
         tracked_waiver_text,
     )
@@ -1815,7 +1820,7 @@ def _apply_waivers(findings, blocking_set, waivers, repo: Path, confirmed_keys, 
     fingerprints = {}
     for f in findings:
         if isinstance(f.path, str) and f.path:
-            fingerprints[f] = fingerprint_at(repo, "HEAD", f.path, f.line)
+            fingerprints[f] = finding_fingerprint(repo, "HEAD", base_sha, f.path, f.line)
     applied: dict = {}
     notes: list[str] = []
     if not waivers and not any(f.tracked_issue is not None for f in findings):
@@ -2457,6 +2462,7 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
             repo,
             confirmed_keys,
             applicable_tracked,
+            base_sha,
         )
         # R19: the waivers the reviewers were briefed with, found at HEAD as dispatch_reviewers
         # found them, so the publish step can re-check a waiver whose finding a reviewer left
@@ -2812,6 +2818,12 @@ def build_parser() -> argparse.ArgumentParser:
     claude_publish.add_argument("--review-job", required=True)
     claude_publish.add_argument("--model", required=True)
     claude_publish.add_argument("--head-sha", required=True, metavar="SHA")
+    claude_publish.add_argument(
+        "--base-sha",
+        default=None,
+        metavar="SHA",
+        help="where a file the pull request deletes is read for its fingerprint (R7, issue #835)",
+    )
     claude_publish.add_argument("--run-attempt", required=True)
     claude_publish.add_argument("--repo", required=True, metavar="OWNER/REPO")
     claude_publish.add_argument("--pr-number", required=True, type=int)
