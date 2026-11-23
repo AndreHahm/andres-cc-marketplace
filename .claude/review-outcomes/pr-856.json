@@ -1,6 +1,66 @@
 {
   "entries": [
     {
+      "disposition": "fixed",
+      "finding": "ci-codex-delta-plugin-rulebook-checker-R18-r3-aw26",
+      "line": 26,
+      "note": "Block restored to its size on main by folding this PR's added sentences into existing lines; no content removed. Verifier self-review exit 0. 39 to 35 lines; still covered by the file's recorded R18 exception.",
+      "path": "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md",
+      "pr": 856,
+      "recorded_at": "2026-11-23T14:34:04+00:00",
+      "rule": "plugin-rulebook:R18"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-codex-delta-plugin-rulebook-checker-R18-r3-l107",
+      "line": 107,
+      "note": "Block back to 20 lines (data note folded onto the include line). Verifier self-review exit 0.",
+      "path": "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+      "pr": 856,
+      "recorded_at": "2026-11-23T14:34:04+00:00",
+      "rule": "plugin-rulebook:R18"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-codex-delta-plugin-rulebook-checker-R18-r3-l181",
+      "line": 181,
+      "note": "Block restored to its size on main by folding this PR's added sentences into existing lines; no content removed. Verifier self-review exit 0. 28 to 24 lines.",
+      "path": "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+      "pr": 856,
+      "recorded_at": "2026-11-23T14:34:04+00:00",
+      "rule": "plugin-rulebook:R18"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-codex-delta-plugin-rulebook-checker-R18-r3-l265",
+      "line": 265,
+      "note": "Block restored to its size on main by folding this PR's added sentences into existing lines; no content removed. Verifier self-review exit 0. 25 to 23 lines.",
+      "path": "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+      "pr": 856,
+      "recorded_at": "2026-11-23T14:34:04+00:00",
+      "rule": "plugin-rulebook:R18"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-codex-delta-plugin-rulebook-checker-R18-r3-l308",
+      "line": 308,
+      "note": "Block restored to its size on main by folding this PR's added sentences into existing lines; no content removed. Verifier self-review exit 0. 42 to 40 lines; still covered by the file's recorded R18 exception.",
+      "path": "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+      "pr": 856,
+      "recorded_at": "2026-11-23T14:34:04+00:00",
+      "rule": "plugin-rulebook:R18"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-codex-delta-plugin-rulebook-checker-R18-r3-pf421",
+      "line": 421,
+      "note": "Block restored to its size on main by folding this PR's added sentences into existing lines; no content removed. Verifier self-review exit 0. 23 to 21 lines.",
+      "path": "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md",
+      "pr": 856,
+      "recorded_at": "2026-11-23T14:34:04+00:00",
+      "rule": "plugin-rulebook:R18"
+    },
+    {
       "disposition": "declined",
       "finding": "ci-codex-delta-plugin-rulebook-checker-R6-r1",
       "line": 403,
@@ -32,6 +92,16 @@
     },
     {
       "disposition": "fixed",
+      "finding": "ci-codex-delta-security-reviewer-injection-surface-r3",
+      "line": 176,
+      "note": "Every path argument now limited to letters, digits, dot, underscore, hyphen and slash with no leading hyphen, and passed in single quotes; SKILL.md states why double quotes are not enough. All sibling sites swept.",
+      "path": "plugins/plugin-devkit/skills/command-development/SKILL.md",
+      "pr": 856,
+      "recorded_at": "2026-11-23T14:34:04+00:00",
+      "rule": "injection-surface"
+    },
+    {
+      "disposition": "fixed",
       "finding": "ci-codex-delta-security-reviewer-tool-scoping-r2",
       "line": 157,
       "note": "All 26 argument-bearing load-time bang commands across the skill converted to body steps that validate first and run through a scoped Bash grant; SKILL.md now says never to pass an argument to a bang command. Injection confirmed with a live probe before the fix.",
@@ -48,6 +118,26 @@
       "path": "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
       "pr": 856,
       "recorded_at": "2026-11-23T12:22:56+00:00",
+      "rule": "security"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-codex-delta-skill-reviewer-security-r3",
+      "line": 37,
+      "note": "Same fix as the round-3 injection-surface finding: safe-path rule plus single quotes at every site.",
+      "path": "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+      "pr": 856,
+      "recorded_at": "2026-11-23T14:34:04+00:00",
+      "rule": "security"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-codex-delta-skill-reviewer-security-r3-minor",
+      "line": 35,
+      "note": "Includes of the argument that came before a path check replaced by a Read tool step after the check (examples 1 and 8, the multi-component and file-existence references).",
+      "path": "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+      "pr": 856,
+      "recorded_at": "2026-11-23T14:34:04+00:00",
       "rule": "security"
     }
   ]
