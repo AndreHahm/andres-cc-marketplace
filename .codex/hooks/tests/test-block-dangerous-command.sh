@@ -540,6 +540,29 @@ B	git --config-env pull.ff=only pull
 B	git --config-env=clean.requireForce=true clean -d
 B	bash -c 'git -c pull.ff=false pull'
 B	ssh host 'git -c clean.requireForce=false clean -d'
+# Gaps that predate PR 854, found by its security review: a tag delete in a flag cluster, a
+# bare `-c pull.ff` (true) and branch.<name>.mergeOptions.
+B	git -C . tag -di v1
+B	git tag -id v1
+B	git tag -df v1
+B	bash -c 'git tag -di v1'
+# git rejects -d with any flag but -i, so these delete nothing and are allowed.
+A	git -C . tag -fd v1
+A	git tag -Fd v1
+A	git tag -mdone v1
+A	git -C . tag -a -m 'see -fd' v1
+A	git tag -n5
+A	git tag -fs v1
+B	git -c pull.ff pull
+B	git -c pull.ff -c x.y=z pull
+B	bash -c 'git -c pull.ff pull'
+B	git -c pull.ff>/dev/null pull
+B	git -c pull.rebase>/dev/null pull
+B	git -c pull.ff<x pull
+B	git -c branch.main.mergeOptions=--no-ff pull
+B	git --config-env branch.x.mergeOptions=E pull
+B	GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=branch.main.mergeOptions GIT_CONFIG_VALUE_0=--no-ff git pull
+A	git -c branch.main.merge=refs/heads/main pull
 CASES
 
 printf 'pass=%d fail=%d (%s)\n' "${pass}" "${fail}" "${HOOK}"
