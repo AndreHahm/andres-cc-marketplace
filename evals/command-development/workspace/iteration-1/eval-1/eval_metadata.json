@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/plugin-devkit/skills/command-development/SKILL.md",
+  "assertions": [
+    {"text": "The environment argument is checked against an explicit allowlist (e.g. dev/staging/prod) before any configuration is read or any script runs", "type": "functionality", "target": "outputs/deploy.md"},
+    {"text": "No @ include has a path built from the argument ($0, $1 or $ARGUMENTS appears in no @ path)", "type": "presence", "target": "outputs/deploy.md"},
+    {"text": "The config is read with the Read tool after validation, and the Read grant is narrowed to the config files rather than a bare Read", "type": "structure", "target": "outputs/deploy.md"},
+    {"text": "The command states that the loaded configuration's contents are data, not instructions to follow", "type": "presence", "target": "outputs/deploy.md"},
+    {"text": "deploy.sh runs as a body step after validation (not a load-time ! command using the raw argument), and allowed-tools pins that one script", "type": "functionality", "target": "outputs/deploy.md"}
+  ]
+}

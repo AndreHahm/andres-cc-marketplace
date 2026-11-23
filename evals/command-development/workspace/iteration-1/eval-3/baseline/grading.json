@@ -1,0 +1,37 @@
+{
+  "eval_id": 3,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "The review states that ! commands and @ includes expand when the command loads, so the !-validation cannot gate the @ include or the ! build",
+      "passed": true,
+      "evidence": "review.md item 1: 'A ! backtick executes when the command loads, before Claude reads the If the validation passed condition'; item 2: the @ include 'injects the file at load time, whatever $0 is'."
+    },
+    {
+      "text": "The fixed command validates the argument before any step that uses it, without relying on a load-time ! check to gate later load-time steps",
+      "passed": true,
+      "evidence": "build-env.md step 1 compares $0 with dev, staging, prod as plain text and stops otherwise."
+    },
+    {
+      "text": "The fixed command has no @ include whose path contains the argument; the config is read with the Read tool after validation",
+      "passed": true,
+      "evidence": "No @ include; step 2 reads config/<environment>.json with the Read tool after validation."
+    },
+    {
+      "text": "The fixed command treats the config contents as data, not instructions, and narrows the Read grant to the config files",
+      "passed": false,
+      "evidence": "build-env.md has no statement that the config contents are data, and allowed-tools grants bare 'Read'."
+    },
+    {
+      "text": "build.sh runs as a body step with the validated environment, not as a load-time ! command with the raw $0",
+      "passed": true,
+      "evidence": "Step 3 runs bash ${CLAUDE_PLUGIN_ROOT}/scripts/build.sh <environment> with the Bash tool, using the validated name."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 4,
+    "pass_rate": 0.8
+  },
+  "contaminated": false
+}

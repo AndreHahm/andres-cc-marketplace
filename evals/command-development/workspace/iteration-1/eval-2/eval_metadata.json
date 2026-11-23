@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/plugin-devkit/skills/command-development/SKILL.md",
+  "assertions": [
+    {"text": "Every shell occurrence of the file argument is quoted (\"$0\" or equivalent), never bare", "type": "presence", "target": "outputs/lint.md"},
+    {"text": "The output says that quoting alone does not protect against an argument containing quotes or $(...), because the argument is substituted into the shell text", "type": "quality", "target": "outputs/notes.md or outputs/lint.md"},
+    {"text": "The script runs as a body step through a scoped Bash grant, or the output explicitly justifies a load-time ! command for trusted input only", "type": "functionality", "target": "outputs/lint.md"},
+    {"text": "allowed-tools pins node to the one lint.js script, not bare Bash or Bash(node:*)", "type": "structure", "target": "outputs/lint.md"}
+  ]
+}

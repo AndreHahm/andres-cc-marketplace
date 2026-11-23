@@ -1,0 +1,31 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Every shell occurrence of the file argument is quoted (\"$0\" or equivalent), never bare",
+      "passed": true,
+      "evidence": "lint.md step 2: node \"${CLAUDE_PLUGIN_ROOT}/scripts/lint.js\" \"$0\"."
+    },
+    {
+      "text": "The output says that quoting alone does not protect against an argument containing quotes or $(...), because the argument is substituted into the shell text",
+      "passed": false,
+      "evidence": "notes.md says only that 'arguments are substituted into shell text before anything runs'; neither file says quoting fails against an argument containing quotes or $(...)."
+    },
+    {
+      "text": "The script runs as a body step through a scoped Bash grant, or the output explicitly justifies a load-time ! command for trusted input only",
+      "passed": true,
+      "evidence": "notes.md: 'Claude runs the linter as a body step through a scoped Bash grant'."
+    },
+    {
+      "text": "allowed-tools pins node to the one lint.js script, not bare Bash or Bash(node:*)",
+      "passed": true,
+      "evidence": "allowed-tools: Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/lint.js:*)."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 3,
+    "pass_rate": 0.75
+  }
+}
