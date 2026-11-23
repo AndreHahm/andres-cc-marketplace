@@ -505,7 +505,7 @@ ABBREV_GIT_RE+="|pull([^;&|]*[[:space:]])?-[a-zA-Z]*r${GIT_SUB_END}"
 # keys that run a command (core.pager, core.editor, core.sshCommand, core.hooksPath,
 # GIT_PAGER, GIT_SSH_COMMAND, GIT_EXTERNAL_DIFF), and a key held in a variable, are not checked.
 # The -c and --config-env forms must follow `git` and its global options at the start of a
-# command, and need `=` after the key, so `gcc -c alias.c`, `make -C alias.d` or a search for
+# command or of a shell string (added below), and need `=` after the key, so `gcc -c alias.c`, `make -C alias.d` or a search for
 # `-c alias.x=` in text is not read as one; a rebase key may also stand alone, since git reads
 # `-c pull.rebase` as true. A GIT_CONFIG_KEY_<n> value is the bare key.
 CONFIG_KEYS='(clean\.requireforce|pull\.(rebase|ff)|merge\.ff|branch\.[^[:space:]=]*\.rebase|alias\.[^[:space:]=]*)'
@@ -517,17 +517,26 @@ UNSAFE_CONFIG_RE+="|GIT_CONFIG_(KEY_[0-9]+|PARAMETERS)=[^[:space:]]*${CONFIG_KEY
 # other commands, keywords or assignments in the string). The exec-policy rules match only the
 # outer command. Every check reads one line, so a string split over lines, or one piped into a
 # shell (`echo 'git stash' | sh`), is not seen.
-SHELL_STRING_GIT_RE='(^|[^A-Za-z0-9_.-])(bash|sh|zsh|dash|ksh|eval|su|ssh)([[:space:]][^;&|"'"'"']*)?'
-SHELL_STRING_GIT_RE+="[[:space:]][\$]?[\"'](([^\"']|\"[^\"]*\"|'[^']*')*[;&|({][[:space:]]*)?"
-SHELL_STRING_GIT_RE+="((if|then|do|else|elif|while|until|!)[[:space:]]+"
-SHELL_STRING_GIT_RE+="|(xargs|command|builtin|env|nice|nohup|time|exec|timeout|doas|eval)"
-SHELL_STRING_GIT_RE+="([[:space:]]+(-[^[:space:]\"']*|[0-9][^[:space:]\"']*|[A-Za-z_][A-Za-z0-9_]*=[^[:space:]\"']*))*[[:space:]]+"
-SHELL_STRING_GIT_RE+="|[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*"
-SHELL_STRING_GIT_RE+="([^\"'[:space:];&|]*/)?"
+SHELL_STRING_START='(^|[^A-Za-z0-9_.-])(bash|sh|zsh|dash|ksh|eval|su|ssh)([[:space:]][^;&|"'"'"']*)?'
+SHELL_STRING_START+="[[:space:]][\$]?[\"'](([^\"']|\"[^\"]*\"|'[^']*')*[;&|({][[:space:]]*)?"
+SHELL_STRING_START+="((if|then|do|else|elif|while|until|!)[[:space:]]+"
+SHELL_STRING_START+="|(xargs|command|builtin|env|nice|nohup|time|exec|timeout|doas|eval)"
+SHELL_STRING_START+="([[:space:]]+(-[^[:space:]\"']*|[0-9][^[:space:]\"']*|[A-Za-z_][A-Za-z0-9_]*=[^[:space:]\"']*))*[[:space:]]+"
+SHELL_STRING_START+="|[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*"
+SHELL_STRING_START+="([^\"'[:space:];&|]*/)?"
 # Inside the string, the closing quote also ends a subcommand (`'git stash'`).
 GIT_SUB_END_Q='([[:space:]);}`"'"'"']|$)'
-SHELL_STRING_GIT_RE+="git${GIT_OPT}*[[:space:]]+(${FORBIDDEN_GIT_RE//"${GIT_SUB_END}"/"${GIT_SUB_END_Q}"}"
+SHELL_STRING_GIT_RE="${SHELL_STRING_START}git${GIT_OPT}*[[:space:]]+(${FORBIDDEN_GIT_RE//"${GIT_SUB_END}"/"${GIT_SUB_END_Q}"}"
 SHELL_STRING_GIT_RE+="|${ABBREV_GIT_RE//"${GIT_SUB_END}"/"${GIT_SUB_END_Q}"})"
+# The per-command settings above, also inside such a string (`ssh host 'git -c alias.x=stash x'`).
+SHELL_CONFIG_OPT="${SHELL_STRING_START}git${GIT_OPT}*[[:space:]]+(-c[[:space:]]*|--config-env[=[:space:]]+)"
+UNSAFE_CONFIG_RE+="|${SHELL_CONFIG_OPT}${CONFIG_KEYS}="
+UNSAFE_CONFIG_RE+="|${SHELL_CONFIG_OPT}(pull|branch\.[^[:space:]=]*)\.rebase${GIT_SUB_END_Q}"
+# Read in the copies without quote characters, for a key quoted inside the string
+# (`bash -c 'git -c "alias.x=stash" x'`) or a quoted argument before it (`ssh -o "A b" host`).
+SHELL_CONFIG_OPT='(^|[^A-Za-z0-9_.-])(bash|sh|zsh|dash|ksh|eval|su|ssh)[[:space:]]([^;&|]*[[:space:];&|({])?'
+SHELL_CONFIG_OPT+="git${GIT_OPT}*[[:space:]]+(-c[[:space:]]*|--config-env[=[:space:]]+)"
+UNSAFE_CONFIG_RE+="|${SHELL_CONFIG_OPT}${CONFIG_KEYS}="
 # chmod that makes a file writable by others: an octal mode whose last digit has the
 # write bit (2, 3, 6, 7), or a symbolic clause for o or a that adds or sets w. default.rules
 # lists a few exact modes; it cannot test the bit, so the hook catches the rest.
