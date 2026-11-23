@@ -1576,17 +1576,21 @@ def fingerprint_at(repo: Path, rev: str, path: str, line: object) -> str | None:
     return line_fingerprint(lines[line - 1])
 
 
-def path_absent_at(repo: Path, rev: str, path: str) -> bool:
-    """Whether `path` names nothing at `rev`, as for a file the pull request deletes: `ls-tree`
-    lists no entry for it. False when git cannot tell (an unresolvable `rev`, a missing object),
-    so a caller never mistakes an error for a deletion."""
+def path_absent_at(repo: Path, rev: str, path: str) -> bool | None:
+    """Whether `path` names no file at `rev`, as for a file the pull request deletes: `ls-tree`
+    lists no entry for it, or only a directory, which replaced the file. A submodule or a
+    symlink still counts as present. None when git cannot tell (an unresolvable `rev`, a
+    missing object): falsy, so a caller testing it never mistakes an error for a deletion, and
+    one that must not treat it as "present" either can tell it apart."""
     try:
         _run_git(repo, "rev-parse", "--verify", "--quiet", f"{rev}^{{commit}}")
         # Literal: a name with `*`, `?` or `[` is a file name here, not a pattern.
         listed = _run_git(repo, "--literal-pathspecs", "ls-tree", "-z", rev, "--", path)
     except RuntimeError:
-        return False
-    return listed == b""
+        return None
+    entries = [e for e in listed.split(b"\0") if e]
+    # `<mode> <type> <object>\t<path>`: one entry for a path that names a file or a directory.
+    return all(e.split(b" ", 2)[1:2] == [b"tree"] for e in entries)
 
 
 def merge_base_of(repo: Path, base: str, head: str) -> str | None:
@@ -2445,7 +2449,11 @@ def carry_findings(
             # removed line is a different finding and is reviewed as one. A file the pull request
             # deletes is gone at the head, so its line is found at the merge base, where its
             # fingerprint was taken (issue #835); no merge base, no line.
-            if path_absent_at(repo, "HEAD", path):
+            head_absent = path_absent_at(repo, "HEAD", path)
+            if head_absent is None:
+                # Unknown is neither "deleted" nor "present": either answer could drop it.
+                raise CarryError(f"cannot tell whether {path} exists at the head")
+            if head_absent:
                 if fork is None:
                     fork = merge_base_of(repo, base_sha, "HEAD") or ""
                 moved = (
@@ -2453,6 +2461,10 @@ def carry_findings(
                     if fork
                     else None
                 )
+            elif path_absent_at(repo, anchor_sha, path):
+                # Deleted at the anchor, back at the head: the deletion the finding was about is
+                # undone, and the restored file is reviewed as part of the delta if it differs.
+                moved = None
             else:
                 moved = locate_fingerprint(repo, "HEAD", path, fingerprint, line, head_prints)
             if moved is None:
