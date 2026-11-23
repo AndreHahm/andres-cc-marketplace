@@ -5,7 +5,7 @@ out of the reviewers' scope (never a gate-critical path). `--anchor-sha` narrows
 files whose PR-side patch changed since that already-reviewed head; a rebase that only moves the
 PR's changes yields nothing, and an anchor the checkout cannot resolve skips the review,
 gate-critical paths included. No trust check is made on an anchor (Codex R10). Without the flags
-(the local parity review) the scope is unchanged.
+(the local parity review) only issues/ is left out (#653).
 """
 
 import json
@@ -161,10 +161,33 @@ def test_an_unresolvable_anchor_skips_the_review(git_repo):
     assert narrow_to_unreviewed(git_repo.root, changed, base, "1" * 40) == ()
 
 
-def test_without_ci_delta_the_scope_is_unchanged(git_repo):
-    changed = (ChangedPath("M", "tests/test_a.py", "tests/test_a.py"),)
+def test_without_ci_delta_only_issue_drafts_are_left_out(git_repo):
+    kept = (
+        ChangedPath("M", "tests/test_a.py", "tests/test_a.py"),
+        ChangedPath("M", "evals/x/evals.json", "evals/x/evals.json"),
+        ChangedPath("M", "plugins/demo/issues/a.md", "plugins/demo/issues/a.md"),
+        # a rename across the boundary keeps the side outside issues/ in scope
+        ChangedPath("R", "issues/a.md", "docs/a.md"),
+        ChangedPath("R", "docs/b.md", "issues/b.md"),
+    )
+    dropped = (
+        ChangedPath("A", None, "issues/new.md"),
+        ChangedPath("D", "issues/old.md", None),
+        ChangedPath("R", "issues/c.md", "issues/d.md"),
+    )
     args = Namespace(ci_delta=False, anchor_sha="1" * 40)
-    assert _ci_review_delta(args, git_repo.root, changed, "HEAD") is changed
+    assert _ci_review_delta(args, git_repo.root, kept + dropped, "HEAD") == kept
+
+
+def test_without_ci_delta_a_gate_critical_issue_path_stays(monkeypatch, git_repo):
+    # no gate-critical path is under issues/ today; if one is added, parity keeps it as CI does
+    monkeypatch.setattr(review_module, "is_gate_critical", lambda p: p == "issues/gate.md")
+    changed = (
+        ChangedPath("M", "issues/gate.md", "issues/gate.md"),
+        ChangedPath("M", "issues/draft.md", "issues/draft.md"),
+    )
+    args = Namespace(ci_delta=False, anchor_sha="1" * 40)
+    assert _ci_review_delta(args, git_repo.root, changed, "HEAD") == changed[:1]
 
 
 def _scope_bypass(monkeypatch, root, tmp_path, *extra):

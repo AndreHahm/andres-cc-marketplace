@@ -201,3 +201,6 @@ compliance are already enforced in CI.
   raise it as a new finding, and if you mention it, say in one line that #<issue> tracks it. A different
   defect on the same path is still new. Keep reporting it on a gate-critical path, or as a security
   finding, until a maintainer has posted a `- confirmed tracked #<issue> <path>` comment for that path.
+- Don't review issue drafts under the root `issues/` folder (issue #653). Each is a historical, read-only
+  record of a GitHub issue as it was filed, so a draft that no longer matches the current code is
+  expected, not a defect.
