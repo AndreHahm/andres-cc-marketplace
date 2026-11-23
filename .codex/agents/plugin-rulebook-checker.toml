@@ -118,6 +118,10 @@ counts: {fail: 1, advisory: 2}
 
 **Shared-schema join:** unlike a single-scope reviewer, this document has no bare `findings[].id` of its own — each finding nests under `components[].findings[]` and identifies itself only by `rule`. Construct the Finding shape's `id` as `plugin-rulebook-checker:<components[].path>#<findings[].rule>` (e.g. `plugin-rulebook-checker:skills/example-skill/SKILL.md#R6`), `source: plugin-rulebook-checker`, `scope: <components[].path>`, `status: open` — this document has no cross-phase lifecycle concept of its own. `rule_type` (per `evidence-schema.md`'s Finding shape) is `required` for a `fail` severity finding, `advisory` for an `advisory` severity finding.
 
+### Review Bridge Envelope
+
+When dispatched through codex-kit's `codex-review-bridge` (a findings envelope instead of the report above), set each finding's free-text `axis` to `plugin-rulebook:<rule id>`, naming the one rulebook rule it is about (e.g. `plugin-rulebook:R35`). A finding about more than one rule is split into one finding per rule. A review gate may read the rule id from `axis` alone, because the evidence often quotes the files under review: a finding whose `axis` names no rule id is never treated as a claim about a specific rule.
+
 ## When NOT to Use
 
 - Interactive, in-conversation rulebook application with narrative teaching/rationale wanted alongside the check → use the `plugin-rulebook` **skill** instead; this agent is a leaner isolated-dispatch alternative, not a replacement for its interactive role.
