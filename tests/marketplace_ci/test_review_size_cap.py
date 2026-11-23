@@ -98,6 +98,12 @@ def test_a_component_in_another_reference_is_covered():
         _finding(evidence="R18, and the grant breaks R6"),
         _finding(components=("plugins/demo-kit/skills/x/SKILL.md",)),
         _finding(reviewer="security-reviewer", reporters=("security-reviewer",)),
+        _finding(
+            reviewer="security-reviewer",
+            reporters=("security-reviewer",),
+            path=f"./{REFERENCE}",
+            severity="Minor",
+        ),
     ],
 )
 def test_merging_with_a_copy_that_blocks_never_becomes_a_notice(other):

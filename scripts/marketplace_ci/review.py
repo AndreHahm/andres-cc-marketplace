@@ -928,19 +928,49 @@ def _is_downgraded_measurement(finding: Finding) -> bool:
     return finding.source == "model" and finding.rule_class == "measurement"
 
 
+def relative_citations(result: ReviewResult, repo_root: Path) -> ReviewResult:
+    """`result` with each absolute citation inside the checkout (location or component) spelled
+    relative to it, as the bridge accepts both and the caps and the merge key compare relative
+    paths. Purely lexical; any other citation, one with a `..` segment included, is unchanged."""
+    roots = dict.fromkeys((os.path.abspath(repo_root), os.path.realpath(repo_root)))
+
+    def relative(location: str) -> str:
+        path, _ = _split_location(location)
+        if not os.path.isabs(path) or ".." in re.split(r"[\\/]", path):
+            return location
+        # normpath keeps a POSIX leading "//", which names the same file.
+        spelled = os.path.normpath(path if os.name == "nt" else "/" + path.lstrip("/"))
+        for root in roots:
+            prefix = root.rstrip(os.sep) + os.sep
+            if spelled.startswith(prefix):
+                return spelled[len(prefix) :].replace(os.sep, "/") + location[len(path) :]
+        return location
+
+    return replace(
+        result,
+        findings=tuple(
+            replace(f, path=relative(f.path), components=tuple(relative(c) for c in f.components))
+            for f in result.findings
+        ),
+    )
+
+
 def aggregate_findings(
     reports: Sequence[ReviewResult], coverage: ScriptCoverage | None = None
 ) -> tuple[Finding, ...]:
     """Deduplicate only identical (rule, path, line, source) findings, keeping every distinct
-    reporting reviewer. `source` is part of the key so a script finding can never absorb a model
-    finding (an exception could then suppress it). The copy kept is the one the gate can still
-    block on (a model `measurement` copy is a notice), then the highest reported severity, so a
-    merge never turns a blocking finding into a notice."""
+    reporting reviewer. Paths are compared after lexical normalization (issue #862): the caps read
+    `./x` as `x`, so a differently spelled copy must not skip their reviewer checks. `source` is
+    part of the key so a script finding can never absorb a model finding (an exception could then
+    suppress it). The copy kept is the one the gate can still block on (a model `measurement` copy
+    is a notice), then the highest reported severity, so a merge never turns a blocking finding
+    into a notice."""
     grouped: dict[tuple[str, str, int | None, str], list[Finding]] = {}
     order: list[tuple[str, str, int | None, str]] = []
     for report in reports:
         for finding in report.findings:
-            key = (finding.rule, finding.path, finding.line, finding.source)
+            path = posixpath.normpath(finding.path)
+            key = (finding.rule, path, finding.line, finding.source)
             if key not in grouped:
                 grouped[key] = []
                 order.append(key)
@@ -974,9 +1004,13 @@ def aggregate_findings(
         # finding only when every reviewer chose it.
         labels = {f.category for f in group}
         category = labels.pop() if len(labels) == 1 else None
+        # A `..` spelling may pass through a symlink, so it also stands for the file it resolves to
+        # (`_lookup_keys`) and needs a maintainer's confirmation: a merge never loses it.
+        climbing = (f.path for f in group if ".." in f.path.split("/"))
         aggregated.append(
             replace(
                 highest,
+                path=next(climbing, highest.path),
                 reporters=reporters,
                 components=components,
                 tracked_issue=tracked,
@@ -3081,8 +3115,9 @@ def _contradicted_by_script(finding: Finding, coverage: ScriptCoverage | None) -
     if coverage is None or not _claims_only_script_owned_rules(finding):
         return False
     # Coverage holds git's repo-relative paths; a lexically equivalent spelling (`./x`, `a//b`)
-    # names the same file. An absolute location is left as it is and so never matches: this pure
-    # gate has no repository root to resolve it against, and an unmatched path only keeps blocking.
+    # names the same file. An absolute location still present here (`relative_citations` has made an
+    # in-checkout one relative) never matches: this pure gate has no repository root to resolve it
+    # against, and an unmatched path only keeps blocking.
     path = posixpath.normpath(finding.path)
     return all(coverage.covers(rule, path) for rule in _claimed_rule_ids(finding))
 

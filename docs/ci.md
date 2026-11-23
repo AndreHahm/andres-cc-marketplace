@@ -815,7 +815,9 @@ labelled `allowed-tools-grant` is a notice: an `allowed-tools`
 entry that is too broad, missing or without effect. In a skill or command that field only removes permission
 prompts. The label counts only when the finding and all its `components` are skill or command documents
 (`SKILL.md`, a skill's `references/` or `examples/`, or a command; never an agent, script, hook, workflow or
-settings file), no component was dropped by the bridge, and every reviewer whose copy was merged chose it. A missing category, `other` and every script
+settings file), no component was dropped by the bridge, and every reviewer whose copy was merged chose it
+(copies merge on the normalized path, so `./x` and an absolute spelling under the checkout root count as `x`; an
+absolute one with a `..` segment, or through another symlink to the checkout, is never capped and not merged). A missing category, `other` and every script
 finding block as before, and the rule name plays no part. The result keeps the reported severity and the
 `category`. Accepted residuals (the maintainer's choice): the label is the model's own, so a mislabelled or
 steered label on a real defect inside such a document makes it a notice; these guards bound only a Critical or
@@ -863,7 +865,8 @@ gain a `references/` directory (in any letter case; a plain file of that name is
 small enough and shallow enough to parse (a parser error covers nothing). So a model R35 claim about a section the
 base already lacked is a notice, and a new skill, a removed or renamed heading or a new `references/` directory
 still gets the model's verdict. The finding's location is compared after lexical normalization (`./x` and `a//b`
-name `x` and `a/b`); an absolute location never matches, so it keeps blocking.
+name `x` and `a/b`), an absolute one under the checkout root without a `..` segment after it is made relative; any other absolute location
+never matches, so it keeps blocking.
 Without coverage nothing is downgraded, and
 when findings merge the copy that still blocks (judged with the merged reporters and the coverage) is kept.
 Accepted residuals: the rule id is the model's own label, so a model that names the wrong rule in its `rule`

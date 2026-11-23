@@ -2149,6 +2149,7 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
         gate_decision,
         general_correctness_coverage,
         probe_sandbox,
+        relative_citations,
         render_could_not_run,
         review_advisory,
         run_delta_structural_checks,
@@ -2414,13 +2415,15 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
         return 2
 
     validated = []
+    top_level = Path(_git_out(repo, "rev-parse", "--show-toplevel") or repo)
     unusable: list[tuple[str, str]] = []  # (reviewer, why), in dispatch order
     for report in reports:
         if report.output is None:
             unusable.append((report.reviewer, "completed with no output"))
             continue
         try:
-            validated.append(validate_review_output(report.output))
+            result = validate_review_output(report.output)
+            validated.append(relative_citations(result, top_level))
         except ReviewOutputError as exc:
             unusable.append((report.reviewer, f"returned invalid output: {exc}"))
     if unusable:

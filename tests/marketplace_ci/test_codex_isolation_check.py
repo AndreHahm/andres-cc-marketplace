@@ -106,6 +106,20 @@ def test_an_empty_rendering_fails(run_step, call, message):
     assert result.returncode == 1 and message in result.stdout
 
 
+def test_a_scan_that_cannot_read_the_rendering_fails(run_step, tmp_path):
+    """PR #865: grep's error status read as "canary absent"."""
+    fake = tmp_path / "bin" / "grep"
+    fake.write_text(
+        '#!/bin/bash\n[[ "$*" == *CANARY*isolated* ]] && exit 2\n'
+        'PATH=/usr/bin:/bin exec grep "$@"\n',
+        encoding="utf-8",
+    )
+    fake.chmod(0o755)
+    result = run_step()
+    assert result.returncode == 1
+    assert "could not scan the isolated model input" in result.stdout
+
+
 @pytest.mark.parametrize("call", ["default", "isolated"])
 def test_a_failing_command_fails(run_step, call):
     assert run_step(FAKE_FAIL=call).returncode == 7
