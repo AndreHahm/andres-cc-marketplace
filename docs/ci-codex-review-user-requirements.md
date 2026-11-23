@@ -168,7 +168,8 @@ a reviewer reports it anew, until the flagged code changes (issue #808).
 - **A finding on a file the pull request deletes.** When the flagged file does not exist at the reviewed
   head, the fingerprint is taken from the flagged line at the base side of the pull request's diff (the
   merge base of its base and head, whose lines the review numbered), and CI prints it like any other. A waiver and a confirmation name it as usual. A path that cannot be read at the head or
-  the base has no fingerprint, and its finding cannot be waived (fail closed) (issue #835).
+  the base has no fingerprint: no fingerprinted waiver matches its finding, so a waiver that needs a
+  maintainer's confirmation cannot apply to it (fail closed) (issue #835).
 - **Maintainer-only acceptance for gate-critical and security findings.** A waiver for a finding on a
   gate-critical path (R3), on a path not spelled the canonical way, or one raised by `security-reviewer`
   (by any of the reviewers that reported it), counts only when a user whose role is maintain or admin

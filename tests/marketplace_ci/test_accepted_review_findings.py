@@ -2235,6 +2235,43 @@ def test_a_waived_finding_on_a_file_deleted_after_the_anchor_is_carried(git_repo
     assert [(f["line"], f["fingerprint"]) for f in unwaived.blocking] == [(15, FP)]
 
 
+def test_a_deletion_finding_is_not_carried_once_the_file_is_restored(git_repo):
+    # PR #853 review: the anchor deleted the file and its finding was waived; the head restores it
+    # verbatim. The deletion is undone, so the finding is not carried, waived or not.
+    base = _commit(git_repo, "base", **{"s/SKILL.md": "\n" * 14 + GRANT + "\n"})
+    anchor = _delete(git_repo, "pr 1 deletes it", "s/SKILL.md")
+    _commit(git_repo, "pr 2 restores it", **{"s/SKILL.md": "\n" * 14 + GRANT + "\n"})
+    result = _anchor_result(_waived_entry())
+    kept = carry_findings(git_repo.root, base, anchor, result, _section(_LINE), _never_open)
+    assert kept.blocking == () and kept.waived == ()
+    unwaived = carry_findings(git_repo.root, base, anchor, result, "", _never_open)
+    assert unwaived.blocking == () and unwaived.waived == ()
+
+
+def test_a_file_replaced_by_a_directory_is_fingerprinted_at_the_merge_base(git_repo):
+    # PR #853 review: `tools/check` becomes the directory `tools/check/`. The file is gone even
+    # though the path names a tree at the head, so its line is read at the merge base.
+    from scripts.marketplace_ci.review import path_absent_at
+
+    base = _commit(git_repo, "base", **{"tools/check": "\n" * 14 + GRANT + "\n"})
+    _git(git_repo.root, "rm", "-q", "tools/check")
+    _commit(git_repo, "pr makes it a directory", **{"tools/check/run.py": "x\n"})
+    assert path_absent_at(git_repo.root, "HEAD", "tools/check") is True
+    assert path_absent_at(git_repo.root, "HEAD", "tools/check/run.py") is False
+    # Git cannot tell for a revision that does not resolve: neither answer.
+    assert path_absent_at(git_repo.root, "f" * 40, "tools/check") is None
+    finding = _finding("tools/check", 15, reviewer="security-reviewer")
+    waivers = read_waiver_section(
+        _section(f"- tool-scoping tools/check:15 @{FP} – accepted"), _never_open
+    ).waivers
+    confirmed = {("tool-scoping", "tools/check", FP)}
+    fingerprints, applied, _, _ = _apply_waivers(
+        [finding], {finding}, waivers, git_repo.root, confirmed, (), base
+    )
+    assert fingerprints[finding] == FP
+    assert set(applied) == {finding}
+
+
 def test_a_confirmed_deleted_file_waiver_still_holds_at_publish():
     entry = {**_waived_entry(), "reviewer": "security-reviewer", "waiver_line": _LINE}
     assert _recheck([entry], _LINE, confirmed=[_CONFIRMED]) == []

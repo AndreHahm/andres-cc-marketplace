@@ -459,7 +459,12 @@ review` is the gate after the PR exists and reviews only the delta, to cut OpenA
   that line, so a waiver removed after the file changed still makes it block; once no line with that text
   remains, it is dropped and the changed line is reviewed (a removed line whose text appears elsewhere in the
   file moves the finding to that copy). A file the PR deletes is gone at the head, so the line is looked up at the merge base
-  of the base SHA and `HEAD`, where its fingerprint was taken (issue #835). The lookup uses this run's base: when the base moved since the anchor run and
+  of the base SHA and `HEAD`, where its fingerprint was taken (issue #835). A file replaced by a directory
+  counts as deleted (`path_absent_at`). A file deleted at the anchor and back at the head is not carried:
+  the deletion is undone, and the file is reviewed again if it differs. Accepted limit: if a later push
+  deletes it again, that deletion is reviewed fresh, and a waiver of the earlier finding withdrawn after
+  that no longer makes it block. When git cannot tell whether the file exists at the head, the carry
+  reports `error` rather than guessing. The lookup uses this run's base: when the base moved since the anchor run and
   changed that file, the line may not be found, and the finding is dropped and reviewed again, as before
   the fix (an accepted limit). An earlier-format waiver names the exact line, so it stops matching
   once the line moves: the finding blocks, and the summary says so and prints the line to write instead. When a carried finding has the same rule,
