@@ -18,7 +18,7 @@ Commands that guide users through multi-step processes:
 ---
 description: Complete PR review workflow
 argument-hint: [pr-number]
-allowed-tools: Bash(gh pr view:*), Bash(gh pr diff:*), Bash(gh pr checks:*), Bash(gh pr review:*), Read, Grep
+allowed-tools: Bash(gh pr view:*), Bash(gh pr diff:*), Bash(gh pr checks:*), Read, Grep
 ---
 
 # PR Review Workflow for #$0
@@ -49,10 +49,11 @@ Summarize:
 - Suggestions for improvement
 - Approval recommendation
 
-Use `AskUserQuestion` — question: "What would you like to do?", options: "Approve PR" / "Request changes" / "Leave comments only" — then complete the chosen action with `gh pr review <number>` and `--approve`, `--request-changes` or `--comment`.
+Use `AskUserQuestion` — question: "What would you like to do?", options: "Approve PR" / "Request changes" / "Leave comments only" — then show the exact `gh pr review <number>` command with `--approve`, `--request-changes` or `--comment` and run it once approved.
 ```
 
 **Key features:**
+- `gh pr review` is deliberately not pre-approved: every run posts a review, so the command shows the exact command and asks before each run. Approve each run; do not add a persistent allow rule for it.
 - Numbered steps for clarity
 - Bash tool steps for context, run after the PR number is validated (a `!` command would run at load time with the raw argument)
 - Decision points for user input

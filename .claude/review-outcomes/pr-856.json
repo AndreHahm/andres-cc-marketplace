@@ -102,6 +102,36 @@
     },
     {
       "disposition": "fixed",
+      "finding": "ci-codex-delta-plugin-rulebook-checker-R6-r5-api",
+      "line": 395,
+      "note": "The deployments api grant removed; a note under the example says a prefix grant would also accept the method flag, so each call prompts.",
+      "path": "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md",
+      "pr": 856,
+      "recorded_at": "2026-11-23T15:52:13+00:00",
+      "rule": "plugin-rulebook:R6"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-codex-delta-plugin-rulebook-checker-R6-r5-git",
+      "line": 402,
+      "note": "Broad git grant narrowed to the staging and committing subcommands, the only ones the example runs.",
+      "path": "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md",
+      "pr": 856,
+      "recorded_at": "2026-11-23T15:52:13+00:00",
+      "rule": "plugin-rulebook:R6"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-codex-delta-plugin-rulebook-checker-R6-r5-review",
+      "line": 21,
+      "note": "The review-posting grant removed; documented next to the example as deliberately ungranted (every run posts a review): approve each run, no persistent allow rule.",
+      "path": "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md",
+      "pr": 856,
+      "recorded_at": "2026-11-23T15:52:13+00:00",
+      "rule": "plugin-rulebook:R6"
+    },
+    {
+      "disposition": "fixed",
       "finding": "ci-codex-delta-security-reviewer-injection-surface-r1",
       "line": 403,
       "note": "Fixed in c666bfed: argument validated before use, config read through a narrowed Read grant as data, scripts run as body steps; same pattern fixed across the skill's examples and references.",
@@ -132,6 +162,16 @@
     },
     {
       "disposition": "fixed",
+      "finding": "ci-codex-delta-security-reviewer-tool-scoping-r5",
+      "line": 402,
+      "note": "Same fix as the round-5 R6 git finding: grant narrowed to the staging and committing subcommands.",
+      "path": "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md",
+      "pr": 856,
+      "recorded_at": "2026-11-23T15:52:13+00:00",
+      "rule": "tool-scoping"
+    },
+    {
+      "disposition": "fixed",
       "finding": "ci-codex-delta-skill-reviewer-security-r2",
       "line": 37,
       "note": "Same fix as the round-2 tool-scoping finding: example 1 and every sibling now validate the argument, then run the script as a body step; evals.json expectations updated to match.",
@@ -158,6 +198,16 @@
       "path": "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
       "pr": 856,
       "recorded_at": "2026-11-23T14:34:04+00:00",
+      "rule": "security"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-codex-delta-skill-reviewer-security-r5",
+      "line": 460,
+      "note": "All 12 argument-bearing at-includes in the skill (including SKILL.md's syntax example) replaced by a path check, then a Read step reading the file as data, with a Read grant; no block grew.",
+      "path": "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md",
+      "pr": 856,
+      "recorded_at": "2026-11-23T15:52:13+00:00",
       "rule": "security"
     }
   ]

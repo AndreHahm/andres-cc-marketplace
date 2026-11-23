@@ -138,12 +138,12 @@ Use `@path` to inject file content before Claude processes the command:
 
 ```markdown
 ---
-argument-hint: [file-path]
+description: Review the users API
 ---
-Review @\$0 for code quality and potential bugs.
+Review @src/api/users.ts for code quality and potential bugs.
 ```
 
-`/review-file src/api/users.ts` — Claude reads the file first, then processes the command.
+`/review-users` — Claude reads the file first, then processes the command. Use `@` only with a fixed path: an `@` include expands when the command loads, before any check runs, so a file named by an argument is checked and then read with the Read tool instead (see Plugin Features).
 
 **Multiple files:** `Compare @src/old.js with @src/new.js for breaking changes.`
 

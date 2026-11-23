@@ -392,7 +392,6 @@ Restricted invocation:
 description: Approve production deployment
 argument-hint: [deployment-id]
 disable-model-invocation: true
-allowed-tools: Bash(gh api /deployments/:*)
 ---
 
 <!--
@@ -412,6 +411,8 @@ Verify:
 
 Type "APPROVED" to confirm deployment.
 ```
+
+This example grants no `gh` command on purpose: a prefix grant on `gh api /deployments/` would also accept `--method`, which can delete the deployment, so each call prompts. Approve each run, and do not add a persistent allow rule for it.
 
 ## Validation
 
