@@ -516,31 +516,66 @@ def _waived_label(f: Mapping) -> str:
     return f" ({waiver})" if waiver.startswith("tracked #") else " (waived)"
 
 
-def head_line_reader(repo: str, head_sha: str, gh: Gh) -> Callable[[str, int], str | None]:
+def head_line_reader(
+    repo: str, head_sha: str, gh: Gh, base_sha: str | None = None
+) -> Callable[[str, int], str | None]:
     """Reads one line of a file at the head through the contents API (the publish job checks
-    out only the base SHA). None when the file or line cannot be read."""
+    out only the base SHA). A file the contents API reports missing at the head (HTTP 404), as
+    for a file the pull request deletes, is read at the merge base of `base_sha` and the head
+    instead, where the review numbered its lines (R7, issue #835). The compare API both finds
+    that merge base and proves the head resolves, so a 404 for an unknown head is never taken
+    for a deleted file. None when the file or line cannot be read."""
     from scripts.marketplace_ci.review import git_lines
 
     cache: dict[str, list[str] | None] = {}
+    merge_base: list[str | None] = []
+
+    def fallback_ref() -> str | None:
+        """The merge base, looked up once; None when it cannot be told (no fallback)."""
+        if not merge_base:
+            got = gh(
+                [f"repos/{repo}/compare/{base_sha}...{head_sha}", "--jq", ".merge_base_commit.sha"],
+                None,
+            )
+            out = got.stdout
+            if isinstance(out, bytes):
+                out = out.decode("utf-8", errors="replace")
+            sha = (out or "").strip()
+            ok = got.returncode == 0 and re.fullmatch(r"[0-9a-f]{40}", sha)
+            merge_base.append(sha if ok else None)
+        return merge_base[0]
+
+    def fetch(path: str, ref: str) -> tuple[list[str] | None, bool]:
+        """The file's lines at `ref`, and whether the API said it does not exist there."""
+        quoted = urllib.parse.quote(path, safe="/")
+        got = gh(
+            [
+                "-H",
+                "Accept: application/vnd.github.raw+json",
+                f"repos/{repo}/contents/{quoted}?ref={ref}",
+            ],
+            None,
+        )
+        # Bytes, decoded as `fingerprint_at` does: text mode would raise on a file that is not
+        # UTF-8 and turn a bare carriage return into a line break, shifting git's numbering.
+        raw = got.stdout
+        if isinstance(raw, str):
+            raw = raw.encode("utf-8", errors="surrogateescape")
+        if got.returncode == 0 and b"\0" not in raw:
+            return git_lines(raw.decode("utf-8", errors="replace")), False
+        err = got.stderr
+        if isinstance(err, bytes):
+            err = err.decode("utf-8", errors="replace")
+        # Only a 404 counts as missing: any other failure is unknown, not a deletion.
+        return None, got.returncode != 0 and "(HTTP 404)" in (err or "")
 
     def read(path: str, line: int) -> str | None:
         if path not in cache:
-            quoted = urllib.parse.quote(path, safe="/")
-            got = gh(
-                [
-                    "-H",
-                    "Accept: application/vnd.github.raw+json",
-                    f"repos/{repo}/contents/{quoted}?ref={head_sha}",
-                ],
-                None,
-            )
-            # Bytes, decoded as `fingerprint_at` does: text mode would raise on a file that is not
-            # UTF-8 and turn a bare carriage return into a line break, shifting git's numbering.
-            raw = got.stdout
-            if isinstance(raw, str):
-                raw = raw.encode("utf-8", errors="surrogateescape")
-            ok = got.returncode == 0 and b"\0" not in raw
-            cache[path] = git_lines(raw.decode("utf-8", errors="replace")) if ok else None
+            lines, missing = fetch(path, head_sha)
+            ref = fallback_ref() if lines is None and missing and base_sha else None
+            if ref:
+                lines, _ = fetch(path, ref)
+            cache[path] = lines
         lines = cache[path]
         if lines is None or not 1 <= line <= len(lines):
             return None

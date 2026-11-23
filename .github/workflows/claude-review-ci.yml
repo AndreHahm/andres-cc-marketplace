@@ -621,6 +621,7 @@ jobs:
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
           RUN_ATTEMPT: ${{ github.run_attempt }}
           SWITCHED_OFF: ${{ needs.claude-scope.outputs.switched_off }}
           MODEL: ${{ needs.claude-scope.outputs.model }}
@@ -653,6 +654,13 @@ jobs:
               echo "::warning::the PR's accepted review findings could not be read again; no finding is shown as waived"
             fi
           fi
+          # Codex review R7 (issue #835): a file the PR deletes is fingerprinted at the base. A base
+          # without the option (the PR that adds it), found from this base checkout's own code,
+          # leaves it out, so such a finding keeps no fingerprint, as before.
+          base_args=()
+          if grep -q -F 'where a file the pull request deletes is read' scripts/marketplace_ci/__main__.py; then
+            base_args=(--base-sha "$BASE_SHA")
+          fi
           uv run --no-sync python -m scripts.marketplace_ci publish-claude-review \
             --switched-off "${SWITCHED_OFF:-false}" \
             --scope "$RUNNER_TEMP/claude-scope/scope.json" \
@@ -661,7 +669,8 @@ jobs:
             --review-job "$REVIEW_JOB" --model "${MODEL:-unknown}" \
             --head-sha "$HEAD_SHA" --run-attempt "$RUN_ATTEMPT" \
             --repo "$REPO" --pr-number "$PR_NUMBER" \
-            --result-out "$RUNNER_TEMP/claude-review-result.json" "${accepted_args[@]}" || rc=$?
+            --result-out "$RUNNER_TEMP/claude-review-result.json" "${accepted_args[@]}" \
+            "${base_args[@]}" || rc=$?
           echo "rc=$rc" >> "$GITHUB_OUTPUT"
 
       - name: Upload the review result

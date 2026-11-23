@@ -165,6 +165,10 @@ a reviewer reports it anew, until the flagged code changes (issue #808).
   blocks again: that is what "materially different" means here. A finding with no line uses
   `0` and the fingerprint `-`; it then matches on rule and path alone. A waiver line without a fingerprint
   (the earlier format) matches on rule, path and exact line, as before.
+- **A finding on a file the pull request deletes.** When the flagged file does not exist at the reviewed
+  head, the fingerprint is taken from the flagged line at the pull request's base commit, and CI prints it
+  like any other. A waiver and a confirmation name it as usual. A path that cannot be read at the head or
+  the base has no fingerprint, and its finding cannot be waived (fail closed) (issue #835).
 - **Maintainer-only acceptance for gate-critical and security findings.** A waiver for a finding on a
   gate-critical path (R3), on a path not spelled the canonical way, or one raised by `security-reviewer`
   (by any of the reviewers that reported it), counts only when a user whose role is maintain or admin

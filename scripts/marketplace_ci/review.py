@@ -1576,6 +1576,31 @@ def fingerprint_at(repo: Path, rev: str, path: str, line: object) -> str | None:
     return line_fingerprint(lines[line - 1])
 
 
+def path_absent_at(repo: Path, rev: str, path: str) -> bool:
+    """Whether `path` names nothing at `rev`, as for a file the pull request deletes: `ls-tree`
+    lists no entry for it. False when git cannot tell (an unresolvable `rev`, a missing object),
+    so a caller never mistakes an error for a deletion."""
+    try:
+        _run_git(repo, "rev-parse", "--verify", "--quiet", f"{rev}^{{commit}}")
+        # Literal: a name with `*`, `?` or `[` is a file name here, not a pattern.
+        listed = _run_git(repo, "--literal-pathspecs", "ls-tree", "-z", rev, "--", path)
+    except RuntimeError:
+        return False
+    return listed == b""
+
+
+def finding_fingerprint(
+    repo: Path, head: str, base: str | None, path: str, line: object
+) -> str | None:
+    """A finding's fingerprint (R7): its flagged line's at `head`, or, when the file does not
+    exist at `head` (the pull request deletes it), the line's at `base` (issue #835). None when
+    the line cannot be read at either, so its finding cannot be waived (fail closed)."""
+    fingerprint = fingerprint_at(repo, head, path, line)
+    if fingerprint is None and base and path_absent_at(repo, head, path):
+        fingerprint = fingerprint_at(repo, base, path, line)
+    return fingerprint
+
+
 def locate_fingerprint(
     repo: Path,
     rev: str,
@@ -2334,6 +2359,7 @@ def carry_findings(
     tracked = tuple(n for n in section.tracked if readable_tracked is None or n in readable_tracked)
     unchanged: dict[str, bool] = {}
     head_prints: dict[str, list[str] | None] = {}
+    base_prints: dict[str, list[str] | None] = {}
     blocking: list[dict] = []
     waived: list[dict] = []
     notes: list[str] = []
@@ -2392,7 +2418,9 @@ def carry_findings(
             continue
         fingerprint = entry.get("fingerprint")
         if not (isinstance(fingerprint, str) and _FINGERPRINT.fullmatch(fingerprint)):
-            fingerprint = fingerprint_at(repo, anchor_sha, path, line) if resolved else None
+            fingerprint = (
+                finding_fingerprint(repo, anchor_sha, base_sha, path, line) if resolved else None
+            )
             if line == 0:
                 fingerprint = "-"
         anchor_line = line
@@ -2400,8 +2428,13 @@ def carry_findings(
             # A waived finding is kept while its flagged line still exists, found at the head by
             # its fingerprint, so removing the waiver later makes it block again (R7). A reviewer
             # need not report it anew, so dropping it here would lose it for good. An edited or
-            # removed line is a different finding and is reviewed as one.
-            moved = locate_fingerprint(repo, "HEAD", path, fingerprint, line, head_prints)
+            # removed line is a different finding and is reviewed as one. A file the pull request
+            # deletes is gone at the head, so its line is found at the base, where its
+            # fingerprint was taken (issue #835).
+            if path_absent_at(repo, "HEAD", path):
+                moved = locate_fingerprint(repo, base_sha, path, fingerprint, line, base_prints)
+            else:
+                moved = locate_fingerprint(repo, "HEAD", path, fingerprint, line, head_prints)
             if moved is None:
                 continue
             line = moved
