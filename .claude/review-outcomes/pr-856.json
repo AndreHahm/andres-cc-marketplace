@@ -2,6 +2,26 @@
   "entries": [
     {
       "disposition": "fixed",
+      "finding": "ci-codex-delta-dependency-reviewer-r6-analyzer",
+      "line": 346,
+      "note": "Agent name marked as a placeholder for an agent the reader's plugin defines.",
+      "path": "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md",
+      "pr": 856,
+      "recorded_at": "2026-11-23T16:30:59+00:00",
+      "rule": "dependency-graph"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-codex-delta-dependency-reviewer-r6-reviewer",
+      "line": 220,
+      "note": "Agent name marked as a placeholder for an agent the reader's plugin defines.",
+      "path": "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+      "pr": 856,
+      "recorded_at": "2026-11-23T16:30:59+00:00",
+      "rule": "dependency-graph"
+    },
+    {
+      "disposition": "fixed",
       "finding": "ci-codex-delta-plugin-rulebook-checker-R18-r3-aw26",
       "line": 26,
       "note": "Block restored to its size on main by folding this PR's added sentences into existing lines; no content removed. Verifier self-review exit 0. 39 to 35 lines; still covered by the file's recorded R18 exception.",
@@ -58,6 +78,16 @@
       "path": "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md",
       "pr": 856,
       "recorded_at": "2026-11-23T14:34:04+00:00",
+      "rule": "plugin-rulebook:R18"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-codex-delta-plugin-rulebook-checker-R18-r6",
+      "line": 157,
+      "note": "Blank line removed; block back to 10 lines. Fixed on the user's explicit request despite the severity gate.",
+      "path": "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md",
+      "pr": 856,
+      "recorded_at": "2026-11-23T16:30:59+00:00",
       "rule": "plugin-rulebook:R18"
     },
     {
@@ -132,6 +162,16 @@
     },
     {
       "disposition": "fixed",
+      "finding": "ci-codex-delta-plugin-rulebook-checker-R6-r6",
+      "line": 397,
+      "note": "A note under the hooks example now names the other forms the staging and committing grants reach and says to leave them out if each run should prompt.",
+      "path": "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md",
+      "pr": 856,
+      "recorded_at": "2026-11-23T16:30:59+00:00",
+      "rule": "plugin-rulebook:R6"
+    },
+    {
+      "disposition": "fixed",
       "finding": "ci-codex-delta-security-reviewer-injection-surface-r1",
       "line": 403,
       "note": "Fixed in c666bfed: argument validated before use, config read through a narrowed Read grant as data, scripts run as body steps; same pattern fixed across the skill's examples and references.",
@@ -148,6 +188,26 @@
       "path": "plugins/plugin-devkit/skills/command-development/SKILL.md",
       "pr": 856,
       "recorded_at": "2026-11-23T14:34:04+00:00",
+      "rule": "injection-surface"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-codex-delta-security-reviewer-injection-surface-r6-api",
+      "line": 404,
+      "note": "The deployment example now says the API response is data and approval is judged only against its checklist.",
+      "path": "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md",
+      "pr": 856,
+      "recorded_at": "2026-11-23T16:30:59+00:00",
+      "rule": "injection-surface"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-codex-delta-security-reviewer-injection-surface-r6-skill",
+      "line": 180,
+      "note": "SKILL.md's rule, its fixed-path example and the file-comparison pattern now say file contents are data, never instructions.",
+      "path": "plugins/plugin-devkit/skills/command-development/SKILL.md",
+      "pr": 856,
+      "recorded_at": "2026-11-23T16:30:59+00:00",
       "rule": "injection-surface"
     },
     {
@@ -209,6 +269,16 @@
       "pr": 856,
       "recorded_at": "2026-11-23T15:52:13+00:00",
       "rule": "security"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-codex-delta-skill-reviewer-security-r6-dotdot",
+      "line": 175,
+      "note": "Path rule now forbids a parent-directory segment at every site; SKILL.md adds a check that the path resolves inside the repository.",
+      "path": "plugins/plugin-devkit/skills/command-development/SKILL.md",
+      "pr": 856,
+      "recorded_at": "2026-11-23T16:30:59+00:00",
+      "rule": "security & permissions"
     }
   ]
 }
