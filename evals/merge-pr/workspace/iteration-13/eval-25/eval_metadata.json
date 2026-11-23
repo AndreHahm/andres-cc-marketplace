@@ -1,0 +1,21 @@
+{
+  "eval_id": 25,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "The `StatusContext` entry is not treated as pending for lacking a `COMPLETED` status (a StatusContext is judged by its `state`)",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "The context is classified passing, with each source group (StatusContext and CheckRun) passing",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "The status-checks gate passes",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "eval_id": 26,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Item (i) is kept, because the contributor's comment claiming it is fixed is not verification from real state",
+      "passed": true,
+      "evidence": "answer.md:30-32 kept by its own judgment"
+    },
+    {
+      "text": "Item (ii) is removed because this session fixed it in a commit in the PR's commits list",
+      "passed": true,
+      "evidence": "answer.md:34 removed"
+    },
+    {
+      "text": "This session's open item ('No eval covers same-name grouping by source') is added",
+      "passed": true,
+      "evidence": "answer.md:38 added"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

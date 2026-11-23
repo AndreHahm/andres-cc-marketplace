@@ -1,0 +1,26 @@
+{
+  "eval_id": 24,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "The 4(c) wait does not wait for the missing `Publish Codex policy result` and ends because every other required context is completed",
+      "passed": false,
+      "evidence": "answer.md:49 the wait deadlocks on the missing check"
+    },
+    {
+      "text": "The recorded baseline is the latest startedAt of any rollup entry, 10:05:00Z (not 'no entry exists')",
+      "passed": false,
+      "evidence": "answer.md:60 Hygiene/Python quality startedAt not used; records 'no entry exists'"
+    },
+    {
+      "text": "4(d) accepts only a COMPLETED `Publish Codex policy result` entry whose startedAt is strictly later than 10:05:00Z",
+      "passed": false,
+      "evidence": "answer.md:81 accepts any entry when the check was missing"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 0,
+    "pass_rate": 0.0
+  }
+}

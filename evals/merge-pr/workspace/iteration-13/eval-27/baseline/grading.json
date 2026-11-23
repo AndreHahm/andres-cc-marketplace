@@ -1,0 +1,26 @@
+{
+  "eval_id": 27,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "The re-read of the live body runs in the same Bash call as the PATCH, after the permission prompt is answered, compared against a body saved when the proposal was built",
+      "passed": false,
+      "evidence": "answer.md:15 re-read runs before the prompt"
+    },
+    {
+      "text": "Because the maintainer changed the body, the comparison fails and no edit is sent (the removed waiver line is not restored)",
+      "passed": false,
+      "evidence": "answer.md:26 the PATCH reinstates the waiver"
+    },
+    {
+      "text": "The proposal is rebuilt from the live body and asked again",
+      "passed": false,
+      "evidence": "answer.md:27 never rebuilt or re-asked"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 0,
+    "pass_rate": 0.0
+  }
+}

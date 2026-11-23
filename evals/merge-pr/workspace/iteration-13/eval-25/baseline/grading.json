@@ -1,0 +1,26 @@
+{
+  "eval_id": 25,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "The `StatusContext` entry is not treated as pending for lacking a `COMPLETED` status (a StatusContext is judged by its `state`)",
+      "passed": true,
+      "evidence": "answer.md:19 treats state SUCCESS as terminal by its own reading"
+    },
+    {
+      "text": "The context is classified passing, with each source group (StatusContext and CheckRun) passing",
+      "passed": true,
+      "evidence": "answer.md:23-24 both groups passing"
+    },
+    {
+      "text": "The status-checks gate passes",
+      "passed": true,
+      "evidence": "gate passes"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

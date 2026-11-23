@@ -1,0 +1,21 @@
+{
+  "eval_id": 26,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "Item (i) is kept, because the contributor's comment claiming it is fixed is not verification from real state",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Item (ii) is removed because this session fixed it in a commit in the PR's commits list",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "This session's open item ('No eval covers same-name grouping by source') is added",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    }
+  ]
+}
