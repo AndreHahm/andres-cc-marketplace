@@ -1153,6 +1153,62 @@ def check_r30_scenarios_extracted():
     )
 
 
+def check_step2_required_checks_include_rulesets():
+    # Issue #748: classic protection alone misses ruleset-required contexts (Codacy, CodeRabbit,
+    # SonarCloud on this repo's main), so a missing one was never classified.
+    step2 = _get_step_text(2)
+    if step2 is None:
+        return False, "step 2 ('## Instructions') not found"
+    if "rules/branches/<baseRefName>" not in step2 or "required_status_checks" not in step2:
+        return False, "step 2 no longer adds the ruleset-required contexts"
+    if "union" not in step2 or "Branch not protected" not in step2:
+        return False, "step 2 lost the union or the 404 exception"
+    return True, "required checks = classic protection + ruleset contexts"
+
+
+def check_step2_review_outcomes_recorded():
+    # Issue #640: a PR whose review outcomes were never recorded reached the merge step unnoticed.
+    step2 = _get_step_text(2)
+    if step2 is None:
+        return False, "step 2 ('## Instructions') not found"
+    needed = (
+        ".claude/review-outcomes/pr-<number>.json",
+        "review-ledger.local.json",
+        "all six must pass",
+    )
+    missing = [n for n in needed if n not in step2]
+    if missing:
+        return False, "step 2's review-outcomes check is incomplete, missing: " + ", ".join(missing)
+    return True, "step 2 requires recorded, promoted review outcomes"
+
+
+def check_open_items_batched_and_body_edited_once():
+    # Issue #850: one step-1.5 push and one PR-body edit, then wait for CI instead of a restart.
+    ref = SKILL_DIR / "references" / "session-open-items-and-body-check.md"
+    if not ref.is_file():
+        return False, "references/session-open-items-and-body-check.md is missing"
+    text = ref.read_text(encoding="utf-8")
+    needed = (
+        "decide every touched issue in one batch",
+        "Never restart this skill from step 1 after this push",
+        "Propose one combined edit",
+        "One edit per invocation",
+        "Never edit",
+    )
+    missing = [n for n in needed if n not in text]
+    if missing:
+        return False, "steps 1.5/1.6 lost a batching rule: " + ", ".join(missing)
+    if "## Accepted Review Findings" not in text.split("Never edit", 1)[1][:200]:
+        return False, "step 1.6 no longer excludes the Accepted Review Findings waiver section"
+    step2 = _get_step_text(2)
+    if step2 is None or "Waiting for this skill's own runs" not in step2:
+        return False, "step 2 no longer waits for this skill's own runs"
+    step4 = _get_step_text(4)
+    if step4 is None or "Wait for in-flight runs" not in step4:
+        return False, "step 4(c) no longer waits for in-flight runs before its baseline"
+    return True, "one open-items batch, one body edit, runs awaited"
+
+
 CHECKS = [
     check_frontmatter,
     check_referenced_files,
@@ -1192,6 +1248,9 @@ CHECKS = [
     check_r30_scenarios_extracted,
     check_step5_states_advisory_disclosures,
     check_stop_on_review_findings_opt_in,
+    check_step2_required_checks_include_rulesets,
+    check_step2_review_outcomes_recorded,
+    check_open_items_batched_and_body_edited_once,
 ]
 
 

@@ -1,0 +1,21 @@
+{
+  "eval_id": 21,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "Reads both the classic protection contexts and the ruleset (rules/branches) required_status_checks contexts",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Classifies Codacy Static Code Analysis as missing (not pending, not passing)",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Stops before the merge-rights check and names the missing context",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "eval_id": 20,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Proposes all body changes in one combined question and makes at most one body edit",
+      "passed": true,
+      "evidence": "Proposes the changes together and writes 'the one edit'."
+    },
+    {
+      "text": "Never adds, changes or removes a line in Accepted Review Findings; the stale line is only reported",
+      "passed": false,
+      "evidence": "Point 3: 'Propose removing that line' from Accepted Review Findings."
+    },
+    {
+      "text": "Re-reads the live body right before the edit, notices the maintainer's change, rebuilds and re-asks",
+      "passed": false,
+      "evidence": "Re-reads and rebuilds from the live body but proceeds without re-asking ('I can proceed with the three remaining edits')."
+    },
+    {
+      "text": "Reports the 5317 test count as unverified rather than rewriting it",
+      "passed": false,
+      "evidence": "Point 4: 'Propose removing the number' rather than reporting it as unverified."
+    },
+    {
+      "text": "Applies the edit with a PATCH of the pull-request endpoint from a scratchpad file and re-reads the body afterwards",
+      "passed": false,
+      "evidence": "Primary command is 'gh pr edit 901 --body-file'; the PATCH is only a stop-and-ask fallback."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 1,
+    "pass_rate": 0.2
+  },
+  "baseline_note": "Baseline is the pre-change merge-pr skill on main, not a no-skill run."
+}

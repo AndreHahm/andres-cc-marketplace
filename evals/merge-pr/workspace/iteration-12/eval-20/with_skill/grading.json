@@ -1,0 +1,36 @@
+{
+  "eval_id": 20,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Proposes all body changes in one combined question and makes at most one body edit",
+      "passed": true,
+      "evidence": "One combined proposal; 'Body edits in total: at most one PATCH.'"
+    },
+    {
+      "text": "Never adds, changes or removes a line in Accepted Review Findings; the stale line is only reported",
+      "passed": true,
+      "evidence": "'Never edit this section, since CI reads it'; the closed-issue line is only reported."
+    },
+    {
+      "text": "Re-reads the live body right before the edit, notices the maintainer's change, rebuilds and re-asks",
+      "passed": true,
+      "evidence": "Re-reads before the edit, finds the maintainer's deletion, rebuilds from the live body and asks again."
+    },
+    {
+      "text": "Reports the 5317 test count as unverified rather than rewriting it",
+      "passed": true,
+      "evidence": "'Do not rewrite the number ... report it to the user as unverified.'"
+    },
+    {
+      "text": "Applies the edit with a PATCH of the pull-request endpoint from a scratchpad file and re-reads the body afterwards",
+      "passed": true,
+      "evidence": "'gh api -X PATCH repos/{owner}/{repo}/pulls/901 -F body=@<scratchpad-path>', then re-reads with gh pr view --json body."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

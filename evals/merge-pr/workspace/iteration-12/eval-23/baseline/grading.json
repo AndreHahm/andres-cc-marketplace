@@ -1,0 +1,27 @@
+{
+  "eval_id": 23,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Does not fix, commit or push anything at step 1.5",
+      "passed": false,
+      "evidence": "Fixes, commits and pushes the Minor via Skill(commit)."
+    },
+    {
+      "text": "Reports the touched item and stops the run before step 4's attestation",
+      "passed": false,
+      "evidence": "Continues to the bypass path (step 4)."
+    },
+    {
+      "text": "Gives the reason: the bypass reason was written for the current head, not for a new agent-made commit",
+      "passed": false,
+      "evidence": "No such reason; flags the bypass-after-push question as an unsettled ambiguity."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 0,
+    "pass_rate": 0.0
+  },
+  "baseline_note": "Baseline is the pre-change merge-pr skill on main, not a no-skill run."
+}

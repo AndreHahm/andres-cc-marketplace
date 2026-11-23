@@ -1,0 +1,21 @@
+{
+  "eval_id": 22,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "Treats the presence of review threads (even all resolved) as the PR having had review findings",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Stops because pr-903.json is not in the PR's changed files",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Points the user at handling-review-findings' outcomes ledger (record/promote) to fix it",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    }
+  ]
+}

@@ -235,12 +235,12 @@ a fresh `gh repo view` (skill-reviewer M1, 2026-08-31):**
   silently truncated it and misclassified it as untouched (Codex's automated review, round 2, PR #301,
   2026-09-08)
 - An open issue's file is part of that paginated changed-file list, the checkout-match check passed,
-  and it's an ordinary unaddressed reviewer finding (not user-deferred) → fixed, verified, then
-  committed and pushed via `Skill(commit)` (push explicitly requested) — since this PR already
+  and it's an ordinary unaddressed reviewer finding (not user-deferred) → asked about in step 1.5's
+  one batch ("fix now" recommended); on "fix now" fixed, verified, then committed and pushed via
+  `Skill(commit)` (push explicitly requested) together with every other fix — since this PR already
   exists, a local-only commit is never left unpushed
 - The same touched issue, but the user had explicitly deferred it earlier in the session → never
-  auto-fixed; surfaced via `AskUserQuestion` ("fix now" or "leave deferred") first, and only fixed on
-  "fix now"
+  fixed and not asked about again (issue #850); listed in the summary as deferred
 - An open issue's file is not part of that list (or has no single associated file path) → its draft is
   shown via `AskUserQuestion`; only on approval is `Skill(github-issue-lifecycle)` resumed at
   Workflow 1's Step 3 to file it live, with that workflow's own Step 6 (PR-linking) explicitly skipped,
@@ -253,3 +253,63 @@ a fresh `gh repo view` (skill-reviewer M1, 2026-08-31):**
 - No fix-driven push happens at step 1.5 (nothing found, only issues were filed, or the checkout-match
   check failed) → step 2's first pass still uses step 1's already-current fetch, no unnecessary
   re-fetch
+
+**Verify step 1.5's single batch and step 1.6's PR-body check (issue #850):**
+- Three touched items, one of them parked in `## Open Items` by the agent without asking → all three
+  appear in one `AskUserQuestion` call; the parked one is not treated as deferred
+- An item the user approved parking as an Open Item earlier in the session → counts as explicitly
+  deferred: not asked about again, never fixed, listed in the summary as deferred
+- A "fix now" fix to a gate whose `security-reviewer` pass raises a new Minor → the Minor is decided in
+  a second batch and fixed locally before anything is pushed; one push carries every fix
+- After that push → the run continues at step 2 and polls (up to 40 × 15 s) until every required
+  context is terminal for the pushed head; it never restarts from step 1, and a different head stops
+- The body's `## Open Items` still lists a fixed item and cites a SHA not in the PR's commit list →
+  one `AskUserQuestion` proposes both changes; on approval one `gh api -X PATCH .../pulls/<n> -F
+  body=@<file>` edit, before step 1.5's push, then a re-read of the body
+- The body has a stale line in `## Accepted Review Findings` → reported only, never edited
+- The body states a test count this session never ran → reported as unverified, never rewritten
+- Nothing in the body is stale → no edit, and the report says so
+
+**Verify step 2's ruleset-required contexts (issue #748):**
+- `main`'s classic protection requires 9 contexts and its ruleset requires `Codacy Static Code
+  Analysis`, `CodeRabbit` and `SonarCloud Code Analysis` → all 12 are classified; a head with no
+  Codacy entry is reported as **missing** and stops the flow
+- The protection call returns `404 Branch not protected` and the ruleset requires two contexts → only
+  those two count
+- Either call fails any other way, or the union is empty → stop, the required-check list could not be
+  resolved
+- `Python quality` has a cancelled entry from a superseded run and a later passing one → only the later
+  `CheckRun` (latest `startedAt`) is classified: passing
+
+**Verify step 2's review-outcomes check (issue #640):**
+- `.claude/review-outcomes` is absent on the base branch (`404`) → the check passes as not applicable
+- The PR has review threads and `.claude/review-outcomes/pr-<number>.json` is not in its changed files
+  → stop, pointing at `handling-review-findings`' outcomes ledger and its `promote` step
+- The file is in the changed files, but `.claude/review-ledger.local.json` still holds an entry for
+  this PR → stop: not promoted
+- The PR has no review thread at all → passes
+- The `reviewThreads` query fails → stop as undetermined, never treated as no threads
+
+**Verify step 4(c)'s wait for in-flight runs (issue #850):**
+- A run started by a body edit is still in progress when the bypass path reaches 4(c) → 4(c) waits until
+  it finishes before capturing the `Publish Codex policy result` baseline, so its stale result cannot
+  land after the baseline
+
+**Verify the security-review fixes (pre-ship review of this change):**
+- `--bypass-codex-review` given and step 1.5 finds a touched, non-deferred item → nothing is fixed or
+  pushed; the item is reported and the run stops, so a commit Codex never reviewed is never attested
+- An item appears under the PR body's `## Open Items` but the user never deferred it in this session →
+  not deferred; asked about in the batch
+- A maintainer removes an `## Accepted Review Findings` line while step 1.6's question is open → the
+  pre-edit re-read sees a different body, the proposal is rebuilt and asked again; a proposal whose
+  waiver sections differ from the live body's is never sent
+- A same-repo PR adds a job named `SonarCloud Code Analysis` in its own workflow that always succeeds,
+  after the real check failed → the two sources are grouped separately and the failing one keeps the
+  context failing
+- After a body edit, the latest entries are still the earlier completed run, and `Hygiene` already
+  reports a newer entry while `Publish Codex policy result` still shows only the previous run's success →
+  the wait does not end: every workflow-reported required context, `Publish Codex policy result`
+  included, needs a `COMPLETED` entry newer than the pre-edit baseline, then two terminal polls
+- A required workflow does not run on `edited` → after a body-only edit the wait times out and stops
+- The PR deletes `.claude/review-outcomes/pr-<number>.json`, or adds it with no entries → the
+  review-outcomes check stops

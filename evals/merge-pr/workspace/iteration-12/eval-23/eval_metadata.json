@@ -1,0 +1,21 @@
+{
+  "eval_id": 23,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "Does not fix, commit or push anything at step 1.5",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Reports the touched item and stops the run before step 4's attestation",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Gives the reason: the bypass reason was written for the current head, not for a new agent-made commit",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "eval_id": 22,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Treats the presence of review threads (even all resolved) as the PR having had review findings",
+      "passed": false,
+      "evidence": "The skill 'has no gate that requires a review-outcomes record'."
+    },
+    {
+      "text": "Stops because pr-903.json is not in the PR's changed files",
+      "passed": false,
+      "evidence": "The merge can proceed."
+    },
+    {
+      "text": "Points the user at handling-review-findings' outcomes ledger (record/promote) to fix it",
+      "passed": false,
+      "evidence": "No pointer to the outcomes ledger."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 0,
+    "pass_rate": 0.0
+  },
+  "baseline_note": "Baseline is the pre-change merge-pr skill on main, not a no-skill run."
+}

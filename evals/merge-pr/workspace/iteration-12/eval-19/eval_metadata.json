@@ -1,0 +1,26 @@
+{
+  "eval_id": 19,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "Asks about A (agent-parked) and C in the batch, and does not ask about B; B is reported as deferred",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "D is decided and fixed locally before anything is pushed",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Exactly one push carries every fix",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "After the push it continues at step 2 and waits for the CI run it caused instead of restarting from step 1",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    }
+  ]
+}

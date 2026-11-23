@@ -1,0 +1,31 @@
+{
+  "eval_id": 19,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Asks about A (agent-parked) and C in the batch, and does not ask about B; B is reported as deferred",
+      "passed": true,
+      "evidence": "Round 1: one AskUserQuestion with two questions (A and C); B 'never asked about again, and listed in the summary as deferred'."
+    },
+    {
+      "text": "D is decided and fixed locally before anything is pushed",
+      "passed": true,
+      "evidence": "Round 2 asks D; 'Apply and verify D locally ... Nothing is pushed during this loop.'"
+    },
+    {
+      "text": "Exactly one push carries every fix",
+      "passed": true,
+      "evidence": "'Total pushes: 1' via Skill(commit) --push committing A, C and D together."
+    },
+    {
+      "text": "After the push it continues at step 2 and waits for the CI run it caused instead of restarting from step 1",
+      "passed": true,
+      "evidence": "Continues at step 2 (re-fetch, bounded wait for its own CI run, classify); no restart from step 1."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

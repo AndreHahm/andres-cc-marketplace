@@ -40,8 +40,8 @@ See Testing & Validation below for the concrete trigger phrases this section sum
 2. **Verify readiness:** current-SHA state, required checks, no-changes-requested, no-merge-conflicts,
    not-behind-base, and merge-rights — delegated entirely to `Skill(git-kit:merge-pr)`'s own
    validation; this skill never second-guesses or duplicates that check. **Unresolved review threads
-   are disclosed by `merge-pr`, never blocking** — `merge-pr`'s own five required checks (not-draft,
-   status checks, no-changes-requested, no-merge-conflicts, not-behind-base) are the only things that
+   are disclosed by `merge-pr`, never blocking** — `merge-pr`'s own six required checks (not-draft,
+   status checks, no-changes-requested, no-merge-conflicts, not-behind-base, review outcomes recorded) are the only things that
    stop it; an unresolved-thread count is surfaced at its own confirmation step for the human merging
    to weigh, not enforced as a gate. This skill inherits that same disclosed-not-blocking behavior by
    design (never second-guessing `merge-pr`'s own check) — don't read step 4's "present and confirm"

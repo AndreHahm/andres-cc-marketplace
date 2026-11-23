@@ -1,0 +1,26 @@
+{
+  "eval_id": 23,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Does not fix, commit or push anything at step 1.5",
+      "passed": true,
+      "evidence": "'No fix is applied, no commit or push is made.'"
+    },
+    {
+      "text": "Reports the touched item and stops the run before step 4's attestation",
+      "passed": true,
+      "evidence": "'the run stops here'; step 4 never posts the attestation."
+    },
+    {
+      "text": "Gives the reason: the bypass reason was written for the current head, not for a new agent-made commit",
+      "passed": true,
+      "evidence": "'A fix commit would never have been reviewed by Codex and would become the head that step 4 attests.'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}
