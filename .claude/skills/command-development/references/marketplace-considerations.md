@@ -236,20 +236,19 @@ description: Forgiving command
 
 # User Input Handling
 
-Argument: "$0"
+Argument: $0
 
 <!-- Check for common typos -->
-if [ "$0" = "hlep" ] || [ "$0" = "hepl" ]; then
+If $0 is `hlep` or `hepl`:
   Did you mean: help?
 
   Showing help instead...
   [Display help]
 
   Exit.
-fi
 
 <!-- Suggest similar commands if not found -->
-if [ "$0" != "valid-option1" ] && [ "$0" != "valid-option2" ]; then
+If $0 is neither `valid-option1` nor `valid-option2`:
   ❌ Unknown option: $0
 
   Did you mean:
@@ -259,7 +258,6 @@ if [ "$0" != "valid-option1" ] && [ "$0" != "valid-option2" ]; then
   For all options: /command help
 
   Exit.
-fi
 
 [Command continues...]
 ```
@@ -460,7 +458,7 @@ description: Command with deprecation warnings
 
 # Deprecation Check
 
-if [ "$0" = "--old-flag" ]; then
+If $0 is `--old-flag`:
   ⚠️  DEPRECATION WARNING
 
   The --old-flag option is deprecated as of v2.0.0
@@ -475,7 +473,6 @@ if [ "$0" = "--old-flag" ]; then
   See migration guide: /command migrate
 
   Continuing with deprecated behavior for now...
-fi
 
 [Handle both old and new flags during deprecation period...]
 ```

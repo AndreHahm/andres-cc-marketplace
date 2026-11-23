@@ -476,12 +476,10 @@ Environment: $0
 
 Validating environment...
 
-valid_envs="dev staging production"
-if ! echo "$valid_envs" | grep -w "$0" > /dev/null; then
+If $0 is not exactly `dev`, `staging` or `production`:
   ERROR: Invalid environment '$0'
   Valid options: dev, staging, production
   Exit.
-fi
 
 Environment validated. Proceeding...
 ```
@@ -501,14 +499,10 @@ Expanding shorthand:
 - s/stg → staging
 - p/prod → production
 
-case "$0" in
-  d|dev) ENV="development";;
-  s|stg) ENV="staging";;
-  p|prod) ENV="production";;
-  *) ENV="$0";;
-esac
+Accept $0 only if it is one of the shorthands above or exactly `development`, `staging` or
+`production`; otherwise stop and do not deploy. Use the expanded name from here on.
 
-Deploying to: $ENV
+Deploying to: <the expanded name>
 ```
 
 ## Error Handling in Workflows
