@@ -1,0 +1,13 @@
+{
+  "entries": [
+    {
+      "disposition": "declined",
+      "finding": "4663664825",
+      "line": 48,
+      "note": "By design: a cross-boundary rename stays in review scope, mirroring CI and approved R2; declined by the user.",
+      "path": "docs/ci-codex-review-user-requirements.md",
+      "pr": 851,
+      "recorded_at": "2026-11-23T09:07:34+00:00"
+    }
+  ]
+}
