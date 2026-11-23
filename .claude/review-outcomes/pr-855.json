@@ -1,0 +1,58 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4665088093",
+      "line": 1803,
+      "note": "gate normalizes the finding path lexically before the coverage lookup; absolute paths keep blocking; fixed in 0e1ddcee",
+      "path": "scripts/marketplace_ci/review_verifiers.py",
+      "pr": 855,
+      "recorded_at": "2026-11-23T11:41:35+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4665088296",
+      "line": 1302,
+      "note": "references counts any entry but a plain file (tree, symlink, submodule); fixed in 0e1ddcee",
+      "path": "scripts/marketplace_ci/review_verifiers.py",
+      "pr": 855,
+      "recorded_at": "2026-11-23T11:41:35+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4665088486",
+      "line": 382,
+      "note": "blocking gate fixtures name their rule id and carry a notice control; fixed in 0e1ddcee",
+      "path": "tests/marketplace_ci/test_review_gate.py",
+      "pr": 855,
+      "recorded_at": "2026-11-23T11:41:35+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4665088650",
+      "line": 2559,
+      "note": "R35 coverage requires a readable base frontmatter too; fixed in 0e1ddcee",
+      "path": "scripts/marketplace_ci/review_verifiers.py",
+      "pr": 855,
+      "recorded_at": "2026-11-23T11:41:36+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4665157770",
+      "line": 89,
+      "note": "inventory R35 entries name the references condition and point to docs/ci.md; fixed in 0e1ddcee",
+      "path": "docs/review-rule-inventory.md",
+      "pr": 855,
+      "recorded_at": "2026-11-23T11:41:36+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4665157780",
+      "line": 1285,
+      "note": "r35_no_worse catches parser errors and covers nothing; fixed in 0e1ddcee",
+      "path": "scripts/marketplace_ci/review_verifiers.py",
+      "pr": 855,
+      "recorded_at": "2026-11-23T11:41:34+00:00"
+    }
+  ]
+}
