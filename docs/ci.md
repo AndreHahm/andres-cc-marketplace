@@ -38,6 +38,51 @@ separate entry). Do **not** separately require `Codex delta review` or
 knows about every skip/bypass path; requiring `Codex delta review` directly would make a
 legitimately-bypassed PR's skip block the merge again, defeating the bypass entirely.
 
+### Carried results on a description edit (issue #706)
+
+An `edited` event (a title, body or base change) brings no new commit, so the jobs that depend only on the PR
+head and base content would compute the same result again. They are `python-quality`, `review-helpers-windows`,
+`node-tests`, `marketplace-parity` and `prefix-permanence`. Each runs a first step, `Carry this job's earlier
+result on a description-only edit`. When that step reports `carried=true`, every later step of the job is
+skipped, and the job ends `success` without re-running its checks.
+
+A plain `if:` skip is not used: a job skipped by `if:` counts as passing for a required check, and the
+workflow's `cancel-in-progress` concurrency lets an edit cancel an in-flight run, so a skip could turn a failed
+check on the same head green. The carry step reports `carried=true` only when all of these hold:
+
+- the event is `edited` and `github.event.changes.base` is absent (a base change runs everything);
+- the newest other run of this workflow for this PR, this head SHA, this repository and the `pull_request`
+  event, created no later than this run, is `completed` (an older success never outlives a newer failure,
+  cancellation or run still in progress);
+- no `base_ref_changed`, `automatic_base_change_succeeded` or `automatic_base_change_failed` issue event on the
+  PR is dated at or after that run's creation (this catches a base change whose own run is not listed yet);
+- that run's latest attempt has exactly one job with this job's display name, on this head, and it ended
+  `completed`/`success`. A carried success counts as a success for the next edit, so each carried result goes
+  back to a run that really ran the job.
+
+Anything else runs the job in full: no earlier run, an incomplete listing (more than 100 runs or jobs), an
+unreadable API reply after the retries (1 and 3 seconds, as in the anchor lookup), a malformed record, or any
+error in the step itself (`continue-on-error: true`; the gate passes only on the exact output `true`). The
+decision code is `scripts/marketplace_ci/prior_result.py`, standard library only, fetched from the **base
+SHA** through the Contents API into `$RUNNER_TEMP` and run as `python -I`, never from the PR's checkout. A base
+without the file (the pull request that introduces it) runs every job in full. These jobs gain `actions: read`,
+`issues: read` and `pull-requests: read` for the lookup; the token is passed only to that step's environment, but a later step of the same job (which may run PR code) can still read the job token from the runner. A re-run of an earlier `edited` run never carries (`github.run_attempt == 1`), so it cannot turn a newer failure green without a re-test.
+
+Jobs that still run in full on `edited`: `hygiene` (reads the title and body), `compute-scope` (reads the live
+body's `## Accepted Review Findings` waivers, R7), `codex-review` (acts on `compute-scope`'s carried findings
+and already makes no Codex call without new commits, R8), `publish` (re-evaluates the policy;
+`python-quality`'s carried result reads as `success`, so its skip handling is unchanged) and `fork-unsupported`.
+A fork PR never carries: its runs fail the repository check.
+
+`validate-marketplace.yml` (`Validate Repository Structure`, `Validate Marketplace Plugin Entries`,
+`Validate Individual Plugins`, `Check for Duplicate Plugin Names`) also runs on `edited` and is commit-dependent,
+but is not changed: its jobs take 10 to 20 seconds, about what the carry step's fetch and API reads cost, so
+carrying would save neither runner time nor merge wait.
+
+Known limitation: a `pull_request` run tests the merge ref, so a carried result was computed against the base
+branch as it was for the earlier run. That is what already happens when the base branch moves without a new PR
+event, and `merge-pr` requires the branch not to be behind its base anyway.
+
 ## External Codex connector review status
 
 A separate workflow, `.github/workflows/await-codex-review.yml`, makes the otherwise invisible
