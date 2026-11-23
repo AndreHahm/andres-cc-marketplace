@@ -62,6 +62,34 @@
       "path": "scripts/marketplace_ci/review.py",
       "pr": 865,
       "recorded_at": "2026-11-23T21:15:37+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "claude-summary-d05bae72-ci-md-820",
+      "line": 820,
+      "note": "summary-only finding: not merged with x, stated exactly",
+      "path": "docs/ci.md",
+      "pr": 865,
+      "recorded_at": "2026-11-23T21:31:59+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "claude-summary-d05bae72-review-3435",
+      "line": 3435,
+      "note": "summary-only finding: docstring no longer says verbatim",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 865,
+      "recorded_at": "2026-11-23T21:31:59+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "sonar-AaIKBWCBNLyP_Jf5-lTT",
+      "line": 62,
+      "note": "object literal default moved to a constant",
+      "path": "plugins/codex-kit/scripts/smoke-tests/codex-review-bridge-finding-categories.mjs",
+      "pr": 865,
+      "recorded_at": "2026-11-23T21:31:59+00:00",
+      "rule": "javascript:S7737"
     }
   ]
 }

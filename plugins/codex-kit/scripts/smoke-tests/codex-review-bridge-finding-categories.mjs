@@ -59,7 +59,8 @@ check("the default schema still accepts no category", !findSchemaViolation(envel
 const semanticRoot = fs.mkdtempSync(path.join(os.tmpdir(), "codex-review-bridge-category-semantic-"));
 try {
   for (const name of ["a.md", "b.md", "c.md"]) fs.writeFileSync(path.join(semanticRoot, name), name);
-  const categoryAfter = (components, extra = { category: "grant" }) => {
+  const grant = { category: "grant" };
+  const categoryAfter = (components, extra = grant) => {
     const data = envelope({ location: "a.md:1", components, ...extra });
     const result = semanticallyValidate(data, { targetPaths: ["a.md", "b.md"], dispatchId: "d", reviewerType: "r", repoRoot: semanticRoot });
     return result.ok ? data.findings[0].category : result;
