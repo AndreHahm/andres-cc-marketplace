@@ -2004,6 +2004,43 @@ jobs:
           changed=$(diff "$RUNNER_TEMP/codex-features-control-default.txt" "$RUNNER_TEMP/codex-features-control.txt" | grep -c '^>' || true)
           echo "Codex resolved the default [features] table in the checkout, so it did not apply the project config's features (only that table is compared); trusted, the base branch's config changes $changed feature(s), so an applied config is detectable"
 
+      # Issue #862: the reviewers run in the PR's checkout, whose AGENTS.md and .agents/skills the
+      # PR can edit, so the bridge passes the two overrides below (codex-exec.mjs's
+      # PROJECT_ISOLATION_ARGS; a test keeps the copies equal). This step checks on the pinned CLI
+      # that they work, in a throwaway project with canaries, so no PR content is read:
+      #   1. Control: without the overrides both canaries must reach the model input; otherwise
+      #      check 2 could not catch a leak.
+      #   2. With them, neither canary may.
+      # `debug prompt-input` makes no model call. It renders the initial input only, with the CLI's
+      # default model: a skill body Codex loads for a `$name` in the prompt is not visible here, and
+      # the bridge stops that by splitting the sigil (neutralizeSkillMentions).
+      - name: Check the overrides keep AGENTS.md and skills out of the model input
+        run: |
+          set -euo pipefail
+          canary_dir=$(mktemp -d "$RUNNER_TEMP/codex-canary.XXXXXX")
+          mkdir -p "$canary_dir/.git" "$canary_dir/.agents/skills/canary-skill"
+          printf 'AGENTS-DOC-CANARY\n' > "$canary_dir/AGENTS.md"
+          printf -- '---\nname: canary-skill\ndescription: SKILL-LIST-CANARY\n---\nbody\n' \
+            > "$canary_dir/.agents/skills/canary-skill/SKILL.md"
+          (cd "$canary_dir" && codex debug prompt-input hello) > "$RUNNER_TEMP/codex-input-default.txt"
+          (cd "$canary_dir" && codex debug prompt-input -c project_doc_max_bytes=0 -c skills.include_instructions=false hello) \
+            > "$RUNNER_TEMP/codex-input-isolated.txt"
+          if ! grep -q hello "$RUNNER_TEMP/codex-input-isolated.txt"; then
+            echo "::error::codex debug prompt-input rendered no prompt, so the isolation cannot be checked -- re-check this step after a Codex pin change"
+            exit 1
+          fi
+          for canary in AGENTS-DOC-CANARY SKILL-LIST-CANARY; do
+            if ! grep -q "$canary" "$RUNNER_TEMP/codex-input-default.txt"; then
+              echo "::error::$canary is missing without the overrides too, so this check cannot show whether they work -- re-check it after a Codex pin change"
+              exit 1
+            fi
+            if grep -q "$canary" "$RUNNER_TEMP/codex-input-isolated.txt"; then
+              echo "::error::$canary reaches the model input despite the overrides -- refusing to dispatch reviewers the PR's own AGENTS.md or skills could steer"
+              exit 1
+            fi
+          done
+          echo "With the overrides, neither a project AGENTS.md nor the project skill list reaches the model input"
+
       # R14: this run started on a ready PR, but it may have been converted to draft while it
       # waited, and `converted_to_draft` starts no run that would cancel this one. The draft flag
       # is re-read live right before the Codex call; a draft, or a flag that cannot be read, makes

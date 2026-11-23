@@ -1457,7 +1457,7 @@ def _dispatch_and_read_instruction(
     return instruction_files.get("security-reviewer", "")
 
 
-def test_every_reviewer_is_asked_for_a_category_and_briefed_on_it(
+def test_every_reviewer_is_isolated_asked_for_a_category_and_briefed_on_it(
     monkeypatch, repo, change, dependency_index, completed
 ):
     seen = {}
@@ -1467,6 +1467,7 @@ def test_every_reviewer_is_asked_for_a_category_and_briefed_on_it(
             text = Path(argv[argv.index("--instruction-file") + 1]).read_text(encoding="utf-8")
             asked = argv[argv.index("--finding-categories") + 1]
             seen[argv[argv.index("--reviewer-type") + 1]] = (asked, text)
+            assert argv[argv.index("--isolate-project") + 1] == "true"
             return completed(0)
         return completed(0, stdout=_FAKE_TOML_CONTENT)
 
@@ -1481,6 +1482,7 @@ def test_every_reviewer_is_asked_for_a_category_and_briefed_on_it(
         encoding="utf-8"
     )
     assert 'options["finding-categories"]' in bridge
+    assert 'options["isolate-project"]' in bridge
 
 
 def test_instruction_names_changed_ranges_and_limits_findings_to_them(

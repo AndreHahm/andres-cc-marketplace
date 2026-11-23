@@ -252,6 +252,17 @@ export function neutralizeClosingTags(value) {
   return value.replace(/<\s*\/\s*([a-zA-Z_][a-zA-Z0-9_-]*)\s*>/g, "(/$1)");
 }
 
+// Codex loads the body of a project skill when a user message names it as
+// `$name`, anywhere, also inside a code block or after a backslash, and even
+// with skills.include_instructions=false (observed on 0.170.0). A project
+// skill is a file the content under review can add, so a reviewer instruction
+// that merely shows "$VAR" would load a planted skill named VAR. A zero-width
+// space after the sigil stops that and leaves the text readable. `${`, `$(`
+// and a lone `$` name no skill and stay as they are.
+export function neutralizeSkillMentions(value) {
+  return value.replace(/\$(?=[^\s{(])/g, "$\u200b");
+}
+
 export function isWithin(absolute, scopeRoot) {
   // A plain startsWith() would let "/repo/plugins/foobar" pass as "within"
   // "/repo/plugins/foo" — require an exact match or a path-separator
@@ -605,7 +616,7 @@ async function main() {
   // - a flag followed directly by another flag, which parseArgs hands that flag's name as its value
   //   (isValidPathToken accepts it), dropping the real list.
   // Only the flag name is echoed, never a value.
-  for (const flag of ["target-paths", "target-paths-file", "finding-categories"]) {
+  for (const flag of ["target-paths", "target-paths-file", "finding-categories", "isolate-project"]) {
     const tokens = rawArgv.filter((a) => {
       const lower = a.toLowerCase();
       return lower === `--${flag}` || lower.startsWith(`--${flag}=`);
@@ -649,6 +660,12 @@ async function main() {
   // itself before calling this bridge.
   if (!isValidToken(reviewerType)) {
     console.error(JSON.stringify({ ok: false, category: "non_zero_exit", detail: "reviewer-type must match ^[A-Za-z0-9._-]{1,64}$ -- it is interpolated into the prompt" }));
+    process.exit(1);
+  }
+
+  const isolateProject = options["isolate-project"];
+  if (isolateProject !== undefined && isolateProject !== "true" && isolateProject !== "false") {
+    console.error(JSON.stringify({ ok: false, category: "non_zero_exit", detail: '--isolate-project must be "true" or "false"' }));
     process.exit(1);
   }
 
@@ -844,12 +861,13 @@ async function main() {
   ].join("\n");
 
   const result = await runCodexExec({
-    prompt,
+    prompt: isolateProject === "true" ? neutralizeSkillMentions(prompt) : prompt,
     schema: findingCategories ? withFindingCategories(ENVELOPE_SCHEMA, findingCategories) : ENVELOPE_SCHEMA,
     sandbox: "read-only",
     cwd,
     dispatchId,
     model: modelOverride || undefined,
+    isolateProject: isolateProject === "true",
     dryRun,
     ...(timeoutOverrideMs !== undefined ? { timeoutMs: timeoutOverrideMs } : {})
   });

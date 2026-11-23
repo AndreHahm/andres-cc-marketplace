@@ -506,6 +506,12 @@ function makeScratchFiles(dispatchId) {
   };
 }
 
+// Keeps the project's own AGENTS.md and its skill list out of the model input (issue #862): both are
+// files the content under review can edit. Checked on Codex 0.170.0. They do not stop Codex from
+// loading a skill's body when the prompt names it as `$name`; a caller splits that sigil itself (see
+// codex-review-bridge's neutralizeSkillMentions).
+export const PROJECT_ISOLATION_ARGS = Object.freeze(["-c", "project_doc_max_bytes=0", "-c", "skills.include_instructions=false"]);
+
 /**
  * Run `codex exec` synchronously with stdin piping, an explicit sandbox
  * flag, and bounded timeout. Never passes the prompt positionally.
@@ -524,6 +530,7 @@ function makeScratchFiles(dispatchId) {
  *   name here -- see cli-reference.md's "codex-kit never hardcodes a model name" note. A caller
  *   exposing this to its own environment (e.g. codex-review-bridge reading CODEX_KIT_REVIEW_MODEL)
  *   is responsible for validating the value before passing it through.
+ * @param {boolean} [opts.isolateProject=false] - when true, passes PROJECT_ISOLATION_ARGS
  * @param {boolean} [opts.dryRun=false] - when true, builds the real prompt/args and resolves the
  *   `codex` invocation exactly as a real dispatch would, but never spawns it. Returns
  *   `{ok: true, dryRun: true, wouldRun: {...}}` on success, or the same typed failure a real
@@ -532,7 +539,7 @@ function makeScratchFiles(dispatchId) {
  *   only occur once Codex actually runs, so a dry run cannot surface those by construction.
  * @returns {Promise<{ok: true, data: object} | {ok: true, dryRun: true, wouldRun: object} | {ok: false, category: string, detail: string}>}
  */
-export function runCodexExec({ prompt, schema, timeoutMs = 240000, cwd, sandbox, dispatchId = `d${Date.now().toString(36)}`, model, dryRun = false }) {
+export function runCodexExec({ prompt, schema, timeoutMs = 240000, cwd, sandbox, dispatchId = `d${Date.now().toString(36)}`, model, isolateProject = false, dryRun = false }) {
   if (!sandbox) {
     throw new Error("runCodexExec requires an explicit sandbox mode — never omit it (scope-expansion gap #4).");
   }
@@ -578,6 +585,9 @@ export function runCodexExec({ prompt, schema, timeoutMs = 240000, cwd, sandbox,
     ];
     if (model) {
       args.push("--model", model);
+    }
+    if (isolateProject) {
+      args.push(...PROJECT_ISOLATION_ARGS);
     }
 
     if (dryRun) {

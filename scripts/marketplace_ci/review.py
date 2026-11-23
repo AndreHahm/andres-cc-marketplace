@@ -4409,6 +4409,9 @@ def _dispatch_one(
         dispatch_id,
         "--finding-categories",
         ",".join(FINDING_CATEGORIES),
+        # The checkout's AGENTS.md and skills are files the PR can edit (issue #862).
+        "--isolate-project",
+        "true",
     ]
     # The unsandboxed fallback (codex-windows-guardrails), only when the caller consented. Its
     # --target-paths is one comma-joined argument, so a scope too long for a command line has no

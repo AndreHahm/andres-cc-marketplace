@@ -797,6 +797,17 @@ reviewer's `measurement` finding is a notice until the Phase 2 verifiers can con
 that lets a model's own label downgrade its finding, which is safe only while the bridge's output schema
 has no `rule_class` property (a test fails if it gains one).
 
+**The PR's own `AGENTS.md` and skills do not reach the Codex reviewers (issue #862).** They run in the PR's
+checkout, where Codex would add the project's `AGENTS.md` and skill list to the model input, and a PR can edit
+both. `run-codex-review` passes `--isolate-project true`, so the bridge runs Codex with
+`project_doc_max_bytes=0` and `skills.include_instructions=false`. The job's step `Check the overrides keep
+AGENTS.md and skills out of the model input` checks on the pinned CLI that they work, with canary files and a
+control, for the initial input and the CLI's default model (`codex debug prompt-input`; `codex exec` was checked
+once by hand on 0.170.0, against a local mock provider). The overrides do not stop Codex from loading a project
+skill's body for any `$name` in the prompt, even inside a code block, so the bridge also puts a zero-width space
+after each such `$`; its smoke test, run by `test_codex_kit_smoke.py`, checks that, not the CI step. A reviewer
+can still read both files as content under review. The unsandboxed fallback does none of this.
+
 **Grant findings never block (issue #862).** CI's Codex review asks the bridge for a `category` on every finding
 (`--finding-categories`; `allowed-tools-grant` or `other`) and briefs every Codex reviewer, `security-reviewer`
 included, on what each means and to report a grant finding as minor. A Critical or Major model finding

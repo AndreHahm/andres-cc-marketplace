@@ -102,6 +102,7 @@ def test_the_findings_message_does_not_claim_every_blocker_is_on_a_changed_line(
 
 
 CONFIG_CHECK_NAME = "Check Codex does not apply the repository's own config"
+ISOLATION_CHECK_NAME = "Check the overrides keep AGENTS.md and skills out of the model input"
 
 
 def test_the_codex_config_check_runs_after_login_and_the_probe_and_before_any_codex_call():
@@ -112,6 +113,7 @@ def test_the_codex_config_check_runs_after_login_and_the_probe_and_before_any_co
         "Authenticate and smoke-check the Codex CLI",
         "Allow Codex's bwrap sandbox on the hosted runner",
         CONFIG_CHECK_NAME,
+        ISOLATION_CHECK_NAME,
         "Make no Codex call if the PR was converted to draft",
         DISPATCH_NAME,
     ]
