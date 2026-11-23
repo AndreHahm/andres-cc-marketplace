@@ -1,0 +1,31 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4663788546",
+      "line": 2433,
+      "note": "Fixed in 8491472c: a deletion finding is not carried once its file is back at the head.",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 853,
+      "recorded_at": "2026-11-23T09:30:48+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4663788685",
+      "line": 1586,
+      "note": "Fixed in 8491472c: a file replaced by a directory counts as deleted; unknown git state is None and fails the carry closed.",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 853,
+      "recorded_at": "2026-11-23T09:30:48+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4663788833",
+      "line": 167,
+      "note": "Fixed in 8491472c: R7 wording narrowed to waivers that need a maintainer's confirmation.",
+      "path": "docs/ci-codex-review-user-requirements.md",
+      "pr": 853,
+      "recorded_at": "2026-11-23T09:30:49+00:00"
+    }
+  ]
+}
