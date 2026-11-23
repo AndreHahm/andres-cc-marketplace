@@ -105,7 +105,8 @@ END {
 # text inside a message is not read as a flag. A value is blanked only where the words are
 # certain: a top-level git command, after assignments or `env` with assignments, with the
 # subcommand found past git's global options, and only commit -m/--message, tag
-# -m/--message and clean -e/--exclude after options known to take no value. An unknown
+# -m/--message and --format, branch --format and clean -e/--exclude, after options known to
+# take no value or a known value (commit -S, --author, --date, --trailer; tag -u). An unknown
 # option stops blanking for that command (`commit -F x -m` would make -m the file). Blanking
 # stops for the rest of the command at anything not modeled here: $( ), a backtick, ${ },
 # <( ), a heredoc, [[ ]], case, alias, function or a parenthesis inside a command; a word
@@ -150,7 +151,7 @@ function endcmd() {
 }
 function raw(k) { return substr(s, cs[k], ce[k] - cs[k]) }
 function span(a, b) { nb++; sa[nb] = a; sb[nb] = b }
-function blank_cmd(    k, set, v, long, longb, o, r, re) {
+function blank_cmd(    k, set, v, long, long2, longb, sv, so, lv, lo, o, p, r, re) {
     for (k = 1; k <= nk; k++) if (cg[k]) return
     k = 1
     while (k <= nk && raw(k) ~ /^[A-Za-z_][A-Za-z0-9_]*=/) k++
@@ -172,26 +173,39 @@ function blank_cmd(    k, set, v, long, longb, o, r, re) {
             cn[k] !~ /^--(git-dir|work-tree|namespace|super-prefix|config-env|attr-source|shallow-file)=/) return
     }
     if (k > nk || ct[k]) return
-    # set: short options that take no value and may share a cluster with v.
+    # set: short options that take no value and may share a cluster with v. v, long and long2
+    # are the options whose value is blanked. The others take a value that is kept but skipped,
+    # so it is not read as an option: sv is a short one whose value is the rest of its word or
+    # else the next word (`tag -u key`), lv a long one with the value in the next word or after
+    # `=`. so and lo take only an attached value: `commit -Sm` signs with key m, so -S ends its
+    # word and nothing in it is a message; lo is the long form (`--gpg-sign=key`).
+    sv = ""; so = ""; lv = ""; lo = ""; long2 = ""
     if (cn[k] == "commit") {
-        set = "asneqviopz"; v = "m"; long = "--message"
+        set = "asneqviopz"; v = "m"; long = "--message"; so = "S"
+        lv = "|--author|--date|--trailer|"; lo = "|--gpg-sign|"
         longb = "|--all|--signoff|--no-signoff|--no-verify|--verify|--edit|--no-edit|--quiet|"
         longb = longb "--verbose|--include|--only|--patch|--null|--dry-run|--short|--branch|"
         longb = longb "--porcelain|--long|--reset-author|--allow-empty|--allow-empty-message|"
         longb = longb "--no-post-rewrite|--status|--no-status|--no-gpg-sign|"
     } else if (cn[k] == "tag") {
-        set = "asf"; v = "m"; long = "--message"; longb = "|--annotate|--sign|--force|"
+        set = "asfl"; v = "m"; long = "--message"; long2 = "--format"; sv = "u"
+        lv = "|--local-user|"; longb = "|--annotate|--sign|--force|--list|"
+    } else if (cn[k] == "branch") {
+        # A listing: only the --format value is blanked, so a `-d` printed as text is not a flag.
+        set = "arvlq"; v = ""; long = "--format"
+        longb = "|--list|--all|--remotes|--verbose|--quiet|--ignore-case|"
     } else if (cn[k] == "clean") {
         set = "dfinqxX"; v = "e"; long = "--exclude"
         longb = "|--force|--dry-run|--quiet|--interactive|"
     } else return
-    re = "^-[" set "]*" v
+    # With no short value option, re cannot match: every word tested here starts with `-`.
+    re = (v == "") ? "^[^-]" : "^-[" set "]*" v
     for (k++; k <= nk; k++) {
         o = cn[k]
         # A cut word read as an option could end differently; a cut value is skipped above.
         if (ct[k] || o == "--") return
         if (o !~ /^-/) continue
-        if (o ~ (re "$") || o == long) {
+        if (o ~ (re "$") || o == long || (long2 != "" && o == long2)) {
             # Under `set -k` bash moves a NAME=value word out of the arguments, so the
             # next word would be the value: stop rather than guess.
             if (k < nk && cn[k + 1] ~ /^[A-Za-z_][A-Za-z0-9_]*\+?=/) return
@@ -210,7 +224,28 @@ function blank_cmd(    k, set, v, long, longb, o, r, re) {
             span(cs[k] + length(long) + 1, ce[k])
             continue
         }
-        if (o ~ ("^-[" set "]+$") || index(longb, "|" o "|")) continue
+        if (long2 != "" && index(o, long2 "=") == 1) {
+            if (index(r, long2 "=") != 1) return
+            span(cs[k] + length(long2) + 1, ce[k])
+            continue
+        }
+        if (so != "" && o ~ ("^-[" set "]*[" so "]")) continue
+        if (sv != "" && o ~ ("^-[" set "]*[" sv "]")) {
+            if (o ~ ("^-[" set "]*[" sv "]$")) {
+                if (k < nk && cn[k + 1] ~ /^[A-Za-z_][A-Za-z0-9_]*\+?=/) return
+                k++
+            }
+            continue
+        }
+        if (index(lv, "|" o "|")) {
+            if (k < nk && cn[k + 1] ~ /^[A-Za-z_][A-Za-z0-9_]*\+?=/) return
+            k++
+            continue
+        }
+        p = index(o, "=")
+        if (p > 1 && (index(lv, "|" substr(o, 1, p - 1) "|") || index(lo, "|" substr(o, 1, p - 1) "|")))
+            continue
+        if (o ~ ("^-[" set "]+$") || index(longb, "|" o "|") || index(lo, "|" o "|")) continue
         return
     }
 }
@@ -554,12 +589,34 @@ ABBREV_GIT_RE+="|pull([^;&|]*[[:space:]])?-[a-zA-Z]*r${GIT_SUB_END}"
 # `-c alias.x=` in text is not read as one; a rebase key may also stand alone, since git reads
 # `-c pull.rebase` as true. A GIT_CONFIG_KEY_<n> value is the bare key.
 CONFIG_KEYS='(clean\.requireforce|pull\.(rebase|ff)|merge\.ff|branch\.[^[:space:]=]*\.rebase|alias\.[^[:space:]=]*)'
+# A `-c` value written in the command is read too: `pull.ff=only` keeps pull fast-forward-only
+# and `clean.requireForce=true` keeps the force check, so only another value of those two keys
+# is blocked. A value must be exactly that word, ended by a blank, a quote, an operator or the
+# end; any other `-c` of the same key in the command is still matched on its own. A value
+# split by a backslash also reads as `_` in one copy, so it is blocked. --config-env and the
+# GIT_CONFIG_* forms take the value from elsewhere, so every value of these keys stays blocked.
+CONFIG_VALUE_END='([[:space:]"'"'"';&|)}`<>]|$)'
+CONFIG_VALUE_NOT='[:space:]"'"'"';&|)}`<>'
+CONFIG_NOT_ONLY="(${CONFIG_VALUE_END}|(o|on|onl)${CONFIG_VALUE_END}|[^o${CONFIG_VALUE_NOT}]"
+CONFIG_NOT_ONLY+="|o[^n${CONFIG_VALUE_NOT}]|on[^l${CONFIG_VALUE_NOT}]|onl[^y${CONFIG_VALUE_NOT}]|only[^${CONFIG_VALUE_NOT}])"
+CONFIG_NOT_TRUE="(${CONFIG_VALUE_END}|(t|tr|tru)${CONFIG_VALUE_END}|[^t${CONFIG_VALUE_NOT}]"
+CONFIG_NOT_TRUE+="|t[^r${CONFIG_VALUE_NOT}]|tr[^u${CONFIG_VALUE_NOT}]|tru[^e${CONFIG_VALUE_NOT}]|true[^${CONFIG_VALUE_NOT}])"
+CONFIG_C_SET="((pull\.rebase|merge\.ff|branch\.[^[:space:]=]*\.rebase|alias\.[^[:space:]=]*)="
+CONFIG_C_SET+="|pull\.ff=${CONFIG_NOT_ONLY}|clean\.requireforce=${CONFIG_NOT_TRUE})"
 # The option itself; under `set -k` a dropped NAME=value word may stand before the key.
-CONFIG_FLAG="(-c(${GIT_ASSIGN})*[[:space:]]*|--config-env(${GIT_ASSIGN})*[=[:space:]]+)"
-CONFIG_OPT="${SEGMENT_START}git${GIT_OPT}*[[:space:]]+${CONFIG_FLAG}"
-UNSAFE_CONFIG_RE="${CONFIG_OPT}${CONFIG_KEYS}="
+CONFIG_FLAG_C="-c(${GIT_ASSIGN})*[[:space:]]*"
+CONFIG_FLAG_E="--config-env(${GIT_ASSIGN})*[=[:space:]]+"
+CONFIG_FLAG="(${CONFIG_FLAG_C}|${CONFIG_FLAG_E})"
+# config_set_re <prefix>: the prefix followed by a per-command setting of one of the keys.
+config_set_re() {
+    printf '%s' "$1${CONFIG_FLAG_C}${CONFIG_C_SET}|$1${CONFIG_FLAG_E}${CONFIG_KEYS}="
+}
+CONFIG_PRE="${SEGMENT_START}git${GIT_OPT}*[[:space:]]+"
+CONFIG_OPT="${CONFIG_PRE}${CONFIG_FLAG}"
+UNSAFE_CONFIG_RE=$(config_set_re "${CONFIG_PRE}")
 UNSAFE_CONFIG_RE+="|${CONFIG_OPT}(pull|branch\.[^[:space:]=]*)\.rebase([[:space:]]|\$)"
-UNSAFE_CONFIG_RE+="|GIT_CONFIG_(KEY_[0-9]+|PARAMETERS)=[^[:space:]]*${CONFIG_KEYS}"
+# A GIT_CONFIG_* variable set for git (see GIT_CONFIG_ENV_RE below for where it is read).
+GIT_CONFIG_ENV="GIT_CONFIG_(KEY_[0-9]+|PARAMETERS)[+]?=[^[:space:]]*${CONFIG_KEYS}"
 # A forbidden git command inside a string that a shell runs (`bash -c 'git stash'`, also after
 # other commands, keywords or assignments in the string). The exec-policy rules match only the
 # outer command. Every check reads one line, so a string split over lines, or one piped into a
@@ -583,15 +640,16 @@ SHELL_STRING_GIT_RE="${SHELL_STRING_START}${SHELL_STRING_GIT}"
 # The same pattern for a decoded string read with --inner, from the start of each of its lines.
 INNER_GIT_RE="^[[:space:]]*${SHELL_STRING_BODY}${SHELL_STRING_GIT}"
 # The per-command settings above, also inside such a string (`ssh host 'git -c alias.x=stash x'`).
-SHELL_CONFIG_OPT="${SHELL_STRING_START}git${GIT_OPT}*[[:space:]]+${CONFIG_FLAG}"
-UNSAFE_CONFIG_RE+="|${SHELL_CONFIG_OPT}${CONFIG_KEYS}="
-UNSAFE_CONFIG_RE+="|${SHELL_CONFIG_OPT}(pull|branch\.[^[:space:]=]*)\.rebase${GIT_SUB_END_Q}"
+SHELL_CONFIG_PRE="${SHELL_STRING_START}git${GIT_OPT}*[[:space:]]+"
+UNSAFE_CONFIG_RE+="|$(config_set_re "${SHELL_CONFIG_PRE}")"
+UNSAFE_CONFIG_RE+="|${SHELL_CONFIG_PRE}${CONFIG_FLAG}(pull|branch\.[^[:space:]=]*)\.rebase${GIT_SUB_END_Q}"
+UNSAFE_CONFIG_RE+="|${SHELL_STRING_START}${GIT_CONFIG_ENV}"
 # Read in the copies without quote characters, for a key quoted inside the string
 # (`bash -c 'git -c "alias.x=stash" x'`) or a quoted argument before it (`ssh -o "A b" host`).
-SHELL_CONFIG_OPT='(^|[^A-Za-z0-9_.-])(bash|sh|zsh|dash|ksh|eval|su|ssh)[[:space:]]([^;&|]*[[:space:];&|({])?'
-SHELL_CONFIG_OPT+="git${GIT_OPT}*[[:space:]]+${CONFIG_FLAG}"
-UNSAFE_CONFIG_RE+="|${SHELL_CONFIG_OPT}${CONFIG_KEYS}="
-UNSAFE_CONFIG_RE+="|${SHELL_CONFIG_OPT}(pull|branch\.[^[:space:]=]*)\.rebase([[:space:]]|\$)"
+SHELL_CONFIG_PRE='(^|[^A-Za-z0-9_.-])(bash|sh|zsh|dash|ksh|eval|su|ssh)[[:space:]]([^;&|]*[[:space:];&|({])?'
+SHELL_CONFIG_PRE+="git${GIT_OPT}*[[:space:]]+"
+UNSAFE_CONFIG_RE+="|$(config_set_re "${SHELL_CONFIG_PRE}")"
+UNSAFE_CONFIG_RE+="|${SHELL_CONFIG_PRE}${CONFIG_FLAG}(pull|branch\.[^[:space:]=]*)\.rebase([[:space:]]|\$)"
 # chmod that makes a file writable by others: an octal mode whose last digit has the
 # write bit (2, 3, 6, 7), or a symbolic clause for o or a that adds or sets w. default.rules
 # lists a few exact modes; it cannot test the bit, so the hook catches the rest.
@@ -688,6 +746,29 @@ if matches_flags "${UNSAFE_CONFIG_RE}"; then
     block "Do not set clean.requireForce or a shell alias for one git command; ask the user."
 fi
 
+# A GIT_CONFIG_* assignment can reach git from many places: after any wrapper or path, a
+# backtick, `>(`, `case ... )`, `export --`, `env -S`, after the command under `set -k`, or as
+# a quoted `env`/`export`/`declare` argument, with quotes, `$'...'` or a backslash-newline
+# inside its value. So it is matched anywhere, in every copy, the quote-free ones included.
+# The one exception is a search for the text: the whole command is one `git grep`, `grep` or
+# `rg` whose only quoted part is one single-quoted argument that does not start with `-`, with
+# every other word a plain option or path (no `=`, no `-O` or `--open-files-in-pager` or its
+# abbreviation `--op`, no `--pre`: those run a program). Single quotes expand nothing, and a
+# quoted `'-O...'` would still be an option, so the argument is a pattern or an option value.
+search_only_command() {
+    local cmd=${ORIG_CMD} word='[A-Za-z0-9_./][A-Za-z0-9_./-]*' opt='-[-A-Za-z0-9]*' re
+    [[ "${cmd}" == *[$'\n\r']* ]] && return 1
+    [[ "${cmd}" =~ [[:blank:]]-[^-[:blank:]]*O|--(op|pre) ]] && return 1
+    re="^[[:blank:]]*(git([[:blank:]]+-C[[:blank:]]+${word})*[[:blank:]]+grep|grep|rg)"
+    re+="([[:blank:]]+(${opt}|${word}))*[[:blank:]]+'([^-'][^']*)?'"
+    re+="([[:blank:]]+(${opt}|${word}))*[[:blank:]]*\$"
+    [[ "${cmd}" =~ ${re} ]]
+}
+if { matches "${GIT_CONFIG_ENV}" || matches_code "${GIT_CONFIG_ENV}" ||
+    matches_flags "${GIT_CONFIG_ENV}"; } && ! search_only_command; then
+    block "Do not set clean.requireForce or a shell alias for one git command; ask the user."
+fi
+
 if ((INNER)) && { matches_flags "${INNER_GIT_RE}" || matches_flags "${GIT_AT_START}(${FORBIDDEN_GIT_RE})"; }; then
     block "This git command is forbidden by the exec-policy rules, also inside a shell string."
 fi
@@ -720,10 +801,27 @@ inner_string_allowed() {
     # A native Windows jq.exe writes each newline as CRLF (see the start of this file).
     [[ "$(jq -rn '"a\nb"')" == $'a\r\nb' ]] && back=${back//$'\r\n'/$'\n'}
     [[ "${back}" == "${value}" ]] || return 1
-    printf '%s\n' "${json}" | bash "${BASH_SOURCE[0]}" --inner >/dev/null 2>&1
+    # The inner run's reason is kept, so a policy block and a failed run read differently
+    # (the tests check which one they got). Only this hook's own `BLOCKED: ` line is passed on.
+    local rc=0 out ok='^BLOCKED: [^[:cntrl:]]+$'
+    out=$(printf '%s\n' "${json}" | bash "${BASH_SOURCE[0]}" --inner 2>&1 >/dev/null) || rc=$?
+    ((rc == 0)) && return 0
+    out=${out%%$'\n'*}
+    out=${out%$'\r'}
+    # The length is checked apart: some regex libraries reject a repeat bound over 255.
+    if ((rc == 2 && ${#out} <= 300)) && [[ "${out}" =~ ${ok} ]]; then
+        INNER_REASON=${out#BLOCKED: }
+    else
+        INNER_REASON="the check of the string failed (exit ${rc})."
+    fi
+    return 1
 }
 
+INNER_REASON=""
 if matches "${SHELL_STRING_GIT_RE}" && ! inner_string_allowed; then
+    if [[ -n "${INNER_REASON}" ]]; then
+        block "Inside a shell string: ${INNER_REASON}"
+    fi
     block "This git command is forbidden by the exec-policy rules, also inside a shell string."
 fi
 

@@ -20,18 +20,20 @@ command -v jq >/dev/null 2>&1 || { echo "FAIL: jq is required" >&2; exit 1; }
 pass=0
 fail=0
 run_case() {
-    local expected=$1 cmd rc got
+    local expected=$1 cmd rc got err
     cmd=$(printf '%b' "$2")
     # MSYS_NO_PATHCONV: Git Bash would otherwise rewrite a path-like argument such as
     # `/bin/rm -Rf x` before the native jq.exe sees it. Ignored elsewhere.
-    MSYS_NO_PATHCONV=1 jq -n --arg c "${cmd}" '{tool_input:{command:$c}}' |
-        bash "${HOOK}" >/dev/null 2>&1
+    err=$(MSYS_NO_PATHCONV=1 jq -n --arg c "${cmd}" '{tool_input:{command:$c}}' |
+        bash "${HOOK}" 2>&1 >/dev/null)
     rc=$?
     case "${rc}" in
         0) got=A ;;
         2) got=B ;;
         *) got="exit ${rc}" ;;
     esac
+    # A shell-string block whose recursive check failed is not a policy block.
+    [[ "${got}" == B && "${err}" == *"the check of the string failed"* ]] && got="B (inner check failed)"
     if [[ "${got}" == "${expected}" ]]; then
         pass=$((pass + 1))
     else
@@ -444,6 +446,100 @@ B	git commit -m "$(cat <<'EOF'\nmsg\nEOF\n)"; git rebase main
 B	cat > "note.md" <<'EOF'\ngit rebase main\nEOF
 B	cat > a <<'EOF'\ngit rebase main\nEOF\ncat > b <<'EOF'\ngit -C x stash\nEOF
 B	echo "$(cat <<'EOF')"\ngit rebase main\nEOF
+# --- options with a value before the message: the value is skipped, the message still blanked
+A	git -C . commit -S -m 'Document --amend behavior'
+A	git commit -S -m 'mention --amend'
+A	git commit -aS -m 'mention --amend'
+A	git commit --gpg-sign=KEY -m 'use --amend'
+A	git commit --author='A <a@b>' -m 'mention --amend'
+A	git -C . commit --author 'A <a@b>' -m 'mention --amend'
+A	git -C . commit --date=now --trailer 'Refs: x' -m 'use --amend'
+A	git -C . tag -u KEY -m 'see -d here' v1
+A	git -C . tag --local-user=KEY -m 'see -d here' v1
+# -Sm signs with key m, so the next word is a real option
+B	git -C . commit -Sm --amend
+B	git -C . commit -S --amend -m x
+B	git -C . commit --author x --amend -m y
+B	git -C . commit --author X=1 -m --amend
+B	git -C . tag -um -d v1
+B	git -C . tag -u KEY -d v1
+# --- a --format value is text, also when it holds a delete flag
+A	git branch --list --format='%(refname:short) -d docs'
+A	git branch --format '%(refname) --delete' --list
+A	git -C . tag --list --format='%(refname) -d x'
+B	git branch --format x -d docs
+B	git branch -d --format x docs
+B	git -C . tag --format x -d v1
+# --- GIT_CONFIG_* anywhere, except as the pattern of a plain search
+A	git grep -n 'GIT_CONFIG_KEY_0=pull.rebase'
+A	rg 'GIT_CONFIG_PARAMETERS=alias.x' docs
+B	GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=alias.x GIT_CONFIG_VALUE_0=stash git x
+B	env GIT_CONFIG_KEY_0=pull.rebase GIT_CONFIG_VALUE_0=true git pull
+B	export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=alias.x; git x
+B	echo `GIT_CONFIG_KEY_0=alias.x git x`
+B	ssh host 'GIT_CONFIG_KEY_0=alias.x git x'
+B	x=1; GIT_CONFIG_PARAMETERS="'alias.x=stash'" git x
+B	set -k; git x GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=alias.x GIT_CONFIG_VALUE_0=stash
+B	/usr/bin/env GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=alias.x GIT_CONFIG_VALUE_0=stash git x
+B	setsid env GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=alias.x GIT_CONFIG_VALUE_0=stash git x
+B	echo `env GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=alias.x GIT_CONFIG_VALUE_0=stash git x`
+B	echo ` GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=alias.x GIT_CONFIG_VALUE_0=stash git x`
+B	true >(GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=alias.x GIT_CONFIG_VALUE_0=stash git x)
+B	case 1 in 1) GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=alias.x GIT_CONFIG_VALUE_0=stash git x;; esac
+B	A=$(echo a b) GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=alias.x GIT_CONFIG_VALUE_0=stash git x
+B	export -- GIT_CONFIG_PARAMETERS="'alias.x'='stash'"; git x
+B	GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0+=alias.x GIT_CONFIG_VALUE_0=stash git x
+B	bash -c "GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=alias.x GIT_CONFIG_VALUE_0=stash git x"
+# Quotes, $'...' or a backslash-newline inside the value, quoted env/export/declare arguments,
+# env -S, and a later GIT_CONFIG_PARAMETERS entry (security review of PR 854, round 2).
+B	GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=al""ias.x GIT_CONFIG_VALUE_0=stash git x
+B	GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0='alias'.x GIT_CONFIG_VALUE_0=stash git x
+B	GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=$'\\x61lias.x' GIT_CONFIG_VALUE_0=stash git x
+B	GIT_CONFIG_PARAMETERS="'al''ias.x'='stash'" git x
+B	bash -c 'GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=al""ias.x GIT_CONFIG_VALUE_0=stash git x'
+B	GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=al\\\nias.x GIT_CONFIG_VALUE_0=stash git x
+B	GIT_CONFIG_COUNT=1 GIT_CONFIG_KE\\\nY_0=alias.x GIT_CONFIG_VALUE_0=stash git x
+B	env "GIT_CONFIG_COUNT=1" "GIT_CONFIG_KEY_0=alias.x" "GIT_CONFIG_VALUE_0=stash" git x
+B	export 'GIT_CONFIG_PARAMETERS='"'alias.x'='stash'"; git x
+B	declare -x "GIT_CONFIG_KEY_0=alias.x" GIT_CONFIG_COUNT=1 GIT_CONFIG_VALUE_0=stash; git x
+B	env -S'GIT_CONFIG_KEY_0=alias.x GIT_CONFIG_COUNT=1 GIT_CONFIG_VALUE_0=stash git x'
+B	env --split-string=GIT_CONFIG_KEY_0=alias.x\\ GIT_CONFIG_COUNT=1\\ GIT_CONFIG_VALUE_0=stash\\ git\\ x
+B	GIT_CONFIG_PARAMETERS="'user.name'='x' 'alias.x'='stash'" git x
+# The search exception: one git grep, grep or rg with one single-quoted argument, nothing else.
+A	grep -rn 'GIT_CONFIG_KEY_0=alias.x' .codex/hooks
+A	git -C . grep -n -- 'GIT_CONFIG_KEY_0=alias.x' -- src
+B	git grep "GIT_CONFIG_KEY_0=alias.x"
+B	git grep -O'env GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=alias.x GIT_CONFIG_VALUE_0=stash git x' x
+B	git grep -nO 'GIT_CONFIG_KEY_0=alias.x'
+B	git grep --open-files-in-pager='GIT_CONFIG_KEY_0=alias.x' x
+B	rg --pre=x 'GIT_CONFIG_KEY_0=alias.x'
+B	git grep 'GIT_CONFIG_KEY_0=alias.x'; GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=alias.x GIT_CONFIG_VALUE_0=stash git x
+B	git grep 'GIT_CONFIG_KEY_0=alias.x'\n GIT_CONFIG_COUNT=1 git x
+B	GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=alias.x GIT_CONFIG_VALUE_0=stash git grep 'x'
+B	git -c alias.grep=x grep 'GIT_CONFIG_KEY_0=alias.x'
+B	grep 'GIT_CONFIG_KEY_0=alias.x' GIT_CONFIG_PARAMETERS=alias.x
+B	git grep '-OGIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=alias.x GIT_CONFIG_VALUE_0=stash git x #' -e e
+B	git grep '-nOGIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=alias.x GIT_CONFIG_VALUE_0=stash git x #' -e e
+B	git grep '--op=GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=alias.x GIT_CONFIG_VALUE_0=stash git x #' -e e
+B	git grep --op 'GIT_CONFIG_KEY_0=alias.x' x
+A	git grep -n -e 'GIT_CONFIG_KEY_0=alias.x'
+# --- -c values that keep the restriction are allowed; any other value of the key is not
+A	git -c pull.ff=only pull
+A	git -c "pull.ff=only" pull
+A	git -c clean.requireForce=true clean -n
+A	bash -c 'git -c pull.ff=only pull'
+B	git -c pull.ff=false pull
+B	git -c pull.ff=onlyx pull
+B	git -c pull.ff= pull
+B	git -c pull.ff=only -c pull.ff=false pull
+B	git -c pull.ff=false -c pull.ff=only pull
+B	git -c clean.requireForce=false clean -d
+B	git -c clean.requireForce=truex clean -d
+B	git -c clean.requireForce=true -c clean.requireForce=false clean -d
+B	git --config-env pull.ff=only pull
+B	git --config-env=clean.requireForce=true clean -d
+B	bash -c 'git -c pull.ff=false pull'
+B	ssh host 'git -c clean.requireForce=false clean -d'
 CASES
 
 printf 'pass=%d fail=%d (%s)\n' "${pass}" "${fail}" "${HOOK}"
