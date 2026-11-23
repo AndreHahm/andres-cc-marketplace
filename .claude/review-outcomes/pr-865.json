@@ -64,6 +64,15 @@
       "recorded_at": "2026-11-23T21:15:37+00:00"
     },
     {
+      "disposition": "accepted",
+      "finding": "4672349998",
+      "line": 3287,
+      "note": "repeat of 4671339174 (label residual accepted by the maintainer), anchored at the call in gate_decision",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 865,
+      "recorded_at": "2026-11-23T21:39:20+00:00"
+    },
+    {
       "disposition": "fixed",
       "finding": "claude-summary-d05bae72-ci-md-820",
       "line": 820,
