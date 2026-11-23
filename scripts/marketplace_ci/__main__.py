@@ -880,18 +880,27 @@ def _first_run(args: argparse.Namespace) -> bool:
     return not (getattr(args, "ci_delta", False) and getattr(args, "anchor_sha", ""))
 
 
-def _issue_is_open(repo: str, number: int, gh: str = "gh") -> bool:
-    """True only for an open issue (not a pull request) of `repo`, read through `gh api`."""
+class _UnreadableError(Exception):
+    """A read the publish re-check depends on failed (R19: fail closed, `--strict`)."""
+
+
+def _issue_is_open(repo: str, number: int, gh: str = "gh", strict: bool = False) -> bool:
+    """True only for an open issue (not a pull request) of `repo`, read through `gh api`. With
+    `strict`, a read that fails raises _UnreadableError instead of counting as not open."""
     result = subprocess.run(
         [gh, "api", f"repos/{repo}/issues/{number}", "--jq", "[.state, (.pull_request != null)]"],
         capture_output=True,
         text=True,
     )
     if result.returncode != 0:
+        if strict:
+            raise _UnreadableError(f"cannot read issue #{number}")
         return False
     try:
         state, is_pr = json.loads(result.stdout)
     except (ValueError, TypeError):
+        if strict:
+            raise _UnreadableError(f"cannot read issue #{number}") from None
         return False
     return state == "open" and is_pr is False
 
@@ -932,11 +941,15 @@ def _tracked_issue_records(repo: str, numbers, gh: str = "gh") -> list[dict]:
     return records
 
 
-def _confirmed_waivers(repo: str, pr_number: str, gh: str = "gh") -> set[tuple[str, str, str]]:
+def _confirmed_waivers(
+    repo: str, pr_number: str, gh: str = "gh", strict: bool = False
+) -> set[tuple[str, str, str]]:
     """The waiver keys confirmed in the pull request's comments by a user whose role is maintain
     or admin (R7), read through `gh api`. A comment edited after it was posted confirms nothing,
     since a user with write access can edit another user's comment. Anything that cannot be read
-    confirms nothing, so a waiver that needs a confirmation keeps blocking (fail closed)."""
+    confirms nothing, so a waiver that needs a confirmation keeps blocking (fail closed). With
+    `strict` (the publish re-check, R19), a comments or role read that fails raises
+    _UnreadableError instead."""
     from scripts.marketplace_ci.review import parse_confirmations
 
     if not (
@@ -960,12 +973,16 @@ def _confirmed_waivers(repo: str, pr_number: str, gh: str = "gh") -> set[tuple[s
         errors="replace",
     )
     if listed.returncode != 0:
+        if strict:
+            raise _UnreadableError("cannot read the pull request's comments")
         return set()
     by_login: dict[str, set[tuple[str, str, str]]] = {}
     for raw in listed.stdout.splitlines():
         try:
             comment = json.loads(raw)
         except ValueError:
+            if strict:
+                raise _UnreadableError("cannot read the pull request's comments") from None
             return set()
         login, body = comment.get("login"), comment.get("body")
         if not (isinstance(login, str) and re.fullmatch(r"[A-Za-z0-9-]{1,39}", login)):
@@ -980,6 +997,8 @@ def _confirmed_waivers(repo: str, pr_number: str, gh: str = "gh") -> set[tuple[s
             capture_output=True,
             text=True,
         )
+        if permission.returncode != 0 and strict:
+            raise _UnreadableError(f"cannot read the role of {login}")
         # `role_name`, not `permission`: the latter reports a maintain user as `write`.
         if permission.returncode == 0 and permission.stdout.strip() in ("maintain", "admin"):
             confirmed |= keys
@@ -991,13 +1010,18 @@ def _handle_fetch_accepted_findings(args: argparse.Namespace) -> int:
     the reviewers needs no token (R17): the pull request body's `## Accepted Review Findings`
     section only (or `--body-file`, the local list before a pull request exists), the open
     issues its `deferred` lines name, and the waiver keys a maintainer confirmed in a comment.
-    Exits 2 when the body cannot be read."""
+    Exits 2 when the body cannot be read, and with `--strict` (the publish re-check, R19: fail
+    closed) also when an issue state, the comments or a commenter's role cannot be read."""
     from scripts.marketplace_ci.review import _section_text, read_waiver_section
 
     has_pr = bool(
         re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", args.repo or "")
         and re.fullmatch(r"[1-9][0-9]*", args.pr_number or "")
     )
+    strict = bool(getattr(args, "strict", False))
+    if strict and (args.body_file or not has_pr):
+        print("fetch-accepted-findings: --strict needs --repo and --pr-number", file=sys.stderr)
+        return 2
     if args.body_file:
         try:
             body = Path(args.body_file).read_text(encoding="utf-8")
@@ -1026,14 +1050,25 @@ def _handle_fetch_accepted_findings(args: argparse.Namespace) -> int:
         return 2
     open_issues: list[int] = []
 
+    # Passed only when set, so the run-start read calls the helpers exactly as before.
+    strict_kw = {"strict": True} if strict else {}
+
     def issue_is_open(n: int) -> bool:
-        is_open = bool(args.repo) and _issue_is_open(args.repo, n, args.gh)
+        is_open = bool(args.repo) and _issue_is_open(args.repo, n, args.gh, **strict_kw)
         if is_open:
             open_issues.append(n)
         return is_open
 
-    tracked = read_waiver_section(body, issue_is_open).tracked
-    confirmed = sorted(_confirmed_waivers(args.repo, args.pr_number, args.gh)) if has_pr else []
+    try:
+        tracked = read_waiver_section(body, issue_is_open).tracked
+        confirmed = (
+            sorted(_confirmed_waivers(args.repo, args.pr_number, args.gh, **strict_kw))
+            if has_pr
+            else []
+        )
+    except _UnreadableError as exc:
+        print(f"fetch-accepted-findings: {exc}", file=sys.stderr)
+        return 2
     # Keep only the section, not the whole body: the file is uploaded as an artifact, which would
     # keep text a later edit removes from the body. Every reader re-extracts the same section.
     section = _section_text(body)
@@ -2888,6 +2923,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     fetch_accepted.add_argument(
         "--gh", default="gh", metavar="PATH", help="the gh executable (CI passes an absolute path)"
+    )
+    fetch_accepted.add_argument(
+        "--strict",
+        action="store_true",
+        help="exit 2 when an issue state, the comments or a role cannot be read (R19 publish)",
     )
     fetch_accepted.add_argument("--output", required=True, metavar="PATH")
     fetch_accepted.set_defaults(handler=_handle_fetch_accepted_findings)

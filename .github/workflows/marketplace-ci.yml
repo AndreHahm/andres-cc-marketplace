@@ -2308,7 +2308,7 @@ jobs:
             elif [ "$base_rc" -ne 0 ]; then
               echo "::error::cannot read the base branch's code to find the waiver re-check (git grep exit $base_rc)"
             elif uv run python -m scripts.marketplace_ci fetch-accepted-findings \
-                --repo "$REPO" --pr-number "$PR_NUMBER" --gh /usr/bin/gh \
+                --repo "$REPO" --pr-number "$PR_NUMBER" --gh /usr/bin/gh --strict \
                 --output "$dir/accepted.json"; then
               set +e
               uv run python -m scripts.marketplace_ci recheck-waivers \
