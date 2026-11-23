@@ -23,6 +23,7 @@ import sys
 import tempfile
 import threading
 import time
+import tomllib
 import unicodedata
 from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
@@ -3249,8 +3250,6 @@ def has_blocking_findings(
 
 # --- Trusted base-SHA reviewer-instruction extraction (design v4 amendment 13) ---
 
-_DEVELOPER_INSTRUCTIONS_PATTERN = re.compile(r'developer_instructions\s*=\s*"""(.*)"""', re.DOTALL)
-
 
 def _format_ranges(spans: Sequence[tuple[int, int]]) -> str:
     merged: list[tuple[int, int]] = []
@@ -3326,8 +3325,13 @@ def render_diff_scope(
 
 
 def _extract_developer_instructions(toml_text: str) -> str:
-    match = _DEVELOPER_INSTRUCTIONS_PATTERN.search(toml_text)
-    return match.group(1) if match else ""
+    """The field as TOML reads it (escapes resolved, issue #862), or "" when the file is not valid
+    TOML or the field is missing or not a string; the caller refuses an empty one."""
+    try:
+        value = tomllib.loads(toml_text).get("developer_instructions")
+    except tomllib.TOMLDecodeError:
+        return ""
+    return value if isinstance(value, str) else ""
 
 
 def prepare_reviewer_instruction(
@@ -3340,12 +3344,10 @@ def prepare_reviewer_instruction(
     SHA can't be resolved, if `<agent_name>` has no `.toml` export at that
     SHA (i.e. it isn't registered in `codex_exports.agents`), or if the
     export's `developer_instructions` field can't actually be extracted
-    (empty or missing -- e.g. a `.toml` using single-quoted triple-quotes
-    instead of the double-quoted triple-quote form
-    `_DEVELOPER_INSTRUCTIONS_PATTERN` matches, or hand-edited without the
-    field at all). The last case matters as much as the other two: a
-    silent empty extraction previously wrote an empty instruction file and
-    let dispatch proceed as if the reviewer had real instructions -- Codex
+    (empty, missing, not a string, or the file is not valid TOML). The last
+    case matters as much as the other two: a silent empty extraction
+    previously wrote an empty instruction file and let dispatch proceed as
+    if the reviewer had real instructions -- Codex
     then ran with nothing to check against, `validate_review_output` still
     accepted its (necessarily empty) findings as schema-valid, and the run
     reported that reviewer as having completed. Found live on PR #370: this
