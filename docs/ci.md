@@ -742,8 +742,8 @@ reviewer's `measurement` finding is a notice until the Phase 2 verifiers can con
 that lets a model's own label downgrade its finding, which is safe only while the bridge's output schema
 has no `rule_class` property (a test fails if it gains one).
 A model finding is also a notice when a script contradicts it (`_SCRIPT_OWNED_RULES`, `ScriptCoverage`). All
-of these must hold: only `plugin-rulebook-checker` reported it; its `rule` field (the axis) itself names one of
-R33, R35 or R37; every rulebook rule id its whole text names (axis, evidence, fix; read case-insensitively) is
+of these must hold: only `plugin-rulebook-checker` reported it; its `rule` field (the axis) itself names exactly
+one of R33, R35 or R37 (`plugin-rulebook-checker` splits a finding per rule); every rulebook rule id its whole text names (axis, evidence, fix; read case-insensitively) is
 one of those three; and this run's scripts covered the
 finding's own location. An id found only in the evidence or fix never qualifies a finding, because those
 often quote the PR's own lines: a PR could plant "per R35" beside a real defect (issue #525 security review).

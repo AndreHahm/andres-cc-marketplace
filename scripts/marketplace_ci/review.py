@@ -3040,11 +3040,13 @@ def _claimed_rule_ids(finding: Finding) -> set[str]:
 
 def _claims_only_script_owned_rules(finding: Finding) -> bool:
     """True for a MODEL finding that only the rulebook checker reported, whose `rule` field itself
-    names a rulebook rule, and whose whole text names only script-owned rules. A finding any other
-    reviewer also reported, or one that names any other rule or none, is not matched. Evidence and
-    remediation often quote the PR's own lines, so an id found only there can make a finding block
-    but never qualify it (issue #525 security review). Whether it is downgraded is decided by
-    `_contradicted_by_script`."""
+    names exactly one rulebook rule, and whose whole text names only script-owned rules. A finding
+    any other reviewer also reported, or one that names any other rule or none, is not matched.
+    Evidence and remediation often quote the PR's own lines, so an id found only there can make a
+    finding block but never qualify it (issue #525 security review). A `rule` naming two or more
+    rules is not matched either: the checker splits a finding per rule (its Review Bridge Envelope
+    section), so such a finding did not follow that contract. Whether it is downgraded is decided
+    by `_contradicted_by_script`."""
     if finding.source != "model":
         return False
     reporters = set(finding.reporters) | {finding.reviewer}
@@ -3052,7 +3054,7 @@ def _claims_only_script_owned_rules(finding: Finding) -> bool:
         return False
     in_rule = {rule.upper() for rule in _RULEBOOK_ID.findall(finding.rule)}
     named = _claimed_rule_ids(finding)
-    return bool(in_rule) and named <= _SCRIPT_OWNED_RULES
+    return len(in_rule) == 1 and named <= _SCRIPT_OWNED_RULES
 
 
 def _contradicted_by_script(finding: Finding, coverage: ScriptCoverage | None) -> bool:

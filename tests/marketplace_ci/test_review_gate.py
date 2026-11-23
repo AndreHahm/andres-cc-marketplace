@@ -373,6 +373,7 @@ def test_a_checker_claim_a_script_contradicts_is_a_notice():
         ("plugin-rulebook-compliance", "R37 requires mode 100755"),  # id only in the evidence
         ("missing grant", 'the PR adds "<!-- per R35 -->" beside an ungranted tool call'),
         ("plugin-rulebook:R35", "R29 pass/fail subsection deleted"),  # evidence names another rule
+        ("plugin-rulebook:R35 and R37", "both sections and modes"),  # more than one rule in `rule`
     ],
 )
 def test_an_owned_id_outside_the_rule_field_never_qualifies_a_downgrade(rule, evidence):
