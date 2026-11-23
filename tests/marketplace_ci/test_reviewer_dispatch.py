@@ -16,6 +16,7 @@ from scripts.marketplace_ci.review import (
     dispatch_reviewers,
     prepare_reviewer_instruction,
 )
+from scripts.marketplace_ci.review_contract import FINDING_CATEGORIES, render_category_briefing
 
 # A `git show <base_sha>:.codex/agents/<name>.toml` call inside
 # prepare_reviewer_instruction must yield extractable developer_instructions
@@ -1432,6 +1433,32 @@ def _dispatch_and_read_instruction(
     return instruction_files.get("security-reviewer", "")
 
 
+def test_every_reviewer_is_asked_for_a_category_and_briefed_on_it(
+    monkeypatch, repo, change, dependency_index, completed
+):
+    seen = {}
+
+    def fake_run(argv, **kw):
+        if "--reviewer-type" in argv:
+            text = Path(argv[argv.index("--instruction-file") + 1]).read_text(encoding="utf-8")
+            asked = argv[argv.index("--finding-categories") + 1]
+            seen[argv[argv.index("--reviewer-type") + 1]] = (asked, text)
+            return completed(0)
+        return completed(0, stdout=_FAKE_TOML_CONTENT)
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    scope = derive_review_scope([change(_SKILL_PATH)], dependency_index())
+    dispatch_reviewers(scope, base_sha="deadbeef", repo=repo)
+    assert "security-reviewer" in seen and len(seen) > 1
+    for asked, text in seen.values():
+        assert asked == ",".join(FINDING_CATEGORIES)
+        assert render_category_briefing() in text
+    bridge = (Path(__file__).resolve().parents[2] / review.BRIDGE_INVOKE_RELATIVE_PATH).read_text(
+        encoding="utf-8"
+    )
+    assert 'options["finding-categories"]' in bridge
+
+
 def test_instruction_names_changed_ranges_and_limits_findings_to_them(
     monkeypatch, repo, change, dependency_index, completed
 ):
@@ -1446,7 +1473,7 @@ def test_instruction_names_changed_ranges_and_limits_findings_to_them(
 
     assert text.lstrip().startswith("review this")  # the reviewer's own text stays first
     block = text[text.index("[diff scope]") :]
-    assert block.rstrip().endswith("[end diff scope]")
+    assert "[end diff scope]\n\n[finding category]" in block
     assert f"{_SKILL_PATH}: lines 3-5, 10" in block
     assert "only" in block and "changed lines" in block
 
@@ -1471,7 +1498,7 @@ def test_instruction_marks_whole_file_and_hunkless_paths_as_entire_file(
         assert str(sys.maxsize) not in text
 
 
-def test_instruction_is_unchanged_when_changed_ranges_are_unavailable(
+def test_instruction_has_no_diff_scope_when_changed_ranges_are_unavailable(
     monkeypatch, repo, change, dependency_index, completed
 ):
     # `None` is "could not compute" -- the gate then blocks every Critical/Major,
@@ -1480,7 +1507,8 @@ def test_instruction_is_unchanged_when_changed_ranges_are_unavailable(
         text = _dispatch_and_read_instruction(
             monkeypatch, repo, change, dependency_index, completed, **kwargs
         )
-        assert text == "\nreview this\n"  # exactly what the base-SHA export held
+        # What the base-SHA export held, then only the category briefing every reviewer gets.
+        assert text == f"\nreview this\n\n\n{render_category_briefing()}\n"
         assert "[diff scope]" not in text
 
 
