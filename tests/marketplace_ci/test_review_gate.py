@@ -396,37 +396,59 @@ def test_a_checker_r35_claim_on_a_skill_no_worse_than_its_base_is_a_notice():
     assert _outcome(other, R35_NO_WORSE) == "block"
 
 
+# The blocking fixtures below name their rule in `rule`, as the checker does, so each one blocks
+# on the condition it is about rather than on a generic axis (PR #855 review).
+R37_AXIS = "plugin-rulebook:R37"
+
+
 def test_without_coverage_nothing_is_downgraded():
-    finding = _claim("R37 requires mode 100755")
+    finding = _claim("R37 requires mode 100755", rule=R37_AXIS)
+    assert _outcome(finding, R37_CLEAN) == "notice"  # the control: covered, it would be a notice
     assert _outcome(finding, None) == "block"
     assert _outcome(finding, ScriptCoverage()) == "block"
 
 
 def test_coverage_is_per_rule_and_per_path():
-    finding = _claim("R37 requires mode 100755", path="plugins/demo-kit/hooks/hooks.json")
+    finding = _claim(
+        "R37 requires mode 100755", rule=R37_AXIS, path="plugins/demo-kit/hooks/hooks.json"
+    )
     assert _outcome(finding, R37_CLEAN) == "block"  # a hook command is not a covered grant document
-    assert _outcome(_claim("R33 prefix"), R37_CLEAN) == "block"  # R37 coverage says nothing of R33
-    both = _claim("R33 and R37 apply")
+    r33 = _claim("R33 prefix", rule="plugin-rulebook:R33")
+    assert _outcome(r33, R37_CLEAN) == "block"  # R37 coverage says nothing of R33
+    both = _claim("R33 and R37 apply", rule=R37_AXIS)
     assert _outcome(both, R37_CLEAN) == "block"  # every claimed rule must be covered
 
 
+@pytest.mark.parametrize("path", [f"./{SKILL}", SKILL.replace("/", "//"), f"{SKILL}/../SKILL.md"])
+def test_a_lexically_equivalent_path_matches_its_coverage(path):
+    """PR #855 review: `./x` and `a//b` name the covered file, so they downgrade like `x`."""
+    assert _outcome(_claim("no Quick Start", rule="R35", path=path), R35_NO_WORSE) == "notice"
+
+
+def test_an_absolute_or_escaping_path_never_matches_coverage():
+    """The pure gate cannot resolve an absolute path; an unmatched path keeps blocking."""
+    for path in (f"/repo/{SKILL}", f"../{SKILL}"):
+        assert _outcome(_claim("no Quick Start", rule="R35", path=path), R35_NO_WORSE) == "block"
+
+
 @pytest.mark.parametrize(
-    "evidence",
+    "rule, evidence",
     [
-        "R6 grant is too broad",
-        "R37 is mentioned, but the real defect is R6",
-        "the guard was removed",  # names no rule id
+        ("plugin-rulebook:R6", "R6 grant is too broad"),
+        (R37_AXIS, "R37 is mentioned, but the real defect is R6"),
+        ("plugin-rulebook-compliance", "the guard was removed"),  # names no rule id
     ],
 )
-def test_other_claims_still_block_even_with_coverage(evidence):
-    assert _outcome(_claim(evidence), R37_CLEAN) == "block"
+def test_other_claims_still_block_even_with_coverage(rule, evidence):
+    assert _outcome(_claim(evidence, rule=rule), R37_CLEAN) == "block"
 
 
 def test_only_the_rulebook_checker_can_be_contradicted():
-    quoted = _claim("foo(untrusted)  # see R37", reviewer="security-reviewer")
+    quoted = _claim("foo(untrusted)  # see R37", rule=R37_AXIS, reviewer="security-reviewer")
     assert _outcome(quoted, R37_CLEAN) == "block"
     shared = replace(
-        _claim("R37 requires 100755"), reporters=("plugin-rulebook-checker", "security-reviewer")
+        _claim("R37 requires 100755", rule=R37_AXIS),
+        reporters=("plugin-rulebook-checker", "security-reviewer"),
     )
     assert _outcome(shared, R37_CLEAN) == "block"
 
@@ -443,8 +465,9 @@ def test_a_script_finding_about_a_script_owned_rule_still_blocks():
 
 
 def test_a_merge_keeps_the_copy_that_still_blocks():
-    downgradable = _claim("R37 requires 100755", severity="Critical")
-    blocking = _claim("the real defect", rule="plugin-rulebook-compliance", severity="Major")
+    downgradable = _claim("R37 requires 100755", rule=R37_AXIS, severity="Critical")
+    assert _outcome(downgradable, R37_CLEAN) == "notice"  # the control: alone, it is downgraded
+    blocking = _claim("the real defect", rule=R37_AXIS, severity="Major")
     # Same axis, path and line: one copy would be downgraded, the other is not.
     merged = aggregate_findings(
         [
@@ -460,7 +483,10 @@ def test_an_uncovered_checker_claim_merged_with_a_minor_still_blocks():
     # The checker's Critical is on an uncovered location (it blocks); another reviewer's Minor
     # shares the axis, path and line. The merge must not keep the Minor copy and lose the block.
     critical = _claim(
-        "R37 requires 100755", severity="Critical", path="plugins/demo-kit/hooks/hooks.json"
+        "R37 requires 100755",
+        rule=R37_AXIS,
+        severity="Critical",
+        path="plugins/demo-kit/hooks/hooks.json",
     )
     minor = replace(critical, reviewer="skill-reviewer", severity="Minor", evidence="nit")
     merged = aggregate_findings(
@@ -475,5 +501,5 @@ def test_an_uncovered_checker_claim_merged_with_a_minor_still_blocks():
 
 
 def test_a_lowercase_or_spaced_rule_id_still_counts_as_another_claim():
-    mixed = _claim("rule R37 is cited, but r6 is the real defect")
+    mixed = _claim("rule R37 is cited, but r6 is the real defect", rule=R37_AXIS)
     assert _outcome(mixed, R37_CLEAN) == "block"

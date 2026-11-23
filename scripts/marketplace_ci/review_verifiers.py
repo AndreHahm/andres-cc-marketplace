@@ -1276,21 +1276,35 @@ def r35_no_worse(text: str, base_text: str, *, has_references: bool, had_referen
     """True when a skill's SKILL.md keeps every top-level `##` heading its base had and the skill
     did not gain a `references/` directory (which newly requires a Reference Guide). A renamed or
     removed heading, frontmatter added or removed (the body is read differently), frontmatter
-    closed by `...`, or a file too large to parse is not shown to be no worse. A section whose body
-    was emptied under a kept heading still counts: R35 asks for the section."""
+    closed by `...`, or a file too large or too deeply nested to parse is not shown to be no worse.
+    A section whose body was emptied under a kept heading still counts: R35 asks for the section."""
     if len(text) > MAX_PARSE_BYTES or len(base_text) > MAX_PARSE_BYTES:
         return False
     if has_references and not had_references:
         return False
-    head, base = _section_headings(text), _section_headings(base_text)
+    try:
+        head, base = _section_headings(text), _section_headings(base_text)
+    except Exception:  # RecursionError on deep nesting, or any parser fault: nothing is shown
+        return False
     if head is None or base is None:
         return False
     return head[0] == base[0] and base[1] <= head[1]
 
 
+def _frontmatter_readable(text: str) -> bool:
+    """False when `_frontmatter` cannot read the text exactly (no frontmatter is readable)."""
+    try:
+        _frontmatter(text)
+    except VerifierError:
+        return False
+    return True
+
+
 def _with_references(repo, ref: str, skill_dirs: Sequence[str]) -> set[str]:
-    """The skill directories in `skill_dirs` that have an entry named `references` at `ref`, in
-    any letter case: a case-insensitive checkout reads `References/` as the same directory."""
+    """The skill directories in `skill_dirs` that have a directory named `references` at `ref`, in
+    any letter case: a case-insensitive checkout reads `References/` as the same directory. A plain
+    file of that name is not one (R35 asks for a Reference Guide only for the directory); a symlink
+    or a submodule of that name is, since a checkout can show either as a directory."""
     if not skill_dirs:
         return set()
     listing = _run_git(
@@ -1298,14 +1312,18 @@ def _with_references(repo, ref: str, skill_dirs: Sequence[str]) -> set[str]:
         "--literal-pathspecs",
         "ls-tree",
         "-z",
-        "--name-only",
         ref,
         "--",
         *[f"{d}/" for d in skill_dirs],
     )
     found = set()
     for raw in listing.split(b"\0"):
-        name = raw.decode("utf-8", errors="surrogateescape")
+        meta, tab, name_bytes = raw.partition(b"\t")  # `<mode> <type> <object>\t<path>`
+        # Only a plain file is not a directory: a tree, and also a symlink or a submodule, which a
+        # checkout can show as one, counts (fail closed: the skill then keeps the model's verdict).
+        if not tab or meta.split(b" ")[0] in (b"100644", b"100755"):
+            continue
+        name = name_bytes.decode("utf-8", errors="surrogateescape")
         parent, _, base = name.rpartition("/")
         if base.casefold() == "references":
             found.add(parent)
@@ -2566,6 +2584,7 @@ def run_verifiers(
         and path not in unreadable_frontmatter
         and path in base_texts
         and old_of.get(path) == path
+        and _frontmatter_readable(base_texts[path])  # the base is read as strictly as the head
     ]
     if base_sha is not None and compared:
         dirs = [posixpath.dirname(p) for p in compared]

@@ -1199,3 +1199,73 @@ def test_script_coverage_takes_covered_pairs_only_as_r35_from_the_measurement_ve
     assert coverage.covers("R35", SKILL)
     assert not coverage.covers("R37", SKILL)
     assert not coverage.covers("R35", AGENT)
+
+
+# --- R35 coverage: PR #855 review round 1 --------------------------------------------------------
+
+
+def test_r35_a_base_too_deeply_nested_to_parse_is_not_no_worse():
+    """A base whose quotes nest past the recursion limit makes the parser raise; nothing is shown
+    no worse, and the error never escapes."""
+    deep = _skill("Read") + "\n" + "> " * 5000 + "text\n"
+    assert not _no_worse(_sectioned(), deep)
+    assert not _no_worse(deep, _sectioned())
+
+
+def test_run_verifiers_completes_when_the_base_is_too_deeply_nested(git_repo):
+    git_repo.write(SKILL, _skill("Read") + "\n" + "> " * 5000 + "text\n")
+    base = _commit(git_repo.root, "base")
+    git_repo.write(SKILL, _sectioned())
+    _commit(git_repo.root, "head")
+    outcomes = rv.run_verifiers(git_repo.root, _changes(SKILL, status="M"), base)
+    assert _covered(outcomes) == ()
+
+
+def test_run_verifiers_does_not_cover_r35_when_a_references_file_becomes_a_directory(git_repo):
+    """A plain file named `references` needs no Reference Guide; the directory that replaces it
+    does, so the skill gained one."""
+    git_repo.write(SKILL, _sectioned())
+    git_repo.write("plugins/demo-kit/skills/demo/references", "notes\n")
+    base = _commit(git_repo.root, "base")
+    subprocess.run(
+        ["git", "rm", "-q", "plugins/demo-kit/skills/demo/references"],
+        cwd=git_repo.root,
+        check=True,
+    )
+    git_repo.write("plugins/demo-kit/skills/demo/references/notes.md", "# Notes\n")
+    git_repo.write(SKILL, _sectioned("a changed line"))
+    _commit(git_repo.root, "head")
+    outcomes = rv.run_verifiers(git_repo.root, _changes(SKILL, status="M"), base)
+    assert _covered(outcomes) == ()
+
+
+def test_run_verifiers_still_covers_r35_when_only_a_references_file_is_added(git_repo):
+    git_repo.write(SKILL, _sectioned())
+    base = _commit(git_repo.root, "base")
+    git_repo.write("plugins/demo-kit/skills/demo/references", "notes\n")
+    git_repo.write(SKILL, _sectioned("a changed line"))
+    _commit(git_repo.root, "head")
+    outcomes = rv.run_verifiers(git_repo.root, _changes(SKILL, status="M"), base)
+    assert _covered(outcomes) == (("R35", SKILL),)
+
+
+def test_run_verifiers_does_not_cover_r35_when_the_base_frontmatter_is_unreadable(git_repo):
+    """The base is read as strictly as the head: an unreadable base frontmatter is never covered."""
+    git_repo.write(SKILL, "---\nname: [unclosed\n---\n\n" + _SECTIONS)
+    base = _commit(git_repo.root, "base")
+    git_repo.write(SKILL, _sectioned("a changed line"))
+    _commit(git_repo.root, "head")
+    outcomes = rv.run_verifiers(git_repo.root, _changes(SKILL, status="M"), base)
+    assert _covered(outcomes) == ()
+
+
+def test_run_verifiers_does_not_cover_r35_when_a_references_symlink_is_added(git_repo):
+    """Security review m1: a symlink a checkout shows as a directory counts as one."""
+    git_repo.write(SKILL, _sectioned())
+    git_repo.write("plugins/demo-kit/shared/notes.md", "# Notes\n")
+    base = _commit(git_repo.root, "base")
+    (git_repo.root / "plugins/demo-kit/skills/demo/references").symlink_to("../../shared")
+    git_repo.write(SKILL, _sectioned("a changed line"))
+    _commit(git_repo.root, "head")
+    outcomes = rv.run_verifiers(git_repo.root, _changes(SKILL, status="M"), base)
+    assert _covered(outcomes) == ()
