@@ -575,6 +575,10 @@ ABBREV_GIT_RE+="|clean([^;&|]*[[:space:]])?--f(o(r(c(e)?)?)?)?${GIT_SUB_END}"
 ABBREV_GIT_RE+="|pull([^;&|]*[[:space:]])?--((no-)?reb(a(s(e)?)?)?|sq(u(a(s(h)?)?)?)?)([=]|${GIT_SUB_END})"
 # A short-option cluster that holds a forbidden one (`branch -Dq`, `pull -qr`).
 ABBREV_GIT_RE+="|branch([^;&|]*[[:space:]])?-[a-zA-Z]*[dD][a-zA-Z]*${GIT_SUB_END}"
+# For tag, git deletes only with -d alone or with -i (`tag -di`, `tag -id`); it rejects -d with
+# any other flag. Only -i may come before the d: after -m, -F, -u or -n the rest of the word is
+# that option's value (`tag -mdone`, `tag -Fd`), and the match ignores case, so f would match F.
+ABBREV_GIT_RE+="|tag([^;&|]*[[:space:]])?-i*d[a-zA-Z]*${GIT_SUB_END}"
 ABBREV_GIT_RE+="|pull([^;&|]*[[:space:]])?-[a-zA-Z]*r${GIT_SUB_END}"
 # A setting given for one command only (`git -c ...`, `--config-env`, GIT_CONFIG_* variables)
 # that turns off clean's force check, makes pull rebase or merge, or defines any alias (an
@@ -587,8 +591,10 @@ ABBREV_GIT_RE+="|pull([^;&|]*[[:space:]])?-[a-zA-Z]*r${GIT_SUB_END}"
 # The -c and --config-env forms must follow `git` and its global options at the start of a
 # command or of a shell string (added below), and need `=` after the key, so `gcc -c alias.c`, `make -C alias.d` or a search for
 # `-c alias.x=` in text is not read as one; a rebase key may also stand alone, since git reads
-# `-c pull.rebase` as true. A GIT_CONFIG_KEY_<n> value is the bare key.
-CONFIG_KEYS='(clean\.requireforce|pull\.(rebase|ff)|merge\.ff|branch\.[^[:space:]=]*\.rebase|alias\.[^[:space:]=]*)'
+# `-c pull.rebase` as true, and so may `pull.ff`, whose bare `true` overrides a persistent
+# `pull.ff=only`. `branch.<name>.mergeOptions` passes options such as `--no-ff` to the merge
+# that pull runs. A GIT_CONFIG_KEY_<n> value is the bare key.
+CONFIG_KEYS='(clean\.requireforce|pull\.(rebase|ff)|merge\.ff|branch\.[^[:space:]=]*\.(rebase|mergeoptions)|alias\.[^[:space:]=]*)'
 # A `-c` value written in the command is read too: `pull.ff=only` keeps pull fast-forward-only
 # and `clean.requireForce=true` keeps the force check, so only another value of those two keys
 # is blocked. A value must be exactly that word, ended by a blank, a quote, an operator or the
@@ -601,7 +607,7 @@ CONFIG_NOT_ONLY="(${CONFIG_VALUE_END}|(o|on|onl)${CONFIG_VALUE_END}|[^o${CONFIG_
 CONFIG_NOT_ONLY+="|o[^n${CONFIG_VALUE_NOT}]|on[^l${CONFIG_VALUE_NOT}]|onl[^y${CONFIG_VALUE_NOT}]|only[^${CONFIG_VALUE_NOT}])"
 CONFIG_NOT_TRUE="(${CONFIG_VALUE_END}|(t|tr|tru)${CONFIG_VALUE_END}|[^t${CONFIG_VALUE_NOT}]"
 CONFIG_NOT_TRUE+="|t[^r${CONFIG_VALUE_NOT}]|tr[^u${CONFIG_VALUE_NOT}]|tru[^e${CONFIG_VALUE_NOT}]|true[^${CONFIG_VALUE_NOT}])"
-CONFIG_C_SET="((pull\.rebase|merge\.ff|branch\.[^[:space:]=]*\.rebase|alias\.[^[:space:]=]*)="
+CONFIG_C_SET="((pull\.rebase|merge\.ff|branch\.[^[:space:]=]*\.(rebase|mergeoptions)|alias\.[^[:space:]=]*)="
 CONFIG_C_SET+="|pull\.ff=${CONFIG_NOT_ONLY}|clean\.requireforce=${CONFIG_NOT_TRUE})"
 # The option itself; under `set -k` a dropped NAME=value word may stand before the key.
 CONFIG_FLAG_C="-c(${GIT_ASSIGN})*[[:space:]]*"
@@ -614,8 +620,8 @@ config_set_re() {
 CONFIG_PRE="${SEGMENT_START}git${GIT_OPT}*[[:space:]]+"
 CONFIG_OPT="${CONFIG_PRE}${CONFIG_FLAG}"
 UNSAFE_CONFIG_RE=$(config_set_re "${CONFIG_PRE}")
-UNSAFE_CONFIG_RE+="|${CONFIG_OPT}(pull|branch\.[^[:space:]=]*)\.rebase([[:space:]]|\$)"
-# A GIT_CONFIG_* variable set for git (see GIT_CONFIG_ENV_RE below for where it is read).
+UNSAFE_CONFIG_RE+="|${CONFIG_OPT}((pull|branch\.[^[:space:]=]*)\.rebase|pull\.ff)${GIT_SUB_END}"
+# A GIT_CONFIG_* variable set for git (read below, after the other per-command checks).
 GIT_CONFIG_ENV="GIT_CONFIG_(KEY_[0-9]+|PARAMETERS)[+]?=[^[:space:]]*${CONFIG_KEYS}"
 # A forbidden git command inside a string that a shell runs (`bash -c 'git stash'`, also after
 # other commands, keywords or assignments in the string). The exec-policy rules match only the
@@ -642,14 +648,14 @@ INNER_GIT_RE="^[[:space:]]*${SHELL_STRING_BODY}${SHELL_STRING_GIT}"
 # The per-command settings above, also inside such a string (`ssh host 'git -c alias.x=stash x'`).
 SHELL_CONFIG_PRE="${SHELL_STRING_START}git${GIT_OPT}*[[:space:]]+"
 UNSAFE_CONFIG_RE+="|$(config_set_re "${SHELL_CONFIG_PRE}")"
-UNSAFE_CONFIG_RE+="|${SHELL_CONFIG_PRE}${CONFIG_FLAG}(pull|branch\.[^[:space:]=]*)\.rebase${GIT_SUB_END_Q}"
+UNSAFE_CONFIG_RE+="|${SHELL_CONFIG_PRE}${CONFIG_FLAG}((pull|branch\.[^[:space:]=]*)\.rebase|pull\.ff)${GIT_SUB_END_Q}"
 UNSAFE_CONFIG_RE+="|${SHELL_STRING_START}${GIT_CONFIG_ENV}"
 # Read in the copies without quote characters, for a key quoted inside the string
 # (`bash -c 'git -c "alias.x=stash" x'`) or a quoted argument before it (`ssh -o "A b" host`).
 SHELL_CONFIG_PRE='(^|[^A-Za-z0-9_.-])(bash|sh|zsh|dash|ksh|eval|su|ssh)[[:space:]]([^;&|]*[[:space:];&|({])?'
 SHELL_CONFIG_PRE+="git${GIT_OPT}*[[:space:]]+"
 UNSAFE_CONFIG_RE+="|$(config_set_re "${SHELL_CONFIG_PRE}")"
-UNSAFE_CONFIG_RE+="|${SHELL_CONFIG_PRE}${CONFIG_FLAG}(pull|branch\.[^[:space:]=]*)\.rebase([[:space:]]|\$)"
+UNSAFE_CONFIG_RE+="|${SHELL_CONFIG_PRE}${CONFIG_FLAG}((pull|branch\.[^[:space:]=]*)\.rebase|pull\.ff)${GIT_SUB_END}"
 # chmod that makes a file writable by others: an octal mode whose last digit has the
 # write bit (2, 3, 6, 7), or a symbolic clause for o or a that adds or sets w. default.rules
 # lists a few exact modes; it cannot test the bit, so the hook catches the rest.
