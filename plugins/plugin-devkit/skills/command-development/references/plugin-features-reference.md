@@ -298,6 +298,7 @@ Commands that adapt to environment:
 ---
 description: Deploy based on environment
 argument-hint: [dev|staging|prod]
+allowed-tools: Read
 ---
 
 Deploying to: $0
@@ -471,6 +472,7 @@ Verify required files exist:
 ---
 description: Process configuration file
 argument-hint: [config-file]
+allowed-tools: Read
 ---
 
 Check that $0 is an existing file with the Read tool.

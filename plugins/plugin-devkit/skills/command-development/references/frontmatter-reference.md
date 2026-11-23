@@ -392,7 +392,7 @@ Restricted invocation:
 description: Approve production deployment
 argument-hint: [deployment-id]
 disable-model-invocation: true
-allowed-tools: Bash(gh:*)
+allowed-tools: Bash(gh api /deployments/:*)
 ---
 
 <!--

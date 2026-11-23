@@ -82,6 +82,26 @@
     },
     {
       "disposition": "fixed",
+      "finding": "ci-codex-delta-plugin-rulebook-checker-R6-r4",
+      "line": 322,
+      "note": "Added allowed-tools: Read to the example whose file check names the Read tool. Sibling sweep added the same grant to two plugin-features-reference examples with Read steps and no grant.",
+      "path": "plugins/plugin-devkit/skills/command-development/references/documentation-patterns.md",
+      "pr": 856,
+      "recorded_at": "2026-11-23T15:23:07+00:00",
+      "rule": "plugin-rulebook:R6"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-codex-delta-plugin-rulebook-checker-R6-r4-minor",
+      "line": 27,
+      "note": "The broad gh grant narrowed to the PR view, diff, checks and review subcommands, and Step 4 now names the review subcommand with its three flags. Sibling: frontmatter-reference's example narrowed to the deployments api path.",
+      "path": "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md",
+      "pr": 856,
+      "recorded_at": "2026-11-23T15:23:07+00:00",
+      "rule": "plugin-rulebook:R6"
+    },
+    {
+      "disposition": "fixed",
       "finding": "ci-codex-delta-security-reviewer-injection-surface-r1",
       "line": 403,
       "note": "Fixed in c666bfed: argument validated before use, config read through a narrowed Read grant as data, scripts run as body steps; same pattern fixed across the skill's examples and references.",
