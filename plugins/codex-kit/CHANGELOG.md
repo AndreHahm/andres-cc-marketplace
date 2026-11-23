@@ -4,6 +4,8 @@ All notable changes to this plugin are documented here.
 
 ## [Unreleased]
 
+- `codex-review-bridge` accepts `--isolate-project true` (issue #862), which keeps the reviewed project's own `AGENTS.md` and skills out of the model input, including a skill whose `$name` the prompt happens to contain. Off by default.
+
 - `codex-review-bridge` accepts `--finding-categories <a,b>` (issue #862): it adds a required `category` field, limited to the named values, to that call's findings. Without the flag the envelope is unchanged.
 
 - `codex-windows-guardrails` no longer refuses every dispatch for a PR that deletes a file (issue #781). Its preflight rejected any target path missing on disk, and callers list deleted files as targets on purpose, so on Windows every local Codex review of such a PR failed whenever the sandbox was down. A missing target is now accepted only when the trusted merge base (`merge-base HEAD origin/<default>`, never caller input) holds a regular file (mode 100644 or 100755) at exactly that path; the prompt names it in `<deleted_target_paths>`. A misspelled, case-variant or branch-only path, a deleted directory, a deleted symlink (mode 120000 at the base) or submodule entry (mode 160000), a dangling symlink at the path or at a directory above it, and every missing path without a resolvable base are still refused with `target_path_not_found`, and a deleted target whose name matches a sensitive-filename pattern is refused with `secret_file_in_scope`; a scope whose every target is a verified deletion (a PR that only deletes a reviewer's files) is accepted. Covered by 22 new checks in `codex-windows-guardrails-preflight.mjs` (181 in total).
