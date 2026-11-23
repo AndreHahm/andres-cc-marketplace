@@ -45,8 +45,8 @@ login/repo-name character rules make this safe, unlike a shell-string compositio
    Best Practice exists to prevent for commit/PR text (PR #257, 2026-08-31: a literally-spelled-out
    `@codex full review` caused Codex's connector to read a diff as a task addressed to it). More generally,
    since the reason becomes a permanent, potentially public artifact, treat any reason that looks like it
-   carries internal ticket detail, personnel/customer names, internal hostnames, or a credential-shaped
-   string the same way — ask for a rephrase rather than posting it. If a bot-trigger mention is found
+   carries internal ticket detail, personnel/customer names, internal hostnames, an absolute local path
+   (it can name a user's home directory), or a credential-shaped string the same way — ask for a rephrase rather than posting it. If a bot-trigger mention is found
    specifically, reject the flag and report why instead of posting it — do not proceed to step 2.
 2. **Resolve the actor and verify permission.** Resolve the current authenticated actor:
    `gh api user --jq '.login'` — unless the caller already resolved and verified this same actor's
