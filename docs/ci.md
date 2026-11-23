@@ -512,7 +512,10 @@ review` is the gate after the PR exists and reviews only the delta, to cut OpenA
 - **Waivers re-checked at publish (R19, issue #833).** `compute-scope` and `codex-review` read the waivers,
   confirmations and issue states when the run starts, and removing a confirmation or closing an issue
   starts no run. So `publish` (which has `issues: read`) downloads the `codex-review-result` and
-  `carried-findings` artifacts, runs `fetch-accepted-findings` again with its base-restored code, and
+  `carried-findings` artifacts, runs `fetch-accepted-findings --strict` again with its base-restored code
+  (`--strict`: an issue state, the comments or a commenter's role that cannot be read exits 2 instead of
+  reading as closed or unconfirmed, so the result fails; it is refused without `--repo` and
+  `--pr-number` or with `--body-file`; the run-start read keeps the old behavior), and
   `recheck-waivers` re-matches every entry those files recorded as waived (`recheck_applied_waivers`):
   only the waiver line the run applied, as recorded whole in `waiver_line` (`waiver` keeps 300
   characters, which a long rule and path can fill before the kind and issue; a result without
@@ -530,7 +533,12 @@ review` is the gate after the PR exists and reviews only the delta, to cut OpenA
   `briefed_waivers` into waived entries (`_briefed_entries`, reviewer `briefed-waiver`, `Major`, skipped
   when the anchor already records that rule, path and fingerprint in an entry the carry keeps, so a
   suppressed or non-blocking report does not hide it): carried as waived while the waiver
-  holds, blocking once it lapses, and dropped once its flagged line changes. Nobody can tell whether the
+  holds, blocking once it lapses, and dropped once its flagged line changes. The entry keeps
+  `briefed-waiver` as its reviewer or a reporter through every carry and merge, and so does an anchor
+  entry that already recorded a briefed line, so once lapsed an edit elsewhere in its file does not
+  release it as it releases an ordinary blocking finding. A briefed entry is placed where its fingerprint
+  is at the head, not at the waiver's possibly stale line, even in an unchanged file. Only a path of at
+  most 300 characters, the carry's own limit, is briefed, so every briefed line can be carried. Nobody can tell whether the
   reviewer would have reported it, so a later review that does not report it does not release it: restore
   the waiver line, change the flagged line, or attest a bypass. The lines are recorded uncut, so a long
   one can still be parsed when carried; they count toward the carry's 500-entry input cap. The Claude delta review does
@@ -541,7 +549,7 @@ review` is the gate after the PR exists and reviews only the delta, to cut OpenA
   too. The re-check is skipped on a valid bypass. Whether the base branch has `recheck-waivers` is read
   from its code (`git grep` at the base SHA), not from a command that can fail for other reasons: on a
   base without it (only the PR that adds it) the re-check passes with a note, and a lookup that fails
-  fails closed. The Claude delta review's publish step runs `fetch-accepted-findings` again and
+  fails closed. The Claude delta review's publish step runs `fetch-accepted-findings --strict` again and
   `narrow-accepted-findings` (`narrow_accepted_findings`) to keep only the waiver lines, tracked issues,
   open issues and confirmations both reads hold, before it marks anything waived; a fresh read that fails
   marks nothing waived. Accepted residual: a waiver withdrawn after the publishing step has read it takes

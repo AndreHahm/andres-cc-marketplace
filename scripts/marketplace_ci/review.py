@@ -1865,13 +1865,15 @@ def briefable_waivers(waivers: Sequence[Waiver]) -> tuple[Waiver, ...]:
     """The waivers a reviewer may be told about (R7): only those that need no maintainer's
     confirmation, so an unconfirmed waiver can never talk a reviewer out of reporting a finding
     the confirmation exists for, and only with a rule of plain characters and no spaces (so no
-    sentence reaches the model) and a plain path."""
+    sentence reaches the model) and a plain path. The path also fits a carried entry (R19): a
+    briefed waiver is carried, and a path the carry cannot read would fail every later run."""
     return tuple(
         w
         for w in waivers
         if not needs_maintainer_confirmation(w.path, ())
         and _BRIEFING_RULE.fullmatch(w.rule)
         and _BRIEFING_SAFE_PATH.fullmatch(w.path)
+        and _CARRY_FIELD.fullmatch(w.path)
     )
 
 
@@ -2222,11 +2224,14 @@ def _carried_copy_key(entry: Mapping[str, object]) -> tuple[str, str, str]:
 BRIEFED_REVIEWER = "briefed-waiver"
 
 
-def _briefed_entries(briefed: object, findings: Sequence[object]) -> list[dict]:
+def _briefed_entries(
+    briefed: object, findings: Sequence[object]
+) -> tuple[list[dict], set[tuple[str, str, str | None]]]:
     """R19: the anchor result's `briefed_waivers` as waived entries, so `carry_findings` carries
     each like a waived finding: a reviewer may have left its finding out of the result. A line
     the anchor's findings already record (same rule, path and fingerprint) in an entry the carry
-    keeps is not added twice.
+    keeps is not added twice; the key set of every briefed line comes back too, so the carry
+    marks that recorded entry as briefed instead.
     A briefed waiver never needs a confirmation (`briefable_waivers`), so its entry names a
     reviewer that is not security-reviewer. Anything unreadable raises CarryError (fail closed)."""
     if not isinstance(briefed, list):
@@ -2241,6 +2246,7 @@ def _briefed_entries(briefed: object, findings: Sequence[object]) -> list[dict]:
         and (e.get("blocking") is True or isinstance(e.get("waiver"), str))
     }
     entries: list[dict] = []
+    keys: set[tuple[str, str, str | None]] = set()
     for text in briefed:
         if not isinstance(text, str):
             raise CarryError("a briefed waiver is not text")
@@ -2249,6 +2255,7 @@ def _briefed_entries(briefed: object, findings: Sequence[object]) -> list[dict]:
         if len(parsed.waivers) != 1 or parsed.waivers[0].fingerprint is None:
             raise CarryError("a briefed waiver cannot be read")
         w = parsed.waivers[0]
+        keys.add((w.rule, w.path, w.fingerprint))
         if (w.rule, w.path, w.fingerprint) in recorded:
             continue
         recorded.add((w.rule, w.path, w.fingerprint))
@@ -2264,7 +2271,7 @@ def _briefed_entries(briefed: object, findings: Sequence[object]) -> list[dict]:
                 "waiver": text,
             }
         )
-    return entries
+    return entries, keys
 
 
 def carry_findings(
@@ -2294,7 +2301,8 @@ def carry_findings(
     # R19: a briefed waiver may stand for a finding a reviewer left out, so it is carried as a
     # waived finding: it blocks once its waiver lapses, even on a run that makes no Codex call.
     briefed = anchor_result.get("briefed_waivers", []) if isinstance(anchor_result, dict) else []
-    findings = [*findings, *_briefed_entries(briefed, findings)]
+    briefed_added, briefed_keys = _briefed_entries(briefed, findings)
+    findings = [*findings, *briefed_added]
     if len(findings) > _MAX_CARRIED_INPUT:
         raise CarryError(f"anchor result has more than {_MAX_CARRIED_INPUT} findings")
     section = read_waiver_section(pr_body, issue_is_open)
@@ -2340,10 +2348,16 @@ def carry_findings(
                     raise CarryError(f"cannot compare {path} with the anchor")
                 unchanged[path] = now == then
         is_waived = isinstance(entry.get("waiver"), str)
+        # A finding a briefed waiver stood for, waived or lapsed, keeps its own provenance through
+        # every carry and merge (`origin_reviewer` or a reporter): a reviewer may never report it,
+        # so a changed file does not release it, only its flagged line changing does (R19). An
+        # anchor entry that already recorded the briefed line counts too.
+        briefed_key = (rule, path, entry.get("fingerprint"))
+        briefed_origin = BRIEFED_REVIEWER in _entry_reviewers(entry) or briefed_key in briefed_keys
         # A changed file releases a blocking finding: the file is reviewed again. Unless a waiver
         # of the body applies to it now: then it is carried as waived, so a reviewer that leaves
         # it out does not lose it, and removing the waiver makes it block again (R7).
-        released = resolved and not unchanged[path] and not is_waived
+        released = resolved and not unchanged[path] and not is_waived and not briefed_origin
         # A marked finding whose issue applies now is kept like one a waiver line names (R18).
         tracked_now = entry.get("tracked_issue") in tracked
         if (
@@ -2367,6 +2381,12 @@ def carry_findings(
             if moved is None:
                 continue
             line = moved
+        elif resolved and entry.get("reviewer") == BRIEFED_REVIEWER:
+            # A briefed entry holds its waiver's line, which can be stale: the briefing found the
+            # fingerprint where it is now (issue #814), so the carry does too.
+            moved = locate_fingerprint(repo, "HEAD", path, fingerprint, line, head_prints)
+            if moved is not None:
+                line = moved
         reviewers = _entry_reviewers(entry)
         carried: dict = {"rule": rule, "path": path, "line": line}
         carried["severity"] = _carry_severity(entry)
@@ -2387,6 +2407,11 @@ def carry_findings(
                 # Truncating could drop security-reviewer, and with it the confirmation (R7).
                 raise CarryError("a blocking finding has too many reporters to carry")
             carried["reporters"] = sorted(set(named))
+        if briefed_origin and BRIEFED_REVIEWER not in carried.get("reporters", []):
+            # Recorded as a reporter, so the provenance survives the merge and every later carry.
+            carried["reporters"] = sorted({*carried.get("reporters", []), BRIEFED_REVIEWER})
+            if len(carried["reporters"]) > _MAX_CARRIED_REPORTERS:
+                raise CarryError("a blocking finding has too many reporters to carry")
         if any(isinstance(r, str) and not _CARRY_FIELD.fullmatch(r) for r in reviewers):
             raise CarryError("a blocking finding has no usable reviewer")
         # An entry carried before issue #808 is `reviewer: carried` with no `origin_reviewer` key,

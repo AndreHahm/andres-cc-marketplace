@@ -1801,6 +1801,139 @@ def test_a_long_briefed_waiver_still_holds_at_publish_after_the_carry_and_the_me
     assert recheck_briefed_waivers([line], section) == []
 
 
+def test_a_waiver_path_the_carry_cannot_read_is_never_briefed():
+    """A briefed waiver is carried (R19), and the carry refuses a path over 300 characters, which
+    would fail every later run: briefing takes the same limit (PR #848 round 1)."""
+    from scripts.marketplace_ci.review import briefable_waivers
+
+    fits = "p/" + "n" * 289 + "/SKILL.md"
+    too_long = "p/" + "n" * 290 + "/SKILL.md"
+    assert (len(fits), len(too_long)) == (300, 301)
+    section = read_waiver_section(
+        _section(*(f"- tool-scoping {p}:15 @{FP} – accepted" for p in (fits, too_long))),
+        _never_open,
+    )
+    assert [w.path for w in briefable_waivers(section.waivers)] == [fits]
+
+
+def test_a_lapsed_briefed_waiver_blocks_where_its_line_is_now(git_repo):
+    """The waiver names line 15, the briefing found the flagged line at 22 (issue #814): the
+    carry blocks at 22 even when the file is unchanged since the anchor (PR #848 round 1)."""
+    base = _commit(git_repo, "base", **{"s/SKILL.md": "x\n"})
+    anchor = _commit(git_repo, "pr 1", **{"s/SKILL.md": "\n" * 21 + GRANT + "\n"})
+    result = {"status": "clean", "findings": [], "briefed_waivers": [_LINE]}
+    lapsed = carry_findings(git_repo.root, base, anchor, result, "", _never_open)
+    assert [(f["path"], f["line"]) for f in lapsed.blocking] == [("s/SKILL.md", 22)]
+
+
+def _lapse_then_edit(git_repo, anchor_result, edited):
+    """Lapse a briefed waiver on a run with no Codex call, record that run, then change the file
+    and carry from the recorded result (R19)."""
+    base = _commit(git_repo, "base", **{"s/SKILL.md": "x\n"})
+    anchor = _commit(git_repo, "pr 1", **{"s/SKILL.md": "a\n" + "\n" * 13 + GRANT + "\n"})
+    lapsed = carry_findings(git_repo.root, base, anchor, anchor_result, "", _never_open)
+    assert [(f["path"], f["line"]) for f in lapsed.blocking] == [("s/SKILL.md", 15)]
+    recorded = merge_carried_findings(
+        {"status": "clean", "findings": []}, list(lapsed.blocking), "1"
+    )
+    _commit(git_repo, "pr 2", **{"s/SKILL.md": edited})
+    return carry_findings(git_repo.root, base, anchor, recorded, "", _never_open)
+
+
+def test_a_lapsed_briefed_waiver_survives_an_edit_to_another_line(git_repo):
+    """R19: once lapsed it blocks until the waiver is restored or its flagged line changes. An
+    edit elsewhere in the file does not release it, as it does an ordinary finding (PR #848)."""
+    result = {"status": "clean", "findings": [], "briefed_waivers": [_LINE]}
+    again = _lapse_then_edit(git_repo, result, "b\n" + "\n" * 13 + GRANT + "\n")
+    assert [(f["path"], f["line"]) for f in again.blocking] == [("s/SKILL.md", 15)]
+
+
+def test_a_lapsed_briefed_waiver_is_released_once_its_flagged_line_changes(git_repo):
+    result = {"status": "clean", "findings": [], "briefed_waivers": [_LINE]}
+    again = _lapse_then_edit(git_repo, result, "a\n" + "\n" * 13 + "allowed-tools: Read\n")
+    assert again.blocking == ()
+
+
+def test_a_briefed_waiver_the_anchor_recorded_keeps_its_provenance(git_repo):
+    """The anchor recorded the finding the briefed line names, so no separate entry is added; that
+    recorded entry is marked as briefed and so survives an unrelated edit once lapsed too."""
+    result = {
+        "status": "findings",
+        "findings": [{**_waived_entry(), "waiver": _LINE}],
+        "briefed_waivers": [_LINE],
+    }
+    again = _lapse_then_edit(git_repo, result, "b\n" + "\n" * 13 + GRANT + "\n")
+    assert [(f["path"], f["line"]) for f in again.blocking] == [("s/SKILL.md", 15)]
+    assert "briefed-waiver" in again.blocking[0]["reporters"]
+
+
+def _gh_answers(failing):
+    """A `subprocess.run` stand-in for fetch-accepted-findings: the body names a deferred issue,
+    one comment confirms a waiver, and the endpoint named by `failing` fails (with a `garbage:`
+    prefix it answers exit 0 with output that is not JSON)."""
+    garbage = failing is not None and failing.startswith("garbage:")
+    if garbage:
+        failing = failing.removeprefix("garbage:")
+    body = _section(f"- tool-scoping s/SKILL.md:15 @{FP} – deferred #13")
+    comment = json.dumps({"login": "maint", "body": f"- confirmed tool-scoping s/SKILL.md @{FP}"})
+    answers = {
+        "/pulls/7": body,
+        "/issues/13": '["open", false]',
+        "/issues/7/comments": comment,
+        "/permission": "maintain",
+    }
+
+    def run(cmd, **_kw):
+        endpoint = next(part for part in cmd if part.startswith("repos/"))
+        for suffix, answer in answers.items():
+            if endpoint.endswith(suffix):
+                if suffix == failing and garbage:
+                    return subprocess.CompletedProcess(cmd, 0, stdout="{not json", stderr="")
+                rc = 1 if suffix == failing else 0
+                return subprocess.CompletedProcess(cmd, rc, stdout="" if rc else answer, stderr="")
+        raise AssertionError(f"unexpected call {cmd}")
+
+    return run
+
+
+@pytest.mark.parametrize(
+    "failing",
+    [
+        "/issues/13",
+        "/issues/7/comments",
+        "/permission",
+        "garbage:/issues/13",
+        "garbage:/issues/7/comments",
+    ],
+)
+def test_strict_fetch_fails_when_a_read_the_publish_recheck_needs_fails(
+    tmp_path, monkeypatch, failing
+):
+    """R19 fail closed: at publish an unreadable issue state, comment list or role fails the
+    fetch rather than reading as closed or unconfirmed; the run-start read keeps its old
+    behavior (PR #848 round 1)."""
+    from scripts.marketplace_ci.__main__ import _load_accepted_findings
+
+    monkeypatch.setattr(main_module.subprocess, "run", _gh_answers(failing))
+    out = tmp_path / "accepted.json"
+    args = ["fetch-accepted-findings", "--repo", "o/r", "--pr-number", "7", "--output", str(out)]
+    assert main([*args, "--strict"]) == 2
+    assert main(args) == 0
+    monkeypatch.setattr(main_module.subprocess, "run", _gh_answers(None))
+    assert main([*args, "--strict"]) == 0
+    _, open_issues, confirmed = _load_accepted_findings(str(out))
+    assert open_issues == {13} and confirmed == {("tool-scoping", "s/SKILL.md", FP)}
+
+
+def test_strict_fetch_needs_a_pull_request(tmp_path):
+    body = tmp_path / "local.md"
+    body.write_text(_section(_LINE), "utf-8")
+    out = str(tmp_path / "accepted.json")
+    args = ["fetch-accepted-findings", "--strict", "--output", out]
+    assert main([*args, "--repo", "o/r", "--body-file", str(body)]) == 2
+    assert main(args) == 2
+
+
 def test_a_tracked_waiver_is_rechecked_by_issue_and_confirmation():
     entry = {**_waived_entry(), "waiver": "tracked #7", "tracked_issue": 7}
     assert _recheck([entry], "- tracked #7", open_issues=[7]) == []
