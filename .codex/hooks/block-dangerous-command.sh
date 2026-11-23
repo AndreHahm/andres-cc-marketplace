@@ -261,7 +261,8 @@ END {
                 startword()
                 # bash finds the end first: a backslash pairs with the next character, and
                 # the first unpaired quote ends the string. Only then are escapes decoded,
-                # so no escape can read past the end (`$'\c'` ends at its last quote).
+                # so no escape can read past the end (a backslash-c just before the
+                # closing quote still ends the string there).
                 for (q = i + 2; q <= n && substr(s, q, 1) != sq; q++)
                     if (substr(s, q, 1) == "\\") q++
                 if (q > n) unclean = 1
@@ -292,7 +293,7 @@ END {
                     else if (index("abefnrtvE", e)) x = "_"
                     else if (e == "\\" || e == sq || e == dq || e == "?") x = nc(e)
                     else x = "_" nc(e)
-                    # bash ends a $'\'...'\'' string at a NUL.
+                    # bash ends a dollar-quoted string at a NUL.
                     if (x == "NUL") nul = 1
                     else if (!nul) emit(x)
                 }
