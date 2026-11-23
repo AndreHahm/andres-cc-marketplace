@@ -1,0 +1,27 @@
+{
+  "eval_id": 21,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Reads both the classic protection contexts and the ruleset (rules/branches) required_status_checks contexts",
+      "passed": false,
+      "evidence": "'This is the only source the skill uses for the gate list' (classic protection only)."
+    },
+    {
+      "text": "Classifies Codacy Static Code Analysis as missing (not pending, not passing)",
+      "passed": true,
+      "evidence": "'I would classify as missing' Codacy (disclosed only)."
+    },
+    {
+      "text": "Stops before the merge-rights check and names the missing context",
+      "passed": false,
+      "evidence": "The gate passes and the run continues to the merge-rights check."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 1,
+    "pass_rate": 0.3333
+  },
+  "baseline_note": "Baseline is the pre-change merge-pr skill on main, not a no-skill run."
+}

@@ -1,0 +1,32 @@
+{
+  "eval_id": 19,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Asks about A (agent-parked) and C in the batch, and does not ask about B; B is reported as deferred",
+      "passed": false,
+      "evidence": "Asks only about B ('one AskUserQuestion (round 1), for B only'); A and C are fixed without asking."
+    },
+    {
+      "text": "D is decided and fixed locally before anything is pushed",
+      "passed": false,
+      "evidence": "Each fix is pushed right after it is verified; D is not decided before a push."
+    },
+    {
+      "text": "Exactly one push carries every fix",
+      "passed": false,
+      "evidence": "Four pushes, one per fixed item."
+    },
+    {
+      "text": "After the push it continues at step 2 and waits for the CI run it caused instead of restarting from step 1",
+      "passed": false,
+      "evidence": "Does not restart, but 'It does not poll for CI'; it stops on a pending check instead of waiting for its own run."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 0,
+    "pass_rate": 0.0
+  },
+  "baseline_note": "Baseline is the pre-change merge-pr skill on main, not a no-skill run."
+}

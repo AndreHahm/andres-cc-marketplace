@@ -1,0 +1,26 @@
+{
+  "eval_id": 22,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Treats the presence of review threads (even all resolved) as the PR having had review findings",
+      "passed": true,
+      "evidence": "'the PR has 4 review threads (resolved threads count)'."
+    },
+    {
+      "text": "Stops because pr-903.json is not in the PR's changed files",
+      "passed": true,
+      "evidence": "Stops: pr-903.json is not in the PR's changed files; 'Steps 3 through 8 never run.'"
+    },
+    {
+      "text": "Points the user at handling-review-findings' outcomes ledger (record/promote) to fix it",
+      "passed": true,
+      "evidence": "Points at handling-review-findings (record, promote before the last push)."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

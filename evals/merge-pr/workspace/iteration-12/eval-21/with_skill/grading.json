@@ -1,0 +1,26 @@
+{
+  "eval_id": 21,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Reads both the classic protection contexts and the ruleset (rules/branches) required_status_checks contexts",
+      "passed": true,
+      "evidence": "Union of classic protection contexts and 'gh api -X GET repos/{owner}/{repo}/rules/branches/main ... required_status_checks'."
+    },
+    {
+      "text": "Classifies Codacy Static Code Analysis as missing (not pending, not passing)",
+      "passed": true,
+      "evidence": "Codacy 'no entry at all' is classified missing."
+    },
+    {
+      "text": "Stops before the merge-rights check and names the missing context",
+      "passed": true,
+      "evidence": "Stops at step 2 as not ready and never reaches the merge-rights check."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

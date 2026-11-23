@@ -1,0 +1,31 @@
+{
+  "eval_id": 20,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "Proposes all body changes in one combined question and makes at most one body edit",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Never adds, changes or removes a line in Accepted Review Findings; the stale line is only reported",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Re-reads the live body right before the edit, notices the maintainer's change, rebuilds and re-asks",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Reports the 5317 test count as unverified rather than rewriting it",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Applies the edit with a PATCH of the pull-request endpoint from a scratchpad file and re-reads the body afterwards",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    }
+  ]
+}
