@@ -309,6 +309,54 @@ B	bash -c 'set -o keyword; git commit -m X+=1 -m --amend'
 B	set -k; git -C . commit -m X=1 -m --amend
 B	bash -c '/usr/bin/git stash'
 B	bash -c 'X=/a git stash'
+# A redirection before git, an operator or redirection right after the subcommand, and a
+# NAME=value word that `set -k` removes before an option value.
+B	>x git -C . stash
+B	2>&1 git -C . stash
+B	bash -c '>x git stash'
+B	bash -c 'git commit -m "doc --amend"; >x git stash'
+B	sh -c 'true &>x git stash'
+B	git -C . stash|cat
+B	git -C . stash>x
+B	bash -c 'git stash&&true'
+B	bash -c 'git reset|cat'
+B	set -k; git -C X=1 . stash
+B	bash -kc 'git -C X=1 . stash'
+B	bash -c 'shopt -so keyword; git -C X=1 . stash'
+B	git X=1 -C . stash
+A	git -C . status|cat
+A	git -C . log>x
+A	echo >x git stash
+A	git -C . merge-base a b|cat
+A	git -c user.name=x commit -m "fix"
+A	git -C . commit -m "fix" 2>&1
+A	git -C . status >x 2>&1
+A	bash -c 'git status|cat'
+B	git 2>/dev/null -C . stash
+B	git -C . >x stash
+B	bash -c 'git 2>x stash'
+B	ssh h 'git >x reset'
+B	set -k; git -c X=1 alias.x=stash x
+B	set -k; git --config-env X=1 alias.x=V x
+B	bash -c 'set -k; git -c X=1 alias.x=stash x'
+B	{fd}>x git -C . stash
+B	ssh h 'true; >"a b" git stash'
+A	git log --format=%H|head
+A	git diff>patch
+A	git -c core.x=1 status
+# A redirection with a blank before its target.
+B	> x git -C . stash
+B	2> /dev/null git -C . stash
+B	git -C . 2> /dev/null stash
+B	git > x stash
+B	bash -c 'git > x stash'
+B	bash -c '> x git stash'
+B	ssh h '> x git stash'
+A	git -C . log > out.txt
+A	git -C . status 2> /dev/null
+# A quoted reply line (`> ...`) in a PR body or a message is text, not a redirection.
+A	gh pr create --body-file - <<'EOF'\n> Never git rebase shared branches\n> Run git stash first\nEOF
+A	git -C . commit -m "fix the hook\n> Never git rebase shared branches\n> Run git stash first"
 # Accepted false block: a nested string is read as text only.
 B	bash -c 'bash -c "git commit -m \\"x --amend\\""'
 # Accepted false block: text that names such a string, like the git reset --hard text check.
