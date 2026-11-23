@@ -1,0 +1,16 @@
+{
+  "eval_id": 32,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "Gives the command python3 -I $PWD/.claude/scripts/git-pr-body-waiver-check.py with the two scratchpad files, run from the verified checkout root",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "For a PR that edits the checker, says the pre-approved copy is the PR's own code and runs it only after the user approves that run",
+      "type": "functionality",
+      "target": "answer.md"
+    }
+  ]
+}

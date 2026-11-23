@@ -1,0 +1,21 @@
+{
+  "eval_id": 30,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "Re-runs step 1.6 against the real state so Open Items lists the unshipped item again",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "Stops before step 2 (does not continue to readiness checks or the merge) because the 'fix now' item is still open on the PR",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "Treats the second body edit as permitted (or says what is reported if the user declines it) rather than refusing it under the one-edit rule",
+      "type": "quality",
+      "target": "answer.md"
+    }
+  ]
+}

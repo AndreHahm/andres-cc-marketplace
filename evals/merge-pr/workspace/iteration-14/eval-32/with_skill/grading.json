@@ -1,0 +1,21 @@
+{
+  "eval_id": 32,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Gives the command python3 -I $PWD/.claude/scripts/git-pr-body-waiver-check.py with the two scratchpad files, run from the verified checkout root",
+      "passed": true,
+      "evidence": "'python3 -I $PWD/.claude/scripts/git-pr-body-waiver-check.py <scratchpad>/body-base.txt <scratchpad>/body-new.txt', 'only allowed while $PWD is the checkout root step 1.5 verified'"
+    },
+    {
+      "text": "For a PR that edits the checker, says the pre-approved copy is the PR's own code and runs it only after the user approves that run",
+      "passed": true,
+      "evidence": "'the pre-approved copy... is the PR's own new, unmerged code'; 'Ask before running it'; 'Never run it through the pre-approved form'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 2,
+    "pass_rate": 1.0
+  }
+}

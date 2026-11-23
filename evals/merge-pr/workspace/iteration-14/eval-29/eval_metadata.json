@@ -1,0 +1,16 @@
+{
+  "eval_id": 29,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "Names step 1.6 (not step 2) as the step that runs right after step 1.5 finds nothing open",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "Proposes removing the fixed, verified Open Items entry through one AskUserQuestion rather than editing silently or leaving it",
+      "type": "functionality",
+      "target": "answer.md"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "eval_id": 31,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "Asks one AskUserQuestion opt-in naming the untouched items before running github-issue-lifecycle at all",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "On the free-text 'hmm, maybe later' answer, drafts nothing and reports both items as still-open, unfiled",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "States that filing would still need each draft's own approval (the opt-in is not filing approval)",
+      "type": "quality",
+      "target": "answer.md"
+    }
+  ]
+}

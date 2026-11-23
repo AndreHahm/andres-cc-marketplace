@@ -1,0 +1,118 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4665809260",
+      "note": "step 1.5 now continues to step 1.6 when nothing is open",
+      "path": "plugins/git-kit/skills/merge-pr/references/session-open-items-and-body-check.md",
+      "pr": 859,
+      "recorded_at": "2026-11-23T15:01:36+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4665821225",
+      "note": "failed push re-runs step 1.6 to re-list unshipped items, then stops before step 2",
+      "path": "plugins/git-kit/skills/merge-pr/references/session-open-items-and-body-check.md",
+      "pr": 859,
+      "recorded_at": "2026-11-23T15:01:36+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4665821401",
+      "note": "same defect as 4665809260",
+      "path": "plugins/git-kit/skills/merge-pr/references/session-open-items-and-body-check.md",
+      "pr": 859,
+      "recorded_at": "2026-11-23T15:01:36+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4665821566",
+      "note": "carry verdict strips CR in all five jobs",
+      "path": ".github/workflows/marketplace-ci.yml",
+      "pr": 859,
+      "recorded_at": "2026-11-23T15:01:36+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4665821749",
+      "note": "commit list from paginated pulls commits endpoint, 250 cap reported as unverified",
+      "path": "plugins/git-kit/skills/merge-pr/references/session-open-items-and-body-check.md",
+      "pr": 859,
+      "recorded_at": "2026-11-23T15:01:36+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4665821911",
+      "note": "narrow diff and cmp grants added; confirm step no longer uses cat or printf",
+      "path": "plugins/git-kit/skills/merge-pr/references/session-open-items-and-body-check.md",
+      "pr": 859,
+      "recorded_at": "2026-11-23T15:01:36+00:00"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "4665822062",
+      "note": "tracked in issue 858; maintainer accepted the risk for this PR",
+      "path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+      "pr": 859,
+      "recorded_at": "2026-11-23T15:01:36+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4665918428",
+      "note": "carry jobs keep issues read and drop pull-requests read",
+      "path": ".github/workflows/marketplace-ci.yml",
+      "pr": 859,
+      "recorded_at": "2026-11-23T15:01:36+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4665918437",
+      "note": "same defect as 4665821566",
+      "path": ".github/workflows/marketplace-ci.yml",
+      "pr": 859,
+      "recorded_at": "2026-11-23T15:01:36+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4665918450",
+      "note": "carry step position described per job",
+      "path": "docs/ci.md",
+      "pr": 859,
+      "recorded_at": "2026-11-23T15:01:36+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4665918488",
+      "note": "per-request timeout and 120 second lookup budget",
+      "path": "scripts/marketplace_ci/prior_result.py",
+      "pr": 859,
+      "recorded_at": "2026-11-23T15:01:36+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4665918498",
+      "note": "carry only from a run listing exactly this PR",
+      "path": "scripts/marketplace_ci/prior_result.py",
+      "pr": 859,
+      "recorded_at": "2026-11-23T15:01:36+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-b682ea52a4c40043d53a8c0fe3927abb",
+      "note": "one opt-in before per-item issue drafting",
+      "path": "plugins/git-kit/skills/merge-pr/references/session-open-items-and-body-check.md",
+      "pr": 859,
+      "recorded_at": "2026-11-23T15:17:37+00:00",
+      "rule": "plugin-rulebook:R26"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-f1a41bfeb99c554749bfb2bbd9333184",
+      "note": "second grant pinned at the .claude mirror path, used only from the verified checkout root",
+      "path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+      "pr": 859,
+      "recorded_at": "2026-11-23T15:17:37+00:00",
+      "rule": "tool-reconciliation"
+    }
+  ]
+}
