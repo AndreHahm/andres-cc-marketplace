@@ -311,6 +311,42 @@ def test_an_absolute_citation_reaches_the_result_relative(monkeypatch, review_re
     assert [f["path"] for f in payload["findings"]] == [CHANGED]
 
 
+def test_the_symlink_check_is_wired_in_and_fails_closed(monkeypatch, review_repo, tmp_path):
+    import scripts.marketplace_ci.review as review_module
+    from scripts.marketplace_ci.review import ReviewerReport
+
+    def broken(results, root):
+        raise RuntimeError("no git")
+
+    monkeypatch.setattr(review_module, "mark_symlinked", broken)
+    reports = [
+        ReviewerReport(reviewer="security-reviewer", status="completed", output=json.loads(CLEAN))
+    ]
+    rc, payload, _ = _run_with_reports(monkeypatch, review_repo, tmp_path, reports)
+    assert rc == 2 and "symlink check failed" in payload["error"]
+
+
+def test_a_grant_finding_on_a_symlinked_command_blocks_the_run(monkeypatch, review_repo, tmp_path):
+    """PR #865, end to end: the marked findings are the ones the gate sees, with the git root."""
+    from scripts.marketplace_ci.review import ReviewerReport
+
+    root, _ = review_repo
+    link = root / "plugins/demo-kit/commands/a.md"
+    link.parent.mkdir(parents=True, exist_ok=True)
+    link.symlink_to("../hooks/hooks.json")
+    subprocess.run(["git", "add", "-A"], cwd=root, check=True)
+    subprocess.run(["git", "commit", "-qm", "link"], cwd=root, check=True)
+    envelope = json.loads(BLOCKING)
+    envelope["findings"][0] |= {
+        "location": f"{root}/plugins/demo-kit/commands/a.md:1",
+        "category": "allowed-tools-grant",
+    }
+    reports = [ReviewerReport(reviewer="security-reviewer", status="completed", output=envelope)]
+    _, payload, _ = _run_with_reports(monkeypatch, review_repo, tmp_path, reports)
+    (finding,) = [f for f in payload["findings"] if f["rule"] == "R6"]
+    assert finding["path"] == "plugins/demo-kit/commands/a.md" and finding["gate"] == "block"
+
+
 def test_provenance_helpers_return_none_outside_a_repository(tmp_path):
     """`_git_out` backs `_run_provenance`, which also runs on failure paths: git failing must
     give None (a null field), never raise out of the failure writer."""

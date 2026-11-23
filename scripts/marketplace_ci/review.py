@@ -827,6 +827,9 @@ class Finding:
     # What the reviewer says the finding is about (issue #862), one of `FINDING_CATEGORIES`. None
     # when it was not asked, or when merged copies disagree; None and `other` change nothing.
     category: str | None = None
+    # A cited path is a symlink or passes through one (`mark_symlinked`), so its name says nothing
+    # about the file it stands for: neither cap below applies.
+    via_symlink: bool = False
 
 
 @dataclass(frozen=True)
@@ -955,6 +958,48 @@ def relative_citations(result: ReviewResult, repo_root: Path) -> ReviewResult:
     )
 
 
+def mark_symlinked(results: Sequence[ReviewResult], repo_root: Path) -> tuple[ReviewResult, ...]:
+    """`results` with `via_symlink` set on each finding that cites (location or component) a path
+    that is a symlink, or has one on the way, in the checkout or in HEAD's tree (PR #865). Each
+    prefix of the raw spelling is tested, so `link/../x` counts, and a link named `x:5` counts as
+    `x`, since a location's `:5` is read as its line. Raises when git cannot answer."""
+
+    def prefixes(location: str) -> set[str]:
+        path, _ = _split_location(location)
+        seen: set[str] = set()
+        walked: list[str] = []
+        for part in path.split("/"):
+            if part in ("", "."):
+                continue
+            if part == "..":
+                del walked[-1:]
+            else:
+                walked.append(part)
+                seen.add("/".join(walked))
+        return seen
+
+    def cited(finding: Finding) -> set[str]:
+        return set().union(*(prefixes(p) for p in (finding.path, *finding.components)))
+
+    candidates = frozenset(p for r in results for f in r.findings for p in cited(f))
+    links = {p for p in candidates if os.path.islink(os.path.join(repo_root, p))}
+    if candidates:
+        for entry in _run_git(repo_root, "ls-tree", "-r", "-z", "HEAD").split(b"\0"):
+            meta, _, raw = entry.partition(b"\t")
+            if meta.startswith(b"120000 "):
+                name = raw.decode("utf-8", errors="surrogateescape")
+                links |= {name, _split_location(name)[0]}
+    return tuple(
+        replace(
+            r,
+            findings=tuple(
+                replace(f, via_symlink=not links.isdisjoint(cited(f))) for f in r.findings
+            ),
+        )
+        for r in results
+    )
+
+
 def aggregate_findings(
     reports: Sequence[ReviewResult], coverage: ScriptCoverage | None = None
 ) -> tuple[Finding, ...]:
@@ -1007,14 +1052,21 @@ def aggregate_findings(
         # A `..` spelling may pass through a symlink, so it also stands for the file it resolves to
         # (`_lookup_keys`) and needs a maintainer's confirmation: a merge never loses it.
         climbing = (f.path for f in group if ".." in f.path.split("/"))
+        kept = next(climbing, highest.path)
+        # Every other spelling stays cited: the diff classifier may resolve it to another file.
+        spelled = (
+            f.path if f.line is None else f"{f.path}:{f.line}" for f in group if f.path != kept
+        )
+        components = tuple(dict.fromkeys((*components, *spelled)))
         aggregated.append(
             replace(
                 highest,
-                path=next(climbing, highest.path),
+                path=kept,
                 reporters=reporters,
                 components=components,
                 tracked_issue=tracked,
                 category=category,
+                via_symlink=any(f.via_symlink for f in group),
             )
         )
     return tuple(aggregated)
@@ -3133,16 +3185,19 @@ def is_size_document(path: str) -> bool:
     return _SIZE_DOCUMENT.fullmatch(posixpath.normpath(path)) is not None
 
 
+def _cap_paths(finding: Finding) -> tuple[str, ...]:
+    return (finding.path, *(_split_location(c)[0] for c in finding.components))
+
+
 def _is_capped_size_finding(finding: Finding) -> bool:
     """True for a MODEL finding only the rulebook checker reported, whose `rule` field names
     exactly R18 and whose rule, evidence and fix name no other rulebook rule, located (with every
     component the bridge kept) in a skill's reference or example documents. Unlike the script-owned
     rules this needs no script coverage: R18 is a size heuristic, and the
     `r18-code-block-line-count` verifier reports those documents as Minor when it can read them.
-    Accepted residuals (issue #862): a model that names only R18 for another defect in such a
-    document is capped, a finding's title is not read, and a path is judged by its name (a symlink
-    counts as the document it is named as)."""
-    if finding.source != "model":
+    A symlink is never capped. Accepted residuals (issue #862): a model that names only R18 for
+    another defect in such a document is capped, and a finding's title is not read."""
+    if finding.source != "model" or finding.via_symlink:
         return False
     if set(finding.reporters) | {finding.reviewer} != {_RULEBOOK_CHECKER}:
         return False
@@ -3150,9 +3205,13 @@ def _is_capped_size_finding(finding: Finding) -> bool:
     return (
         in_rule == {"R18"}
         and _claimed_rule_ids(finding) == {"R18"}
-        and is_size_document(finding.path)
-        and all(is_size_document(_split_location(c)[0]) for c in finding.components)
+        and all(_PLAIN_PATH.fullmatch(p) and is_size_document(p) for p in _cap_paths(finding))
     )
+
+
+# A cap reads a path by its name, so it takes only plain names: a backslash is a separator to some
+# readers and part of the name to others (PR #865).
+_PLAIN_PATH = re.compile(r"[A-Za-z0-9._/-]+")
 
 
 # The documents whose `allowed-tools` findings never block (issue #862): skill and command text,
@@ -3174,13 +3233,12 @@ def _is_capped_grant_finding(finding: Finding) -> bool:
     its components) in skill or command documents. The label is the model's own, so an injected or
     mistaken label on another defect in such a document is capped too: the accepted residual of
     issue #862. `aggregate_findings` drops the category when the merged copies disagree, and the
-    bridge drops it when it removes a component. The path is judged by name: a symlink counts as
-    the document it is named as."""
+    bridge drops it when it removes a component. A symlink is never capped."""
     return (
         finding.source == "model"
+        and not finding.via_symlink
         and finding.category == CATEGORY_ALLOWED_TOOLS_GRANT
-        and _is_grant_document(finding.path)
-        and all(_is_grant_document(_split_location(c)[0]) for c in finding.components)
+        and all(_PLAIN_PATH.fullmatch(p) and _is_grant_document(p) for p in _cap_paths(finding))
     )
 
 

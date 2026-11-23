@@ -63,6 +63,7 @@ def test_the_cap_covers_references_and_examples(path, severity):
         "/plugins/demo-kit/skills/x/references/a.md",
         "../plugins/demo-kit/skills/x/references/a.md",
         "plugins/demo-kit/skills/x/references/a.py",
+        "plugins/demo-kit/skills/x/references/a\\b.md",
         "plugins/demo-kit/agents/x/references/a.md",
     ],
 )
@@ -80,6 +81,7 @@ def test_other_documents_still_block(path):
         {"reporters": ("plugin-rulebook-checker", "skill-reviewer")},
         {"reviewer": "security-reviewer", "reporters": ("security-reviewer",)},
         {"source": "script"},
+        {"via_symlink": True},
         {"components": ("plugins/demo-kit/skills/x/SKILL.md:3",)},
         {"components": ("plugins/demo-kit/skills/x/references/../SKILL.md",)},
     ],
