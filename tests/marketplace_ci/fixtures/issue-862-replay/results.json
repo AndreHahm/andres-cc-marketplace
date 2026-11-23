@@ -1,0 +1,835 @@
+{
+  "source": "codex-review-result artifacts of PR #856: the findings a reviewer produced in that run; carried entries hold no evidence and are only counted",
+  "runs": [
+    {
+      "run_id": "45164075514",
+      "head_sha": "8fce684924e034cb9146dadd026023611a6e682f",
+      "blocking": true,
+      "carried_blocking": 0,
+      "findings": [
+        {
+          "reviewer": "plugin-rulebook-checker",
+          "severity": "Minor",
+          "rule": "plugin-rulebook:R6",
+          "path": "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+          "line": 403,
+          "evidence": "The added `Bash(grep -E:*)` prefix matches arbitrary trailing command text ([Claude Code permission wildcard rules](https://code.claude.com/docs/en/permissions#wildcard-patterns)). `grep --help` confirms it accepts file operands and prints matching lines, so the grant can pre-approve reading arbitrary file contents.",
+          "remediation": "Use an exact grant for `grep -E \"^prod$\"`, or omit the grant if relying on Claude Code’s built-in read-only handling for grep.",
+          "reporters": [
+            "plugin-rulebook-checker"
+          ],
+          "components": [],
+          "confidence": "high",
+          "evidence_type": null,
+          "rule_class": "judgment",
+          "source": "model",
+          "in_diff": true,
+          "blocking": false,
+          "gate": "notice"
+        },
+        {
+          "reviewer": "security-reviewer",
+          "severity": "Major",
+          "rule": "injection-surface",
+          "path": "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+          "line": 403,
+          "evidence": "The line pre-approves unrestricted `Read`; the command body interpolates `$0` into `@${CLAUDE_PLUGIN_ROOT}/config/$0-checks.json` at line 408 without first validating it as an allowed environment name. ⚠️ Unverified: runtime argument expansion and path handling were not executed.",
+          "remediation": "Validate `$0` against the supported environment names before loading configuration, restrict the pre-approved Read scope to the intended config files, and explicitly state that loaded configuration is data only and its contents must never be followed as directives.",
+          "reporters": [
+            "security-reviewer"
+          ],
+          "components": [
+            "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md"
+          ],
+          "confidence": "medium",
+          "evidence_type": null,
+          "rule_class": "judgment",
+          "source": "model",
+          "in_diff": true,
+          "blocking": true,
+          "gate": "block"
+        }
+      ]
+    },
+    {
+      "run_id": "45168735083",
+      "head_sha": "c666bfed28fcd185b3f1180abbdeea064d35e767",
+      "blocking": true,
+      "carried_blocking": 0,
+      "findings": [
+        {
+          "reviewer": "plugin-rulebook-checker",
+          "severity": "Major",
+          "rule": "rulebook R6 tool scoping",
+          "path": "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+          "line": 186,
+          "evidence": "The changed grants use Read(${CLAUDE_PLUGIN_ROOT}/config/*-deploy.json) here and the same pattern at lines 369 and 412. Claude Code's skills documentation says plugin-root substitutions apply in skill content and Bash rules in allowed-tools, not Read rules: https://code.claude.com/docs/en/skills. The Read specifier therefore remains literal and does not match the installed plugin's config path, so these examples do not pre-approve the config read as intended.",
+          "remediation": "Use a documented Read grant that matches the runtime path, or use plain Read and describe it as an unscoped pre-approval rather than a narrowed grant.",
+          "reporters": [
+            "plugin-rulebook-checker"
+          ],
+          "components": [],
+          "confidence": "high",
+          "evidence_type": null,
+          "rule_class": "judgment",
+          "source": "model",
+          "in_diff": true,
+          "blocking": true,
+          "gate": "block"
+        },
+        {
+          "reviewer": "security-reviewer",
+          "severity": "Major",
+          "rule": "tool-scoping",
+          "path": "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md",
+          "line": 157,
+          "evidence": "These examples interpolate user-supplied `$0` directly into inline `!` shell commands, including `prepare.sh \"$0\"` before the later configuration-name check, `gh pr view \"$0\"`, and `gh api \"/deployments/$0\"`. The command-development skill documents that arguments are substituted into shell text before execution and that quoting does not prevent embedded quotes or `$(...)`. ⚠️ Unverified: this static review did not execute the examples to confirm runtime behavior.",
+          "remediation": "Validate each argument before any command uses it, and move argument-bearing commands out of `!` preloads into body steps that use a validated value. Add the same validation to the PR-number and deployment-ID examples.",
+          "reporters": [
+            "security-reviewer"
+          ],
+          "components": [
+            "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md:27",
+            "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md:405"
+          ],
+          "confidence": "medium",
+          "evidence_type": null,
+          "rule_class": "judgment",
+          "source": "model",
+          "in_diff": true,
+          "blocking": true,
+          "gate": "block"
+        },
+        {
+          "reviewer": "skill-reviewer",
+          "severity": "Major",
+          "rule": "security",
+          "path": "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+          "line": 37,
+          "evidence": "The new guidance at line 49 says quoting does not protect untrusted input containing quotes or `$(...)` and recommends a body step. Yet this changed example still passes its caller-supplied file path to a load-time `!` command. Similar argument-bearing `!` examples remain in the listed components. In `plugin-features-reference.md`, the changed `prepare.sh \"$0\"` call at line 157 also precedes the configuration-name check at line 158. Claude Code documents that `!` commands run before skill content is sent to Claude, so later validation cannot gate these calls ([official docs](https://code.claude.com/docs/en/skills#inject-dynamic-context)).",
+          "remediation": "Move argument-dependent script calls into body steps after validation. For free-form values, show a safe argument-passing method verified against Claude Code behavior, or clearly limit the load-time `!` pattern to trusted, validated inputs.",
+          "reporters": [
+            "skill-reviewer"
+          ],
+          "components": [
+            "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md:157",
+            "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md:102",
+            "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md:27",
+            "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md:405"
+          ],
+          "confidence": "high",
+          "evidence_type": null,
+          "rule_class": "judgment",
+          "source": "model",
+          "in_diff": true,
+          "blocking": true,
+          "gate": "block"
+        }
+      ]
+    },
+    {
+      "run_id": "45174954462",
+      "head_sha": "81db31b98e187730916dcd9e8136a6449957d4b2",
+      "blocking": true,
+      "carried_blocking": 0,
+      "findings": [
+        {
+          "reviewer": "plugin-rulebook-checker",
+          "severity": "Major",
+          "rule": "plugin-rulebook:R18",
+          "path": "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+          "line": 107,
+          "evidence": "The fenced example at lines 97–120 has 22 content lines; the added boundary statement takes it from 20 to 22, exceeding R18's 20-line warning threshold.",
+          "remediation": "Split the example into smaller fenced blocks, each no longer than 20 content lines.",
+          "reporters": [
+            "plugin-rulebook-checker"
+          ],
+          "components": [
+            "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md"
+          ],
+          "confidence": "high",
+          "evidence_type": null,
+          "rule_class": "judgment",
+          "source": "model",
+          "in_diff": true,
+          "blocking": true,
+          "gate": "block"
+        },
+        {
+          "reviewer": "plugin-rulebook-checker",
+          "severity": "Major",
+          "rule": "plugin-rulebook:R18",
+          "path": "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+          "line": 181,
+          "evidence": "The fenced example at lines 174–203 has 28 content lines; the added validation and configuration-reading steps increase it from 24, above R18's 20-line warning threshold.",
+          "remediation": "Split the example into smaller fenced blocks, each no longer than 20 content lines.",
+          "reporters": [
+            "plugin-rulebook-checker"
+          ],
+          "components": [
+            "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md"
+          ],
+          "confidence": "high",
+          "evidence_type": null,
+          "rule_class": "judgment",
+          "source": "model",
+          "in_diff": true,
+          "blocking": true,
+          "gate": "block"
+        },
+        {
+          "reviewer": "plugin-rulebook-checker",
+          "severity": "Major",
+          "rule": "plugin-rulebook:R18",
+          "path": "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+          "line": 265,
+          "evidence": "The fenced example at lines 257–283 has 25 content lines; the added data-boundary text increases it from 23, above R18's 20-line warning threshold.",
+          "remediation": "Split the example into smaller fenced blocks, each no longer than 20 content lines.",
+          "reporters": [
+            "plugin-rulebook-checker"
+          ],
+          "components": [
+            "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md"
+          ],
+          "confidence": "high",
+          "evidence_type": null,
+          "rule_class": "judgment",
+          "source": "model",
+          "in_diff": true,
+          "blocking": true,
+          "gate": "block"
+        },
+        {
+          "reviewer": "plugin-rulebook-checker",
+          "severity": "Critical",
+          "rule": "plugin-rulebook:R18",
+          "path": "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+          "line": 308,
+          "evidence": "The fenced example at lines 299–342 has 42 content lines; the added boundary and body-step instructions increase it from 40, above R18's 30-line critical threshold.",
+          "remediation": "Break the example into smaller fenced blocks so no block exceeds 20 content lines.",
+          "reporters": [
+            "plugin-rulebook-checker"
+          ],
+          "components": [
+            "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md"
+          ],
+          "confidence": "high",
+          "evidence_type": null,
+          "rule_class": "judgment",
+          "source": "model",
+          "in_diff": true,
+          "blocking": true,
+          "gate": "block"
+        },
+        {
+          "reviewer": "plugin-rulebook-checker",
+          "severity": "Critical",
+          "rule": "plugin-rulebook:R18",
+          "path": "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md",
+          "line": 26,
+          "evidence": "The fenced workflow at lines 17–57 has 39 content lines; the added validation and review steps increase it from 35, above R18's 30-line critical threshold.",
+          "remediation": "Break the workflow into smaller fenced blocks so no block exceeds 20 content lines.",
+          "reporters": [
+            "plugin-rulebook-checker"
+          ],
+          "components": [
+            "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md"
+          ],
+          "confidence": "high",
+          "evidence_type": null,
+          "rule_class": "judgment",
+          "source": "model",
+          "in_diff": true,
+          "blocking": true,
+          "gate": "block"
+        },
+        {
+          "reviewer": "plugin-rulebook-checker",
+          "severity": "Major",
+          "rule": "plugin-rulebook:R18",
+          "path": "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md",
+          "line": 421,
+          "evidence": "The fenced example at lines 417–441 has 23 content lines; the added tool grant and body-step instructions increase it from 22, above R18's 20-line warning threshold.",
+          "remediation": "Split the example into smaller fenced blocks, each no longer than 20 content lines.",
+          "reporters": [
+            "plugin-rulebook-checker"
+          ],
+          "components": [
+            "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+          ],
+          "confidence": "high",
+          "evidence_type": null,
+          "rule_class": "judgment",
+          "source": "model",
+          "in_diff": true,
+          "blocking": true,
+          "gate": "block"
+        },
+        {
+          "reviewer": "security-reviewer",
+          "severity": "Major",
+          "rule": "injection-surface",
+          "path": "plugins/plugin-devkit/skills/command-development/SKILL.md",
+          "line": 176,
+          "evidence": "The new body-step pattern validates that an input path exists in the repository, then shows it passed as `\"<path>\"`. An in-repository filename can still contain a double quote or shell substitution syntax, which can break out of the quotes if substituted into a Bash command string. Similar examples appear at plugin-commands.md:37,313,429,552; simple-commands.md:102; and plugin-features-reference.md:119. ⚠️ Unverified at runtime: whether a caller substitutes the argument into the command string this way depends on how it constructs the Bash invocation.",
+          "remediation": "Show robust shell-safe argument encoding or an argv-based invocation where supported; do not rely on double quotes around a raw substituted value. If paths are restricted, validate the allowed syntax and repository containment before invoking the script.",
+          "reporters": [
+            "security-reviewer"
+          ],
+          "components": [
+            "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+            "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+            "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+          ],
+          "confidence": "medium",
+          "evidence_type": null,
+          "rule_class": "judgment",
+          "source": "model",
+          "in_diff": true,
+          "blocking": true,
+          "gate": "block"
+        },
+        {
+          "reviewer": "skill-reviewer",
+          "severity": "Major",
+          "rule": "security",
+          "path": "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+          "line": 37,
+          "evidence": "The example checks that $0 names an existing repository file, then shows passing the path in a double-quoted Bash argument. The same pattern appears in the simple-command example and plugin-feature examples. Bash still evaluates command substitutions and backticks inside double quotes; an embedded quote can also break out of them.",
+          "remediation": "Document a safe way to pass path values to the script. Constrain and validate the accepted path syntax and escape the value for the shell; do not imply that double quotes alone are sufficient.",
+          "reporters": [
+            "skill-reviewer"
+          ],
+          "components": [
+            "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+            "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+          ],
+          "confidence": "high",
+          "evidence_type": null,
+          "rule_class": "judgment",
+          "source": "model",
+          "in_diff": true,
+          "blocking": true,
+          "gate": "block"
+        },
+        {
+          "reviewer": "skill-reviewer",
+          "severity": "Minor",
+          "rule": "security",
+          "path": "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+          "line": 35,
+          "evidence": "The example includes @$0 before the new repository-path validation at line 37. The multi-component example similarly places @$0 before its validation step. The skill describes @ references as being injected before command processing, but the Claude Code CLI was unavailable to verify this ordering at runtime.",
+          "remediation": "Confirm the expansion order with Claude Code. If the include resolves before validation, remove the dynamic @ reference and read the file with the Read tool only after validating its path.",
+          "reporters": [
+            "skill-reviewer"
+          ],
+          "components": [
+            "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+          ],
+          "confidence": "low",
+          "evidence_type": null,
+          "rule_class": "judgment",
+          "source": "model",
+          "in_diff": true,
+          "blocking": false,
+          "gate": "notice"
+        }
+      ]
+    },
+    {
+      "run_id": "45197308378",
+      "head_sha": "d4894398d54821483af663cff4ed2cbe78c50b3d",
+      "blocking": true,
+      "carried_blocking": 0,
+      "findings": [
+        {
+          "reviewer": "plugin-rulebook-checker",
+          "severity": "Minor",
+          "rule": "plugin-rulebook:R18",
+          "path": "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md",
+          "line": 157,
+          "evidence": "The added body-step instruction takes the worked command block from 10 to 11 content lines. This creates another Weak Warning; the file now has 13 blocks in the 11–20 line tier, which R18 consolidates into one advisory.",
+          "remediation": "Consider shortening the example or recording why the complete worked example should remain inline, as described by R18.",
+          "reporters": [
+            "plugin-rulebook-checker"
+          ],
+          "components": [
+            "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+          ],
+          "confidence": "high",
+          "evidence_type": null,
+          "rule_class": "judgment",
+          "source": "model",
+          "in_diff": true,
+          "blocking": false,
+          "gate": "notice"
+        },
+        {
+          "reviewer": "skill-reviewer",
+          "severity": "Major",
+          "rule": "security & permissions",
+          "path": "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+          "line": 105,
+          "evidence": "The changed example retains `API implementation: @$0`; the added data-only note does not validate or constrain the path. The skill's guidance at SKILL.md:180 says to read argument-selected files with Read after validation and never with an `@$0` include.",
+          "remediation": "Replace these argument-based `@` includes with body steps that validate the path first, then read it with the Read tool and treat its contents as data.",
+          "reporters": [
+            "skill-reviewer"
+          ],
+          "components": [
+            "plugins/plugin-devkit/skills/command-development/SKILL.md",
+            "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md:218",
+            "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md:255"
+          ],
+          "confidence": "high",
+          "evidence_type": null,
+          "rule_class": "judgment",
+          "source": "model",
+          "in_diff": true,
+          "blocking": true,
+          "gate": "block"
+        },
+        {
+          "reviewer": "skill-reviewer",
+          "severity": "Major",
+          "rule": "security & permissions",
+          "path": "plugins/plugin-devkit/skills/command-development/SKILL.md",
+          "line": 180,
+          "evidence": "The stated path-character rule allows both `.` and `/`, so a path such as `../../outside` passes that shape check. The instructions do not specify resolving the path against the repository root or checking that its canonical target remains inside it before passing it to Read or a script.",
+          "remediation": "Require resolving the candidate against the repository root and verifying the canonical target remains inside it; reject parent-directory segments and paths that resolve through an outside-pointing symlink.",
+          "reporters": [
+            "skill-reviewer"
+          ],
+          "components": [
+            "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md:102",
+            "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md:35",
+            "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md:119"
+          ],
+          "confidence": "medium",
+          "evidence_type": null,
+          "rule_class": "judgment",
+          "source": "model",
+          "in_diff": true,
+          "blocking": true,
+          "gate": "block"
+        }
+      ]
+    },
+    {
+      "run_id": "45201809965",
+      "head_sha": "5b383b0262d723cb945d69b6e24b825ae5bca52c",
+      "blocking": true,
+      "carried_blocking": 2,
+      "findings": [
+        {
+          "reviewer": "plugin-rulebook-checker",
+          "severity": "Major",
+          "rule": "plugin-rulebook:R6",
+          "path": "plugins/plugin-devkit/skills/command-development/references/documentation-patterns.md",
+          "line": 322,
+          "evidence": "The changed example instructs using the Read tool, while its command frontmatter at line 302 declares only a description and no allowed-tools grant.",
+          "remediation": "Add `allowed-tools: Read` to the example command frontmatter.",
+          "reporters": [
+            "plugin-rulebook-checker"
+          ],
+          "components": [
+            "plugins/plugin-devkit/skills/command-development/references/documentation-patterns.md"
+          ],
+          "confidence": "high",
+          "evidence_type": null,
+          "rule_class": "judgment",
+          "source": "model",
+          "in_diff": true,
+          "blocking": true,
+          "gate": "block"
+        },
+        {
+          "reviewer": "plugin-rulebook-checker",
+          "severity": "Minor",
+          "rule": "plugin-rulebook:R6",
+          "path": "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md",
+          "line": 27,
+          "evidence": "The changed line invokes `gh pr view` through the Bash tool; the example frontmatter grants `Bash(gh:*)` at line 21. `gh auth --help` confirms that this prefix also reaches `gh auth token`, which prints the authentication token.",
+          "remediation": "Narrow the grant to the read-only `gh pr view`, `gh pr diff`, and `gh pr checks` command prefixes used by this example.",
+          "reporters": [
+            "plugin-rulebook-checker"
+          ],
+          "components": [
+            "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md"
+          ],
+          "confidence": "high",
+          "evidence_type": null,
+          "rule_class": "judgment",
+          "source": "model",
+          "in_diff": true,
+          "blocking": false,
+          "gate": "notice"
+        }
+      ]
+    },
+    {
+      "run_id": "45206641558",
+      "head_sha": "d3a3dcb5f5e5d16c2c6c0b2278aa0af5a60ac44f",
+      "blocking": true,
+      "carried_blocking": 2,
+      "findings": [
+        {
+          "reviewer": "plugin-rulebook-checker",
+          "severity": "Minor",
+          "rule": "plugin-rulebook:R6",
+          "path": "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md",
+          "line": 21,
+          "evidence": "The changed grant includes `Bash(gh pr review:*)`, and the changed example at line 52 uses it to submit an approval, request changes, or comment. The installed `gh pr review --help` confirms these actions add a review to a pull request. R6 classifies a named command prefix that reaches state-changing forms as an advisory least-privilege concern.",
+          "remediation": "Keep the read-only PR grants separate and require normal tool approval for `gh pr review`, or otherwise limit pre-approval to the intended review action.",
+          "reporters": [
+            "plugin-rulebook-checker"
+          ],
+          "components": [],
+          "confidence": "high",
+          "evidence_type": null,
+          "rule_class": "judgment",
+          "source": "model",
+          "in_diff": true,
+          "blocking": false,
+          "gate": "notice"
+        },
+        {
+          "reviewer": "plugin-rulebook-checker",
+          "severity": "Minor",
+          "rule": "plugin-rulebook:R6",
+          "path": "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md",
+          "line": 395,
+          "evidence": "The changed grant pre-approves `Bash(gh api /deployments/:*)`; the changed instruction at line 405 uses it to fetch deployment details. The installed `gh api --help` confirms `--method` overrides the default GET method, and [GitHub's deployment API documentation](https://docs.github.com/en/rest/deployments/deployments) documents DELETE on the same deployment path. R6 classifies a named command prefix that can reach state-changing forms as an advisory least-privilege concern.",
+          "remediation": "Avoid pre-approving this flexible `gh api` prefix; use an invocation that cannot supply a mutating method or require normal tool approval for the request.",
+          "reporters": [
+            "plugin-rulebook-checker"
+          ],
+          "components": [],
+          "confidence": "high",
+          "evidence_type": null,
+          "rule_class": "judgment",
+          "source": "model",
+          "in_diff": true,
+          "blocking": false,
+          "gate": "notice"
+        },
+        {
+          "reviewer": "plugin-rulebook-checker",
+          "severity": "Minor",
+          "rule": "plugin-rulebook:R6",
+          "path": "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md",
+          "line": 402,
+          "evidence": "The changed steps use `git add` and `git commit`; the surrounding example's grant at line 397 is `Bash(git:*)`. Local Git help confirms `git add` changes the index and `git commit` records a commit and advances HEAD. R6 classifies a named command prefix that reaches state-changing forms as an advisory least-privilege concern.",
+          "remediation": "Remove the broad `Bash(git:*)` pre-approval and require tool approval for these operations, or constrain it to the smallest intended command forms.",
+          "reporters": [
+            "plugin-rulebook-checker"
+          ],
+          "components": [],
+          "confidence": "high",
+          "evidence_type": null,
+          "rule_class": "judgment",
+          "source": "model",
+          "in_diff": true,
+          "blocking": false,
+          "gate": "notice"
+        },
+        {
+          "reviewer": "security-reviewer",
+          "severity": "Major",
+          "rule": "tool-scoping",
+          "path": "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md",
+          "line": 402,
+          "evidence": "The changed process stages files with `git add` and commits with `git commit` (lines 402–403), while its `allowed-tools` at line 397 pre-approves `Bash(git:*)`, covering unrelated Git subcommands too.",
+          "remediation": "Pre-approve only `Bash(git add:*)` and `Bash(git commit:*)` in `allowed-tools`.",
+          "reporters": [
+            "security-reviewer"
+          ],
+          "components": [],
+          "confidence": "high",
+          "evidence_type": null,
+          "rule_class": "judgment",
+          "source": "model",
+          "in_diff": true,
+          "blocking": true,
+          "gate": "block"
+        },
+        {
+          "reviewer": "skill-reviewer",
+          "severity": "Major",
+          "rule": "security",
+          "path": "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md",
+          "line": 460,
+          "evidence": "The new guidance says body validation cannot gate an `@` include, but this reference still has argument-bearing includes at lines 146, 346, and 372 (`@$0`). Those examples load caller-selected file content before the model can validate the argument.",
+          "remediation": "Replace the remaining `@$0` examples with instructions to validate the path first, then read it with the Read tool and treat its contents as data.",
+          "reporters": [
+            "skill-reviewer"
+          ],
+          "components": [],
+          "confidence": "high",
+          "evidence_type": null,
+          "rule_class": "judgment",
+          "source": "model",
+          "in_diff": true,
+          "blocking": true,
+          "gate": "block"
+        }
+      ]
+    },
+    {
+      "run_id": "45212538246",
+      "head_sha": "916bac6f1c38a4d11cf9e3cfc2ce3aa4bdd14852",
+      "blocking": true,
+      "carried_blocking": 0,
+      "findings": [
+        {
+          "reviewer": "plugin-rulebook-checker",
+          "severity": "Minor",
+          "rule": "plugin-rulebook:R18",
+          "path": "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md",
+          "line": 157,
+          "evidence": "The edited example block at lines 151–163 grew from 10 to 11 body lines when the validation step was added, crossing R18's >10-line Weak Warning threshold.",
+          "remediation": "Trim the example by one line or move part of the instruction outside the fenced block.",
+          "reporters": [
+            "plugin-rulebook-checker"
+          ],
+          "components": [
+            "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+          ],
+          "confidence": "high",
+          "evidence_type": null,
+          "rule_class": "judgment",
+          "source": "model",
+          "in_diff": true,
+          "blocking": false,
+          "gate": "notice"
+        },
+        {
+          "reviewer": "plugin-rulebook-checker",
+          "severity": "Minor",
+          "rule": "plugin-rulebook:R6",
+          "path": "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md",
+          "line": 397,
+          "evidence": "The changed `allowed-tools` line grants `Bash(git add:*)` and `Bash(git commit:*)`; the example uses them to stage files and create a commit at lines 402–403. Git help confirms these command prefixes also reach state-changing forms beyond those shown.",
+          "remediation": "If these mutations should require per-run approval, omit their grants; otherwise document which additional state-changing forms the prefixes pre-approve.",
+          "reporters": [
+            "plugin-rulebook-checker"
+          ],
+          "components": [
+            "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+          ],
+          "confidence": "high",
+          "evidence_type": null,
+          "rule_class": "judgment",
+          "source": "model",
+          "in_diff": true,
+          "blocking": false,
+          "gate": "notice"
+        },
+        {
+          "reviewer": "dependency-reviewer",
+          "severity": "Critical",
+          "rule": "dependency-graph",
+          "path": "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+          "line": 220,
+          "evidence": "The example directs the command to launch the `code-reviewer` agent. No matching component exists under `plugins/plugin-devkit/agents/`.",
+          "remediation": "Add the missing agent or make clear that `code-reviewer` is a placeholder that readers must replace with an agent defined in their plugin.",
+          "reporters": [
+            "dependency-reviewer"
+          ],
+          "components": [],
+          "confidence": "high",
+          "evidence_type": null,
+          "rule_class": "judgment",
+          "source": "model",
+          "in_diff": true,
+          "blocking": true,
+          "gate": "block"
+        },
+        {
+          "reviewer": "dependency-reviewer",
+          "severity": "Critical",
+          "rule": "dependency-graph",
+          "path": "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md",
+          "line": 346,
+          "evidence": "The example directs the command to launch the `code-analyzer` agent. No matching component exists under `plugins/plugin-devkit/agents/`.",
+          "remediation": "Add the missing agent or mark `code-analyzer` as a placeholder to replace with an agent defined in the reader's plugin.",
+          "reporters": [
+            "dependency-reviewer"
+          ],
+          "components": [],
+          "confidence": "high",
+          "evidence_type": null,
+          "rule_class": "judgment",
+          "source": "model",
+          "in_diff": true,
+          "blocking": true,
+          "gate": "block"
+        },
+        {
+          "reviewer": "security-reviewer",
+          "severity": "Major",
+          "rule": "injection-surface",
+          "path": "plugins/plugin-devkit/skills/command-development/SKILL.md",
+          "line": 180,
+          "evidence": "The guidance directs command authors to read an argument-selected file, but does not say to treat its contents as data only. The changed `@` example at SKILL.md:143 asks Claude to review included source code without that boundary; the generic file-comparison pattern at simple-commands.md:478 likewise reads files without it.",
+          "remediation": "Add an explicit instruction to treat read or included file contents as data, never as directives, in this guidance and the affected examples.",
+          "reporters": [
+            "security-reviewer"
+          ],
+          "components": [
+            "plugins/plugin-devkit/skills/command-development/SKILL.md",
+            "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md"
+          ],
+          "confidence": "medium",
+          "evidence_type": null,
+          "rule_class": "judgment",
+          "source": "model",
+          "in_diff": true,
+          "blocking": true,
+          "gate": "block"
+        },
+        {
+          "reviewer": "security-reviewer",
+          "severity": "Major",
+          "rule": "injection-surface",
+          "path": "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md",
+          "line": 404,
+          "evidence": "The example fetches deployment details with `gh api /deployments/<id>` and then uses them to assess production approval, but does not say that the response is data rather than instructions.",
+          "remediation": "State that the API response is data only, never instructions, and assess approval using the deployment facts required by the checklist.",
+          "reporters": [
+            "security-reviewer"
+          ],
+          "components": [
+            "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md"
+          ],
+          "confidence": "medium",
+          "evidence_type": null,
+          "rule_class": "judgment",
+          "source": "model",
+          "in_diff": true,
+          "blocking": true,
+          "gate": "block"
+        },
+        {
+          "reviewer": "skill-reviewer",
+          "severity": "Minor",
+          "rule": "security & permissions",
+          "path": "plugins/plugin-devkit/skills/command-development/SKILL.md",
+          "line": 175,
+          "evidence": "The path character set allows `..` segments, while the instructions require that the path be “in this repository” without describing a canonical-path or symlink check before passing it to a script.",
+          "remediation": "Require a repository-relative path and verify its resolved target stays under the repository root before invoking the script; reject paths that escape through `..` or symlinks.",
+          "reporters": [
+            "skill-reviewer"
+          ],
+          "components": [
+            "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+            "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+            "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+          ],
+          "confidence": "medium",
+          "evidence_type": null,
+          "rule_class": "judgment",
+          "source": "model",
+          "in_diff": true,
+          "blocking": false,
+          "gate": "notice"
+        }
+      ]
+    },
+    {
+      "run_id": "45217635682",
+      "head_sha": "0a1c090207eab21a203e2b0220fc5ef4b798c7ee",
+      "blocking": true,
+      "carried_blocking": 0,
+      "findings": [
+        {
+          "reviewer": "plugin-rulebook-checker",
+          "severity": "Major",
+          "rule": "plugin-rulebook:R6",
+          "path": "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md",
+          "line": 415,
+          "evidence": "The example body instructs running `gh api /deployments/<id>` at line 404, but its frontmatter has no `allowed-tools` grant. The new note says each call prompts and advises against a persistent allow rule, but omits the required caveat that user settings or permission mode may already allow the command.",
+          "remediation": "Complete the no-grant boundary guidance: state that a prompt occurs unless user settings or permission mode already allow the command, explain the variable-path shared-prefix reason, and retain the per-call approval and no-persistent-rule guidance.",
+          "reporters": [
+            "plugin-rulebook-checker"
+          ],
+          "components": [
+            "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md"
+          ],
+          "confidence": "high",
+          "evidence_type": null,
+          "rule_class": "judgment",
+          "source": "model",
+          "in_diff": true,
+          "blocking": true,
+          "gate": "block"
+        },
+        {
+          "reviewer": "plugin-rulebook-checker",
+          "severity": "Major",
+          "rule": "plugin-rulebook:R37",
+          "path": "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md",
+          "line": 154,
+          "evidence": "The changed grant names `${CLAUDE_PLUGIN_ROOT}/bin/execute`, and line 160 invokes it directly by path. No `bin/execute` file exists under the owning `plugins/plugin-devkit` root.",
+          "remediation": "Point the example to an executable that exists in the relevant plugin, or revise it so it no longer presents a missing path as a literal direct invocation.",
+          "reporters": [
+            "plugin-rulebook-checker"
+          ],
+          "components": [
+            "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+          ],
+          "confidence": "high",
+          "evidence_type": null,
+          "rule_class": "judgment",
+          "source": "model",
+          "in_diff": true,
+          "blocking": true,
+          "gate": "block"
+        },
+        {
+          "reviewer": "skill-reviewer",
+          "severity": "Major",
+          "rule": "security-permissions",
+          "path": "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+          "line": 37,
+          "evidence": "The changed examples restrict path characters and reject `..`, then pass the path to scripts or test runners, but do not check where the path resolves. This conflicts with the changed guidance in SKILL.md:180, which requires confirming the resolved file remains inside the repository because a symlink can lead outside it. An in-repository symlink to an external file passes the examples’ lexical checks and is then processed.",
+          "remediation": "In each example that passes a user-provided path or directory to a script or test runner, require resolving it and confirming the resolved target remains inside the repository before execution.",
+          "reporters": [
+            "skill-reviewer"
+          ],
+          "components": [
+            "plugins/plugin-devkit/skills/command-development/SKILL.md",
+            "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+            "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+          ],
+          "confidence": "high",
+          "evidence_type": null,
+          "rule_class": "judgment",
+          "source": "model",
+          "in_diff": true,
+          "blocking": true,
+          "gate": "block"
+        },
+        {
+          "reviewer": "skill-reviewer",
+          "severity": "Minor",
+          "rule": "actionability",
+          "path": "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md",
+          "line": 404,
+          "evidence": "The new instruction accepts the deployment ID as `$0`, then tells Claude to run `gh api /deployments/<id>`. It does not connect `<id>` to the validated argument; if executed literally, `<` is also shell redirection syntax.",
+          "remediation": "Use the validated `$0` value in the endpoint, or explicitly instruct the reader to replace `<id>` with that value before running the command.",
+          "reporters": [
+            "skill-reviewer"
+          ],
+          "components": [],
+          "confidence": "high",
+          "evidence_type": null,
+          "rule_class": "judgment",
+          "source": "model",
+          "in_diff": true,
+          "blocking": false,
+          "gate": "notice"
+        }
+      ]
+    }
+  ]
+}
