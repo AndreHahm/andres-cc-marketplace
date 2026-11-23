@@ -298,7 +298,11 @@ The maintainer's requirements for this behavior are in
 that document states the intent.
 
 The local parity review (`plugins/git-kit/scripts/git-codex-parity-review.py`) is the
-full or delta review and the quality gate before a PR is created; it is unchanged. CI's `Codex delta
+full or delta review and the quality gate before a PR is created; it is unchanged, except that
+`run-codex-review` leaves root `issues/` (issue drafts, historical records) out of its scope there too
+(`exclude_issue_drafts`, issue #653; a gate-critical path is never dropped). The exclusion matches on
+the path alone, so `issues/` must hold only inert Markdown drafts: a script, config file or symlink
+placed there would skip every Codex review. CI's `Codex delta
 review` is the gate after the PR exists and reviews only the delta, to cut OpenAI API cost and run time
 (open point: those goals have no measurable acceptance criterion yet).
 `compute-scope` and `codex-review` both pass `--ci-delta --anchor-sha <anchor>` to `check-scope-bypass` and

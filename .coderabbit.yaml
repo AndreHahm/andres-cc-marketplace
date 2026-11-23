@@ -100,6 +100,10 @@ reviews:
     - "**/.claude/plugin-rulebook.config.json"
     - "**/.claude/plugin-rulebook-audit-decisions.md"
 
+    # Issue drafts: historical, read-only records of issues as filed (issue #653). No include pattern
+    # above matches root issues/ already; the exclusion states the intent and wins over any include.
+    - "!issues/**"
+
     # Exclude generated and vendor files
     - "!**/dist/**"
     - "!**/site/**"

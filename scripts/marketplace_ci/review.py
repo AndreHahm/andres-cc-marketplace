@@ -1240,10 +1240,19 @@ def collapse_identical_mirrors(
 # decision it skips paths a model review adds little to: tests and fixtures, smoke tests,
 # issue drafts and eval data, and generated agent mirrors (marketplace-parity proves each
 # matches its source, which is reviewed). A gate-critical path is never excluded or
-# narrowed away. The local parity review never passes the flags that turn this on.
+# narrowed away. The local parity review never passes the flags that turn this on; it leaves
+# out only the issue drafts (exclude_issue_drafts).
 # `.claude/review-outcomes/` holds records of past review decisions: no gate or CI reviewer reads
 # them; local triage reads them only as a hint, and evals as data (Codex R2, Claude review R4).
-_CI_EXCLUDED_ROOT_PREFIXES = ("issues/", "evals/", "reviewer-eval/", ".claude/review-outcomes/")
+# Issue drafts are historical, read-only records of an issue as filed, so they are left out of
+# every Codex review, the local parity review included (issue #653).
+ISSUE_DRAFTS_PREFIX = "issues/"
+_CI_EXCLUDED_ROOT_PREFIXES = (
+    ISSUE_DRAFTS_PREFIX,
+    "evals/",
+    "reviewer-eval/",
+    ".claude/review-outcomes/",
+)
 _CI_EXCLUDED_DIR_SEGMENTS = frozenset({"tests", "test", "__tests__", "fixtures", "evals"})
 _CI_EXCLUDED_TEST_FILE = re.compile(
     r"smoke_test\.[A-Za-z0-9]+|test_[^/]*\.py|[^/]*_test\.py|[^/]*\.test\.(?:js|mjs|cjs|ts)"
@@ -1336,6 +1345,21 @@ def exclude_from_ci_review(
         for cp in changed
         if not all(
             is_ci_review_excluded(p, generated, keep_tests=keep_tests)
+            for p in (cp.old_path, cp.new_path)
+            if p is not None
+        )
+    )
+
+
+def exclude_issue_drafts(changed: Sequence[ChangedPath]) -> tuple[ChangedPath, ...]:
+    """`changed` without the entries whose every path is an issue draft (issue #653): the
+    local parity review's only exclusion. A rename out of or into `issues/` stays, and so does a
+    gate-critical path, as in is_ci_review_excluded."""
+    return tuple(
+        cp
+        for cp in changed
+        if not all(
+            p.startswith(ISSUE_DRAFTS_PREFIX) and not is_gate_critical(p)
             for p in (cp.old_path, cp.new_path)
             if p is not None
         )

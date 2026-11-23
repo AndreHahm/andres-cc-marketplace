@@ -20,7 +20,8 @@ Each requirement carries a status: `proposed` (written from the design discussio
 ## R1. Two review gates with different scopes
 
 - The local parity review (`plugins/git-kit/scripts/git-codex-parity-review.py`) is the full or delta review
-  and the quality gate before a pull request is created. It stays as it is.
+  and the quality gate before a pull request is created. It stays as it is, except that it also leaves out
+  root `issues/` (R2).
 - CI's Codex delta review is only the delta review and the quality gate after the pull request exists.
 - Current behavior: a pull request from a fork gets no Codex review. `compute-scope`, `codex-review` and
   `Publish Codex policy result` skip it, and the `Fork PR (unsupported)` job fails it explicitly.
@@ -42,6 +43,9 @@ The CI reviewers are not sent:
   repo-only `.claude/` file and an extra file with no identical source are still reviewed.
 
 A renamed file is excluded only when both its old and its new path are excluded.
+
+Root `issues/` is left out of the local parity review too, so no reviewer is sent an issue draft: a draft
+under `issues/` is a historical, read-only record of an issue as filed (issue #653).
 
 Status: approved (`.claude/review-outcomes/` added by the maintainer, 2026-11-16, issue #753)
 

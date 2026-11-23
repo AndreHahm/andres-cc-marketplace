@@ -858,12 +858,18 @@ def _handle_resolve_attested_actor(args: argparse.Namespace) -> int:
 
 def _ci_review_delta(args: argparse.Namespace, repo: Path, changed, base_sha: str):
     """The part of the PR delta CI sends to the Codex reviewers (issue #639): without
-    --ci-delta, all of it (the local parity review). With it, the delta minus the
-    CI-excluded paths, narrowed to what changed since --anchor-sha when one is given; no
-    anchor means no earlier run reviewed this PR, so the whole (excluded) delta is used."""
+    --ci-delta, all of it but the issue drafts (the local parity review, issue #653). With it,
+    the delta minus the CI-excluded paths, narrowed to what changed since --anchor-sha when one
+    is given; no anchor means no earlier run reviewed this PR, so the whole (excluded) delta is
+    used."""
+    from scripts.marketplace_ci.review import (
+        exclude_from_ci_review,
+        exclude_issue_drafts,
+        narrow_to_unreviewed,
+    )
+
     if not getattr(args, "ci_delta", False):
-        return changed
-    from scripts.marketplace_ci.review import exclude_from_ci_review, narrow_to_unreviewed
+        return exclude_issue_drafts(changed)
 
     keep_tests = getattr(args, "review_exclusions", "codex") == "claude"
     changed = exclude_from_ci_review(repo, changed, base_sha, keep_tests=keep_tests)
