@@ -161,10 +161,9 @@ description: Deployment command with inline docs
 Current branch: !\`git branch --show-current\`
 
 <!-- Production deploys must come from main/master -->
-if [ "$0" = "production" ] && [ "$(git branch --show-current)" != "main" ]; then
+If $0 is `production` and the current branch above is not `main`:
   ⚠️  WARNING: Not on main branch for production deploy
   This is unusual. Confirm this is intentional.
-fi
 
 <!-- Test status ensures we don't deploy broken code -->
 Running tests: !\`npm test\`
@@ -233,7 +232,7 @@ argument-hint: [subcommand] [args]
 
 # Command Processor
 
-if [ "$0" = "help" ] || [ "$0" = "--help" ] || [ "$0" = "-h" ]; then
+If $0 is `help`, `--help` or `-h`:
   **Command Help**
 
   USAGE:
@@ -256,7 +255,6 @@ if [ "$0" = "help" ] || [ "$0" = "--help" ] || [ "$0" = "-h" ]; then
     /command [subcommand] --help
 
   Exit.
-fi
 
 [Regular command processing...]
 ```
@@ -273,7 +271,7 @@ argument-hint: [operation] [target]
 
 # Context-Aware Operation
 
-if [ -z "$0" ]; then
+If $0 is empty:
   **No operation specified**
 
   Available operations:
@@ -291,7 +289,6 @@ if [ -z "$0" ]; then
   Run /command help for more details.
 
   Exit.
-fi
 
 [Command continues if operation provided...]
 ```
@@ -307,7 +304,7 @@ description: Command with good error messages
 
 # Validation Command
 
-if [ -z "$0" ]; then
+If $0 is empty:
   ❌ ERROR: Missing required argument
 
   The 'file-path' argument is required.
@@ -321,9 +318,8 @@ if [ -z "$0" ]; then
   Try again with a file path.
 
   Exit.
-fi
 
-if [ ! -f "$0" ]; then
+If $0 is not an existing file (check with the Read tool, never a shell test built from $0):
   ❌ ERROR: File not found: $0
 
   The specified file does not exist or is not accessible.
@@ -335,11 +331,10 @@ if [ ! -f "$0" ]; then
 
   SUGGESTIONS:
   - Check spelling: $0
-  - Verify file exists: ls -la $(dirname "$0")
-  - Check permissions: ls -l "$0"
+  - Verify the file exists in that directory
+  - Check the file's permissions
 
   Exit.
-fi
 
 [Command continues if validation passes...]
 ```
