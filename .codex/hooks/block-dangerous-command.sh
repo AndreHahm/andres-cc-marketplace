@@ -10,6 +10,12 @@ block() {
     exit 2
 }
 
+# --inner: this run checks the decoded string of an outer `bash -c '...'` (see the shell-string
+# check at the end). Such a run never recurses again and also blocks the plain forbidden git
+# commands that default.rules would match at the start of the outer command.
+INNER=0
+[[ "${1:-}" == "--inner" ]] && INNER=1
+
 # Fail closed: without a parsed command the checks below cannot run.
 command -v jq >/dev/null 2>&1 || block "jq is required by the command-policy hook."
 
@@ -27,6 +33,8 @@ if [[ "$(jq -rn '"a\nb"')" == $'a\r\nb' ]]; then
 fi
 
 [[ -z "${CMD}" ]] && exit 0
+# The command as given; CMD gains the copies the checks read further down.
+ORIG_CMD=${CMD}
 
 # The command without its heredoc body, for the checks that look for a command at the
 # start of a line, so a note or commit message that mentions `git rebase` is text, not a
@@ -180,6 +188,9 @@ function blank_cmd(    k, set, v, long, longb, o, r, re) {
         if (ct[k] || o == "--") return
         if (o !~ /^-/) continue
         if (o ~ (re "$") || o == long) {
+            # Under `set -k` bash moves a NAME=value word out of the arguments, so the
+            # next word would be the value: stop rather than guess.
+            if (k < nk && cn[k + 1] ~ /^[A-Za-z_][A-Za-z0-9_]*\+?=/) return
             if (k < nk) span(cs[k + 1], ce[k + 1])
             k++
             continue
@@ -517,17 +528,23 @@ UNSAFE_CONFIG_RE+="|GIT_CONFIG_(KEY_[0-9]+|PARAMETERS)=[^[:space:]]*${CONFIG_KEY
 # other commands, keywords or assignments in the string). The exec-policy rules match only the
 # outer command. Every check reads one line, so a string split over lines, or one piped into a
 # shell (`echo 'git stash' | sh`), is not seen.
-SHELL_STRING_START='(^|[^A-Za-z0-9_.-])(bash|sh|zsh|dash|ksh|eval|su|ssh)([[:space:]][^;&|"'"'"']*)?'
-SHELL_STRING_START+="[[:space:]][\$]?[\"'](([^\"']|\"[^\"]*\"|'[^']*')*[;&|({][[:space:]]*)?"
-SHELL_STRING_START+="((if|then|do|else|elif|while|until|!)[[:space:]]+"
-SHELL_STRING_START+="|(xargs|command|builtin|env|nice|nohup|time|exec|timeout|doas|eval)"
-SHELL_STRING_START+="([[:space:]]+(-[^[:space:]\"']*|[0-9][^[:space:]\"']*|[A-Za-z_][A-Za-z0-9_]*=[^[:space:]\"']*))*[[:space:]]+"
-SHELL_STRING_START+="|[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*"
-SHELL_STRING_START+="([^\"'[:space:];&|]*/)?"
+SHELL_STRING_OPEN='(^|[^A-Za-z0-9_.-])(bash|sh|zsh|dash|ksh|eval|su|ssh)([[:space:]][^;&|"'"'"']*)?'
+SHELL_STRING_OPEN+="[[:space:]][\$]?[\"']"
+# What may come before git inside the string: other commands, keywords, wrappers, assignments.
+SHELL_STRING_BODY="(([^\"']|\"[^\"]*\"|'[^']*')*[;&|({][[:space:]]*)?"
+SHELL_STRING_BODY+="((if|then|do|else|elif|while|until|!)[[:space:]]+"
+SHELL_STRING_BODY+="|(xargs|command|builtin|env|nice|nohup|time|exec|timeout|doas|eval)"
+SHELL_STRING_BODY+="([[:space:]]+(-[^[:space:]\"']*|[0-9][^[:space:]\"']*|[A-Za-z_][A-Za-z0-9_]*=[^[:space:]\"']*))*[[:space:]]+"
+SHELL_STRING_BODY+="|[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*"
+SHELL_STRING_BODY+="([^\"'[:space:];&|]*/)?"
+SHELL_STRING_START="${SHELL_STRING_OPEN}${SHELL_STRING_BODY}"
 # Inside the string, the closing quote also ends a subcommand (`'git stash'`).
 GIT_SUB_END_Q='([[:space:]);}`"'"'"']|$)'
-SHELL_STRING_GIT_RE="${SHELL_STRING_START}git${GIT_OPT}*[[:space:]]+(${FORBIDDEN_GIT_RE//"${GIT_SUB_END}"/"${GIT_SUB_END_Q}"}"
-SHELL_STRING_GIT_RE+="|${ABBREV_GIT_RE//"${GIT_SUB_END}"/"${GIT_SUB_END_Q}"})"
+SHELL_STRING_GIT="git${GIT_OPT}*[[:space:]]+(${FORBIDDEN_GIT_RE//"${GIT_SUB_END}"/"${GIT_SUB_END_Q}"}"
+SHELL_STRING_GIT+="|${ABBREV_GIT_RE//"${GIT_SUB_END}"/"${GIT_SUB_END_Q}"}|rebase${GIT_SUB_END_Q})"
+SHELL_STRING_GIT_RE="${SHELL_STRING_START}${SHELL_STRING_GIT}"
+# The same pattern for a decoded string read with --inner, from the start of each of its lines.
+INNER_GIT_RE="^[[:space:]]*${SHELL_STRING_BODY}${SHELL_STRING_GIT}"
 # The per-command settings above, also inside such a string (`ssh host 'git -c alias.x=stash x'`).
 SHELL_CONFIG_OPT="${SHELL_STRING_START}git${GIT_OPT}*[[:space:]]+(-c[[:space:]]*|--config-env[=[:space:]]+)"
 UNSAFE_CONFIG_RE+="|${SHELL_CONFIG_OPT}${CONFIG_KEYS}="
@@ -537,6 +554,7 @@ UNSAFE_CONFIG_RE+="|${SHELL_CONFIG_OPT}(pull|branch\.[^[:space:]=]*)\.rebase${GI
 SHELL_CONFIG_OPT='(^|[^A-Za-z0-9_.-])(bash|sh|zsh|dash|ksh|eval|su|ssh)[[:space:]]([^;&|]*[[:space:];&|({])?'
 SHELL_CONFIG_OPT+="git${GIT_OPT}*[[:space:]]+(-c[[:space:]]*|--config-env[=[:space:]]+)"
 UNSAFE_CONFIG_RE+="|${SHELL_CONFIG_OPT}${CONFIG_KEYS}="
+UNSAFE_CONFIG_RE+="|${SHELL_CONFIG_OPT}(pull|branch\.[^[:space:]=]*)\.rebase([[:space:]]|\$)"
 # chmod that makes a file writable by others: an octal mode whose last digit has the
 # write bit (2, 3, 6, 7), or a symbolic clause for o or a that adds or sets w. default.rules
 # lists a few exact modes; it cannot test the bit, so the hook catches the rest.
@@ -633,7 +651,42 @@ if matches_flags "${UNSAFE_CONFIG_RE}"; then
     block "Do not set clean.requireForce or a shell alias for one git command; ask the user."
 fi
 
-if matches "${SHELL_STRING_GIT_RE}"; then
+if ((INNER)) && { matches_flags "${INNER_GIT_RE}" || matches_flags "${GIT_AT_START}(${FORBIDDEN_GIT_RE})"; }; then
+    block "This git command is forbidden by the exec-policy rules, also inside a shell string."
+fi
+
+# The shell-string pattern reads the raw text, so a message inside the string
+# (`bash -c 'git commit -m "about --amend"'`) looks like an option. When the whole command is
+# one `bash -c` or `sh -c` with a single- or double-quoted string, nothing after it, and no
+# character in the string that bash would expand or unescape, the string's value is exactly
+# its text: this hook checks that value as a command of its own, with message blanking, and
+# the pattern is not applied. Anything else, or any failure of that run, keeps the pattern.
+inner_string_allowed() {
+    local re value json back
+    ((INNER)) && return 1
+    re='^[ 	]*(/[A-Za-z0-9_./-]*/)?(bash|sh)([ 	]+(-[a-np-zA-NP-Z]+|--(login|noprofile|norc|posix)))*'
+    re+="[ 	]+-[a-np-zA-NP-Z]*c[a-np-zA-NP-Z]*[ 	]+('([^']*)'|\"([^\"\$\`\\\\]*)\")[ 	]*\$"
+    [[ "${ORIG_CMD}" =~ ${re} ]] || return 1
+    value="${BASH_REMATCH[7]}${BASH_REMATCH[8]}"
+    # With -k (keyword), bash drops every NAME=value word from the arguments, so a word this
+    # hook reads as an option value can vanish (`git -C X=1 . stash`). This keeps the pattern
+    # for the plain spellings; it narrows that older gap, which the pattern misses too, and
+    # does not close it (`shopt -so keyword`, `set $o`). Message blanking stops at such a
+    # word on its own (split_words), so -k cannot hide an option behind a message.
+    [[ "${ORIG_CMD%%[\"\']*}" =~ [[:space:]]-[a-zA-Z]*k ]] && return 1
+    [[ "${value}" =~ (^|[^A-Za-z0-9_])set[[:space:]][^\;\&\|]*(-[a-zA-Z]*k|keyword) ]] && return 1
+    # Git Bash rewrites a path-like argument (`/usr/bin/git`) for a native jq.exe; turn that
+    # off, and use the string only if the input decodes back to the same text.
+    json=$(MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' jq -n --arg c "${value}" '{tool_input:{command:$c}}') ||
+        return 1
+    back=$(jq -r '.tool_input.command' <<<"${json}") || return 1
+    # A native Windows jq.exe writes each newline as CRLF (see the start of this file).
+    [[ "$(jq -rn '"a\nb"')" == $'a\r\nb' ]] && back=${back//$'\r\n'/$'\n'}
+    [[ "${back}" == "${value}" ]] || return 1
+    printf '%s\n' "${json}" | bash "${BASH_SOURCE[0]}" --inner >/dev/null 2>&1
+}
+
+if matches "${SHELL_STRING_GIT_RE}" && ! inner_string_allowed; then
     block "This git command is forbidden by the exec-policy rules, also inside a shell string."
 fi
 

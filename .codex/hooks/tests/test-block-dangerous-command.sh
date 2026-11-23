@@ -277,6 +277,40 @@ B	su -c "git -c 'clean.requireForce=false' clean -d" u
 B	ssh -o "ConnectTimeout 5" host 'git -c alias.x=stash x'
 A	ssh host 'git -c core.editor=vim status'
 A	zsh -c 'rg "-c alias.x=" docs'
+B	bash -c 'git -c "pull.rebase" pull'
+B	ssh -o "A b" host 'git -c pull.rebase pull'
+# A rebase inside a shell string.
+B	bash -c 'git rebase main'
+B	ssh host 'git rebase main'
+B	zsh -c 'git rebase main'
+# A whole `bash -c '...'` whose string bash passes through unchanged is checked as a command
+# of its own, so a message inside it stays text; any other form keeps the text pattern.
+A	bash -c 'git commit -m "document --amend behavior"'
+A	sh -c "git commit -m 'document --amend behavior'"
+A	bash -lc 'git tag -a v1 -m "drop -d later"'
+B	bash -c 'git commit -m "x" --amend'
+B	bash -c 'git -C . commit -m "x" --amend'
+B	bash -c 'git commit --am -m "x"'
+B	/bin/bash -c 'git stash'
+B	bash -c 'git commit -m "'"'"'" --amend'
+B	ssh host 'git commit -m "'"'"'" --amend'
+B	bash -c 'git commit -m "a" --amend' x
+B	bash -c "git commit -m \\"a\\" --amend"
+B	bash -c 'git commit -m "x" --amend' ; echo
+B	bash -c 'bash -c "git stash"'
+B	bash -O -c 'git stash'
+B	bash -c 'echo >(git stash)'
+B	bash -c 'case x in x) (git stash);; esac'
+B	bash -c 'f() (git stash); f'
+B	bash -kc 'git commit -m X=1 -m --amend'
+B	bash -c 'set -k; git commit -m X=1 -m --amend'
+B	bash -kc 'git commit -m X+=1 -m --amend'
+B	bash -c 'set -o keyword; git commit -m X+=1 -m --amend'
+B	set -k; git -C . commit -m X=1 -m --amend
+B	bash -c '/usr/bin/git stash'
+B	bash -c 'X=/a git stash'
+# Accepted false block: a nested string is read as text only.
+B	bash -c 'bash -c "git commit -m \\"x --amend\\""'
 # Accepted false block: text that names such a string, like the git reset --hard text check.
 B	echo "bash -c 'git stash' is blocked"
 # A quoted assignment or wrapper value before the command.
