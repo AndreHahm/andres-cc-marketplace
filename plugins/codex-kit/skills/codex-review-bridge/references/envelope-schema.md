@@ -37,6 +37,7 @@ This is codex-kit's canonical findings envelope — every reviewer dispatched th
 - `evidence` — what was observed, not just a conclusion.
 - `fix` — preserves the remediation value existing reviewers already provide.
 - `confidence` — `high` / `medium` / `low`; informs reporting, does not alter scoring.
+- `category` — absent by default. Present and required only when the caller passed `--finding-categories`, limited to the values it named; its meaning is the caller's. The returned envelope holds `null` for a finding that lost a `components` entry to semantic validation.
 - `verdict` — must follow the reviewer's own deterministic pass/fail rule.
 - `inspection_limits` — discloses skipped files, unreadable inputs, or other fidelity reductions.
 

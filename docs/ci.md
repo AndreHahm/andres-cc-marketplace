@@ -787,7 +787,7 @@ contextual_reasoning`) and `risk` (`reachable`, `exposure`, `mitigation`), next 
 reviewer already returns, and `validate_review_output` parses them. No current reviewer can emit them:
 the bridge's output schema (`bridge-invoke.mjs`) forbids extra properties, so until it gains them (Phase 2)
 every finding is `judgment` with no evidence type or risk. An unknown value in a parsed envelope fails it
-(the run is `could_not_run`) rather than being ignored. Only `severity`, `rule_class` and the exception
+(the run is `could_not_run`) rather than being ignored. Only `severity`, `rule_class`, `category` (below) and the exception
 match feed the gate in this phase; the rest is recorded in the result and shown.
 
 **The computed gate.** `gate_decision` in `review.py` is the one place that decides, per finding, `block`,
@@ -796,6 +796,23 @@ Critical or Major and on a changed line (see [Diff-scoped blocking](#diff-scoped
 reviewer's `measurement` finding is a notice until the Phase 2 verifiers can confirm the measurement;
 that lets a model's own label downgrade its finding, which is safe only while the bridge's output schema
 has no `rule_class` property (a test fails if it gains one).
+
+**Grant findings never block (issue #862).** CI's Codex review asks the bridge for a `category` on every finding
+(`--finding-categories`; `allowed-tools-grant` or `other`) and briefs every Codex reviewer, `security-reviewer`
+included, on what each means and to report a grant finding as minor. A Critical or Major model finding
+labelled `allowed-tools-grant` is a notice: an `allowed-tools`
+entry that is too broad, missing or without effect. In a skill or command that field only removes permission
+prompts. The label counts only when the finding and all its `components` are skill or command documents
+(`SKILL.md`, a skill's `references/` or `examples/`, or a command; never an agent, script, hook, workflow or
+settings file), no component was dropped by the bridge, and every reviewer whose copy was merged chose it. A missing category, `other` and every script
+finding block as before, and the rule name plays no part. The result keeps the reported severity and the
+`category`. Accepted residuals (the maintainer's choice): the label is the model's own, so a mislabelled or
+steered label on a real defect inside such a document makes it a notice; these guards bound only a Critical or
+Major report, and a finding the reviewer itself lowers to minor never reaches them; and a path is judged by its
+name, so a symlink counts as the document it is named as. `rule_class` stays off limits to a model.
+Not covered: the advisory Claude review's own severity check (`claude_review.py`), the unsandboxed fallback
+(no `category`, so a Major grant finding still blocks there), and findings carried from before this change.
+
 A model finding is also a notice when a script contradicts it (`_SCRIPT_OWNED_RULES`, `ScriptCoverage`). All
 of these must hold: only `plugin-rulebook-checker` reported it; its `rule` field (the axis) itself names exactly
 one of R33, R35 or R37 (`plugin-rulebook-checker` splits a finding per rule); every rulebook rule id its whole text names (axis, evidence, fix; read case-insensitively) is

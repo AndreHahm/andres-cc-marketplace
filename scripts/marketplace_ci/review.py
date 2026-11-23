@@ -34,6 +34,8 @@ from scripts.marketplace_ci.conversion import plan_exports
 from scripts.marketplace_ci.git_state import ChangedPath, parse_name_status_z
 from scripts.marketplace_ci.registry import Registry
 from scripts.marketplace_ci.review_contract import (
+    CATEGORY_ALLOWED_TOOLS_GRANT,
+    FINDING_CATEGORIES,
     SEVERITY_MAPPINGS,
     ContractError,
     ExceptionEntry,
@@ -41,8 +43,10 @@ from scripts.marketplace_ci.review_contract import (
     match_exception,
     normalize_risk,
     normalize_rule_class,
+    render_category_briefing,
     render_exceptions_briefing,
     reviewers_for_selector,
+    validate_category,
     validate_evidence_type,
 )
 from scripts.marketplace_ci.sync_plan import plan_plugin_sync
@@ -808,9 +812,9 @@ class Finding:
     line: int | None = None
     reporters: tuple[str, ...] = ()
     components: tuple[str, ...] = ()
-    # Review contract (issue #573). Only `rule_class` and `source` feed the gate; the rest is
-    # recorded and shown. `source` is "script" only for a finding built by this repo's own code,
-    # never for one a reviewer's envelope returned (validate_review_output refuses that).
+    # Review contract (issue #573). Only `rule_class`, `source` and `category` feed the gate; the
+    # rest is recorded and shown. `source` is "script" only for a finding built by this repo's own
+    # code, never for one a reviewer's envelope returned (validate_review_output refuses that).
     confidence: str | None = None
     evidence_type: str | None = None
     rule_class: str = "judgment"
@@ -819,6 +823,9 @@ class Finding:
     # R18 (issue #832): the open issue the reviewer marked this finding as tracked by, from a
     # `[tracked #<issue>]` title. Only a mark; CI decides whether it applies (`find_tracked`).
     tracked_issue: int | None = None
+    # What the reviewer says the finding is about (issue #862), one of `FINDING_CATEGORIES`. None
+    # when it was not asked, or when merged copies disagree; None and `other` change nothing.
+    category: str | None = None
 
 
 @dataclass(frozen=True)
@@ -891,6 +898,7 @@ def validate_review_output(data: dict) -> ReviewResult:
             rule_class = normalize_rule_class(raw.get("rule_class"))
             evidence_type = validate_evidence_type(raw.get("evidence_type"))
             risk = normalize_risk(raw.get("risk"))
+            category = validate_category(raw.get("category"))
         except ContractError as exc:
             raise ReviewOutputError(str(exc)) from exc
         findings.append(
@@ -908,6 +916,7 @@ def validate_review_output(data: dict) -> ReviewResult:
                 rule_class=rule_class,
                 risk=risk,
                 tracked_issue=tracked_mark(raw["finding"]),
+                category=category,
             )
         )
 
@@ -960,8 +969,18 @@ def aggregate_findings(
         # never briefed) never inherits another reviewer's mark.
         marks = {f.tracked_issue for f in group}
         tracked = marks.pop() if len(marks) == 1 else None
+        # Issue #862: copies that disagree carry no category, so a grant label caps a merged
+        # finding only when every reviewer chose it.
+        labels = {f.category for f in group}
+        category = labels.pop() if len(labels) == 1 else None
         aggregated.append(
-            replace(highest, reporters=reporters, components=components, tracked_issue=tracked)
+            replace(
+                highest,
+                reporters=reporters,
+                components=components,
+                tracked_issue=tracked,
+                category=category,
+            )
         )
     return tuple(aggregated)
 
@@ -3067,6 +3086,35 @@ def _contradicted_by_script(finding: Finding, coverage: ScriptCoverage | None) -
     return all(coverage.covers(rule, path) for rule in _claimed_rule_ids(finding))
 
 
+# The documents whose `allowed-tools` findings never block (issue #862): skill and command text,
+# with a skill's references and examples. An agent file is left out on purpose (its `tools` is a
+# real allowlist), and so are script, hook, settings and workflow files, and any file under a
+# nested `agents`, `scripts` or `hooks` directory.
+_GRANT_DOCUMENT = re.compile(
+    r"(?:plugins/[^/]+|\.claude)/(?!(?:.*/)?(?:agents|scripts|hooks)/)"
+    r"(?:skills/[^/]+/(?:SKILL|(?:references|examples)/.+)|commands/.+)\.md"
+)
+
+
+def _is_grant_document(path: str) -> bool:
+    return _GRANT_DOCUMENT.fullmatch(posixpath.normpath(path)) is not None
+
+
+def _is_capped_grant_finding(finding: Finding) -> bool:
+    """True for a MODEL finding every reviewer labelled an `allowed-tools` grant, located (with all
+    its components) in skill or command documents. The label is the model's own, so an injected or
+    mistaken label on another defect in such a document is capped too: the accepted residual of
+    issue #862. `aggregate_findings` drops the category when the merged copies disagree, and the
+    bridge drops it when it removes a component. The path is judged by name: a symlink counts as
+    the document it is named as."""
+    return (
+        finding.source == "model"
+        and finding.category == CATEGORY_ALLOWED_TOOLS_GRANT
+        and _is_grant_document(finding.path)
+        and all(_is_grant_document(_split_location(c)[0]) for c in finding.components)
+    )
+
+
 @dataclass(frozen=True)
 class GateDecision:
     finding: Finding
@@ -3082,8 +3130,8 @@ def gate_decision(
     coverage: ScriptCoverage | None = None,
 ) -> GateDecision:
     """The one place that decides whether a finding blocks, is shown as a notice, or is
-    suppressed. Pure: severity, `rule_class`, `source`, whether the finding is on a changed
-    line, and the registry.
+    suppressed. Pure: severity, `rule_class`, `source`, `category` with the paths the finding
+    names, whether the finding is on a changed line, and the registry.
 
     - A SCRIPT finding matching a registry entry is suppressed. A model finding is never
       suppressed by an entry; the entry is in its briefing and the finding stays visible.
@@ -3093,6 +3141,8 @@ def gate_decision(
     - A rulebook-checker MODEL finding that claims only script-owned rules, at a location this
       run's scripts covered (`coverage`: compliant, or for R35 no worse than the base), is a
       notice.
+    - A MODEL finding labelled an `allowed-tools` grant, in skill or command documents, is a
+      notice (`_is_capped_grant_finding`, issue #862).
     - A MODEL `measurement` finding is a notice until the Phase 2 verifiers can confirm the
       measurement; a script's own measurement blocks like any other script finding. This lets a
       model's own label downgrade its finding, which is safe only while the bridge's output schema
@@ -3104,7 +3154,11 @@ def gate_decision(
             return GateDecision(finding, GATE_SUPPRESSED, entry)
     if finding.severity not in ("Critical", "Major"):
         return GateDecision(finding, GATE_NOTICE)
-    if _is_downgraded_measurement(finding) or _contradicted_by_script(finding, coverage):
+    if (
+        _is_downgraded_measurement(finding)
+        or _is_capped_grant_finding(finding)
+        or _contradicted_by_script(finding, coverage)
+    ):
         return GateDecision(finding, GATE_NOTICE)
     return GateDecision(finding, GATE_BLOCK if in_diff else GATE_NOTICE)
 
@@ -4316,6 +4370,8 @@ def _dispatch_one(
         "read-only",
         "--dispatch-id",
         dispatch_id,
+        "--finding-categories",
+        ",".join(FINDING_CATEGORIES),
     ]
     # The unsandboxed fallback (codex-windows-guardrails), only when the caller consented. Its
     # --target-paths is one comma-joined argument, so a scope too long for a command line has no
@@ -4624,7 +4680,10 @@ def dispatch_reviewers(
                 for name in names
             )
     changed_paths = tuple(changed_paths)
-    exceptions_briefing = render_exceptions_briefing(exceptions)
+    # Every reviewer gets these two, security-reviewer included (issue #862).
+    shared_briefing = "\n\n".join(
+        p for p in (render_category_briefing(), render_exceptions_briefing(exceptions)) if p
+    )
     head_prints: dict[str, list[str] | None] = {}
     # Fingerprinted at HEAD, where CI fingerprints this run's findings (issue #814).
     accepted_briefing = render_accepted_findings_briefing(
@@ -4638,10 +4697,8 @@ def dispatch_reviewers(
         # security-reviewer is never told what was accepted or tracked: its findings are the ones
         # a waiver cannot clear without a maintainer's confirmation (R7, R18).
         if name == _SECURITY_REVIEWER:
-            return exceptions_briefing
-        return "\n\n".join(
-            p for p in (exceptions_briefing, accepted_briefing, tracked_briefing) if p
-        )
+            return shared_briefing
+        return "\n\n".join(p for p in (shared_briefing, accepted_briefing, tracked_briefing) if p)
 
     whole_file: frozenset[str] = frozenset()
     if changed_ranges is not None:

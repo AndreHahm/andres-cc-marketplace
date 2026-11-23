@@ -1892,6 +1892,7 @@ def _finding_to_dict(
         "confidence": finding.confidence,
         "evidence_type": finding.evidence_type,
         "rule_class": finding.rule_class,
+        "category": finding.category,
         "risk": dict(finding.risk) or None,
         "source": finding.source,
         "gate": decision.outcome if decision is not None else None,

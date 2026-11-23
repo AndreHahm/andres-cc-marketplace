@@ -117,6 +117,28 @@ export const ENVELOPE_SCHEMA = deepFreeze({
   }
 });
 
+// A caller that passes --finding-categories gets one more required finding
+// field, `category`, limited to the values it named. Opt-in per call: the
+// default envelope, and every caller that imports ENVELOPE_SCHEMA, is
+// unchanged. What a value means is the caller's own instruction text.
+export function withFindingCategories(schema, categories) {
+  const items = schema.properties.findings.items;
+  return {
+    ...schema,
+    properties: {
+      ...schema.properties,
+      findings: {
+        ...schema.properties.findings,
+        items: {
+          ...items,
+          required: [...items.required, "category"],
+          properties: { ...items.properties, category: { enum: [...categories] } }
+        }
+      }
+    }
+  };
+}
+
 // Exported (additive) so a sibling component that needs the same charset/
 // length guard on a value that is also interpolated into a prompt (e.g.
 // codex-windows-guardrails' dispatch-id/reviewer-type) can reuse it rather
@@ -470,6 +492,11 @@ export function semanticallyValidate(envelope, { targetPaths, dispatchId, review
     // ability to tell "no components by design" from "components existed but
     // every one was dropped" (found by cross-model-review / Devin's review).
     if (Array.isArray(finding.components)) {
+      // A caller may act on `category` together with the files a finding names,
+      // so a category must not outlive a file this check removed (issue #862).
+      if (finding.category !== undefined && keptComponents.length < finding.components.length) {
+        finding.category = null;
+      }
       finding.components = keptComponents;
     }
     keptFindings.push(finding);
@@ -578,7 +605,7 @@ async function main() {
   // - a flag followed directly by another flag, which parseArgs hands that flag's name as its value
   //   (isValidPathToken accepts it), dropping the real list.
   // Only the flag name is echoed, never a value.
-  for (const flag of ["target-paths", "target-paths-file"]) {
+  for (const flag of ["target-paths", "target-paths-file", "finding-categories"]) {
     const tokens = rawArgv.filter((a) => {
       const lower = a.toLowerCase();
       return lower === `--${flag}` || lower.startsWith(`--${flag}=`);
@@ -622,6 +649,14 @@ async function main() {
   // itself before calling this bridge.
   if (!isValidToken(reviewerType)) {
     console.error(JSON.stringify({ ok: false, category: "non_zero_exit", detail: "reviewer-type must match ^[A-Za-z0-9._-]{1,64}$ -- it is interpolated into the prompt" }));
+    process.exit(1);
+  }
+
+  // Only reaches the output schema, never the prompt, but the same charset
+  // check keeps a malformed list from becoming a silent one-value enum.
+  const findingCategories = options["finding-categories"]?.split(",");
+  if (findingCategories && (new Set(findingCategories).size !== findingCategories.length || !findingCategories.every(isValidToken))) {
+    console.error(JSON.stringify({ ok: false, category: "non_zero_exit", detail: "--finding-categories must be a comma-separated list of distinct values matching ^[A-Za-z0-9._-]{1,64}$" }));
     process.exit(1);
   }
 
@@ -810,7 +845,7 @@ async function main() {
 
   const result = await runCodexExec({
     prompt,
-    schema: ENVELOPE_SCHEMA,
+    schema: findingCategories ? withFindingCategories(ENVELOPE_SCHEMA, findingCategories) : ENVELOPE_SCHEMA,
     sandbox: "read-only",
     cwd,
     dispatchId,
