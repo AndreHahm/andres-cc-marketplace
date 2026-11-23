@@ -300,9 +300,12 @@ a fresh `gh repo view` (skill-reviewer M1, 2026-08-31):**
   pushed; the item is reported and the run stops, so a commit Codex never reviewed is never attested
 - An item appears under the PR body's `## Open Items` but the user never deferred it in this session →
   not deferred; asked about in the batch
-- A maintainer removes an `## Accepted Review Findings` line while step 1.6's question is open → the
-  pre-edit re-read sees a different body, the proposal is rebuilt and asked again; a proposal whose
-  waiver sections differ from the live body's is never sent
+- A maintainer removes an `## Accepted Review Findings` line while step 1.6's question or the edit's
+  permission prompt is open → the re-read in the same Bash call as the edit sees a body different from
+  `body-base.txt`, `cmp` fails, nothing is sent, and the proposal is rebuilt and asked again; a proposal
+  for which `git-pr-body-waiver-check.py` reports a waiver section reading differently from
+  `body-base.txt` (CI's `_section_text` view: a split `##` heading, a heading exposed by removing a
+  comment, a tab or non-breaking space after `##`) is never sent
 - A same-repo PR adds a job named `SonarCloud Code Analysis` in its own workflow that always succeeds,
   after the real check failed → the two sources are grouped separately and the failing one keeps the
   context failing
