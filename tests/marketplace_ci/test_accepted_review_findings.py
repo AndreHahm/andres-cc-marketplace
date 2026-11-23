@@ -1751,6 +1751,45 @@ def test_a_long_waiver_is_rechecked_by_its_whole_line_not_its_first_300_characte
     assert _recheck([entry], swapped, open_issues=[13]) != []
     # an unreadable whole line counts as lapsed (fail closed)
     assert _recheck([{**entry, "waiver_line": 7}], applied, open_issues=[12]) != []
+    # so does a whole line that is not the one `waiver` was cut from
+    assert _recheck([{**entry, "waiver_line": swapped + "x"}], applied, open_issues=[12]) != []
+
+
+def test_a_result_without_the_whole_line_matches_only_an_identical_line():
+    """A result written before `waiver_line` existed holds `waiver` alone. It must equal a line
+    exactly: a line it cut short, or a longer line it is the start of, counts as lapsed rather
+    than matching by its first 300 characters (PR #848, security review m1)."""
+    legacy = {**_waived_entry(), "waiver": _LINE}
+    assert _recheck([legacy], _LINE) == []
+    assert _recheck([legacy], _LINE + " (reworded)") != []
+    rule = "r" * 280
+    long_line = f"- {rule} s/SKILL.md:15 @{FP} – accepted"
+    cut = {**_waived_entry(), "rule": rule, "waiver": long_line[:300]}
+    assert _recheck([cut], long_line) != []
+
+
+def test_the_merge_refuses_a_whole_line_that_waiver_was_not_cut_from(git_repo):
+    """`waiver` is the first 300 characters of `waiver_line`; a carried entry whose two fields
+    disagree is unreadable (PR #848, security review m2)."""
+    from scripts.marketplace_ci.review import CarryError
+
+    carried = {
+        "rule": "tool-scoping",
+        "path": "s/SKILL.md",
+        "line": 15,
+        "severity": "Major",
+        "reviewer": "skill-reviewer",
+        "reporters": ["skill-reviewer"],
+        "fingerprint": FP,
+        "waiver": _LINE,
+        "waiver_line": _OTHER_LINE,
+    }
+    with pytest.raises(CarryError):
+        merge_carried_findings({"status": "clean", "findings": []}, [carried], "0")
+    merged = merge_carried_findings(
+        {"status": "clean", "findings": []}, [{**carried, "waiver_line": _LINE}], "0"
+    )
+    assert [f["waiver_line"] for f in merged["findings"]] == [_LINE]
 
 
 def test_a_fresh_result_entry_records_the_whole_waiver_line():
@@ -1870,10 +1909,12 @@ def test_a_briefed_waiver_the_anchor_recorded_keeps_its_provenance(git_repo):
 def _gh_answers(failing):
     """A `subprocess.run` stand-in for fetch-accepted-findings: the body names a deferred issue,
     one comment confirms a waiver, and the endpoint named by `failing` fails (with a `garbage:`
-    prefix it answers exit 0 with output that is not JSON)."""
+    prefix it answers exit 0 with output that is not JSON; with `404:` it answers as `gh api`
+    does for a missing issue or user: exit 1, stderr ending `(HTTP 404)`)."""
     garbage = failing is not None and failing.startswith("garbage:")
-    if garbage:
-        failing = failing.removeprefix("garbage:")
+    missing = failing is not None and failing.startswith("404:")
+    if garbage or missing:
+        failing = failing.split(":", 1)[1]
     body = _section(f"- tool-scoping s/SKILL.md:15 @{FP} – deferred #13")
     comment = json.dumps({"login": "maint", "body": f"- confirmed tool-scoping s/SKILL.md @{FP}"})
     answers = {
@@ -1889,6 +1930,10 @@ def _gh_answers(failing):
             if endpoint.endswith(suffix):
                 if suffix == failing and garbage:
                     return subprocess.CompletedProcess(cmd, 0, stdout="{not json", stderr="")
+                if suffix == failing and missing:
+                    return subprocess.CompletedProcess(
+                        cmd, 1, stdout="", stderr="gh: Not Found (HTTP 404)\n"
+                    )
                 rc = 1 if suffix == failing else 0
                 return subprocess.CompletedProcess(cmd, rc, stdout="" if rc else answer, stderr="")
         raise AssertionError(f"unexpected call {cmd}")
@@ -1923,6 +1968,24 @@ def test_strict_fetch_fails_when_a_read_the_publish_recheck_needs_fails(
     assert main([*args, "--strict"]) == 0
     _, open_issues, confirmed = _load_accepted_findings(str(out))
     assert open_issues == {13} and confirmed == {("tool-scoping", "s/SKILL.md", FP)}
+
+
+def test_strict_fetch_reads_a_missing_issue_or_user_as_an_answer(tmp_path, monkeypatch):
+    """A 404 is not a failed read: a deleted issue counts as not open (its waiver is listed as
+    lapsed) and a deleted account is not a maintainer (its comment confirms nothing), so neither
+    fails every later publish (PR #848, security review m1 and m2)."""
+    from scripts.marketplace_ci.__main__ import _load_accepted_findings
+
+    out = tmp_path / "accepted.json"
+    args = ["fetch-accepted-findings", "--repo", "o/r", "--pr-number", "7", "--strict"]
+    monkeypatch.setattr(main_module.subprocess, "run", _gh_answers("404:/issues/13"))
+    assert main([*args, "--output", str(out)]) == 0
+    _, open_issues, confirmed = _load_accepted_findings(str(out))
+    assert open_issues == set() and confirmed == {("tool-scoping", "s/SKILL.md", FP)}
+    monkeypatch.setattr(main_module.subprocess, "run", _gh_answers("404:/permission"))
+    assert main([*args, "--output", str(out)]) == 0
+    _, open_issues, confirmed = _load_accepted_findings(str(out))
+    assert open_issues == {13} and confirmed == set()
 
 
 def test_strict_fetch_needs_a_pull_request(tmp_path):

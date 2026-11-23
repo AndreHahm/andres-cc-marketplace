@@ -120,20 +120,20 @@ def _scripts_modules_for(argv: list[str]) -> list[str]:
     return [m for m in payload.split(",") if m]
 
 
-def _assert_only_tier1_and_actually_ran(argv: list[str], handler_module: str = "") -> None:
+def _assert_only_tier1_and_actually_ran(
+    argv: list[str], handler_module: str = "scripts.marketplace_ci.review"
+) -> None:
     """Allowlist assertion (a future Tier 2 module added to review.py's own
     dependency closure fails this, with no denylist to forget to update) --
     plus a positive-signal assertion that the handler's own imports actually
     executed, so a probe that exits early via argparse's SystemExit (e.g. a
     future required-argument rename) fails loudly instead of vacuously
-    reporting an empty, trivially-"clean" module set. `__main__` itself is always imported, so
-    `handler_module`, a module only the handler imports, is the stronger signal where given."""
+    reporting an empty, trivially-"clean" module set. `__main__` itself is always imported, so the
+    real signal is `handler_module`, a module only the handler imports (every probed handler
+    imports `review` lazily, and an argparse exit imports only `scripts.marketplace_ci` and
+    `__main__`)."""
     modules = set(_scripts_modules_for(argv))
-    assert modules, (
-        f"probe for {argv!r} imported no scripts.* modules at all -- the handler's own "
-        "imports never ran (did main() exit early, e.g. via argparse?)"
-    )
-    assert not handler_module or handler_module in modules, (
+    assert handler_module in modules, (
         f"probe for {argv!r} never imported {handler_module} -- the handler never ran"
     )
     leaked = modules - TIER1_MODULES
@@ -167,10 +167,7 @@ def test_resolve_attested_actor_never_imports_tier2_modules():
 def test_recheck_waivers_never_imports_tier2_modules(tmp_path):
     accepted = tmp_path / "accepted.json"
     accepted.write_text('{"body": "", "open_issues": [], "confirmed": []}', encoding="utf-8")
-    _assert_only_tier1_and_actually_ran(
-        ["recheck-waivers", "--accepted-findings", str(accepted)],
-        handler_module="scripts.marketplace_ci.review",
-    )
+    _assert_only_tier1_and_actually_ran(["recheck-waivers", "--accepted-findings", str(accepted)])
 
 
 def test_narrow_accepted_findings_never_imports_tier2_modules(tmp_path):
@@ -185,8 +182,7 @@ def test_narrow_accepted_findings_never_imports_tier2_modules(tmp_path):
             str(accepted),
             "--output",
             str(tmp_path / "out.json"),
-        ],
-        handler_module="scripts.marketplace_ci.review",
+        ]
     )
 
 

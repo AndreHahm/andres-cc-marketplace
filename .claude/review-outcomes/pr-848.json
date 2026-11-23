@@ -4,7 +4,7 @@
       "disposition": "declined",
       "finding": "4662520126",
       "line": 1,
-      "note": "Maintainer kept the #843 draft in this PR; connection stated in the PR description",
+      "note": "Maintainer kept the #843 draft in this PR; connection stated in the PR description; thread resolved at the maintainer's request",
       "path": "issues/2026-11-22-codex-review-diff-only-tier1-reviewer.md",
       "pr": 848,
       "recorded_at": "2026-11-23T07:07:23+00:00"

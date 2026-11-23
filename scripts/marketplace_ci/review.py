@@ -2150,16 +2150,16 @@ def recheck_applied_waivers(
             continue
         fingerprint = entry.get("fingerprint")
         whole = entry.get("waiver_line")
-        if whole is not None and not isinstance(whole, str):
+        # The two fields record one line: `waiver` is its first 300 characters.
+        if whole is not None and not (isinstance(whole, str) and whole[:300] == applied):
             notes.append(f"{rule} {path}:{line}: its recorded waiver cannot be read")
             continue
         # `waiver` keeps 300 characters, which a long rule and path can fill before the kind and
         # issue, so the whole line decides. A result written before `waiver_line` existed has
-        # only the 300 characters.
+        # only `waiver`: it must equal a line exactly, so a line it cut short counts as lapsed
+        # (fail closed) rather than matching by its first 300 characters.
         same_line = [
-            w
-            for w in section.waivers
-            if (w.text == whole if whole is not None else w.text[:300] == applied)
+            w for w in section.waivers if w.text == (whole if whole is not None else applied)
         ]
         waiver, _ = find_waiver(
             same_line,
@@ -2599,8 +2599,11 @@ def merge_carried_findings(result: object, carried: object, expected_count: str)
         if waiver is not None and not (isinstance(waiver, str) and _CARRY_FIELD.fullmatch(waiver)):
             raise CarryError("a carried finding has no usable waiver line")
         waiver_line = entry.get("waiver_line")
+        # The whole line must be the one `waiver` cut to 300 characters (R19).
         if waiver_line is not None and not (
-            isinstance(waiver_line, str) and _WAIVER_LINE_FIELD.fullmatch(waiver_line)
+            isinstance(waiver_line, str)
+            and _WAIVER_LINE_FIELD.fullmatch(waiver_line)
+            and waiver_line[:300] == waiver
         ):
             raise CarryError("a carried finding has no usable whole waiver line")
         mark = entry.get("tracked_issue")

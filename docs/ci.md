@@ -514,12 +514,19 @@ review` is the gate after the PR exists and reviews only the delta, to cut OpenA
   starts no run. So `publish` (which has `issues: read`) downloads the `codex-review-result` and
   `carried-findings` artifacts, runs `fetch-accepted-findings --strict` again with its base-restored code
   (`--strict`: an issue state, the comments or a commenter's role that cannot be read exits 2 instead of
-  reading as closed or unconfirmed, so the result fails; it is refused without `--repo` and
+  reading as closed or unconfirmed, so the result fails; a 404 is an answer, not a failed read: an
+  issue number that does not exist counts as not open, so its waiver is listed as lapsed, and a
+  login that is not a user is not a maintainer (any other status, a 410 included, still exits 2); it
+  is refused without `--repo` and
   `--pr-number` or with `--body-file`; the run-start read keeps the old behavior), and
   `recheck-waivers` re-matches every entry those files recorded as waived (`recheck_applied_waivers`):
   only the waiver line the run applied, as recorded whole in `waiver_line` (`waiver` keeps 300
-  characters, which a long rule and path can fill before the kind and issue; a result without
-  `waiver_line`, written before it existed, is matched by those 300), or the same tracked
+  characters, which a long rule and path can fill before the kind and issue, and must be the first
+  300 characters of `waiver_line`, or the entry counts as lapsed and the carry refuses it; an entry
+  without `waiver_line` (one written before it existed, or by a writer that does not record it)
+  matches only a line equal to its `waiver`, so a line it cut short lapses. Accepted residual: a whole line can be as long as the PR body (65,536
+  characters), so 500 carried entries naming one such line make an artifact of about 32 MB; only
+  someone who can edit the body can cause it, and it fails nothing open), or the same tracked
   issue counts, re-checked with `find_waiver`/`find_tracked` against the fresh section, open issues and
   confirmations, so a line added during the run does not take the applied one's place. A carried entry of
   unknown origin (`_origin_unknown`: `reviewer: carried` with no or an empty `origin_reviewer`) still needs
