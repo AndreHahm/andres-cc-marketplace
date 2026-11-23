@@ -54,11 +54,13 @@ check on the same head green. The carry step reports `carried=true` only when al
 - the newest other run of this workflow for this PR, this head SHA, this repository and the `pull_request`
   event, created no later than this run, is `completed` (an older success never outlives a newer failure,
   cancellation or run still in progress);
-- no `base_ref_changed`, `automatic_base_change_succeeded` or `automatic_base_change_failed` issue event on the
-  PR is dated at or after that run's creation (this catches a base change whose own run is not listed yet);
 - that run's latest attempt has exactly one job with this job's display name, on this head, and it ended
-  `completed`/`success`. A carried success counts as a success for the next edit, so each carried result goes
-  back to a run that really ran the job.
+  `completed`/`success`. When that job was itself carried (its carry step succeeded and every later step
+  except the post steps and `Complete job` was skipped), the same must hold for each earlier run back through the chain of carries, ending at the
+  run that really ran the job; a job whose steps do not show which it was runs in full;
+- no `base_ref_changed`, `automatic_base_change_succeeded` or `automatic_base_change_failed` issue event on the
+  PR is dated at or after the creation of the run that really ran the job (this catches a base change whose own
+  run is not listed yet, and one that came before a carry).
 
 Anything else runs the job in full: no earlier run, an incomplete listing (more than 100 runs or jobs), an
 unreadable API reply after the retries (1 and 3 seconds, as in the anchor lookup), a malformed record, or any

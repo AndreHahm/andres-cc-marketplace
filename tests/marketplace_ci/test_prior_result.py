@@ -41,6 +41,29 @@ def _run(run_id, created, *, status="completed", head=HEAD, pr=PR, repo=REPO, ev
     }
 
 
+def _steps(*, carried=False):
+    """A carrying job's steps as the jobs API lists them: numbers jump at the post steps."""
+    main = "skipped" if carried else "success"
+    return [
+        {"number": 1, "name": "Set up job", "conclusion": "success"},
+        {"number": 4, "name": prior_result.CARRY_STEP_NAME, "conclusion": "success"},
+        {"number": 6, "name": "Run actions/setup-python", "conclusion": main},
+        {"number": 7, "name": "Run uv run pytest", "conclusion": main},
+        {"number": 24, "name": "Post Run actions/checkout", "conclusion": "success"},
+        {"number": 27, "name": "Complete job", "conclusion": "success"},
+    ]
+
+
+def _job(conclusion="success", *, carried=False, head=HEAD, steps=None):
+    return {
+        "name": JOB,
+        "status": "completed",
+        "conclusion": conclusion,
+        "head_sha": head,
+        "steps": _steps(carried=carried) if steps is None else steps,
+    }
+
+
 class FakeGh:
     """Answers the four reads `decide` makes; a value of None makes that read fail."""
 
@@ -80,6 +103,8 @@ class FakeGh:
             listed = self.jobs.get(run_id)
             if listed is None:
                 return None
+            # A job given without steps really ran (the fixtures that predate m-B2).
+            listed = [j if "steps" in j else {**j, "steps": _steps()} for j in listed]
             return json.dumps({"total_count": len(listed), "jobs": listed})
         raise AssertionError(path)
 
@@ -380,3 +405,99 @@ def test_the_jobs_that_read_the_pr_body_or_decide_policy_never_carry(job):
     assert CARRY_STEP not in [s.get("name") for s in JOBS[job]["steps"]]
     for s in JOBS[job]["steps"]:
         assert "carry_prior" not in str(s.get("if", "")), job
+
+
+def test_a_chain_of_carries_dates_the_base_check_from_the_run_that_really_ran():
+    # 300 really ran; 400 carried from it; a base change between 300 and 400 must still run (m-B2).
+    gh = FakeGh(
+        runs=[_run(300, "2026-11-12T05:00:00Z"), _run(400, "2026-11-12T06:00:00Z")],
+        jobs={300: [_job()], 400: [_job(carried=True)]},
+        events="automatic_base_change_succeeded\t2026-11-12T05:30:00Z\n",
+    )
+    carry, reason = _decide(gh)
+    assert carry is False
+    assert "300" in reason
+
+
+def test_a_chain_of_carries_without_a_base_change_carries_and_names_both_runs():
+    gh = FakeGh(
+        runs=[_run(300, "2026-11-12T05:00:00Z"), _run(400, "2026-11-12T06:00:00Z")],
+        jobs={300: [_job()], 400: [_job(carried=True)]},
+    )
+    carry, reason = _decide(gh)
+    assert carry, reason
+    assert "400" in reason and "300" in reason
+
+
+def test_only_carries_and_no_run_that_really_ran_runs_in_full():
+    gh = FakeGh(jobs={400: [_job(carried=True)]})
+    assert _decide(gh)[0] is False
+
+
+def test_a_failure_behind_a_carry_runs_in_full():
+    gh = FakeGh(
+        runs=[_run(300, "2026-11-12T05:00:00Z"), _run(400, "2026-11-12T06:00:00Z")],
+        jobs={300: [_job("failure")], 400: [_job(carried=True)]},
+    )
+    assert _decide(gh)[0] is False
+
+
+@pytest.mark.parametrize(
+    "steps",
+    [
+        [],
+        [{"number": 1, "name": "Set up job", "conclusion": "success"}],
+        [{"number": 2, "name": prior_result.CARRY_STEP_NAME, "conclusion": "success"}],
+        [
+            {"number": 2, "name": prior_result.CARRY_STEP_NAME, "conclusion": "success"},
+            {"number": 3, "name": "x", "conclusion": "cancelled"},
+        ],
+        [
+            {"number": "2", "name": prior_result.CARRY_STEP_NAME},
+            {"number": 3, "conclusion": "success"},
+        ],
+        [{"name": prior_result.CARRY_STEP_NAME}],
+        "not a list",
+    ],
+)
+def test_steps_that_cannot_tell_a_carry_from_a_run_run_in_full(steps):
+    gh = FakeGh(jobs={400: [_job(steps=steps)]})
+    assert _decide(gh)[0] is False
+
+
+def test_the_carry_step_name_matches_every_carrying_job():
+    for job_id, job in JOBS.items():
+        names = [s.get("name") for s in job.get("steps", [])]
+        ids = [s.get("id") for s in job.get("steps", [])]
+        if "carry_prior" in ids:
+            step = job["steps"][ids.index("carry_prior")]
+            assert step["name"] == prior_result.CARRY_STEP_NAME, job_id
+            assert names.count(prior_result.CARRY_STEP_NAME) == 1, job_id
+
+
+def test_a_run_whose_carry_step_was_skipped_really_ran():
+    # Not an edited event: the carry step is skipped and the job's steps ran.
+    steps = _steps()
+    steps[1] = {**steps[1], "conclusion": "skipped"}
+    assert _decide(FakeGh(jobs={400: [_job(steps=steps)]}))[0] is True
+
+
+@pytest.mark.parametrize("carry_conclusion", ["skipped", "failure", None])
+def test_skipped_main_steps_without_a_successful_carry_step_run_in_full(carry_conclusion):
+    steps = _steps(carried=True)
+    steps[1] = {**steps[1], "conclusion": carry_conclusion}
+    gh = FakeGh(
+        runs=[_run(300, "2026-11-12T05:00:00Z"), _run(400, "2026-11-12T06:00:00Z")],
+        jobs={300: [_job()], 400: [_job(steps=steps)]},
+    )
+    assert _decide(gh)[0] is False
+
+
+def test_a_successful_post_step_does_not_make_a_carried_job_look_run():
+    # Post and Complete job steps succeed in a carried job too; the main steps decide (m2).
+    gh = FakeGh(
+        runs=[_run(300, "2026-11-12T05:00:00Z"), _run(400, "2026-11-12T06:00:00Z")],
+        jobs={300: [_job()], 400: [_job(carried=True)]},
+        events="base_ref_changed\t2026-11-12T05:30:00Z\n",
+    )
+    assert _decide(gh)[0] is False
