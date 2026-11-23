@@ -3006,24 +3006,25 @@ GATE_NOTICE = "notice"
 GATE_SUPPRESSED = "suppressed"
 
 
-# Rulebook rules a script judges beside the model review (issues #613, #615). A model finding from
-# the rulebook checker that claims only such rules, at a location the script covered and found
-# compliant, contradicts the script's verdict, so it is a notice. Never decided from prose alone:
-# the coverage comes from this run's own scripts, and a finding elsewhere (a hook command, an
-# uncovered file) stays blocking.
-_SCRIPT_OWNED_RULES = frozenset({"R33", "R37"})
+# Rulebook rules a script judges beside the model review (issues #613, #615, #525). A model finding
+# from the rulebook checker that claims only such rules, at a location the script covered, is a
+# notice: for R33 and R37 the script found it compliant, for R35 no worse than the base (the gap
+# predates the PR). Never decided from prose alone: the coverage comes from this run's own scripts,
+# and a finding elsewhere (a hook command, an uncovered file, a new skill) stays blocking.
+_SCRIPT_OWNED_RULES = frozenset({"R33", "R35", "R37"})
 _RULEBOOK_CHECKER = "plugin-rulebook-checker"
 _RULEBOOK_ID = re.compile(r"\bR\d{1,2}\b", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
 class ScriptCoverage:
-    """What this run's scripts checked and found compliant.
+    """What this run's scripts checked and found compliant, or for R35 no worse than the base.
 
     `clean` holds (rule id, repo path) pairs: R37 for each grant document the verifier read that
-    has no `r37-executable-bit` finding. `clean_everywhere` holds rule ids a script found no
-    violation of anywhere (R33, when `find_prefix_violations` returns none). Empty by default, so a
-    caller that passes no coverage downgrades nothing."""
+    has no `r37-executable-bit` finding, R35 for each changed skill whose `##` headings and
+    `references/` directory are no worse than the base's. `clean_everywhere` holds rule ids a
+    script found no violation of anywhere (R33, when `find_prefix_violations` returns none).
+    Empty by default, so a caller that passes no coverage downgrades nothing."""
 
     clean: frozenset[tuple[str, str]] = frozenset()
     clean_everywhere: frozenset[str] = frozenset()
@@ -3038,17 +3039,20 @@ def _claimed_rule_ids(finding: Finding) -> set[str]:
 
 
 def _claims_only_script_owned_rules(finding: Finding) -> bool:
-    """True for a MODEL finding that only the rulebook checker reported and whose text names
-    rulebook rules, all of them script-owned. A finding any other reviewer also reported, or one
-    that names any other rule or none, is not matched. Prose chooses the rule only; whether it is
-    downgraded is decided by `_contradicted_by_script`."""
+    """True for a MODEL finding that only the rulebook checker reported, whose `rule` field itself
+    names a rulebook rule, and whose whole text names only script-owned rules. A finding any other
+    reviewer also reported, or one that names any other rule or none, is not matched. Evidence and
+    remediation often quote the PR's own lines, so an id found only there can make a finding block
+    but never qualify it (issue #525 security review). Whether it is downgraded is decided by
+    `_contradicted_by_script`."""
     if finding.source != "model":
         return False
     reporters = set(finding.reporters) | {finding.reviewer}
     if reporters != {_RULEBOOK_CHECKER}:
         return False
+    in_rule = {rule.upper() for rule in _RULEBOOK_ID.findall(finding.rule)}
     named = _claimed_rule_ids(finding)
-    return bool(named) and named <= _SCRIPT_OWNED_RULES
+    return bool(in_rule) and named <= _SCRIPT_OWNED_RULES
 
 
 def _contradicted_by_script(finding: Finding, coverage: ScriptCoverage | None) -> bool:
@@ -3081,7 +3085,8 @@ def gate_decision(
       scope; accepted residual: a PR that deletes a guard on one line and leaves the exposed use
       elsewhere is not caught here).
     - A rulebook-checker MODEL finding that claims only script-owned rules, at a location this
-      run's scripts covered and found compliant (`coverage`), is a notice.
+      run's scripts covered (`coverage`: compliant, or for R35 no worse than the base), is a
+      notice.
     - A MODEL `measurement` finding is a notice until the Phase 2 verifiers can confirm the
       measurement; a script's own measurement blocks like any other script finding. This lets a
       model's own label downgrade its finding, which is safe only while the bridge's output schema

@@ -1236,6 +1236,82 @@ def _link_sites(text: str) -> list[_LinkSite]:
     return sites
 
 
+# --- R35: standard sections, coverage only -------------------------------------------------------
+# R35 is matched by substance, not wording, so no script reports it (docs/review-rule-inventory.md:
+# a literal heading scan would block on wording). This only tells the gate when a changed skill's
+# sections are no worse than the base's, so a model R35 finding there describes a gap the PR did not
+# make and is a notice (issue #525). Anything this cannot show leaves the model finding as it is.
+
+
+def _h2_headings(source: str) -> frozenset[str]:
+    """The text of every top-level `##` heading (ATX or setext) in one CommonMark reading, with its
+    whitespace collapsed. A heading inside a list, quote or code block is not a section."""
+    tokens = _MARKDOWN.parse(source)
+    return frozenset(
+        " ".join(tokens[index + 1].content.split())
+        for index, token in enumerate(tokens)
+        if token.type == "heading_open" and token.tag == "h2" and token.level == 0
+    )
+
+
+def _section_headings(text: str) -> tuple[bool, frozenset[str]] | None:
+    """(has YAML frontmatter, its top-level `##` headings). With frontmatter, the headings come
+    from the text with the frontmatter emptied, as Claude Code and GitHub read it: in plain
+    CommonMark the closing `---` turns the whole frontmatter into one setext heading, so any
+    frontmatter edit would look like a renamed section. None when the frontmatter ends at a `...`
+    line: `_frontmatter_blanked` stops there but `_frontmatter` and other readers run on to the
+    next `---`, so a heading between the two would count here while readers never see it."""
+    lines = _BLOCK_LINE_BREAK.split(text)
+    blanked = _frontmatter_blanked(lines)
+    if blanked is not None:
+        closer = next(
+            line.rstrip(" \t") for line in lines[1:] if line.rstrip(" \t") in ("---", "...")
+        )
+        if closer == "...":
+            return None
+    return blanked is not None, _h2_headings(text if blanked is None else blanked)
+
+
+def r35_no_worse(text: str, base_text: str, *, has_references: bool, had_references: bool) -> bool:
+    """True when a skill's SKILL.md keeps every top-level `##` heading its base had and the skill
+    did not gain a `references/` directory (which newly requires a Reference Guide). A renamed or
+    removed heading, frontmatter added or removed (the body is read differently), frontmatter
+    closed by `...`, or a file too large to parse is not shown to be no worse. A section whose body
+    was emptied under a kept heading still counts: R35 asks for the section."""
+    if len(text) > MAX_PARSE_BYTES or len(base_text) > MAX_PARSE_BYTES:
+        return False
+    if has_references and not had_references:
+        return False
+    head, base = _section_headings(text), _section_headings(base_text)
+    if head is None or base is None:
+        return False
+    return head[0] == base[0] and base[1] <= head[1]
+
+
+def _with_references(repo, ref: str, skill_dirs: Sequence[str]) -> set[str]:
+    """The skill directories in `skill_dirs` that have an entry named `references` at `ref`, in
+    any letter case: a case-insensitive checkout reads `References/` as the same directory."""
+    if not skill_dirs:
+        return set()
+    listing = _run_git(
+        repo,
+        "--literal-pathspecs",
+        "ls-tree",
+        "-z",
+        "--name-only",
+        ref,
+        "--",
+        *[f"{d}/" for d in skill_dirs],
+    )
+    found = set()
+    for raw in listing.split(b"\0"):
+        name = raw.decode("utf-8", errors="surrogateescape")
+        parent, _, base = name.rpartition("/")
+        if base.casefold() == "references":
+            found.add(parent)
+    return {d for d in skill_dirs if d in found}
+
+
 def _site_line(lines: list[str], site: _LinkSite) -> int | None:
     """The line of `site` within its block: the first line that holds its target as written (or
     as the parser normalized it), else the block's first line (the parser gives block ranges)."""
@@ -1717,9 +1793,14 @@ def script_coverage(repo, outcomes: Sequence[VerifierOutcome]) -> ScriptCoverage
     inventory and `marketplace.json` exist at HEAD (the prefix check reads the working tree) and
     `find_prefix_violations` returns nothing; any violation, a dirty tree, a metadata file that is
     not committed, or a failure to run any of these covers nothing (the pipeline's
-    `check-prefixes` gate reports the violation itself)."""
+    `check-prefixes` gate reports the violation itself).
+    R35: every changed skill the `measurement` verifier found no worse than its base
+    (`r35_no_worse`), from the outcome's `covered` pairs. This is "no worse than the base", not
+    "compliant": a section the base already lacked stays missing, and the PR did not cause it."""
     clean: set[tuple[str, str]] = set()
     for outcome in outcomes:
+        if outcome.name == MEASUREMENT:  # the one producer, and only of R35 (no other route in)
+            clean.update(pair for pair in outcome.covered if pair[0] == "R35")
         if outcome.name != STRUCTURE:
             continue
         bad = {f.path for f in outcome.findings if f.rule == RULE_EXECUTABLE_BIT}
@@ -2317,6 +2398,9 @@ class VerifierOutcome:
     findings: tuple[Finding, ...]
     checked: tuple[str, ...]  # the files read and judged; every other candidate has a finding
     partial: tuple[str, ...] = ()  # in `checked`, but an item was unresolved or held back
+    # (rule id, path) pairs the verifier found no worse than the base without reporting anything
+    # (R35, see `r35_no_worse`); `script_coverage` adds them to the gate's coverage.
+    covered: tuple[tuple[str, str], ...] = ()
 
 
 def _read_blobs(
@@ -2434,6 +2518,7 @@ def run_verifiers(
     grant_checked: list[str] = []
     measure_findings: list[Finding] = []
     measure_checked: list[str] = []
+    unreadable_frontmatter: set[str] = set()  # got an unverifiable finding: never R35-covered
     for path in candidates:
         is_skill = component_kind(path) == "skill"
         if path in problems:
@@ -2448,6 +2533,7 @@ def run_verifiers(
             grant_findings.extend(_bash_scope_findings(path, *parsed))
             grant_checked.append(path)
         except VerifierError as exc:
+            unreadable_frontmatter.add(path)
             grant_findings.append(unverifiable_finding(path, str(exc)))
             if is_skill:
                 measure_findings.append(grant_findings[-1])  # the same; the aggregate keeps one
@@ -2468,6 +2554,34 @@ def run_verifiers(
                 measure_checked.append(path)
         except VerifierError as exc:
             measure_findings.append(unverifiable_finding(path, str(exc)))
+    # R35 coverage: only a skill modified in place, read on both sides with readable frontmatter.
+    # A new skill, or one renamed from any path (a renamed skill is a new identity, and R35 applies
+    # to new skills), has no base to be no worse than.
+    measure_covered: list[tuple[str, str]] = []
+    compared = [
+        path
+        for path in candidates
+        if component_kind(path) == "skill"
+        and path not in problems
+        and path not in unreadable_frontmatter
+        and path in base_texts
+        and old_of.get(path) == path
+    ]
+    if base_sha is not None and compared:
+        dirs = [posixpath.dirname(p) for p in compared]
+        has = _with_references(repo, "HEAD", dirs)
+        had = _with_references(repo, base_sha, dirs)
+        deadline = time.monotonic() + MAX_PARSE_SECONDS
+        for path, skill_dir in zip(compared, dirs, strict=True):
+            if time.monotonic() > deadline:
+                break  # what is left is simply not covered
+            if r35_no_worse(
+                texts[path],
+                base_texts[path],
+                has_references=skill_dir in has,
+                had_references=skill_dir in had,
+            ):
+                measure_covered.append(("R35", path))
     listings: dict[str, list[str]] = {}
 
     def files_of(ref: str) -> list[str]:
@@ -2717,7 +2831,10 @@ def run_verifiers(
             name=GRANT_TO_BODY, findings=tuple(grant_findings), checked=tuple(grant_checked)
         ),
         VerifierOutcome(
-            name=MEASUREMENT, findings=tuple(measure_findings), checked=tuple(measure_checked)
+            name=MEASUREMENT,
+            findings=tuple(measure_findings),
+            checked=tuple(measure_checked),
+            covered=tuple(measure_covered),
         ),
         VerifierOutcome(
             name=PATH_AND_MIRROR, findings=tuple(path_findings), checked=tuple(path_checked)
