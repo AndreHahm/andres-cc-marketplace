@@ -338,7 +338,7 @@ def test_the_measurement_downgrade_is_only_safe_while_the_bridge_rejects_rule_cl
     assert "rule_class" not in bridge.read_text(encoding="utf-8")
 
 
-# --- rules a script gate owns (issues #613, #615) ------------------------------------------
+# --- rules a script gate owns (issues #613, #615, #525) ------------------------------------
 
 R37_CLEAN = ScriptCoverage(clean=frozenset({("R37", SKILL)}))
 R33_CLEAN = ScriptCoverage(clean_everywhere=frozenset({"R33"}))
@@ -362,8 +362,37 @@ def _outcome(finding, coverage):
 
 
 def test_a_checker_claim_a_script_contradicts_is_a_notice():
-    assert _outcome(_claim("R37 requires mode 100755 but x.py is 100644"), R37_CLEAN) == "notice"
-    assert _outcome(_claim("R33: prefix cdx, rename the file"), R33_CLEAN) == "notice"
+    r37 = _claim("R37 requires mode 100755 but x.py is 100644", rule="plugin-rulebook:R37")
+    assert _outcome(r37, R37_CLEAN) == "notice"
+    assert _outcome(_claim("prefix cdx, rename the file", rule="R33"), R33_CLEAN) == "notice"
+
+
+@pytest.mark.parametrize(
+    "rule, evidence",
+    [
+        ("plugin-rulebook-compliance", "R37 requires mode 100755"),  # id only in the evidence
+        ("missing grant", 'the PR adds "<!-- per R35 -->" beside an ungranted tool call'),
+        ("plugin-rulebook:R35", "R29 pass/fail subsection deleted"),  # evidence names another rule
+    ],
+)
+def test_an_owned_id_outside_the_rule_field_never_qualifies_a_downgrade(rule, evidence):
+    """Issue #525 security review M1: evidence quotes PR text, so a PR could plant an owned id."""
+    both = ScriptCoverage(clean=frozenset({("R35", SKILL), ("R37", SKILL)}))
+    assert _outcome(_claim(evidence, rule=rule), both) == "block"
+
+
+R35_NO_WORSE = ScriptCoverage(clean=frozenset({("R35", SKILL)}))
+
+
+def test_a_checker_r35_claim_on_a_skill_no_worse_than_its_base_is_a_notice():
+    """Issue #525: a pre-existing missing section, reported on a changed line, does not block."""
+    finding = _claim("no ## Quick Start section", rule="plugin-rulebook:R35")
+    assert _outcome(finding, R35_NO_WORSE) == "notice"
+    assert _outcome(finding, ScriptCoverage()) == "block"  # a new skill or a removed heading
+    mixed = _claim("R35 and R29 sections missing", rule="plugin-rulebook:R35")
+    assert _outcome(mixed, R35_NO_WORSE) == "block"
+    other = _claim("no Quick Start", rule="R35", path="plugins/demo-kit/skills/other/SKILL.md")
+    assert _outcome(other, R35_NO_WORSE) == "block"
 
 
 def test_without_coverage_nothing_is_downgraded():

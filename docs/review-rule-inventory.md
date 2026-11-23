@@ -86,7 +86,7 @@ rulebook rule that has several independent checks gets one id per check.
 | `r33-component-file-prefix` | R33 | line | a file basename without the plugin's registered prefix | `prefix_check.py`, wired into `check-all` | existing | - |
 | `r34-dead-reference` | R34 | judgment | a link that resolves to nothing and is not an illustrative example; a script found 11 on the real tree and 10 were examples, so only a human or model can tell | none | model | - |
 | `r34-escaping-path` | R34 | graph | a path that leaves the skill folder into a folder the `.claude/` mirror does not carry | none | phase-2 | path-and-mirror |
-| `r35-standard-sections` | R35 | judgment | the standard sections, matched by substance rather than wording; a literal-heading scan found 47 of 150 real skills without a `Quick Start` heading, so it would block on wording | none | model | - |
+| `r35-standard-sections` | R35 | judgment | the standard sections, matched by substance rather than wording; a literal-heading scan found 47 of 150 real skills without a `Quick Start` heading, so it would block on wording | coverage only (#525): `r35_no_worse` emits no finding; a model R35 claim on a changed skill whose `##` headings are no worse than the base's is a notice | model | - |
 | `r36-reciprocal-exclusion` | R36 | judgment | whether an exclusion pointer is named back where the domains overlap | none | model | - |
 | `r37-executable-bit` | R37 | graph | a directly-invoked script whose git mode in `git ls-files -s` is not `100755` | none | phase-2 | structure |
 | `skill-agent-dependency-cycle` | dependency-reviewer | graph | a cycle or an unresolved target in the `Skill()` and `Agent()` call graph | none | phase-2 | call-graph |
@@ -117,6 +117,8 @@ These need an owner decision before the matching verifier PR, and are not settle
    `r37-executable-bit` and `skill-agent-dependency-cycle` to this issue, and both are built. `r29-testing-section`
    and `r35-standard-sections` are not scripts: the rulebook matches their headings "by substance", and a literal
    scan found 47 of 150 real skills without a `Quick Start` heading, so a script would block on wording.
+   For #525 (decided 2026-11-23) `r35-standard-sections` gained coverage only: a script still reports nothing,
+   but it shows when a changed skill kept every `##` heading of its base, so a model R35 claim there is a notice.
 2. **Rows no script emits (decided 2026-10-15).** `r6-missing-grant` (a tool the body uses must be in
    `allowed-tools`) is not built and is a `candidate`: `check_tool_grants.py` documents six false-positive
    classes, so a script would block legitimate PRs. `mirror-byte-identity`, `r5-r6-ask-user-question-grant`

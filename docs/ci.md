@@ -742,9 +742,12 @@ reviewer's `measurement` finding is a notice until the Phase 2 verifiers can con
 that lets a model's own label downgrade its finding, which is safe only while the bridge's output schema
 has no `rule_class` property (a test fails if it gains one).
 A model finding is also a notice when a script contradicts it (`_SCRIPT_OWNED_RULES`, `ScriptCoverage`). All
-of these must hold: only `plugin-rulebook-checker` reported it; its text (axis, evidence, fix; rule ids read
-case-insensitively) names rulebook rules and every one is R33 or R37; and this run's scripts covered the
-finding's own location. R37 coverage is each grant document the `structure` verifier read in full without an
+of these must hold: only `plugin-rulebook-checker` reported it; its `rule` field (the axis) itself names one of
+R33, R35 or R37; every rulebook rule id its whole text names (axis, evidence, fix; read case-insensitively) is
+one of those three; and this run's scripts covered the
+finding's own location. An id found only in the evidence or fix never qualifies a finding, because those
+often quote the PR's own lines: a PR could plant "per R35" beside a real defect (issue #525 security review).
+R37 coverage is each grant document the `structure` verifier read in full without an
 `r37-executable-bit` finding, plus its `.claude/` mirror path when the mirror is the same git object as the
 canonical file. A document is left out when the scan could not resolve something in it: a Bash path grant in a
 form it skips (a glob, `${CLAUDE_PROJECT_DIR}/...`, a relative path, a path leaving the plugin), an unknown
@@ -767,13 +770,24 @@ inventory and `marketplace.json` both exist at HEAD (the prefix check reads the 
 read committed objects, and they agree only then; an uncommitted inventory could be empty and hide a violation; the
 check is git's own, so a local sparse-checkout, skip-worktree or assume-unchanged state is not detected,
 which cannot occur in CI's fresh full checkout).
+R35 coverage (issue #525) means "no worse than the base", not "compliant": no script reports R35, because it
+is matched by substance rather than wording (`docs/review-rule-inventory.md`). The `measurement` verifier covers
+a skill modified in place (not renamed: a renamed skill is a new identity) whose frontmatter it could read,
+when every top-level `##` heading of the base `SKILL.md` is still
+there (read with the frontmatter emptied; a heading moved into a list, quote or fence is gone), the frontmatter
+was neither added nor removed nor closed by `...` (other readers run on to the next `---`), the skill did not
+gain a `references/` directory (in any letter case), and both sides are small enough
+to parse. So a model R35 claim about a section the base already lacked is a notice, and a new skill, a removed or
+renamed heading or a new `references/` directory still gets the model's verdict.
 Without coverage nothing is downgraded, and
 when findings merge the copy that still blocks (judged with the merged reporters and the coverage) is kept.
-Accepted residuals: the rule id is read from the model's prose, so a model that names the wrong rule for a
-real defect in a covered document, as its only claim, is downgraded; and the `.claude/` mirror's own scripts
+Accepted residuals: the rule id is the model's own label, so a model that names the wrong rule in its `rule`
+field for a real defect in a covered document, as its only claim, is downgraded (R35 coverage reaches nearly
+every skill a PR edits, so this residual is wider than for R37); and the `.claude/` mirror's own scripts
 are not mode-checked here (the mirror-parity job compares their executable bit with the source's); and a
 script an interpreter reads (`bash <path>`) can itself run another plugin script directly, which no grant
-shows.
+shows; and an R35 section whose body a PR empties under a kept heading stays covered, since R35 asks for the
+section.
 Each finding in the result records `gate`, `rule_class`, `source`, `suppressed` and the `exception` it
 cites, and the result records `exceptions_loaded`.
 

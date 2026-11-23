@@ -984,3 +984,218 @@ def test_script_coverage_for_r33_ignores_an_untracked_file(git_repo):
     _commit(git_repo.root, "add the metadata")
     git_repo.write("scratch.txt", "untracked\n")
     assert rv.script_coverage(git_repo.root, []).covers("R33", _R33_PATH)
+
+
+# --- R35 coverage: standard sections no worse than the base (issue #525) -----------------------
+
+_SECTIONS = "## When to Use\n\nx\n\n## When NOT to Use\n\ny\n"
+
+
+def _sectioned(*extra: str) -> str:
+    """A skill with When to Use and When NOT to Use but no Quick Start, plus `extra` body lines."""
+    return _skill("Read") + "\n" + _SECTIONS + "".join(f"\n{line}\n" for line in extra)
+
+
+def _no_worse(text, base, *, has=False, had=False):
+    return rv.r35_no_worse(text, base, has_references=has, had_references=had)
+
+
+def test_r35_an_unchanged_section_list_is_no_worse_even_when_a_section_is_missing():
+    """The base already lacks Quick Start: the PR did not cause that gap."""
+    assert _no_worse(_sectioned("a changed line"), _sectioned())
+
+
+def test_r35_a_frontmatter_edit_is_not_a_renamed_section():
+    """PR #524's shape: only `allowed-tools` changed. Plain CommonMark reads the frontmatter as one
+    setext heading, so a frontmatter edit must not look like a lost section."""
+    head = _sectioned().replace("allowed-tools: Read", "allowed-tools: Read, Grep")
+    assert head != _sectioned()
+    assert _no_worse(head, _sectioned())
+
+
+def test_r35_adding_a_heading_is_no_worse():
+    assert _no_worse(_sectioned("## Quick Start", "run it"), _sectioned())
+
+
+@pytest.mark.parametrize(
+    "head",
+    [
+        _skill("Read") + "\n## When to Use\n\nx\n",  # When NOT to Use removed
+        _skill("Read") + "\n## When to Use\n\nx\n\n## Exclusions\n\ny\n",  # renamed
+        _skill("Read") + "\n## When to Use\n\nx\n\n```\n## When NOT to Use\n```\n",  # into a fence
+        _skill("Read") + "\n## When to Use\n\nx\n\n- item\n\n  ## When NOT to Use\n",  # into a list
+        _skill("Read") + "\n## When to Use\n\nx\n\n> ## When NOT to Use\n",  # into a quote
+    ],
+)
+def test_r35_a_removed_renamed_or_demoted_heading_is_not_shown_no_worse(head):
+    assert not _no_worse(head, _sectioned())
+
+
+def test_r35_whitespace_inside_a_heading_does_not_count_as_a_rename():
+    assert _no_worse(_sectioned().replace("When NOT to Use", "When  NOT to\tUse"), _sectioned())
+
+
+def test_r35_a_setext_heading_is_a_section():
+    setext = (
+        _skill("Read") + "\nWhen to Use\n-----------\n\nx\n\nWhen NOT to Use\n---------------\n"
+    )
+    assert _no_worse(setext, _sectioned())
+
+
+def test_r35_gaining_a_references_directory_is_not_no_worse():
+    """A new references/ directory newly requires a Reference Guide, which the base never needed."""
+    assert not _no_worse(_sectioned(), _sectioned(), has=True, had=False)
+    assert _no_worse(_sectioned(), _sectioned(), has=True, had=True)
+    assert _no_worse(_sectioned(), _sectioned(), has=False, had=True)
+
+
+def test_r35_adding_or_removing_frontmatter_is_not_no_worse():
+    body = "\n" + _SECTIONS
+    assert not _no_worse(_skill("Read") + body, body)
+    assert not _no_worse(body, _skill("Read") + body)
+
+
+def test_r35_a_file_too_large_to_parse_is_not_no_worse():
+    big = _sectioned("x" * (rv.MAX_PARSE_BYTES + 1))
+    assert not _no_worse(big, _sectioned())
+    assert not _no_worse(_sectioned(), big)
+
+
+def _covered(outcomes):
+    (measurement,) = [o for o in outcomes if o.name == "measurement"]
+    return measurement.covered
+
+
+def test_run_verifiers_covers_r35_for_a_modified_skill_whose_sections_are_unchanged(git_repo):
+    git_repo.write(SKILL, _sectioned())
+    base = _commit(git_repo.root, "base")
+    git_repo.write(SKILL, _sectioned("a changed line").replace("Read", "Read, Grep"))
+    _commit(git_repo.root, "head")
+    outcomes = rv.run_verifiers(git_repo.root, _changes(SKILL, status="M"), base)
+    assert _covered(outcomes) == (("R35", SKILL),)
+    assert rv.script_coverage(git_repo.root, outcomes).covers("R35", SKILL)
+
+
+def test_run_verifiers_does_not_cover_r35_when_a_heading_is_removed(git_repo):
+    git_repo.write(SKILL, _sectioned())
+    base = _commit(git_repo.root, "base")
+    git_repo.write(SKILL, _skill("Read") + "\n## When to Use\n\nx\n")
+    _commit(git_repo.root, "head")
+    outcomes = rv.run_verifiers(git_repo.root, _changes(SKILL, status="M"), base)
+    assert _covered(outcomes) == ()
+
+
+def test_run_verifiers_does_not_cover_r35_for_a_new_skill_or_without_a_base(git_repo):
+    base = _commit_empty(git_repo.root)
+    git_repo.write(SKILL, _sectioned())
+    _commit(git_repo.root, "add")
+    assert _covered(rv.run_verifiers(git_repo.root, _changes(SKILL), base)) == ()
+    assert _covered(rv.run_verifiers(git_repo.root, _changes(SKILL, status="M"))) == ()
+
+
+def test_run_verifiers_does_not_cover_r35_when_the_skill_gains_references(git_repo):
+    git_repo.write(SKILL, _sectioned())
+    base = _commit(git_repo.root, "base")
+    git_repo.write(SKILL, _sectioned("a changed line"))
+    git_repo.write("plugins/demo-kit/skills/demo/references/notes.md", "# Notes\n")
+    _commit(git_repo.root, "head")
+    outcomes = rv.run_verifiers(git_repo.root, _changes(SKILL, status="M"), base)
+    assert _covered(outcomes) == ()
+
+
+def test_run_verifiers_covers_r35_when_references_already_existed(git_repo):
+    git_repo.write(SKILL, _sectioned())
+    git_repo.write("plugins/demo-kit/skills/demo/references/notes.md", "# Notes\n")
+    base = _commit(git_repo.root, "base")
+    git_repo.write(SKILL, _sectioned("a changed line"))
+    _commit(git_repo.root, "head")
+    outcomes = rv.run_verifiers(git_repo.root, _changes(SKILL, status="M"), base)
+    assert _covered(outcomes) == (("R35", SKILL),)
+
+
+def test_run_verifiers_does_not_cover_r35_for_a_skill_renamed_from_a_reference(git_repo):
+    """A renamed file counts only when its old path was itself a skill."""
+    old = "plugins/demo-kit/skills/demo/references/notes.md"
+    git_repo.write(old, _sectioned())
+    base = _commit(git_repo.root, "base")
+    subprocess.run(["git", "mv", old, SKILL], cwd=git_repo.root, check=True)
+    _commit(git_repo.root, "rename")
+    renamed = (ChangedPath(status="R", old_path=old, new_path=SKILL),)
+    assert _covered(rv.run_verifiers(git_repo.root, renamed, base)) == ()
+
+
+def test_r35_coverage_is_never_a_finding(git_repo):
+    """Coverage only: R35 is matched by substance, so no script reports a missing section."""
+    git_repo.write(SKILL, _sectioned())
+    base = _commit(git_repo.root, "base")
+    git_repo.write(SKILL, _skill("Read") + "\n# Body\n")
+    _commit(git_repo.root, "head")
+    outcomes = rv.run_verifiers(git_repo.root, _changes(SKILL, status="M"), base)
+    assert not [f for o in outcomes for f in o.findings if "r35" in f.rule.lower()]
+
+
+def _commit_empty(root: Path) -> str:
+    subprocess.run(["git", "commit", "-q", "--allow-empty", "-m", "empty"], cwd=root, check=True)
+    return subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=root, capture_output=True, text=True, check=True
+    ).stdout.strip()
+
+
+# --- R35 coverage: security review hardening (issue #525) -------------------------------------
+
+
+def test_r35_frontmatter_closed_by_dots_is_never_no_worse():
+    """m1: `...` ends the frontmatter for the blanked reading only; a heading hidden between `...`
+    and the next `---` would count here while readers never see it."""
+    hidden = "---\nname: demo\n...\n## When NOT to Use\n---\n\n## When to Use\n\nx\n"
+    assert not _no_worse(hidden, _sectioned())
+    assert not _no_worse(_sectioned(), hidden)
+
+
+def test_run_verifiers_does_not_cover_r35_for_a_skill_renamed_from_another_skill(git_repo):
+    """m2: a renamed skill is a new identity; R35 applies to it as to a new skill."""
+    old = "plugins/demo-kit/skills/old-demo/SKILL.md"
+    git_repo.write(old, _sectioned())
+    base = _commit(git_repo.root, "base")
+    (git_repo.root / SKILL).parent.mkdir(parents=True, exist_ok=True)
+    subprocess.run(["git", "mv", old, SKILL], cwd=git_repo.root, check=True)
+    _commit(git_repo.root, "rename")
+    renamed = (ChangedPath(status="R", old_path=old, new_path=SKILL),)
+    assert _covered(rv.run_verifiers(git_repo.root, renamed, base)) == ()
+
+
+@pytest.mark.parametrize("name", ["References", "REFERENCES"])
+def test_run_verifiers_sees_a_references_directory_in_any_letter_case(git_repo, name):
+    """m3: a case-insensitive checkout reads `References/` as the references directory."""
+    git_repo.write(SKILL, _sectioned())
+    base = _commit(git_repo.root, "base")
+    git_repo.write(SKILL, _sectioned("a changed line"))
+    git_repo.write(f"plugins/demo-kit/skills/demo/{name}/notes.md", "# Notes\n")
+    _commit(git_repo.root, "head")
+    assert _covered(rv.run_verifiers(git_repo.root, _changes(SKILL, status="M"), base)) == ()
+
+
+def test_run_verifiers_does_not_cover_r35_when_the_frontmatter_is_unreadable(git_repo):
+    """m4: a file this module reports as unverifiable is never covered, even if that finding is
+    later suppressed."""
+    broken = "---\nname: [unclosed\n---\n\n" + _SECTIONS
+    git_repo.write(SKILL, broken)
+    base = _commit(git_repo.root, "base")
+    git_repo.write(SKILL, broken + "\nmore\n")
+    _commit(git_repo.root, "head")
+    outcomes = rv.run_verifiers(git_repo.root, _changes(SKILL, status="M"), base)
+    assert any(f.rule == "frontmatter-unverifiable" for o in outcomes for f in o.findings)
+    assert _covered(outcomes) == ()
+
+
+def test_script_coverage_takes_covered_pairs_only_as_r35_from_the_measurement_verifier(tmp_path):
+    """m5: no other verifier, and no other rule id, can add coverage through `covered`."""
+    pairs = (("R35", SKILL), ("R37", SKILL))
+    measurement = rv.VerifierOutcome(name="measurement", findings=(), checked=(), covered=pairs)
+    other = rv.VerifierOutcome(
+        name="call-graph", findings=(), checked=(), covered=(("R35", AGENT),)
+    )
+    coverage = rv.script_coverage(tmp_path, [measurement, other])
+    assert coverage.covers("R35", SKILL)
+    assert not coverage.covers("R37", SKILL)
+    assert not coverage.covers("R35", AGENT)
