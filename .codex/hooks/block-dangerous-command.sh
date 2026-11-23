@@ -163,7 +163,11 @@ function blank_cmd(    k, set, v, long, longb, o, r, re) {
     # none. Any other option stops blanking, since its value could be read as the subcommand.
     for (k++; k <= nk && cn[k] ~ /^-/; k++) {
         if (ct[k]) return
-        if (cn[k] ~ /^(-C|-c|--git-dir|--work-tree|--namespace|--super-prefix|--config-env|--attr-source|--shallow-file)$/) k++
+        if (cn[k] ~ /^(-C|-c|--git-dir|--work-tree|--namespace|--super-prefix|--config-env|--attr-source|--shallow-file)$/) {
+            # Under `set -k` a NAME=value word is dropped and the next word is the value.
+            if (k < nk && cn[k + 1] ~ /^[A-Za-z_][A-Za-z0-9_]*\+?=/) return
+            k++
+        }
         else if (cn[k] !~ /^(-p|-P|--paginate|--no-pager|--bare|--no-replace-objects|--no-lazy-fetch|--no-optional-locks|--no-advice|--literal-pathspecs|--glob-pathspecs|--noglob-pathspecs|--icase-pathspecs)$/ &&
             cn[k] !~ /^--(git-dir|work-tree|namespace|super-prefix|config-env|attr-source|shallow-file)=/) return
     }
@@ -405,6 +409,20 @@ done
 CMD+=$'\n'"${CMD_WORDS}"
 CMD_CODE+=$'\n'"${CMD_WORDS}"
 CMD_FLAGS+=$'\n'"${FLAGS_WORDS}"
+# The same copies with the blanks after < and > removed, so `> x git stash` is read like
+# `>x git stash`. Only these copies: there quoted text is one word with `_` for each blank,
+# and a heredoc body is cut off, so a quoted reply line (`> Never git rebase ...`) in a
+# message or PR body never starts a line.
+close_redirects() {
+    awk -v BINMODE=3 '{ gsub(/>[ \t]+/, ">"); gsub(/<[ \t]+/, "<"); print }'
+}
+CMD_WORDS_CLOSED=$(close_redirects <<<"${CMD_WORDS}") || block "Could not read the command."
+FLAGS_WORDS_CLOSED=$(close_redirects <<<"${FLAGS_WORDS}") || block "Could not read the command."
+if [[ "${CMD_WORDS_CLOSED}" != "${CMD_WORDS}" ]]; then
+    CMD+=$'\n'"${CMD_WORDS_CLOSED}"
+    CMD_CODE+=$'\n'"${CMD_WORDS_CLOSED}"
+fi
+[[ "${FLAGS_WORDS_CLOSED}" != "${FLAGS_WORDS}" ]] && CMD_FLAGS+=$'\n'"${FLAGS_WORDS_CLOSED}"
 
 # Here-strings, not `printf | grep -q`: under pipefail, grep -q exiting early
 # can kill printf with SIGPIPE on a long command and turn a match into a miss.
@@ -460,9 +478,21 @@ COMMAND_PREFIX='(^|;[[:space:]]*|&&[[:space:]]*|[|][|][[:space:]]*|[|][[:space:]
 # `git --git-dir path push`), with an option value that may be quoted (`git -C "a b" push`).
 # The exec-policy rules match exact tokens, so they cannot catch these forms; the hook does.
 GIT_OPT_VALUE="([^[:space:];&|\"']|\"[^\"]*\"|'[^']*')+"
-GIT_OPT="([[:space:]]+-[Cc][[:space:]]+${GIT_OPT_VALUE}"
+# Under `set -k` bash drops every NAME=value word from the arguments, so one may stand
+# before an option's value or between the options (`git -C X=1 . stash` is `git -C . stash`).
+GIT_ASSIGN="[[:space:]]+[A-Za-z_][A-Za-z0-9_]*[+]?=([^[:space:];&|\"']|\"[^\"]*\"|'[^']*')*"
+# A redirection word, which bash allows anywhere in a command (`git 2>/dev/null -C . stash`).
+# Only the form with the target written against the operator: a line of text that starts
+# with `> ` (a quoted reply in a PR body) is not read as one.
+REDIR_OP="([0-9]+|&|[{][A-Za-z_][A-Za-z0-9_]*[}])?(<<<|<>|>>|>[|]|[<>]&|<|>)"
+REDIR_TARGET="([^[:space:];&|\"']|\"[^\"]*\"|'[^']*')+"
+REDIR_WORD="${REDIR_OP}${REDIR_TARGET}"
+GIT_OPT="([[:space:]]+-[Cc](${GIT_ASSIGN})*[[:space:]]+${GIT_OPT_VALUE}"
 GIT_OPT+="|[[:space:]]+--(git-dir|work-tree|namespace|exec-path|super-prefix|config-env|attr-source|shallow-file)"
-GIT_OPT+="[[:space:]]+${GIT_OPT_VALUE}"
+GIT_OPT+="(${GIT_ASSIGN})*[[:space:]]+${GIT_OPT_VALUE}"
+GIT_OPT+="|${GIT_ASSIGN}"
+# After git a line of text cannot be meant, so a blank before the target is allowed here.
+GIT_OPT+="|[[:space:]]+${REDIR_OP}[[:space:]]*${REDIR_TARGET}"
 # Any other option, which may carry an attached quoted value (`--git-dir="a b"`).
 GIT_OPT+="|[[:space:]]+-${GIT_OPT_VALUE})"
 GIT_CMD="git${GIT_OPT}*[[:space:]]+"
@@ -477,19 +507,22 @@ GIT_CMD="git${GIT_OPT}*[[:space:]]+"
 # option value may be quoted (`X="a b" git ...`, `env -u "a b" git ...`).
 WORD_PART="[^[:space:];&|\"']|\"[^\"]*\"|'[^']*'"
 WORD_START="[^-[:space:];&|\"']|\"[^\"]*\"|'[^']*'"
+# A redirection may also come before the command (`>x git stash`, `2>&1 git stash`).
+REDIR="${REDIR_WORD}[[:space:]]+"
 SEGMENT_START='(^|[;&|{]|[$<][(]|=`)([[:space:]]|[(!]|(if|then|do|else|elif|while|until)[[:space:]])*'
-SEGMENT_START+="([A-Za-z_][A-Za-z0-9_]*=(${WORD_PART})*[[:space:]]+)*"
+SEGMENT_START+="([A-Za-z_][A-Za-z0-9_]*=(${WORD_PART})*[[:space:]]+|${REDIR})*"
 SEGMENT_START+='((xargs|command|builtin|env|nice|nohup|time|exec|timeout|doas|eval)'
 SEGMENT_START+="([[:space:]]+(-(${WORD_PART})*([[:space:]]+(${WORD_START})(${WORD_PART})*)?"
 SEGMENT_START+="|[0-9](${WORD_PART})*|[A-Za-z_][A-Za-z0-9_]*=(${WORD_PART})*))*"
-SEGMENT_START+='[[:space:]]+)*([^[:space:];&|]*/)?'
+SEGMENT_START+="[[:space:]]+)*(${REDIR})*([^[:space:];&|]*/)?"
 GIT_AT_START="${SEGMENT_START}${GIT_CMD}"
 # The same, but only with at least one global option before the subcommand.
 GIT_WITH_OPTS_AT_START="${SEGMENT_START}git${GIT_OPT}+[[:space:]]+"
 # Git commands default.rules forbids. Its exact-token rules cannot match them once a global
 # option comes first (`git -C repo stash`), so the hook blocks that form.
-# A subcommand ends at whitespace, the end, or the close of a group (`$(git -C x stash)`).
-GIT_SUB_END='([[:space:]);}`]|$)'
+# A subcommand ends at whitespace, the end, the close of a group (`$(git -C x stash)`), or
+# an operator or redirection written against it (`git -C . stash|cat`, `stash>x`).
+GIT_SUB_END='([[:space:]);}`&|<>]|$)'
 FORBIDDEN_GIT_RE="(reset|filter-branch|stash|clone|cherry-pick|revert|merge)${GIT_SUB_END}"
 FORBIDDEN_GIT_RE+="|branch([^;&|]*[[:space:]])?(-[dD]|--delete)${GIT_SUB_END}"
 FORBIDDEN_GIT_RE+="|tag([^;&|]*[[:space:]])?-d${GIT_SUB_END}"
@@ -520,7 +553,9 @@ ABBREV_GIT_RE+="|pull([^;&|]*[[:space:]])?-[a-zA-Z]*r${GIT_SUB_END}"
 # `-c alias.x=` in text is not read as one; a rebase key may also stand alone, since git reads
 # `-c pull.rebase` as true. A GIT_CONFIG_KEY_<n> value is the bare key.
 CONFIG_KEYS='(clean\.requireforce|pull\.(rebase|ff)|merge\.ff|branch\.[^[:space:]=]*\.rebase|alias\.[^[:space:]=]*)'
-CONFIG_OPT="${SEGMENT_START}git${GIT_OPT}*[[:space:]]+(-c[[:space:]]*|--config-env[=[:space:]]+)"
+# The option itself; under `set -k` a dropped NAME=value word may stand before the key.
+CONFIG_FLAG="(-c(${GIT_ASSIGN})*[[:space:]]*|--config-env(${GIT_ASSIGN})*[=[:space:]]+)"
+CONFIG_OPT="${SEGMENT_START}git${GIT_OPT}*[[:space:]]+${CONFIG_FLAG}"
 UNSAFE_CONFIG_RE="${CONFIG_OPT}${CONFIG_KEYS}="
 UNSAFE_CONFIG_RE+="|${CONFIG_OPT}(pull|branch\.[^[:space:]=]*)\.rebase([[:space:]]|\$)"
 UNSAFE_CONFIG_RE+="|GIT_CONFIG_(KEY_[0-9]+|PARAMETERS)=[^[:space:]]*${CONFIG_KEYS}"
@@ -535,24 +570,25 @@ SHELL_STRING_BODY="(([^\"']|\"[^\"]*\"|'[^']*')*[;&|({][[:space:]]*)?"
 SHELL_STRING_BODY+="((if|then|do|else|elif|while|until|!)[[:space:]]+"
 SHELL_STRING_BODY+="|(xargs|command|builtin|env|nice|nohup|time|exec|timeout|doas|eval)"
 SHELL_STRING_BODY+="([[:space:]]+(-[^[:space:]\"']*|[0-9][^[:space:]\"']*|[A-Za-z_][A-Za-z0-9_]*=[^[:space:]\"']*))*[[:space:]]+"
-SHELL_STRING_BODY+="|[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*"
+SHELL_STRING_BODY+="|[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+"
+SHELL_STRING_BODY+="|${REDIR_OP}[[:space:]]*${REDIR_TARGET}[[:space:]]+)*"
 SHELL_STRING_BODY+="([^\"'[:space:];&|]*/)?"
 SHELL_STRING_START="${SHELL_STRING_OPEN}${SHELL_STRING_BODY}"
 # Inside the string, the closing quote also ends a subcommand (`'git stash'`).
-GIT_SUB_END_Q='([[:space:]);}`"'"'"']|$)'
+GIT_SUB_END_Q='([[:space:]);}`&|<>"'"'"']|$)'
 SHELL_STRING_GIT="git${GIT_OPT}*[[:space:]]+(${FORBIDDEN_GIT_RE//"${GIT_SUB_END}"/"${GIT_SUB_END_Q}"}"
 SHELL_STRING_GIT+="|${ABBREV_GIT_RE//"${GIT_SUB_END}"/"${GIT_SUB_END_Q}"}|rebase${GIT_SUB_END_Q})"
 SHELL_STRING_GIT_RE="${SHELL_STRING_START}${SHELL_STRING_GIT}"
 # The same pattern for a decoded string read with --inner, from the start of each of its lines.
 INNER_GIT_RE="^[[:space:]]*${SHELL_STRING_BODY}${SHELL_STRING_GIT}"
 # The per-command settings above, also inside such a string (`ssh host 'git -c alias.x=stash x'`).
-SHELL_CONFIG_OPT="${SHELL_STRING_START}git${GIT_OPT}*[[:space:]]+(-c[[:space:]]*|--config-env[=[:space:]]+)"
+SHELL_CONFIG_OPT="${SHELL_STRING_START}git${GIT_OPT}*[[:space:]]+${CONFIG_FLAG}"
 UNSAFE_CONFIG_RE+="|${SHELL_CONFIG_OPT}${CONFIG_KEYS}="
 UNSAFE_CONFIG_RE+="|${SHELL_CONFIG_OPT}(pull|branch\.[^[:space:]=]*)\.rebase${GIT_SUB_END_Q}"
 # Read in the copies without quote characters, for a key quoted inside the string
 # (`bash -c 'git -c "alias.x=stash" x'`) or a quoted argument before it (`ssh -o "A b" host`).
 SHELL_CONFIG_OPT='(^|[^A-Za-z0-9_.-])(bash|sh|zsh|dash|ksh|eval|su|ssh)[[:space:]]([^;&|]*[[:space:];&|({])?'
-SHELL_CONFIG_OPT+="git${GIT_OPT}*[[:space:]]+(-c[[:space:]]*|--config-env[=[:space:]]+)"
+SHELL_CONFIG_OPT+="git${GIT_OPT}*[[:space:]]+${CONFIG_FLAG}"
 UNSAFE_CONFIG_RE+="|${SHELL_CONFIG_OPT}${CONFIG_KEYS}="
 UNSAFE_CONFIG_RE+="|${SHELL_CONFIG_OPT}(pull|branch\.[^[:space:]=]*)\.rebase([[:space:]]|\$)"
 # chmod that makes a file writable by others: an octal mode whose last digit has the
