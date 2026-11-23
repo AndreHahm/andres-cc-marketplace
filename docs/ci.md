@@ -772,13 +772,15 @@ check is git's own, so a local sparse-checkout, skip-worktree or assume-unchange
 which cannot occur in CI's fresh full checkout).
 R35 coverage (issue #525) means "no worse than the base", not "compliant": no script reports R35, because it
 is matched by substance rather than wording (`docs/review-rule-inventory.md`). The `measurement` verifier covers
-a skill modified in place (not renamed: a renamed skill is a new identity) whose frontmatter it could read,
-when every top-level `##` heading of the base `SKILL.md` is still
+a skill modified in place (not renamed: a renamed skill is a new identity) whose frontmatter it could read on
+both sides, when every top-level `##` heading of the base `SKILL.md` is still
 there (read with the frontmatter emptied; a heading moved into a list, quote or fence is gone), the frontmatter
 was neither added nor removed nor closed by `...` (other readers run on to the next `---`), the skill did not
-gain a `references/` directory (in any letter case), and both sides are small enough
-to parse. So a model R35 claim about a section the base already lacked is a notice, and a new skill, a removed or
-renamed heading or a new `references/` directory still gets the model's verdict.
+gain a `references/` directory (in any letter case; a plain file of that name is not one, a symlink or submodule is), and both sides are
+small enough and shallow enough to parse (a parser error covers nothing). So a model R35 claim about a section the
+base already lacked is a notice, and a new skill, a removed or renamed heading or a new `references/` directory
+still gets the model's verdict. The finding's location is compared after lexical normalization (`./x` and `a//b`
+name `x` and `a/b`); an absolute location never matches, so it keeps blocking.
 Without coverage nothing is downgraded, and
 when findings merge the copy that still blocks (judged with the merged reporters and the coverage) is kept.
 Accepted residuals: the rule id is the model's own label, so a model that names the wrong rule in its `rule`

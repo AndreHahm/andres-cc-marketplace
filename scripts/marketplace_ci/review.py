@@ -3060,7 +3060,11 @@ def _claims_only_script_owned_rules(finding: Finding) -> bool:
 def _contradicted_by_script(finding: Finding, coverage: ScriptCoverage | None) -> bool:
     if coverage is None or not _claims_only_script_owned_rules(finding):
         return False
-    return all(coverage.covers(rule, finding.path) for rule in _claimed_rule_ids(finding))
+    # Coverage holds git's repo-relative paths; a lexically equivalent spelling (`./x`, `a//b`)
+    # names the same file. An absolute location is left as it is and so never matches: this pure
+    # gate has no repository root to resolve it against, and an unmatched path only keeps blocking.
+    path = posixpath.normpath(finding.path)
+    return all(coverage.covers(rule, path) for rule in _claimed_rule_ids(finding))
 
 
 @dataclass(frozen=True)
