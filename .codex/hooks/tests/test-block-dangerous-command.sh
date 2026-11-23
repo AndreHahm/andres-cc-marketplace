@@ -263,6 +263,20 @@ B	bash -c 'nice -n 5 git stash'
 B	eval git -C . stash
 A	bash -c 'git status'
 A	sh -c "git merge-base a b"
+# A per-command setting inside such a string.
+B	bash -c 'git -c alias.x=stash x'
+B	zsh -c 'git -c alias.x=stash x'
+B	ssh host 'git -c alias.x=stash x'
+B	su -c 'git -c clean.requireForce=false clean -d' u
+B	ssh host "cd x && git --config-env=alias.x=V x"
+B	zsh -c 'git -c pull.rebase pull'
+B	bash -c 'git -c '"alias.x=stash"' x'
+B	bash -c 'git -c "alias.x=stash" x'
+B	ssh host 'git -c al""ias.x=stash x'
+B	su -c "git -c 'clean.requireForce=false' clean -d" u
+B	ssh -o "ConnectTimeout 5" host 'git -c alias.x=stash x'
+A	ssh host 'git -c core.editor=vim status'
+A	zsh -c 'rg "-c alias.x=" docs'
 # Accepted false block: text that names such a string, like the git reset --hard text check.
 B	echo "bash -c 'git stash' is blocked"
 # A quoted assignment or wrapper value before the command.
