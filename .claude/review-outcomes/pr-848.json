@@ -1,0 +1,67 @@
+{
+  "entries": [
+    {
+      "disposition": "declined",
+      "finding": "4662520126",
+      "line": 1,
+      "note": "Maintainer kept the #843 draft in this PR; connection stated in the PR description",
+      "path": "issues/2026-11-22-codex-review-diff-only-tier1-reviewer.md",
+      "pr": 848,
+      "recorded_at": "2026-11-23T07:07:23+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4662520222",
+      "line": 2264,
+      "note": "Lapsed briefed waiver kept briefed provenance; released only when its fingerprint is gone (1146ebe4)",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 848,
+      "recorded_at": "2026-11-23T07:07:20+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4662520312",
+      "line": 2312,
+      "note": "Publish steps use fetch-accepted-findings --strict; unreadable reads fail closed (1146ebe4)",
+      "path": ".github/workflows/marketplace-ci.yml",
+      "pr": 848,
+      "recorded_at": "2026-11-23T07:07:21+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4662520390",
+      "line": 2501,
+      "note": "Briefed entry relocated by fingerprint at HEAD even in an unchanged file (1146ebe4)",
+      "path": "scripts/marketplace_ci/__main__.py",
+      "pr": 848,
+      "recorded_at": "2026-11-23T07:07:21+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4662520475",
+      "line": 166,
+      "note": "New probes require a handler-only module; older probes left as an open item (1146ebe4)",
+      "path": "tests/marketplace_ci/test_import_isolation.py",
+      "pr": 848,
+      "recorded_at": "2026-11-23T07:07:22+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4662566941",
+      "line": 2258,
+      "note": "Briefing limited to paths the carry can read, 300 characters (1146ebe4)",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 848,
+      "recorded_at": "2026-11-23T07:07:22+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4662566945",
+      "line": 2259,
+      "note": "Same defect as 4662520390; fixed by the fingerprint relocation (1146ebe4)",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 848,
+      "recorded_at": "2026-11-23T07:07:22+00:00"
+    }
+  ]
+}
