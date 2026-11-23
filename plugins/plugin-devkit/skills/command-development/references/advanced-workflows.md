@@ -18,7 +18,7 @@ Commands that guide users through multi-step processes:
 ---
 description: Complete PR review workflow
 argument-hint: [pr-number]
-allowed-tools: Bash(gh:*), Read, Grep
+allowed-tools: Bash(gh pr view:*), Bash(gh pr diff:*), Bash(gh pr checks:*), Bash(gh pr review:*), Read, Grep
 ---
 
 # PR Review Workflow for #$0
@@ -49,7 +49,7 @@ Summarize:
 - Suggestions for improvement
 - Approval recommendation
 
-Use `AskUserQuestion` — question: "What would you like to do?", options: "Approve PR" / "Request changes" / "Leave comments only" — then complete the chosen action.
+Use `AskUserQuestion` — question: "What would you like to do?", options: "Approve PR" / "Request changes" / "Leave comments only" — then complete the chosen action with `gh pr review <number>` and `--approve`, `--request-changes` or `--comment`.
 ```
 
 **Key features:**

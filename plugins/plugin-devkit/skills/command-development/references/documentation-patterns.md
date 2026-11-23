@@ -300,6 +300,7 @@ If $0 is empty:
 ```markdown
 ---
 description: Command with good error messages
+allowed-tools: Read
 ---
 
 # Validation Command
