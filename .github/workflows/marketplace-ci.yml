@@ -246,6 +246,11 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: read
+      # The carry step (issue #706) reads this workflow's earlier runs and jobs, and the PR's
+      # issue events for a base change (the endpoint compute-scope's anchor lookup also reads).
+      actions: read
+      issues: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
         with:
@@ -316,27 +321,87 @@ jobs:
         if: github.run_attempt > 1
         uses: ./.github/actions/track-rerun
 
+      # Issue #706: on a description-only edit, end successfully without running the steps below
+      # when this job succeeded in the newest earlier run of this workflow for this PR and head
+      # (docs/ci.md, "Carried results on a description edit"). A skipped job would count as passing
+      # for a required check even after a failure, so the job still runs and reports success only
+      # for a real earlier success. The decision code is fetched from the base SHA, never taken from
+      # the PR; anything but a `carry` verdict, including any error here, runs the job in full.
+      - name: Carry this job's earlier result on a description-only edit
+        id: carry_prior
+        if: github.event.action == 'edited' && github.run_attempt == 1
+        continue-on-error: true
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          EVENT_ACTION: ${{ github.event.action }}
+          BASE_CHANGE: ${{ toJSON(github.event.changes.base) }}
+          JOB_NAME: Python quality (ruff, ty, pytest)
+        run: |
+          carried=false
+          script="$RUNNER_TEMP/prior_result.py"
+          fetched=false
+          for delay in 1 3 0; do
+            if gh api --method GET -H "Accept: application/vnd.github.raw+json" \
+                "repos/$REPO/contents/scripts/marketplace_ci/prior_result.py" -f ref="$BASE_SHA" \
+                > "$script" 2>/dev/null; then
+              fetched=true
+              break
+            fi
+            sleep "$delay"
+          done
+          if [ "$fetched" = true ]; then
+            py=python3
+            "$py" -c '' 2>/dev/null || py=python
+            verdict=$("$py" -I "$script" --repo "$REPO" --run-id "$RUN_ID" --pr-number "$PR_NUMBER" \
+              --head-sha "$HEAD_SHA" --job-name "$JOB_NAME" --event-action "$EVENT_ACTION" \
+              --base-change "$BASE_CHANGE" | tail -n 1) || verdict=""
+            if [ "$verdict" = carry ]; then
+              carried=true
+            fi
+          else
+            echo "::notice::no carry script readable at the base SHA; this job runs in full"
+          fi
+          if [ "$carried" = true ]; then
+            echo "::notice::this job succeeded in an earlier run on this head; its steps are not re-run"
+            echo "Carried an earlier success on the same head (issue #706); no step re-ran." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "carried=$carried" >> "$GITHUB_OUTPUT"
+
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # ratchet:actions/setup-python@v7.1.0
+        if: steps.carry_prior.outputs.carried != 'true'
         with:
           python-version: "3.13"
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # ratchet:astral-sh/setup-uv@v10.3.3
+        if: steps.carry_prior.outputs.carried != 'true'
         with:
           version: "0.13.7"
           enable-cache: "false"
           python-version: "3.13"
       # --locked and --no-build as in the Windows job below; --no-sync keeps uv run from syncing again.
       - run: uv sync --locked --group dev --no-build --no-install-package csscompressor --no-install-package jsmin
+        if: steps.carry_prior.outputs.carried != 'true'
       - run: uv run --no-sync --no-build ruff format --check scripts tests
+        if: steps.carry_prior.outputs.carried != 'true'
       - run: uv run --no-sync --no-build ruff check scripts tests
+        if: steps.carry_prior.outputs.carried != 'true'
       - run: uv run --no-sync --no-build ty check scripts tests
+        if: steps.carry_prior.outputs.carried != 'true'
       # pytest-xdist: one worker per vCPU (#729).
       - run: uv run --no-sync --no-build pytest -q -n auto
+        if: steps.carry_prior.outputs.carried != 'true'
       # Local pre-commit hooks are opt-in per clone (never installed by CI or on clone), so a
       # machine without them can land a file with no final newline that end-of-file-fixer then
       # rewrites on every other machine's next merge. Check the files this PR changes (the merge
       # commit against its first parent, the base tip) so it can't reach main, without failing
       # an unrelated PR over a file this PR did not touch.
       - run: uv run --no-sync --no-build pre-commit run end-of-file-fixer --from-ref HEAD^1 --to-ref HEAD --show-diff-on-failure
+        if: steps.carry_prior.outputs.carried != 'true'
 
   # Informational (#637): not listed in any job's `needs`, so it cannot block a merge. Takes
   # cross-model-review's run-directory helpers through a real run on a Windows runner, the only place
@@ -355,14 +420,74 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: read
+      # The carry step (issue #706) reads this workflow's earlier runs and jobs, and the PR's
+      # issue events for a base change (the endpoint compute-scope's anchor lookup also reads).
+      actions: read
+      issues: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
         with:
           persist-credentials: false
+
+      # Issue #706: on a description-only edit, end successfully without running the steps below
+      # when this job succeeded in the newest earlier run of this workflow for this PR and head
+      # (docs/ci.md, "Carried results on a description edit"). A skipped job would count as passing
+      # for a required check even after a failure, so the job still runs and reports success only
+      # for a real earlier success. The decision code is fetched from the base SHA, never taken from
+      # the PR; anything but a `carry` verdict, including any error here, runs the job in full.
+      - name: Carry this job's earlier result on a description-only edit
+        id: carry_prior
+        if: github.event.action == 'edited' && github.run_attempt == 1
+        continue-on-error: true
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          EVENT_ACTION: ${{ github.event.action }}
+          BASE_CHANGE: ${{ toJSON(github.event.changes.base) }}
+          JOB_NAME: Review helpers on Windows Git Bash (informational)
+        run: |
+          carried=false
+          script="$RUNNER_TEMP/prior_result.py"
+          fetched=false
+          for delay in 1 3 0; do
+            if gh api --method GET -H "Accept: application/vnd.github.raw+json" \
+                "repos/$REPO/contents/scripts/marketplace_ci/prior_result.py" -f ref="$BASE_SHA" \
+                > "$script" 2>/dev/null; then
+              fetched=true
+              break
+            fi
+            sleep "$delay"
+          done
+          if [ "$fetched" = true ]; then
+            py=python3
+            "$py" -c '' 2>/dev/null || py=python
+            verdict=$("$py" -I "$script" --repo "$REPO" --run-id "$RUN_ID" --pr-number "$PR_NUMBER" \
+              --head-sha "$HEAD_SHA" --job-name "$JOB_NAME" --event-action "$EVENT_ACTION" \
+              --base-change "$BASE_CHANGE" | tail -n 1) || verdict=""
+            if [ "$verdict" = carry ]; then
+              carried=true
+            fi
+          else
+            echo "::notice::no carry script readable at the base SHA; this job runs in full"
+          fi
+          if [ "$carried" = true ]; then
+            echo "::notice::this job succeeded in an earlier run on this head; its steps are not re-run"
+            echo "Carried an earlier success on the same head (issue #706); no step re-ran." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "carried=$carried" >> "$GITHUB_OUTPUT"
+
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # ratchet:actions/setup-python@v7.1.0
+        if: steps.carry_prior.outputs.carried != 'true'
         with:
           python-version: "3.13"
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # ratchet:astral-sh/setup-uv@v10.3.3
+        if: steps.carry_prior.outputs.carried != 'true'
         with:
           version: "0.13.7"
           enable-cache: "false"
@@ -370,10 +495,13 @@ jobs:
       # --no-build runs no package's setup code. csscompressor and jsmin ship only as source, so
       # they would fail it; they come in through mkdocs-minify-plugin and these tests never use them.
       - run: uv sync --locked --no-install-project --group dev --no-build --no-install-package csscompressor --no-install-package jsmin
+        if: steps.carry_prior.outputs.carried != 'true'
         shell: bash
       - run: uv run --no-sync --no-build pytest -q tests/marketplace_ci/test_git_review_run_dir.py
+        if: steps.carry_prior.outputs.carried != 'true'
         shell: bash
       - run: uv run --no-sync --no-build pytest -q tests/marketplace_ci/test_git_review_api_script.py
+        if: steps.carry_prior.outputs.carried != 'true'
         shell: bash
       # The review helpers' guards: the scope helpers' run-directory, index-copy, intent-add and
       # write-file checks, and the ledger, fix-diff and verify-fix-diff checks that refuse a git inside
@@ -389,11 +517,14 @@ jobs:
           tests/marketplace_ci/test_git_review_fix_diff_script.py
           tests/marketplace_ci/test_git_verify_fix_diff_script.py
         shell: bash
+        if: steps.carry_prior.outputs.carried != 'true'
       # Text mode writes CRLF only on Windows, so the Linux job cannot catch a revert of the bare-LF write.
       - run: uv run --no-sync --no-build pytest -q "tests/marketplace_ci/test_reviewer_dispatch.py::test_the_paths_file_has_bare_newlines_even_where_text_mode_would_write_crlf"
+        if: steps.carry_prior.outputs.carried != 'true'
         shell: bash
       # decision-kit promises Windows support; its link, device and file-mode tests skip here.
       - run: uv run --no-sync --no-build pytest -q plugins/decision-kit/tests
+        if: steps.carry_prior.outputs.carried != 'true'
         shell: bash
 
   node-tests:
@@ -406,17 +537,77 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: read
+      # The carry step (issue #706) reads this workflow's earlier runs and jobs, and the PR's
+      # issue events for a base change (the endpoint compute-scope's anchor lookup also reads).
+      actions: read
+      issues: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
         with:
           persist-credentials: false
+
+      # Issue #706: on a description-only edit, end successfully without running the steps below
+      # when this job succeeded in the newest earlier run of this workflow for this PR and head
+      # (docs/ci.md, "Carried results on a description edit"). A skipped job would count as passing
+      # for a required check even after a failure, so the job still runs and reports success only
+      # for a real earlier success. The decision code is fetched from the base SHA, never taken from
+      # the PR; anything but a `carry` verdict, including any error here, runs the job in full.
+      - name: Carry this job's earlier result on a description-only edit
+        id: carry_prior
+        if: github.event.action == 'edited' && github.run_attempt == 1
+        continue-on-error: true
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          EVENT_ACTION: ${{ github.event.action }}
+          BASE_CHANGE: ${{ toJSON(github.event.changes.base) }}
+          JOB_NAME: Plugin Node tests (node --test)
+        run: |
+          carried=false
+          script="$RUNNER_TEMP/prior_result.py"
+          fetched=false
+          for delay in 1 3 0; do
+            if gh api --method GET -H "Accept: application/vnd.github.raw+json" \
+                "repos/$REPO/contents/scripts/marketplace_ci/prior_result.py" -f ref="$BASE_SHA" \
+                > "$script" 2>/dev/null; then
+              fetched=true
+              break
+            fi
+            sleep "$delay"
+          done
+          if [ "$fetched" = true ]; then
+            py=python3
+            "$py" -c '' 2>/dev/null || py=python
+            verdict=$("$py" -I "$script" --repo "$REPO" --run-id "$RUN_ID" --pr-number "$PR_NUMBER" \
+              --head-sha "$HEAD_SHA" --job-name "$JOB_NAME" --event-action "$EVENT_ACTION" \
+              --base-change "$BASE_CHANGE" | tail -n 1) || verdict=""
+            if [ "$verdict" = carry ]; then
+              carried=true
+            fi
+          else
+            echo "::notice::no carry script readable at the base SHA; this job runs in full"
+          fi
+          if [ "$carried" = true ]; then
+            echo "::notice::this job succeeded in an earlier run on this head; its steps are not re-run"
+            echo "Carried an earlier success on the same head (issue #706); no step re-ran." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "carried=$carried" >> "$GITHUB_OUTPUT"
+
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # ratchet:actions/setup-node@v7.1.0
+        if: steps.carry_prior.outputs.carried != 'true'
         with:
           node-version: "24"
       # The files are passed explicitly: node --test on a directory path fails on Node 22 and 24.
       # Zero files fails too, so a broken pattern cannot pass silently. :(glob) keeps each * within one
       # directory level, so a fixture under tests/ is not run as a suite.
       - name: Run node --test on every plugin test file
+        if: steps.carry_prior.outputs.carried != 'true'
         run: |
           set -euo pipefail
           mapfile -d '' files < <(git ls-files -z -- ':(glob)plugins/*/tests/*.test.mjs')
@@ -445,6 +636,11 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
+      # The carry step (issue #706) reads this workflow's earlier runs and jobs, and the PR's
+      # issue events for a base change (the endpoint compute-scope's anchor lookup also reads).
+      actions: read
+      issues: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
         with:
@@ -512,18 +708,74 @@ jobs:
         if: github.run_attempt > 1
         uses: ./.github/actions/track-rerun
 
+      # Issue #706: on a description-only edit, end successfully without running the steps below
+      # when this job succeeded in the newest earlier run of this workflow for this PR and head
+      # (docs/ci.md, "Carried results on a description edit"). A skipped job would count as passing
+      # for a required check even after a failure, so the job still runs and reports success only
+      # for a real earlier success. The decision code is fetched from the base SHA, never taken from
+      # the PR; anything but a `carry` verdict, including any error here, runs the job in full.
+      - name: Carry this job's earlier result on a description-only edit
+        id: carry_prior
+        if: github.event.action == 'edited' && github.run_attempt == 1
+        continue-on-error: true
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          EVENT_ACTION: ${{ github.event.action }}
+          BASE_CHANGE: ${{ toJSON(github.event.changes.base) }}
+          JOB_NAME: Marketplace mirror/export parity
+        run: |
+          carried=false
+          script="$RUNNER_TEMP/prior_result.py"
+          fetched=false
+          for delay in 1 3 0; do
+            if gh api --method GET -H "Accept: application/vnd.github.raw+json" \
+                "repos/$REPO/contents/scripts/marketplace_ci/prior_result.py" -f ref="$BASE_SHA" \
+                > "$script" 2>/dev/null; then
+              fetched=true
+              break
+            fi
+            sleep "$delay"
+          done
+          if [ "$fetched" = true ]; then
+            py=python3
+            "$py" -c '' 2>/dev/null || py=python
+            verdict=$("$py" -I "$script" --repo "$REPO" --run-id "$RUN_ID" --pr-number "$PR_NUMBER" \
+              --head-sha "$HEAD_SHA" --job-name "$JOB_NAME" --event-action "$EVENT_ACTION" \
+              --base-change "$BASE_CHANGE" | tail -n 1) || verdict=""
+            if [ "$verdict" = carry ]; then
+              carried=true
+            fi
+          else
+            echo "::notice::no carry script readable at the base SHA; this job runs in full"
+          fi
+          if [ "$carried" = true ]; then
+            echo "::notice::this job succeeded in an earlier run on this head; its steps are not re-run"
+            echo "Carried an earlier success on the same head (issue #706); no step re-ran." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "carried=$carried" >> "$GITHUB_OUTPUT"
+
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # ratchet:actions/setup-python@v7.1.0
+        if: steps.carry_prior.outputs.carried != 'true'
         with:
           python-version: "3.13"
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # ratchet:astral-sh/setup-uv@v10.3.3
+        if: steps.carry_prior.outputs.carried != 'true'
         with:
           version: "0.13.7"
           enable-cache: "false"
           python-version: "3.13"
       - run: uv sync --locked --group dev --no-build --no-install-package csscompressor --no-install-package jsmin
+        if: steps.carry_prior.outputs.carried != 'true'
       - run: uv run --no-sync --no-build python -m scripts.marketplace_ci check-all --json-output marketplace-check.json
+        if: steps.carry_prior.outputs.carried != 'true'
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # ratchet:actions/upload-artifact@v7.0.2
-        if: always()
+        if: always() && steps.carry_prior.outputs.carried != 'true'
         with:
           name: marketplace-check-report
           path: marketplace-check.json
@@ -534,6 +786,11 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
+      # The carry step (issue #706) reads this workflow's earlier runs and jobs, and the PR's
+      # issue events for a base change (the endpoint compute-scope's anchor lookup also reads).
+      actions: read
+      issues: read
+      pull-requests: read
     steps:
       # fetch-depth: 0 (not marketplace-parity's default shallow depth) --
       # this job needs `git show $BASE_SHA:...` below, which requires the
@@ -606,15 +863,70 @@ jobs:
         if: github.run_attempt > 1
         uses: ./.github/actions/track-rerun
 
+      # Issue #706: on a description-only edit, end successfully without running the steps below
+      # when this job succeeded in the newest earlier run of this workflow for this PR and head
+      # (docs/ci.md, "Carried results on a description edit"). A skipped job would count as passing
+      # for a required check even after a failure, so the job still runs and reports success only
+      # for a real earlier success. The decision code is fetched from the base SHA, never taken from
+      # the PR; anything but a `carry` verdict, including any error here, runs the job in full.
+      - name: Carry this job's earlier result on a description-only edit
+        id: carry_prior
+        if: github.event.action == 'edited' && github.run_attempt == 1
+        continue-on-error: true
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          EVENT_ACTION: ${{ github.event.action }}
+          BASE_CHANGE: ${{ toJSON(github.event.changes.base) }}
+          JOB_NAME: Plugin component-file prefix permanence (R33)
+        run: |
+          carried=false
+          script="$RUNNER_TEMP/prior_result.py"
+          fetched=false
+          for delay in 1 3 0; do
+            if gh api --method GET -H "Accept: application/vnd.github.raw+json" \
+                "repos/$REPO/contents/scripts/marketplace_ci/prior_result.py" -f ref="$BASE_SHA" \
+                > "$script" 2>/dev/null; then
+              fetched=true
+              break
+            fi
+            sleep "$delay"
+          done
+          if [ "$fetched" = true ]; then
+            py=python3
+            "$py" -c '' 2>/dev/null || py=python
+            verdict=$("$py" -I "$script" --repo "$REPO" --run-id "$RUN_ID" --pr-number "$PR_NUMBER" \
+              --head-sha "$HEAD_SHA" --job-name "$JOB_NAME" --event-action "$EVENT_ACTION" \
+              --base-change "$BASE_CHANGE" | tail -n 1) || verdict=""
+            if [ "$verdict" = carry ]; then
+              carried=true
+            fi
+          else
+            echo "::notice::no carry script readable at the base SHA; this job runs in full"
+          fi
+          if [ "$carried" = true ]; then
+            echo "::notice::this job succeeded in an earlier run on this head; its steps are not re-run"
+            echo "Carried an earlier success on the same head (issue #706); no step re-ran." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "carried=$carried" >> "$GITHUB_OUTPUT"
+
       - name: Verify the trusted base SHA actually resolves in this checkout
+        if: steps.carry_prior.outputs.carried != 'true'
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: git rev-parse --verify "$BASE_SHA"^{commit}
 
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # ratchet:actions/setup-python@v7.1.0
+        if: steps.carry_prior.outputs.carried != 'true'
         with:
           python-version: "3.13"
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # ratchet:astral-sh/setup-uv@v10.3.3
+        if: steps.carry_prior.outputs.carried != 'true'
         with:
           version: "0.13.7"
           enable-cache: "false"
@@ -643,6 +955,7 @@ jobs:
       # (a former conditional skipped the restore whenever a text probe of base's
       # __main__.py failed, which could only ever fail open).
       - name: Restore the base SHA's copy of the prefix-check code and its dependency spec (trust boundary)
+        if: steps.carry_prior.outputs.carried != 'true'
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
@@ -699,6 +1012,7 @@ jobs:
           echo "restored scripts/, pyproject.toml, uv.lock and uv config from $BASE_SHA"
 
       - run: uv sync --locked --no-config --group dev
+        if: steps.carry_prior.outputs.carried != 'true'
       # Mechanical enforcement of plugin-rulebook's R33 (every file under a
       # registered, prefixed plugin's in-scope directories must carry that
       # plugin's own `<prefix>-` basename) plus format/uniqueness
@@ -712,6 +1026,7 @@ jobs:
       # the PR's actual changes are what's evaluated, just never by the
       # PR's own copy of the evaluation logic.
       - name: Check plugin file prefixes (R33)
+        if: steps.carry_prior.outputs.carried != 'true'
         run: uv run python -m scripts.marketplace_ci check-prefixes
       # PR-review-time enforcement that a plugin's registered
       # component-file prefix (plugin-rulebook R33) is actually permanent:
@@ -723,6 +1038,7 @@ jobs:
       # is the layer that actually catches either of those (security-
       # reviewer finding, M2).
       - name: Check plugin prefix permanence (R33)
+        if: steps.carry_prior.outputs.carried != 'true'
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: uv run python -m scripts.marketplace_ci check-prefix-permanence --base-sha "$BASE_SHA"
