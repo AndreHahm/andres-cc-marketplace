@@ -1,0 +1,67 @@
+{
+  "entries": [
+    {
+      "disposition": "accepted",
+      "finding": "4671339023",
+      "line": 3137,
+      "note": "maintainer accepted the residual: model-set grant label",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 865,
+      "recorded_at": "2026-11-23T20:48:20+00:00"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "4671339174",
+      "line": 3137,
+      "note": "maintainer accepted the residual: model-set grant label",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 865,
+      "recorded_at": "2026-11-23T20:48:21+00:00"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "4671339336",
+      "line": 3101,
+      "note": "maintainer accepted the residual: R18-only model finding in references",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 865,
+      "recorded_at": "2026-11-23T20:48:21+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4671349610",
+      "line": 3195,
+      "note": "absolute in-checkout citations made relative before merge; 32ac170d",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 865,
+      "recorded_at": "2026-11-23T20:48:19+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4671349864",
+      "line": 976,
+      "note": "merge key uses the normalized path; 32ac170d",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 865,
+      "recorded_at": "2026-11-23T20:48:20+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4671427525",
+      "line": 2037,
+      "note": "grep exit above 1 fails the step; 32ac170d",
+      "path": ".github/workflows/marketplace-ci.yml",
+      "pr": 865,
+      "recorded_at": "2026-11-23T20:48:20+00:00"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "4671830865",
+      "line": 3172,
+      "note": "repeat of 4671339174 (label residual accepted by the maintainer); the symlink part is fixed",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 865,
+      "recorded_at": "2026-11-23T21:15:37+00:00"
+    }
+  ]
+}

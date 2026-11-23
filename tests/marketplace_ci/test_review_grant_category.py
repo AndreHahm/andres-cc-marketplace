@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 from dataclasses import replace
 from pathlib import Path
 
@@ -18,6 +19,7 @@ from scripts.marketplace_ci.review import (
     ReviewResult,
     aggregate_findings,
     gate_decision,
+    mark_symlinked,
     relative_citations,
     validate_review_output,
 )
@@ -153,6 +155,7 @@ def test_a_merge_keeps_the_spelling_that_may_pass_through_a_symlink():
     for order in ((plain, other), (other, plain)):
         (merged,) = _agg(*order)
         assert merged.path == climbing and merged.severity == "Critical"
+        assert merged.components == (f"{SKILL}:3",)
 
 
 def _relative(root, path, **extra):
@@ -203,6 +206,84 @@ def test_an_absolute_copy_still_has_to_agree(tmp_path):
     )
     (merged,) = _agg(grant, differs)
     assert _outcome(merged) == "block"
+
+
+def _marked(root, path, **extra):
+    result = ReviewResult(reviewer="r", verdict="fail", findings=(_finding(path=path, **extra),))
+    return mark_symlinked([result], root)[0].findings[0]
+
+
+@pytest.fixture
+def linked_repo(git_repo):
+    git_repo.write("tool.sh", "x\n")
+    git_repo.write(SKILL, "x\n")
+    root = git_repo.root
+    (root / "plugins/demo-kit/commands").mkdir(parents=True)
+    (root / "plugins/demo-kit/commands/a.md").symlink_to("../../../tool.sh")
+    (root / "plugins/demo-kit/skills/linked").symlink_to("x")
+    git_repo.write("plugins/demo-kit/commands/b.md", "x\n")
+    (root / "plugins/demo-kit/commands/b.md:5").symlink_to("../../../tool.sh")
+    (root / "plugins/demo-kit/commands/c\\d.md").symlink_to("../../../tool.sh")
+    git_repo.write("plugins/demo-kit/commands/e.md", "x\n")
+    subprocess.run(["git", "add", "-A"], cwd=root, check=True)
+    subprocess.run(["git", "commit", "-qm", "links"], cwd=root, check=True)
+    return root
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "plugins/demo-kit/commands/a.md",
+        "./plugins/demo-kit//commands/a.md",
+        "plugins/demo-kit/skills/linked/SKILL.md",
+        "plugins/demo-kit/skills/linked/../x/SKILL.md",
+        "plugins/demo-kit/commands/b.md",  # what a citation of the link `b.md:5` parses to
+    ],
+)
+@pytest.mark.parametrize("on_disk", [True, False])
+@pytest.mark.skipif(os.name == "nt", reason="symlink creation")
+def test_a_symlink_named_like_a_document_is_never_capped(linked_repo, path, on_disk):
+    if not on_disk:  # core.symlinks=false checks a link out as a plain file
+        for link in ("plugins/demo-kit/commands/a.md", "plugins/demo-kit/skills/linked"):
+            (linked_repo / link).unlink()
+            (linked_repo / link).write_text("target", encoding="utf-8")
+    assert _outcome(_finding(path=path)) == "notice"  # by name alone
+    assert _outcome(_marked(linked_repo, path)) == "block"
+    assert _outcome(_marked(linked_repo, SKILL, components=(f"{path}:2",))) == "block"
+
+
+@pytest.mark.skipif(os.name == "nt", reason="symlink creation")
+def test_a_link_with_a_backslash_in_its_name_is_never_capped(linked_repo):
+    path = "plugins/demo-kit/commands/c\\d.md"
+    assert _marked(linked_repo, path).via_symlink
+    assert _outcome(_finding(path=path)) == "block"  # not a plain name
+    assert _outcome(_finding(components=(f"{path}:3",))) == "block"
+
+
+@pytest.mark.skipif(os.name == "nt", reason="symlink creation")
+def test_a_regular_document_stays_capped(linked_repo):
+    assert _outcome(_marked(linked_repo, SKILL)) == "notice"
+    assert _outcome(_marked(linked_repo, "plugins/demo-kit/commands/e.md")) == "notice"
+    assert mark_symlinked([], linked_repo) == ()
+
+
+@pytest.mark.skipif(os.name == "nt", reason="symlink creation")
+def test_a_symlinked_copy_keeps_a_merged_finding_blocking(linked_repo):
+    plain = _finding(reviewer="a")
+    other = _marked(
+        linked_repo,
+        "plugins/demo-kit/skills/linked/../x/SKILL.md",
+        reviewer="b",
+        severity="Minor",  # so the plain copy is the one kept
+    )
+    for order in ((plain, other), (other, plain)):
+        (merged,) = _agg(*order)
+        assert merged.via_symlink and _outcome(merged) == "block"
+
+
+def test_a_failing_git_raises(tmp_path):
+    with pytest.raises(RuntimeError):
+        _marked(tmp_path, SKILL)
 
 
 def test_agreeing_reviewers_stay_capped():

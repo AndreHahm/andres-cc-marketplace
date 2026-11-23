@@ -2148,6 +2148,7 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
         finding_waiver_key,
         gate_decision,
         general_correctness_coverage,
+        mark_symlinked,
         probe_sandbox,
         relative_citations,
         render_could_not_run,
@@ -2434,6 +2435,11 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
         if len(unusable) > 1:
             message += f" (also unusable: {', '.join(name for name, _ in unusable[1:])})"
         return _fail_run_codex_review(args, message, reports, [name for name, _ in unusable])
+
+    try:
+        validated = list(mark_symlinked(validated, top_level))
+    except Exception as exc:  # fail closed, like the diff-scoped classification below
+        return _fail_run_codex_review(args, f"symlink check failed: {exc!r}", reports)
 
     # Script findings join the model findings before aggregation, so the gate, dedup and the result
     # file treat both alike (`source` stays part of the dedup key and the gate's inputs).

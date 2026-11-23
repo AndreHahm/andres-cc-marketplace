@@ -821,8 +821,11 @@ absolute one with a `..` segment, or through another symlink to the checkout, is
 finding block as before, and the rule name plays no part. The result keeps the reported severity and the
 `category`. Accepted residuals (the maintainer's choice): the label is the model's own, so a mislabelled or
 steered label on a real defect inside such a document makes it a notice; these guards bound only a Critical or
-Major report, and a finding the reviewer itself lowers to minor never reaches them; and a path is judged by its
-name, so a symlink counts as the document it is named as. `rule_class` stays off limits to a model.
+Major report, and a finding the reviewer itself lowers to minor never reaches them. A finding that cites a symlink,
+or a path through one (in the checkout or HEAD's tree), is not capped, here or by the R18 cap below, and neither is
+one whose path or components hold a character outside `A-Za-z0-9._/-`; if git cannot answer the run fails. Not
+covered: a symlink the PR deletes, and, off Linux, a differently cased spelling of a link checked out as a plain
+file. `rule_class` stays off limits to a model.
 Not covered: the advisory Claude review's own severity check (`claude_review.py`), the unsandboxed fallback
 (no `category`, so a Major grant finding still blocks there), and findings carried from before this change.
 
