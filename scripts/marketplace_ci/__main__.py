@@ -884,16 +884,23 @@ class _UnreadableError(Exception):
     """A read the publish re-check depends on failed (R19: fail closed, `--strict`)."""
 
 
+def _not_found(result: subprocess.CompletedProcess) -> bool:
+    """`gh api` answered 404 (verified: exit 1, stderr ending `(HTTP 404)`): the issue or account
+    does not exist, which is an answer, not a failed read."""
+    return result.returncode != 0 and (result.stderr or "").rstrip().endswith("(HTTP 404)")
+
+
 def _issue_is_open(repo: str, number: int, gh: str = "gh", strict: bool = False) -> bool:
     """True only for an open issue (not a pull request) of `repo`, read through `gh api`. With
-    `strict`, a read that fails raises _UnreadableError instead of counting as not open."""
+    `strict`, a read that fails raises _UnreadableError instead of counting as not open; an issue
+    that does not exist (404) still counts as not open, so its waiver is listed as lapsed."""
     result = subprocess.run(
         [gh, "api", f"repos/{repo}/issues/{number}", "--jq", "[.state, (.pull_request != null)]"],
         capture_output=True,
         text=True,
     )
     if result.returncode != 0:
-        if strict:
+        if strict and not _not_found(result):
             raise _UnreadableError(f"cannot read issue #{number}")
         return False
     try:
@@ -949,7 +956,7 @@ def _confirmed_waivers(
     since a user with write access can edit another user's comment. Anything that cannot be read
     confirms nothing, so a waiver that needs a confirmation keeps blocking (fail closed). With
     `strict` (the publish re-check, R19), a comments or role read that fails raises
-    _UnreadableError instead."""
+    _UnreadableError instead; a role read answering 404 (no such user) still confirms nothing."""
     from scripts.marketplace_ci.review import parse_confirmations
 
     if not (
@@ -997,7 +1004,8 @@ def _confirmed_waivers(
             capture_output=True,
             text=True,
         )
-        if permission.returncode != 0 and strict:
+        # A user that does not exist (404) is not a maintainer, so its comment confirms nothing.
+        if permission.returncode != 0 and strict and not _not_found(permission):
             raise _UnreadableError(f"cannot read the role of {login}")
         # `role_name`, not `permission`: the latter reports a maintain user as `write`.
         if permission.returncode == 0 and permission.stdout.strip() in ("maintain", "admin"):
