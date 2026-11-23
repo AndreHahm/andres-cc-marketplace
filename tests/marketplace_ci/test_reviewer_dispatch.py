@@ -286,19 +286,43 @@ def test_unregistered_agent_at_base_sha_fails_closed(git_repo):
         )
 
 
-def test_unmatched_developer_instructions_quote_form_fails_closed(git_repo):
-    """Security review of PR #370 (C1): a `.toml` whose developer_instructions
-    uses single-quoted triple-quotes instead of the double-quoted form
-    `_DEVELOPER_INSTRUCTIONS_PATTERN` matches previously extracted silently
-    to an empty string and let dispatch proceed as if the reviewer had real
-    instructions -- 4 real exports (scripts-reviewer, consistency-reviewer,
-    rule-reviewer, completeness-reviewer) shipped with exactly this defect,
-    one of them (consistency-reviewer) already live on the governance-
-    escalation path. Must now fail closed instead."""
-    git_repo.stage(
-        ".codex/agents/security-reviewer.toml",
-        "name = \"security-reviewer\"\ndeveloper_instructions = '''\nsafe instructions\n'''\n",
-    )
+@pytest.mark.parametrize(
+    "toml_text,expected",
+    [
+        ('developer_instructions = """\nsay \\"hi\\" in C:\\\\x\n"""\n', 'say "hi" in C:\\x\n'),
+        ("developer_instructions = '''\nsay \\q\n'''\n", "say \\q\n"),
+        ('developer_instructions = "one line"\n', "one line"),
+        ('developer_instructions = """\na\n"""\nname = """b"""\n', "a\n"),
+    ],
+)
+def test_the_instructions_are_read_as_toml(toml_text, expected):
+    assert review._extract_developer_instructions(toml_text) == expected
+
+
+def test_an_exported_body_comes_back_unchanged():
+    from scripts.marketplace_ci.conversion import _toml_escape
+
+    body = 'Quote "x", a triple """ and a \\ backslash.\n```bash\necho "$A"\n```\n'
+    exported = f'developer_instructions = """\n{_toml_escape(body)}"""\n'
+    assert review._extract_developer_instructions(exported) == body
+
+
+@pytest.mark.parametrize(
+    "toml_text",
+    [
+        'name = "security-reviewer"\n',
+        "developer_instructions = 3\n",
+        "developer_instructions = ['a']\n",
+        'developer_instructions = """\n"""\n',
+        'developer_instructions = """\nnot closed\n',
+        '# developer_instructions = """\nx\n"""\n',
+        '[other]\ndeveloper_instructions = """\nx\n"""\n',
+    ],
+)
+def test_instructions_that_cannot_be_read_fail_closed(git_repo, toml_text):
+    """Security review of PR #370 (C1): an empty extraction let dispatch proceed as if the reviewer
+    had real instructions."""
+    git_repo.stage(".codex/agents/security-reviewer.toml", toml_text)
     subprocess.run(["git", "commit", "-q", "-m", "base"], cwd=git_repo.root, check=True)
     base_sha = subprocess.run(
         ["git", "rev-parse", "HEAD"], cwd=git_repo.root, capture_output=True, text=True, check=True
@@ -1508,7 +1532,7 @@ def test_instruction_has_no_diff_scope_when_changed_ranges_are_unavailable(
             monkeypatch, repo, change, dependency_index, completed, **kwargs
         )
         # What the base-SHA export held, then only the category briefing every reviewer gets.
-        assert text == f"\nreview this\n\n\n{render_category_briefing()}\n"
+        assert text == f"review this\n\n\n{render_category_briefing()}\n"
         assert "[diff scope]" not in text
 
 
