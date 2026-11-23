@@ -4,6 +4,7 @@ guards around it, and the mislabelled cases those guards must keep blocking."""
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import replace
 from pathlib import Path
 
@@ -17,6 +18,7 @@ from scripts.marketplace_ci.review import (
     ReviewResult,
     aggregate_findings,
     gate_decision,
+    relative_citations,
     validate_review_output,
 )
 
@@ -130,6 +132,77 @@ def test_reviewers_must_agree_on_the_category(other, other_severity):
         (merged,) = _agg(*order)
         assert merged.category is None
         assert _outcome(merged) == "block"
+
+
+@pytest.mark.parametrize("spelling", ["./{}", "plugins//demo-kit/{}", "plugins/x/../demo-kit/{}"])
+@pytest.mark.parametrize("category", [None, rc.CATEGORY_OTHER])
+def test_a_differently_spelled_copy_still_has_to_agree(spelling, category):
+    """PR #865: `./x` was grouped apart from `x`, so the other reviewer's label was never seen."""
+    tail = SKILL if spelling == "./{}" else SKILL.removeprefix("plugins/demo-kit/")
+    grant = _finding("Major", reviewer="a")
+    differs = _finding("Minor", reviewer="b", category=category, path=spelling.format(tail))
+    for order in ((grant, differs), (differs, grant)):
+        (merged,) = _agg(*order)
+        assert _outcome(merged) == "block"
+
+
+def test_a_merge_keeps_the_spelling_that_may_pass_through_a_symlink():
+    climbing = "plugins/x/../demo-kit/skills/x/SKILL.md"
+    plain = _finding("Critical", reviewer="a")
+    other = _finding("Major", reviewer="b", path=climbing)
+    for order in ((plain, other), (other, plain)):
+        (merged,) = _agg(*order)
+        assert merged.path == climbing and merged.severity == "Critical"
+
+
+def _relative(root, path, **extra):
+    result = ReviewResult(reviewer="r", verdict="fail", findings=(_finding(path=path, **extra),))
+    return relative_citations(result, root).findings[0]
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX path spellings")
+@pytest.mark.parametrize("prefix", ["{root}/", "{root}//", "/{root}/", "{root}/./"])
+def test_an_absolute_citation_in_the_checkout_is_capped_like_the_relative_one(tmp_path, prefix):
+    start = prefix.format(root=tmp_path)
+    finding = _relative(tmp_path, f"{start}{SKILL}", components=(f"{start}{SKILL}:9", "a.md:3"))
+    assert finding.path == SKILL and finding.components == (f"{SKILL}:9", "a.md:3")
+    assert _outcome(_relative(tmp_path, f"{start}{SKILL}")) == "notice"
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX path spellings")
+def test_a_citation_through_a_symlinked_root_is_relative_too(tmp_path):
+    real = tmp_path / "real"
+    real.mkdir()
+    link = tmp_path / "link"
+    link.symlink_to(real)
+    assert _relative(link, f"{real}/{SKILL}").path == SKILL
+    assert _relative(link, f"{link}/{SKILL}").path == SKILL
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX path spellings")
+def test_every_other_citation_keeps_its_spelling(tmp_path):
+    root = tmp_path / "repo"
+    for path in (
+        f"{tmp_path}/repo-evil/{SKILL}",
+        f"{root}/../{SKILL}",
+        f"{root}/x/../{SKILL}",
+        str(root),
+        f"/{SKILL}",
+        f"./{SKILL}",
+        f"../{SKILL}",
+        "",
+    ):
+        assert _relative(root, path).path == path
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX path spellings")
+def test_an_absolute_copy_still_has_to_agree(tmp_path):
+    grant = _finding("Major", reviewer="a")
+    differs = _relative(
+        tmp_path, f"{tmp_path}/{SKILL}", severity="Minor", reviewer="b", category=rc.CATEGORY_OTHER
+    )
+    (merged,) = _agg(grant, differs)
+    assert _outcome(merged) == "block"
 
 
 def test_agreeing_reviewers_stay_capped():

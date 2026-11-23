@@ -2034,7 +2034,14 @@ jobs:
               echo "::error::$canary is missing without the overrides too, so this check cannot show whether they work -- re-check it after a Codex pin change"
               exit 1
             fi
-            if grep -q "$canary" "$RUNNER_TEMP/codex-input-isolated.txt"; then
+            # 1 is grep's "not found"; anything above is a read error, never an absence.
+            status=0
+            grep -q "$canary" "$RUNNER_TEMP/codex-input-isolated.txt" || status=$?
+            if [ "$status" -gt 1 ]; then
+              echo "::error::could not scan the isolated model input for $canary (grep exit $status)"
+              exit 1
+            fi
+            if [ "$status" -eq 0 ]; then
               echo "::error::$canary reaches the model input despite the overrides -- refusing to dispatch reviewers the PR's own AGENTS.md or skills could steer"
               exit 1
             fi

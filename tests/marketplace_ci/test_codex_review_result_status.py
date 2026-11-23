@@ -299,6 +299,18 @@ def test_a_missing_output_and_a_malformed_one_are_both_marked(monkeypatch, revie
     assert {r["status"] for r in payload["reviewer_results"].values()} == {"could_not_run"}
 
 
+def test_an_absolute_citation_reaches_the_result_relative(monkeypatch, review_repo, tmp_path):
+    """PR #865: the caps and the merge key compare relative paths."""
+    from scripts.marketplace_ci.review import ReviewerReport
+
+    envelope = json.loads(BLOCKING)
+    location = envelope["findings"][0]["location"]
+    envelope["findings"][0]["location"] = f"{review_repo[0]}/{location}"
+    reports = [ReviewerReport(reviewer="security-reviewer", status="completed", output=envelope)]
+    _, payload, _ = _run_with_reports(monkeypatch, review_repo, tmp_path, reports)
+    assert [f["path"] for f in payload["findings"]] == [CHANGED]
+
+
 def test_provenance_helpers_return_none_outside_a_repository(tmp_path):
     """`_git_out` backs `_run_provenance`, which also runs on failure paths: git failing must
     give None (a null field), never raise out of the failure writer."""
