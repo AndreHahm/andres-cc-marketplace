@@ -250,7 +250,6 @@ jobs:
       # issue events for a base change (the endpoint compute-scope's anchor lookup also reads).
       actions: read
       issues: read
-      pull-requests: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
         with:
@@ -360,7 +359,7 @@ jobs:
             "$py" -c '' 2>/dev/null || py=python
             verdict=$("$py" -I "$script" --repo "$REPO" --run-id "$RUN_ID" --pr-number "$PR_NUMBER" \
               --head-sha "$HEAD_SHA" --job-name "$JOB_NAME" --event-action "$EVENT_ACTION" \
-              --base-change "$BASE_CHANGE" | tail -n 1) || verdict=""
+              --base-change "$BASE_CHANGE" | tail -n 1 | tr -d '\r') || verdict=""
             if [ "$verdict" = carry ]; then
               carried=true
             fi
@@ -424,7 +423,6 @@ jobs:
       # issue events for a base change (the endpoint compute-scope's anchor lookup also reads).
       actions: read
       issues: read
-      pull-requests: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
         with:
@@ -469,7 +467,7 @@ jobs:
             "$py" -c '' 2>/dev/null || py=python
             verdict=$("$py" -I "$script" --repo "$REPO" --run-id "$RUN_ID" --pr-number "$PR_NUMBER" \
               --head-sha "$HEAD_SHA" --job-name "$JOB_NAME" --event-action "$EVENT_ACTION" \
-              --base-change "$BASE_CHANGE" | tail -n 1) || verdict=""
+              --base-change "$BASE_CHANGE" | tail -n 1 | tr -d '\r') || verdict=""
             if [ "$verdict" = carry ]; then
               carried=true
             fi
@@ -541,7 +539,6 @@ jobs:
       # issue events for a base change (the endpoint compute-scope's anchor lookup also reads).
       actions: read
       issues: read
-      pull-requests: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
         with:
@@ -586,7 +583,7 @@ jobs:
             "$py" -c '' 2>/dev/null || py=python
             verdict=$("$py" -I "$script" --repo "$REPO" --run-id "$RUN_ID" --pr-number "$PR_NUMBER" \
               --head-sha "$HEAD_SHA" --job-name "$JOB_NAME" --event-action "$EVENT_ACTION" \
-              --base-change "$BASE_CHANGE" | tail -n 1) || verdict=""
+              --base-change "$BASE_CHANGE" | tail -n 1 | tr -d '\r') || verdict=""
             if [ "$verdict" = carry ]; then
               carried=true
             fi
@@ -640,7 +637,6 @@ jobs:
       # issue events for a base change (the endpoint compute-scope's anchor lookup also reads).
       actions: read
       issues: read
-      pull-requests: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
         with:
@@ -747,7 +743,7 @@ jobs:
             "$py" -c '' 2>/dev/null || py=python
             verdict=$("$py" -I "$script" --repo "$REPO" --run-id "$RUN_ID" --pr-number "$PR_NUMBER" \
               --head-sha "$HEAD_SHA" --job-name "$JOB_NAME" --event-action "$EVENT_ACTION" \
-              --base-change "$BASE_CHANGE" | tail -n 1) || verdict=""
+              --base-change "$BASE_CHANGE" | tail -n 1 | tr -d '\r') || verdict=""
             if [ "$verdict" = carry ]; then
               carried=true
             fi
@@ -790,7 +786,6 @@ jobs:
       # issue events for a base change (the endpoint compute-scope's anchor lookup also reads).
       actions: read
       issues: read
-      pull-requests: read
     steps:
       # fetch-depth: 0 (not marketplace-parity's default shallow depth) --
       # this job needs `git show $BASE_SHA:...` below, which requires the
@@ -902,7 +897,7 @@ jobs:
             "$py" -c '' 2>/dev/null || py=python
             verdict=$("$py" -I "$script" --repo "$REPO" --run-id "$RUN_ID" --pr-number "$PR_NUMBER" \
               --head-sha "$HEAD_SHA" --job-name "$JOB_NAME" --event-action "$EVENT_ACTION" \
-              --base-change "$BASE_CHANGE" | tail -n 1) || verdict=""
+              --base-change "$BASE_CHANGE" | tail -n 1 | tr -d '\r') || verdict=""
             if [ "$verdict" = carry ]; then
               carried=true
             fi

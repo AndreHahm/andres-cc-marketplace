@@ -34,6 +34,13 @@ from datetime import datetime
 # The same short retry as the review-anchor lookup (review.py's _GH_RETRY_DELAYS, Codex R5).
 RETRY_DELAYS = (1, 3)
 
+# This script's lookup gives up well before the shortest carrying job's timeout-minutes (10), so a
+# stalled `gh` here ends in `run` and the job still runs its real checks; each request gets at most
+# the time left (PR #859 review). The workflow's fetch of this file is bounded only by the job's
+# timeout, which fails the job (never turns it green).
+LOOKUP_BUDGET = 120.0
+REQUEST_TIMEOUT = 30.0
+
 # Issue events that mean the base branch changed. The failed automatic change is included too:
 # it costs one full run at most and needs no reasoning about what it left behind.
 BASE_CHANGE_EVENTS = frozenset(
@@ -47,17 +54,25 @@ CARRY_STEP_NAME = "Carry this job's earlier result on a description-only edit"
 Gh = Callable[..., "str | None"]
 
 
-def gh_api(*args: str) -> str | None:
+def gh_api(*args: str, deadline: float | None = None) -> str | None:
     """`gh api -X GET <args>`'s stdout, retried after each delay in RETRY_DELAYS; None when every
-    attempt failed."""
+    attempt failed or timed out, or `deadline` (a `time.monotonic()` value) has passed."""
     for delay in (*RETRY_DELAYS, None):
+        timeout = REQUEST_TIMEOUT
+        if deadline is not None:
+            timeout = min(timeout, deadline - time.monotonic())
+            if timeout <= 0:
+                return None
         try:
             result = subprocess.run(
-                ["gh", "api", "-X", "GET", *args], capture_output=True, text=True, encoding="utf-8"
-            )
+                ["gh", "api", "-X", "GET", *args],
+                capture_output=True, text=True, encoding="utf-8", timeout=timeout,
+            )  # fmt: skip
+        except subprocess.TimeoutExpired:
+            result = None
         except OSError:
             return None
-        if result.returncode == 0:
+        if result is not None and result.returncode == 0:
             return result.stdout
         if delay is not None:
             time.sleep(delay)
@@ -132,7 +147,10 @@ def decide(
                 continue
             if (r.get("head_repository") or {}).get("full_name") != repo:
                 continue
-            if not any(p.get("number") == pr_number for p in r.get("pull_requests") or []):
+            # GitHub lists every open PR whose head matches the run, not the PR that triggered it,
+            # so a run that names another PR too may have tested that PR's base (PR #859 review).
+            listed_prs = r.get("pull_requests") or []
+            if len(listed_prs) != 1 or listed_prs[0].get("number") != pr_number:
                 continue
             r_created = _epoch(r["created_at"])
             if r_created <= created and r["id"] < run_id:
@@ -251,8 +269,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--base-change", required=True)
     args = parser.parse_args(argv)
     try:
+        deadline = time.monotonic() + LOOKUP_BUDGET
         carry, reason = decide(
-            gh_api,
+            lambda *a: gh_api(*a, deadline=deadline),
             repo=args.repo,
             run_id=args.run_id,
             pr_number=args.pr_number,
