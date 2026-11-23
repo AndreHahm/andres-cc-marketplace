@@ -1,7 +1,7 @@
 {
   "skill_name": "command-development",
   "skill_path": "plugins/plugin-devkit/skills/command-development/SKILL.md",
-  "description": "Argument-handling guidance in plugin commands (PR #856): validate an argument before any step uses it, never build an @ include or a !-command gate from an unvalidated argument (both expand at load time), read argument-selected config with a narrowed Read grant as data only, quote arguments in ! commands and run untrusted input as body steps. Baseline arm reads the same skill files as of commit 8fce6849, before the change.",
+  "description": "Argument-handling guidance in plugin commands (PR #856): validate an argument before any step uses it, never build an @ include or a !-command gate from an unvalidated argument (both expand at load time), read argument-selected config with the Read tool as data only (a plain Read grant described as unscoped, since a Read(${CLAUDE_PLUGIN_ROOT}/...) rule is not documented to expand), and never pass an argument to a ! command: run argument-bearing scripts as body steps after validation (PR #856 round 2). Iteration-1 graded against the earlier expectations (narrowed Read grant, quoting accepted in ! commands). Baseline arm reads the same skill files as of commit 8fce6849, before the change.",
   "testing_validation_coverage": {
     "declared_scenarios": 5,
     "covered": 3,
@@ -20,21 +20,21 @@
       "id": 1,
       "name": "deploy-command-config-by-environment",
       "prompt": "Using the command-development skill, write a Claude Code plugin command file `commands/deploy.md` for a command `/deploy <environment>`. It should load the plugin's configuration file `config/<environment>-deploy.json` for the given environment and then run the plugin's `scripts/deploy.sh` for that environment. Write the complete command file (frontmatter and body) to `outputs/deploy.md`, and a short `outputs/notes.md` explaining your design choices.",
-      "expected_output": "The environment argument is checked against an allowlist before any configuration is read or script is run. The config file is not pulled in by an @ include whose path contains the argument; it is read with the Read tool after validation, the grant is narrowed to the config files, and its contents are treated as data. deploy.sh runs as a body step (or with the argument quoted), and allowed-tools pins the script.",
+      "expected_output": "The environment argument is checked against an allowlist before any configuration is read or script is run. The config file is not pulled in by an @ include whose path contains the argument; it is read with the Read tool after validation, a plain Read grant (if any) is not presented as narrowed, and its contents are treated as data. deploy.sh runs as a body step with the validated name, never as a ! command that takes the argument, and allowed-tools pins the script.",
       "files": []
     },
     {
       "id": 2,
       "name": "lint-command-file-argument",
       "prompt": "Using the command-development skill, write a Claude Code plugin command file `commands/lint.md` for a command `/lint <file>` that runs the plugin's `scripts/lint.js` (with node) on the given file and shows the result to the user for review. Write the complete command file to `outputs/lint.md`, and a short `outputs/notes.md` explaining your design choices.",
-      "expected_output": "The file argument is quoted wherever it appears in shell text, the command notes that quoting does not protect against an argument containing quotes or $(...), and either runs the script as a body step or otherwise keeps untrusted input out of a load-time ! command. allowed-tools pins node to the one script.",
+      "expected_output": "The file argument never appears in a load-time ! command: the command validates the path first, then runs the script as a body step with the Bash tool, passing the path as one quoted value. If it mentions quoting, it notes that quoting alone does not protect a ! command against an argument containing quotes or $(...). allowed-tools pins node to the one script.",
       "files": []
     },
     {
       "id": 3,
       "name": "fix-draft-load-time-validation",
       "prompt": "Using the command-development skill, review and fix this draft plugin command. Write the corrected command file to `outputs/build-env.md` and a list of every problem you found, with the reason for each fix, to `outputs/review.md`.\n\n```markdown\n---\ndescription: Build for an environment\nargument-hint: [environment]\nallowed-tools: Bash(echo:*), Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/build.sh:*), Read\n---\n\nValidate: !`echo \"$0\" | grep -E \"^(dev|staging|prod)$\" || echo \"INVALID\"`\n\nIf the validation passed:\n\n**Configuration:** @${CLAUDE_PLUGIN_ROOT}/config/$0.json\n\n**Build:** !`bash ${CLAUDE_PLUGIN_ROOT}/scripts/build.sh $0`\n\nReport the build status.\n```",
-      "expected_output": "The review identifies that the !-validation, the @ include and the ! build all expand at load time, so the validation cannot gate the include or the build. The fix validates in prose before any step that uses the argument, reads the config with the Read tool after validation (narrowed grant, contents as data) and runs build.sh as a body step with the validated name.",
+      "expected_output": "The review identifies that the !-validation, the @ include and the ! build all expand at load time, so the validation cannot gate the include or the build. The fix validates in prose before any step that uses the argument, reads the config with the Read tool after validation (contents as data, the plain Read grant not presented as narrowed) and runs build.sh as a body step with the validated name.",
       "files": []
     }
   ]

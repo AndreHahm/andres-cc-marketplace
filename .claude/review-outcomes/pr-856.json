@@ -1,0 +1,54 @@
+{
+  "entries": [
+    {
+      "disposition": "declined",
+      "finding": "ci-codex-delta-plugin-rulebook-checker-R6-r1",
+      "line": 403,
+      "note": "Non-blocking notice on Bash(grep -E:*); kept by the user's decision. Moot after c666bfed: the rework removed the grep and echo grants from that example.",
+      "path": "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+      "pr": 856,
+      "recorded_at": "2026-11-23T11:50:20+00:00",
+      "rule": "plugin-rulebook:R6"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-codex-delta-plugin-rulebook-checker-R6-r2",
+      "line": 186,
+      "note": "Read(CLAUDE_PLUGIN_ROOT/...) grants in examples 5, 9, 10 replaced with plain Read described as unscoped; checked against the live skills docs, which name only skill content and Bash rules for the substitution.",
+      "path": "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+      "pr": 856,
+      "recorded_at": "2026-11-23T12:22:55+00:00",
+      "rule": "plugin-rulebook:R6"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-codex-delta-security-reviewer-injection-surface-r1",
+      "line": 403,
+      "note": "Fixed in c666bfed: argument validated before use, config read through a narrowed Read grant as data, scripts run as body steps; same pattern fixed across the skill's examples and references.",
+      "path": "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+      "pr": 856,
+      "recorded_at": "2026-11-23T11:50:20+00:00",
+      "rule": "injection-surface"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-codex-delta-security-reviewer-tool-scoping-r2",
+      "line": 157,
+      "note": "All 26 argument-bearing load-time bang commands across the skill converted to body steps that validate first and run through a scoped Bash grant; SKILL.md now says never to pass an argument to a bang command. Injection confirmed with a live probe before the fix.",
+      "path": "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md",
+      "pr": 856,
+      "recorded_at": "2026-11-23T12:22:55+00:00",
+      "rule": "tool-scoping"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-codex-delta-skill-reviewer-security-r2",
+      "line": 37,
+      "note": "Same fix as the round-2 tool-scoping finding: example 1 and every sibling now validate the argument, then run the script as a body step; evals.json expectations updated to match.",
+      "path": "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+      "pr": 856,
+      "recorded_at": "2026-11-23T12:22:56+00:00",
+      "rule": "security"
+    }
+  ]
+}

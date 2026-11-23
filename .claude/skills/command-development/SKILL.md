@@ -172,11 +172,12 @@ Plugin commands have access to `${CLAUDE_PLUGIN_ROOT}` — an env var resolving 
 ---
 allowed-tools: Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/analyze.js *)
 ---
-Run analysis: !\`node ${CLAUDE_PLUGIN_ROOT}/scripts/analyze.js "\$0"\`
+Accept $0 only if it is an existing file in this repository; otherwise stop.
+Then run `node ${CLAUDE_PLUGIN_ROOT}/scripts/analyze.js "<path>"` with the Bash tool.
 Load config: @${CLAUDE_PLUGIN_ROOT}/config/settings.json
 ```
 
-A command argument is substituted into the shell text before it runs, so quote it as above and have the script validate it; for untrusted input, prefer a body step that calls the script through a scoped `Bash` grant. Use `${CLAUDE_PLUGIN_ROOT}` for all plugin file references to keep commands portable across installations. For agent/skill/hook integration patterns and multi-component workflows, see `references/plugin-features-reference.md`.
+Never pass a command argument to a `!` command. A `!` command runs when the command loads, before Claude reads anything, and the argument is substituted into its shell text as is, so neither quoting nor a later validation step can stop an argument that contains a quote or `$(...)`. Validate the argument in the body, then run the script as a Bash tool step through a scoped `Bash` grant, as above; keep `!` for commands that take no argument. Use `${CLAUDE_PLUGIN_ROOT}` for all plugin file references to keep commands portable across installations. For agent/skill/hook integration patterns and multi-component workflows, see `references/plugin-features-reference.md`.
 
 ## Command Organization
 
@@ -233,9 +234,9 @@ For complete patterns, multi-step workflows, and templates, see `references/adva
 - "Add a PreToolUse hook" (use `hook-development`)
 - "Design a multi-phase workflow skill" (use `workflow-skill-development`)
 
-**Evals:** `evals/command-development/` holds 3 scenarios for argument handling (an `@` include or `!` command built from an argument, a narrowed `Read` grant, quoting), added for PR #856. Otherwise this skill is reference guidance whose output is a command file checked by the procedure and quality gates below, and the bundled `scripts/validate-command.sh` and `scripts/validate-frontmatter.sh` cover the mechanical checks.
+**Evals:** `evals/command-development/` holds 3 scenarios for argument handling (an `@` include or `!` command built from an argument, the `Read` grant, body steps instead of argument-bearing `!` commands), added for PR #856 and updated in its round 2 to the body-step and unscoped-`Read` guidance. Otherwise this skill is reference guidance whose output is a command file checked by the procedure and quality gates below, and the bundled `scripts/validate-command.sh` and `scripts/validate-frontmatter.sh` cover the mechanical checks.
 
-**Last dated run record:** 2026-11-23, `evals/command-development/workspace/iteration-1/` (Full Pipeline, baseline = the skill before PR #856's argument-handling edits, one run per arm): with_skill 78.3% vs. baseline 80.0%, no measured effect. The baseline already taught body steps for untrusted input; only the narrowed `Read` grant and the data-only note were picked up from the edit alone.
+**Last dated run record:** 2026-11-23, `evals/command-development/workspace/iteration-1/` (Full Pipeline, baseline = the skill before PR #856's argument-handling edits, one run per arm): with_skill 78.3% vs. baseline 80.0%, no measured effect. The baseline already taught body steps for untrusted input; only the narrowed `Read` grant and the data-only note were picked up from the edit alone. That run graded the earlier expectations (a narrowed `Read` grant, quoting accepted in `!` commands), which round 2 replaced; it has not been re-run against the current text.
 
 **Pass criteria:** every quality gate below is checked, and the new command runs once with typical arguments.
 
