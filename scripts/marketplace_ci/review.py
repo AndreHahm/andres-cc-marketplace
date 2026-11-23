@@ -3086,6 +3086,39 @@ def _contradicted_by_script(finding: Finding, coverage: ScriptCoverage | None) -
     return all(coverage.covers(rule, path) for rule in _claimed_rule_ids(finding))
 
 
+# A skill's reference and example documents. R18 (block size) is only a suggestion there (issue
+# #862): the rulebook itself sends large blocks to `references/`.
+_SIZE_DOCUMENT = re.compile(
+    r"(?:plugins/[^/]+|\.claude)/skills/[^/]+/(?:references|examples)/.+\.md", re.IGNORECASE
+)
+
+
+def is_size_document(path: str) -> bool:
+    return _SIZE_DOCUMENT.fullmatch(posixpath.normpath(path)) is not None
+
+
+def _is_capped_size_finding(finding: Finding) -> bool:
+    """True for a MODEL finding only the rulebook checker reported, whose `rule` field names
+    exactly R18 and whose rule, evidence and fix name no other rulebook rule, located (with every
+    component the bridge kept) in a skill's reference or example documents. Unlike the script-owned
+    rules this needs no script coverage: R18 is a size heuristic, and the
+    `r18-code-block-line-count` verifier reports those documents as Minor when it can read them.
+    Accepted residuals (issue #862): a model that names only R18 for another defect in such a
+    document is capped, a finding's title is not read, and a path is judged by its name (a symlink
+    counts as the document it is named as)."""
+    if finding.source != "model":
+        return False
+    if set(finding.reporters) | {finding.reviewer} != {_RULEBOOK_CHECKER}:
+        return False
+    in_rule = {rule.upper() for rule in _RULEBOOK_ID.findall(finding.rule)}
+    return (
+        in_rule == {"R18"}
+        and _claimed_rule_ids(finding) == {"R18"}
+        and is_size_document(finding.path)
+        and all(is_size_document(_split_location(c)[0]) for c in finding.components)
+    )
+
+
 # The documents whose `allowed-tools` findings never block (issue #862): skill and command text,
 # with a skill's references and examples. An agent file is left out on purpose (its `tools` is a
 # real allowlist), and so are script, hook, settings and workflow files, and any file under a
@@ -3142,7 +3175,8 @@ def gate_decision(
       run's scripts covered (`coverage`: compliant, or for R35 no worse than the base), is a
       notice.
     - A MODEL finding labelled an `allowed-tools` grant, in skill or command documents, is a
-      notice (`_is_capped_grant_finding`, issue #862).
+      notice (`_is_capped_grant_finding`, issue #862), and so is an R18 size finding in a skill's
+      references or examples (`_is_capped_size_finding`).
     - A MODEL `measurement` finding is a notice until the Phase 2 verifiers can confirm the
       measurement; a script's own measurement blocks like any other script finding. This lets a
       model's own label downgrade its finding, which is safe only while the bridge's output schema
@@ -3157,6 +3191,7 @@ def gate_decision(
     if (
         _is_downgraded_measurement(finding)
         or _is_capped_grant_finding(finding)
+        or _is_capped_size_finding(finding)
         or _contradicted_by_script(finding, coverage)
     ):
         return GateDecision(finding, GATE_NOTICE)

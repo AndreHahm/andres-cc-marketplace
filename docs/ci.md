@@ -969,8 +969,12 @@ finding (a waiver line can, R7).
   new file; a lone carriage return counts as a line break; and a repeated or non-string `description` or
   `when_to_use` is an unverifiable finding, not a clean pass.
 - **`r18-code-block-line-count`** (rule class `measurement`). A fenced code block of more than 20 lines is
-  Major and of more than 30 is Critical, in a skill, command or agent file (not in `references/`, where the
-  rulebook itself sends large blocks). Blocks are read as CommonMark does: a fence of three or more backticks
+  Major and of more than 30 is Critical, in a skill, command or agent file. In a skill's `references/` and
+  `examples/`, where the rulebook itself sends large blocks, the same finding is Minor and never blocks
+  (issue #862; a file there that cannot be read, or is left after 30 seconds, is skipped). A model's R18 finding there is a notice too,
+  when only `plugin-rulebook-checker` reported it, its rule, evidence and fix name no rule but R18, and every
+  component is such a document; unlike R33, R35 and R37 it needs no script coverage. Accepted residual: a
+  model that names only R18 for another defect there is capped. Blocks are read as CommonMark does: a fence of three or more backticks
   or tildes, after any blockquote and list markers (nested ones too); closed at the same blockquote depth by a
   fence of the same character at least as long, with no other text and not indented more than three columns
   into its container (absolute for a fence at the top level, the opener's column plus three inside a

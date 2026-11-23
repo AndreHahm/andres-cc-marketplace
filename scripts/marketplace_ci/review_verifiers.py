@@ -50,6 +50,7 @@ from scripts.marketplace_ci.review import (
     StructuralFinding,
     _component_key,
     _run_git,
+    is_size_document,
     run_delta_structural_checks,
 )
 
@@ -109,6 +110,7 @@ MAX_PARSE_BYTES = (
 MAX_PARSE_SECONDS = (
     30.0  # parse time one run may spend on skill documents before the rest are refused
 )
+MAX_SIZE_SECONDS = 30.0  # time one run may spend on R18 in references and examples
 
 # plugin-rulebook R13 and R21 thresholds (assets/settings.json), kept equal by a test (R20). A value
 # above `*_WARNING` is a Major finding and above `*_CRITICAL` a Critical one; the Weak and Soft
@@ -901,14 +903,16 @@ def _counted_blocks(text: str) -> list[FencedBlock]:
 
 
 def check_code_blocks(path: str, text: str, base_text: str | None) -> tuple[Finding, ...]:
-    """R18 for one skill, command or agent file: at most one finding, with no line. A block counts
+    """R18 for one skill, command or agent file, or a skill's reference or example document (there
+    Minor, so it never blocks): at most one finding, with no line. A block counts
     when it is in the Warning tier or worse and is not an identical block already in the base; the
     file is reported when the PR raised the number of blocks at some tier or worse (so editing a
     block without crossing a threshold, or moving it, is not reported). A finding only exists when
     the PR made the file worse against the real base, so it is the PR's by construction and carries
     no line: a line would let an edit that leaves the fences alone (filling a block in the middle)
     fall outside the diff."""
-    if component_kind(path) not in _R18_KINDS:
+    minor = component_kind(path) not in _R18_KINDS
+    if minor and not is_size_document(path):
         return ()
     head = _counted_blocks(text)
     base = _counted_blocks(base_text) if base_text is not None else []
@@ -936,19 +940,21 @@ def check_code_blocks(path: str, text: str, base_text: str | None) -> tuple[Find
     rank = max(block_tier(b.size) for b in reported)
     listed = ", ".join(f"line {b.start} ({b.size} lines)" for b in reported[:_MAX_LISTED_BLOCKS])
     more = len(reported) - _MAX_LISTED_BLOCKS
-    severity = _SEVERITY_BY_RANK[rank]
+    tier = _SEVERITY_BY_RANK[rank]
     return (
         Finding(
             reviewer=VERIFIER_REVIEWER,
-            severity=severity,
+            severity="Minor" if minor else tier,
             rule=RULE_CODE_BLOCK_LINES,
             path=path,
             evidence=(
                 f"{len(reported)} fenced code block(s) past the threshold, the worst in the "
-                f"{severity.lower()} tier: {listed}" + (f" and {more} more" if more > 0 else "")
+                f"{tier.lower()} tier: {listed}" + (f" and {more} more" if more > 0 else "")
             ),
             remediation=(
-                "Move the block to scripts/ or references/, or add an exception for this rule "
+                "Consider splitting the block or moving runnable code to scripts/."
+                if minor
+                else "Move the block to scripts/ or references/, or add an exception for this rule "
                 "and path to scripts/marketplace_ci/review_exceptions.yaml (a Tier-1 file); a "
                 "note typed above the block does not waive this check."
             ),
@@ -2572,6 +2578,27 @@ def run_verifiers(
                 measure_checked.append(path)
         except VerifierError as exc:
             measure_findings.append(unverifiable_finding(path, str(exc)))
+    # R18 on a skill's references and examples (issue #862): Minor, so a file that cannot be read is
+    # skipped rather than reported, and it is never listed as checked. Any old path counts as the
+    # base, and one that cannot be read leaves the file compared with nothing.
+    size_docs = sorted(
+        {c.new_path for c in changed if c.new_path is not None and is_size_document(c.new_path)}
+    )
+    size_texts, _ = _read_blobs(repo, size_docs)
+    size_base: dict[str, str] = {}
+    if base_sha is not None:
+        old_size = {
+            c.new_path: (c.old_path or c.new_path)
+            for c in changed
+            if c.new_path in size_texts and c.status != "A"
+        }
+        old_texts, _ = _read_blobs(repo, sorted(set(old_size.values())), base_sha, missing_ok=True)
+        size_base = {p: old_texts[o] for p, o in old_size.items() if o in old_texts}
+    deadline = time.monotonic() + MAX_SIZE_SECONDS
+    for path, text in size_texts.items():
+        if time.monotonic() > deadline:
+            break  # what is left is simply not measured: these findings never block
+        measure_findings.extend(check_code_blocks(path, text, size_base.get(path)))
     # R35 coverage: only a skill modified in place, read on both sides with readable frontmatter.
     # A new skill, or one renamed from any path (a renamed skill is a new identity, and R35 applies
     # to new skills), has no base to be no worse than.

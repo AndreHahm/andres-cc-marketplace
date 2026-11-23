@@ -14,8 +14,14 @@ from scripts.marketplace_ci.review import Finding, gate_decision
 _FIXTURE = Path(__file__).parent / "fixtures" / "issue-862-replay" / "results.json"
 _RUNS = json.loads(_FIXTURE.read_text(encoding="utf-8"))["runs"]
 _RECORDED = ("in_diff", "blocking", "gate")
+# Findings a deliberate gate change made a notice: R18 on references and examples (issue #862).
+_NOW_NOTICE = {("81db31b9", index) for index in range(6)}
 _CASES = [
-    pytest.param(entry, id=f"{run['head_sha'][:8]}-{index}-{entry['rule']}")
+    pytest.param(
+        entry,
+        (run["head_sha"][:8], index) in _NOW_NOTICE,
+        id=f"{run['head_sha'][:8]}-{index}-{entry['rule']}",
+    )
     for run in _RUNS
     for index, entry in enumerate(run["findings"])
 ]
@@ -33,9 +39,13 @@ def test_the_fixture_holds_every_saved_result():
     assert all(run["blocking"] for run in _RUNS)
 
 
-@pytest.mark.parametrize("entry", _CASES)
-def test_the_gate_reproduces_the_outcome_ci_recorded(entry):
+@pytest.mark.parametrize("entry,now_notice", _CASES)
+def test_the_gate_reproduces_the_outcome_ci_recorded(entry, now_notice):
     decision = gate_decision(_finding(entry), in_diff=entry["in_diff"])
+    if now_notice:
+        assert entry["rule"] == "plugin-rulebook:R18"
+        assert entry["gate"] == "block" and decision.outcome == "notice"
+        return
     assert decision.outcome == entry["gate"]
     assert (decision.outcome == "block") is entry["blocking"]
 

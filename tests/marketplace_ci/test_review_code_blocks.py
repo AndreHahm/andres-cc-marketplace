@@ -2,7 +2,8 @@
 (Critical) in a skill, command or agent file, reported only when the PR adds or worsens one. The
 repo already holds hundreds of blocks over 20 lines, so the comparison with the base is what keeps
 the check from blocking PRs that never wrote them. Weak-warning blocks (11 to 20 lines) are not
-reported, and a block with a recorded R18 exception note above it is exempt.
+reported, and a block with a recorded R18 exception note above it is exempt. In a skill's
+references and examples the same finding is Minor and never blocks (issue #862).
 """
 
 from __future__ import annotations
@@ -269,7 +270,62 @@ def test_skills_commands_and_agents_are_measured(path):
     assert len(rv.check_code_blocks(path, _doc(_block(40)), None)) == 1
 
 
-@pytest.mark.parametrize("path", [REFERENCE, "docs/ci.md", "plugins/demo-kit/README.md"])
+EXAMPLE = "plugins/demo-kit/skills/demo/examples/deep/notes.md"
+
+
+@pytest.mark.parametrize("path", [REFERENCE, EXAMPLE, ".claude/skills/demo/references/notes.md"])
+@pytest.mark.parametrize("lines,tier", [(25, "major"), (40, "critical")])
+def test_references_and_examples_are_reported_as_minor_and_never_block(path, lines, tier):
+    (finding,) = rv.check_code_blocks(path, _doc(_block(lines)), None)
+    assert finding.severity == "Minor" and f"{tier} tier" in finding.evidence
+    assert finding.rule == "r18-code-block-line-count" and finding.source == "script"
+    assert gate_decision(finding, in_diff=True).outcome == "notice"
+
+
+def test_a_reference_keeps_the_comparison_with_the_base():
+    assert rv.check_code_blocks(REFERENCE, _doc(_block(40)), _doc(_block(40))) == ()
+    assert rv.check_code_blocks(REFERENCE, _doc(_block(20)), None) == ()
+
+
+def test_run_verifiers_reports_a_grown_reference_block_as_minor(git_repo):
+    git_repo.write(REFERENCE, _doc(_block(20)))
+    base = _commit(git_repo.root, "base")
+    git_repo.write(REFERENCE, _doc(_block(24)))
+    _commit(git_repo.root, "grow")
+    _, measures, *_ = rv.run_verifiers(git_repo.root, (ChangedPath("M", None, REFERENCE),), base)
+    (finding,) = measures.findings
+    assert finding.severity == "Minor" and finding.path == REFERENCE
+    assert REFERENCE not in measures.checked
+
+
+def test_run_verifiers_stops_measuring_references_at_the_deadline(git_repo, monkeypatch):
+    git_repo.write(REFERENCE, _doc(_block(40)))
+    git_repo.write(COMMAND, _doc(_block(40)))
+    _commit(git_repo.root, "add")
+    monkeypatch.setattr(rv, "MAX_SIZE_SECONDS", -1.0)
+    change = tuple(ChangedPath("A", None, p) for p in (COMMAND, REFERENCE))
+    _, measures, *_ = rv.run_verifiers(git_repo.root, change)
+    assert [f.path for f in measures.findings] == [COMMAND]  # the blocking check is not bounded
+
+
+def test_run_verifiers_skips_an_unreadable_reference(git_repo):
+    git_repo.write("plain.md", "x\n")
+    (git_repo.root / REFERENCE).parent.mkdir(parents=True, exist_ok=True)
+    (git_repo.root / REFERENCE).symlink_to("../../../../../plain.md")
+    _commit(git_repo.root, "link")
+    _, measures, *_ = rv.run_verifiers(git_repo.root, (ChangedPath("A", None, REFERENCE),))
+    assert measures.findings == ()
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "docs/ci.md",
+        "plugins/demo-kit/README.md",
+        "plugins/demo-kit/references/notes.md",
+        "plugins/demo-kit/skills/demo/scripts/notes.md",
+    ],
+)
 def test_other_files_are_not_measured(path):
     assert rv.check_code_blocks(path, _doc(_block(40)), None) == ()
 

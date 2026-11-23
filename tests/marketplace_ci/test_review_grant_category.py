@@ -217,6 +217,10 @@ def _saved(head, index, category):
     return replace(Finding(**entry), category=category)
 
 
+# Cleared by R18's own cap, whatever the category (test_review_size_cap.py).
+_SIZE_FINDINGS = {("81db31b9", index) for index in range(6)}
+
+
 def test_correct_labels_clear_exactly_the_grant_findings():
     cleared = {
         (head, index)
@@ -228,7 +232,7 @@ def test_correct_labels_clear_exactly_the_grant_findings():
         )
         == "notice"
     }
-    assert cleared == _GRANT_FINDINGS
+    assert cleared == _GRANT_FINDINGS | _SIZE_FINDINGS
 
 
 def test_a_tool_scoping_rule_name_alone_never_clears_an_injection_finding():
