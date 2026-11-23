@@ -400,7 +400,7 @@ If validations fail:
 ---
 description: Run environment-appropriate checks
 argument-hint: [environment]
-allowed-tools: Bash(echo:*), Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/*.sh:*), Read
+allowed-tools: Bash(echo:*), Bash(grep -E:*), Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/test-full.sh:*), Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/security-scan.sh:*), Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/perf-check.sh:*), Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/compliance.sh:*), Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/test-basic.sh:*), Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/lint.sh:*), Read
 ---
 
 Environment: $0
