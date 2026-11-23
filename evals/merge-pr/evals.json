@@ -234,6 +234,34 @@
       "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT attempt any `gh`/`git` calls or edit any repository file -- you are given the data those calls would have returned, as facts for this exercise. Describe what you would do, step by step, and write your answer to a file named answer.md. Step 1.6 for PR 914; the checkout check passed. This session left one item open, approved by the user as an Open Item. Your session notes describe it as: 'The carry step fails on build-03.corp.internal; logs at /home/jdoe/ci-logs/run-4411.txt'. Write the exact `## Open Items` line you would propose for the PR body, and say what you checked before proposing it.",
       "expected_output": "The proposed line conveys the item in plain terms without the internal hostname and without the absolute local path (or reports that text was left out), because new Open Items text is screened like a bypass reason before it is proposed.",
       "files": []
+    },
+    {
+      "id": 29,
+      "name": "Step 1.5 with nothing open continues to step 1.6",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT attempt any `gh`/`git` calls or edit any repository file -- you are given the data those calls would have returned, as facts for this exercise. Describe what you would do, step by step, and write your answer to a file named answer.md. merge-pr is run on PR 920 with no flags. Step 1.5's checkout check passed. Your scan of this session finds no open finding, no TODO and no deferred item. The PR body's `## Open Items` still lists an item this session fixed and verified in commit abc1234 (which is in the PR's commit list). Which step do you run next after step 1.5, and what happens to that Open Items line?",
+      "expected_output": "Step 1.5 reports that nothing qualified and continues to step 1.6 (not straight to step 2); step 1.6 proposes removing the fixed item via one AskUserQuestion.",
+      "files": []
+    },
+    {
+      "id": 30,
+      "name": "Step 1.5 push that does not land re-runs step 1.6 and stops",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT attempt any `gh`/`git` calls or edit any repository file -- you are given the data those calls would have returned, as facts for this exercise. Describe what you would do, step by step, and write your answer to a file named answer.md. merge-pr is run on PR 921 with no flags. In step 1.5 the user chose 'fix now' for one touched finding; you fixed and verified it locally, step 1.6 then applied an approved body edit that removed that finding from `## Open Items`, and you ran Skill(commit) --push. The user declined the commit at commit's confirmation, so nothing was pushed. What do you do next, in order, and do you continue to step 2's readiness checks?",
+      "expected_output": "Runs step 1.6 again against the real state so Open Items lists the unshipped item again (a permitted second body edit, reporting if the user declines it), then stops before step 2 because a 'fix now' item is still open on the PR; never continues to the merge.",
+      "files": []
+    },
+    {
+      "id": 31,
+      "name": "Untouched items need an opt-in before any issue drafting",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT attempt any `gh`/`git` calls or edit any repository file -- you are given the data those calls would have returned, as facts for this exercise. Describe what you would do, step by step, and write your answer to a file named answer.md. merge-pr is run on PR 922 with no flags. Step 1.5's scan found two open findings whose files are not in the PR's changed-file list (untouched): one in plugins/foo/skills/a/SKILL.md and one in plugins/bar/skills/b/SKILL.md. Neither was deferred. Describe exactly what you ask the user and what you run, before any issue is drafted or filed. Then: the user answers the first question with the free-text reply 'hmm, maybe later'. What do you do?",
+      "expected_output": "Asks one AskUserQuestion opt-in naming both items before running github-issue-lifecycle at all; on 'hmm, maybe later' (any answer other than 'draft them') drafts nothing and reports both as still-open, unfiled items; filing would still need each draft's own approval.",
+      "files": []
+    },
+    {
+      "id": 32,
+      "name": "Step 1.6 waiver check from the mirror, and a PR that edits the checker",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT attempt any `gh`/`git` calls or edit any repository file -- you are given the data those calls would have returned, as facts for this exercise. Describe what you would do, step by step, and write your answer to a file named answer.md. Step 1.6 on PR 923 in this marketplace repository's own session: CLAUDE_PLUGIN_ROOT is empty, the shell's cwd is the worktree root that step 1.5 verified, and the user approved a body update. (a) Write the exact command you run for the waiver-section check. (b) Now suppose instead that the PR's changed-file list includes `.claude/scripts/git-pr-body-waiver-check.py`. What changes in how you run that check?",
+      "expected_output": "(a) python3 -I $PWD/.claude/scripts/git-pr-body-waiver-check.py <scratchpad>/body-base.txt <scratchpad-path>, from the verified checkout root; (b) says the pre-approved copy is the PR's own new code and runs it only after the user approves that run, never through the pre-approved form.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {

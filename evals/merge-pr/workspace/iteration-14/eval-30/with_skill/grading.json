@@ -1,0 +1,26 @@
+{
+  "eval_id": 30,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Re-runs step 1.6 against the real state so Open Items lists the unshipped item again",
+      "passed": true,
+      "evidence": "'Re-run step 1.6 against the real state (the one permitted second edit)'; Open Items 'must list the \"fix now\" finding again'"
+    },
+    {
+      "text": "Stops before step 2 (does not continue to readiness checks or the merge) because the 'fix now' item is still open on the PR",
+      "passed": true,
+      "evidence": "'No, I do not go on to step 2's readiness checks' ... 'Stop the run before step 2'"
+    },
+    {
+      "text": "Treats the second body edit as permitted (or says what is reported if the user declines it) rather than refusing it under the one-edit rule",
+      "passed": true,
+      "evidence": "'\"One edit per invocation\" allows this second edit, because step 1.5's push did not land'; 'If declined: I report that the PR body still shows the finding as fixed'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "eval_id": 29,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Names step 1.6 (not step 2) as the step that runs right after step 1.5 finds nothing open",
+      "passed": true,
+      "evidence": "'Step 1.6 runs next, on its own, because step 1.5 has nothing to push.'"
+    },
+    {
+      "text": "Proposes removing the fixed, verified Open Items entry through one AskUserQuestion rather than editing silently or leaving it",
+      "passed": true,
+      "evidence": "'One AskUserQuestion shows every change, here the removal of that Open Items line'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 2,
+    "pass_rate": 1.0
+  }
+}

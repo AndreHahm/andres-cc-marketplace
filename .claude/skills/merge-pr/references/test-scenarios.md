@@ -241,8 +241,9 @@ a fresh `gh repo view` (skill-reviewer M1, 2026-08-31):**
   exists, a local-only commit is never left unpushed
 - The same touched issue, but the user had explicitly deferred it earlier in the session → never
   fixed and not asked about again (issue #850); listed in the summary as deferred
-- An open issue's file is not part of that list (or has no single associated file path) → its draft is
-  shown via `AskUserQuestion`; only on approval is `Skill(github-issue-lifecycle)` resumed at
+- An open issue's file is not part of that list (or has no single associated file path) → one opt-in
+  `AskUserQuestion` asks whether to draft such items at all ("not now" drafts nothing and reports them as
+  open, unfiled); once drafted, its draft is shown via `AskUserQuestion`; only on approval is `Skill(github-issue-lifecycle)` resumed at
   Workflow 1's Step 3 to file it live, with that workflow's own Step 6 (PR-linking) explicitly skipped,
   and reported with its issue number — never fixed in-session, and never filed on Workflow 1's own
   internal "once approved" wording alone

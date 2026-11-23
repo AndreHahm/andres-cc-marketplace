@@ -1,0 +1,26 @@
+{
+  "eval_id": 31,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Asks one AskUserQuestion opt-in naming the untouched items before running github-issue-lifecycle at all",
+      "passed": true,
+      "evidence": "'One opt-in question (AskUserQuestion), before anything is drafted. Nothing else runs first: no Skill(github-issue-lifecycle)'; question names both paths"
+    },
+    {
+      "text": "On the free-text 'hmm, maybe later' answer, drafts nothing and reports both items as still-open, unfiled",
+      "passed": true,
+      "evidence": "'That reply is not \"Draft them\"... I draft nothing and file nothing' and records both 'still open and unfiled'"
+    },
+    {
+      "text": "States that filing would still need each draft's own approval (the opt-in is not filing approval)",
+      "passed": true,
+      "evidence": "'show each draft through AskUserQuestion and ask for explicit approval. That question is the approval'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}
