@@ -458,8 +458,8 @@ review` is the gate after the PR exists and reviews only the delta, to cut OpenA
   still exists at the head (`locate_fingerprint`, the nearest one when several match), it is carried at
   that line, so a waiver removed after the file changed still makes it block; once no line with that text
   remains, it is dropped and the changed line is reviewed (a removed line whose text appears elsewhere in the
-  file moves the finding to that copy). A file the PR deletes is gone at the head, so the line is looked up at the base
-  SHA, where its fingerprint was taken (issue #835). The lookup uses this run's base: when the base moved since the anchor run and
+  file moves the finding to that copy). A file the PR deletes is gone at the head, so the line is looked up at the merge base
+  of the base SHA and `HEAD`, where its fingerprint was taken (issue #835). The lookup uses this run's base: when the base moved since the anchor run and
   changed that file, the line may not be found, and the finding is dropped and reviewed again, as before
   the fix (an accepted limit). An earlier-format waiver names the exact line, so it stops matching
   once the line moves: the finding blocks, and the summary says so and prints the line to write instead. When a carried finding has the same rule,
@@ -476,8 +476,9 @@ review` is the gate after the PR exists and reviews only the delta, to cut OpenA
   with `gh` by absolute path: it writes the live PR body's `## Accepted Review Findings` section (never the
   rest of the body, since the file can be uploaded as an artifact), the open issues its `deferred` lines name and the
   maintainer-confirmed keys to one JSON file, so the dispatch step needs no token. `run-codex-review
-  --accepted-findings` reads it, records every finding's `fingerprint` at `HEAD` (at the base SHA for a file
-  absent at `HEAD`, which the PR deletes: `finding_fingerprint`, issue #835; `publish-claude-review
+  --accepted-findings` reads it, records every finding's `fingerprint` at `HEAD` (for a file absent at `HEAD`,
+  which the PR deletes, at the merge base of the base SHA and `HEAD`, where the review numbered its lines:
+  `finding_fingerprint`, issue #835; `publish-claude-review
   --base-sha` does the same through the contents API, at the merge base the compare API reports, falling
   back only on an HTTP 404 and only once that call proves the head resolves), and records a blocking
   finding a waiver applies to as waived (`waived_findings` counts them, `waiver_lines_not_applied` lists the

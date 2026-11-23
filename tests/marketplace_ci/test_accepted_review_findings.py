@@ -2167,6 +2167,23 @@ def test_a_finding_on_a_deleted_file_is_fingerprinted_at_the_base_and_can_be_con
     assert fingerprints[finding] is None and applied == {}
 
 
+def test_a_deleted_file_is_fingerprinted_at_the_merge_base_not_the_base_tip(git_repo):
+    # The base branch rewrites the file after the PR forked: the review numbered the deleted
+    # file's lines against the merge base, so the base tip's line 15 must not stand in for it.
+    fork = _commit(git_repo, "fork", **{"s/SKILL.md": "\n" * 14 + GRANT + "\n"})
+    head = _delete(git_repo, "pr deletes it", "s/SKILL.md")
+    _git(git_repo.root, "checkout", "-q", "-b", "base-branch", fork)
+    tip = _commit(git_repo, "base rewrites it", **{"s/SKILL.md": "\n" * 14 + "other text\n"})
+    _git(git_repo.root, "checkout", "-q", head)
+    finding = _finding("s/SKILL.md", 15)
+    waivers = read_waiver_section(_section(_LINE), _never_open).waivers
+    fingerprints, applied, _, _ = _apply_waivers(
+        [finding], {finding}, waivers, git_repo.root, set(), (), tip
+    )
+    assert fingerprints[finding] == FP
+    assert set(applied) == {finding}
+
+
 def test_a_path_missing_at_the_head_and_the_base_has_no_fingerprint(git_repo):
     base = _commit(git_repo, "base", **{"other.md": "x\n"})
     finding = _finding("s/SKILL.md", 15)

@@ -1589,15 +1589,28 @@ def path_absent_at(repo: Path, rev: str, path: str) -> bool:
     return listed == b""
 
 
+def merge_base_of(repo: Path, base: str, head: str) -> str | None:
+    """The merge base of `base` and `head`, the old side of the pull request's diff, whose lines
+    a review of a deleted file numbered; None when git cannot tell."""
+    try:
+        out = _run_git(repo, "merge-base", base, head).decode("utf-8", errors="replace").strip()
+    except RuntimeError:
+        return None
+    return out or None
+
+
 def finding_fingerprint(
     repo: Path, head: str, base: str | None, path: str, line: object
 ) -> str | None:
     """A finding's fingerprint (R7): its flagged line's at `head`, or, when the file does not
-    exist at `head` (the pull request deletes it), the line's at `base` (issue #835). None when
-    the line cannot be read at either, so its finding cannot be waived (fail closed)."""
+    exist at `head` (the pull request deletes it), the line's at the merge base of `base` and
+    `head`, where the review numbered it (issue #835). None when the line cannot be read at
+    either, so its finding cannot be waived (fail closed)."""
     fingerprint = fingerprint_at(repo, head, path, line)
     if fingerprint is None and base and path_absent_at(repo, head, path):
-        fingerprint = fingerprint_at(repo, base, path, line)
+        fork = merge_base_of(repo, base, head)
+        if fork:
+            fingerprint = fingerprint_at(repo, fork, path, line)
     return fingerprint
 
 
@@ -2360,6 +2373,7 @@ def carry_findings(
     unchanged: dict[str, bool] = {}
     head_prints: dict[str, list[str] | None] = {}
     base_prints: dict[str, list[str] | None] = {}
+    fork: str | None = None  # the merge base of base_sha and HEAD, looked up once ("" if none)
     blocking: list[dict] = []
     waived: list[dict] = []
     notes: list[str] = []
@@ -2429,10 +2443,16 @@ def carry_findings(
             # its fingerprint, so removing the waiver later makes it block again (R7). A reviewer
             # need not report it anew, so dropping it here would lose it for good. An edited or
             # removed line is a different finding and is reviewed as one. A file the pull request
-            # deletes is gone at the head, so its line is found at the base, where its
-            # fingerprint was taken (issue #835).
+            # deletes is gone at the head, so its line is found at the merge base, where its
+            # fingerprint was taken (issue #835); no merge base, no line.
             if path_absent_at(repo, "HEAD", path):
-                moved = locate_fingerprint(repo, base_sha, path, fingerprint, line, base_prints)
+                if fork is None:
+                    fork = merge_base_of(repo, base_sha, "HEAD") or ""
+                moved = (
+                    locate_fingerprint(repo, fork, path, fingerprint, line, base_prints)
+                    if fork
+                    else None
+                )
             else:
                 moved = locate_fingerprint(repo, "HEAD", path, fingerprint, line, head_prints)
             if moved is None:
