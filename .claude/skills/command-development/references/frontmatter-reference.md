@@ -402,7 +402,7 @@ This command requires human judgment and cannot be automated.
 
 Review deployment $0 for production approval:
 
-Deployment details: !\`gh api "/deployments/$0"\`
+Accept $0 only if it is a deployment ID (digits only); otherwise stop. Then run `gh api /deployments/<id>` with the Bash tool for the deployment details.
 
 Verify:
 - All tests passed
