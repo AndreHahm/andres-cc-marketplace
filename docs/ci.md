@@ -42,9 +42,12 @@ legitimately-bypassed PR's skip block the merge again, defeating the bypass enti
 
 An `edited` event (a title, body or base change) brings no new commit, so the jobs that depend only on the PR
 head and base content would compute the same result again. They are `python-quality`, `review-helpers-windows`,
-`node-tests`, `marketplace-parity` and `prefix-permanence`. Each runs a first step, `Carry this job's earlier
-result on a description-only edit`. When that step reports `carried=true`, every later step of the job is
-skipped, and the job ends `success` without re-running its checks.
+`node-tests`, `marketplace-parity` and `prefix-permanence`. Each runs a carry step, `Carry this job's earlier
+result on a description-only edit`. The checkout runs before it in every job, and in `python-quality`,
+`marketplace-parity` and `prefix-permanence` so do the kill-switch steps and `Track workflow rerun`; those
+earlier steps still run, and can fail the job, on an edit. When the
+carry step reports `carried=true`, every later step of the job is skipped, and the job ends `success` without
+re-running its checks.
 
 A plain `if:` skip is not used: a job skipped by `if:` counts as passing for a required check, and the
 workflow's `cancel-in-progress` concurrency lets an edit cancel an in-flight run, so a skip could turn a failed
@@ -52,7 +55,9 @@ check on the same head green. The carry step reports `carried=true` only when al
 
 - the event is `edited` and `github.event.changes.base` is absent (a base change runs everything);
 - the newest other run of this workflow for this PR, this head SHA, this repository and the `pull_request`
-  event, created no later than this run, is `completed` (an older success never outlives a newer failure,
+  event, created no later than this run, is `completed` and lists only this PR in its `pull_requests` (GitHub
+  lists every open PR whose head matches the run, so a run that also names another PR may have tested that
+  PR's base) (an older success never outlives a newer failure,
   cancellation or run still in progress);
 - that run's latest attempt has exactly one job with this job's display name, on this head, and it ended
   `completed`/`success`. When that job was itself carried (its carry step succeeded and every later step
@@ -63,12 +68,15 @@ check on the same head green. The carry step reports `carried=true` only when al
   run is not listed yet, and one that came before a carry).
 
 Anything else runs the job in full: no earlier run, an incomplete listing (more than 100 runs or jobs), an
-unreadable API reply after the retries (1 and 3 seconds, as in the anchor lookup), a malformed record, or any
+unreadable API reply after the retries (1 and 3 seconds, as in the anchor lookup), a lookup that runs past its
+120-second budget (each request is cut off at 30 seconds or the time left; fetching the script itself is bounded
+only by the job's `timeout-minutes`), a malformed record, or any
 error in the step itself (`continue-on-error: true`; the gate passes only on the exact output `true`). The
 decision code is `scripts/marketplace_ci/prior_result.py`, standard library only, fetched from the **base
 SHA** through the Contents API into `$RUNNER_TEMP` and run as `python -I`, never from the PR's checkout. A base
-without the file (the pull request that introduces it) runs every job in full. These jobs gain `actions: read`,
-`issues: read` and `pull-requests: read` for the lookup; the token is passed only to that step's environment, but a later step of the same job (which may run PR code) can still read the job token from the runner. A re-run of an earlier `edited` run never carries (`github.run_attempt == 1`), so it cannot turn a newer failure green without a re-test.
+without the file (the pull request that introduces it) runs every job in full. These jobs gain `actions: read`
+and `issues: read` for the lookup (the issue-events endpoint accepts either `issues: read` or
+`pull-requests: read`, so only one is granted); the token is passed only to that step's environment, but a later step of the same job (which may run PR code) can still read the job token from the runner. A re-run of an earlier `edited` run never carries (`github.run_attempt == 1`), so it cannot turn a newer failure green without a re-test.
 
 Jobs that still run in full on `edited`: `hygiene` (reads the title and body), `compute-scope` (reads the live
 body's `## Accepted Review Findings` waivers, R7), `codex-review` (acts on `compute-scope`'s carried findings

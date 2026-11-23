@@ -218,6 +218,14 @@ def test_runs_of_another_pr_repository_head_or_event_are_ignored(other):
     assert _decide(FakeGh(runs=runs))[0] is False
 
 
+def test_a_run_listing_more_than_this_pr_runs_in_full():
+    # GitHub lists every open PR whose head matches the run, not the PR that triggered it, so a run
+    # that names another PR too may have tested that PR's base (PR #859 review).
+    run = _run(400, "2026-11-12T06:00:00Z")
+    run["pull_requests"] = [{"number": PR}, {"number": PR + 1}]
+    assert _decide(FakeGh(runs=[run]))[0] is False
+
+
 def test_no_earlier_run_runs_in_full():
     assert _decide(FakeGh(runs=[]))[0] is False
 
@@ -307,6 +315,44 @@ def test_gh_api_retries_then_gives_up(monkeypatch):
     assert calls[0][:4] == ["gh", "api", "-X", "GET"]
 
 
+def test_gh_api_bounds_each_request_and_gives_up_on_a_timeout(monkeypatch):
+    timeouts = []
+
+    def fake_run(cmd, **kwargs):
+        timeouts.append(kwargs["timeout"])
+        raise subprocess.TimeoutExpired(cmd, kwargs["timeout"])
+
+    monkeypatch.setattr(prior_result.subprocess, "run", fake_run)
+    monkeypatch.setattr(prior_result.time, "sleep", lambda s: None)
+    assert prior_result.gh_api("repos/o/r") is None
+    assert timeouts and all(0 < t <= prior_result.REQUEST_TIMEOUT for t in timeouts)
+
+
+def test_gh_api_sends_nothing_once_the_deadline_has_passed(monkeypatch):
+    def fake_run(cmd, **kwargs):
+        raise AssertionError("no request after the deadline")
+
+    monkeypatch.setattr(prior_result.subprocess, "run", fake_run)
+    assert prior_result.gh_api("repos/o/r", deadline=prior_result.time.monotonic() - 1) is None
+
+
+def test_gh_api_caps_a_request_at_the_time_left(monkeypatch):
+    seen = []
+
+    def fake_run(cmd, **kwargs):
+        seen.append(kwargs["timeout"])
+        return subprocess.CompletedProcess(cmd, 0, "{}", "")
+
+    monkeypatch.setattr(prior_result.subprocess, "run", fake_run)
+    assert prior_result.gh_api("repos/o/r", deadline=prior_result.time.monotonic() + 5) == "{}"
+    assert 0 < seen[0] <= 5
+
+
+def test_the_lookup_budget_ends_well_before_the_shortest_carrying_job_timeout():
+    shortest = min(JOBS[job]["timeout-minutes"] for job in CARRIED) * 60
+    assert prior_result.LOOKUP_BUDGET <= shortest / 4
+
+
 def test_main_prints_run_and_exits_zero_on_any_fault(monkeypatch, capsys):
     def boom(*args, **kwargs):
         raise RuntimeError("x")
@@ -378,7 +424,6 @@ def test_each_commit_dependent_job_has_the_carry_step_and_gates_every_later_step
         "contents": "read",
         "actions": "read",
         "issues": "read",
-        "pull-requests": "read",
     }
 
 
@@ -397,6 +442,8 @@ def test_the_carry_step_runs_the_base_shas_copy_isolated_and_only_trusts_a_carry
     assert 'script="$RUNNER_TEMP/prior_result.py"' in run
     assert '"$py" -I "$script"' in run
     assert 'if [ "$verdict" = carry ]; then' in run
+    # Native Windows Python writes CRLF; the CR is dropped before the exact comparison.
+    assert "| tail -n 1 | tr -d '\\r')" in run
     assert "carried=false" in run.split("\n")[0]
 
 
