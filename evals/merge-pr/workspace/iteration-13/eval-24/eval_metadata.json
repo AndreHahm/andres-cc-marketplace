@@ -1,0 +1,21 @@
+{
+  "eval_id": 24,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "The 4(c) wait does not wait for the missing `Publish Codex policy result` and ends because every other required context is completed",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "The recorded baseline is the latest startedAt of any rollup entry, 10:05:00Z (not 'no entry exists')",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "4(d) accepts only a COMPLETED `Publish Codex policy result` entry whose startedAt is strictly later than 10:05:00Z",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    }
+  ]
+}

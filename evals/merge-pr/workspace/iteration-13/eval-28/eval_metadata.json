@@ -1,0 +1,21 @@
+{
+  "eval_id": 28,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "The proposed line does not contain the internal hostname `build-03.corp.internal`",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "The proposed line does not contain the absolute local path `/home/jdoe/ci-logs/run-4411.txt`",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "The item itself is still conveyed in plain terms (or reported as rewritten), not silently dropped",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    }
+  ]
+}

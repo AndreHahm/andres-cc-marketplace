@@ -1,0 +1,26 @@
+{
+  "eval_id": 24,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The 4(c) wait does not wait for the missing `Publish Codex policy result` and ends because every other required context is completed",
+      "passed": true,
+      "evidence": "answer.md:13 the missing Publish Codex policy result may stay missing; the wait ends"
+    },
+    {
+      "text": "The recorded baseline is the latest startedAt of any rollup entry, 10:05:00Z (not 'no entry exists')",
+      "passed": true,
+      "evidence": "answer.md:28 baseline is 10:05:00Z"
+    },
+    {
+      "text": "4(d) accepts only a COMPLETED `Publish Codex policy result` entry whose startedAt is strictly later than 10:05:00Z",
+      "passed": true,
+      "evidence": "answer.md:49 strictly later than 10:05:00Z"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

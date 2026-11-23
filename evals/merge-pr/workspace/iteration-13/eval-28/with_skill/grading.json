@@ -1,0 +1,26 @@
+{
+  "eval_id": 28,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The proposed line does not contain the internal hostname `build-03.corp.internal`",
+      "passed": true,
+      "evidence": "answer.md:6 no hostname"
+    },
+    {
+      "text": "The proposed line does not contain the absolute local path `/home/jdoe/ci-logs/run-4411.txt`",
+      "passed": true,
+      "evidence": "answer.md:6 no path"
+    },
+    {
+      "text": "The item itself is still conveyed in plain terms (or reported as rewritten), not silently dropped",
+      "passed": true,
+      "evidence": "answer.md:6,22-23 conveyed in plain terms, rewrite explained"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}
