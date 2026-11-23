@@ -99,7 +99,7 @@ allowed-tools: Bash(npm:*), Bash(jest:*)
 
 Run tests for $0:
 
-Test execution: !\`npm test $0\`
+Test execution: !\`npm test "$0"\`
 
 Analyze results:
 - Tests passed/failed

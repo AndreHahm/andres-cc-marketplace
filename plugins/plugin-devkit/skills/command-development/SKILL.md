@@ -233,7 +233,9 @@ For complete patterns, multi-step workflows, and templates, see `references/adva
 - "Add a PreToolUse hook" (use `hook-development`)
 - "Design a multi-phase workflow skill" (use `workflow-skill-development`)
 
-**Evals:** none are kept for this skill. It is reference guidance whose output is a command file checked by the procedure and quality gates below, and the bundled `scripts/validate-command.sh` and `scripts/validate-frontmatter.sh` cover the mechanical checks. A `skill-tester` run would add a baseline comparison only.
+**Evals:** `evals/command-development/` holds 3 scenarios for argument handling (an `@` include or `!` command built from an argument, a narrowed `Read` grant, quoting), added for PR #856. Otherwise this skill is reference guidance whose output is a command file checked by the procedure and quality gates below, and the bundled `scripts/validate-command.sh` and `scripts/validate-frontmatter.sh` cover the mechanical checks.
+
+**Last dated run record:** 2026-11-23, `evals/command-development/workspace/iteration-1/` (Full Pipeline, baseline = the skill before PR #856's argument-handling edits, one run per arm): with_skill 78.3% vs. baseline 80.0%, no measured effect. The baseline already taught body steps for untrusted input; only the narrowed `Read` grant and the data-only note were picked up from the edit alone.
 
 **Pass criteria:** every quality gate below is checked, and the new command runs once with typical arguments.
 

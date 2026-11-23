@@ -402,7 +402,7 @@ This command requires human judgment and cannot be automated.
 
 Review deployment $0 for production approval:
 
-Deployment details: !\`gh api /deployments/$0\`
+Deployment details: !\`gh api "/deployments/$0"\`
 
 Verify:
 - All tests passed
