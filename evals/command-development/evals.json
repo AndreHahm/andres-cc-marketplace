@@ -27,7 +27,7 @@
       "id": 2,
       "name": "lint-command-file-argument",
       "prompt": "Using the command-development skill, write a Claude Code plugin command file `commands/lint.md` for a command `/lint <file>` that runs the plugin's `scripts/lint.js` (with node) on the given file and shows the result to the user for review. Write the complete command file to `outputs/lint.md`, and a short `outputs/notes.md` explaining your design choices.",
-      "expected_output": "The file argument never appears in a load-time ! command: the command validates the path first, then runs the script as a body step with the Bash tool, passing the path as one quoted value. If it mentions quoting, it notes that quoting alone does not protect a ! command against an argument containing quotes or $(...). allowed-tools pins node to the one script.",
+      "expected_output": "The file argument never appears in a load-time ! command: the command validates the path first, then runs the script as a body step with the Bash tool, accepting only a path of letters, digits, ., _, - and / (no leading -) and passing it in single quotes. If it mentions quoting, it notes that quoting alone does not protect a ! command against an argument containing quotes or $(...), and that double quotes in the Bash step still expand $(...) and backticks. allowed-tools pins node to the one script.",
       "files": []
     },
     {

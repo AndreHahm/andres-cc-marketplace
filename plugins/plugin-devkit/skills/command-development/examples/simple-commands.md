@@ -99,7 +99,7 @@ allowed-tools: Bash(npm:*), Bash(jest:*)
 
 Run tests for $0:
 
-Accept $0 only if it is an existing test file in this repository; otherwise stop. Then run `npm test "<test-file>"` with the Bash tool.
+Accept $0 only if it is an existing test file in this repository whose path uses only letters, digits, `.`, `_`, `-` and `/`, with no leading `-`; otherwise stop. Then run `npm test '<test-file>'` with the Bash tool.
 
 Analyze results:
 - Tests passed/failed
