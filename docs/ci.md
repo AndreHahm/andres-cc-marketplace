@@ -817,7 +817,7 @@ prompts. The label counts only when the finding and all its `components` are ski
 (`SKILL.md`, a skill's `references/` or `examples/`, or a command; never an agent, script, hook, workflow or
 settings file), no component was dropped by the bridge, and every reviewer whose copy was merged chose it
 (copies merge on the normalized path, so `./x` and an absolute spelling under the checkout root count as `x`; an
-absolute one with a `..` segment, or through another symlink to the checkout, is never capped and not merged). A missing category, `other` and every script
+absolute one with a `..` segment, or through another symlink to the checkout, is never capped and not merged with `x`). A missing category, `other` and every script
 finding block as before, and the rule name plays no part. The result keeps the reported severity and the
 `category`. Accepted residuals (the maintainer's choice): the label is the model's own, so a mislabelled or
 steered label on a real defect inside such a document makes it a notice; these guards bound only a Critical or

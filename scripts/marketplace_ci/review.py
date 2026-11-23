@@ -3432,7 +3432,7 @@ def prepare_reviewer_instruction(
 ) -> Path:
     """Read the exact tracked `.codex/agents/<agent_name>.toml` blob from the
     validated base SHA — never the PR working tree or index, with no
-    fallback — and write its `developer_instructions` field verbatim to
+    fallback — and write its `developer_instructions` field, as TOML reads it, to
     `out`. Exits 2 (never falls back to the current checkout) if the base
     SHA can't be resolved, if `<agent_name>` has no `.toml` export at that
     SHA (i.e. it isn't registered in `codex_exports.agents`), or if the
