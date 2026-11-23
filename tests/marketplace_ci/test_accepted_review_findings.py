@@ -1781,6 +1781,26 @@ def test_a_long_waiver_line_travels_whole_through_the_carry_and_the_merge(git_re
     assert [f["waiver_line"] for f in merged["findings"]] == [line]
 
 
+def test_a_long_briefed_waiver_still_holds_at_publish_after_the_carry_and_the_merge(git_repo):
+    """A briefed entry holds its whole line in `waiver` only as carry input: the carried copy
+    gets `waiver_line`, so the publish re-check matches the whole line, not 300 characters."""
+    from scripts.marketplace_ci.review import recheck_briefed_waivers
+
+    base = _commit(git_repo, "base", **{"s/SKILL.md": "x\n"})
+    anchor = _commit(git_repo, "pr 1", **{"s/SKILL.md": "\n" * 14 + GRANT + "\n"})
+    line = f"- {'r' * 280} s/SKILL.md:15 @{FP} – accepted"
+    result = {"status": "clean", "findings": [], "briefed_waivers": [line]}
+    outcome = carry_findings(git_repo.root, base, anchor, result, _section(line), _never_open)
+    assert outcome.blocking == ()
+    assert [(f["waiver"], f["waiver_line"]) for f in outcome.waived] == [(line[:300], line)]
+    merged = merge_carried_findings({"status": "clean", "findings": []}, list(outcome.waived), "0")
+    assert _recheck(list(outcome.waived), line) == []
+    assert _recheck(merged["findings"], line) == []
+    assert _recheck(merged["findings"]) != []  # the line was removed
+    section = read_waiver_section(_section(line), _never_open)
+    assert recheck_briefed_waivers([line], section) == []
+
+
 def test_a_tracked_waiver_is_rechecked_by_issue_and_confirmation():
     entry = {**_waived_entry(), "waiver": "tracked #7", "tracked_issue": 7}
     assert _recheck([entry], "- tracked #7", open_issues=[7]) == []
