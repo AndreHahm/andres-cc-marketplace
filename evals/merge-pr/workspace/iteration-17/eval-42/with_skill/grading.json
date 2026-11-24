@@ -1,0 +1,21 @@
+{
+  "eval_id": 42,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Treats https://git.example.net/octo/widgets.git as a mismatch although the path matches",
+      "passed": true,
+      "evidence": "'starts with neither `https://github.com/` nor `git@github.com:`'"
+    },
+    {
+      "text": "Stops the run and reports resolved versus origin",
+      "passed": true,
+      "evidence": "'the whole run stops'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 2,
+    "pass_rate": 1.0
+  }
+}

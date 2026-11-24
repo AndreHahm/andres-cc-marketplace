@@ -1,0 +1,21 @@
+{
+  "eval_id": 38,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Runs only `git remote get-url origin`, with no sed or other pipeline, and reads mona/widgets",
+      "passed": true,
+      "evidence": "'No pipe, no `sed`'; 'leaving `mona/widgets`'"
+    },
+    {
+      "text": "Stops the run and reports both repositories",
+      "passed": true,
+      "evidence": "'stops the whole run'; 'resolved PR 940 in `octo/widgets` while `origin` targets `mona/widgets`'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 2,
+    "pass_rate": 1.0
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "eval_id": 39,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Counts with the paginated commits endpoint piped to wc -l, before the marker",
+      "passed": true,
+      "evidence": "'pulls/941/commits --paginate'; 'Before 7(b) writes its marker'"
+    },
+    {
+      "text": "Discloses 137, and \"at least 250\" for a count of 250",
+      "passed": true,
+      "evidence": "'Squashing collapses 137 commits into one'; '**At least 250** commits collapse into one'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 2,
+    "pass_rate": 1.0
+  }
+}

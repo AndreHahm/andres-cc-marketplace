@@ -1,0 +1,16 @@
+{
+  "eval_id": 38,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "Runs only `git remote get-url origin`, with no sed or other pipeline, and reads mona/widgets",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "Stops the run and reports both repositories",
+      "type": "functionality",
+      "target": "answer.md"
+    }
+  ]
+}
