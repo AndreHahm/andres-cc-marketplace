@@ -1,0 +1,53 @@
+{
+  "entries": [
+    {
+      "disposition": "declined",
+      "finding": "4677500154",
+      "line": 42,
+      "note": "prompt takes severity from REVIEW.md, which names security-reviewer; agent file left unchanged",
+      "path": "REVIEW.md",
+      "pr": 867,
+      "recorded_at": "2026-11-24T08:52:41+00:00"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "claude-867-f1",
+      "line": 40,
+      "note": "cap includes security-reviewer by maintainer decision; separate defects are exempt by the list's exception paragraph",
+      "path": "REVIEW.md",
+      "pr": 867,
+      "recorded_at": "2026-11-24T08:52:41+00:00",
+      "rule": "claude-general"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "claude-867-f2",
+      "line": 42,
+      "note": "maintainer decision: grant findings are never Major; r6-bash-scope still blocks in CI",
+      "path": "REVIEW.md",
+      "pr": 867,
+      "recorded_at": "2026-11-24T08:52:42+00:00",
+      "rule": "claude-general"
+    },
+    {
+      "disposition": "declined",
+      "finding": "claude-867-f3",
+      "line": 133,
+      "note": "wording difference without effect for the Codex App",
+      "path": "AGENTS.md",
+      "pr": 867,
+      "recorded_at": "2026-11-24T08:52:42+00:00",
+      "rule": "claude-general"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "claude-867-f4",
+      "line": 50,
+      "note": "AGENTS.md section opens by naming the Codex App as its reader",
+      "path": "REVIEW.md",
+      "pr": 867,
+      "recorded_at": "2026-11-24T08:52:43+00:00",
+      "rule": "claude-general"
+    }
+  ]
+}
