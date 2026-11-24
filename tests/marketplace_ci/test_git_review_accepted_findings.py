@@ -860,6 +860,24 @@ def test_brief_keeps_a_tracked_issue_with_a_sensitive_name_for_claude_only(
     assert ("not briefed to Codex: " in capsys.readouterr().out) is not briefed
 
 
+@pytest.mark.parametrize(
+    ("profile", "allowed"), [("temp", True), ("elsewhere", False), ("root", False), ("", False)]
+)
+def test_brief_needs_the_user_profile_where_there_are_no_owners(
+    checkout, monkeypatch, capsys, profile, allowed
+):
+    (checkout / ".claude/accepted-review-findings.local.md").write_text(
+        f"- tool-scoping s/SKILL.md:15 @{FP} – accepted\n", encoding="utf-8"
+    )
+    run = _new_run()
+    values = {"temp": str(run.parent), "elsewhere": str(checkout), "root": os.path.abspath(os.sep)}
+    monkeypatch.setenv("USERPROFILE", values.get(profile, ""))
+    monkeypatch.delattr(os, "getuid", raising=False)
+    assert helper.main(["brief", "--run-dir", str(run)]) == (0 if allowed else 2)
+    assert (run / "accepted.md").exists() is allowed
+    assert ("inside the user profile" in capsys.readouterr().err) is not allowed
+
+
 def test_brief_refuses_a_run_directory_that_mktemp_did_not_make(
     checkout, tmp_path, monkeypatch, capsys
 ):
