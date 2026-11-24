@@ -1,0 +1,96 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4678351390",
+      "line": 141,
+      "note": "Plans that could take over 330 minutes are refused; job limit raised to 360.",
+      "path": ".github/workflows/reviewer-ab.yml",
+      "pr": 872,
+      "recorded_at": "2026-11-24T10:23:28+00:00"
+    },
+    {
+      "disposition": "declined",
+      "finding": "4678351651",
+      "line": 315,
+      "note": "Agreement uses path and line, the definition score.py and the stored baseline use; rule names vary between runs of one prompt.",
+      "path": "scripts/reviewer_eval/ab.py",
+      "pr": 872,
+      "recorded_at": "2026-11-24T10:23:28+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4678351910",
+      "line": 295,
+      "note": "Paths are normalized for keys and labels; a climbing path stays as written.",
+      "path": "scripts/reviewer_eval/ab.py",
+      "pr": 872,
+      "recorded_at": "2026-11-24T10:23:29+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4678352167",
+      "line": 94,
+      "note": "The check proves the head is this repository's own; the wording that claimed a prior review is corrected.",
+      "path": ".github/workflows/reviewer-ab.yml",
+      "pr": 872,
+      "recorded_at": "2026-11-24T10:23:29+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4678352680",
+      "line": 76,
+      "note": "README states the recorded CLI version is the pin, not a measurement.",
+      "path": "scripts/reviewer_eval/ab.py",
+      "pr": 872,
+      "recorded_at": "2026-11-24T10:23:29+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4678362322",
+      "line": 276,
+      "note": "No login; the key is passed with an environment policy and a canary gate, measured through codex exec with a mock model.",
+      "path": ".github/workflows/reviewer-ab.yml",
+      "pr": 872,
+      "recorded_at": "2026-11-24T10:23:30+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-codex-delta-rulebook-checker-key",
+      "line": 276,
+      "note": "Same defect as the Claude finding on this line.",
+      "path": ".github/workflows/reviewer-ab.yml",
+      "pr": 872,
+      "recorded_at": "2026-11-24T10:23:30+00:00",
+      "rule": "security"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-codex-delta-security-reviewer-key",
+      "line": 276,
+      "note": "Same defect as the Claude finding on this line.",
+      "path": ".github/workflows/reviewer-ab.yml",
+      "pr": 872,
+      "recorded_at": "2026-11-24T10:23:31+00:00",
+      "rule": "credential-leakage"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "claude-delta-general-ab-189",
+      "line": 189,
+      "note": "Docstring narrowed; the sandbox probe applies on Windows only.",
+      "path": "scripts/reviewer_eval/ab.py",
+      "pr": 872,
+      "recorded_at": "2026-11-24T10:23:32+00:00"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "claude-delta-general-docs-ci-1826",
+      "line": 1826,
+      "note": "A dispatch from a branch runs that branch's copy of the workflow, which can drop the main-only condition.",
+      "path": "docs/ci.md",
+      "pr": 872,
+      "recorded_at": "2026-11-24T10:23:31+00:00"
+    }
+  ]
+}
