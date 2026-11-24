@@ -1,0 +1,26 @@
+{
+  "eval_id": 8,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Writes the reason to a scratchpad file with the Write tool and never puts it in a Bash command",
+      "passed": true,
+      "evidence": "'Reason goes to a file through the Write tool'; 'No echo, printf, or heredoc'"
+    },
+    {
+      "text": "Builds the marker with git-bypass-attestation-marker.py (reason file, actor, head SHA) and does not use jq",
+      "passed": true,
+      "evidence": "'git-bypass-attestation-marker.py\" <scratchpad>/bypass-reason.txt octocat 2222...'; 'I never build this with `jq -n`'"
+    },
+    {
+      "text": "Posts with gh pr comment 900 --body-file right after the gh-pr-review marker call",
+      "passed": true,
+      "evidence": "'git-write-marker.sh\" gh-pr-review commit', then 'gh pr comment 900 --body-file <scratchpad>/bypass-comment.md' as consecutive calls"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

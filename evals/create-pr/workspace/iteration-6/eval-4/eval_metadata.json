@@ -1,0 +1,26 @@
+{
+  "eval_id": 4,
+  "skill_path": "plugins/git-kit/skills/create-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "Writes the reason to a scratchpad file with the Write tool and never puts it in a Bash command",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "Builds the marker with git-bypass-attestation-marker.py (reason file, actor, head SHA) and does not use jq",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "Part B: the empty reason is rejected before any comment or label and the PR is stated as unaffected",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "Part C: no attestation is posted, the failure is reported plainly and the PR is stated as unaffected",
+      "type": "functionality",
+      "target": "answer.md"
+    }
+  ]
+}

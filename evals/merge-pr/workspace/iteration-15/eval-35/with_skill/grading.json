@@ -1,0 +1,26 @@
+{
+  "eval_id": 35,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Names the $PWD/.claude/scripts/git-required-checks.py form",
+      "passed": true,
+      "evidence": "'python3 -I $PWD/.claude/scripts/git-required-checks.py {owner}/{repo} <baseRefName> <headRefOid>'"
+    },
+    {
+      "text": "Says the PR changes the script and runs it only after the user approves that run",
+      "passed": true,
+      "evidence": "'Say so to the user before running'; 'run it only if the user approves that run'"
+    },
+    {
+      "text": "Stops when no copy of the script exists",
+      "passed": true,
+      "evidence": "'Stop and report that the required checks cannot be determined because the script is missing'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

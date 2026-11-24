@@ -1,0 +1,21 @@
+{
+  "eval_id": 8,
+  "skill_path": "plugins/git-kit/skills/commit/SKILL.md",
+  "assertions": [
+    {
+      "text": "Writes the reason to a scratchpad file with the Write tool and never puts it in a Bash command",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "Builds the marker with git-bypass-attestation-marker.py (reason file, actor, head SHA) and does not use jq",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "Posts with gh pr comment 900 --body-file right after the gh-pr-review marker call",
+      "type": "functionality",
+      "target": "answer.md"
+    }
+  ]
+}
