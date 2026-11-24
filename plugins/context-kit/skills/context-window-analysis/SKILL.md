@@ -119,8 +119,8 @@ to a status and label it an estimate, not a measurement:
 
 - A Critical indicator tied to the context itself (truncation of the conversation, context rot, or an
   operation failing on the context limit) → CRITICAL. A failure or a truncated tool result with no link
-  to the context, such as a mistyped command, counts as one Warning indicator instead, and so do very slow
-  responses (together with "Slower responses", still one).
+  to the context, such as a mistyped command, is no indicator at all. Very slow responses count as one
+  Warning indicator (together with "Slower responses", still one).
 - Two or more Warning indicators, or an auto-compact message → WARNING
 - One Warning indicator, or only Healthy indicators in a long session (many turns, large file reads or
   tool output) → MONITOR
@@ -181,9 +181,10 @@ context" health question, and a broader footprint-audit request correctly declin
 `context-audit`), 1.0 with_skill pass rate vs. 0.0 baseline. Iteration-7 (2026-11-20, plan-only,
 with-skill-only, 7/7 assertions) added a third, responses feeling slow, plus two extra evals for
 Step 2's estimate mapping. Iteration-8 (2026-11-24, same method, 13/13) re-ran evals 1, 3, 4 and 5 and
-added eval 6, very slow responses as the only sign. The remaining 2 scenarios ("should I compact now", and a direct request
-for the automatic hook-driven behavior itself) are named in `evals.json`'s own `uncovered` list, not yet
-exercised. The structural claims
+added eval 6, very slow responses as the only sign. Iteration-9 (2026-11-24, same method, 5/5) re-ran
+evals 5 and 6 after unrelated failures stopped counting as an indicator. The remaining 2 scenarios
+("should I compact now", and a direct request for the automatic hook-driven behavior itself) are named
+in `evals.json`'s own `uncovered` list, not yet exercised. The structural claims
 this section documents (the examples-reference link, Option 4's real session-kit reference, no
 oversized blocks) are separately covered by the persisted `scripts/smoke_test.py`.
 
