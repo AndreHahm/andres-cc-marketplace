@@ -131,8 +131,9 @@ variation, and `stable` stays `null` below five. Each arm's
 
 `.github/workflows/reviewer-ab.yml` does this in CI with the API key, started by hand from `main` (see
 `docs/ci.md`). Its artifact is kept for 90 days; commit it under `ab/<experiment>/` to keep it. The files in
-one arm's directory fit `score --stability`; never pass it runs of both arms, since it does not compare
-`arm_sha`.
+one arm's directory fit `score --stability`, which reads the merged `findings` list as it does for CI archives, so
+for a reviewer's own agreement use the report's `agree`. Never pass it runs of both arms, since it does not
+compare `arm_sha`.
 
 ## Case format
 
