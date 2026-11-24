@@ -1,0 +1,16 @@
+{
+  "eval_id": 5,
+  "skill_path": "plugins/context-kit/skills/context-window-analysis/SKILL.md",
+  "assertions": [
+    {
+      "text": "Does not report CRITICAL; gives HEALTHY or MONITOR, labelled an estimate",
+      "type": "structure",
+      "target": "outputs/"
+    },
+    {
+      "text": "Does not tell the user to run /compact or /clear now",
+      "type": "functionality",
+      "target": "outputs/"
+    }
+  ]
+}

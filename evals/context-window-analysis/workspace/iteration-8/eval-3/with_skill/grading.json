@@ -1,0 +1,26 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Reports a MONITOR estimate, labelled an estimate rather than a measurement",
+      "passed": true,
+      "evidence": "Estimated Status: MONITOR (an estimate, not a measurement)."
+    },
+    {
+      "text": "Does not tell the user to run /compact or /clear now",
+      "passed": true,
+      "evidence": "Keep going, and plan a /compact at a natural break; the threshold table ties WARNING actions to a measured percentage."
+    },
+    {
+      "text": "Asks the user for /context output for a measured figure",
+      "passed": true,
+      "evidence": "Run /context and share the output. Its measured percentage replaces this estimate."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}
