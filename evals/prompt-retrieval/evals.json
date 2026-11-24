@@ -51,6 +51,13 @@
       "prompt": "List my prompts, drafts included. Then: search my prompts for tabletop drill (only an inactive record matches). Then: show every version of review__missing-tests (historical, active and draft).",
       "expected_output": "The list holds active and draft records and no inactive or historical one; the search names the inactive slug and status instead of listing it; the history holds every version, oldest first, with no prompt text.",
       "files": []
+    },
+    {
+      "id": 8,
+      "name": "drafts-only-and-whole-words",
+      "prompt": "List only my drafts. Then: which prompt says \"port checks\"? (the only near match is \"export checksum\")",
+      "expected_output": "Only the draft is listed; the phrase is reported as not found.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {

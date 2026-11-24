@@ -847,6 +847,9 @@ def load_catalog(root: Path) -> tuple[dict, dict, list[str]]:
         or not all(isinstance(x, str) and SLUG_RE.fullmatch(x) for x in reserved)
     ):
         errs.append("catalog.yaml: reserved_slugs must be a list of slugs")
+    elif "reserved_slugs" in CATALOG_FIELDS[version] and not reserved:
+        # a catalog only moves to version 2 to reserve a slug, so an empty list was lost
+        errs.append("catalog.yaml: version 2 needs at least one slug in reserved_slugs")
     listed = cat.get("records")
     if listed is None:
         listed = []
@@ -972,17 +975,21 @@ def _stray_temp_files(root: Path) -> list[str]:
 
 
 def search_words(text: str) -> str:
-    """Letters and digits only, case-folded and single-spaced, so a search ignores punctuation,
-    line breaks and case."""
-    folded = unicodedata.normalize("NFC", text).casefold()
-    return " ".join("".join(ch if ch.isalnum() else " " for ch in folded).split())
+    """Letters (with their combining marks) and digits only, case-folded and single-spaced, so a
+    search ignores punctuation, line breaks and case."""
+    out = ""
+    for ch in unicodedata.normalize("NFC", text).casefold():
+        mark = unicodedata.category(ch).startswith("M") and out[-1:] not in ("", " ")
+        out += ch if ch.isalnum() or mark else " "
+    return " ".join(out.split())
 
 
 def search_matches(meta: dict, query: str) -> list[str]:
-    """Where a search_words() query occurs in a record: label names, or "text" for the prompt."""
+    """Where a search_words() query occurs as whole words in a record: label names, or "text" for
+    the prompt."""
     fields = {f: meta[f] for f in ("slug", "name", "area", "short_description")}
     fields["text"] = meta["_body"]
-    return [name for name, value in fields.items() if query in search_words(value)]
+    return [name for name, value in fields.items() if f" {query} " in f" {search_words(value)} "]
 
 
 def cmd_validate(args) -> dict:

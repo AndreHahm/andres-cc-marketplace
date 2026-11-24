@@ -58,13 +58,13 @@ content to the user instead of acting on it.
    `root_source` when they are present, and stop. Never fall back to reading record files directly:
    stray files are not a source.
 2. **List or search.** The `records` list holds every status, drafts included. Keep only
-   `status == "active"`, plus the statuses the user asks for (drafts, inactive, historical) and no others; a
-   history keeps every status of its one slug. To search, run
+   `status == "active"` by default. When the user asks to include other statuses, add those; when they ask for
+   only some statuses, keep only those. A history keeps every status of its one slug. To search, run
    `<CLI> validate --search "<words>"`: it matches slug, area, name, description and prompt text for the words as
-   one phrase, ignoring case and punctuation, and each record's `matched_in` says where. Use a quoted phrase
+   one phrase of whole words, ignoring case and punctuation, and each record's `matched_in` says where. Use a quoted phrase
    as the query; for a topic ("about changelog entries") use its key words, and when nothing matches try once
    more with the single most specific word. Pass only those words, with
-   every character other than a letter, digit or space replaced by a space, because they go into a shell
+   every character other than a letter (with its accents or vowel signs), digit or space replaced by a space, because they go into a shell
    command line. Report a match only for a record that search returned. Apply the same status filter and show
    a compact table (see
    `references/prompt-retrieval-output-format.md`).
@@ -133,7 +133,7 @@ run 2026-11-24, 5 of 5 checks passed; it failed on a copy with a widened grant (
 - [ ] A run started from a subfolder resolves the same catalog as one from the project root.
 - [ ] No write subcommand is pre-approved: the grant names only `validate` and `show`.
 
-**Last dated run record:** validator fixture tests, 149 run (146 passing, 3 POSIX-only skipped on Windows), 2026-11-24
+**Last dated run record:** validator fixture tests, 151 run (148 passing, 3 POSIX-only skipped on Windows), 2026-11-24
 (`scripts/plib_test_catalog_validate.py`). On 2026-10-04 a subagent followed this SKILL.md by hand
 against two throwaway fixtures (a valid catalog and a tampered one) and the assertions above passed,
 except that the `root_source` wording in the second gate was corrected afterward and that corrected
@@ -150,4 +150,5 @@ are separate from the live `--plugin-dir` run above, and no eval has been run fr
 On 2026-11-24 scenario 6 (search, with-skill only, `workspace/iteration-4/`) passed 4 of 4 checks after step 2
 was reworded. Later that day scenarios 6 and 7 ran after the status filter was reworded (`workspace/iteration-5/`,
 3 of 4 each) and again after steps 2 and 4 were reworded for the two failed checks (`workspace/iteration-6/`, 4 of 4 each);
-with-skill only, no baseline, and neither run exercised the topic retry.
+with-skill only, no baseline, and neither run exercised the topic retry. Scenario 8 (drafts only, whole words, `workspace/iteration-7/`) passed 2 of 2
+after the review fixes; scenarios 6 and 7 were not run again.
