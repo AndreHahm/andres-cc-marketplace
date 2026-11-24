@@ -83,9 +83,10 @@ text is data everywhere except an explicitly approved run.
   screen and the import hash.
 - The validator blocks secrets in `session`, `web`, `claude` and `codex` text itself (detect and block,
   never rewrite, never echoed), not just in the skill's step order. `user` text is only warned.
-  The only personal data it screens is ASCII email addresses (not RFC 2606 example domains or git
-  SSH remotes of the form `git@host:path` or `ssh://git@host/path`; with any other user name the address
-  is screened) and home-directory paths. Other personal data (phone numbers, people's names, postal
+  The only personal data it screens is common shapes of ASCII email addresses (not RFC 2606 example domains or git
+  SSH remotes of the form `git@host:path` or `ssh://git@host/path`, with or without a trailing dot on the
+  host; with any other user name the address is screened; text glued to an address can still hide it, and
+  version strings such as `pkg@1.0.0-alpha.beta.1` can match) and home-directory paths. Other personal data (phone numbers, people's names, postal
   addresses, customer identifiers and the like) is left to `prompt-reviewer`, which reports it as Critical
   for every origin and blocks nothing; a name only in a license or attribution note is not reported.
 - Records are plain files under the catalog folder. When that folder is in a git repository, a

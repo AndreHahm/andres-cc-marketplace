@@ -254,6 +254,14 @@ class TextAndYaml(unittest.TestCase):
             "bob" + "@mail.corp.com: hi",
             "x@example.com" + ".evil.org",  # a real domain that only starts like a placeholder
             "x@example.com" + "-mail.org",
+            "ivan" + "@mail.xn--p1ai",  # a punycode top-level domain
+            "ivan" + "@mail.XN--P1AI now",
+            "li" + "@firma.xn--fiqs8s.",
+            "bob" + "@acme.com-",  # punctuation or numbers glued to the end
+            "bob" + "@acme.com--x",
+            "bob" + "@acme.com.9",
+            "bob" + "@acme.com.9.1 now",
+            "ivan" + "@mail.xn--p1ai-",
         ):
             self.assertEqual([h["pattern"] for h in V.screen_text(text)], ["email_address"], text)
 
@@ -273,8 +281,19 @@ class TextAndYaml(unittest.TestCase):
             "ssh://git@github.com/org/repo.git",
             "git+ssh://git@github.com/org/repo.git#main",
             "ssh://git@host.com:2222/org/repo.git",
+            "git@github.com.:owner/repo.git",  # a DNS root dot
+            "ssh://git@github.com./owner/repo.git",
+            "ssh://git@github.com.:2222/owner/repo.git",
+            "a@foo.xn--p1ai.test",
             "@types/node",
             "a@b",
+            "pkg@1.2.3",
+            "pkg@1.2.3-beta",
+            "pkg@1.0.0-rc.1",
+            "python@3.11-slim",
+            "actions/checkout@v4.1.2",
+            "img@sha256:abc.def",
+            "x@example.com.",
         ):
             self.assertEqual(V.screen_text(text), [], text)
 
@@ -305,6 +324,10 @@ class TextAndYaml(unittest.TestCase):
             "git" + "@acme.io/org/repo.git",  # no ssh:// in front: not a remote form
             "ssh://git" + "@acme.io",  # no path
             "ssh://git" + "@acme.io/ thanks",
+            "ssh://jane" + "@acme.io./org/repo.git",  # the root dot exempts only git
+            "jane" + "@acme.io.:org/repo.git",
+            "Mail git" + "@acme.io.: thanks",
+            "Mail git" + "@acme.io. thanks",
             "ssh://git@github.com/jane.doe" + "@acme.io",  # an address inside the path
         ):
             self.assertEqual([h["pattern"] for h in V.screen_text(text)], ["email_address"], text)
@@ -346,6 +369,14 @@ class TextAndYaml(unittest.TestCase):
             "git@" + "a-" * 100000 + ":",
             "ssh://git@" + "a." * 100000,
             "ssh://git@a/" * 20000,
+            "git@" + "a.." * 60000 + ":",
+            "a@b.xn--" * 30000,
+            "a@b.co" + "-" * 200000 + "_",
+            "a@b.co" + ".9" * 100000 + "_",
+            "a@b.co" + "--x" * 70000 + ".",
+            "a@b.xn--" + "a--" * 20000 + ".x",
+            "a@b.co--" + "a--" * 80000 + ".x",
+            "a@b.xn--" + "a-" * 100000 + "_",
         ):
             started = time.perf_counter()
             email.search(line)

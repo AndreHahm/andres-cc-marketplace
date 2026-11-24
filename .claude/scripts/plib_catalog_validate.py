@@ -210,18 +210,22 @@ SECRET_PATTERNS = (
     # The domain must end where no label character or ".label" follows, so the engine
     # cannot retry a shorter domain to dodge an exemption. Not matched: RFC 2606 example domains
     # (placeholders, never a person), and a git SSH remote, git@host:path (git@github.com:org/repo,
-    # git@host.com:project.git) or ssh://git@host/path (also git+ssh://). Only the local part "git"
+    # git@host.com:project.git) or ssh://git@host/path (also git+ssh://), with or without a DNS
+    # root dot after the host. Only the local part "git"
     # is exempt: any other user@host:path or ssh://user@host/path is screened, so a suffix such as
-    # ":/x" or ":x.git" cannot hide a real address. ASCII addresses only.
+    # ":/x" or ":x.git" cannot hide a real address. ASCII addresses only
+    # (a punycode xn-- ending is ASCII).
     (
         "email_address",
         re.compile(
-            r"(?<![A-Za-z0-9._%+-])(?!git@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*:[^\s@])"
-            r"(?!(?<=ssh://)git@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*/[^\s@])"
+            r"(?<![A-Za-z0-9._%+-])(?!git@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.?:[^\s@])"
+            r"(?!(?<=ssh://)git@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.?/[^\s@])"
             r"[A-Za-z0-9._%+-]+@"
             r"(?!(?:[A-Za-z0-9-]+\.)*(?i:example\.(?:com|net|org))(?![A-Za-z0-9-]|\.[A-Za-z0-9]))"
             r"[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*"
-            r"\.(?!(?i:example|test|invalid|localhost)(?![A-Za-z0-9-]|\.[A-Za-z0-9]))[A-Za-z]{2,}"
+            r"\.(?!(?i:example|test|invalid|localhost)(?![A-Za-z0-9-]|\.[A-Za-z0-9]))"
+            # "--..." covers a punycode xn-- ending; each tail is also a dodge glued to an address
+            r"[A-Za-z]{2,}(?:--[A-Za-z0-9-]*|-)?(?:\.[0-9]+)*"
             r"(?![A-Za-z0-9-]|\.[A-Za-z0-9])",
             re.ASCII,
         ),

@@ -137,7 +137,7 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
    warning), show the user the slug, name, origin, description and `<CLI> hash <scratch-file>` output.
    Say that the record becomes a plain file under `catalog_root`: if that folder is in a git repository,
    a pushed commit shares its text with everyone who can read the repository, and the text stays in
-   history after the record changes. Then ask with
+   history after the record changes, so personal data should be removed first. Then ask with
    `AskUserQuestion` whether to file this draft. A draft that step 4 blocked never reaches
    this question. On yes, `<CLI> draft
    <scratch-file>`; it validates, enforces the secret screen for `session`, `web`, `claude` and `codex` text, writes the record and
