@@ -450,6 +450,9 @@ def apply_waivers(
             key = (finding_rule(f), f["path"], f["line"])
             copy_marks.setdefault(key, set()).add(tracked_mark(f.get("title")))
     for f in result.get("findings", []):
+        # A repeated call decides anew, so an earlier decision never outlives its waiver.
+        for field in ("waiver", "waiver_line", "tracked_issue"):
+            f.pop(field, None)
         if f["severity"] not in BLOCKING or not f["in_scope"]:
             continue
         text = read_line(f["path"], f["line"])
@@ -511,6 +514,8 @@ def apply_waivers(
         # Only a waiver changes the verdict: a review with only Minor findings keeps its own.
         if waived and not blocking and result.get("verdict") == "Changes Requested":
             result["verdict"] = "LGTM"
+        elif blocking:
+            result["verdict"] = "Changes Requested"
     result["waived_findings"] = waived
     return notes
 
