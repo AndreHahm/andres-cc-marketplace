@@ -105,7 +105,7 @@ Assessment:
 
 Recommendations:
   1. Run /context and share the output: this status is an estimate
-  2. If the measured percentage confirms WARNING, run /compact
+  2. If the measured percentage is 80% or more, run /compact
      (or /clear if starting a new task)
   3. Save important context to a temp file first
 ```
