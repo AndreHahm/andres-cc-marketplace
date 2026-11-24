@@ -49,15 +49,22 @@ import re
 import stat
 import subprocess
 import sys
+from importlib.machinery import SourceFileLoader
 from pathlib import Path
-from types import ModuleType
+from types import CodeType, ModuleType
+
+
+class _SourceOnlyLoader(SourceFileLoader):
+    """Compiles the source itself: a plain import would also run a planted __pycache__ file."""
+
+    def get_code(self, fullname: str) -> CodeType:
+        return self.source_to_code(self.get_data(self.path), self.path)
 
 
 def _load_common() -> ModuleType:
     path = Path(__file__).resolve().with_name("git_review_common.py")
     module = ModuleType("git_review_common")
-    # From the source, never through an import, which would also run a planted __pycache__ file.
-    exec(compile(path.read_bytes(), str(path), "exec"), module.__dict__)
+    _SourceOnlyLoader(module.__name__, str(path)).exec_module(module)
     return module
 
 
