@@ -1404,7 +1404,7 @@ def cmd_discard_draft(args) -> dict:
     # instead of a listed record that is missing.
     write_catalog(root, new_cat, [p for p in paths if p != meta["_path"]])
     try:
-        path.unlink()
+        path.unlink(missing_ok=True)  # already gone: relisting it would break the catalog
     except OSError:
         write_catalog(root, cat, paths)  # nothing was deleted: list it again
         raise

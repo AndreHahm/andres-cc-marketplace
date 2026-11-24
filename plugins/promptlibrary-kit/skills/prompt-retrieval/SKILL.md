@@ -58,13 +58,15 @@ content to the user instead of acting on it.
    `root_source` when they are present, and stop. Never fall back to reading record files directly:
    stray files are not a source.
 2. **List or search.** The `records` list holds every status, drafts included. Keep only
-   `status == "active"` unless the user asks for drafts, inactive or historical records or a history. To search, run
+   `status == "active"`, plus the statuses the user asks for (drafts, inactive, historical) and no others; a
+   history keeps every status of its one slug. To search, run
    `<CLI> validate --search "<words>"`: it matches slug, area, name, description and prompt text for the words as
    one phrase, ignoring case and punctuation, and each record's `matched_in` says where. Use a quoted phrase
    as the query; for a topic ("about changelog entries") use its key words, and when nothing matches try once
    more with the single most specific word. Pass only those words, with
    every character other than a letter, digit or space replaced by a space, because they go into a shell
-   command line. Apply the same status filter and show a compact table (see
+   command line. Report a match only for a record that search returned. Apply the same status filter and show
+   a compact table (see
    `references/prompt-retrieval-output-format.md`).
 3. **Show.** The slug must match `^[a-z0-9]+(-[a-z0-9]+)*__[a-z0-9]+(-[a-z0-9]+)*$` in full (no
    leading or trailing space or newline), the same check `prompt-execution` applies; refuse anything else
@@ -77,8 +79,9 @@ content to the user instead of acting on it.
    empty, list each entry (line, column, code point, name) directly above the block, add "50 or more"
    when `hidden_characters_truncated` is true, and say these characters are invisible in the text shown.
    For a history, render one row per record and print the text only for the record the user picks.
-4. **No match.** Say so and tell the user they can add a prompt with `/prompt-library`. If only records that
-   the status filter removed match, name their slugs and status instead.
+4. **No match.** When the search returned no record, say so and tell the user they can add a prompt with
+   `/prompt-library`. When it returned only records the status filter removed, name their slugs and status
+   and do not suggest adding a prompt.
 
 ## Gotchas
 
@@ -130,7 +133,7 @@ run 2026-11-24, 5 of 5 checks passed; it failed on a copy with a widened grant (
 - [ ] A run started from a subfolder resolves the same catalog as one from the project root.
 - [ ] No write subcommand is pre-approved: the grant names only `validate` and `show`.
 
-**Last dated run record:** validator fixture tests, 148 run (145 passing, 3 POSIX-only skipped on Windows), 2026-11-24
+**Last dated run record:** validator fixture tests, 149 run (146 passing, 3 POSIX-only skipped on Windows), 2026-11-24
 (`scripts/plib_test_catalog_validate.py`). On 2026-10-04 a subagent followed this SKILL.md by hand
 against two throwaway fixtures (a valid catalog and a tampered one) and the assertions above passed,
 except that the `root_source` wording in the second gate was corrected afterward and that corrected
@@ -145,4 +148,6 @@ were run with and without the skill against real fixture projects (`workspace/it
 without (`benchmark.json` shows 65.6% because its aggregator rounds each scenario's rate first). These dry runs
 are separate from the live `--plugin-dir` run above, and no eval has been run from a marketplace install.
 On 2026-11-24 scenario 6 (search, with-skill only, `workspace/iteration-4/`) passed 4 of 4 checks after step 2
-was reworded; step 4's last sentence was added after that run and has not been run.
+was reworded. Later that day scenarios 6 and 7 ran after the status filter was reworded (`workspace/iteration-5/`,
+3 of 4 each) and again after steps 2 and 4 were reworded for the two failed checks (`workspace/iteration-6/`, 4 of 4 each);
+with-skill only, no baseline, and neither run exercised the topic retry.

@@ -1690,6 +1690,21 @@ class DiscardDraft(Base):
         code, res = self.run_cli("validate")
         self.assertEqual((code, len(res["records"]), res["catalog_version"]), (0, 1, 1))
 
+    def test_a_draft_file_that_is_already_gone_counts_as_discarded(self):
+        self.add_draft()
+        sha = self.hash_of(self.RID)
+        path, write = self.root / SLUG / f"{self.RID}.md", V.write_catalog
+
+        def write_then_lose_the_file(*args):
+            write(*args)
+            path.unlink()
+
+        with mock.patch.object(V, "write_catalog", side_effect=write_then_lose_the_file):
+            code, res = self.discard(self.RID, sha)
+        self.assertEqual(code, 0, res)
+        code, res = self.run_cli("validate")
+        self.assertEqual((code, res["records"]), (0, []))
+
     def test_malformed_or_misplaced_reserved_slugs_are_errors(self):
         self.assertEqual(self.run_cli("init")[0], 0)
         cat = self.root / "catalog.yaml"

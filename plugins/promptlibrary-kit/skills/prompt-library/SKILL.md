@@ -250,7 +250,7 @@ directly; last run 2026-11-24, 7 of 7 checks passed. It failed on a copy with a 
 - [ ] `discard` removes only a draft, after one question that shows its text and what stays active; a version
       that has run is refused.
 
-**Last dated run record:** validator fixture tests, 148 run (145 passing, 3 POSIX-only skipped on Windows), 2026-11-24
+**Last dated run record:** validator fixture tests, 149 run (146 passing, 3 POSIX-only skipped on Windows), 2026-11-24
 (`scripts/plib_test_catalog_validate.py`). The latest live run, 2026-10-14 (plugin loaded with
 `--plugin-dir`), ran add, near-duplicate, revise, finalize and deactivate, each status change behind its
 own approval; the step 5 triage skip it found was fixed in PR #566. An earlier hand-followed run of steps

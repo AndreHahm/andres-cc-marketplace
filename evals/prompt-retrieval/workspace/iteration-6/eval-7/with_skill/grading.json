@@ -1,0 +1,34 @@
+{
+  "eval_id": 7,
+  "date": "2026-11-24",
+  "configuration": "with_skill",
+  "baseline": "not run",
+  "expectations": [
+    {
+      "text": "A drafts-included list holds active and draft records only",
+      "passed": true,
+      "evidence": "docs__changelog v1, review__missing-tests v2 and v3"
+    },
+    {
+      "text": "A search that only an inactive record matches names its slug and status and lists no record",
+      "passed": true,
+      "evidence": "'ops__old-drill: inactive (v1)'"
+    },
+    {
+      "text": "The no-match reply names the filtered records instead of suggesting /prompt-library",
+      "passed": true,
+      "evidence": "Suggests asking for inactive prompts; /prompt-library is not mentioned"
+    },
+    {
+      "text": "A history lists every version oldest first and prints no prompt text",
+      "passed": true,
+      "evidence": "Rows 1 historical, 2 active, 3 draft"
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "failed": 0,
+    "total": 4,
+    "pass_rate": 1.0
+  }
+}
