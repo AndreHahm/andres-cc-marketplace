@@ -1,13 +1,16 @@
 """git-kit's git-review-codex-kit.py runs only an installed codex-kit, never the repo's (#697)."""
 
 import ctypes
+import importlib.machinery
 import importlib.util
 import json
 import os
+import py_compile
 import shutil
 import subprocess
+import sys
 from pathlib import Path
-from types import SimpleNamespace
+from types import ModuleType, SimpleNamespace
 
 import pytest
 
@@ -256,3 +259,29 @@ def test_the_real_windows_profile_ignores_the_environment(monkeypatch, tmp_path)
         monkeypatch.setenv(name, str(tmp_path))
     assert _load_module()._home() == before != tmp_path
     assert before.is_dir()
+
+
+@pytest.mark.parametrize(
+    "name", ["git-review-codex-kit", "git-review-scope", "git-review-accepted-findings"]
+)
+def test_a_planted_pycache_of_the_shared_file_never_runs(tmp_path, name):
+    script = Path(shutil.copy(SCRIPT.with_name(f"{name}.py"), tmp_path))
+    common = Path(shutil.copy(SCRIPT.with_name("git_review_common.py"), tmp_path))
+    source, stat = common.read_bytes(), common.stat()
+    # Same size and mtime as the real source, so a plain import accepts the planted file.
+    planted = b"raise SystemExit('planted')\n"
+    common.write_bytes(planted + b"#" * (len(source) - len(planted)))
+    os.utime(common, ns=(stat.st_atime_ns, stat.st_mtime_ns))
+    py_compile.compile(str(common), invalidation_mode=py_compile.PycInvalidationMode.TIMESTAMP)
+    common.write_bytes(source)
+    os.utime(common, ns=(stat.st_atime_ns, stat.st_mtime_ns))
+
+    with pytest.raises(SystemExit, match="planted"):  # control: a plain import runs it
+        loader = importlib.machinery.SourceFileLoader("common", str(common))
+        loader.exec_module(ModuleType("common"))
+    loaded = subprocess.run(
+        [sys.executable, "-I", "-c", f"import runpy; runpy.run_path({str(script)!r})"],
+        capture_output=True,
+        text=True,
+    )
+    assert loaded.returncode == 0, loaded.stderr
