@@ -116,6 +116,12 @@ def check_no_sed_pipeline():
     exact = "strip exactly the prefix `https://github.com/` or `git@github.com:`"
     if exact not in body or "any other prefix is a mismatch" not in body:
         return False, "step 16.5 no longer rejects an origin on another host"
+    redacted = (
+        "any other prefix is a mismatch, whatever its path, "
+        "and is reported without its query string and anything before its last `@`"
+    )
+    if redacted not in body:
+        return False, "step 16.5 must report a mismatched origin without its credentials"
     return True, "no step pipes through sed and only github.com origins match"
 
 
