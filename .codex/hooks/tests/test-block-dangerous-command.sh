@@ -784,6 +784,97 @@ A	gh pr create --body "After git push run x --all"
 A	gh pr create --body "after git push use curl -data"
 A	gh pr create --body "Run git submodule foreach git rebase main"
 A	git push origin x -o data
+# --- found by the review of the push, foreach and redirection checks
+B	git submodule foreach $'git stash'
+B	git submodule foreach $'git rebase main'
+B	git submodule foreach $"git reset"
+B	git push >|log -f origin x
+B	git push >|log --force origin x
+B	git push >|log --mirror
+B	git push >|log --all
+B	git push >|log origin main
+B	git -C . branch >|log -D x
+B	git commit >|log --am
+B	git pull >|log --reb
+B	git submodule update >|log --rebase
+B	git submodule foreach '\ngit stash\n'
+B	git submodule foreach 'git fetch\ngit stash'
+B	git submodule foreach 'git fetch\ngit merge x'
+B	git submodule foreach 'A="b c" git stash'
+B	git submodule foreach env -u FOO git stash
+B	git submodule foreach timeout -s KILL 60 git stash
+B	git submodule foreach 'x=`git stash`'
+B	git submodule >|log foreach git stash
+B	git submodule {fd}>x foreach git stash
+B	>& x git -C . stash
+B	2>& 1 git -C . stash
+B	<& 0 git -C . stash
+B	>| x git -C . stash
+B	git submodule 2>& 1 update --rebase
+B	: $((1<<2)); > x git -C . stash
+B	case x in x) git push --all origin;; esac
+B	echo `git push --delete origin x`
+B	case x in x) git push -uf origin x;; esac
+B	echo `git submodule foreach git rebase main`
+B	bash -c 'A="b c" git push --all'
+B	set -f; git push origin *
+A	git push origin x # see *note* below
+A	git push origin x # :warning: slow
+A	git push origin x # not --all
+A	gh pr create --body "| git push --all | blocked |"
+B	git submodule foreach $'git fetch\\ngit stash'
+B	git submodule foreach "git fetch\ngit rebase main"
+B	git submodule foreach sh -c 'git fetch\ngit stash'
+B	git submodule foreach 'echo '\\''a\ngit stash'\\'''
+B	git submodule foreach 'A="b c" git rebase main'
+A	git submodule foreach 'git fetch\ngit status'
+A	git submodule foreach 'git fetch'\ngit status
+B	git push >| log -f origin x
+B	echo `git submodule foreach git stash`
+B	case x in y) :;; x) git push --all;; esac
+B	git push origin refs/heads/main
+B	git push origin heads/main
+B	git push origin "refs/heads/main"
+B	git push --all # note
+B	git push origin x; git push --all # note
+B	git push origin x #not-a-comment --all\ngit push --all
+B	git push origin x#y --all
+B	env -S "git push --all"
+B	((16 # 2)); git push --all
+B	gh pr create --body "x"; git push --all
+B	gh pr create --body "$(git push --all)"
+B	gh pr create --body "x" | git push --all
+B	gh pr create --body "$(cat <<'EOF'\nx\nEOF\n)" && git push --all
+B	gh pr create --body "$(cat <<'EOF'\nx\nEOF\n)"\ngit push --all
+B	gh pr create --body "$(cat <<EOF\n$(git push --all)\nEOF\n)"
+B	gh pr create --body "$(cat <<'EOF'\ngit rebase main\nEOF\n)"
+A	gh issue comment 5 --body '| git push --all | blocked |'
+# Accepted false blocks: a message that names a push of main, and a gh heredoc body line.
+B	git commit -m "git push now checks refs/heads/main too"
+B	gh pr create --body "$(cat <<'EOF'\ngit push --all is blocked now\nEOF\n)"
+# An exemption for that body was dropped: a title can name a false heredoc end.
+B	gh pr create --title "a <<'true' b" --body "$(cat <<'EOF'\nhi\nEOF\ngit push --all\ntrue\n)"
+B	gh pr create --title "a <<'true' b" --body "$(cat <<'EOF'\nhi\nEOF\ngit push --delete origin x\ntrue\n)"
+B	A=$(git rev-parse HEAD) git push origin refs/heads/main
+B	PATH+=:/x git push origin refs/heads/main
+B	if (true) then git push origin refs/heads/main; fi
+B	coproc git push origin refs/heads/main
+B	case x in x) FOO=1 git push origin refs/heads/main;; esac
+B	case $(uname -s) in Linux) git push origin refs/heads/main;; esac
+B	echo `FOO=1 git push origin refs/heads/main `
+B	cat <<EOF\nx `git push origin refs/heads/main 2>/dev/null`\nEOF
+B	ssh host git push origin refs/heads/main
+B	echo git push origin refs/heads/main | sh
+B	setsid git push origin refs/heads/main
+B	find . -maxdepth 0 -exec git push origin refs/heads/main \\;
+A	git submodule foreach git fetch # don't\ngit commit -m "note; git merge x"
+A	git submodule foreach 'printf "a\\ngit merge x"'
+B	: submodule foreach a; : submodule foreach a; : submodule foreach a; : submodule foreach a; git submodule foreach git push origin submodule foreach --delete
+B	bash -c "git submodule foreach a"; git submodule foreach "git fetch\ngit stash"
+A	git commit -m "fix: in case CI in main fails (see log) git push --all is needed"
+B	for i in 1; do case x in x) git push --all;; esac; done
+A	git submodule foreach 'git submodule foreach git status'
+B	git submodule foreach "git submodule foreach 'git fetch\ngit stash'"
 CASES
 
 printf 'pass=%d fail=%d (%s)\n' "${pass}" "${fail}" "${HOOK}"

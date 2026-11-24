@@ -498,10 +498,11 @@ if [[ "${CMD_WORDS_CLOSED}" != "${CMD_WORDS}" ]]; then
     CMD_CODE+=$'\n'"${CMD_WORDS_CLOSED}"
 fi
 [[ "${FLAGS_WORDS_CLOSED}" != "${FLAGS_WORDS}" ]] && CMD_FLAGS+=$'\n'"${FLAGS_WORDS_CLOSED}"
-# The same copies with the & of a redirection removed: the checks take & for a separator, so
-# `git push 2>&1 -f` would end at it. An extra copy again, so it can only block more.
+# The same copies with the & or | of a redirection removed: the checks take both for a separator,
+# so `git push 2>&1 -f` and `git push >|log -f` would end there. The blanks after < and > are
+# removed again (`>& x`). An extra copy again, so it can only block more.
 open_ampersands() {
-    awk -v BINMODE=3 '{ gsub(/&>/, ">"); gsub(/>&/, ">"); gsub(/<&/, "<"); print }'
+    awk -v BINMODE=3 '{ gsub(/&>/, ">"); gsub(/>[&|]/, ">"); gsub(/<&/, "<"); print }' | close_redirects
 }
 CMD_AMP=$(printf '%s\n' "${CMD_WORDS_CLOSED}" "${CMD_ARITH}" | open_ampersands) || block "Could not read the command."
 FLAGS_AMP=$(printf '%s\n' "${FLAGS_WORDS_CLOSED}" "${FLAGS_ARITH}" | open_ampersands) || block "Could not read the command."
@@ -705,7 +706,7 @@ SHELL_STRING_BODY="(([^\"']|\"[^\"]*\"|'[^']*')*[;&|({][[:space:]]*)?"
 SHELL_STRING_BODY+="((if|then|do|else|elif|while|until|!)[[:space:]]+"
 SHELL_STRING_BODY+="|(xargs|command|builtin|env|nice|nohup|time|exec|timeout|doas|eval)"
 SHELL_STRING_BODY+="([[:space:]]+(-[^[:space:]\"']*|[0-9][^[:space:]\"']*|[A-Za-z_][A-Za-z0-9_]*=[^[:space:]\"']*))*[[:space:]]+"
-SHELL_STRING_BODY+="|[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+"
+SHELL_STRING_BODY+="|[A-Za-z_][A-Za-z0-9_]*=([^[:space:]]|\"[^\"]*\"|'[^']*')*[[:space:]]+"
 SHELL_STRING_BODY+="|${REDIR_OP}[[:space:]]*${REDIR_TARGET}[[:space:]]+)*"
 SHELL_STRING_BODY+="([^\"'[:space:];&|]*/)?"
 SHELL_STRING_START="${SHELL_STRING_OPEN}${SHELL_STRING_BODY}"
@@ -763,37 +764,86 @@ DIRECT_MAIN_RE+="(origin[[:space:]]+)?[+]?((refs/)?heads/)?(main|master)${PUSH_E
 DIRECT_MAIN_RE+="|${GIT_PUSH}[^;&|]*:((refs/)?heads/)?(main|master)${PUSH_END}"
 # `(git push origin main)`, only where a command starts: a message may end a parenthesis there.
 DIRECT_MAIN_GROUP_RE="${GIT_AT_START}push([^;&|]*[[:space:]])?([^[:space:];&|]*:|[+])?((refs/)?heads/)?(main|master)[)]"
-# A push at the start of a command or of a shell string, so text that only mentions one is not
-# read: every branch (`--all`, `--branches`, `:`, a wildcard), a delete of a remote branch, and a
-# force flag in a cluster.
-GIT_START_RE="(${GIT_AT_START}|${SHELL_STRING_START}git${GIT_OPT}*[[:space:]]+)"
+# A push at the start of a command, of a one-line `case` arm or of a shell string, so text that only
+# mentions one is not read: every branch (`--all`, `--branches`, `:`, a wildcard), a delete of a
+# remote branch, and a force flag in a cluster.
+GIT_START_RE="(${GIT_AT_START}|${SHELL_STRING_START}git${GIT_OPT}*[[:space:]]+"
+GIT_START_RE+="|${SEGMENT_START}case[[:space:]]+[^[:space:]]+[[:space:]]+in[[:space:]].*[)][[:space:]]*${GIT_CMD})"
 PUSH_REFS_END="([\"'\`]|${WORD_END})"
-PUSH_REFS_RE="${GIT_START_RE}push([^;&|]*)[[:space:]]((--al(l)?|--b(r(a(n(c(h(e(s)?)?)?)?)?)?)?"
-PUSH_REFS_RE+="|--de(l(e(t(e)?)?)?)?|-[vqnfu46]*d[a-zA-Z46]*)${PUSH_REFS_END}"
-PUSH_REFS_RE+="|[+]?:([^;&|[:space:]]|${WORD_END})|[^-;&|[:space:]][^;&|[:space:]]*[*])"
-PUSH_CLUSTER_RE="${GIT_START_RE}push([^;&|]*)[[:space:]]-[vqndu46]*f[a-zA-Z46]*${PUSH_REFS_END}"
+PUSH_REFS="push([^;&|]*)[[:space:]]((--al(l)?|--b(r(a(n(c(h(e(s)?)?)?)?)?)?)?"
+PUSH_REFS+="|--de(l(e(t(e)?)?)?)?|-[vqnfu46]*d[a-zA-Z46]*)${PUSH_REFS_END}"
+PUSH_REFS+="|[+]?:([^;&|[:space:]]|${WORD_END})|([^-;&|[:space:]][^;&|[:space:]]*)?[*])"
+PUSH_CLUSTER="push([^;&|]*)[[:space:]]-[vqndu46]*f[a-zA-Z46]*${PUSH_REFS_END}"
+# After a backtick, only in the normalized copies: there a quoted or escaped backtick is `_`, so
+# one that is left starts a command.
+NORM_TEXT=${CMD_WORDS}$'\n'${CMD_AMP}
+TICK_GIT="\`[[:space:]]*${GIT_CMD}"
+matches_start() {
+    matches_code "${GIT_START_RE}($1)" || grep -qiE "${TICK_GIT}($1)" <<<"${NORM_TEXT}"
+}
+# A comment after a plain push, and the text arguments of one plain gh command, are not arguments
+# of a push. Only for a whole command on one line where bash expands and runs nothing else.
+push_text_only() {
+    local word='[A-Za-z0-9_./:@,=+-]+' sq="'" re
+    re="^git push( +${word})* +#"
+    if [[ "${ORIG_CMD}" != *[$'\n\r']* && "${ORIG_CMD}" =~ ${re} ]]; then
+        ! grep -qiE "${GIT_START_RE}(${PUSH_REFS}|${PUSH_CLUSTER})" <<<"${ORIG_CMD%%#*}"
+        return
+    fi
+    re="^gh (pr|issue) (create|edit|comment)( +(${word}|\"[^\"\$\`\\]*\"|${sq}[^${sq}]*${sq}))*\$"
+    [[ "${ORIG_CMD}" != *[$'\n\r']* && "${ORIG_CMD}" =~ ${re} ]]
+}
 FETCH_TO_SHELL_RE='(curl|wget|iwr|irm|invoke-webrequest|invoke-restmethod)[^|]*[|][[:space:]]*'
 FETCH_TO_SHELL_RE+="(bash|sh|zsh|iex|invoke-expression)${WORD_END}"
 
 # What `git submodule foreach` runs, as command lines of their own with and without quotes.
 # Only for a command or shell string that runs git submodule, not for text that mentions it.
+# A string left open at the line end goes on over the next lines until it closes, and a `\n` in the
+# rest of a line right after `foreach $'` is read as a line end (no other escape is decoded here). A
+# nested foreach is read again from its own start. A fifth foreach on a line fails, which blocks the
+# command, so a long one stays cheap; each line is printed once.
 foreach_tail() {
-    awk -v BINMODE=3 '
+    awk -v BINMODE=3 -v sq="'" -v dq='"' '
+function out(x, esc,    t) {
+    if ((esc, x) in seen) return
+    seen[esc, x] = 1
+    print x
+    t = x
+    gsub(/["\047]/, "", t)
+    print t
+    if (esc && gsub(/\\n/, "\n", x)) print x
+}
+# The quote still open after x, given the one open before it.
+function quote_after(x, q,    i, n, c) {
+    n = length(x)
+    for (i = 1; i <= n; i++) {
+        c = substr(x, i, 1)
+        if (c == "\\" && q != sq) i++
+        else if (q == "" && (c == sq || c == dq)) q = c
+        else if (c == q) q = ""
+    }
+    return q
+}
 BEGIN {
-    r = "[0-9]*[<>&]+[ \t]*[^ \t;&|]+"
+    r = "([0-9]*|[{][A-Za-z_][A-Za-z0-9_]*[}])[<>&]+[|]?[ \t]*[^ \t;&|]+"
     a = "[A-Za-z_][A-Za-z0-9_]*=[^ \t;&|]*"
-    re = "submodule(--helper)?([ \t]+(-[^ \t;&|]*|" r "|" a "))*[ \t]+[\"\047]?foreach[\"\047]?"
-    re = re "([ \t]+(-[^ \t;&|]*|" r "|" a "))*[ \t]+[\"\047]?"
+    re = "submodule(--helper)?([ \t]+(-[^ \t;&|]*|" r "|" a "))*[ \t]+[$]?[\"\047]?foreach[\"\047]?"
+    re = re "([ \t]+(-[^ \t;&|]*|" r "|" a "))*[ \t]+[$]?[\"\047]?"
 }
 {
-    while (match($0, re)) {
-        $0 = substr($0, RSTART + RLENGTH); print
-        t = $0; gsub(/["\047]/, "", t); print t
+    if (open != "") { out($0, 0); open = quote_after($0, open) }
+    else if ($0 ~ re) open = quote_after($0, "")
+    for (k = 0; match($0, re); k++) {
+        if (k == 4) exit 1
+        if (open == "") open = quote_after(substr($0, RSTART), "")
+        esc = substr($0, RSTART + RLENGTH - 2, 2) == "$" sq
+        $0 = substr($0, RSTART + RLENGTH)
+        out($0, esc)
     }
 }'
 }
 FOREACH_TEXT=""
-if matches_flags "${GIT_START_RE}submodule"; then
+if matches_flags "${GIT_START_RE}submodule" || grep -qiE "${TICK_GIT}submodule" <<<"${NORM_TEXT}"; then
     FOREACH_TEXT=$(foreach_tail <<<"${FLAGS_TEXT}") || block "Could not read the command."
     MATCH_TEXT+=$'\n'"${FOREACH_TEXT}"
     CODE_TEXT+=$'\n'"${FOREACH_TEXT}"
@@ -832,11 +882,11 @@ if matches "${FETCH_TO_SHELL_RE}"; then
     block "Do not pipe downloaded scripts directly into a shell."
 fi
 
-if matches_code "${PUSH_REFS_RE}"; then
+if matches_start "${PUSH_REFS}" && ! push_text_only; then
     block "Do not push all branches or delete a remote branch unless the user explicitly requested it."
 fi
 
-if matches "${PUSH_FORCE_RE}" || matches_code "${PUSH_CLUSTER_RE}"; then
+if matches "${PUSH_FORCE_RE}" || { matches_start "${PUSH_CLUSTER}" && ! push_text_only; }; then
     block "Do not force-push unless the user explicitly requested it."
 fi
 
@@ -896,7 +946,7 @@ if { matches "${GIT_CONFIG_ENV}" || matches_code "${GIT_CONFIG_ENV}" ||
     block "Do not set clean.requireForce or a shell alias for one git command; ask the user."
 fi
 
-if grep -qiE "${INNER_GIT_RE}" <<<"${FOREACH_TEXT}"; then
+if grep -qiE "${INNER_GIT_RE}|${SEGMENT_START}(${SHELL_STRING_GIT})" <<<"${FOREACH_TEXT}"; then
     block "This git command is forbidden by the exec-policy rules, also in git submodule foreach."
 fi
 
