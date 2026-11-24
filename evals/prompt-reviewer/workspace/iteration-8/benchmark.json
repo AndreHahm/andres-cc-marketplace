@@ -1,0 +1,13 @@
+{
+  "iteration": 8,
+  "run_date": "2026-11-24",
+  "configurations": [
+    "with_skill"
+  ],
+  "scope": "new evals 11-13 (personal data in user, claude and codex records) plus re-runs of 1 and 4 after the personal-data check moved out of the import review; no baseline arm; evals 2, 3 and 5-10 not re-run",
+  "with_skill": {
+    "passed": 20,
+    "total": 20,
+    "pass_rate": 1.0
+  }
+}

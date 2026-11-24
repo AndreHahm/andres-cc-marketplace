@@ -8,9 +8,8 @@ Every subcommand prints one JSON object on stdout and exits 0 (ok) or 1 (not ok)
 library only.
 
 Usage: plib_catalog_validate.py [--root PATH] <subcommand> [args]
-Subcommands: validate, show, hash, screen, init, new-id, draft, update-draft, register, discard-
-orphan,
-             record-verification, activate, deactivate, finalize
+Subcommands: validate, show, review-record, hash, screen, init, new-id, draft, update-draft,
+             register, discard-orphan, record-verification, activate, deactivate, finalize
 """
 
 from __future__ import annotations
@@ -176,7 +175,14 @@ SECRET_PATTERNS = (
     *_TOKEN_SHAPES,
     ("pem_private_key_block", re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----")),
     # Shapes beyond the analysis-kit list: this list diverges on purpose, see the R20 note above.
-    ("url_embedded_credentials", re.compile(r"\b[a-z][a-z0-9+.-]*://[^/\s:@]+:[^/\s@]+@")),
+    # The lookbehind starts a match only at the start of a scheme-character run: a long dotted run
+    # (a.a.a...) would otherwise be rescanned from every word boundary, which is quadratic. The run
+    # may open with digits or punctuation before the scheme letter, so "1.https://u:p@h" (a list
+    # item with no space) or "-https://u:p@h" is still caught.
+    (
+        "url_embedded_credentials",
+        re.compile(r"(?<![a-z0-9+.-])[0-9+.-]*[a-z][a-z0-9+.-]*://[^/\s:@]+:[^/\s@]+@"),
+    ),
     (
         "key_value_secret",
         re.compile(
@@ -197,6 +203,32 @@ SECRET_PATTERNS = (
     (
         "home_directory_path",
         re.compile(r"(?:[A-Za-z]:[\\/]Users[\\/][^\\/\s]+|/home/[^/\s]+|/Users/[^/\s]+)"),
+    ),
+    # The only personal data screened besides home paths; phone shapes are left to the reviewer,
+    # because digit patterns also hit dates, versions and IDs. The lookbehind starts a match only at
+    # the start of a local-part run, so a long run with no "@" is scanned once, not quadratically.
+    # The domain must end where no label character or ".label" follows, so the engine
+    # cannot retry a shorter domain to dodge an exemption. Not matched: RFC 2606 example domains
+    # (placeholders, never a person), and a git SSH remote, git@host:path (git@github.com:org/repo,
+    # git@host.com:project.git) or ssh://git@host/path (also git+ssh://), with or without a DNS
+    # root dot after the host. Only the local part "git"
+    # is exempt: any other user@host:path or ssh://user@host/path is screened, so a suffix such as
+    # ":/x" or ":x.git" cannot hide a real address. ASCII addresses only
+    # (a punycode xn-- ending is ASCII).
+    (
+        "email_address",
+        re.compile(
+            r"(?<![A-Za-z0-9._%+-])(?!git@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.?:[^\s@])"
+            r"(?!(?<=ssh://)git@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.?/[^\s@])"
+            r"[A-Za-z0-9._%+-]+@"
+            r"(?!(?:[A-Za-z0-9-]+\.)*(?i:example\.(?:com|net|org))(?![A-Za-z0-9-]|\.[A-Za-z0-9]))"
+            r"[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*"
+            r"\.(?!(?i:example|test|invalid|localhost)(?![A-Za-z0-9-]|\.[A-Za-z0-9]))"
+            # "--..." covers a punycode xn-- ending; each tail is also a dodge glued to an address
+            r"[A-Za-z]{2,}(?:--[A-Za-z0-9-]*|-)?(?:\.[0-9]+)*"
+            r"(?![A-Za-z0-9-]|\.[A-Za-z0-9])",
+            re.ASCII,
+        ),
     ),
 )
 
@@ -230,6 +262,11 @@ def _parse_scalar(raw: str):
     return raw
 
 
+def _shown_key(key: str) -> str:
+    """A key name for an error message, withheld when it looks like a secret itself."""
+    return "(name withheld)" if screen_text(key) else key
+
+
 def parse_yaml(text: str) -> dict:
     """Parse the YAML subset this plugin writes: scalars, one-level maps, lists of scalars."""
     data: dict = {}
@@ -245,7 +282,7 @@ def parse_yaml(text: str) -> dict:
                 raise CatalogError("unparseable line in frontmatter or catalog")
             key, rest = m.group(1), m.group(2)
             if key in data:
-                raise CatalogError(f"duplicate key: {key}")
+                raise CatalogError(f"duplicate key: {_shown_key(key)}")
             data[key] = _parse_scalar(rest) if rest != "" else None
         else:
             if key is None:
@@ -254,18 +291,18 @@ def parse_yaml(text: str) -> dict:
                 if data[key] is None:
                     data[key] = []
                 if not isinstance(data[key], list):
-                    raise CatalogError(f"mixed list and value under {key}")
+                    raise CatalogError(f"mixed list and value under {_shown_key(key)}")
                 data[key].append(_parse_scalar(body[2:]))
             else:
                 m = re.fullmatch(r"([A-Za-z_][A-Za-z0-9_]*):\s*(.*)", body)
                 if not m:
-                    raise CatalogError(f"unparseable nested line under {key}")
+                    raise CatalogError(f"unparseable nested line under {_shown_key(key)}")
                 if data[key] is None:
                     data[key] = {}
                 if not isinstance(data[key], dict):
-                    raise CatalogError(f"mixed map and value under {key}")
+                    raise CatalogError(f"mixed map and value under {_shown_key(key)}")
                 if m.group(1) in data[key]:
-                    raise CatalogError(f"duplicate key: {key}.{m.group(1)}")
+                    raise CatalogError(f"duplicate key: {_shown_key(key)}.{_shown_key(m.group(1))}")
                 data[key][m.group(1)] = _parse_scalar(m.group(2))
     return data
 
@@ -342,15 +379,17 @@ def _is_hidden(ch: str) -> bool:
     return cp in HIDDEN_EXTRA or category in HIDDEN_CATEGORIES
 
 
-def hidden_characters(text: str) -> tuple[list[dict], bool]:
+def hidden_characters(text: str, one_line: bool = False) -> tuple[list[dict], bool]:
     """Characters a rendered preview does not show or shows as something else (format and control
     characters, variation selectors, private-use or unassigned code points, separators, non-ASCII
     spaces, blank-looking letters, invisible combining marks), by 1-based line, 1-based column and
     code point, plus whether the list was cut at MAX_HIDDEN_REPORTED. The user
     may otherwise approve text that reads differently from what runs. Reported, not rejected: an
-    emoji joiner or variation selector is legitimate."""
+    emoji joiner or variation selector is legitimate. With one_line, a line break is reported too
+    (line 1, its column in the whole text)."""
     found = []
-    for lineno, line in enumerate(normalize_text(text).split("\n"), start=1):
+    lines = [text] if one_line else normalize_text(text).split("\n")
+    for lineno, line in enumerate(lines, start=1):
         for column, ch in enumerate(line, start=1):
             if _is_hidden(ch):
                 if len(found) >= MAX_HIDDEN_REPORTED:
@@ -366,8 +405,47 @@ def hidden_characters(text: str) -> tuple[list[dict], bool]:
     return found, False
 
 
+def hidden_metadata(meta: dict) -> tuple[list[dict], bool]:
+    """The same report for the metadata the user approves beside the text, with the field's name."""
+    found: list[dict] = []
+    for field in (
+        "name",
+        "area",
+        "short_description",
+        "prerequisites",
+        "boundaries",
+        "references",
+        "attachments",
+        "source_ref",
+    ):
+        value = meta.get(field)
+        values = list(value.values()) if isinstance(value, dict) else value
+        for item in values if isinstance(values, list) else [values]:
+            # a line break could show as a further field or overwrite the line before it
+            entries, cut = hidden_characters("" if item is None else str(item), one_line=True)
+            for entry in entries:
+                if len(found) >= MAX_HIDDEN_REPORTED:
+                    return found, True
+                found.append({"field": field, **entry})
+            if cut:
+                return found, True
+    return found, False
+
+
 def text_hash(text: str) -> str:
     return hashlib.sha256(normalize_text(text).encode("utf-8")).hexdigest()
+
+
+def _comment_lines(text: str) -> str:
+    """The full-line comments parse_yaml skips (same line split and same test), for the screen."""
+    return "\n".join(ln for ln in text.split("\n") if ln.lstrip().startswith("#"))
+
+
+def _comment_hits(text: str) -> str:
+    """The names of the screen patterns a comment matches, never its text. Screened as written and
+    without its leading `#`, so a commented-out assignment matches the line-anchored patterns."""
+    bare = "\n".join(re.sub(r"^[\s#]+", "", ln) for ln in text.splitlines())
+    return ", ".join(sorted({h["pattern"] for h in screen_text(text + "\n" + bare)}))
 
 
 def split_record(raw: str) -> tuple[dict, str]:
@@ -380,7 +458,14 @@ def split_record(raw: str) -> tuple[dict, str]:
             end = len(raw) - 4
         else:
             raise CatalogError("frontmatter is not closed")
-    return parse_yaml(raw[4 : end + 1]), raw[end + 5 :]
+    meta = parse_yaml(raw[4 : end + 1])
+    # reserved for this script's own keys (_body, _path): the field check and the screen skip them
+    if any(key.startswith("_") for key in meta):
+        raise CatalogError("a frontmatter key starts with an underscore")
+    comments = _comment_lines(raw[4 : end + 1])
+    if comments:
+        meta["_comment"] = comments
+    return meta, raw[end + 5 :]
 
 
 def read_record(path: Path) -> dict:
@@ -440,10 +525,13 @@ def _write_atomic(path: Path, text: str) -> None:
         raise
 
 
-def write_record(path: Path, meta: dict) -> None:
+def record_text(meta: dict) -> str:
     clean = {k: v for k, v in meta.items() if not k.startswith("_")}
-    text = "---\n" + dump_yaml(clean, FIELD_ORDER) + "---\n\n" + meta["_body"] + "\n"
-    _write_atomic(path, text)
+    return "---\n" + dump_yaml(clean, FIELD_ORDER) + "---\n\n" + meta["_body"] + "\n"
+
+
+def write_record(path: Path, meta: dict) -> None:
+    _write_atomic(path, record_text(meta))
 
 
 def nonblank_lines(text: str) -> int:
@@ -473,7 +561,11 @@ def hash_problems(meta: dict) -> list[str]:
             problems.append(f"verification.{kind} does not match the current prompt text")
     for kind in ver:
         if kind not in ("quality", "import"):
-            problems.append(f"unknown verification field: {kind}")
+            problems.append(f"unknown verification field: {_shown_key(kind)}")
+        elif kind not in required and not (
+            isinstance(ver[kind], str) and HASH_RE.fullmatch(ver[kind])
+        ):
+            problems.append(f"verification.{kind} is not a SHA-256 hex digest")
     return problems
 
 
@@ -496,7 +588,7 @@ def validate_record(meta: dict, version: int) -> list[str]:
             errs.append(f"missing required field: {f}")
     for f in meta:
         if not f.startswith("_") and f not in required and f not in optional:
-            errs.append(f"unknown field: {f}")
+            errs.append(f"unknown field: {_shown_key(f)}")
     if errs:
         return errs
     for f in ("name", "area", "slug", "internal_id", "short_description"):
@@ -541,7 +633,8 @@ def validate_record(meta: dict, version: int) -> list[str]:
         if not isinstance(ref, dict) or any(not ref.get(k) for k in keys):
             errs.append(f"source_ref requires {' and '.join(keys)} for origin {meta['origin']}")
         elif set(ref) - set(keys):
-            errs.append("source_ref has unknown keys: " + ", ".join(sorted(set(ref) - set(keys))))
+            unknown = sorted(_shown_key(k) for k in set(ref) - set(keys))
+            errs.append("source_ref has unknown keys: " + ", ".join(unknown))
     elif ref is not None:
         errs.append("source_ref is only allowed for origin session or web")
     if nonblank_lines(meta["_body"]) == 0:
@@ -550,6 +643,16 @@ def validate_record(meta: dict, version: int) -> list[str]:
         errs.append(f"prompt_text exceeds {MAX_NONBLANK_LINES} nonblank lines")
     if meta["status"] in ("active", "inactive"):
         errs.extend(hash_problems(meta))
+    elif meta.get("verification") is not None:
+        ver = meta["verification"]
+        if not isinstance(ver, dict):
+            errs.append("verification must be a map of hashes")
+        else:  # a hash of older text is fine here; any other text would be unscreened
+            for kind, stored in ver.items():
+                if kind not in ("quality", "import"):
+                    errs.append(f"unknown verification field: {_shown_key(kind)}")
+                elif not isinstance(stored, str) or not HASH_RE.fullmatch(stored):
+                    errs.append(f"verification.{kind} is not a SHA-256 hex digest")
     return errs
 
 
@@ -823,17 +926,21 @@ def load_catalog(root: Path) -> tuple[dict, dict, list[str]]:
     if not cat_path.is_file():
         return {}, {}, ["catalog.yaml is missing"]
     try:
-        cat = parse_yaml(cat_path.read_text(encoding="utf-8-sig"))
+        cat_text = cat_path.read_text(encoding="utf-8-sig")
+        cat = parse_yaml(cat_text)
     except CatalogError as exc:
         return {}, {}, [f"catalog.yaml: {exc}"]
+    hits = _comment_hits(_comment_lines(cat_text))
+    if hits:
+        errs.append(f"catalog.yaml: a comment matches the screen ({hits})")
     version = cat.get("catalog_version")
     if version not in SUPPORTED_CATALOG_VERSIONS:
-        return cat, {}, [f"unsupported catalog_version: {version!r}"]
+        return cat, {}, errs + [f"unsupported catalog_version: {version!r}"]
     if cat.get("scope") not in SUPPORTED_SCOPES:
         errs.append(f"unsupported scope: {cat.get('scope')!r}")
     for f in cat:
         if f not in CATALOG_FIELDS[version]:
-            errs.append(f"catalog.yaml: unknown field: {f}")
+            errs.append(f"catalog.yaml: unknown field: {_shown_key(f)}")
     if not isinstance(cat.get("snapshot_id"), str) or not cat.get("snapshot_id"):
         errs.append("catalog.yaml: snapshot_id is missing")
     listed = cat.get("records")
@@ -865,6 +972,9 @@ def load_catalog(root: Path) -> tuple[dict, dict, list[str]]:
         meta["_path"] = rel
         problems = validate_record(meta, version)
         errs.extend(f"{rel}: {p}" for p in problems)
+        hits = _comment_hits(meta.get("_comment", ""))
+        if hits:
+            errs.append(f"{rel}: a frontmatter comment matches the screen ({hits})")
         records[rel] = meta
     errs.extend(check_lineages(root, records))
     return cat, records, errs
@@ -915,8 +1025,18 @@ def check_lineages(root: Path, records: dict) -> list[str]:
         if entry.is_dir():
             for f in sorted(entry.glob("*.md")):
                 rel = f"{entry.name}/{f.name}"
-                if rel not in listed:
+                if rel in listed:
+                    continue
+                # prompt-library puts an unlisted path into a command: only a name that is plain
+                # text for a shell is reported, any other file has to be removed by hand.
+                if SLUG_RE.fullmatch(entry.name) and ID_RE.fullmatch(f.name.removesuffix(".md")):
                     errs.append(f"unlisted record file on disk: {rel}")
+                else:
+                    folder = entry.name if SLUG_RE.fullmatch(entry.name) else "the catalog"
+                    errs.append(
+                        f"an unlisted file in {folder} is not named <slug>/<internal_id>.md; "
+                        "remove it by hand"
+                    )
     return errs
 
 
@@ -963,9 +1083,14 @@ def _stray_temp_files(root: Path) -> list[str]:
 def cmd_validate(args) -> dict:
     info, root, cat, records = _load(args)
     for rel in _stray_temp_files(root):
+        # a name with shell meaning is withheld: the message asks for a delete
+        shown = rel if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._/-]*", rel) else "with an odd name"
         info["warnings"].append(
-            f"stray temp file {rel} (appears left by an interrupted write; check, then delete)"
+            f"stray temp file {shown} (appears left by an interrupted write; check, then delete)"
         )
+    for rel, meta in records.items():
+        if meta.get("_comment"):
+            info["warnings"].append(f"{rel} has a frontmatter comment (the next write drops it)")
     info["ok"] = not info["errors"]
     info["catalog_version"] = cat.get("catalog_version")
     info["records"] = [summarize(m) for m in records.values()]
@@ -997,6 +1122,7 @@ def cmd_show(args) -> dict:
             "prerequisites": m.get("prerequisites"),
             "boundaries": m.get("boundaries"),
             "references": m.get("references"),
+            "attachments": m.get("attachments"),
             "source_ref": m.get("source_ref"),
             "prompt_text": m["_body"],
             "text_hash": text_hash(m["_body"]),
@@ -1007,10 +1133,122 @@ def cmd_show(args) -> dict:
         entry["hidden_characters"], entry["hidden_characters_truncated"] = hidden_characters(
             m["_body"]
         )
+        entry["hidden_metadata"], entry["hidden_metadata_truncated"] = hidden_metadata(m)
+    return info
+
+
+def _is_link(path: Path) -> bool:
+    """A symbolic link (any platform), or on Windows any reparse point: a junction, a mount point, a
+    cloud placeholder. Read with lstat, so it works on every Python version and never follows the
+    link. Fails closed: an entry whose attributes cannot be read counts as a link."""
+    try:
+        st = os.lstat(path)
+    except FileNotFoundError:
+        return False  # nothing there to follow; the is_file check refuses it
+    except OSError:
+        return True
+    reparse = getattr(st, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT
+    return stat.S_ISLNK(st.st_mode) or bool(reparse)
+
+
+def _refuse_links(root: Path, parts: list[str]) -> Path:
+    current = root
+    for part in parts:
+        current = current / part
+        if _is_link(current):
+            raise CatalogError(f"the record path goes through a link or junction: {part}")
+    return current
+
+
+def _read_once(root: Path, parts: list[str]) -> str:
+    """The text of one record file, read from a single open handle.
+
+    The handle is opened first and checked afterwards, so a path swapped before or after the open
+    cannot substitute another file's text: the file it names now must be the one that was opened,
+    with no link on the way and no second hard link.
+    """
+    path = _refuse_links(root, parts)
+    flags = os.O_RDONLY
+    for name in ("O_BINARY", "O_NOFOLLOW", "O_NONBLOCK"):  # each exists on some platforms only
+        flags |= getattr(os, name, 0)
+    try:
+        fd = os.open(path, flags)
+    except OSError as exc:  # a folder, a missing file, a link swapped in (O_NOFOLLOW)
+        raise CatalogError("not a record file inside the catalog root") from exc
+    st = os.fstat(fd)
+    if not stat.S_ISREG(st.st_mode):  # POSIX opens a folder; os.fdopen would refuse it and leak fd
+        os.close(fd)
+        raise CatalogError("not a record file inside the catalog root")
+    with os.fdopen(fd, "rb") as handle:
+        if st.st_nlink != 1:
+            raise CatalogError("the record file has more than one hard link")
+        data = handle.read(MAX_INPUT_BYTES + 1)
+        _refuse_links(root, parts)
+        now = os.lstat(path)
+        if not contained(path, root) or not os.path.samestat(st, now) or now.st_nlink != 1:
+            raise CatalogError("the record file changed while it was being read")
+    if len(data) > MAX_INPUT_BYTES:
+        raise CatalogError("the file is too large")
+    text = data.decode("utf-8-sig")
+    return text.replace("\r\n", "\n").replace("\r", "\n")
+
+
+def _review_chars(text: str) -> int:
+    return len(json.dumps(text, ensure_ascii=False))
+
+
+def _need_reviewable(text: str, spare: int = 0) -> None:
+    if _review_chars(text) - spare > MAX_REVIEW_CHARS:
+        raise CatalogError("the record is too long to review in one piece; shorten it")
+
+
+def cmd_review_record(args) -> dict:
+    """Return one listed record's text for prompt-reviewer, which has no tool to read a file.
+
+    The returned text is read once, from a handle that is checked after it is opened, and must match
+    the valid record a separate catalog load lists. No path is returned. `boundary` contains the
+    text's own hash, so the text cannot contain the line that closes it, and comes last, so a
+    cut-off output has none.
+    """
+    info = resolve_root(getattr(args, "root", None))
+    root = Path(info["catalog_root"])
+    rel = args.path.replace("\\", "/")
+    parts = rel.split("/")
+    if (
+        rel.startswith("/")
+        or ":" in rel
+        or "\x00" in rel
+        or not rel.endswith(".md")
+        or any(part in ("", ".", "..") or part != part.rstrip(". ") for part in parts)
+    ):
+        raise CatalogError("not a record path relative to the catalog root")
+    text = _read_once(root, parts)
+    _, records, info["errors"] = load_catalog(root)
+    listed = {key.replace("\\", "/"): meta for key, meta in records.items()}
+    if rel not in listed:
+        raise CatalogError("not a record listed in the catalog")
+    _need_ok(info)
+    meta, body = split_record(text)
+    meta["_body"], meta["_path"] = normalize_text(body), listed[rel]["_path"]
+    if _canonical(meta) != _canonical(listed[rel]):
+        raise CatalogError("the record file changed while it was being read")
+    _assert_clean(meta)
+    # The hashes recorded since filing do not count, or a draft that could be filed could not be
+    # reviewed again.
+    bare = {key: value for key, value in meta.items() if key != "verification"}
+    _need_reviewable(text, _review_chars(record_text(meta)) - _review_chars(record_text(bare)))
+    info["ok"] = True
+    info["origin"] = meta["origin"]
+    info["text_hash"] = text_hash(body)
+    info["record_lines"] = text.rstrip().count("\n") + 1
+    info["record_text"] = text
+    info["boundary"] = "record-" + hashlib.sha256(text.encode("utf-8")).hexdigest()
     return info
 
 
 MAX_INPUT_BYTES = 262144
+# A longer output can be cut off before the skill sees all of it, and a partial text is no review.
+MAX_REVIEW_CHARS = 20000
 
 
 def _inside(root: Path, path: Path) -> Path:
@@ -1057,9 +1295,15 @@ def screen_text(text: str) -> list[dict]:
     # A lone CR ends a line too, or a line-anchored pattern (dotenv_secret_line) would miss an
     # assignment that follows one.
     for lineno, line in enumerate(re.split(r"\r\n|\r|\n", text), start=1):
+        # Each piece between other line separators (U+2028, NEL, form feed) too, for that reason,
+        # and still the whole line, for a pattern that spans one. The line number stays the file's.
+        pieces = line.splitlines()
+        texts = [line, *pieces] if pieces != [line] else [line]
         for name, pattern in SECRET_PATTERNS:
-            if pattern.search(line):
-                found.append({"line": lineno, "pattern": name})
+            for piece in texts:
+                if pattern.search(piece):
+                    found.append({"line": lineno, "pattern": name})
+                    break
     return found
 
 
@@ -1088,7 +1332,8 @@ def _assert_clean(meta: dict) -> None:
         if hits:
             names = ", ".join(sorted({h["pattern"] for h in hits}))
             raise CatalogError(
-                f"possible secret or personal data found ({names}); remove it and try again"
+                f"possible secret, email address or home-directory path found ({names}); "
+                "remove it and try again"
             )
 
 
@@ -1220,6 +1465,7 @@ def _scratch_record(path_text: str, root: Path, version: int) -> dict:
         raise CatalogError("; ".join(errs[:4]))
     meta.pop("verification", None)  # a new or changed draft starts unverified
     _assert_clean(meta)
+    _need_reviewable(record_text(meta))
     return meta
 
 
@@ -1257,6 +1503,21 @@ def cmd_draft(args) -> dict:
     return info
 
 
+def _recorded_hashes(meta: dict) -> dict:
+    """The verification entries this script records; anything else in the map is dropped."""
+    ver = meta.get("verification")
+    return {
+        kind: value
+        for kind, value in (ver.items() if isinstance(ver, dict) else ())
+        if kind in ("quality", "import") and isinstance(value, str) and HASH_RE.fullmatch(value)
+    }
+
+
+def _canonical(value) -> str:
+    """A field value as text, so 1 and true (equal in Python) count as different."""
+    return json.dumps(value, sort_keys=True)
+
+
 def cmd_update_draft(args) -> dict:
     """Replace an existing draft's content from a scratch file (an approved rewrite or an in-place
     edit)."""
@@ -1270,10 +1531,16 @@ def cmd_update_draft(args) -> dict:
         )
     meta = _scratch_record(args.file, root, cat["catalog_version"])
     for field in ("internal_id", "slug", "version", "previous_id", "origin", "source_ref"):
-        if meta.get(field) != current.get(field):
+        if _canonical(meta.get(field)) != _canonical(current.get(field)):
             raise CatalogError(f"{field} cannot change when updating a draft")
-    if text_hash(meta["_body"]) == text_hash(current["_body"]) and current.get("verification"):
-        meta["verification"] = current["verification"]
+    unchanged = all(
+        _canonical(meta.get(f)) == _canonical(current.get(f))
+        for f in {*meta, *current}
+        if not f.startswith("_") and f != "verification"
+    ) and text_hash(meta["_body"]) == text_hash(current["_body"])
+    # a changed text or any changed field (the review covers both) starts unverified again
+    if unchanged and _recorded_hashes(current):
+        meta["verification"] = _recorded_hashes(current)
     write_record(_inside(root, root / current["_path"]), meta)
     info.update(ok=True, internal_id=meta["internal_id"], text_hash=text_hash(meta["_body"]))
     return info
@@ -1305,10 +1572,9 @@ def cmd_register(args) -> dict:
     if problems:
         raise CatalogError("; ".join(problems[:4]))
     _assert_clean(meta)
-    if (
-        meta.pop("verification", None) is not None
-    ):  # verification is recorded by record-verification only
-        write_record(path, meta)
+    meta.pop("verification", None)  # verification is recorded by record-verification only
+    _need_reviewable(record_text(meta))
+    write_record(path, meta)  # the canonical form: a comment in the file was never screened
     write_catalog(root, cat, [m["_path"] for m in records.values()] + [rel])
     info["ok"] = True
     return info
@@ -1327,13 +1593,16 @@ def cmd_discard_orphan(args) -> dict:
         raise CatalogError(f"{rel} is not an unlisted record file")
     parts = rel.split("/")
     path = _inside(root, root / parts[0] / parts[1])
+    reason = ""
     try:
         meta = read_record(path)
-    except (CatalogError, OSError, ValueError):
+    except CatalogError as exc:
+        meta, reason = {}, f" ({exc})"
+    except (OSError, ValueError):
         meta = {}
     if meta.get("status") != "draft":
         raise CatalogError(
-            "only an unlisted draft can be discarded; this file is not a readable draft"
+            f"only an unlisted draft can be discarded; this file is not a readable draft{reason}"
         )
     path.unlink()
     with contextlib.suppress(OSError):
@@ -1355,7 +1624,7 @@ def cmd_record_verification(args) -> dict:
         raise CatalogError("an import hash is only recorded for session or web origin")
     _check_expected(meta, args.expect_sha256)
     _assert_clean(meta)
-    ver = dict(meta.get("verification") or {})
+    ver = _recorded_hashes(meta)
     ver[args.kind] = text_hash(meta["_body"])
     meta["verification"] = ver
     write_record(_inside(root, root / meta["_path"]), meta)
@@ -1480,6 +1749,10 @@ def build_parser() -> argparse.ArgumentParser:
     s = sub.add_parser("show")
     s.add_argument("slug")
     s.add_argument("--history", action="store_true")
+    rp = sub.add_parser("review-record")
+    rp.add_argument(
+        "path", help="record path relative to the catalog root, e.g. <slug>/<internal_id>.md"
+    )
     h = sub.add_parser("hash")
     h.add_argument("file", help="a file inside the catalog root or the system temp directory")
     sc = sub.add_parser("screen")
@@ -1521,6 +1794,7 @@ def build_parser() -> argparse.ArgumentParser:
 COMMANDS = {
     "validate": cmd_validate,
     "show": cmd_show,
+    "review-record": cmd_review_record,
     "hash": cmd_hash,
     "screen": cmd_screen,
     "init": cmd_init,

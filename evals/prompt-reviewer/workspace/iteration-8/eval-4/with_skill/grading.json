@@ -1,0 +1,28 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "run_date": "2026-11-24",
+  "method": "Dry run 2026-11-24 after the personal-data check became an all-origins step: a fresh general-purpose agent followed the worktree's agents/prompt-reviewer.md with Read only, graded by the operator's session. 'Files read' is the agent's own report: the agent file and the fixture only.",
+  "assertions_evaluated": [
+    {
+      "text": "No Critical or Major finding is reported",
+      "passed": true,
+      "evidence": "'No findings.'"
+    },
+    {
+      "text": "The import review is not run for user origin",
+      "passed": true,
+      "evidence": "'The import review does not apply to this origin.'"
+    },
+    {
+      "text": "The output states what was checked, and either a rewrite diff within 50 nonblank lines or 'No rewrite proposed'",
+      "passed": true,
+      "evidence": "Lists quality, personal data, origin and purpose as checked; 'No rewrite proposed'"
+    },
+    {
+      "text": "The output ends with per-severity counts and a line stating nothing was approved, activated or written",
+      "passed": true,
+      "evidence": "Ends 'Findings: Critical 0, Major 0, Minor 0.' and 'Nothing was approved, activated or written.'"
+    }
+  ]
+}

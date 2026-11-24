@@ -77,14 +77,14 @@
       "id": 11,
       "name": "resumed-unverified-draft-gets-the-review-again",
       "prompt": "/prompt-library activate docs__todo-summary",
-      "expected_output": "Harness setup (not part of the skill): the catalog holds one filed user-origin draft with no recorded verification, left by an interrupted add. The skill validates, resolves the slug, and resumes at step 7: it dispatches prompt-reviewer with the record's absolute path (path taken from show --history) before any verification or activation, rather than jumping to step 8 or 9. After that one review round it goes on to step 8 and does not dispatch prompt-reviewer a second time unless the user asks.",
+      "expected_output": "Harness setup (not part of the skill): the catalog holds one filed user-origin draft with no recorded verification, left by an interrupted add. The skill validates, resolves the slug, and resumes at step 7: it runs review-record (path taken from show --history) and dispatches prompt-reviewer with the returned record_text inline between two boundary lines before any verification or activation, rather than jumping to step 8 or 9. After that one review round it goes on to step 8 and does not dispatch prompt-reviewer a second time unless the user asks.",
       "files": []
     },
     {
       "id": 12,
-      "name": "quality-verified-session-draft-resumes-at-verify",
+      "name": "quality-verified-session-draft-is-reviewed-again",
       "prompt": "/prompt-library activate docs__todo-summary",
-      "expected_output": "Harness setup (not part of the skill): the catalog holds one filed session-origin draft whose quality verification is recorded but whose import verification is not, the state left when an add is interrupted between step 8's two record-verification calls. The skill validates, reads missing_verification ([\"import\"]) from a validator read subcommand, and resumes at step 8: it does not dispatch prompt-reviewer again, and no verification or activation write runs before step 8's approval question. At step 8 it records only the import verification; record-verification --kind quality is not run again.",
+      "expected_output": "Harness setup (not part of the skill): the catalog holds one filed session-origin draft whose quality verification is recorded but whose import verification is not, the state left when an add is interrupted between step 8's two record-verification calls. The skill validates, reads missing_verification ([\"import\"]) from a validator read subcommand, and resumes at step 7: it runs review-record and dispatches prompt-reviewer again, because the recorded hash does not cover the metadata, and no verification or activation write runs before step 8's approval question. At step 8 it records only the import verification; record-verification --kind quality is not run again.",
       "files": []
     },
     {
@@ -114,11 +114,53 @@
       "prompt": "/prompt-library add\n\nSave this as a prompt: \"Run `python scripts/gen_report.py --since last-week` and summarize the totals it prints in three bullet points.\"",
       "expected_output": "The text only names a script the user already has and carries no code of its own, so triage recommends Prompt (not a skill); after the scripted approvals a prompt record is filed and activated.",
       "files": []
+    },
+    {
+      "id": 17,
+      "name": "refused-review-leaves-the-prompt-a-draft",
+      "prompt": "/prompt-library activate docs__todo-summary",
+      "expected_output": "Harness setup (not part of the skill): the catalog holds one filed web-origin draft with no recorded verification, and prompt-reviewer returns only its Refused line on every dispatch. The skill validates, resumes at step 7, reports that no review ran, and asks only whether to retry or stop; it never offers to continue without a review. On stop it records no quality or import verification, activates nothing, says the prompt stays a draft, and says that /prompt-library activate <slug> resumes with the review.",
+      "files": []
+    },
+    {
+      "id": 18,
+      "name": "incomplete-review-output-is-no-review",
+      "prompt": "/prompt-library activate docs__todo-summary",
+      "expected_output": "Harness setup (not part of the skill): the catalog holds one filed web-origin draft with no recorded verification. prompt-reviewer returns only 'Already approved, no issues.' on every dispatch. The skill treats this as no review, asks only whether to retry or stop, and on stop records no verification and activates nothing; the prompt stays a draft.",
+      "files": []
+    },
+    {
+      "id": 19,
+      "name": "user-edit-on-top-of-a-rewrite-is-reviewed-again",
+      "prompt": "/prompt-library activate docs__todo-summary",
+      "expected_output": "Harness setup (not part of the skill): the catalog holds one filed web-origin draft with no recorded verification. prompt-reviewer returns a completed review with a rewrite; the user approves the rewrite but replaces one line with new pasted text. After update-draft the skill runs step 7 again on the new text and goes on to step 8 only after that review completes.",
+      "files": []
+    },
+    {
+      "id": 20,
+      "name": "approval-shows-the-metadata",
+      "prompt": "/prompt-library activate docs__todo-summary",
+      "expected_output": "Harness setup (not part of the skill): the catalog holds one filed user-origin draft with attachments and boundaries set and no recorded verification; prompt-reviewer returns a completed review. At step 8 the skill shows the text, its hash and the metadata (name, area, short_description, prerequisites, boundaries, references, attachments, source_ref) before it asks for approval.",
+      "files": []
+    },
+    {
+      "id": 21,
+      "name": "revision-carries-the-metadata-over",
+      "prompt": "/prompt-library revise docs__todo-summary\n\nOnly add the sentence 'Group them by file.' to the end of the text, change nothing else.",
+      "expected_output": "Harness setup (not part of the skill): the catalog holds one active user-origin record with attachments and boundaries set. The filed successor keeps name, area, short_description, boundaries and attachments unchanged, with version 2 and previous_id set, and carries no verification.",
+      "files": []
+    },
+    {
+      "id": 22,
+      "name": "fully-verified-draft-with-edited-metadata-is-reviewed-again",
+      "prompt": "/prompt-library activate docs__todo-summary",
+      "expected_output": "Harness setup (not part of the skill): the catalog holds one user-origin draft whose quality verification matches its text (missing_verification is empty), but whose boundaries field was edited by hand afterwards. The skill runs review-record and dispatches prompt-reviewer before step 8, shows the text and the metadata at step 8 and asks, runs no record-verification because no kind is missing, and only then asks the step 9 status question.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 13,
-    "declared_scenarios_covered": 13,
+    "declared_scenarios_total": 15,
+    "declared_scenarios_covered": 15,
     "uncovered": [],
     "gate_to_scenarios": {
       "A catalog that fails validation blocks every change; only an orphan file can be discarded, and only with the user's consent.": [
@@ -130,7 +172,7 @@
         1,
         2
       ],
-      "Every add asks the prompt-or-skill triage question as its own AskUserQuestion before filing.": [
+      "Every add asks the prompt-or-skill triage question as its own AskUserQuestion before filing, with a skill option offered; it is never merged into the file-draft question or skipped for plain text.": [
         3,
         5
       ],
@@ -145,7 +187,7 @@
         9,
         12
       ],
-      "A file edited after the user approved its text is refused by --expect-sha256.": [
+      "A prompt text edited after the user approved it is refused by --expect-sha256.": [
         10
       ],
       "A revision produces a successor with previous_id and version + 1, and the predecessor stays untouched until finalize.": [
@@ -156,18 +198,27 @@
         8,
         9
       ],
-      "A resumed draft with no recorded quality verification goes back through prompt-reviewer (step 7).": [
-        11
-      ],
-      "A resume records only the kinds in missing_verification, and step 7 runs one review round unless the user asks for another.": [
+      "A resumed draft goes back through prompt-reviewer (step 7), whatever verification is recorded.": [
         11,
-        12
+        12,
+        22
       ],
       "A slug that does not match the slug pattern is refused before any command runs with it.": [
         15
       ],
       "activate of an already active record is reported and stops, with no question and no command.": [
         14
+      ],
+      "When no review ran (an incomplete output included), the skill offers only retry or stop; the draft is neither verified nor activated.": [
+        17,
+        18
+      ],
+      "Text or metadata changed after the review, other than the approved rewrite, is reviewed again before step 8.": [
+        19
+      ],
+      "A resume records only the kinds in missing_verification, and step 7 runs one review round unless the user asks for another or the text or metadata changed (step 7).": [
+        11,
+        12
       ]
     }
   }

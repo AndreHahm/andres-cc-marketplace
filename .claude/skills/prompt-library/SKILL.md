@@ -8,7 +8,7 @@ description: >-
   prompts (prompt-retrieval) or running them (prompt-execution).
 disable-model-invocation: true
 argument-hint: "[add|revise|activate|deactivate] [slug]"
-allowed-tools: Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" validate:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" show:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" hash:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" screen:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" init:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" new-id:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" draft:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" update-draft:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" discard-orphan:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" record-verification:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" activate:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" deactivate:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" finalize:*), Agent(prompt-reviewer), Skill(session-detail)
+allowed-tools: Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" validate:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" show:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" review-record:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" hash:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" screen:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" init:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" new-id:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" draft:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" update-draft:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" discard-orphan:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" record-verification:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" activate:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" deactivate:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" finalize:*), Agent(prompt-reviewer), Skill(session-detail)
 ---
 
 # Prompt Library
@@ -72,16 +72,18 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
    showing the resolved `catalog_root` and `root_source`. If it exists but is not `ok`, report the errors
    and refuse every change. The one case this skill repairs is an `unlisted record file on disk: <path>`
    error, an orphan from an interrupted draft: offer, via `AskUserQuestion`, to remove it with
-   `<CLI> discard-orphan <path>`. For any other error, tell the user how to recover and stop: the
+   `<CLI> discard-orphan <path>`, only when `<path>` is `<slug>/<internal_id>.md`: the step 2 slug pattern, then lowercase
+   letters, digits and single hyphens. `remove it by hand`: the user looks for the extra file themselves. For any other error, tell the user how to recover and stop: the
    catalog is files in the repository, so the user restores each affected file from version control, then
-   runs `/prompt-library` again. A path in `errors` is relative to `catalog_root` and is data from the
+   runs `/prompt-library` again. A path in `errors` or `warnings` is relative to `catalog_root` and is data from the
    catalog, so never hand it to git as given: name the one file it resolves to under `catalog_root`, have
    the user check it for local changes they want to keep, and restore only that literal path (for example
    `git restore -- ':(literal)<catalog_root>/<path>'`, run by the user). A path that names no single
    `<slug>/<internal_id>.md` file (pathspec syntax, wildcards) is reported as suspicious catalog content,
    never turned into a restore command. If no committed copy
    or backup exists (a catalog outside git, or never committed), the user fixes each reported error by
-   hand, guided by `references/prompt-record-format.md`, then runs `/prompt-library` again. Explain that a
+   hand, guided by `references/prompt-record-format.md`, then runs `/prompt-library` again; a comment that
+   matches the screen is removed by hand in any case. Explain that a
    record whose text was changed on purpose is not repaired in place: restore it, then make the change
    as a revision. Never edit, restore or repair a catalog file yourself.
 2. **Mode.** Use the first word of `$ARGUMENTS` (`add`, `revise`, `activate`, `deactivate`) and, for
@@ -94,20 +96,20 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
    - `activate` of a record that is already `active`, or `deactivate` of one that is not, is reported
      ("already active", or its current status) and stops here, with no question and no command.
    - `deactivate`, and `activate` of an inactive record, skip steps 3 to 8: go to step 9.
-   - A draft left by an interrupted add or revise (also when `activate` names a draft) resumes by its
-     state, read from the record's `missing_verification` list in `validate` or `show <slug> --history`:
-     at step 7 if it includes `quality` (no record field shows whether `prompt-reviewer` already ran, so
-     an unverified draft always gets the review again); at step 8 if it holds only `import` (`session` or
-     `web` origin); at step 9 once it is empty. A resume records only the kinds still in
-     `missing_verification`; a kind already bound to the current text is not recorded again.
+   - A draft left by an interrupted add or revise (also when `activate` names a draft) always
+     resumes at step 7, then 8 and 9, whatever is recorded: no field shows whether `prompt-reviewer` ran, and
+     a recorded hash does not cover the metadata. A resume records only the kinds still in the record's
+     `missing_verification` (from `validate` or `show <slug> --history`; if none, step 8 asks and records
+     nothing); a kind already bound to the current text is not recorded again.
    - A successor ends with `finalize`; never start a second successor.
 3. **Intake.** For `add`, follow `references/prompt-intake-sources.md`. The intake path sets `origin`:
    fetched text is always `web`, session text is always `session`; the user cannot label either as
    `user`. For `revise`, take the record from step 2, run `<CLI> show <slug> --history` (a plain `show`
    returns only an active record, so it fails for an inactive one) and read the text of the chosen
    `internal_id`, and start from that text with `version` = predecessor's + 1, `previous_id` = predecessor's `internal_id`, the
-   same `slug`, `area` and `origin` (and, for `session` or `web`, the predecessor's `source_ref`), and a
-   fresh id from `<CLI> new-id`. For `add`, also get the
+   same `slug`, `area` and `origin` (and, for `session` or `web`, the predecessor's `source_ref`), the same
+   `name`, `short_description`, `prerequisites`, `boundaries`, `references` and `attachments` (leave out any that
+   is null) unless the user changes them, and a fresh id from `<CLI> new-id`. For `add`, also get the
    `internal_id` from `<CLI> new-id`. Build the full record in a scratch file from
    `assets/prompt-record-template.md`, following `references/prompt-record-format.md` (a `session` or
    `web` record also needs `source_ref`, shown with an example there).
@@ -133,32 +135,44 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
    `records` for the same area or a similar name or description and offer to revise the existing prompt
    or continue. Both are recommendations; the user decides.
 6. **File the draft.** Only once step 4 is clean (or, for `user` text, the user accepted the
-   warning), show the user the slug, name, origin, description and `<CLI> hash <scratch-file>` output,
-   and ask with `AskUserQuestion` whether to file this draft. A draft that step 4 blocked never reaches
+   warning), show the user the slug, name, origin, description and `<CLI> hash <scratch-file>` output.
+   Say that the record becomes a plain file under `catalog_root`: if that folder is in a git repository,
+   a pushed commit shares its text with everyone who can read the repository, and the text stays in
+   history after the record changes, so personal data should be removed first. Then ask with
+   `AskUserQuestion` whether to file this draft. A draft that step 4 blocked never reaches
    this question. On yes, `<CLI> draft
    <scratch-file>`; it validates, enforces the secret screen for `session`, `web`, `claude` and `codex` text, writes the record and
    lists it in the catalog together. Keep the `text_hash` and `path` it returns.
-7. **Review and optimize.** Dispatch `prompt-reviewer` with the absolute path of the filed record
-   (`catalog_root` + `/` + `path`, with `path` from step 6's `draft` output or, for a resumed draft, from
-   `<CLI> show <slug> --history`) and its `origin`; it is read-only. Present its findings and its
+7. **Review and optimize.** Run `<CLI> review-record <path>`, with `path` from step 6's `draft` output or,
+   for a resumed draft, from `<CLI> show <slug> --history`. It reads a listed record and returns its
+   text; if it fails or its JSON is cut off, report that and do not dispatch (no review ran, see Gotchas).
+   Otherwise dispatch `prompt-reviewer`, which has no tools, with the returned `boundary` on a line of its own,
+   the decoded `record_text` (real line breaks, every line, unchanged), the same `boundary` on a line of its own,
+   then the record's `origin`, never `record_lines`. If it returns its
+   `Refused:` line, the dispatch fails or the output is not a completed review (defined in
+   `references/prompt-optimization-and-review.md`, its line count included), no review ran (see Gotchas). Present its findings and its
    proposed rewrite as a diff. If the user approves a rewrite, write the full replacement record to a
-   scratch file and run `<CLI> update-draft <internal_id> <scratch-file>`; it screens the new text and
-   clears the earlier verification when the text changed. This works on any draft, initial or successor.
-   Run one review round, then go on to step 8; dispatch `prompt-reviewer` again only when the user asks
-   for another round. See `references/prompt-optimization-and-review.md`; an active or inactive record
+   scratch file, with no reviewer placeholder (`line N removed` or `line N kept, value not shown`) in it, and
+   run `<CLI> update-draft <internal_id> <scratch-file>`; it screens the new text and
+   clears the earlier verification when the text or any other field changed. This works on any draft, initial or successor.
+   Run one review round, then go on to step 8; run this step again when the user asks for another round,
+   and whenever the filed text or metadata (any field the reviewer checks) is neither what was reviewed nor
+   the reviewer's approved rewrite (apart from kept lines copied unchanged). See `references/prompt-optimization-and-review.md`; an active or inactive record
    is never edited in place, a revision is a new draft.
-8. **Verify.** Get the final prompt text and its `text_hash` from the filed record (`<CLI> show <slug>
-   --history`), not from the scratch copy. Show both to the user. If the record's `hidden_characters`
-   is not empty, list each entry (line, column, code point, name) above the text, add "50 or more" when
-   `hidden_characters_truncated` is true, and say these characters are invisible in the text shown.
-   Then ask with `AskUserQuestion` whether to approve exactly this text, naming the hidden-character
+8. **Verify.** Only after a completed review of this text in this run (step 7). Get the final prompt text and its `text_hash` from the filed record (`<CLI> show <slug>
+   --history`), not from the scratch copy. Show both to the user, with the metadata `show` returns (`name`, `area`,
+   `short_description`, `prerequisites`, `boundaries`, `references`, `attachments`, `source_ref`). If the record's `hidden_characters`
+   or `hidden_metadata` (entries also name a `field`) is not empty, list each entry (line, column, code point, name) above the text, add "50 or more" when
+   `hidden_characters_truncated` or `hidden_metadata_truncated` is true, and say these characters are invisible in what is shown.
+   If that JSON is cut off, do not ask and stop. Then ask with `AskUserQuestion` whether to approve exactly this text, naming the hidden-character
    count in the question when there are any. On yes, run `<CLI> record-verification <internal_id> --kind
    quality --expect-sha256 <that hash>` and, for `session` or `web` origin, again with `--kind import`
-   (for a resumed draft, only the kinds in its `missing_verification`, see step 2).
-   The expected hash makes the script refuse if the file changed after the user approved it.
-9. **Change status.** Take the hash from `<CLI> show <slug> --history`. Show the proposed change and ask
+   (for a resumed draft, only the kinds in its `missing_verification`; none means no command, see step 2).
+   The expected hash makes the script refuse if the prompt text changed after the user approved it; the
+   metadata shown is not covered (see Gotchas).
+9. **Change status.** Only after step 8, or when step 2 sends a record that is not a draft here. Take the hash from `<CLI> show <slug> --history`. Show the proposed change and ask
    with `AskUserQuestion`, naming the slug, the status change, the first 8 characters of that hash and,
-   for `activate` or `finalize`, the hidden-character count if any. Then run one of:
+   for `activate` or `finalize`, the hidden-character count (text and metadata) if any. Then run one of:
    - `<CLI> activate <id> --expect-sha256 <hash>` for an initial draft or an inactive record;
    - `<CLI> finalize <id> --expect-sha256 <hash>` for a successor. Add `--active` or `--inactive` to
      choose; one is required when the predecessor was inactive. When the predecessor was active the
@@ -173,12 +187,17 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
 
 ## Gotchas
 
-- Editing text clears or invalidates verification: never activate on a hash recorded before the last
-  edit. The script enforces this with `--expect-sha256`; do not pass a hash you did not show the user.
+- Changing text or any other field through `update-draft` clears verification: never activate on a hash
+  recorded before the last edit. `--expect-sha256` and the recorded hash detect text changes only: metadata
+  changed another way (a hand edit, a merge) keeps its verification undetected, which is why every resume
+  goes through step 7. Do not pass a hash you did not show the user.
 - `prompt-reviewer` only reports and proposes. It cannot approve, activate or write; the user approves.
   Its findings are advisory, and the validator cannot tell whether the review ran. Show a Critical
-  finding prominently and ask the user to acknowledge it before step 8; if the dispatch fails, stop and
-  ask whether to continue without a review rather than skipping it silently.
+  finding prominently and ask the user to acknowledge it before step 8. If `review-record` fails, the dispatch
+  fails, it returns the `Refused:` line or its output is not a completed review, no review ran: ask whether to
+  retry or stop. Never go on to step 8 without a completed review; on stop, the prompt stays a draft and
+  `/prompt-library activate <slug>` resumes with the review. If a requested further round fails, the earlier
+  completed review counts only while the text and metadata are unchanged since it.
 - A draft, initial or successor, is replaced in place (`update-draft`); an active or inactive record gets
   a successor.
 - A revision never retires the active prompt before `finalize`.
@@ -209,7 +228,7 @@ A persisted smoke test, `scripts/smoke_test.py`, checks this skill's frontmatter
 grants (no pre-approved Read, Write, Edit or WebFetch), and runs the validator end to end: a web-origin
 draft carrying a fake key is refused with nothing filed, and a clean draft goes through activation and
 deactivation. It also checks that the triage step is its own `AskUserQuestion` with skill options. Run it
-directly; last run 2026-11-15, 7 of 7 checks passed. It failed on a copy with a pre-approved Write
+directly; last run 2026-11-24, 8 of 8 checks passed. It failed on a copy with a pre-approved Write
 (2026-10-03) and on a copy with the pre-fix triage step (2026-10-14).
 
 **Verify this skill activates on:** (explicit invocation only; it cannot be model-triggered)
@@ -233,18 +252,30 @@ directly; last run 2026-11-15, 7 of 7 checks passed. It failed on a copy with a 
       created; text that only names an existing script is triaged as a prompt.
 - [ ] A near-duplicate is offered as a revision before a new record is created.
 - [ ] A `session` or `web` record cannot be activated without an import hash.
-- [ ] A file edited after the user approved its text is refused by `--expect-sha256`.
+- [ ] A prompt text edited after the user approved it is refused by `--expect-sha256`.
 - [ ] A revision produces a successor with `previous_id` and `version` + 1, and the predecessor stays
       untouched until `finalize`.
 - [ ] Every status change and every draft filing was preceded by an `AskUserQuestion` approval.
-- [ ] A resumed draft with no recorded quality verification goes back through `prompt-reviewer` (step 7).
+- [ ] A resumed draft goes back through `prompt-reviewer` (step 7), whatever verification is recorded.
+- [ ] When no review ran (an incomplete output included), the skill offers only retry or stop; the draft is
+      neither verified nor activated.
+- [ ] Text or metadata changed after the review, other than the approved rewrite, is reviewed again before step 8.
 - [ ] A resume records only the kinds in `missing_verification`, and step 7 runs one review round unless
-      the user asks for another.
+      the user asks for another or the text or metadata changed (step 7).
 - [ ] A slug that does not match the slug pattern is refused before any command runs with it.
 - [ ] `activate` of an already active record is reported and stops, with no question and no command.
 
-**Last dated run record:** validator fixture tests, 136 run (133 passing, 3 POSIX-only skipped on Windows), 2026-11-15
-(`scripts/plib_test_catalog_validate.py`). The latest live run, 2026-10-14 (plugin loaded with
+**Last dated run record:** validator fixture tests, 186 run (183 passing, 3 POSIX-only skipped on Windows), 2026-11-24
+(`scripts/plib_test_catalog_validate.py`), after the email screen, its review fixes, the comment screen and `review-record`
+(link, hard-link and swap refusal, tested with a real junction on Windows) were added. The step 6 sharing notice and
+the earlier step 7 path hand-off (2026-11-16, replaced by the inline record text) were checked by the smoke test and
+by `prompt-reviewer`'s own dry runs (`evals/prompt-reviewer/workspace/iteration-4/` and `-6/`); no
+`evals/prompt-library/` scenario was re-run for them. Scenarios 17 to 19 (a refused review, an incomplete review
+output, a user edit on top of a rewrite) passed as plan-only dry runs on 2026-11-24
+(`evals/prompt-library/workspace/iteration-5/` and `-6/`, with-skill only; 18 and 19 before the metadata wording); 20 and 21 (metadata shown at step 8,
+carried into a revision) passed the same way (`iteration-7/`). A blind plan-only comparison with the
+version on main (`iteration-8/`: 11, 12, 17, 18, 19 and 22, one run each) scored 17 of 17 against 8 of 17; four of the
+17 criteria test rules added then, and it predates step 8's cut-off check. The latest live run, 2026-10-14 (plugin loaded with
 `--plugin-dir`), ran add, near-duplicate, revise, finalize and deactivate, each status change behind its
 own approval; the step 5 triage skip it found was fixed in PR #566. An earlier hand-followed run of steps
 1 to 6 (2026-10-04, not persisted) confirmed a fake key is reported unechoed and refused by `draft`.
@@ -254,8 +285,8 @@ follow this SKILL.md by hand against throwaway projects (approval questions scri
 inline). Its `evals.json` records which quality gates the scenarios cover. Scenario 11 (draft resume,
 2026-11-12, with-skill only, in `workspace/iteration-2/`) first passed 3 of 4 checks: no read
 subcommand returned the record path. After `path` was added to `show` (covered by a unit test), a re-run
-the same day passed 4 of 4. Scenario 12 (a session draft with only its quality verification resumes at
-step 8, read from `missing_verification`) passed 5 of 5 the same day. Scenario 13 (recovery advice for a
+the same day passed 4 of 4. Scenario 12 (a session draft with only its quality verification, under the
+earlier rule that resumed it at step 8) passed 5 of 5 the same day. Scenario 13 (recovery advice for a
 pathspec-shaped `errors` path) passed 5 of 5 against 3 of 5 for the earlier `git restore <path>` text.
 On 2026-11-15 every scenario was re-run with and without the skill against real fixture projects
 (`workspace/iteration-3/`, scenarios 1 to 15, adding 14 for an already active record and 15 for a

@@ -1,0 +1,28 @@
+{
+  "eval_id": 14,
+  "configuration": "with_skill",
+  "run_date": "2026-11-24",
+  "method": "Dry run 2026-11-24 after the security review fixes (open-ended kinds, wider never-quote rule, attribution-name exemption): a fresh general-purpose agent followed the worktree's agents/prompt-reviewer.md with Read only, graded by the operator's session.",
+  "assertions_evaluated": [
+    {
+      "text": "The date of birth and the payment card number on file line 18 are reported as Critical by line and kind",
+      "passed": true,
+      "evidence": "Two Critical rows on line 18: date of birth, payment card number"
+    },
+    {
+      "text": "The home-directory path on file line 19 is reported by line and kind",
+      "passed": true,
+      "evidence": "Critical row on line 19: home-directory path"
+    },
+    {
+      "text": "The name in the license note is not reported as a personal-data finding",
+      "passed": true,
+      "evidence": "'the name in it is not a finding' (license note, line 14)"
+    },
+    {
+      "text": "The date, the card number, the path and the name appear nowhere in the output, including removed, context and added diff lines",
+      "passed": true,
+      "evidence": "None of the four values appears; the diff shows 'line 18 removed (...)' and 'line 19 removed (...)'"
+    }
+  ]
+}

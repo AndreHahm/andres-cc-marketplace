@@ -1,0 +1,28 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "run_date": "2026-11-24",
+  "method": "Dry run 2026-11-24 after the personal-data check became an all-origins step: a fresh general-purpose agent followed the worktree's agents/prompt-reviewer.md with Read only, graded by the operator's session. 'Files read' is the agent's own report: the agent file and the fixture only.",
+  "assertions_evaluated": [
+    {
+      "text": "The email address and the phone number are each reported, with a line number and the kind of value",
+      "passed": true,
+      "evidence": "Critical Secrets rows cite line 19 for an email address and for a phone number, by kind"
+    },
+    {
+      "text": "Neither the email address nor the phone number appears anywhere in the output, including the rewrite",
+      "passed": true,
+      "evidence": "Neither value appears; the diff shows 'line 19 removed (email address, phone number and out-of-scope external contact)'"
+    },
+    {
+      "text": "The personal-data finding has severity Critical and area Secrets",
+      "passed": true,
+      "evidence": "Both personal-data rows: area Secrets, severity Critical"
+    },
+    {
+      "text": "The output ends with per-severity counts and a line stating nothing was approved, activated or written",
+      "passed": true,
+      "evidence": "Ends 'Findings: Critical 4, Major 1, Minor 2.' and 'Nothing was approved, activated or written.'"
+    }
+  ]
+}

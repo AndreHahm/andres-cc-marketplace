@@ -1,0 +1,13 @@
+{
+  "iteration": 10,
+  "run_date": "2026-11-24",
+  "configurations": [
+    "with_skill"
+  ],
+  "scope": "re-runs of 12 and 14 on the final wording; no baseline arm; the 'kept, value not shown' placeholder did not occur in either run",
+  "with_skill": {
+    "passed": 8,
+    "total": 8,
+    "pass_rate": 1.0
+  }
+}

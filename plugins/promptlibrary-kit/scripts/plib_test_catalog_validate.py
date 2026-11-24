@@ -9,10 +9,12 @@ working tree. Standard library only.
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import importlib.util
 import io
 import json
 import os
+import shutil
 import stat
 import subprocess  # nosec B404 - test helper, fixed argument lists, no shell
 import sys
@@ -245,13 +247,150 @@ class TextAndYaml(unittest.TestCase):
         ):
             self.assertTrue(V.screen_text(text), repr(text))
 
+    def test_email_address_is_screened(self):
+        for text in (
+            "mail jane.doe" + "@acme.io now",
+            "Contact: j+x" + "@corp.co.uk.",
+            "alice" + "@gmail.com: can you check this",  # a colon after a two-label domain
+            "bob" + "@mail.corp.com: hi",
+            "x@example.com" + ".evil.org",  # a real domain that only starts like a placeholder
+            "x@example.com" + "-mail.org",
+            "ivan" + "@mail.xn--p1ai",  # a punycode top-level domain
+            "ivan" + "@mail.XN--P1AI now",
+            "li" + "@firma.xn--fiqs8s.",
+            "bob" + "@acme.com-",  # punctuation or numbers glued to the end
+            "bob" + "@acme.com--x",
+            "bob" + "@acme.com.9",
+            "bob" + "@acme.com.9.1 now",
+            "ivan" + "@mail.xn--p1ai-",
+        ):
+            self.assertEqual([h["pattern"] for h in V.screen_text(text)], ["email_address"], text)
+
+    def test_placeholder_and_non_email_at_signs_are_not_screened(self):
+        for text in (
+            "user@example.com",
+            "x@mail.example.org",
+            "a@foo.test",
+            "x@localhost",
+            "x@Example.COM",
+            "see user@example.com.",
+            "git@github.com:org/repo",  # git SSH remotes, not mailboxes
+            "git@gitlab.corp.com:org/repo",
+            "git@ssh.dev.azure.com:v3/org/project/repo",
+            "git@myserver.com:project.git",  # a root-level remote, no slash after the colon
+            "git@host.com:/srv/repo.git",
+            "ssh://git@github.com/org/repo.git",
+            "git+ssh://git@github.com/org/repo.git#main",
+            "ssh://git@host.com:2222/org/repo.git",
+            "git@github.com.:owner/repo.git",  # a DNS root dot
+            "ssh://git@github.com./owner/repo.git",
+            "ssh://git@github.com.:2222/owner/repo.git",
+            "a@foo.xn--p1ai.test",
+            "@types/node",
+            "a@b",
+            "pkg@1.2.3",
+            "pkg@1.2.3-beta",
+            "pkg@1.0.0-rc.1",
+            "python@3.11-slim",
+            "actions/checkout@v4.1.2",
+            "img@sha256:abc.def",
+            "x@example.com.",
+        ):
+            self.assertEqual(V.screen_text(text), [], text)
+
+    def test_email_screen_blocks_a_web_draft_and_names_what_it_screens(self):
+        meta = {"origin": "web", "_body": "Ask jane.doe" + "@acme.io first."}
+        with self.assertRaises(V.CatalogError) as ctx:
+            V._assert_clean(meta)
+        message = str(ctx.exception)
+        self.assertIn("email address", message)
+        self.assertNotIn("acme.io", message)
+        self.assertNotIn("personal data", message)
+
+    def test_email_followed_by_a_remote_shaped_suffix_is_still_screened(self):
+        # Only git@host:path and ssh://git@host/path are remotes; any other user@host keeps its
+        # address screened.
+        for text in (
+            "mail bob" + "@acme.io:gitlab",
+            "bob" + "@acme.io:x.github",
+            "jane" + "@acme.io:/note",
+            "jane" + "@acme.io:note.git",
+            "scp f jane" + "@acme.io:/tmp/x",
+            "deploy" + "@ci.corp.net:repo.git",
+            "agit" + "@acme.io:org/repo",
+            "Mail git" + "@acme.io: thanks",  # a space after the colon: prose, not a remote
+            "ssh://jane" + "@acme.io/org/repo.git",
+            "ssh://agit" + "@acme.io/org/repo.git",
+            "https://git" + "@acme.io/org/repo.git",
+            "git" + "@acme.io/org/repo.git",  # no ssh:// in front: not a remote form
+            "ssh://git" + "@acme.io",  # no path
+            "ssh://git" + "@acme.io/ thanks",
+            "ssh://jane" + "@acme.io./org/repo.git",  # the root dot exempts only git
+            "jane" + "@acme.io.:org/repo.git",
+            "Mail git" + "@acme.io.: thanks",
+            "Mail git" + "@acme.io. thanks",
+            "ssh://git@github.com/jane.doe" + "@acme.io",  # an address inside the path
+        ):
+            self.assertEqual([h["pattern"] for h in V.screen_text(text)], ["email_address"], text)
+
+    def test_url_credentials_after_a_digit_or_punctuation_run_are_screened(self):
+        # The lookbehind that keeps the pattern linear must not hide a URL that opens its run late.
+        for text in (
+            "1.https://u:" + "p@h",  # a numbered list item with no space
+            "see .https://u:" + "p@h",
+            "x -https://u:" + "p@h",
+            "A.https://u:" + "p@h",
+            "(+https://u:" + "p@h)",
+            "2.git+ssh://u:" + "p@h",
+            "foo.https://u:" + "p@h",
+        ):
+            self.assertIn(
+                "url_embedded_credentials", [h["pattern"] for h in V.screen_text(text)], text
+            )
+
+    def test_url_credentials_screen_stays_fast_on_long_runs(self):
+        url = dict(V.SECRET_PATTERNS)["url_embedded_credentials"]
+        for line in ("a." * 100000, "1." * 100000, "-a" * 100000, "1.a" * 70000, "+" * 200000):
+            started = time.perf_counter()
+            url.search(line)
+            self.assertLess(time.perf_counter() - started, 5.0)
+
+    def test_email_screen_stays_fast_on_long_at_sign_runs(self):
+        # Times the email pattern alone, so a slow neighbor cannot mask or cause a failure here.
+        email = dict(V.SECRET_PATTERNS)["email_address"]
+        for line in (
+            "a" * 270000,
+            "a@" * 100000,
+            "a.@" * 90000,
+            ("a" * 50 + "@") * 5000,
+            "a@" + "b." * 100000,
+            "x@" + "example.com." * 20000,
+            "x@a.co:" + "b" * 200000,
+            "git@" + "a." * 100000,
+            "git@" + "a-" * 100000 + ":",
+            "ssh://git@" + "a." * 100000,
+            "ssh://git@a/" * 20000,
+            "git@" + "a.." * 60000 + ":",
+            "a@b.xn--" * 30000,
+            "a@b.co" + "-" * 200000 + "_",
+            "a@b.co" + ".9" * 100000 + "_",
+            "a@b.co" + "--x" * 70000 + ".",
+            "a@b.xn--" + "a--" * 20000 + ".x",
+            "a@b.co--" + "a--" * 80000 + ".x",
+            "a@b.xn--" + "a-" * 100000 + "_",
+        ):
+            started = time.perf_counter()
+            email.search(line)
+            self.assertLess(time.perf_counter() - started, 5.0)
+
     def test_ordinary_equals_lines_are_not_screened(self):
         for text in ("name = value", "# keys are listed below", "x = 3", "version = 2"):
             self.assertEqual(V.screen_text(text), [], text)
 
     def test_screening_a_long_pathological_line_stays_fast(self):
         # The old pattern backtracked quadratically: a 24k line of repeated "key" took seconds.
-        for line in ("key" * 90000, "a" * 270000, "\n" * 200000 + "token"):
+        # A long dotted run made url_embedded_credentials quadratic (73 s for 200k characters).
+        for line in ("key" * 90000, "a" * 270000, "\n" * 200000 + "token", "x@" + "a." * 100000):
             started = time.perf_counter()
             V.screen_text(line)
             self.assertLess(time.perf_counter() - started, 5.0)
@@ -730,6 +869,184 @@ class Lifecycle(Base):
         self.assertEqual(code, 1)
         self.assertIn("cannot change when updating a draft", res["error"])
 
+    def test_update_draft_clears_verification_on_metadata_only_change(self):
+        self.add_draft()
+        for field, value in (
+            ("name", "Renamed"),
+            ("area", "other"),
+            ("short_description", "Another description."),
+            ("prerequisites", "A checkout."),
+            ("boundaries", "No edits."),
+            ("references", ["https://example.com/a"]),
+            ("attachments", ["notes.md"]),
+        ):
+            with self.subTest(field=field):
+                base = self.scratch(internal_id="p000000000001")
+                self.assertEqual(self.run_cli("update-draft", "p000000000001", base)[0], 0)
+                self.assertEqual(self.verify("p000000000001")[0], 0)
+                changed = self.scratch(internal_id="p000000000001", **{field: value})
+                self.assertEqual(self.run_cli("update-draft", "p000000000001", changed)[0], 0)
+                rec = V.read_record(self.root / SLUG / "p000000000001.md")
+                self.assertNotIn("verification", rec)
+                self.assertEqual(V.missing_verification(rec), ["quality"])
+
+    def test_update_draft_clears_verification_when_an_optional_field_is_removed(self):
+        extra = {"boundaries": "No edits.", "references": ["https://example.com/a"]}
+        self.add_draft(**extra)
+        path = self.root / SLUG / "p000000000001.md"
+        self.assertEqual(self.verify("p000000000001")[0], 0)
+        same = self.scratch(internal_id="p000000000001", **extra)
+        self.assertEqual(self.run_cli("update-draft", "p000000000001", same)[0], 0)
+        self.assertIn("quality", V.read_record(path)["verification"])
+        removed = self.scratch(internal_id="p000000000001", boundaries=extra["boundaries"])
+        self.assertEqual(self.run_cli("update-draft", "p000000000001", removed)[0], 0)
+        self.assertNotIn("verification", V.read_record(path))
+
+    def test_update_draft_metadata_change_clears_the_import_verification_too(self):
+        web = {
+            "origin": "web",
+            "source_ref": {"url": "https://example.com/p", "retrieved_on": "2026-10-03"},
+        }
+        self.add_draft(**web)
+        for kind in ("quality", "import"):
+            self.assertEqual(self.verify("p000000000001", kind)[0], 0)
+        changed = self.scratch(internal_id="p000000000001", short_description="Other.", **web)
+        self.assertEqual(self.run_cli("update-draft", "p000000000001", changed)[0], 0)
+        rec = V.read_record(self.root / SLUG / "p000000000001.md")
+        self.assertEqual(V.missing_verification(rec), ["quality", "import"])
+
+    def test_update_draft_treats_a_changed_source_ref_type_as_a_change(self):
+        self.add_draft(origin="session", source_ref={"session_id": "abc", "turns": 1})
+        changed = self.scratch(origin="session", source_ref={"session_id": "abc", "turns": True})
+        code, res = self.run_cli("update-draft", "p000000000001", changed)  # 1 == True in Python
+        self.assertEqual(code, 1)
+        self.assertIn("source_ref cannot change", res["error"])
+        reordered = self.scratch(origin="session", source_ref={"turns": 1, "session_id": "abc"})
+        self.assertEqual(self.run_cli("update-draft", "p000000000001", reordered)[0], 0)
+
+    def test_show_returns_attachments(self):
+        self.add_draft(attachments=["docs/style-guide.md"])
+        code, res = self.run_cli("show", SLUG, "--history")
+        self.assertEqual(code, 0, res)
+        self.assertEqual(res["records"][0]["attachments"], ["docs/style-guide.md"])
+
+    def test_underscore_frontmatter_keys_are_refused_without_echo(self):
+        self.add_draft()
+        path = self.root / SLUG / "p000000000001.md"
+        clean = path.read_text(encoding="utf-8")
+        for key in ("_note", "_body", "_path"):
+            path.write_text(
+                clean.replace("---\n", f"---\n{key}: {FAKE_KEY}\n", 1), encoding="utf-8"
+            )
+            code, res = self.run_cli("validate")
+            self.assertEqual(code, 1, key)
+            self.assertIn("starts with an underscore", json.dumps(res))
+            self.assertNotIn(FAKE_KEY, json.dumps(res))
+        scratch = Path(self.scratch(internal_id="p000000000001"))
+        text = scratch.read_text(encoding="utf-8")
+        path.write_text(clean, encoding="utf-8")
+        scratch.write_text(text.replace("---\n", "---\n_note: hi\n", 1), encoding="utf-8")
+        code, res = self.run_cli("update-draft", "p000000000001", str(scratch))
+        self.assertEqual(code, 1)
+        self.assertIn("starts with an underscore", res["error"])
+
+    def test_register_rewrites_the_file_without_comments(self):
+        self.assertEqual(self.run_cli("init")[0], 0)
+        (self.root / SLUG).mkdir(parents=True)
+        orphan = self.root / SLUG / "p000000000001.md"
+        orphan.write_text(record().replace("---\n", f"---\n# {FAKE_KEY}\n", 1), encoding="utf-8")
+        self.assertEqual(self.run_cli("register", f"{SLUG}/p000000000001.md")[0], 0)
+        self.assertNotIn(FAKE_KEY, orphan.read_text(encoding="utf-8"))
+        self.assertEqual(self.run_cli("validate")[0], 0)
+
+    def test_discard_orphan_says_why_a_file_is_not_readable(self):
+        self.assertEqual(self.run_cli("init")[0], 0)
+        (self.root / SLUG).mkdir(parents=True)
+        orphan = self.root / SLUG / "p000000000001.md"
+        orphan.write_text(record().replace("---\n", "---\n_note: hi\n", 1), encoding="utf-8")
+        code, res = self.run_cli("discard-orphan", f"{SLUG}/p000000000001.md")
+        self.assertEqual(code, 1)
+        self.assertIn("starts with an underscore", res["error"])
+        self.assertTrue(orphan.exists())
+
+    def test_only_recorded_hashes_survive_in_a_drafts_verification(self):
+        extra = {"verification": {"quality": "0" * 64, "note": FAKE_KEY, "import": FAKE_KEY}}
+        self.assertEqual(V._recorded_hashes(extra), {"quality": "0" * 64})
+
+    def test_a_secret_used_as_a_key_name_is_not_echoed(self):
+        base = record(origin="web", source_ref={"url": "https://example.com", "retrieved_on": "x"})
+        for bad in (
+            base.replace("---\n", f"---\n{FAKE_KEY}: x\n", 1),
+            base.replace("---\n", f"---\n{FAKE_KEY}: x\n{FAKE_KEY}: y\n", 1),
+            base.replace("source_ref:\n", f"source_ref:\n  {FAKE_KEY}: x\n"),
+            base.replace("source_ref:\n", f"source_ref:\n  {FAKE_KEY}: x\n  {FAKE_KEY}: y\n"),
+            base.replace("---\n", f"---\n{FAKE_KEY}: x\n  - y\n", 1),
+            base.replace("---\n", f"---\n{FAKE_KEY}: x\n  y: z\n", 1),
+            base.replace("---\n", f"---\n{FAKE_KEY}:\n  !\n", 1),
+        ):
+            scratch = Path(self.scratch())
+            scratch.write_text(bad, encoding="utf-8")
+            if not (self.root / "catalog.yaml").exists():
+                self.assertEqual(self.run_cli("init")[0], 0)
+            code, res = self.run_cli("draft", str(scratch))
+            self.assertEqual(code, 1, bad)
+            self.assertNotIn(FAKE_KEY, json.dumps(res))
+            self.assertIn("name withheld", res["error"])
+
+    def _comment_in_record(self, comment: str) -> None:
+        path = self.root / SLUG / "p000000000001.md"
+        self.pristine = path.read_text(encoding="utf-8")
+        path.write_text(self.pristine.replace("---\n", f"---\n{comment}\n", 1), encoding="utf-8")
+
+    def test_validate_warns_about_a_harmless_frontmatter_comment(self):
+        self.add_draft()
+        self.assertEqual(self.run_cli("validate")[1]["warnings"], [])
+        self._comment_in_record("# check this later")
+        code, res = self.run_cli("validate")
+        self.assertEqual(code, 0)
+        self.assertIn("frontmatter comment", " ".join(res["warnings"]))
+        self.assertNotIn("check this later", json.dumps(res))
+
+    def test_a_secret_in_a_frontmatter_comment_makes_the_catalog_invalid(self):
+        self.add_draft()
+        for comment in (
+            f"# {FAKE_KEY}",
+            f"  # {FAKE_KEY}",
+            f"#{FAKE_KEY}",
+            "# ask jane.doe" + "@acme.io",
+            f"# note\u2028{FAKE_KEY}",  # the parser skips the whole line, so all of it is screened
+            f"# note\x0c{FAKE_KEY}",
+            f"# note\x85{FAKE_KEY}",
+            f"# note\x1c{FAKE_KEY}",
+            "# TOK" + "EN=abc123def456",  # a commented-out assignment
+            "# DB_PASS" + "WORD=hunter22x",
+            "# # TOK" + "EN=abc123def456",
+            "  ## export MY_API_" + "KEY=xyz123abc",
+        ):
+            self._comment_in_record(comment)
+            for args in (("validate",), ("show", SLUG, "--history")):
+                code, res = self.run_cli(*args)
+                self.assertEqual(code, 1, (comment, args))
+                out = json.dumps(res)
+                self.assertIn("frontmatter comment", out)
+                self.assertNotIn(FAKE_KEY, out)
+                self.assertNotIn("acme.io", out)
+            (self.root / SLUG / "p000000000001.md").write_text(self.pristine, encoding="utf-8")
+            self.assertEqual(self.run_cli("validate")[0], 0)
+
+    def test_a_secret_in_a_catalog_yaml_comment_makes_the_catalog_invalid(self):
+        self.add_draft()
+        path = self.root / "catalog.yaml"
+        clean = path.read_text(encoding="utf-8")
+        path.write_text(f"# harmless\n{clean}", encoding="utf-8")
+        self.assertEqual(self.run_cli("validate")[0], 0)
+        for comment in (f"# {FAKE_KEY}", f"# note\u2028{FAKE_KEY}", "# DB_PASS" + "WORD=hunter22x"):
+            path.write_text(f"{clean}{comment}\n", encoding="utf-8")
+            code, res = self.run_cli("validate")
+            self.assertEqual(code, 1, comment)
+            self.assertIn("catalog.yaml: a comment matches the screen", " ".join(res["errors"]))
+            self.assertNotIn(FAKE_KEY, json.dumps(res))
+
     def test_update_draft_refuses_non_drafts(self):
         self.make_active()
         code, res = self.run_cli("update-draft", "p000000000001", self.scratch())
@@ -760,11 +1077,312 @@ class Lifecycle(Base):
         self.assertEqual(self.run_cli("register", f"{SLUG}/p000000000001.md")[0], 0)
         self.assertEqual(self.run_cli("validate")[0], 0)
 
+    def test_an_unlisted_name_that_a_shell_could_read_is_not_reported(self):
+        self.assertEqual(self.run_cli("init")[0], 0)
+        for rel in (f"{SLUG}/a$(id).md", f"{SLUG}/a;b.md", f"{SLUG}/a b.md", "x`id`/a.md"):
+            with self.subTest(rel=rel):
+                stray = self.root / rel
+                stray.parent.mkdir(exist_ok=True)
+                stray.write_text(record(), encoding="utf-8")
+                code, res = self.run_cli("validate")
+                self.assertEqual(code, 1)
+                folder = "the catalog" if rel.startswith("x") else SLUG
+                self.assertEqual(
+                    res["errors"],
+                    [
+                        f"an unlisted file in {folder} is not named <slug>/<internal_id>.md; "
+                        "remove it by hand"
+                    ],
+                )
+                for command in ("discard-orphan", "register"):
+                    self.assertEqual(self.run_cli(command, rel)[0], 1)
+                self.assertTrue(stray.exists())
+                stray.unlink()
+
     def test_discard_orphan_refuses_listed_records(self):
         self.make_active()
         code, res = self.run_cli("discard-orphan", f"{SLUG}/active.md")
         self.assertEqual(code, 1)
         self.assertIn("is not an unlisted record file", res["error"])
+
+    def test_review_record_returns_the_record_text_and_no_path(self):
+        rel = self.add_draft()["path"]
+        raw = (self.root / rel).read_text(encoding="utf-8")
+        code, res = self.run_cli("review-record", rel)
+        self.assertEqual(code, 0, res)
+        self.assertEqual(res["record_text"], raw)
+        self.assertEqual(res["origin"], "user")
+        self.assertEqual(res["text_hash"], V.text_hash(BODY))
+        self.assertNotIn("path", res)
+        self.assertIn(hashlib.sha256(raw.encode("utf-8")).hexdigest(), res["boundary"])
+        self.assertNotIn(res["boundary"], raw)
+        self.assertEqual(self.run_cli("review-record", rel.replace("/", "\\"))[0], 0)
+
+    def test_review_record_refuses_a_record_that_is_not_valid(self):
+        rel = self.add_draft()["path"]
+        path = self.root / rel
+        path.write_text(
+            path.read_text(encoding="utf-8").replace("---\n", f"---\n# {FAKE_KEY}\n", 1),
+            encoding="utf-8",
+        )
+        code, res = self.run_cli("review-record", rel)
+        self.assertEqual(code, 1)
+        self.assertNotIn(FAKE_KEY, json.dumps(res))
+
+    def test_review_record_refuses_text_too_long_to_hand_over_whole(self):
+        rel = self.add_draft()["path"]
+        long_body = "word " * 8000  # one long line is within the line limit
+        scratch = self.scratch(internal_id="p000000000009", _body=long_body)
+        code, res = self.run_cli("draft", scratch)
+        self.assertEqual(code, 1)
+        self.assertIn("too long to review", res["error"])
+        (self.root / rel).write_text(record(_body=long_body), encoding="utf-8")
+        self.assertEqual(self.run_cli("validate")[0], 0)
+        code, res = self.run_cli("review-record", rel)
+        self.assertEqual(code, 1)
+        self.assertIn("too long to review", res["error"])
+        self.assertNotIn("record_text", res)
+
+    def test_review_record_screens_a_record_changed_after_filing(self):
+        for origin, code_wanted in (("claude", 1), ("user", 0)):
+            with self.subTest(origin=origin):
+                rid = f"p00000000000{code_wanted + 1}"
+                rel = self.add_draft(rid, slug=f"review__hand-edit-{origin}", origin=origin)["path"]
+                path = self.root / rel
+                text = path.read_text(encoding="utf-8")
+                path.write_text(text.rstrip("\n") + f"\n{FAKE_KEY}\n", encoding="utf-8")
+                code, res = self.run_cli("review-record", rel)
+                self.assertEqual(code, code_wanted, res)
+                self.assertEqual("record_text" in res, code_wanted == 0)
+                if code_wanted:
+                    self.assertIn("possible secret", res["error"])
+                    self.assertNotIn(FAKE_KEY, json.dumps(res))
+
+    def test_review_record_counts_the_lines_of_the_text(self):
+        rel = self.add_draft()["path"]
+        res = self.run_cli("review-record", rel)[1]
+        self.assertEqual(res["record_lines"], len(res["record_text"].rstrip("\n").split("\n")))
+        path = self.root / rel  # a last line of spaces is not counted, as the reviewer is told
+        path.write_text(path.read_text(encoding="utf-8") + "   \n", encoding="utf-8")
+        self.assertEqual(self.run_cli("review-record", rel)[1]["record_lines"], res["record_lines"])
+
+    def test_review_record_does_not_count_the_recorded_hashes(self):
+        bare = V._review_chars(record(_body="x"))
+        body = "x" * (V.MAX_REVIEW_CHARS - bare + 1)
+        rel = self.add_draft(_body=body)["path"]
+        self.assertEqual(self.verify("p000000000001")[0], 0)
+        text = (self.root / rel).read_text(encoding="utf-8")
+        self.assertGreater(V._review_chars(text), V.MAX_REVIEW_CHARS)
+        self.assertEqual(self.run_cli("review-record", rel)[0], 0)
+        (self.root / rel).write_text(
+            text.replace("---\n", "---\n# a comment is handed over, so it counts\n", 1),
+            encoding="utf-8",
+        )
+        code, res = self.run_cli("review-record", rel)
+        self.assertEqual(code, 1)
+        self.assertIn("too long to review", res["error"])
+
+    def test_review_record_prints_the_boundary_after_the_text(self):
+        # A cut-off output then shows no boundary, so a partial text cannot be handed over.
+        rel = self.add_draft()["path"]
+        keys = list(self.run_cli("review-record", rel)[1])
+        self.assertEqual(keys[-2:], ["record_text", "boundary"])
+
+    def test_review_record_refuses_a_hard_link_to_an_outside_file(self):
+        rel = self.add_draft()["path"]
+        outside = self._outside_record() / "x.md"
+        (self.root / rel).unlink()
+        try:
+            os.link(outside, self.root / rel)
+        except OSError:
+            self.skipTest("hard links are not possible here")
+        code, res = self.run_cli("review-record", rel)
+        self.assertEqual(code, 1)
+        self.assertIn("more than one hard link", res["error"])
+        self.assertNotIn("record_text", res)
+
+    def _swap_folder_around_open(self, rel: str, swap_back: bool) -> tuple[int, dict]:
+        """Run review-record while the record's folder is swapped for a link to an outside folder
+        just before the record is opened, and optionally swapped back right after."""
+        outside = self._outside_record()
+        (outside / Path(rel).name).write_text(record(_body="outside text"), encoding="utf-8")
+        folder = self.root / SLUG
+        kept = self.root.parent / "kept"
+        real_open = os.open
+
+        def swapping_open(path, *a, **k):
+            if Path(path).name != Path(rel).name or kept.exists():
+                return real_open(path, *a, **k)
+            folder.rename(kept)
+            self._link_folder(outside, folder)
+            fd = real_open(path, *a, **k)
+            if swap_back:
+                if os.name == "nt":
+                    folder.rmdir()
+                else:
+                    folder.unlink()
+                kept.rename(folder)
+            return fd
+
+        with mock.patch.object(V.os, "open", side_effect=swapping_open):
+            return self.run_cli("review-record", rel)
+
+    def test_review_record_refuses_a_folder_swapped_for_a_link(self):
+        rel = self.add_draft()["path"]
+        code, res = self._swap_folder_around_open(rel, swap_back=False)
+        self.assertEqual(code, 1, res)
+        self.assertNotIn("outside text", json.dumps(res))
+
+    def test_review_record_refuses_a_folder_swapped_and_swapped_back(self):
+        rel = self.add_draft()["path"]
+        code, res = self._swap_folder_around_open(rel, swap_back=True)
+        self.assertEqual(code, 1, res)
+        self.assertIn("changed while it was being read", res["error"])
+        self.assertNotIn("outside text", json.dumps(res))
+
+    def test_review_record_refuses_paths_that_are_not_records_in_the_root(self):
+        rel = self.add_draft()["path"]
+        slug = rel.split("/")[0]
+        for bad in (
+            f"../{rel}",
+            f"/{rel}",
+            f"{slug}/../{rel}",
+            f"{slug}/./x.md",
+            f"{slug}//x.md",
+            f"{slug}./x.md",
+            f"{slug} /x.md",
+            f"{slug}/missing.md",
+            f"{slug}/x.txt",
+            "C:/x.md",
+            f"{rel}:stream.md",
+            f"{rel}.",  # a final part ending in a dot
+            "\\\\server\\share\\x.md",  # UNC
+            "\\\\?\\C:\\x.md",  # Windows device paths
+            "//?/C:/x.md",
+            "\\\\.\\C:\\x.md",
+            f"{slug}/x\x00.md",
+        ):
+            code, res = self.run_cli("review-record", bad)
+            self.assertEqual(code, 1, bad)
+            self.assertNotIn("record_text", res, bad)
+
+    def test_review_record_refuses_an_unlisted_markdown_file_in_the_root(self):
+        rel = self.add_draft()["path"]
+        stray = self.root / rel.split("/")[0] / "notes.md"
+        stray.write_text("private notes\n", encoding="utf-8")
+        code, res = self.run_cli("review-record", f"{rel.split('/')[0]}/notes.md")
+        self.assertEqual(code, 1)
+        self.assertIn("not a record listed in the catalog", res["error"])
+        self.assertNotIn("record_text", res)
+
+    def test_review_record_refuses_a_folder_named_like_a_record(self):
+        self.add_draft()
+        (self.root / SLUG / "folder.md").mkdir()
+        code, res = self.run_cli("review-record", f"{SLUG}/folder.md")
+        self.assertEqual(code, 1)
+        self.assertIn("not a record file", res["error"])
+
+    def test_review_record_refuses_a_hard_link_made_after_the_open(self):
+        rel = self.add_draft()["path"]
+        record_file, other = self.root / rel, self.root.parent / "other.md"
+        real_fstat = os.fstat
+
+        def linking_fstat(fd):
+            st = real_fstat(fd)
+            if not other.exists() and os.path.samestat(st, os.lstat(record_file)):
+                os.link(record_file, other)
+            return st
+
+        with mock.patch.object(V.os, "fstat", side_effect=linking_fstat):
+            code, res = self.run_cli("review-record", rel)
+        self.assertTrue(other.exists())
+        self.assertEqual(code, 1)
+        self.assertIn("changed while it was being read", res["error"])
+        self.assertNotIn("record_text", res)
+
+    def test_review_record_closes_the_handle_of_a_folder_that_opens(self):
+        """POSIX opens a folder for reading; simulated here so that it is also tested on Windows."""
+        rel = self.add_draft()["path"]
+        real_open, real_fstat, opened = os.open, os.fstat, []
+
+        def recording_open(path, *a, **k):
+            fd = real_open(path, *a, **k)
+            if Path(path).name == Path(rel).name:
+                opened.append(fd)
+            return fd
+
+        def folder_fstat(fd):
+            st = real_fstat(fd)
+            if fd not in opened:
+                return st
+            return os.stat_result((stat.S_IFDIR | 0o755, *tuple(st)[1:10]))
+
+        with (
+            mock.patch.object(V.os, "open", side_effect=recording_open),
+            mock.patch.object(V.os, "fstat", side_effect=folder_fstat),
+            mock.patch.object(V.os, "close", wraps=os.close) as closed,
+        ):
+            code, res = self.run_cli("review-record", rel)
+        self.assertEqual(code, 1)
+        self.assertIn("not a record file", res["error"])
+        self.assertNotIn("record_text", res)
+        self.assertEqual(len(opened), 1)
+        self.assertIn(mock.call(opened[0]), closed.call_args_list)
+
+    def _link_folder(self, target: Path, link: Path) -> None:
+        """A junction on Windows (no extra privilege needed), a symlink elsewhere."""
+        if os.name == "nt":
+            import _winapi
+
+            _winapi.CreateJunction(str(target), str(link))
+        else:
+            os.symlink(target, link, target_is_directory=True)
+
+    def test_review_record_refuses_a_link_even_when_it_points_inside_the_root(self):
+        rel = self.add_draft()["path"]
+        self._link_folder(self.root / rel.split("/")[0], self.root / "alias")
+        code, res = self.run_cli("review-record", "alias/" + rel.split("/")[1])
+        self.assertEqual(code, 1)
+        self.assertIn("link or junction", res["error"])
+
+    def test_review_record_fails_closed_when_an_entry_cannot_be_read(self):
+        rel = self.add_draft()["path"]
+        real_lstat = os.lstat
+
+        def denied(path, *a, **k):
+            if Path(path).name == rel.split("/")[0]:
+                raise PermissionError("denied")
+            return real_lstat(path, *a, **k)
+
+        with mock.patch.object(V.os, "lstat", side_effect=denied):
+            code, res = self.run_cli("review-record", rel)
+        self.assertEqual(code, 1)
+        self.assertIn("link or junction", res["error"])
+
+    def _outside_record(self) -> Path:
+        outside = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, outside, True)
+        (outside / "x.md").write_text(record(), encoding="utf-8")
+        return outside
+
+    def test_review_record_refuses_a_linked_record_file(self):
+        self.add_draft()
+        outside = self._outside_record()
+        try:
+            os.symlink(outside / "x.md", self.root / SLUG / "link.md")
+        except (OSError, NotImplementedError):
+            self.skipTest("symlinks are not permitted here")
+        code, res = self.run_cli("review-record", f"{SLUG}/link.md")
+        self.assertEqual(code, 1)
+        self.assertIn("link or junction", res["error"])
+
+    def test_review_record_refuses_a_linked_or_junctioned_folder(self):
+        self.add_draft()
+        outside = self._outside_record()
+        self._link_folder(outside, self.root / "linked")
+        code, res = self.run_cli("review-record", "linked/x.md")
+        self.assertEqual(code, 1)
+        self.assertIn("link or junction", res["error"])
 
     def test_successor_finalize_retires_predecessor(self):
         self.make_active()
@@ -943,6 +1561,17 @@ class Hardening(Base):
         code, res = self.run_cli("register", f"{SLUG}/p000000000009.md")
         self.assertEqual(code, 1)
         self.assertIn("internal_id", res["error"])
+
+    def test_register_refuses_a_record_too_long_to_review(self):
+        self.assertEqual(self.run_cli("init")[0], 0)
+        (self.root / SLUG).mkdir(parents=True)
+        orphan = self.root / SLUG / "p000000000001.md"
+        orphan.write_text(record(_body="word " * 8000), encoding="utf-8")
+        before = orphan.read_bytes()
+        code, res = self.run_cli("register", f"{SLUG}/p000000000001.md")
+        self.assertEqual(code, 1)
+        self.assertIn("too long to review", res["error"])
+        self.assertEqual(orphan.read_bytes(), before)
 
     def test_register_drops_prefilled_verification(self):
         self.assertEqual(self.run_cli("init")[0], 0)
@@ -1252,6 +1881,75 @@ class Robustness(Base):
         found, _ = V.hidden_characters("a b\u00a0c\u2009d\u3000e")
         self.assertEqual([h["codepoint"] for h in found], ["U+00A0", "U+2009", "U+3000"])
 
+    def test_show_reports_hidden_characters_in_metadata(self):
+        self.add_draft(boundaries="Report only\u200b.", references=["ok", "a\u202eb"])
+        res = self.run_cli("show", SLUG, "--history")[1]["records"][0]
+        self.assertEqual(res["hidden_characters"], [])
+        self.assertEqual(
+            [(h["field"], h["codepoint"]) for h in res["hidden_metadata"]],
+            [("boundaries", "U+200B"), ("references", "U+202E")],
+        )
+        self.assertFalse(res["hidden_metadata_truncated"])
+
+    def test_a_line_break_in_metadata_is_reported(self):
+        for value, code in (("a\rb", "U+000D"), ("a\nb", "U+000A"), ("ab\n", "U+000A")):
+            with self.subTest(value=value):
+                for field in ("name", "boundaries"):
+                    entries, cut = V.hidden_metadata({field: value})
+                    self.assertFalse(cut)
+                    self.assertEqual(
+                        [(e["field"], e["codepoint"]) for e in entries], [(field, code)]
+                    )
+        self.assertEqual(V.hidden_characters("a\r\nb\n"), ([], False))
+
+    def test_show_caps_the_hidden_metadata_list_across_fields(self):
+        zw = "\u200b" * 40
+        self.add_draft(boundaries="b" + zw, prerequisites="p" + zw)
+        res = self.run_cli("show", SLUG, "--history")[1]["records"][0]
+        self.assertEqual(len(res["hidden_metadata"]), V.MAX_HIDDEN_REPORTED)
+        self.assertTrue(res["hidden_metadata_truncated"])
+
+    def test_a_draft_verification_holds_only_hashes(self):
+        self.add_draft()
+        self.assertEqual(self.verify("p000000000001")[0], 0)
+        path = self.root / SLUG / "p000000000001.md"
+        clean = path.read_text(encoding="utf-8")
+        for extra in (f"  note: {FAKE_KEY}\n", f"  import: {FAKE_KEY}\n", f"  {FAKE_KEY}: x\n"):
+            path.write_text(
+                clean.replace("verification:\n", "verification:\n" + extra), encoding="utf-8"
+            )
+            code, res = self.run_cli("validate")
+            self.assertEqual(code, 1, extra)
+            self.assertIn("verification", " ".join(res["errors"]))
+            self.assertNotIn(FAKE_KEY, json.dumps(res))
+        path.write_text(clean, encoding="utf-8")
+        self.assertEqual(self.run_cli("validate")[0], 0)
+
+    def test_an_unrequired_verification_value_is_still_a_hash(self):
+        self.make_active()
+        path = self.root / SLUG / "active.md"
+        text = path.read_text(encoding="utf-8")
+        path.write_text(
+            text.replace("verification:\n", f"verification:\n  import: {FAKE_KEY}\n"),
+            encoding="utf-8",
+        )
+        code, res = self.run_cli("validate")
+        self.assertEqual(code, 1)
+        self.assertIn("verification.import is not a SHA-256", " ".join(res["errors"]))
+        self.assertNotIn(FAKE_KEY, json.dumps(res))
+
+    def test_a_draft_hash_of_older_text_is_not_an_error(self):
+        self.add_draft()
+        path = self.root / SLUG / "p000000000001.md"
+        text = path.read_text(encoding="utf-8")
+        path.write_text(
+            text.replace("---\n", f"---\nverification:\n  quality: {'a' * 64}\n", 1),
+            encoding="utf-8",
+        )
+        code, res = self.run_cli("validate")
+        self.assertEqual(code, 0, res)
+        self.assertEqual(res["records"][0]["missing_verification"], ["quality"])
+
     def test_show_reports_no_hidden_characters_for_plain_text(self):
         self.make_active(_body="Tab\tis fine.\nSo is café and — a dash.")
         code, res = self.run_cli("show", SLUG)
@@ -1343,6 +2041,13 @@ class Robustness(Base):
         code, res = self.run_cli("validate")
         self.assertEqual(code, 0, res)
         self.assertFalse(any("stray temp file" in w for w in res["warnings"]), res["warnings"])
+
+    def test_a_stray_temp_file_name_with_shell_meaning_is_withheld(self):
+        self.make_active()
+        (self.root / SLUG / "a.md.$(id).tmp").write_text("x", encoding="utf-8")
+        warnings = " | ".join(self.run_cli("validate")[1]["warnings"])
+        self.assertIn("stray temp file with an odd name", warnings)
+        self.assertNotIn("$(id)", warnings)
 
     def test_validate_warns_about_stray_temp_files_without_failing(self):
         self.make_active()
@@ -1492,6 +2197,21 @@ class ValidatorEdgeCases(Base):
     def test_a_lone_carriage_return_starts_a_new_screened_line(self):
         hits = V.screen_text("Deploy notes\rDEPLOY_TOKEN=abc123")
         self.assertIn({"line": 2, "pattern": "dotenv_secret_line"}, hits)
+
+    def test_other_line_separators_start_a_new_screened_line(self):
+        for sep in ("\u2028", "\u2029", "\x85", "\x0b", "\x0c", "\x1c", "\x1d", "\x1e"):
+            with self.subTest(sep=f"U+{ord(sep):04X}"):
+                hits = V.screen_text(f"Title\nnotes{sep}TOKEN=x")
+                self.assertEqual(hits, [{"line": 2, "pattern": "dotenv_secret_line"}])
+                for prefix in ("", "# ", "#\xa0# "):
+                    found = V._comment_hits(f"# notes{sep}{prefix}TOKEN=x")
+                    self.assertEqual(found, "dotenv_secret_line")
+
+    def test_a_trailing_line_separator_does_not_hide_an_email_address(self):
+        for sep in ("\u2028", "\u2029", "\x85", "\x1c"):
+            with self.subTest(sep=f"U+{ord(sep):04X}"):
+                hits = V.screen_text("git@" + "corp.com:" + sep)
+                self.assertEqual(hits, [{"line": 1, "pattern": "email_address"}])
 
     def test_a_record_write_is_flushed_to_disk_before_the_rename(self):
         self.assertEqual(self.run_cli("init")[0], 0)

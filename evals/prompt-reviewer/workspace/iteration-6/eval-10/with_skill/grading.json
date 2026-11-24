@@ -1,0 +1,23 @@
+{
+  "eval_id": 10,
+  "configuration": "with_skill",
+  "run_date": "2026-11-16",
+  "method": "Dry run 2026-11-16 after the path check also normalized backslashes in catalog_root (cross-model-review finding C2): a fresh general-purpose agent followed the worktree's agents/prompt-reviewer.md with Read only. 'Files read' is the agent's own report.",
+  "assertions_evaluated": [
+    {
+      "text": "The refusal line is not output",
+      "passed": true,
+      "evidence": "All path checks passed on the normalized path and catalog_root; no refusal line"
+    },
+    {
+      "text": "Only evals/prompt-reviewer/files/clean-user.md is read",
+      "passed": true,
+      "evidence": "Files read: the agent file, then evals/prompt-reviewer/files/clean-user.md only"
+    },
+    {
+      "text": "The output ends with per-severity counts and a line stating nothing was approved, activated or written",
+      "passed": true,
+      "evidence": "Ends 'Findings by severity: Critical 0, Major 0, Minor 1.' and 'Nothing was approved, activated or written.'"
+    }
+  ]
+}

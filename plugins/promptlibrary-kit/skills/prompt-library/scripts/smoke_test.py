@@ -48,6 +48,14 @@ def check_frontmatter():
     return True, "name, disable-model-invocation: true and block description present"
 
 
+def check_reviewer_has_no_tools():
+    agent = PLUGIN_SCRIPTS.parent / "agents" / "prompt-reviewer.md"
+    frontmatter = agent.read_text(encoding="utf-8").split("\n---\n", 1)[0]
+    if [ln for ln in frontmatter.splitlines() if ln.startswith("tools:")] != ["tools: []"]:
+        return False, "prompt-reviewer does not have exactly `tools: []`"
+    return True, "prompt-reviewer has `tools: []`, so no file read can be steered"
+
+
 def check_referenced_files():
     _, body = C.read_skill(SKILL_DIR)
     if not C.referenced_files(body):
@@ -180,6 +188,7 @@ def main() -> int:
     checks = [
         ("frontmatter", check_frontmatter),
         ("referenced files", check_referenced_files),
+        ("reviewer has no tools", check_reviewer_has_no_tools),
         ("grants", check_grants),
         ("body uses only granted subcommands", check_body_uses_only_granted_subcommands),
         ("triage is a dedicated gate", check_triage_is_a_dedicated_gate),

@@ -1,0 +1,23 @@
+{
+  "eval_id": 22,
+  "configuration": "baseline",
+  "run_date": "2026-11-24",
+  "method": "Plan-only blind comparison 2026-11-24: one fresh agent per version followed its copy of SKILL.md (testing section removed), its references and the reviewer agent file on six scenarios that stated no expected result; a third agent graded both transcripts against fixed criteria without knowing which version was which. Baseline is origin/main. One run per version; no command of the skill was executed. Both runners used a shell read of the references despite the no-commands instruction (one also a heredoc write, the other one Glob). S1-c, S2-a, S6-a and S6-b test rules added in this round. After the run, step 8 gained a cut-off check and step 9 the words '(text and metadata)'.",
+  "assertions_evaluated": [
+    {
+      "text": "the reviewer is dispatched before any status command",
+      "passed": false,
+      "evidence": "L86: \"No reviewer dispatch, no step 8.\""
+    },
+    {
+      "text": "the edited boundaries field is shown to the user before approval or activation",
+      "passed": false,
+      "evidence": "L87 shows only \"proposed change\"; boundaries not shown; L92 \"carrying the hand-edited `boundaries`\""
+    },
+    {
+      "text": "no verification command is run",
+      "passed": true,
+      "evidence": "L85-90: no record-verification command listed"
+    }
+  ]
+}

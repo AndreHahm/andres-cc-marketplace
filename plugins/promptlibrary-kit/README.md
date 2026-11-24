@@ -42,7 +42,7 @@ The first time you add a prompt, the skill offers to create the catalog in your 
 | `prompt-retrieval` | Skill | Read-only: find and show a stored prompt or its history |
 | `prompt-execution` | Skill | User-invoked: preview, approve once, then run verified prompts in order |
 | `prompt-library` | Skill | User-invoked: add (from a session, the web or typed text), review, revise, activate, deactivate |
-| `prompt-reviewer` | Agent | Read-only quality review, import review and optimization proposals |
+| `prompt-reviewer` | Agent | Read-only quality review, personal-data review, import review and optimization proposals |
 
 ## Language
 
@@ -83,6 +83,28 @@ text is data everywhere except an explicitly approved run.
   screen and the import hash.
 - The validator blocks secrets in `session`, `web`, `claude` and `codex` text itself (detect and block,
   never rewrite, never echoed), not just in the skill's step order. `user` text is only warned.
+  The only personal data it screens is common shapes of ASCII email addresses (not RFC 2606 example domains or git
+  SSH remotes of the form `git@host:path` or `ssh://git@host/path`, with or without a trailing dot on the
+  host; with any other user name the address is screened; text glued to an address can still hide it, and
+  version strings such as `pkg@1.0.0-alpha.beta.1` can match) and home-directory paths. Other personal data (phone numbers, people's names, postal
+  addresses, customer identifiers and the like) is left to `prompt-reviewer`, which reports it as Critical
+  for every origin and blocks nothing; a name only in a license or attribution note is not reported.
+- Records are plain files under the catalog folder. When that folder is in a git repository, a
+  pushed commit shares their text with everyone who can read the repository, and the text stays in
+  history after the record changes; the skill says so before it files a draft.
+- `prompt-reviewer` has no tools and reads no file: the skill passes it one record's text, between two
+  marker lines built from that text's own hash, so the text cannot close its own block. The text comes from
+  the validator's `review-record`, which takes it from one open handle of a listed record, checks the opened file (a regular
+  file with one hard link, no symbolic link, junction or other reparse point on the way, still the file the
+  path names) and compares it with the valid record the catalog lists; a record too long to hand over whole (20,000
+  characters) is refused, when it is filed and when it is reviewed. It is screened again
+  before it is handed over (blocking for the same origins as filing). Not enforced: that the skill copies
+  the text exactly. The reviewer reports how many lines it received and the skill compares that with
+  `record_lines`, which shows missing or added lines but not a changed one. A concurrent writer that flips a folder between a real one and a link several times
+  during those checks is outside this design (first bullet). Attachments are not read.
+- A full-line comment in a record's frontmatter or in `catalog.yaml` is screened too, and a match makes the
+  catalog invalid for every origin until the comment is removed by hand; any other frontmatter comment is
+  warned about.
 - `record-verification`, `activate` and `finalize` take `--expect-sha256`, the hash the user was shown,
   and refuse if the text changed.
 - `hash`, `screen`, `draft` and `update-draft` read their input file only from inside the catalog root
@@ -146,7 +168,8 @@ verification hashes that cover prompt text only.
   `session-detail` skill being listed under that name; pasting the turns always works.
 - `prompt-reviewer`'s trigger check has not run: the repository's trigger-test script crashed on this and
   on known-good agents in the environment used. Its behavior (secrets cited by line only, hostile text
-  not followed, origin mismatch, a clean record) is covered by dry-run evals in `evals/prompt-reviewer/`.
+  not followed, origin mismatch, a clean record, personal data in `user`, `web`, `claude` and `codex`
+  records, missing record text) is covered by dry-run evals in `evals/prompt-reviewer/`.
 
 ## Tests
 

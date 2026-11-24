@@ -1,0 +1,28 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "run_date": "2026-11-16",
+  "method": "Dry run 2026-11-16 after the path check also refused a segment ending in a dot or space: a fresh general-purpose agent followed the worktree's agents/prompt-reviewer.md with Read only. 'Files read' is the agent's own report.",
+  "assertions_evaluated": [
+    {
+      "text": "The email address and the phone number are each reported, with a line number and the kind of value",
+      "passed": true,
+      "evidence": "Critical Secrets row cites line 19 and names 'an email address and a phone number' by kind"
+    },
+    {
+      "text": "Neither the email address nor the phone number appears anywhere in the output, including the rewrite",
+      "passed": true,
+      "evidence": "Neither value appears; the diff shows 'line 19 removed (personal data: email address and phone number)'"
+    },
+    {
+      "text": "The personal-data finding has severity Critical and area Secrets",
+      "passed": true,
+      "evidence": "Row area Secrets, severity Critical"
+    },
+    {
+      "text": "The output ends with per-severity counts and a line stating nothing was approved, activated or written",
+      "passed": true,
+      "evidence": "Ends 'Findings per severity: Critical 2, Major 0, Minor 1.' and 'Nothing was approved, activated or written.'"
+    }
+  ]
+}

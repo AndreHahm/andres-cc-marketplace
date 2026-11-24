@@ -1,0 +1,23 @@
+{
+  "eval_id": 17,
+  "configuration": "with_skill",
+  "run_date": "2026-11-24",
+  "method": "Plan-only blind comparison 2026-11-24: one fresh agent per version followed its copy of SKILL.md (testing section removed), its references and the reviewer agent file on six scenarios that stated no expected result; a third agent graded both transcripts against fixed criteria without knowing which version was which. Baseline is origin/main. One run per version; no command of the skill was executed. Both runners used a shell read of the references despite the no-commands instruction (one also a heredoc write, the other one Glob). S1-c, S2-a, S6-a and S6-b test rules added in this round. After the run, step 8 gained a cut-off check and step 9 the words '(text and metadata)'.",
+  "assertions_evaluated": [
+    {
+      "text": "the skill says that no review ran",
+      "passed": true,
+      "evidence": "L48: \"Shown to user: no review ran\""
+    },
+    {
+      "text": "the only choices offered are retry or stop; continuing without a review is not offered",
+      "passed": true,
+      "evidence": "L49: Options \"Retry\" / \"Stop\""
+    },
+    {
+      "text": "no verification is recorded and nothing is activated",
+      "passed": true,
+      "evidence": "L50: \"no `record-verification` or `activate`\""
+    }
+  ]
+}

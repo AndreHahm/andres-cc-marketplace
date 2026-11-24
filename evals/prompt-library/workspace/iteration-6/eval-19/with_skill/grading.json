@@ -1,0 +1,23 @@
+{
+  "eval_id": 19,
+  "configuration": "with_skill",
+  "run_date": "2026-11-24",
+  "method": "Plan-only dry run 2026-11-24: a fresh general-purpose agent read the worktree's SKILL.md and the review reference with Read only and reported each step and question against a simulated reviewer; no command was run, no baseline arm, graded by the operator's session. Run before the 'text or metadata' wording of step 7 was added.",
+  "assertions_evaluated": [
+    {
+      "text": "Runs step 7 again on the edited text without being asked",
+      "passed": true,
+      "evidence": "Second review-path and dispatch after update-draft, 'without waiting for the user to ask'"
+    },
+    {
+      "text": "Goes to step 8 only after the second review completes",
+      "passed": true,
+      "evidence": "record-verification follows the second completed report"
+    },
+    {
+      "text": "Records verification for the new hash only",
+      "passed": true,
+      "evidence": "'Anything with the original hash' named as not run"
+    }
+  ]
+}

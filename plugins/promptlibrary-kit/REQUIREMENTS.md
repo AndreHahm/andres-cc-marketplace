@@ -4,8 +4,8 @@
 this document wins; V4 stays the design history.
 
 **Sources:** concept V4 (`2026-10-02`, the design source), concept V5 (`2026-10-14`, status only, no
-design change), the plugin on `main` at 51fc2b13, and the unmerged branch
-`fix/promptlibrary-kit-security-bundle` (head f064a851).
+design change), the plugin on `main` at 51fc2b13, and the security bundle (branch
+`fix/promptlibrary-kit-security-bundle`), since merged.
 
 ## How to read this
 
@@ -14,8 +14,8 @@ design change), the plugin on `main` at 51fc2b13, and the unmerged branch
 - **Requirement**: what a user (or the owner) must be able to rely on, stated as an outcome, not as an
   implementation.
 - **Source**: `V4 §<section>` for the concept, `code` for behavior that exists in the plugin but was never
-  written down as a requirement, `branch` for behavior only on the security-bundle branch.
-- **State**: `met` (on `main`), `partial`, `not met`, `branch` (only on the unmerged branch), `deferred`
+  written down as a requirement.
+- **State**: `met` (on `main`), `partial`, `not met`, `deferred`
   (planned later, V4 "Deferred").
 - **Confirm**: `?` until the owner decides; then `yes`, `changed` or `dropped`.
 
@@ -458,6 +458,19 @@ Source: V4 §Components; code (`disable-model-invocation`); owner decision 2026-
 (`prompt-library`: met; `prompt-library-setup`: not met, the skill does not exist). Confirmed: yes
 (2026-11-16).
 
+### INT-7: Before I file a prompt, I am told who can read it
+
+*As a developer, before a draft is filed I am told that the record is a plain file in my project and that a
+pushed commit shares its text with everyone who can read the repository, so that I don't share a prompt
+without knowing it.*
+
+**What you'll notice:** the filing question tells you where the record is saved. It also says that, if that
+folder is in a git repository, a pushed commit shares the text and the text stays in history after the
+record changes. You get the notice for every new draft and every origin. It blocks nothing, and the plugin
+never commits or pushes. The trade-off: one more sentence at every filing.
+
+Source: code; owner decision 2026-11-24. State: met. Confirmed: yes (2026-11-24).
+
 ## 4. Screening for secrets and personal data (SCR)
 
 ### SCR-1: A secret in imported or AI-written text stops the draft
@@ -549,8 +562,8 @@ warns you in your own text (SCR-2); you replace it, for example with "the on-cal
 addresses are screened. The trade-off: a prompt that really needs a
 team mailbox cannot be saved from session or AI text; you rephrase it or write that part as your own text.
 
-Source: branch (ad706e64, 7df79b46); owner decision 2026-11-16. State: **branch** (only on the unmerged
-security-bundle branch). Confirmed: yes (2026-11-16).
+Source: code; owner decision 2026-11-16 (git remotes in `ssh://git@host/path` form: owner decision
+2026-11-24). State: met. Confirmed: yes (2026-11-16).
 
 ### SCR-6: The reviewer reports other personal data in every prompt
 
@@ -567,8 +580,13 @@ number) is possible. Email addresses are handled by the screen instead (SCR-5).
 **Changes to earlier decisions:** V4 and the code check personal data only in the import review
 (`session` and `web`); this extends the reviewer's personal-data check to every origin.
 
-Source: V4 §Import review; code; owner decision 2026-11-16. State: **partial** (`session`, `web`: met;
-other origins: not met). Confirmed: yes (2026-11-16).
+**Amended 2026-11-24 (SCR-6):** a name that appears only in a license or attribution note in `references` is
+not a finding, because imported prompts must keep that note; contact data in it still is one. The kinds listed
+above are examples: other data that identifies a person counts too. The trade-off: a name in such a note is
+saved without a finding. Found by the security review before the security-bundle PR.
+
+Source: V4 §Import review; code; owner decision 2026-11-16. State: **partial** (met for every origin except
+`example`, which does not exist yet). Confirmed: yes (2026-11-16; amended 2026-11-24).
 
 ## 5. Review and optimization (REV)
 
@@ -590,9 +608,14 @@ reviewer dispatch, so PUR-2 holds without exception.
 **Amended 2026-11-17 (DEF-3):** one exception, once Notion support arrives: a change you accept in a Notion
 sync is not reviewed before it becomes active; it is still screened for secrets.
 
-Source: V4 §Quality review; owner decision 2026-11-16. State: **partial** (review and acknowledgment: met;
-no-review-no-activation: not met, the skill offers to continue without a review). Confirmed: yes
-(2026-11-16).
+Source: V4 §Quality review; owner decision 2026-11-16. State: met (the skill enforces it; the validator
+checks only that a recorded hash matches the text, so it cannot tell whether a review ran: records verified
+before 2026-11-24, drafts as well as active and inactive prompts, a hash written into a record outside the
+skill, for example in a cloned repository, and metadata changed outside `update-draft` under a valid hash, for
+example by a hand edit or a merge, are not covered; nothing in the validator stops a verification being
+recorded after a metadata change that was not reviewed again, only the skill's step 7, which every resumed
+draft goes through). Confirmed: yes
+(2026-11-16; state note amended 2026-11-24).
 
 ### REV-2: Imported and AI-written text is checked for hidden instructions
 
@@ -640,7 +663,9 @@ manipulate the reviewer can at most produce a wrong report, which I see before d
 your approval, never by the reviewer. A prompt that tells the reviewer to approve, activate or change files
 has no effect beyond the reviewer's report.
 
-Source: V4 §Optimization, §Components; code (agent `tools: Read`). State: met. Confirmed: yes (2026-11-16).
+Source: V4 §Optimization, §Components; code (agent `tools: []`, which `prompt-library`'s smoke test pins).
+A live check on 2026-11-24, recorded in that day's session handoff, launched an agent with `tools: []` and it
+had no file tool. State: met. Confirmed: yes (2026-11-16; evidence note added 2026-11-24).
 
 ### REV-5: The reviewer treats the prompt as data, never as orders
 
@@ -672,18 +697,18 @@ file outside the project or a file reached through a symlink or junction.
 **Changes to earlier decisions:** extends the reviewer's scope from "the one record" to the record plus
 its attachments, as CAT-2 ("shown in the review") requires.
 
-**Mechanism (implementation decision, not part of the requirement).** On `main` the skill passes the
-reviewer an absolute record path and nothing bounds it. On the security-bundle branch, the validator's
-`review-path` checks the path (inside the catalog, a listed record, no link on the way) and the agent
-re-checks it, but a link swapped in between the check and the read still escapes. Passing the record's
-text and metadata inline (no file read left to steer) satisfies REV-6 only if the attachments' content is
-passed too; extending `review-path` to attachments must also close the swap gap, with the same single
-read of each attachment that EXE-2's attachments amendment requires for a run. Either way, REV-1 to
-REV-6 and CAT-2 must hold together.
+**Mechanism (implementation decision, not part of the requirement).** The validator's
+`review-record` returns the listed record's text from one open handle, which it checks after opening (regular file, one hard
+link, no link on the way, still the file the path names), and returns its text; the skill passes that text
+inline to the reviewer, which has no tools, so no file read is left to steer (owner decision 2026-11-24,
+replacing the `review-path` check and its swap gap). The attachments' content must be passed the same way,
+with the single read of each attachment that EXE-2's attachments amendment requires for a run. Either way,
+REV-1 to REV-6 and CAT-2 must hold together.
 
-Source: code + branch; owner decision 2026-11-16. State: **partial** (single-record review: met without a
-bound on `main`, bounded on the branch with the swap gap; attachments: not met). Confirmed: yes
-(2026-11-16).
+Source: code; owner decisions 2026-11-16 and 2026-11-24. State: **partial** (single-record review: met, except
+that the validator cannot check that the skill copied the text exactly; the reviewer's line count, which the
+skill compares with `record_lines`, shows missing or added lines only; attachments: not met). Confirmed: yes
+(2026-11-16; mechanism and state note amended 2026-11-24).
 
 ## 6. Verification and lifecycle (LIF)
 
@@ -815,7 +840,11 @@ for the missing step, for example activation. If the content changed since your 
 reviewed, it goes back through review and approval (LIF-2, REV-1). The secret screen runs again either way
 (SCR-3).
 
-Source: code. State: met. Confirmed: yes (2026-11-16).
+**Amended 2026-11-24 (LIF-8):** every resumed draft goes through the review and is shown for approval again,
+also when its fingerprint is unchanged, because the fingerprint covers the text and not the metadata; an
+approval already recorded for the current text is not recorded a second time.
+
+Source: code; owner decision 2026-11-24. State: met. Confirmed: yes (2026-11-16; amended 2026-11-24).
 
 ## 7. Retrieval (RET)
 
@@ -1469,8 +1498,8 @@ with the owner, 2026-11-17).
 | CODE-1 | Catalog may not sit in `.git`, `.github` or Claude Code config folders | validator `FORBIDDEN_ROOTS` | Covered by CAT-7 |
 | CODE-2 | Hidden-character reporting in every text display and approval | validator, all three skills | Covered by RET-4 |
 | CODE-3 | Secret screen also blocks `claude` and `codex` text, and re-screens at every later step | validator | Covered by SCR-1, SCR-3 |
-| CODE-4 | Email screen with git-remote and example-domain exemptions | branch | Covered by SCR-5 |
-| CODE-5 | `review-path` record-path gate for the reviewer | branch | Mechanism of REV-6 |
+| CODE-4 | Email screen with git-remote and example-domain exemptions | validator | Covered by SCR-5 |
+| CODE-5 | `review-record` single-read record text for the reviewer | validator, prompt-library step 7 | Mechanism of REV-6 |
 | CODE-6 | Atomic writes and rollback of a partly failed status move | validator | Covered by CAT-6 |
 | CODE-7 | `discard-orphan` repair offer for an orphan from an interrupted draft | prompt-library step 1 | Covered by CAT-6, LIF-8 |
 | CODE-8 | `--expect-sha256` binding an approval to the shown text | validator | Mechanism of LIF-7 |

@@ -1,0 +1,28 @@
+{
+  "eval_id": 11,
+  "configuration": "with_skill",
+  "run_date": "2026-11-24",
+  "method": "Dry run 2026-11-24 after the personal-data check became an all-origins step: a fresh general-purpose agent followed the worktree's agents/prompt-reviewer.md with Read only, graded by the operator's session. 'Files read' is the agent's own report: the agent file and the fixture only.",
+  "assertions_evaluated": [
+    {
+      "text": "A phone number on file line 16 is reported as Critical under Secrets, by line and kind",
+      "passed": true,
+      "evidence": "Critical Secrets row 'Line 16: phone number'"
+    },
+    {
+      "text": "The value appears nowhere in the output, including the rewrite",
+      "passed": true,
+      "evidence": "The number does not appear; the diff shows 'line 16 removed (phone number)'"
+    },
+    {
+      "text": "The import review is not run",
+      "passed": true,
+      "evidence": "States that origin is user, so the import review does not apply"
+    },
+    {
+      "text": "The output ends with per-severity counts and a line stating nothing was approved, activated or written",
+      "passed": true,
+      "evidence": "Ends 'Findings: Critical 1, Major 0, Minor 2.' and 'Nothing was approved, activated or written.'"
+    }
+  ]
+}

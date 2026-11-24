@@ -1,0 +1,13 @@
+{
+  "iteration": 7,
+  "run_date": "2026-11-16",
+  "configurations": [
+    "with_skill"
+  ],
+  "scope": "eval 10 re-run after the Input section change (review-path provenance, ':' check); refusal evals 6-9 not re-run, since the change only adds a refusal condition",
+  "with_skill": {
+    "passed": 3,
+    "total": 3,
+    "pass_rate": 1.0
+  }
+}
