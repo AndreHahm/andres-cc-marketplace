@@ -618,6 +618,56 @@ B	git tag -l 'v1 -di'; git tag $_
 B	git tag -l 'git tag -di v1'; eval "$_"
 B	git tag -l 'git tag -di v1'\n$_
 B	git tag -l 'git tag -di v1' && echo ok
+# --- older gaps fixed with issue #863: settings that rebase, merge or run a command in a
+# submodule, force-push, or expire reflogs
+B	git -c submodule.s.update=rebase submodule update
+B	git -c submodule.s.update=merge submodule update
+B	git -c submodule.s.update='!touch x' submodule update
+B	git --config-env submodule.s.update=V submodule update
+B	GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=submodule.s.update GIT_CONFIG_VALUE_0=rebase git submodule update
+B	bash -c 'git -c submodule.s.update=rebase submodule update'
+B	git -c remote.origin.mirror=true push
+B	git -c remote.origin.mirror push
+B	bash -c 'git -c remote.origin.mirror push'
+B	git -c remote.origin.push=+x:y push
+B	GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=remote.origin.push GIT_CONFIG_VALUE_0=+x:y git push
+B	git -c gc.reflogExpire=now gc
+B	git -c gc.reflogExpireUnreachable=now gc
+B	git -c gc.refs/heads/x.reflogExpire=now gc
+A	git -c submodule.recurse=false status
+A	git -c remote.origin.url=x fetch
+A	git -c gc.auto=0 status
+# a message may be run again through the previous argument
+B	git tag -a v -m 'git tag -di v1'; $_
+B	git commit -m 'git commit --amend'; ${_}
+B	git commit -m 'git commit --amend'; eval "$_"
+B	git branch --format 'git branch -D x'; eval "$_"
+B	trap 'eval "$BASH_COMMAND"' DEBUG; git commit -m 'git commit --amend'
+B	v=_; git commit -m 'git commit --amend'; ${!v}
+A	git commit -m 'about --amend' && git status
+A	git tag -a v1 -m 'drop -d later' && echo ok
+# arithmetic holds <<, which is no heredoc: the rest of the command is still read
+B	: $((1<<2)); git $'reb\\x61se' main
+B	: $((1<<2)); git -C . st$'\\x61'sh
+B	((x=1<<2)); git -C 'a b\\'c\\ d stash
+B	: $[1<<2]; git $'reb\\x61se' main
+B	x[1<<2]=1; git $'reb\\x61se' main
+B	: $(( (1<<2) + 1 )); git -C . $'st\\x61sh'
+B	[ -d . ] && git push origin main<<E\nE
+B	[ -d . ] && git push origin HEAD:main<<E\nE
+B	[ -d . ] && git push origin x -f<<E\nE
+B	: $((1<<2)); git -C $((1<<2)) $'st\\x61sh'
+A	gh pr create --title "[CI] x" --body "$(cat <<'EOF'\n> Never git rebase here\nEOF\n)"
+B	A=1 git submodule foreach xargs -a f -I X env GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=pull.ffX GIT_CONFIG_VALUE_0=false git pull
+A	GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=remote.origin.pushurl GIT_CONFIG_VALUE_0=https://h/r git push
+B	GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=remote.a=b.mirror GIT_CONFIG_VALUE_0=true git push a=b
+B	V=true git --config-env=remote.a=b.mirror=V push a=b
+A	git -c remote.origin.url=https://host/x.mirror fetch
+A	git -c remote.origin.url=https://host/a.push=b fetch
+A	gh pr create --title "[docs] x" --body "$(cat <<'EOF'\nDo not use git push origin "main" here\nEOF\n)"
+B	x=([1<<2]=1); git $'reb\\x61se' main
+A	: $((1<<2)); git status
+A	[ -f x ] && cat <<'EOF'\ngit status\nEOF
 CASES
 
 printf 'pass=%d fail=%d (%s)\n' "${pass}" "${fail}" "${HOOK}"

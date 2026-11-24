@@ -100,6 +100,7 @@ END {
 # word stays one word. Code inside $( ), backticks and <( ) keeps its spaces. The copy stops
 # at a heredoc (<<), whose body the other copies still check. It only adds a copy, so
 # it can only block more.
+# mode=arith prints the same copy, but goes on past a << that may be arithmetic (`$((1<<2))`).
 # mode=blank prints the command unchanged except for the value of a message or pattern
 # option (`commit -m "use --amend"` becomes `-m ""`), for the forbidden-git check only, so
 # text inside a message is not read as a flag. A value is blanked only where the words are
@@ -131,7 +132,7 @@ function chrv(v) {
 # A word cut at the cap is marked: blank_cmd stops wherever it would compare one, but may
 # still blank one whole as a value, since the span comes from the raw text.
 function emit(x) {
-    if (mode == "norm") printf "%s", x
+    if (mode != "blank") printf "%s", x
     if (inword) { if (length(wn) < 256) wn = wn x; else wc = 1 }
 }
 function push(t) { depth++; st[depth] = t; pd[depth] = 0 }
@@ -268,6 +269,12 @@ END {
         for (k = 1; k <= m; k += 2) ln[++h] = (k < m) ? ln[k] "\n" ln[k + 1] : ln[k]
     }
     s = ln[1]
+    # A blanked argument may be run again by name: `$_`, an indirect `${!v}`, BASH_COMMAND or
+    # BASH_EXECUTION_STRING. Other variables that hold a command are not read (known limit).
+    t = s
+    gsub(/\\\n/, "", t)
+    rerun = (index(t, "$_") || index(t, "${_") || index(t, "${!") || index(t, "BASH_COMMAND") ||
+        index(t, "BASH_EXECUTION_STRING"))
     plain = (mode == "blank" && length(s) < 4096 && s ~ ("^([A-Za-z0-9_./ \t-]|" sq "[^" sq "\n]*" sq ")*$"))
     n = length(s); i = 1; wb = 1
     while (i <= n) {
@@ -350,7 +357,19 @@ END {
             if (c == " " || c == "\t") { endword(); emit(c); i++; wb = 1; continue }
             if (c == "\n") { endword(); endcmd(); emit(c); i++; wb = 1; continue }
             if (c == "<" && c2 == "<") {
-                if (substr(s, i + 2, 1) != "<") { endword(); bail = 1; stopped = 1; break }
+                if (substr(s, i + 2, 1) != "<") {
+                    # In arithmetic (`$((1<<2))`, `$[1<<2]`, `x[1<<2]=1`, `x=([1<<2]=1)`) this is no
+                    # heredoc: after text that may open one, mode=arith goes on. The norm copy
+                    # still ends here, since some checks need its line end.
+                    if (!arith) {
+                        t = substr(s, 1, i)
+                        gsub(/\\\n/, "", t)
+                        arith = (index(t, "((") || index(t, "$[") || index(t, "=(") || t ~ /[A-Za-z0-9_]\[/)
+                    }
+                    endword(); bail = 1
+                    if (mode != "arith" || !arith) { stopped = 1; break }
+                    emit("<<"); i += 2; if (!depth) redir = 1; wb = 1; continue
+                }
                 endword(); emit("<<<"); i += 3; if (!depth) redir = 1; wb = 1; continue
             }
             if ((c == "<" || c == ">") && c2 == "(") {
@@ -407,8 +426,8 @@ END {
     }
     if (depth) unclean = 1
     if (!stopped) { endword(); endcmd() }
-    if (mode == "norm") { printf "\n"; exit }
-    if (unclean) { print s; exit }
+    if (mode != "blank") { printf "\n"; exit }
+    if (unclean || rerun) { print s; exit }
     p = 1
     for (k = 1; k <= nb; k++) { printf "%s", substr(s, p, sa[k] - p) dq dq; p = sb[k] }
     print substr(s, p)
@@ -422,6 +441,12 @@ CMD_CODE=$(strip_heredocs <<<"${CMD}") || block "Could not read the command."
 CMD_FLAGS=$(split_words blank <<<"${CMD_CODE}") || block "Could not read the command."
 CMD_WORDS=$(split_words norm <<<"${CMD_CODE}") || block "Could not read the command."
 FLAGS_WORDS=$(split_words norm <<<"${CMD_FLAGS}") || block "Could not read the command."
+CMD_ARITH=""
+FLAGS_ARITH=""
+if [[ "${CMD}" == *"<<"* ]]; then
+    CMD_ARITH=$(split_words arith <<<"${CMD_CODE}") || block "Could not read the command."
+    FLAGS_ARITH=$(split_words arith <<<"${CMD_FLAGS}") || block "Could not read the command."
+fi
 
 # Every check reads one line at a time, so `git -C x \` + newline + `reset --hard` would
 # slip past them. Each check also reads copies with backslash-newline pairs joined. Not
@@ -453,6 +478,12 @@ done
 CMD+=$'\n'"${CMD_WORDS}"
 CMD_CODE+=$'\n'"${CMD_WORDS}"
 CMD_FLAGS+=$'\n'"${FLAGS_WORDS}"
+# The copies that go on past an arithmetic <<, as extra lines only.
+if [[ -n "${CMD_ARITH}" ]]; then
+    CMD+=$'\n'"${CMD_ARITH}"
+    CMD_CODE+=$'\n'"${CMD_ARITH}"
+    CMD_FLAGS+=$'\n'"${FLAGS_ARITH}"
+fi
 # The same copies with the blanks after < and > removed, so `> x git stash` is read like
 # `>x git stash`. Only these copies: there quoted text is one word with `_` for each blank,
 # and a heredoc body is cut off, so a quoted reply line (`> Never git rebase ...`) in a
@@ -590,7 +621,8 @@ ABBREV_GIT_RE+="|tag([^;&|]*[[:space:]])?-i*d[a-zA-Z]*${GIT_SUB_END}"
 ABBREV_GIT_RE+="|pull([^;&|]*[[:space:]])?-[a-zA-Z]*r${GIT_SUB_END}"
 # A setting given for one command only (`git -c ...`, `--config-env`, GIT_CONFIG_* variables)
 # that turns off clean's force check, makes pull rebase or merge (branch.autoSetupRebase does
-# so for a later pull on a branch created with it), or defines any alias (an
+# so for a later pull on a branch created with it), makes submodule update rebase, merge or run a
+# command, force-pushes (remote.<name>.mirror or push), expires reflogs, or defines any alias (an
 # alias can name a forbidden subcommand, `alias.x=stash`, or run a shell, `alias.x=!cmd`).
 # The exec-policy rules cannot see it: the command no longer starts with `git clean`.
 # A persistent `git config` stays with the rules, which ask the user. Known limits of a text
@@ -603,7 +635,7 @@ ABBREV_GIT_RE+="|pull([^;&|]*[[:space:]])?-[a-zA-Z]*r${GIT_SUB_END}"
 # `-c pull.rebase` as true, and so may `pull.ff`, whose bare `true` overrides a persistent
 # `pull.ff=only`. `branch.<name>.mergeOptions` passes options such as `--no-ff` to the merge
 # that pull runs. A GIT_CONFIG_KEY_<n> value is the bare key.
-CONFIG_KEYS='(clean\.requireforce|pull\.(rebase|ff)|merge\.ff|branch\.[^[:space:]=]*\.(rebase|mergeoptions)|branch\.autosetuprebase|alias\.[^[:space:]=]*)'
+CONFIG_KEYS='(clean\.requireforce|pull\.(rebase|ff)|merge\.ff|branch\.[^[:space:]=]*\.(rebase|mergeoptions)|branch\.autosetuprebase|submodule\.[^[:space:]]*\.update|remote\.[^[:space:]]*\.(mirror|push)|gc\.([^[:space:]]*\.)?reflogexpire(unreachable)?|alias\.[^[:space:]=]*)'
 # A `-c` value written in the command is read too: `pull.ff=only` keeps pull fast-forward-only
 # and `clean.requireForce=true` keeps the force check, so only another value of those two keys
 # is blocked. A value must be exactly that word, ended by a blank, a quote, an operator or the
@@ -616,7 +648,7 @@ CONFIG_NOT_ONLY="(${CONFIG_VALUE_END}|(o|on|onl)${CONFIG_VALUE_END}|[^o${CONFIG_
 CONFIG_NOT_ONLY+="|o[^n${CONFIG_VALUE_NOT}]|on[^l${CONFIG_VALUE_NOT}]|onl[^y${CONFIG_VALUE_NOT}]|only[^${CONFIG_VALUE_NOT}])"
 CONFIG_NOT_TRUE="(${CONFIG_VALUE_END}|(t|tr|tru)${CONFIG_VALUE_END}|[^t${CONFIG_VALUE_NOT}]"
 CONFIG_NOT_TRUE+="|t[^r${CONFIG_VALUE_NOT}]|tr[^u${CONFIG_VALUE_NOT}]|tru[^e${CONFIG_VALUE_NOT}]|true[^${CONFIG_VALUE_NOT}])"
-CONFIG_C_SET="((pull\.rebase|merge\.ff|branch\.[^[:space:]=]*\.(rebase|mergeoptions)|branch\.autosetuprebase|alias\.[^[:space:]=]*)="
+CONFIG_C_SET="((pull\.rebase|merge\.ff|branch\.[^[:space:]=]*\.(rebase|mergeoptions)|branch\.autosetuprebase|submodule\.[^[:space:]=]*\.update|remote\.[^[:space:]=]*\.(mirror|push)|gc\.([^[:space:]=]*\.)?reflogexpire(unreachable)?|alias\.[^[:space:]=]*)="
 CONFIG_C_SET+="|pull\.ff=${CONFIG_NOT_ONLY}|clean\.requireforce=${CONFIG_NOT_TRUE})"
 # The option itself; under `set -k` a dropped NAME=value word may stand before the key.
 CONFIG_FLAG_C="-c(${GIT_ASSIGN})*[[:space:]]*"
@@ -629,7 +661,7 @@ config_set_re() {
 CONFIG_PRE="${SEGMENT_START}git${GIT_OPT}*[[:space:]]+"
 CONFIG_OPT="${CONFIG_PRE}${CONFIG_FLAG}"
 UNSAFE_CONFIG_RE=$(config_set_re "${CONFIG_PRE}")
-UNSAFE_CONFIG_RE+="|${CONFIG_OPT}((pull|branch\.[^[:space:]=]*)\.rebase|pull\.ff)${GIT_SUB_END}"
+UNSAFE_CONFIG_RE+="|${CONFIG_OPT}((pull|branch\.[^[:space:]=]*)\.rebase|pull\.ff|remote\.[^[:space:]=]*\.mirror)${GIT_SUB_END}"
 # A GIT_CONFIG_* variable set for git (read below, after the other per-command checks).
 GIT_CONFIG_ENV="GIT_CONFIG_(KEY_[0-9]+|PARAMETERS)[+]?=[^[:space:]]*${CONFIG_KEYS}"
 # A forbidden git command inside a string that a shell runs (`bash -c 'git stash'`, also after
@@ -657,14 +689,14 @@ INNER_GIT_RE="^[[:space:]]*${SHELL_STRING_BODY}${SHELL_STRING_GIT}"
 # The per-command settings above, also inside such a string (`ssh host 'git -c alias.x=stash x'`).
 SHELL_CONFIG_PRE="${SHELL_STRING_START}git${GIT_OPT}*[[:space:]]+"
 UNSAFE_CONFIG_RE+="|$(config_set_re "${SHELL_CONFIG_PRE}")"
-UNSAFE_CONFIG_RE+="|${SHELL_CONFIG_PRE}${CONFIG_FLAG}((pull|branch\.[^[:space:]=]*)\.rebase|pull\.ff)${GIT_SUB_END_Q}"
+UNSAFE_CONFIG_RE+="|${SHELL_CONFIG_PRE}${CONFIG_FLAG}((pull|branch\.[^[:space:]=]*)\.rebase|pull\.ff|remote\.[^[:space:]=]*\.mirror)${GIT_SUB_END_Q}"
 UNSAFE_CONFIG_RE+="|${SHELL_STRING_START}${GIT_CONFIG_ENV}"
 # Read in the copies without quote characters, for a key quoted inside the string
 # (`bash -c 'git -c "alias.x=stash" x'`) or a quoted argument before it (`ssh -o "A b" host`).
 SHELL_CONFIG_PRE='(^|[^A-Za-z0-9_.-])(bash|sh|zsh|dash|ksh|eval|su|ssh)[[:space:]]([^;&|]*[[:space:];&|({])?'
 SHELL_CONFIG_PRE+="git${GIT_OPT}*[[:space:]]+"
 UNSAFE_CONFIG_RE+="|$(config_set_re "${SHELL_CONFIG_PRE}")"
-UNSAFE_CONFIG_RE+="|${SHELL_CONFIG_PRE}${CONFIG_FLAG}((pull|branch\.[^[:space:]=]*)\.rebase|pull\.ff)${GIT_SUB_END}"
+UNSAFE_CONFIG_RE+="|${SHELL_CONFIG_PRE}${CONFIG_FLAG}((pull|branch\.[^[:space:]=]*)\.rebase|pull\.ff|remote\.[^[:space:]=]*\.mirror)${GIT_SUB_END}"
 # chmod that makes a file writable by others: an octal mode whose last digit has the
 # write bit (2, 3, 6, 7), or a symbolic clause for o or a that adds or sets w. default.rules
 # lists a few exact modes; it cannot test the bit, so the hook catches the rest.
@@ -784,7 +816,7 @@ search_only_command() {
 # only when the whole command is one line of plain assignments, git and plain words, where nothing
 # is expanded, split, unquoted or decoded.
 other_key_only() {
-    local re='^([A-Za-z_][A-Za-z0-9_]*=[A-Za-z0-9_./-]* +)+git( [A-Za-z0-9_=./ -]*)?$'
+    local re='^([A-Za-z_][A-Za-z0-9_]*=[A-Za-z0-9_./:-]* +)+git( [A-Za-z0-9_./: -]*)?$'
     [[ "${ORIG_CMD}" != *GIT_CONFIG_PARAMETERS* && "${ORIG_CMD}" =~ ${re} ]] || return 1
     ! matches "${GIT_CONFIG_ENV}([^[:alnum:].-]|\$)"
 }
