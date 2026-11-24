@@ -1,0 +1,31 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Writes the reason to a scratchpad file with the Write tool and never puts it in a Bash command",
+      "passed": true,
+      "evidence": "'With the `Write` tool (no heredoc or echo), save the reason verbatim'"
+    },
+    {
+      "text": "Builds the marker with git-bypass-attestation-marker.py (reason file, actor, head SHA) and does not use jq",
+      "passed": true,
+      "evidence": "'git-bypass-attestation-marker.py\" <scratchpad>/bypass-reason.txt octocat <40-hex head SHA>'; 'Never build it with `jq` instead'"
+    },
+    {
+      "text": "Part B: the empty reason is rejected before any comment or label and the PR is stated as unaffected",
+      "passed": true,
+      "evidence": "'stops before any attestation: no SHA or actor lookup, no reason file, script run, comment or label'; 'the PR is unaffected'"
+    },
+    {
+      "text": "Part C: no attestation is posted, the failure is reported plainly and the PR is stated as unaffected",
+      "passed": true,
+      "evidence": "'no reason file, marker, comment or label exists'; 'bypass was **not** attested'; 'The PR itself is not affected'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

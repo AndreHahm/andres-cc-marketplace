@@ -1,0 +1,21 @@
+{
+  "eval_id": 33,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "Runs git-required-checks.py with octo/widgets, main and the full head SHA",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "Reports the PR as not ready because `Unit tests` is failing, and does not continue to the rights check or merge",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "Explains that a second same-name entry never hides a failing source, and does not overrule the script from statusCheckRollup",
+      "type": "functionality",
+      "target": "answer.md"
+    }
+  ]
+}

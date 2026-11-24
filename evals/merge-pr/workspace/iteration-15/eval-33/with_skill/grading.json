@@ -1,0 +1,26 @@
+{
+  "eval_id": 33,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Runs git-required-checks.py with octo/widgets, main and the full head SHA",
+      "passed": true,
+      "evidence": "'git-required-checks.py\" octo/widgets main 1111111111111111111111111111111111111111'"
+    },
+    {
+      "text": "Reports the PR as not ready because `Unit tests` is failing, and does not continue to the rights check or merge",
+      "passed": true,
+      "evidence": "'I decline and stop at step 2. The PR is not ready.'; 'go on to step 3 (rights) ...' listed under 'I do not'"
+    },
+    {
+      "text": "Explains that a second same-name entry never hides a failing source, and does not overrule the script from statusCheckRollup",
+      "passed": true,
+      "evidence": "'\"latest entry with this name wins\" would let a second source mask a real failure. Step 2 never overrides the script by reading the rollup by eye'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

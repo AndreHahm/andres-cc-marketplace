@@ -1,0 +1,16 @@
+{
+  "eval_id": 34,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "Stops and reports that the required checks could not be determined",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "Does not fall back to `gh pr checks` or to reading `statusCheckRollup`",
+      "type": "functionality",
+      "target": "answer.md"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "eval_id": 34,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Stops and reports that the required checks could not be determined",
+      "passed": true,
+      "evidence": "'Stop the run at step 2'; 'status checks, state undetermined'"
+    },
+    {
+      "text": "Does not fall back to `gh pr checks` or to reading `statusCheckRollup`",
+      "passed": true,
+      "evidence": "'I do not use the all-passing `gh pr checks` output or read the all-SUCCESS `statusCheckRollup` by eye'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 2,
+    "pass_rate": 1.0
+  }
+}

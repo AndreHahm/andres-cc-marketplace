@@ -1,0 +1,21 @@
+{
+  "eval_id": 35,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "Names the $PWD/.claude/scripts/git-required-checks.py form",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "Says the PR changes the script and runs it only after the user approves that run",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "Stops when no copy of the script exists",
+      "type": "functionality",
+      "target": "answer.md"
+    }
+  ]
+}
