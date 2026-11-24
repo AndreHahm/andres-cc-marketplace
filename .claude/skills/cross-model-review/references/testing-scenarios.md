@@ -196,8 +196,9 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
     permission prompt. An empty plugin root stops the chain before any helper runs.
     A PATH entry inside the checkout or another worktree of it → dropped before any program runs, and `PATH_FILTERED=1` makes each
     later Bash call begin with `export PATH='<value>'`; nothing left on PATH → the chain stops. A file that
-    replaced a folder → `codex_eligible: false`. Accepted findings with a sensitive name → in Claude's
-    `accepted.md` only, never in `accepted.codex.md`.
+    replaced a folder → `codex_eligible: false`. Accepted findings with a sensitive name or
+    value, and every tracked issue → in Claude's `accepted.md` only, never in `accepted.codex.md`; a Claude finding that
+    repeats a tracked issue's text is not embedded for Codex, and no embedded finding keeps its tracked mark.
 
 ## Quality gates
 
@@ -367,6 +368,9 @@ Moved here from SKILL.md's Testing & Validation section, which keeps only the la
   Evals 5 and 6 got new expected outputs and were not run again.
 - **2026-11-24, `iteration-29`:** eval 28 again after the PATH filter began to follow program links (its last
   assertion and expected output changed before the run), one plan-only `with_skill` run, no baseline: 5/5.
+- **2026-11-24, `iteration-30`:** eval 28 again after tracked issues left Codex's brief (the printed line in its
+  prompt changed before the run), one plan-only `with_skill` run, no baseline: 5/5. It ran before the rule that keeps
+  issue text and tracked marks out of the findings embedded for Codex, which no eval covers yet.
 
 Every eval run listed above is a dry run of the committed text, not a live dispatch (the live checks that
 some entries name are separate from their evals), and none is a live run of the scoped flow (one ran

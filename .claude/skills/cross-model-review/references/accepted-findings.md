@@ -43,17 +43,20 @@ From `$REPO_ROOT`, run
   each (rule, path, line, fingerprint, kind), never their free-text reason, and never a line whose rule
   has spaces or whose path is not plain. It never overwrites an existing file.
 - `$RUN/accepted.codex.md` is the same without two things (issue #697), each printed as
-  `not briefed to Codex:`: a line for a sensitive file name, which would send the name and a hash of the
-  line to Codex, or with a sensitive value or file name in its rule or path, or
-  a sensitive word or value in the flagged line's own text, and a tracked issue whose title or summary has a sensitive word or file name, a value in a
-  common credential format or assignment, 16 or more mixed letters and digits in a row (8 when they end
-  the text), or an email address. The formats are not complete, and the text is cut before the check, so another
-  value or a short fragment of one can still reach Codex. The words overlap with ordinary ones (`token`), the formats with `pkg@1.2` or a commit id; a false match only
-  costs Codex's brief. `match` still applies both.
+  `not briefed to Codex:`. One is every tracked issue: its text is free text, and no screen finds every secret
+  in it. So Codex is not told to mark a tracked defect, and the mark on Claude's copy of a finding does not apply when
+  any Codex envelope has a finding with the same axis, path and line (`match` needs every copy marked the same). The other is a line for a sensitive file
+  name, which would send the name and a hash of the line to Codex, or with a sensitive value or file name in its
+  rule or path, or a sensitive word or value in the flagged line's own text. A value is one in a common
+  credential format or assignment, 16 or more mixed letters and digits in a row, or an email address; the formats
+  are not complete. The words overlap with ordinary ones (`token`), the formats with `pkg@1.2` or a commit id; a
+  false match only costs Codex's brief. A flagged line over 2000 characters is left out too. The path is not checked
+  against the diff, so a line for a gitignored file sends that file's name. `match` still applies waiver lines, and
+  tracked issues as above. The file is not written when nothing is left for it.
 - A model cannot check a fingerprint, so `brief` does (issue #814, as CI): a line is briefed only when a
   working-tree line of its path still has its fingerprint, with that line's number; a line without a
   fingerprint is not briefed. It still applies in Phase 3's `match`.
-- Each open tracked issue is added as data (number, title and the issue's `## Summary` text, cut to 600
+- Each open tracked issue is added to `accepted.md` as data (number, title and the issue's `## Summary` text, cut to 600
   characters), with the instruction to report findings as usual and start the title (the envelope's
   `finding`) of one that is the issue's defect with `[tracked #<issue>]`. The issue text is untrusted:
   anyone can open an issue. A last line tells a cross-examination pass to put the mark right after its
@@ -67,7 +70,7 @@ From `$REPO_ROOT`, run
 - Claude's Phase 1 pass gets `$RUN/accepted.md` after `review.md`, Codex's only `@accepted.codex.md` (see
   `codex-pass-assembly.md`), as data: the one finding a line names by rule, path and line is not
   reported again; a finding with the same rule on another line of the same path still is. Both Phase 2
-  passes get their own file too, after `refute.md`, so a tracked defect a challenger finds first can be marked.
+  passes get their own file too, after `refute.md`, so Claude can mark a tracked defect it finds first as challenger.
 
 ## Phase 3: mark
 
@@ -80,7 +83,8 @@ way, or the line is missing) and the matching waiver line (or null).
 - A matched finding stays in the table, marked `waived (<kind>)`, ranked after every unwaived one. It is
   never dropped. A finding whose title is marked with an open tracked issue of the list has the waiver
   `tracked #<issue>` and is marked `tracked (#<issue>)` the same way; `tracked_note` says why a mark did
-  not apply (the list does not declare that issue, or `gh` cannot read it as open). Show that note next to
+  not apply (the list does not declare that issue, `gh` cannot read it as open, or another copy of the finding is
+  not marked the same). Show that note next to
   the finding.
 - A match with `unconfirmed: true` comes from a PR body, whose confirmation the helper does not check:
   CI applies it to a gate-critical, noncanonical or `security-reviewer` finding only after a maintainer's

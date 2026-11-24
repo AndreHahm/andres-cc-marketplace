@@ -1,0 +1,14 @@
+{
+  "skill_name": "cross-model-review",
+  "iteration": 30,
+  "evals": [
+    {
+      "eval_id": 28,
+      "with_skill": {
+        "pass_rate": 1.0,
+        "assertions_passed": 5,
+        "assertions_total": 5
+      }
+    }
+  ]
+}
