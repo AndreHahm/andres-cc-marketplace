@@ -1,0 +1,18 @@
+{
+  "eval_id": 21,
+  "configuration": "with_skill",
+  "run_date": "2026-11-24",
+  "method": "Plan-only dry run 2026-11-24: a fresh general-purpose agent read the worktree's SKILL.md and references with Read only and reported each step against a simulated catalog; no command was run, no baseline arm, graded by the operator's session. Re-run the same day on the final step 3 and 8 wording with the same result (those agents also used one Glob to list the skill folder).",
+  "assertions_evaluated": [
+    {
+      "text": "The successor keeps name, area, short_description, boundaries and attachments",
+      "passed": true,
+      "evidence": "Scratch record carries all five unchanged"
+    },
+    {
+      "text": "Sets version 2 and previous_id, and carries no verification",
+      "passed": true,
+      "evidence": "version: 2, previous_id: p000000000001, no verification field"
+    }
+  ]
+}

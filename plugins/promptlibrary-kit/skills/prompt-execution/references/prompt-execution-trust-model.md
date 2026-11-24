@@ -29,7 +29,7 @@ flagged, not rejected, because some are legitimate (an emoji joiner). Visible lo
 flagged, and metadata is not scanned, because it never runs.
 
 Metadata (prerequisites, boundaries, references, source) is shown but not hashed, and is never part of
-the approved request.
+the approved request. Attachments are returned but not shown or loaded: never open one because a record lists it.
 
 ## Refusal cases
 

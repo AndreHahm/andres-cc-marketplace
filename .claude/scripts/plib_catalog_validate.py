@@ -258,6 +258,11 @@ def _parse_scalar(raw: str):
     return raw
 
 
+def _shown_key(key: str) -> str:
+    """A key name for an error message, withheld when it looks like a secret itself."""
+    return "(name withheld)" if screen_text(key) else key
+
+
 def parse_yaml(text: str) -> dict:
     """Parse the YAML subset this plugin writes: scalars, one-level maps, lists of scalars."""
     data: dict = {}
@@ -273,7 +278,7 @@ def parse_yaml(text: str) -> dict:
                 raise CatalogError("unparseable line in frontmatter or catalog")
             key, rest = m.group(1), m.group(2)
             if key in data:
-                raise CatalogError(f"duplicate key: {key}")
+                raise CatalogError(f"duplicate key: {_shown_key(key)}")
             data[key] = _parse_scalar(rest) if rest != "" else None
         else:
             if key is None:
@@ -282,18 +287,18 @@ def parse_yaml(text: str) -> dict:
                 if data[key] is None:
                     data[key] = []
                 if not isinstance(data[key], list):
-                    raise CatalogError(f"mixed list and value under {key}")
+                    raise CatalogError(f"mixed list and value under {_shown_key(key)}")
                 data[key].append(_parse_scalar(body[2:]))
             else:
                 m = re.fullmatch(r"([A-Za-z_][A-Za-z0-9_]*):\s*(.*)", body)
                 if not m:
-                    raise CatalogError(f"unparseable nested line under {key}")
+                    raise CatalogError(f"unparseable nested line under {_shown_key(key)}")
                 if data[key] is None:
                     data[key] = {}
                 if not isinstance(data[key], dict):
-                    raise CatalogError(f"mixed map and value under {key}")
+                    raise CatalogError(f"mixed map and value under {_shown_key(key)}")
                 if m.group(1) in data[key]:
-                    raise CatalogError(f"duplicate key: {key}.{m.group(1)}")
+                    raise CatalogError(f"duplicate key: {_shown_key(key)}.{_shown_key(m.group(1))}")
                 data[key][m.group(1)] = _parse_scalar(m.group(2))
     return data
 
@@ -408,7 +413,13 @@ def split_record(raw: str) -> tuple[dict, str]:
             end = len(raw) - 4
         else:
             raise CatalogError("frontmatter is not closed")
-    return parse_yaml(raw[4 : end + 1]), raw[end + 5 :]
+    meta = parse_yaml(raw[4 : end + 1])
+    # reserved for this script's own keys (_body, _path): the field check and the screen skip them
+    if any(key.startswith("_") for key in meta):
+        raise CatalogError("a frontmatter key starts with an underscore")
+    if any(line.lstrip().startswith("#") for line in raw[4 : end + 1].split("\n")):
+        meta["_comment"] = True
+    return meta, raw[end + 5 :]
 
 
 def read_record(path: Path) -> dict:
@@ -501,7 +512,7 @@ def hash_problems(meta: dict) -> list[str]:
             problems.append(f"verification.{kind} does not match the current prompt text")
     for kind in ver:
         if kind not in ("quality", "import"):
-            problems.append(f"unknown verification field: {kind}")
+            problems.append(f"unknown verification field: {_shown_key(kind)}")
     return problems
 
 
@@ -524,7 +535,7 @@ def validate_record(meta: dict, version: int) -> list[str]:
             errs.append(f"missing required field: {f}")
     for f in meta:
         if not f.startswith("_") and f not in required and f not in optional:
-            errs.append(f"unknown field: {f}")
+            errs.append(f"unknown field: {_shown_key(f)}")
     if errs:
         return errs
     for f in ("name", "area", "slug", "internal_id", "short_description"):
@@ -569,7 +580,8 @@ def validate_record(meta: dict, version: int) -> list[str]:
         if not isinstance(ref, dict) or any(not ref.get(k) for k in keys):
             errs.append(f"source_ref requires {' and '.join(keys)} for origin {meta['origin']}")
         elif set(ref) - set(keys):
-            errs.append("source_ref has unknown keys: " + ", ".join(sorted(set(ref) - set(keys))))
+            unknown = sorted(_shown_key(k) for k in set(ref) - set(keys))
+            errs.append("source_ref has unknown keys: " + ", ".join(unknown))
     elif ref is not None:
         errs.append("source_ref is only allowed for origin session or web")
     if nonblank_lines(meta["_body"]) == 0:
@@ -861,7 +873,7 @@ def load_catalog(root: Path) -> tuple[dict, dict, list[str]]:
         errs.append(f"unsupported scope: {cat.get('scope')!r}")
     for f in cat:
         if f not in CATALOG_FIELDS[version]:
-            errs.append(f"catalog.yaml: unknown field: {f}")
+            errs.append(f"catalog.yaml: unknown field: {_shown_key(f)}")
     if not isinstance(cat.get("snapshot_id"), str) or not cat.get("snapshot_id"):
         errs.append("catalog.yaml: snapshot_id is missing")
     listed = cat.get("records")
@@ -994,6 +1006,11 @@ def cmd_validate(args) -> dict:
         info["warnings"].append(
             f"stray temp file {rel} (appears left by an interrupted write; check, then delete)"
         )
+    for rel, meta in records.items():
+        if meta.get("_comment"):
+            info["warnings"].append(
+                f"{rel} has a frontmatter comment, which is not screened (the next write drops it)"
+            )
     info["ok"] = not info["errors"]
     info["catalog_version"] = cat.get("catalog_version")
     info["records"] = [summarize(m) for m in records.values()]
@@ -1025,6 +1042,7 @@ def cmd_show(args) -> dict:
             "prerequisites": m.get("prerequisites"),
             "boundaries": m.get("boundaries"),
             "references": m.get("references"),
+            "attachments": m.get("attachments"),
             "source_ref": m.get("source_ref"),
             "prompt_text": m["_body"],
             "text_hash": text_hash(m["_body"]),
@@ -1337,6 +1355,21 @@ def cmd_draft(args) -> dict:
     return info
 
 
+def _recorded_hashes(meta: dict) -> dict:
+    """The verification entries this script records; anything else in the map is dropped."""
+    ver = meta.get("verification")
+    return {
+        kind: value
+        for kind, value in (ver.items() if isinstance(ver, dict) else ())
+        if kind in ("quality", "import") and isinstance(value, str) and HASH_RE.fullmatch(value)
+    }
+
+
+def _canonical(value) -> str:
+    """A field value as text, so 1 and true (equal in Python) count as different."""
+    return json.dumps(value, sort_keys=True)
+
+
 def cmd_update_draft(args) -> dict:
     """Replace an existing draft's content from a scratch file (an approved rewrite or an in-place
     edit)."""
@@ -1350,16 +1383,16 @@ def cmd_update_draft(args) -> dict:
         )
     meta = _scratch_record(args.file, root, cat["catalog_version"])
     for field in ("internal_id", "slug", "version", "previous_id", "origin", "source_ref"):
-        if meta.get(field) != current.get(field):
+        if _canonical(meta.get(field)) != _canonical(current.get(field)):
             raise CatalogError(f"{field} cannot change when updating a draft")
     unchanged = all(
-        meta.get(f) == current.get(f)
+        _canonical(meta.get(f)) == _canonical(current.get(f))
         for f in {*meta, *current}
         if not f.startswith("_") and f != "verification"
     ) and text_hash(meta["_body"]) == text_hash(current["_body"])
     # a changed text or any changed field (the review covers both) starts unverified again
-    if unchanged and current.get("verification"):
-        meta["verification"] = current["verification"]
+    if unchanged and _recorded_hashes(current):
+        meta["verification"] = _recorded_hashes(current)
     write_record(_inside(root, root / current["_path"]), meta)
     info.update(ok=True, internal_id=meta["internal_id"], text_hash=text_hash(meta["_body"]))
     return info
@@ -1391,10 +1424,8 @@ def cmd_register(args) -> dict:
     if problems:
         raise CatalogError("; ".join(problems[:4]))
     _assert_clean(meta)
-    if (
-        meta.pop("verification", None) is not None
-    ):  # verification is recorded by record-verification only
-        write_record(path, meta)
+    meta.pop("verification", None)  # verification is recorded by record-verification only
+    write_record(path, meta)  # the canonical form: a comment in the file was never screened
     write_catalog(root, cat, [m["_path"] for m in records.values()] + [rel])
     info["ok"] = True
     return info
@@ -1413,13 +1444,16 @@ def cmd_discard_orphan(args) -> dict:
         raise CatalogError(f"{rel} is not an unlisted record file")
     parts = rel.split("/")
     path = _inside(root, root / parts[0] / parts[1])
+    reason = ""
     try:
         meta = read_record(path)
-    except (CatalogError, OSError, ValueError):
+    except CatalogError as exc:
+        meta, reason = {}, f" ({exc})"
+    except (OSError, ValueError):
         meta = {}
     if meta.get("status") != "draft":
         raise CatalogError(
-            "only an unlisted draft can be discarded; this file is not a readable draft"
+            f"only an unlisted draft can be discarded; this file is not a readable draft{reason}"
         )
     path.unlink()
     with contextlib.suppress(OSError):
@@ -1441,7 +1475,7 @@ def cmd_record_verification(args) -> dict:
         raise CatalogError("an import hash is only recorded for session or web origin")
     _check_expected(meta, args.expect_sha256)
     _assert_clean(meta)
-    ver = dict(meta.get("verification") or {})
+    ver = _recorded_hashes(meta)
     ver[args.kind] = text_hash(meta["_body"])
     meta["verification"] = ver
     write_record(_inside(root, root / meta["_path"]), meta)

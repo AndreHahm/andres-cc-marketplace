@@ -883,6 +883,110 @@ class Lifecycle(Base):
         rec = V.read_record(self.root / SLUG / "p000000000001.md")
         self.assertEqual(V.missing_verification(rec), ["quality", "import"])
 
+    def test_update_draft_treats_a_changed_source_ref_type_as_a_change(self):
+        self.add_draft(origin="session", source_ref={"session_id": "abc", "turns": 1})
+        changed = self.scratch(origin="session", source_ref={"session_id": "abc", "turns": True})
+        code, res = self.run_cli("update-draft", "p000000000001", changed)  # 1 == True in Python
+        self.assertEqual(code, 1)
+        self.assertIn("source_ref cannot change", res["error"])
+        reordered = self.scratch(origin="session", source_ref={"turns": 1, "session_id": "abc"})
+        self.assertEqual(self.run_cli("update-draft", "p000000000001", reordered)[0], 0)
+
+    def test_show_returns_attachments(self):
+        self.add_draft(attachments=["docs/style-guide.md"])
+        code, res = self.run_cli("show", SLUG, "--history")
+        self.assertEqual(code, 0, res)
+        self.assertEqual(res["records"][0]["attachments"], ["docs/style-guide.md"])
+
+    def test_underscore_frontmatter_keys_are_refused_without_echo(self):
+        self.add_draft()
+        path = self.root / SLUG / "p000000000001.md"
+        clean = path.read_text(encoding="utf-8")
+        for key in ("_note", "_body", "_path"):
+            path.write_text(
+                clean.replace("---\n", f"---\n{key}: {FAKE_KEY}\n", 1), encoding="utf-8"
+            )
+            code, res = self.run_cli("validate")
+            self.assertEqual(code, 1, key)
+            self.assertIn("starts with an underscore", json.dumps(res))
+            self.assertNotIn(FAKE_KEY, json.dumps(res))
+        scratch = Path(self.scratch(internal_id="p000000000001"))
+        text = scratch.read_text(encoding="utf-8")
+        path.write_text(clean, encoding="utf-8")
+        scratch.write_text(text.replace("---\n", "---\n_note: hi\n", 1), encoding="utf-8")
+        code, res = self.run_cli("update-draft", "p000000000001", str(scratch))
+        self.assertEqual(code, 1)
+        self.assertIn("starts with an underscore", res["error"])
+
+    def test_register_rewrites_the_file_without_comments(self):
+        self.assertEqual(self.run_cli("init")[0], 0)
+        (self.root / SLUG).mkdir(parents=True)
+        orphan = self.root / SLUG / "p000000000001.md"
+        orphan.write_text(record().replace("---\n", f"---\n# {FAKE_KEY}\n", 1), encoding="utf-8")
+        self.assertEqual(self.run_cli("register", f"{SLUG}/p000000000001.md")[0], 0)
+        self.assertNotIn(FAKE_KEY, orphan.read_text(encoding="utf-8"))
+        self.assertEqual(self.run_cli("validate")[0], 0)
+
+    def test_discard_orphan_says_why_a_file_is_not_readable(self):
+        self.assertEqual(self.run_cli("init")[0], 0)
+        (self.root / SLUG).mkdir(parents=True)
+        orphan = self.root / SLUG / "p000000000001.md"
+        orphan.write_text(record().replace("---\n", "---\n_note: hi\n", 1), encoding="utf-8")
+        code, res = self.run_cli("discard-orphan", f"{SLUG}/p000000000001.md")
+        self.assertEqual(code, 1)
+        self.assertIn("starts with an underscore", res["error"])
+        self.assertTrue(orphan.exists())
+
+    def test_only_recorded_hashes_survive_in_a_drafts_verification(self):
+        self.add_draft()
+        self.assertEqual(self.verify("p000000000001")[0], 0)
+        path = self.root / SLUG / "p000000000001.md"
+        extra = path.read_text(encoding="utf-8").replace(
+            "verification:\n", f"verification:\n  note: {FAKE_KEY}\n  import: {FAKE_KEY}\n"
+        )
+        for step in ("update-draft", "record-verification"):
+            path.write_text(extra, encoding="utf-8")
+            if step == "update-draft":
+                same = self.scratch(internal_id="p000000000001")
+                self.assertEqual(self.run_cli(step, "p000000000001", same)[0], 0)
+            else:
+                self.assertEqual(self.verify("p000000000001")[0], 0)
+            self.assertNotIn(FAKE_KEY, path.read_text(encoding="utf-8"))
+            self.assertEqual(list(V.read_record(path)["verification"]), ["quality"])
+
+    def test_a_secret_used_as_a_key_name_is_not_echoed(self):
+        base = record(origin="web", source_ref={"url": "https://example.com", "retrieved_on": "x"})
+        for bad in (
+            base.replace("---\n", f"---\n{FAKE_KEY}: x\n", 1),
+            base.replace("---\n", f"---\n{FAKE_KEY}: x\n{FAKE_KEY}: y\n", 1),
+            base.replace("source_ref:\n", f"source_ref:\n  {FAKE_KEY}: x\n"),
+            base.replace("source_ref:\n", f"source_ref:\n  {FAKE_KEY}: x\n  {FAKE_KEY}: y\n"),
+            base.replace("---\n", f"---\n{FAKE_KEY}: x\n  - y\n", 1),
+            base.replace("---\n", f"---\n{FAKE_KEY}: x\n  y: z\n", 1),
+            base.replace("---\n", f"---\n{FAKE_KEY}:\n  !\n", 1),
+        ):
+            scratch = Path(self.scratch())
+            scratch.write_text(bad, encoding="utf-8")
+            if not (self.root / "catalog.yaml").exists():
+                self.assertEqual(self.run_cli("init")[0], 0)
+            code, res = self.run_cli("draft", str(scratch))
+            self.assertEqual(code, 1, bad)
+            self.assertNotIn(FAKE_KEY, json.dumps(res))
+            self.assertIn("name withheld", res["error"])
+
+    def test_validate_warns_about_frontmatter_comments_without_echo(self):
+        self.add_draft()
+        path = self.root / SLUG / "p000000000001.md"
+        self.assertEqual(self.run_cli("validate")[1]["warnings"], [])
+        path.write_text(
+            path.read_text(encoding="utf-8").replace("---\n", f"---\n# {FAKE_KEY}\n", 1),
+            encoding="utf-8",
+        )
+        code, res = self.run_cli("validate")
+        self.assertEqual(code, 0)
+        self.assertIn("frontmatter comment", " ".join(res["warnings"]))
+        self.assertNotIn(FAKE_KEY, json.dumps(res))
+
     def test_update_draft_refuses_non_drafts(self):
         self.make_active()
         code, res = self.run_cli("update-draft", "p000000000001", self.scratch())

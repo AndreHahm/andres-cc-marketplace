@@ -106,8 +106,9 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
    `user`. For `revise`, take the record from step 2, run `<CLI> show <slug> --history` (a plain `show`
    returns only an active record, so it fails for an inactive one) and read the text of the chosen
    `internal_id`, and start from that text with `version` = predecessor's + 1, `previous_id` = predecessor's `internal_id`, the
-   same `slug`, `area` and `origin` (and, for `session` or `web`, the predecessor's `source_ref`), and a
-   fresh id from `<CLI> new-id`. For `add`, also get the
+   same `slug`, `area` and `origin` (and, for `session` or `web`, the predecessor's `source_ref`), the same
+   `name`, `short_description`, `prerequisites`, `boundaries`, `references` and `attachments` (leave out any that
+   is null) unless the user changes them, and a fresh id from `<CLI> new-id`. For `add`, also get the
    `internal_id` from `<CLI> new-id`. Build the full record in a scratch file from
    `assets/prompt-record-template.md`, following `references/prompt-record-format.md` (a `session` or
    `web` record also needs `source_ref`, shown with an example there).
@@ -159,14 +160,16 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
    is never edited in place, a revision is a new draft.
 8. **Verify.** Only after a completed review of this text (step 7; on a resume at this step, the recorded
    `quality` verification stands for it). Get the final prompt text and its `text_hash` from the filed record (`<CLI> show <slug>
-   --history`), not from the scratch copy. Show both to the user. If the record's `hidden_characters`
+   --history`), not from the scratch copy. Show both to the user, with the metadata `show` returns (`name`, `area`,
+   `short_description`, `prerequisites`, `boundaries`, `references`, `attachments`, `source_ref`). If the record's `hidden_characters`
    is not empty, list each entry (line, column, code point, name) above the text, add "50 or more" when
    `hidden_characters_truncated` is true, and say these characters are invisible in the text shown.
    Then ask with `AskUserQuestion` whether to approve exactly this text, naming the hidden-character
    count in the question when there are any. On yes, run `<CLI> record-verification <internal_id> --kind
    quality --expect-sha256 <that hash>` and, for `session` or `web` origin, again with `--kind import`
    (for a resumed draft, only the kinds in its `missing_verification`, see step 2).
-   The expected hash makes the script refuse if the file changed after the user approved it.
+   The expected hash makes the script refuse if the prompt text changed after the user approved it; the
+   metadata shown is not covered (see Gotchas).
 9. **Change status.** Only after step 8, or when step 2 sends the record here. Take the hash from `<CLI> show <slug> --history`. Show the proposed change and ask
    with `AskUserQuestion`, naming the slug, the status change, the first 8 characters of that hash and,
    for `activate` or `finalize`, the hidden-character count if any. Then run one of:
@@ -249,7 +252,7 @@ directly; last run 2026-11-16, 7 of 7 checks passed. It failed on a copy with a 
       created; text that only names an existing script is triaged as a prompt.
 - [ ] A near-duplicate is offered as a revision before a new record is created.
 - [ ] A `session` or `web` record cannot be activated without an import hash.
-- [ ] A file edited after the user approved its text is refused by `--expect-sha256`.
+- [ ] A prompt text edited after the user approved it is refused by `--expect-sha256`.
 - [ ] A revision produces a successor with `previous_id` and `version` + 1, and the predecessor stays
       untouched until `finalize`.
 - [ ] Every status change and every draft filing was preceded by an `AskUserQuestion` approval.
@@ -262,14 +265,15 @@ directly; last run 2026-11-16, 7 of 7 checks passed. It failed on a copy with a 
 - [ ] A slug that does not match the slug pattern is refused before any command runs with it.
 - [ ] `activate` of an already active record is reported and stops, with no question and no command.
 
-**Last dated run record:** validator fixture tests, 154 run (151 passing, 3 POSIX-only skipped on Windows), 2026-11-24
+**Last dated run record:** validator fixture tests, 162 run (159 passing, 3 POSIX-only skipped on Windows), 2026-11-24
 (`scripts/plib_test_catalog_validate.py`), after the email screen, its review fixes and `review-path`
 (link and junction refusal, tested with a real junction on Windows) were added. The step 6 sharing notice and
 the step 7 `catalog_root` hand-off and `Refused:` handling (2026-11-16) were checked by the smoke test and
 by `prompt-reviewer`'s own dry runs (`evals/prompt-reviewer/workspace/iteration-4/` and `-6/`); no
 `evals/prompt-library/` scenario was re-run for them. Scenarios 17 to 19 (a refused review, an incomplete review
 output, a user edit on top of a rewrite) passed as plan-only dry runs on 2026-11-24
-(`evals/prompt-library/workspace/iteration-5/` and `-6/`, with-skill only; 18 and 19 before the metadata wording). The latest live run, 2026-10-14 (plugin loaded with
+(`evals/prompt-library/workspace/iteration-5/` and `-6/`, with-skill only; 18 and 19 before the metadata wording); 20 and 21 (metadata shown at step 8,
+carried into a revision) passed the same way (`iteration-7/`). The latest live run, 2026-10-14 (plugin loaded with
 `--plugin-dir`), ran add, near-duplicate, revise, finalize and deactivate, each status change behind its
 own approval; the step 5 triage skip it found was fixed in PR #566. An earlier hand-followed run of steps
 1 to 6 (2026-10-04, not persisted) confirmed a fake key is reported unechoed and refused by `draft`.

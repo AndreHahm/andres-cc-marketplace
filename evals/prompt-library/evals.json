@@ -135,6 +135,20 @@
       "prompt": "/prompt-library activate docs__todo-summary",
       "expected_output": "Harness setup (not part of the skill): the catalog holds one filed web-origin draft with no recorded verification. prompt-reviewer returns a completed review with a rewrite; the user approves the rewrite but replaces one line with new pasted text. After update-draft the skill runs step 7 again on the new text and goes on to step 8 only after that review completes.",
       "files": []
+    },
+    {
+      "id": 20,
+      "name": "approval-shows-the-metadata",
+      "prompt": "/prompt-library activate docs__todo-summary",
+      "expected_output": "Harness setup (not part of the skill): the catalog holds one filed user-origin draft with attachments and boundaries set and no recorded verification; prompt-reviewer returns a completed review. At step 8 the skill shows the text, its hash and the metadata (name, area, short_description, prerequisites, boundaries, references, attachments, source_ref) before it asks for approval.",
+      "files": []
+    },
+    {
+      "id": 21,
+      "name": "revision-carries-the-metadata-over",
+      "prompt": "/prompt-library revise docs__todo-summary\n\nOnly add the sentence 'Group them by file.' to the end of the text, change nothing else.",
+      "expected_output": "Harness setup (not part of the skill): the catalog holds one active user-origin record with attachments and boundaries set. The filed successor keeps name, area, short_description, boundaries and attachments unchanged, with version 2 and previous_id set, and carries no verification.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {
@@ -151,7 +165,7 @@
         1,
         2
       ],
-      "Every add asks the prompt-or-skill triage question as its own AskUserQuestion before filing.": [
+      "Every add asks the prompt-or-skill triage question as its own AskUserQuestion before filing, with a skill option offered; it is never merged into the file-draft question or skipped for plain text.": [
         3,
         5
       ],
@@ -166,7 +180,7 @@
         9,
         12
       ],
-      "A file edited after the user approved its text is refused by --expect-sha256.": [
+      "A prompt text edited after the user approved it is refused by --expect-sha256.": [
         10
       ],
       "A revision produces a successor with previous_id and version + 1, and the predecessor stays untouched until finalize.": [
