@@ -1156,7 +1156,10 @@ class Lifecycle(Base):
             self._link_folder(outside, folder)
             fd = real_open(path, *a, **k)
             if swap_back:
-                folder.rmdir() if os.name == "nt" else folder.unlink()
+                if os.name == "nt":
+                    folder.rmdir()
+                else:
+                    folder.unlink()
                 kept.rename(folder)
             return fd
 
@@ -1217,6 +1220,35 @@ class Lifecycle(Base):
         code, res = self.run_cli("review-record", f"{SLUG}/folder.md")
         self.assertEqual(code, 1)
         self.assertIn("not a record file", res["error"])
+
+    def test_review_record_closes_the_handle_of_a_folder_that_opens(self):
+        """POSIX opens a folder for reading; simulated here so that it is also tested on Windows."""
+        rel = self.add_draft()["path"]
+        real_open, real_fstat, opened = os.open, os.fstat, []
+
+        def recording_open(path, *a, **k):
+            fd = real_open(path, *a, **k)
+            if Path(path).name == Path(rel).name:
+                opened.append(fd)
+            return fd
+
+        def folder_fstat(fd):
+            st = real_fstat(fd)
+            if fd not in opened:
+                return st
+            return os.stat_result((stat.S_IFDIR | 0o755, *tuple(st)[1:10]))
+
+        with (
+            mock.patch.object(V.os, "open", side_effect=recording_open),
+            mock.patch.object(V.os, "fstat", side_effect=folder_fstat),
+            mock.patch.object(V.os, "close", wraps=os.close) as closed,
+        ):
+            code, res = self.run_cli("review-record", rel)
+        self.assertEqual(code, 1)
+        self.assertIn("not a record file", res["error"])
+        self.assertNotIn("record_text", res)
+        self.assertEqual(len(opened), 1)
+        self.assertIn(mock.call(opened[0]), closed.call_args_list)
 
     def _link_folder(self, target: Path, link: Path) -> None:
         """A junction on Windows (no extra privilege needed), a symlink elsewhere."""

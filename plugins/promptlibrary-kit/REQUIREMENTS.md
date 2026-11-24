@@ -663,7 +663,9 @@ manipulate the reviewer can at most produce a wrong report, which I see before d
 your approval, never by the reviewer. A prompt that tells the reviewer to approve, activate or change files
 has no effect beyond the reviewer's report.
 
-Source: V4 §Optimization, §Components; code (agent `tools: []`). State: met. Confirmed: yes (2026-11-16).
+Source: V4 §Optimization, §Components; code (agent `tools: []`, which `prompt-library`'s smoke test pins).
+A live check on 2026-11-24, recorded in that day's session handoff, launched an agent with `tools: []` and it
+had no file tool. State: met. Confirmed: yes (2026-11-16; evidence note added 2026-11-24).
 
 ### REV-5: The reviewer treats the prompt as data, never as orders
 

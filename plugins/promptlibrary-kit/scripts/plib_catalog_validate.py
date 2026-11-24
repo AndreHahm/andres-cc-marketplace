@@ -1160,10 +1160,11 @@ def _read_once(root: Path, parts: list[str]) -> str:
         fd = os.open(path, flags)
     except OSError as exc:  # a folder, a missing file, a link swapped in (O_NOFOLLOW)
         raise CatalogError("not a record file inside the catalog root") from exc
+    st = os.fstat(fd)
+    if not stat.S_ISREG(st.st_mode):  # POSIX opens a folder; os.fdopen would refuse it and leak fd
+        os.close(fd)
+        raise CatalogError("not a record file inside the catalog root")
     with os.fdopen(fd, "rb") as handle:
-        st = os.fstat(handle.fileno())
-        if not stat.S_ISREG(st.st_mode):
-            raise CatalogError("not a record file inside the catalog root")
         if st.st_nlink != 1:
             raise CatalogError("the record file has more than one hard link")
         data = handle.read(MAX_INPUT_BYTES + 1)
