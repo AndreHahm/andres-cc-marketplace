@@ -206,11 +206,11 @@ def test_plan_refuses_without_the_model_pin(lab, monkeypatch):
 # --- run ----------------------------------------------------------------------------------------
 
 
-def test_run_alternates_the_arms_within_each_repeat(lab, monkeypatch):
+def test_run_reverses_the_arms_on_every_other_repeat(lab, monkeypatch):
     calls: list = []
     monkeypatch.setattr(review, "dispatch_reviewers", _fake_dispatch(calls, lambda *_: None))
     ab.run_experiment(_plan(lab), lab["tmp"] / "out")
-    assert [c["sha"] for c in calls] == [lab["old"], lab["new"], lab["old"], lab["new"]]
+    assert [c["sha"] for c in calls] == [lab["old"], lab["new"], lab["new"], lab["old"]]
 
 
 def test_run_uses_this_checkouts_bridge_on_the_head_and_restores_it(lab, monkeypatch):

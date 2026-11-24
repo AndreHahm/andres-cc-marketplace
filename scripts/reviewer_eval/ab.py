@@ -266,8 +266,9 @@ def _write(path: Path, data: dict) -> None:
 
 
 def run_experiment(plan: Plan, out: Path) -> int:
-    """Run every repeat, old and new taking turns so drift over time favors neither arm. Returns 1
-    when any reviewer failed. Stops after a run in which all did: the rest would only cost more."""
+    """Run every repeat, the arms in old-new, new-old order so drift over time favors neither (an
+    odd number of repeats leaves one pair unbalanced). Returns 1 when any reviewer failed. Stops
+    after a run in which all did: the rest would only cost more."""
     if out.resolve().is_relative_to(plan.repo.resolve()):
         raise AbError(f"{out} is inside the reviewed checkout")
     try:
@@ -277,7 +278,8 @@ def run_experiment(plan: Plan, out: Path) -> int:
     _write(out / "manifest.json", plan.manifest())
     status = 0
     for repeat in range(1, plan.repeats + 1):
-        for arm in plan.arms:
+        # Reversed on even repeats, or the first arm would always run before the second.
+        for arm in plan.arms if repeat % 2 else reversed(plan.arms):
             result = _run_once(plan, arm, out / arm / "raw" / f"run{repeat}.json")
             _write(out / arm / f"run{repeat}.json", result)
             for name, error in result["failed_reviewers"].items():

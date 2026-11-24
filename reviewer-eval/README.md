@@ -110,7 +110,8 @@ uv run python -m scripts.reviewer_eval.ab plan --repo <checkout of the head> --h
 
 `plan` makes no model call and prints how many reviewer dispatches `run` would make. `run` takes the same arguments plus
 `--out` and `--approved-calls`, and refuses unless that is exactly the planned number; it never retries a
-reviewer, so the number is also the most it makes (one dispatch is several model requests). The arms take turns. A run in which every
+reviewer, so the number is also the most it makes (one dispatch is several model requests). The arms run in
+old-new, new-old order, so drift favors neither (an odd number of repeats leaves one pair unbalanced). A run in which every
 reviewer failed stops the rest. Both commands need `CODEX_KIT_REVIEW_MODEL`. `report <dir>` prints JSON, or
 tables with `--markdown`.
 
