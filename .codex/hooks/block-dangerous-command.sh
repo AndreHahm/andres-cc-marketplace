@@ -273,9 +273,10 @@ END {
     # BASH_EXECUTION_STRING. Other variables that hold a command are not read (known limit).
     t = s
     gsub(/\\\n/, "", t)
-    rerun = (index(t, "$_") || index(t, "${_") || index(t, "${!") || index(t, "BASH_COMMAND") ||
-        index(t, "BASH_EXECUTION_STRING"))
     plain = (mode == "blank" && length(s) < 4096 && s ~ ("^([A-Za-z0-9_./ \t-]|" sq "[^" sq "\n]*" sq ")*$"))
+    # Not when the whole command is one plain command: then the name is text in single quotes.
+    rerun = !plain && (index(t, "$_") || index(t, "${_") || index(t, "${!") ||
+        index(t, "BASH_COMMAND") || index(t, "BASH_EXECUTION_STRING"))
     n = length(s); i = 1; wb = 1
     while (i <= n) {
         c = substr(s, i, 1); c2 = substr(s, i + 1, 1)
@@ -756,9 +757,9 @@ PUBLISH_RE+="[[:space:]]+npm[[:space:]]+publish${GIT_SUB_END}"
 GIT_PUSH="${GIT_CMD}push"
 PUSH_FORCE_RE="${GIT_PUSH}([^;&|]*)--force"
 PUSH_FORCE_RE+="|${GIT_PUSH}([^;&|]*)[[:space:]]-f${WORD_END}"
-PUSH_FORCE_RE+="|${GIT_PUSH}([^;&|]*)[[:space:]]--m(i(r(r(o(r)?)?)?)?)?([\"'\`]|${WORD_END})"
 # A leading `+` on a refspec (`git push origin +main`) is also a force push.
 PUSH_FORCE_RE+="|${GIT_PUSH}([^;&|]*)[[:space:]][+]"
+PUSH_MIRROR_RE="${GIT_PUSH}([^;&|]*)[[:space:]]--m(i(r(r(o(r)?)?)?)?)?([\"'\`]|${WORD_END})"
 DIRECT_MAIN_RE="${GIT_PUSH}([^;&|]*[[:space:]])?"
 DIRECT_MAIN_RE+="(origin[[:space:]]+)?[+]?((refs/)?heads/)?(main|master)${PUSH_END}"
 DIRECT_MAIN_RE+="|${GIT_PUSH}[^;&|]*:((refs/)?heads/)?(main|master)${PUSH_END}"
@@ -781,20 +782,63 @@ TICK_GIT="\`[[:space:]]*${GIT_CMD}"
 matches_start() {
     matches_code "${GIT_START_RE}($1)" || grep -qiE "${TICK_GIT}($1)" <<<"${NORM_TEXT}"
 }
-# A comment after a plain push, and the text arguments of one plain gh command, are not arguments
-# of a push. Only for a whole command on one line where bash expands and runs nothing else.
+# A comment after a plain push, the quoted value of its -o or --push-option, and the text arguments of
+# one plain gh command, are not arguments of a push. Only for a whole command on one line where bash
+# expands and runs nothing else.
+PLAIN_WORD='[A-Za-z0-9_./:@,=+-]+'
+PLAIN_QUOTED="(\"[^\"\$\`\\]*\"|'[^']*')"
 push_text_only() {
-    local word='[A-Za-z0-9_./:@,=+-]+' sq="'" re
-    re="^git push( +${word})* +#"
-    if [[ "${ORIG_CMD}" != *[$'\n\r']* && "${ORIG_CMD}" =~ ${re} ]]; then
-        ! grep -qiE "${GIT_START_RE}(${PUSH_REFS}|${PUSH_CLUSTER})" <<<"${ORIG_CMD%%#*}"
-        return
-    fi
-    re="^gh (pr|issue) (create|edit|comment)( +(${word}|\"[^\"\$\`\\]*\"|${sq}[^${sq}]*${sq}))*\$"
-    [[ "${ORIG_CMD}" != *[$'\n\r']* && "${ORIG_CMD}" =~ ${re} ]]
+    local cmd=${ORIG_CMD} re n=0 rc=0
+    [[ "${cmd}" == *[$'\n\r']* ]] && return 1
+    re="^gh (pr|issue) (create|edit|comment)( +(${PLAIN_WORD}|${PLAIN_QUOTED}))*\$"
+    [[ "${cmd}" =~ ${re} ]] && return 0
+    # The word before -o must not be an option that takes -o as its value (`--repo -o '--all'`), and
+    # -o needs a blank after it (in `-o'' -o '--all'` the first -o takes the second). After `--` it is
+    # a refspec. A long list is not read, so the loop stays cheap.
+    re="^(git( +${PLAIN_WORD})* +([A-Za-z0-9_./][A-Za-z0-9_./:@,+-]*|-u|-q|-v|-n))"
+    re+=" +(-o +|--push-option( +|=))${PLAIN_QUOTED}( .*)?\$"
+    while [[ "${cmd}" =~ ${re} ]]; do
+        ((++n > 8)) && return 1
+        [[ "${BASH_REMATCH[1]} " == *" -- "* || "${BASH_REMATCH[1]}" == *--end-of-options* ]] && return 1
+        cmd="${BASH_REMATCH[1]} -o x${BASH_REMATCH[7]}"
+    done
+    re="^git push( +${PLAIN_WORD})*( +#.*)?\$"
+    [[ "${cmd}" =~ ${re} ]] || return 1
+    grep -qiE "${GIT_START_RE}(${PUSH_REFS}|${PUSH_CLUSTER})|${PUSH_MIRROR_RE}" <<<"${cmd%%#*}" || rc=$?
+    ((rc == 1))
 }
 FETCH_TO_SHELL_RE='(curl|wget|iwr|irm|invoke-webrequest|invoke-restmethod)[^|]*[|][[:space:]]*'
 FETCH_TO_SHELL_RE+="(bash|sh|zsh|iex|invoke-expression)${WORD_END}"
+
+# inner_value_allowed <string>: whether this hook allows the string as a command of its own, with
+# message blanking (a run with --inner). Any failure of that run counts as not allowed.
+INNER_REASON=""
+inner_value_allowed() {
+    local value=$1 json back
+    [[ "${value}" =~ (^|[^A-Za-z0-9_])set[[:space:]][^\;\&\|]*(-[a-zA-Z]*k|keyword) ]] && return 1
+    # Git Bash rewrites a path-like argument (`/usr/bin/git`) for a native jq.exe; turn that
+    # off, and use the string only if the input decodes back to the same text.
+    json=$(MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' jq -n --arg c "${value}" '{tool_input:{command:$c}}') ||
+        return 1
+    back=$(jq -r '.tool_input.command' <<<"${json}") || return 1
+    # A native Windows jq.exe writes each newline as CRLF (see the start of this file).
+    [[ "$(jq -rn '"a\nb"')" == $'a\r\nb' ]] && back=${back//$'\r\n'/$'\n'}
+    [[ "${back}" == "${value}" ]] || return 1
+    # The inner run's reason is kept, so a policy block and a failed run read differently
+    # (the tests check which one they got). Only this hook's own `BLOCKED: ` line is passed on.
+    local rc=0 out ok='^BLOCKED: [^[:cntrl:]]+$'
+    out=$(printf '%s\n' "${json}" | bash "${BASH_SOURCE[0]}" --inner 2>&1 >/dev/null) || rc=$?
+    ((rc == 0)) && return 0
+    out=${out%%$'\n'*}
+    out=${out%$'\r'}
+    # The length is checked apart: some regex libraries reject a repeat bound over 255.
+    if ((rc == 2 && ${#out} <= 300)) && [[ "${out}" =~ ${ok} ]]; then
+        INNER_REASON=${out#BLOCKED: }
+    else
+        INNER_REASON="the check of the string failed (exit ${rc})."
+    fi
+    return 1
+}
 
 # What `git submodule foreach` runs, as command lines of their own with and without quotes.
 # Only for a command or shell string that runs git submodule, not for text that mentions it.
@@ -842,8 +886,42 @@ BEGIN {
     }
 }'
 }
+# search_only_command <command>: a search for text: the whole command is one `git grep`, `grep` or
+# `rg` whose only quoted part is one single-quoted argument that does not start with `-`, with
+# every other word a plain option or path (no `=`, no `-O` or `--open-files-in-pager` or its
+# abbreviation `--op`, no `--pre`: those run a program). Single quotes expand nothing, and a
+# quoted `'-O...'` would still be an option, so the argument is a pattern or an option value.
+search_only_command() {
+    local cmd=$1 word='[A-Za-z0-9_./][A-Za-z0-9_./-]*' opt='-[-A-Za-z0-9]*' re
+    [[ "${cmd}" == *[$'\n\r']* ]] && return 1
+    [[ "${cmd}" =~ [[:blank:]]-[^-[:blank:]]*O|--(op|pre) ]] && return 1
+    re="^[[:blank:]]*(git([[:blank:]]+-C[[:blank:]]+${word})*[[:blank:]]+grep|grep|rg)"
+    re+="([[:blank:]]+(${opt}|${word}))*[[:blank:]]+'([^-'][^']*)?'"
+    re+="([[:blank:]]+(${opt}|${word}))*[[:blank:]]*\$"
+    [[ "${cmd}" =~ ${re} ]]
+}
+# One plain submodule command without foreach, alone or before a search: a foreach in its comment or
+# in the search text is not run.
+submodule_text_only() {
+    local re
+    [[ "${ORIG_CMD}" == *[$'\n\r']* ]] && return 1
+    re="^git submodule(( +${PLAIN_WORD})*)( +#.*| *(;|&&) *(.+))?\$"
+    [[ "${ORIG_CMD}" =~ ${re} && "${BASH_REMATCH[1]}" != *foreach* ]] || return 1
+    [[ -z "${BASH_REMATCH[4]}" ]] || search_only_command "${BASH_REMATCH[5]}"
+}
+# One foreach whose command is a single string that bash passes through unchanged: the string is
+# checked as a command of its own, so a message in it stays text.
+foreach_string_allowed() {
+    local re
+    ((INNER)) && return 1
+    [[ "${ORIG_CMD}" == *[$'\n\r']* ]] && return 1
+    re="^git submodule( -q| --quiet)? foreach( -q| --quiet| --recursive)* +('([^']*)'|\"([^\"\$\`\\]*)\") *\$"
+    [[ "${ORIG_CMD}" =~ ${re} ]] || return 1
+    inner_value_allowed "${BASH_REMATCH[4]}${BASH_REMATCH[5]}"
+}
 FOREACH_TEXT=""
-if matches_flags "${GIT_START_RE}submodule" || grep -qiE "${TICK_GIT}submodule" <<<"${NORM_TEXT}"; then
+if { matches_flags "${GIT_START_RE}submodule" || grep -qiE "${TICK_GIT}submodule" <<<"${NORM_TEXT}"; } &&
+    ! submodule_text_only && ! foreach_string_allowed; then
     FOREACH_TEXT=$(foreach_tail <<<"${FLAGS_TEXT}") || block "Could not read the command."
     MATCH_TEXT+=$'\n'"${FOREACH_TEXT}"
     CODE_TEXT+=$'\n'"${FOREACH_TEXT}"
@@ -886,7 +964,8 @@ if matches_start "${PUSH_REFS}" && ! push_text_only; then
     block "Do not push all branches or delete a remote branch unless the user explicitly requested it."
 fi
 
-if matches "${PUSH_FORCE_RE}" || { matches_start "${PUSH_CLUSTER}" && ! push_text_only; }; then
+if matches "${PUSH_FORCE_RE}" ||
+    { { matches "${PUSH_MIRROR_RE}" || matches_start "${PUSH_CLUSTER}"; } && ! push_text_only; }; then
     block "Do not force-push unless the user explicitly requested it."
 fi
 
@@ -910,7 +989,15 @@ if matches_flags "${GIT_AT_START}(${ABBREV_GIT_RE})"; then
     block "This git command is forbidden by the exec-policy rules, also with an abbreviated option."
 fi
 
-if matches_flags "${UNSAFE_CONFIG_RE}"; then
+# A quoted -c value with no blank (`-c push.default='current'`) is read without its quotes. Only for
+# one plain git push, pull or clean, where that is what git gets and no argument is run as a command.
+plain_config_allowed() {
+    local re="^git( +-c +[A-Za-z.]+=(\"[A-Za-z]+\"|'[A-Za-z]+'|[A-Za-z]+))+ +(push|pull|clean)( +${PLAIN_WORD})*\$" rc=0
+    [[ "${ORIG_CMD}" != *[$'\n\r']* && "${ORIG_CMD}" =~ ${re} ]] || return 1
+    grep -qiE "${UNSAFE_CONFIG_RE}" <<<"${ORIG_CMD//[\"\']/}" || rc=$?
+    ((rc == 1))
+}
+if matches_flags "${UNSAFE_CONFIG_RE}" && ! plain_config_allowed; then
     block "Do not set clean.requireForce or a shell alias for one git command; ask the user."
 fi
 
@@ -918,20 +1005,7 @@ fi
 # backtick, `>(`, `case ... )`, `export --`, `env -S`, after the command under `set -k`, or as
 # a quoted `env`/`export`/`declare` argument, with quotes, `$'...'` or a backslash-newline
 # inside its value. So it is matched anywhere, in every copy, the quote-free ones included.
-# The one exception is a search for the text: the whole command is one `git grep`, `grep` or
-# `rg` whose only quoted part is one single-quoted argument that does not start with `-`, with
-# every other word a plain option or path (no `=`, no `-O` or `--open-files-in-pager` or its
-# abbreviation `--op`, no `--pre`: those run a program). Single quotes expand nothing, and a
-# quoted `'-O...'` would still be an option, so the argument is a pattern or an option value.
-search_only_command() {
-    local cmd=${ORIG_CMD} word='[A-Za-z0-9_./][A-Za-z0-9_./-]*' opt='-[-A-Za-z0-9]*' re
-    [[ "${cmd}" == *[$'\n\r']* ]] && return 1
-    [[ "${cmd}" =~ [[:blank:]]-[^-[:blank:]]*O|--(op|pre) ]] && return 1
-    re="^[[:blank:]]*(git([[:blank:]]+-C[[:blank:]]+${word})*[[:blank:]]+grep|grep|rg)"
-    re+="([[:blank:]]+(${opt}|${word}))*[[:blank:]]+'([^-'][^']*)?'"
-    re+="([[:blank:]]+(${opt}|${word}))*[[:blank:]]*\$"
-    [[ "${cmd}" =~ ${re} ]]
-}
+# The one exception is a search for the text (search_only_command above).
 # A longer key is another key (`pull.ffx`), but the shell or `env -S` can cut the rest off
 # (`${v%X}`, IFS, `\c`), and another program can rewrite it (`xargs -I`). So the key's end is read
 # only when the whole command is one line of plain assignments, git and plain words, where nothing
@@ -942,7 +1016,7 @@ other_key_only() {
     ! matches "${GIT_CONFIG_ENV}([^[:alnum:].-]|\$)"
 }
 if { matches "${GIT_CONFIG_ENV}" || matches_code "${GIT_CONFIG_ENV}" ||
-    matches_flags "${GIT_CONFIG_ENV}"; } && ! search_only_command && ! other_key_only; then
+    matches_flags "${GIT_CONFIG_ENV}"; } && ! search_only_command "${ORIG_CMD}" && ! other_key_only; then
     block "Do not set clean.requireForce or a shell alias for one git command; ask the user."
 fi
 
@@ -961,7 +1035,8 @@ fi
 # its text: this hook checks that value as a command of its own, with message blanking, and
 # the pattern is not applied. Anything else, or any failure of that run, keeps the pattern.
 inner_string_allowed() {
-    local re value json back
+    local re value
+    INNER_REASON=""
     ((INNER)) && return 1
     re='^[ 	]*(/[A-Za-z0-9_./-]*/)?(bash|sh)([ 	]+(-[a-np-zA-NP-Z]+|--(login|noprofile|norc|posix)))*'
     re+="[ 	]+-[a-np-zA-NP-Z]*c[a-np-zA-NP-Z]*[ 	]+('([^']*)'|\"([^\"\$\`\\\\]*)\")[ 	]*\$"
@@ -973,32 +1048,9 @@ inner_string_allowed() {
     # does not close it (`shopt -so keyword`, `set $o`). Message blanking stops at such a
     # word on its own (split_words), so -k cannot hide an option behind a message.
     [[ "${ORIG_CMD%%[\"\']*}" =~ [[:space:]]-[a-zA-Z]*k ]] && return 1
-    [[ "${value}" =~ (^|[^A-Za-z0-9_])set[[:space:]][^\;\&\|]*(-[a-zA-Z]*k|keyword) ]] && return 1
-    # Git Bash rewrites a path-like argument (`/usr/bin/git`) for a native jq.exe; turn that
-    # off, and use the string only if the input decodes back to the same text.
-    json=$(MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' jq -n --arg c "${value}" '{tool_input:{command:$c}}') ||
-        return 1
-    back=$(jq -r '.tool_input.command' <<<"${json}") || return 1
-    # A native Windows jq.exe writes each newline as CRLF (see the start of this file).
-    [[ "$(jq -rn '"a\nb"')" == $'a\r\nb' ]] && back=${back//$'\r\n'/$'\n'}
-    [[ "${back}" == "${value}" ]] || return 1
-    # The inner run's reason is kept, so a policy block and a failed run read differently
-    # (the tests check which one they got). Only this hook's own `BLOCKED: ` line is passed on.
-    local rc=0 out ok='^BLOCKED: [^[:cntrl:]]+$'
-    out=$(printf '%s\n' "${json}" | bash "${BASH_SOURCE[0]}" --inner 2>&1 >/dev/null) || rc=$?
-    ((rc == 0)) && return 0
-    out=${out%%$'\n'*}
-    out=${out%$'\r'}
-    # The length is checked apart: some regex libraries reject a repeat bound over 255.
-    if ((rc == 2 && ${#out} <= 300)) && [[ "${out}" =~ ${ok} ]]; then
-        INNER_REASON=${out#BLOCKED: }
-    else
-        INNER_REASON="the check of the string failed (exit ${rc})."
-    fi
-    return 1
+    inner_value_allowed "${value}"
 }
 
-INNER_REASON=""
 if matches "${SHELL_STRING_GIT_RE}" && ! inner_string_allowed; then
     if [[ -n "${INNER_REASON}" ]]; then
         block "Inside a shell string: ${INNER_REASON}"

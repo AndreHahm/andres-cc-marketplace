@@ -875,6 +875,84 @@ A	git commit -m "fix: in case CI in main fails (see log) git push --all is neede
 B	for i in 1; do case x in x) git push --all;; esac; done
 A	git submodule foreach 'git submodule foreach git status'
 B	git submodule foreach "git submodule foreach 'git fetch\ngit stash'"
+# A foreach string bash passes through unchanged is checked as a command of its own.
+A	git submodule foreach 'git commit -m "document --amend"'
+B	git submodule foreach 'git commit -m "document" --amend'
+A	git submodule foreach 'git branch --list --format="%(refname) -d docs"'
+A	git submodule foreach --recursive 'git commit -m "git stash is text"'
+B	git submodule foreach 'git commit -m "x"; git stash'
+B	git submodule foreach 'git commit -m "x" && git push --all'
+B	git submodule foreach 'git commit -m "x"' --amend
+B	git submodule foreach 'git commit -m "x"'; git -C . stash
+B	git submodule foreach 'git submodule foreach "git stash"'
+B	git submodule foreach 'set -k; git -C . commit -m X=1 -m --amend'
+B	git submodule foreach "git commit -m $x --amend"
+B	git submodule foreach 'git rebase main # document'
+B	git submodule foreach 'bash -c "git stash"'
+# --mirror and the push checks in text that is no argument of a push.
+A	gh pr create --body 'Document git push --mirror usage.'
+A	git push origin feature # not --mirror
+B	git push --mirror # note
+B	git push origin x --mirror # note
+B	gh pr create --body 'x'; git push --mirror
+B	setsid git push --mirror
+# The quoted value of a push option.
+A	git push -o 'merge_request.title=Replace --all with a narrower option' origin feature
+A	git push --push-option="title --delete" origin feature
+A	git push -u -o 'a --all' -o "b --mirror" origin feature # -d
+B	git push -o 'a' --all origin
+B	git push -o 'a --b' origin :x
+B	git push -o -o '--all' origin
+B	git push -o -o 'a --all' origin
+B	git push --repo -o '--all'
+B	git push --push-option= '--all' origin
+A	git push -o 'a'--all origin
+B	git push -uo 'a --all' --all origin
+B	git push --receive-pack -o '--all'
+B	git push origin '--all'
+B	git push -o 'a' '--delete' origin x
+B	git push -o 'x --all' origin; git push --all
+# A submodule command without foreach, and a comment or a search that mentions one.
+A	git submodule status # git submodule foreach git stash
+A	git submodule status; rg 'git submodule foreach git stash' .
+A	git submodule status && git grep 'submodule foreach git stash'
+B	git submodule foreach git stash # status
+B	git submodule status; git submodule foreach git stash
+B	git submodule status; rg --pre 'git submodule foreach git stash' .
+B	git submodule status; bash -c 'git submodule foreach git stash'
+# A quoted -c value is read as bash passes it.
+A	git -c push.default='current' push
+A	git -c push.default="simple" push
+A	git -c pull.ff='only' pull
+B	git -c push.default='matching' push
+B	git -c push.default='current'x push
+B	git -c push.default='cur' push
+B	git -c push.default='' push
+B	git -c push.default='current' -c push.default=matching push
+B	git -c push.default='current' -c alias.x=stash x
+B	git -c alias.x='stash' x
+# $_ in a single-quoted message of one plain command is text.
+A	git commit -m 'explain $_ and --amend'
+B	git commit -m 'explain $_' --am
+B	git -C . commit -m 'x --amend' && echo "$_"
+B	git push -o'' -o '--all' origin
+B	git push -o"" -o '--mirror' origin
+B	git push -o'' --push-option '--all' origin
+B	git push origin -o'' -o ':feature'
+B	git push origin -o'' -o '-d' feature
+A	git push -o '' -o 'a --all' origin
+B	git -c push.default=current submodule foreach git -c alias.x=stash x
+B	git -c push.default='current' submodule foreach git -c alias.x=stash x
+B	git -c pull.ff=only submodule foreach git -c pull.rebase=true pull
+B	git -c a.b=c submodule foreach git -c remote.origin.mirror=true push origin
+B	git push -- origin -o ':feature'
+B	git push --end-of-options origin -o ':feature'
+B	git -c push.default='current' push -c alias.x=stash --all
+B	git push -o 'a' origin -- -o ':feature'
+B	git push --push-option'' -o '--all' origin
+# More than 8 quoted values are not read, so the text in them is.
+B	git push -o 'a --all' -o 'a --all' -o 'a --all' -o 'a --all' -o 'a --all' -o 'a --all' -o 'a --all' -o 'a --all' -o 'a --all' origin x
+A	git push -o 'a --all' -o 'a --all' -o 'a --all' -o 'a --all' -o 'a --all' -o 'a --all' -o 'a --all' -o 'a --all' origin x
 CASES
 
 printf 'pass=%d fail=%d (%s)\n' "${pass}" "${fail}" "${HOOK}"
