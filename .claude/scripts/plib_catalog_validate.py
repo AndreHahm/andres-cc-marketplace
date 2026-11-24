@@ -10,7 +10,7 @@ library only.
 Usage: plib_catalog_validate.py [--root PATH] <subcommand> [args]
 Subcommands: validate, show, hash, screen, init, new-id, draft, update-draft, register, discard-
 orphan,
-             record-verification, activate, deactivate, finalize
+             discard-draft, record-verification, activate, deactivate, finalize
 """
 
 from __future__ import annotations
@@ -35,14 +35,18 @@ LOCAL_OVERRIDE = Path(".claude") / "promptlibrary-kit.local.json"
 DEFAULT_ROOT = ".claude/prompts"
 MAX_NONBLANK_LINES = 50
 
-SUPPORTED_CATALOG_VERSIONS = {1}
+SUPPORTED_CATALOG_VERSIONS = {1, 2}
 SUPPORTED_SCOPES = {"repo"}
 STATUSES = ("draft", "active", "inactive", "historical")
 ORIGINS = ("user", "claude", "codex", "session", "web")
 
 # Field lists are selected by catalog_version so an additive change can bump the version (see
 # references/prompt-record-format.md, "Extension seams").
-CATALOG_FIELDS = {1: {"catalog_version", "scope", "snapshot_id", "records"}}
+# Version 2 only adds reserved_slugs to catalog.yaml: slugs whose first draft was discarded.
+CATALOG_FIELDS = {
+    1: {"catalog_version", "scope", "snapshot_id", "records"},
+    2: {"catalog_version", "scope", "snapshot_id", "records", "reserved_slugs"},
+}
 RECORD_REQUIRED = {
     1: ("name", "area", "slug", "internal_id", "version", "short_description", "status", "origin")
 }
@@ -57,6 +61,7 @@ RECORD_OPTIONAL = {
         "verification",
     )
 }
+RECORD_REQUIRED[2], RECORD_OPTIONAL[2] = RECORD_REQUIRED[1], RECORD_OPTIONAL[1]
 FIELD_ORDER = (
     "name",
     "area",
@@ -836,6 +841,12 @@ def load_catalog(root: Path) -> tuple[dict, dict, list[str]]:
             errs.append(f"catalog.yaml: unknown field: {f}")
     if not isinstance(cat.get("snapshot_id"), str) or not cat.get("snapshot_id"):
         errs.append("catalog.yaml: snapshot_id is missing")
+    reserved = cat.get("reserved_slugs")
+    if reserved is not None and (
+        not isinstance(reserved, list)
+        or not all(isinstance(x, str) and SLUG_RE.fullmatch(x) for x in reserved)
+    ):
+        errs.append("catalog.yaml: reserved_slugs must be a list of slugs")
     listed = cat.get("records")
     if listed is None:
         listed = []
@@ -960,6 +971,20 @@ def _stray_temp_files(root: Path) -> list[str]:
     return sorted(p.relative_to(root).as_posix() for p in found)
 
 
+def search_words(text: str) -> str:
+    """Letters and digits only, case-folded and single-spaced, so a search ignores punctuation,
+    line breaks and case."""
+    folded = unicodedata.normalize("NFC", text).casefold()
+    return " ".join("".join(ch if ch.isalnum() else " " for ch in folded).split())
+
+
+def search_matches(meta: dict, query: str) -> list[str]:
+    """Where a search_words() query occurs in a record: label names, or "text" for the prompt."""
+    fields = {f: meta[f] for f in ("slug", "name", "area", "short_description")}
+    fields["text"] = meta["_body"]
+    return [name for name, value in fields.items() if query in search_words(value)]
+
+
 def cmd_validate(args) -> dict:
     info, root, cat, records = _load(args)
     for rel in _stray_temp_files(root):
@@ -968,7 +993,15 @@ def cmd_validate(args) -> dict:
         )
     info["ok"] = not info["errors"]
     info["catalog_version"] = cat.get("catalog_version")
-    info["records"] = [summarize(m) for m in records.values()]
+    if args.search is None:
+        info["records"] = [summarize(m) for m in records.values()]
+        return info
+    _need_ok(info)  # a search lists nothing from a catalog that fails its check
+    query = search_words(args.search)
+    if not query:
+        raise CatalogError("the search needs at least one letter or digit")
+    hits = ((m, search_matches(m, query)) for m in records.values())
+    info["records"] = [{**summarize(m), "matched_in": found} for m, found in hits if found]
     return info
 
 
@@ -1135,8 +1168,12 @@ def write_catalog(root: Path, cat: dict, record_paths: list[str]) -> None:
         "snapshot_id": new_snapshot_id(),
         "records": sorted(record_paths),
     }
+    order = ["catalog_version", "scope", "snapshot_id", "records"]
+    if cat.get("reserved_slugs"):
+        out["reserved_slugs"] = sorted(set(cat["reserved_slugs"]))
+        order.append("reserved_slugs")
     target = _inside(root, root / "catalog.yaml")
-    _write_atomic(target, dump_yaml(out, ("catalog_version", "scope", "snapshot_id", "records")))
+    _write_atomic(target, dump_yaml(out, order))
 
 
 def cmd_init(args) -> dict:
@@ -1166,7 +1203,7 @@ def _record_by_id(records: dict, ident: str) -> dict:
     raise CatalogError(f"no record with internal_id {ident}")
 
 
-def _check_new_draft(meta: dict, records: dict) -> list[str]:
+def _check_new_draft(meta: dict, records: dict, cat: dict) -> list[str]:
     errs = []
     if any(m["internal_id"] == meta["internal_id"] for m in records.values()):
         errs.append("duplicate internal_id")
@@ -1174,6 +1211,8 @@ def _check_new_draft(meta: dict, records: dict) -> list[str]:
     if meta["version"] == 1:
         if group:
             errs.append("the slug is already used by another lineage")
+        elif meta["slug"] in (cat.get("reserved_slugs") or []):
+            errs.append("the slug belonged to a discarded draft and is never reused")
     else:
         pred = next((m for m in group if m["internal_id"] == meta.get("previous_id")), None)
         if pred is None:
@@ -1230,7 +1269,7 @@ def cmd_draft(args) -> dict:
     root = Path(info["catalog_root"])
     cat, records = _valid_catalog(root)
     meta = _scratch_record(args.file, root, cat["catalog_version"])
-    errs = _check_new_draft(meta, records)
+    errs = _check_new_draft(meta, records, cat)
     if errs:
         raise CatalogError("; ".join(errs))
     rel = f"{meta['slug']}/{meta['internal_id']}.md"
@@ -1301,7 +1340,7 @@ def cmd_register(args) -> dict:
         problems.append("only a draft record can be registered")
     elif parts[1] != f"{meta['internal_id']}.md" or parts[0] != meta["slug"]:
         problems.append(f"a draft must be stored as {meta['slug']}/{meta['internal_id']}.md")
-    problems.extend(_check_new_draft(meta, records))
+    problems.extend(_check_new_draft(meta, records, cat))
     if problems:
         raise CatalogError("; ".join(problems[:4]))
     _assert_clean(meta)
@@ -1342,6 +1381,42 @@ def cmd_discard_orphan(args) -> dict:
     info["removed"] = rel
     info["slug"] = meta.get("slug")
     info["internal_id"] = meta.get("internal_id")
+    return info
+
+
+def cmd_discard_draft(args) -> dict:
+    """Delete one listed draft. A first draft's slug stays reserved (never reused)."""
+    info, root, cat, records = _load(args)
+    _need_ok(info)
+    meta = _record_by_id(records, args.internal_id)
+    if meta["status"] != "draft":
+        raise CatalogError("only a draft can be discarded; a version that has run stays")
+    if any(m.get("previous_id") == meta["internal_id"] for m in records.values()):
+        raise CatalogError("a later version follows this draft, so it cannot be discarded")
+    _check_expected(meta, args.expect_sha256)
+    path = _inside(root, root / meta["_path"])
+    paths = [m["_path"] for m in records.values()]
+    new_cat = dict(cat)
+    if meta["version"] == 1:
+        new_cat["catalog_version"] = max(2, cat["catalog_version"])
+        new_cat["reserved_slugs"] = [*(cat.get("reserved_slugs") or []), meta["slug"]]
+    # catalog.yaml first: an interrupt then leaves an unlisted draft, which discard-orphan removes,
+    # instead of a listed record that is missing.
+    write_catalog(root, new_cat, [p for p in paths if p != meta["_path"]])
+    try:
+        path.unlink()
+    except OSError:
+        write_catalog(root, cat, paths)  # nothing was deleted: list it again
+        raise
+    with contextlib.suppress(OSError):
+        path.parent.rmdir()  # only succeeds when the slug folder is now empty
+    info.update(
+        ok=True,
+        removed=meta["_path"],
+        slug=meta["slug"],
+        internal_id=meta["internal_id"],
+        slug_reserved=meta["version"] == 1,
+    )
     return info
 
 
@@ -1476,7 +1551,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--root", help="catalog root override (validated by the same path trust boundary)"
     )
     sub = p.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("validate")
+    v = sub.add_parser("validate")
+    v.add_argument("--search", help="list only records whose labels or prompt text contain this")
     s = sub.add_parser("show")
     s.add_argument("slug")
     s.add_argument("--history", action="store_true")
@@ -1499,6 +1575,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     o = sub.add_parser("discard-orphan")
     o.add_argument("path", help="unlisted record path relative to the catalog root")
+    dd = sub.add_parser("discard-draft")
+    dd.add_argument("internal_id")
+    dd.add_argument("--expect-sha256", required=True, help="the hash shown to the user")
     rv = sub.add_parser("record-verification")
     rv.add_argument("internal_id")
     rv.add_argument("--kind", choices=("quality", "import"), required=True)
@@ -1529,6 +1608,7 @@ COMMANDS = {
     "update-draft": cmd_update_draft,
     "register": cmd_register,
     "discard-orphan": cmd_discard_orphan,
+    "discard-draft": cmd_discard_draft,
     "record-verification": cmd_record_verification,
     "activate": lambda a: _lifecycle(a, "activate"),
     "deactivate": lambda a: _lifecycle(a, "deactivate"),

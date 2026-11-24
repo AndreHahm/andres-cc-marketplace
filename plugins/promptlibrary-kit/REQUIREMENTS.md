@@ -753,8 +753,8 @@ automatically.
 **Changes to earlier decisions:** adds discarding a listed draft. Today only an unlisted stray file can be
 discarded, and an abandoned revision blocks every further revise of that prompt until it is resumed.
 
-Source: V4 §Lifecycle, §Acceptance; owner decision 2026-11-16. State: **partial** (old version keeps
-running: met; discard: not met). Confirmed: yes (2026-11-16).
+Source: V4 §Lifecycle, §Acceptance; owner decision 2026-11-16. State: met. Confirmed: yes
+(2026-11-16).
 
 ### LIF-5: A prompt name always runs exactly one text
 
@@ -834,8 +834,7 @@ you pick. When the catalog fails its check, nothing is listed and you are told w
 **Changes to earlier decisions:** today search covers only slug, area, name and short description;
 searching the prompt text is new.
 
-Source: V4 §Scope; owner decision 2026-11-17. State: **partial** (list, show, history: met; text search:
-not met). Confirmed: yes (2026-11-17).
+Source: V4 §Scope; owner decision 2026-11-17. State: met. Confirmed: yes (2026-11-17).
 
 ### RET-2: Looking up a prompt never changes or runs anything
 

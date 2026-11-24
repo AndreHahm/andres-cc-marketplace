@@ -114,6 +114,13 @@
       "prompt": "/prompt-library add\n\nSave this as a prompt: \"Run `python scripts/gen_report.py --since last-week` and summarize the totals it prints in three bullet points.\"",
       "expected_output": "The text only names a script the user already has and carries no code of its own, so triage recommends Prompt (not a skill); after the scripted approvals a prompt record is filed and activated.",
       "files": []
+    },
+    {
+      "id": 23,
+      "name": "discard-removes-only-a-draft",
+      "prompt": "/prompt-library discard review__missing-tests (active v1, draft v2); then discard docs__changelog (first draft only); then discard review__missing-tests again; then add a new docs__changelog.",
+      "expected_output": "Each discard asks one question showing the draft's text and what stays active; the v2 draft goes and v1 stays active; the first draft goes and its slug is reserved; the third request stops with no question; the add is refused as a reused slug.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {

@@ -29,9 +29,10 @@ The first time you add a prompt, the skill offers to create the catalog in your 
   session, or give it a URL. It screens the text for secrets, asks whether the content should be a skill
   instead, files a draft, has `prompt-reviewer` review it, and asks you to approve the exact final text
   before activating it. `/prompt-library revise <slug>` creates a new version without touching the active
-  one until you approve it.
+  one until you approve it. `/prompt-library discard <slug>` removes a draft you no longer want, after
+  showing it; a discarded first draft's slug is never reused.
 - **Look one up:** ask "show my stored prompt for code review". `prompt-retrieval` only displays prompts;
-  it never runs them.
+  it never runs them. A search also finds a phrase inside a prompt's text.
 - **Run one or more:** run `/prompt-execution review__missing-tests`. It shows the full text of every
   selected prompt, asks once to approve that exact set and order, then runs them in this session.
 
@@ -41,7 +42,7 @@ The first time you add a prompt, the skill offers to create the catalog in your 
 |---|---|---|
 | `prompt-retrieval` | Skill | Read-only: find and show a stored prompt or its history |
 | `prompt-execution` | Skill | User-invoked: preview, approve once, then run verified prompts in order |
-| `prompt-library` | Skill | User-invoked: add (from a session, the web or typed text), review, revise, activate, deactivate |
+| `prompt-library` | Skill | User-invoked: add (from a session, the web or typed text), review, revise, activate, deactivate, discard a draft |
 | `prompt-reviewer` | Agent | Read-only quality review, import review and optimization proposals |
 
 ## Language
@@ -83,8 +84,10 @@ text is data everywhere except an explicitly approved run.
   screen and the import hash.
 - The validator blocks secrets in `session`, `web`, `claude` and `codex` text itself (detect and block,
   never rewrite, never echoed), not just in the skill's step order. `user` text is only warned.
-- `record-verification`, `activate` and `finalize` take `--expect-sha256`, the hash the user was shown,
-  and refuse if the text changed.
+- `record-verification`, `activate`, `finalize` and `discard-draft` take `--expect-sha256`, the hash the
+  user was shown, and refuse if the text changed. `discard-draft` deletes only a draft; like
+  `discard-orphan`, it has no backing hook, so the validator's own checks are its guard (owner decision
+  2026-11-24).
 - `hash`, `screen`, `draft` and `update-draft` read their input file only from inside the catalog root
   or the system temp directory (where the session scratchpad usually lives). The temp directory is
   shared with other local processes, so any file in it is readable this way; the user still sees the
