@@ -1811,6 +1811,26 @@ data, not a gate.
 
 Working on survivors (a test, or `# pragma: no mutate` with a reason): quality-kit's `running-mutation-tests`.
 
+## Reviewer A/B: comparing two prompts by hand
+
+`.github/workflows/reviewer-ab.yml` runs the Codex reviewers on one already reviewed head with the prompts
+of two commits (issue #862; `reviewer-eval/README.md`, "Comparing two prompts"). It costs API calls, so it has
+only `workflow_dispatch`, runs only from `main`, and is never a check on a pull request.
+
+- **Approval:** `approved_calls` defaults to 0, which only plans and prints the planned number of calls. The
+  run job starts only when it is exactly that number, and only on the first attempt: a re-run would spend the
+  approval again, so dispatch anew. Reviewers are not retried, so the number is a ceiling on reviewer
+  dispatches. It is not a cost: one dispatch makes several model requests, and its tokens are not recorded.
+- **Which commits:** `head_sha` needs a `pull_request` run of this repository's own branches, and each arm must
+  be on a branch here, because GitHub also serves a fork's commits by SHA.
+- **What runs:** the dispatcher, bridge and gate of `main`. The head is a separate worktree read as files. The
+  model and timeout variables, CLI pin, sandbox probe, config check and isolation check are `codex-review`'s;
+  a test keeps the scripts equal.
+- **Limits:** the gates stop accidents, not a writer: whoever can push a branch can dispatch an edited copy of
+  the workflow. An arm's prompt is unreviewed, so read its diff before dispatching: Codex's sandbox limits
+  writes, and whether it keeps reviewers from reading the key or earlier results of the same experiment is
+  not verified. Stored results have token-shaped text redacted, which an encoded token would pass.
+
 ## Codacy: `git` through `subprocess` in plugin scripts
 
 Codacy's Bandit and Prospector_bandit engines flag three rules on any script that runs `git`, whatever

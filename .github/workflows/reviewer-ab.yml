@@ -1,0 +1,302 @@
+name: Reviewer A/B
+
+# Compares two versions of the Codex reviewer prompts on one already reviewed head (issue #862;
+# reviewer-eval/README.md, "Comparing two prompts"). It costs API calls, so nothing starts it but a
+# manual dispatch from main, and the default is a plan: it prints how many dispatches a run makes. A
+# run starts only when `approved_calls` is exactly that number. Never a check on a pull request.
+on:
+  workflow_dispatch:
+    inputs:
+      head_sha:
+        description: "Commit to review (40 hex), a head this repository's own CI has run on"
+        required: true
+      range_base:
+        description: "Ancestor of head_sha (40 hex); the delta is range_base...head_sha"
+        required: true
+      old_arm:
+        description: "Commit (40 hex) on a branch here whose .codex/agents are the old prompts"
+        required: true
+      new_arm:
+        description: "Commit (40 hex) on a branch here whose .codex/agents are the new prompts"
+        required: true
+      repeats:
+        description: "Runs per arm"
+        required: true
+        default: "3"
+      approved_calls:
+        description: "0 only plans; the exact planned number of reviewer dispatches starts them"
+        required: true
+        default: "0"
+
+concurrency:
+  group: reviewer-ab
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    name: Plan
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read  # the runs of head_sha, to tell a head of this repository from a fork's
+    env:
+      HEAD_SHA: ${{ inputs.head_sha }}
+      RANGE_BASE: ${{ inputs.range_base }}
+      OLD_ARM: ${{ inputs.old_arm }}
+      NEW_ARM: ${{ inputs.new_arm }}
+      REPEATS: ${{ inputs.repeats }}
+      APPROVED_CALLS: ${{ inputs.approved_calls }}
+    steps:
+      - name: Check out main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0  # all branches: an arm must be on one
+      - name: Check Workflow Kill Switch
+        uses: ./.github/actions/workflow-killswitch
+        with:
+          killswitch-var: ${{ vars.WORKFLOW_KILLSWITCH }}
+      - name: Track workflow rerun
+        if: github.run_attempt > 1
+        uses: ./.github/actions/track-rerun
+      - name: Check the inputs
+        run: |
+          set -euo pipefail
+          for sha in "$HEAD_SHA" "$RANGE_BASE" "$OLD_ARM" "$NEW_ARM"; do
+            if ! [[ "$sha" =~ ^[0-9a-f]{40}$ ]]; then
+              echo "::error::every commit input must be 40 lowercase hex characters"
+              exit 1
+            fi
+          done
+          for number in "$REPEATS" "$APPROVED_CALLS"; do
+            if ! [[ "$number" =~ ^(0|[1-9][0-9]{0,2})$ ]]; then
+              echo "::error::repeats and approved_calls must be whole numbers"
+              exit 1
+            fi
+          done
+      # GitHub also serves a fork's commits by SHA. The reviewers read the head next to the API key,
+      # and an arm is their instructions, so both must be this repository's own.
+      - name: Check where the commits come from
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          # jq reads the two values from the environment, never as part of its program.
+          own=$(gh api "repos/$REPO/actions/runs?head_sha=$HEAD_SHA&event=pull_request&per_page=100" \
+            --jq '[.workflow_runs[] | select(.head_sha == env.HEAD_SHA and .head_repository.full_name == env.REPO)] | length')
+          if ! [[ "$own" =~ ^[1-9][0-9]*$ ]]; then
+            echo "::error::no pull_request run of this repository's own branches has head_sha as its head"
+            exit 1
+          fi
+          for arm in "$OLD_ARM" "$NEW_ARM"; do
+            branches=$(git branch -r --contains "$arm" --list 'origin/*')
+            if [ -z "$branches" ]; then
+              echo "::error::an arm commit is on no branch of this repository"
+              exit 1
+            fi
+          done
+      # Read as files only: everything executed comes from the main checkout.
+      - name: Check out the reviewed head beside it
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --quiet origin "$HEAD_SHA"
+          git worktree add --quiet --detach "$RUNNER_TEMP/head" "$HEAD_SHA"
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # ratchet:actions/setup-python@v7.1.0
+        with:
+          python-version: "3.13"
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # ratchet:astral-sh/setup-uv@v10.3.3
+        with:
+          version: "0.13.7"
+          enable-cache: "false"
+          python-version: "3.13"
+      - run: uv sync --locked --no-config --group dev
+      - name: Plan the calls
+        env:
+          CODEX_KIT_REVIEW_MODEL: ${{ vars.CODEX_KIT_REVIEW_MODEL }}
+        run: |
+          set -euo pipefail
+          uv run --no-sync --no-build python -m scripts.reviewer_eval.ab plan \
+            --repo "$RUNNER_TEMP/head" --head "$HEAD_SHA" --base "$RANGE_BASE" \
+            --arm "old=$OLD_ARM" --arm "new=$NEW_ARM" --repeats "$REPEATS" > "$RUNNER_TEMP/plan.json"
+          cat "$RUNNER_TEMP/plan.json"
+          planned=$(jq '.planned_calls' "$RUNNER_TEMP/plan.json")
+          echo "Planned reviewer dispatches: $planned (approved: $APPROVED_CALLS); each makes several model requests" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$APPROVED_CALLS" != 0 ] && [ "$APPROVED_CALLS" != "$planned" ]; then
+            echo "::error::approved_calls must be 0 or exactly the planned number of calls ($planned)"
+            exit 1
+          fi
+
+  run:
+    name: Run
+    needs: plan
+    # Attempt 1 only: a re-run replays the same inputs, so it would spend the approval again.
+    if: github.ref == 'refs/heads/main' && inputs.approved_calls != '0' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    permissions:
+      contents: read
+    env:
+      HEAD_SHA: ${{ inputs.head_sha }}
+      RANGE_BASE: ${{ inputs.range_base }}
+      OLD_ARM: ${{ inputs.old_arm }}
+      NEW_ARM: ${{ inputs.new_arm }}
+      REPEATS: ${{ inputs.repeats }}
+      APPROVED_CALLS: ${{ inputs.approved_calls }}
+    steps:
+      - name: Check out main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Check Workflow Kill Switch
+        uses: ./.github/actions/workflow-killswitch
+        with:
+          killswitch-var: ${{ vars.WORKFLOW_KILLSWITCH }}
+      # Read as files only: everything executed comes from the main checkout.
+      - name: Check out the reviewed head beside it
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --quiet origin "$HEAD_SHA"
+          git worktree add --quiet --detach "$RUNNER_TEMP/head" "$HEAD_SHA"
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # ratchet:actions/setup-python@v7.1.0
+        with:
+          python-version: "3.13"
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # ratchet:astral-sh/setup-uv@v10.3.3
+        with:
+          version: "0.13.7"
+          enable-cache: "false"
+          python-version: "3.13"
+      - run: uv sync --locked --no-config --group dev
+      - name: Set up Node (for the codex CLI and codex-review-bridge)
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # ratchet:actions/setup-node@v7.1.0
+        with:
+          node-version: "20"
+
+      # The next five steps are codex-review's (marketplace-ci.yml), where the reasons are; a test
+      # keeps the scripts equal. The config check runs in the reviewed head, with main's config as
+      # its control.
+      - name: Install Codex CLI (pinned version, never floating latest)
+        run: npm install -g @openai/codex@0.170.0
+
+      - name: Authenticate and smoke-check the Codex CLI
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          printenv OPENAI_API_KEY | codex login --with-api-key
+          codex --version
+
+      - name: Allow Codex's bwrap sandbox on the hosted runner
+        run: |
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          codex sandbox /bin/true
+
+      - name: Check Codex does not apply the repository's own config
+        working-directory: ${{ runner.temp }}/head
+        env:
+          BASE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          features() { codex features list | grep -E ' (true|false)$'; }
+          empty_dir=$(mktemp -d "$RUNNER_TEMP/codex-empty.XXXXXX")
+          features > "$RUNNER_TEMP/codex-features-checkout.txt"
+          (cd "$empty_dir" && features) > "$RUNNER_TEMP/codex-features-default.txt"
+          rc=0
+          cmp -s "$RUNNER_TEMP/codex-features-default.txt" "$RUNNER_TEMP/codex-features-checkout.txt" || rc=$?
+          if [ "$rc" -ne 0 ]; then
+            echo "::error::Codex resolves different features in the checkout than in an empty directory (cmp exit $rc), so it applied the repository's .codex/config.toml -- refusing to dispatch reviewers the PR's own config would govern"
+            exit 1
+          fi
+          base_mode=$(git ls-tree "$BASE_SHA" -- .codex/config.toml | cut -d' ' -f1)
+          if [ -z "$base_mode" ]; then
+            echo "::notice::the base branch has no .codex/config.toml, so there is no control config; only check 1 ran"
+            exit 0
+          fi
+          if [ "$base_mode" != 100644 ] && [ "$base_mode" != 100755 ]; then
+            echo "::error::the base branch's .codex/config.toml is not a regular file (mode $base_mode)"
+            exit 1
+          fi
+          control_dir=$(mktemp -d "$RUNNER_TEMP/codex-control.XXXXXX")
+          control_home=$(mktemp -d "$RUNNER_TEMP/codex-control-home.XXXXXX")
+          mkdir "$control_dir/.git" "$control_dir/.codex"
+          git cat-file blob "$BASE_SHA:.codex/config.toml" > "$control_dir/.codex/config.toml"
+          printf '[projects."%s"]\ntrust_level = "trusted"\n' "$control_dir" > "$control_home/config.toml"
+          (cd "$control_dir" && CODEX_HOME="$control_home" features) > "$RUNNER_TEMP/codex-features-control.txt"
+          (cd "$empty_dir" && CODEX_HOME="$control_home" features) > "$RUNNER_TEMP/codex-features-control-default.txt"
+          rc=0
+          cmp -s "$RUNNER_TEMP/codex-features-control-default.txt" "$RUNNER_TEMP/codex-features-control.txt" || rc=$?
+          if [ "$rc" -ne 1 ]; then
+            echo "::error::the base branch's .codex/config.toml changes no feature even when trusted (or the comparison failed, cmp exit $rc), so check 1 cannot show whether Codex applied a config -- re-check the control after a Codex pin change"
+            exit 1
+          fi
+          changed=$(diff "$RUNNER_TEMP/codex-features-control-default.txt" "$RUNNER_TEMP/codex-features-control.txt" | grep -c '^>' || true)
+          echo "Codex resolved the default [features] table in the checkout, so it did not apply the project config's features (only that table is compared); trusted, the base branch's config changes $changed feature(s), so an applied config is detectable"
+
+      - name: Check the overrides keep AGENTS.md and skills out of the model input
+        run: |
+          set -euo pipefail
+          canary_dir=$(mktemp -d "$RUNNER_TEMP/codex-canary.XXXXXX")
+          mkdir -p "$canary_dir/.git" "$canary_dir/.agents/skills/canary-skill"
+          printf 'AGENTS-DOC-CANARY\n' > "$canary_dir/AGENTS.md"
+          printf -- '---\nname: canary-skill\ndescription: SKILL-LIST-CANARY\n---\nbody\n' \
+            > "$canary_dir/.agents/skills/canary-skill/SKILL.md"
+          (cd "$canary_dir" && codex debug prompt-input hello) > "$RUNNER_TEMP/codex-input-default.txt"
+          (cd "$canary_dir" && codex debug prompt-input -c project_doc_max_bytes=0 -c skills.include_instructions=false hello) \
+            > "$RUNNER_TEMP/codex-input-isolated.txt"
+          if ! grep -q hello "$RUNNER_TEMP/codex-input-isolated.txt"; then
+            echo "::error::codex debug prompt-input rendered no prompt, so the isolation cannot be checked -- re-check this step after a Codex pin change"
+            exit 1
+          fi
+          for canary in AGENTS-DOC-CANARY SKILL-LIST-CANARY; do
+            if ! grep -q "$canary" "$RUNNER_TEMP/codex-input-default.txt"; then
+              echo "::error::$canary is missing without the overrides too, so this check cannot show whether they work -- re-check it after a Codex pin change"
+              exit 1
+            fi
+            # 1 is grep's "not found"; anything above is a read error, never an absence.
+            status=0
+            grep -q "$canary" "$RUNNER_TEMP/codex-input-isolated.txt" || status=$?
+            if [ "$status" -gt 1 ]; then
+              echo "::error::could not scan the isolated model input for $canary (grep exit $status)"
+              exit 1
+            fi
+            if [ "$status" -eq 0 ]; then
+              echo "::error::$canary reaches the model input despite the overrides -- refusing to dispatch reviewers the PR's own AGENTS.md or skills could steer"
+              exit 1
+            fi
+          done
+          echo "With the overrides, neither a project AGENTS.md nor the project skill list reaches the model input"
+
+      - name: Run the approved calls
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          CODEX_KIT_REVIEW_MODEL: ${{ vars.CODEX_KIT_REVIEW_MODEL }}
+          CODEX_KIT_REVIEW_TIMEOUT_MS: ${{ vars.CODEX_KIT_REVIEW_TIMEOUT_MS || '600000' }}
+        run: |
+          set -euo pipefail
+          uv run --no-sync --no-build python -m scripts.reviewer_eval.ab run \
+            --repo "$RUNNER_TEMP/head" --head "$HEAD_SHA" --base "$RANGE_BASE" \
+            --arm "old=$OLD_ARM" --arm "new=$NEW_ARM" --repeats "$REPEATS" \
+            --approved-calls "$APPROVED_CALLS" --out "$RUNNER_TEMP/ab"
+
+      - name: Summarize
+        if: always()
+        run: |
+          set -euo pipefail
+          [ -f "$RUNNER_TEMP/ab/manifest.json" ] || exit 0
+          uv run --no-sync --no-build python -m scripts.reviewer_eval.ab report "$RUNNER_TEMP/ab" > "$RUNNER_TEMP/report.json"
+          mv "$RUNNER_TEMP/report.json" "$RUNNER_TEMP/ab/report.json"
+          uv run --no-sync --no-build python -m scripts.reviewer_eval.ab report "$RUNNER_TEMP/ab" --markdown >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Keep the results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # ratchet:actions/upload-artifact@v7.0.2
+        with:
+          name: reviewer-ab
+          path: ${{ runner.temp }}/ab
+          if-no-files-found: ignore
+          retention-days: 90

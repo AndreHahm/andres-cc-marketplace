@@ -3,7 +3,8 @@
 Measures the reviewers behind the Codex delta review before anything about them changes (Phase 4 of
 [#568](https://github.com/AndreHahm/andres-cc-marketplace/issues/568), issue
 [#586](https://github.com/AndreHahm/andres-cc-marketplace/issues/586)). This phase only measures: it
-never changes a reviewer prompt, pin or weight.
+never changes a reviewer prompt, pin or weight. The two-prompt comparison below measures too: it runs
+candidate prompts without shipping them.
 
 ## Layout
 
@@ -94,6 +95,40 @@ for n in 1 2 3 4 5; do
     --base-sha "$BASE_SHA" --output ".temp/stability/run$n.json"
 done
 ```
+
+## Comparing two prompts
+
+`scripts/reviewer_eval/ab.py` runs the reviewers on one head with the prompts of two commits (issue
+[#862](https://github.com/AndreHahm/andres-cc-marketplace/issues/862)). An arm is a commit: the dispatcher reads `.codex/agents/` at the
+SHA it is given, so an arm can change a reviewer's prompt but no text `review.py` writes (the diff scope, the
+briefings). Change one thing per arm.
+
+```bash
+uv run python -m scripts.reviewer_eval.ab plan --repo <checkout of the head> --head <sha> --base <sha> \
+  --arm old=<sha> --arm new=<sha> --repeats 3
+```
+
+`plan` makes no model call and prints how many reviewer dispatches `run` would make. `run` takes the same arguments plus
+`--out` and `--approved-calls`, and refuses unless that is exactly the planned number; it never retries a
+reviewer, so the number is also the most it makes (one dispatch is several model requests). The arms take turns. A run in which every
+reviewer failed stops the rest. Both commands need `CODEX_KIT_REVIEW_MODEL`. `report <dir>` prints JSON, or
+tables with `--markdown`.
+
+The head's own code is never run: the dispatcher, the bridge and the gate are this checkout's. The delta
+is `--base...--head` with CI's exclusions, so it matches a CI run only as far as `--base` matches that
+run's delta. Waivers, carried findings and tracked issues are not applied.
+
+The report counts what was observed, per reviewer and arm: blocking findings per run, how many runs agreed
+on the blocking set, and in how many runs each finding appeared. A run a reviewer failed in is
+counted as failed, not as a run without findings. Precision covers only findings with a corpus label for
+the same head, reviewer, path and line. Three repeats cannot separate a prompt's effect from run-to-run
+variation, and `stable` stays `null` below five. Each arm's
+`raw/` holds the reviewers' reports as returned, with token-shaped text redacted.
+
+`.github/workflows/reviewer-ab.yml` does this in CI with the API key, started by hand from `main` (see
+`docs/ci.md`). Its artifact is kept for 90 days; commit it under `ab/<experiment>/` to keep it. The files in
+one arm's directory fit `score --stability`; never pass it runs of both arms, since it does not compare
+`arm_sha`.
 
 ## Case format
 
