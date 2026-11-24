@@ -1,0 +1,22 @@
+{
+  "eval_id": 10,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Treats https://git.example.net/octo/widgets.git as a mismatch although the path matches",
+      "passed": true,
+      "evidence": "'Equal paths on different hosts are different repositories'. It notes the literal text would pass: 'stopping is my reading of the check's purpose'"
+    },
+    {
+      "text": "Attests nothing (no comment, no label) and reports resolved versus origin",
+      "passed": true,
+      "evidence": "'Skip (c)-(g) entirely'; 'was **not** attested'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 2,
+    "pass_rate": 1.0
+  },
+  "baseline_note": "Baseline is the pre-change skill at c7b078e3, not a no-skill run; subject model claude-opus-5-5. The with_skill arm's model was not recorded."
+}

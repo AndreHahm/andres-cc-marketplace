@@ -1,0 +1,22 @@
+{
+  "eval_id": 39,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Counts with the paginated commits endpoint piped to wc -l, before the marker",
+      "passed": true,
+      "evidence": "'gh api repos/octo/widgets/pulls/941/commits --paginate' piped to wc -l; 'nothing runs between the marker and the merge'. It calls this a 'departure from 7(c)'s literal command'"
+    },
+    {
+      "text": "Discloses 137, and \"at least 250\" for a count of 250",
+      "passed": true,
+      "evidence": "'collapses 137 commits into one'; 'collapses at least 250 commits into one'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 2,
+    "pass_rate": 1.0
+  },
+  "baseline_note": "Baseline is the pre-change skill at c7b078e3, not a no-skill run; subject model claude-opus-5-5. The with_skill arm's model was not recorded."
+}
