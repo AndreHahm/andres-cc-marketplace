@@ -1,0 +1,37 @@
+{
+  "eval_id": 27,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "note": "Quick run, with_skill only. The assertions were fixed and approved before the run; the authoring session graded it. codex-pass-assembly.md gained its EnterWorktree PATH sentence after the run, from a gap the run reported.",
+  "assertions": [
+    {
+      "text": "The brief and the dispatch call each begin with their own statement export PATH='/usr/local/bin:/usr/bin:/bin', never a prefix assignment",
+      "type": "functionality",
+      "target": "SKILL.md"
+    },
+    {
+      "text": "Every command of each call, the $(date) in the dispatch id included, runs after the export",
+      "type": "functionality",
+      "target": "SKILL.md"
+    },
+    {
+      "text": "The value comes from the chain's first two lines and the later PATH_FILTERED=0 line is ignored",
+      "type": "functionality",
+      "target": "SKILL.md"
+    },
+    {
+      "text": "A single quote or a newline in the value: stop and ask",
+      "type": "functionality",
+      "target": "SKILL.md"
+    },
+    {
+      "text": "After EnterWorktree: one simple command with the PATH prefix and no $(...), so the dispatch id is literal",
+      "type": "functionality",
+      "target": "SKILL.md"
+    },
+    {
+      "text": "No PATH entry left: the review stops and nothing else is run",
+      "type": "functionality",
+      "target": "SKILL.md"
+    }
+  ]
+}

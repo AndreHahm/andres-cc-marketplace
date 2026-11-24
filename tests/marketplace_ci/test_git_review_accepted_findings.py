@@ -815,3 +815,28 @@ def test_brief_leaves_out_sensitive_paths(checkout, tmp_path, capsys):
     text = (run / "accepted.md").read_text(encoding="utf-8")
     assert "s/SKILL.md" in text and "api_token" not in text and fingerprint not in text
     assert "not briefed: 1 line(s)" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(
+    ("title", "summary", "briefed"),
+    [
+        ("Parser drops a line", "The parser drops the last line.", True),
+        ("Leak through deploy-credentials.txt", "", False),
+        ("Planner", "It also reads `config/.env`.", False),
+        ("Planner", "Reads keys/server.pem, then stops.", False),
+        ("Planner", "Reads _.npmrc_ and _server.pem_.", False),
+    ],
+)
+def test_brief_leaves_out_a_tracked_issue_with_a_sensitive_name(
+    checkout, tmp_path, monkeypatch, capsys, title, summary, briefed
+):
+    run = tmp_path / "run"
+    run.mkdir(mode=0o700)
+    (checkout / ".claude/accepted-review-findings.local.md").write_text(
+        "- tracked #7: known\n", encoding="utf-8"
+    )
+    record = {"number": 7, "title": title, "summary": summary}
+    monkeypatch.setattr(helper, "open_issue", lambda number, repo: record)
+    assert helper.main(["brief", "--run-dir", str(run)]) == 0
+    assert (run / "accepted.md").exists() is briefed
+    assert ("not briefed: " in capsys.readouterr().out) is not briefed

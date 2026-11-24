@@ -17,6 +17,8 @@
 # deletion). Anything else exits 2, git's own failures and bash errors included (issue #697).
 set -Eeuo pipefail
 trap 'exit 2' ERR
+# shellcheck source=git-review-path.sh
+source "${BASH_SOURCE[0]%/*}/git-review-path.sh" # before any program runs
 
 fail() {
   echo "git-review-intent-add.sh: $*" >&2

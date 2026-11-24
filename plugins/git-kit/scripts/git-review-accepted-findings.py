@@ -618,6 +618,14 @@ def cmd_lines() -> int:
     return 0
 
 
+def _names_sensitive(text: str) -> bool:
+    """Whether a word of the text is a sensitive name (#697): the issue text goes to Codex."""
+    words = re.split(r"[^\w./-]+", text)
+    # Also without the punctuation around it, such as Markdown's `_server.pem_`.
+    words += [w.lstrip("_-").rstrip("._-") for w in words]
+    return any(common.is_sensitive(w) for w in words)
+
+
 def cmd_brief(run_dir: str) -> int:
     target = Path(run_dir)
     try:
@@ -642,6 +650,8 @@ def cmd_brief(run_dir: str) -> int:
         if record is None:
             where = "the pull request's repository" if from_body else "origin"
             print(f"not applied: {raw} (gh cannot read #{number} as an open issue of {where})")
+        elif _names_sensitive(record["title"]) or _names_sensitive(record["summary"]):
+            print(f"not briefed: {raw} (the issue text has a sensitive word or file name)")
         else:
             records.append(record)
     tracked_briefing = render_tracked_issues_briefing(records)

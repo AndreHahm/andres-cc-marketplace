@@ -194,6 +194,8 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
     in an ordinary repository that ships `plugins/codex-kit/.../bridge-invoke.mjs` → that file never runs and
     the run goes single-model; in this marketplace's own repository it runs only after clause (g) and a
     permission prompt. An empty plugin root stops the chain before any helper runs.
+    A PATH entry inside the checkout → dropped before any program runs, and `PATH_FILTERED=1` makes each
+    later Bash call begin with `export PATH='<value>'`; nothing left on PATH → the chain stops.
 
 ## Quality gates
 
@@ -352,6 +354,10 @@ Moved here from SKILL.md's Testing & Validation section, which keeps only the la
   graded by the authoring session. `iteration-26` re-runs eval 25, `with_skill` only, after its expected output
   changed (the plugin root no longer comes from a `printf` call): 6/6. The scripts are covered by `tests/marketplace_ci/`. No live Codex
   dispatch through the new launcher, and nothing was run on Windows.
+- **2026-11-24, `iteration-27`:** the PATH filter (issue #697) is covered by `preflight_fixtures_test.py` and
+  `tests/marketplace_ci/test_git_review_scope_script.py`, run with bash on Linux; eval 27 covers the instructions
+  for later calls, one plan-only `with_skill` run, no baseline: 6/6. Not run: zsh, Windows, and a live session
+  that follows the `export PATH` instruction.
 
 Every eval run listed above is a dry run of the committed text, not a live dispatch (the live checks that
 some entries name are separate from their evals), and none is a live run of the scoped flow (one ran

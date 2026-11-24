@@ -53,3 +53,20 @@ staged or unstaged working-tree changes. Since this skill reviews "the current d
 diff", the `$BASE...HEAD` form would silently skip any uncommitted work-in-progress, including the common
 case of reviewing before the first commit is even made. A single-ref `git diff <merge-base>` includes the
 working tree (index and unstaged changes both) on top of the merge-base.
+
+## Why the chain drops PATH entries inside the checkout
+
+The chain and the helpers run `git`, `bash`, `python3` and others by name. An absolute PATH entry inside the
+repository under review (an activated virtualenv, direnv) would let the repository supply one of them, before
+the `PLANNER_TOUCHED` question. Refusing such a PATH would stop every session with an active `.venv`, so the
+entries are dropped instead, with built-ins only. The lines are the same as `git-review-path.sh`, which the
+shell helpers source first; a test compares the two. The chain still stops on an empty or relative entry.
+An entry counts as inside when it is spelled inside (also with a `..` that leads out again) or resolves
+inside, so an entry spelled inside that is a link leading out is dropped too. A chain of links that only passes
+through the checkout, from an entry outside to a target outside, is not followed. A linked worktree's main checkout counts as inside when its git directory is an ordinary
+`.git`; for a bare repository, a separate git directory or a worktree of a submodule only the checkout itself is
+known. Not caught: an entry outside the repository that holds a link to a program inside it, and entries inside
+other worktrees. If nothing is left, the chain stops: an empty PATH would make the shell look in the current
+directory. `builtin` keeps a user's own `cd` function out of it. Each Bash call is a fresh shell, hence the
+`export PATH` statement on later calls. An entry that could not be entered is dropped for the chain only, unless
+it is spelled inside the checkout.

@@ -44,6 +44,9 @@ From `$REPO_ROOT`, run
   has spaces or whose path is not plain. It never overwrites an existing file.
 - A line for a sensitive file name is never briefed: it would send the name and a hash of the line to
   Codex (issue #697). `brief` prints how many it left out; `match` still applies them.
+- A tracked issue whose title or summary has a sensitive word or file name is not briefed either, and `brief`
+  prints its line as `not briefed:`. The words overlap with ordinary ones (`token`); a false match only costs the brief.
+  A file name with a space in it is checked word by word, so it can be missed.
 - A model cannot check a fingerprint, so `brief` does (issue #814, as CI): a line is briefed only when a
   working-tree line of its path still has its fingerprint, with that line's number; a line without a
   fingerprint is not briefed. It still applies in Phase 3's `match`.

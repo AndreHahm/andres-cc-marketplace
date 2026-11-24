@@ -10,6 +10,8 @@
 # overwrites, and the copy is readable by the owner only. GIT_INDEX_FILE (and the other variables that
 # redirect git) are ignored on purpose: the caller has already pointed GIT_INDEX_FILE at the copy.
 set -euo pipefail
+# shellcheck source=git-review-path.sh
+source "${BASH_SOURCE[0]%/*}/git-review-path.sh" # before any program runs
 
 fail() {
   echo "git-review-copy-index.sh: $*" >&2
