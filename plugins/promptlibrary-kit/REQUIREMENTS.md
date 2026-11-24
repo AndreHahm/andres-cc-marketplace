@@ -458,6 +458,19 @@ Source: V4 §Components; code (`disable-model-invocation`); owner decision 2026-
 (`prompt-library`: met; `prompt-library-setup`: not met, the skill does not exist). Confirmed: yes
 (2026-11-16).
 
+### INT-7: Before I file a prompt, I am told who can read it
+
+*As a developer, before a draft is filed I am told that the record is a plain file in my project and that a
+pushed commit shares its text with everyone who can read the repository, so that I don't share a prompt
+without knowing it.*
+
+**What you'll notice:** the filing question tells you where the record is saved. It also says that, if that
+folder is in a git repository, a pushed commit shares the text and the text stays in history after the
+record changes. You get the notice for every new draft and every origin. It blocks nothing, and the plugin
+never commits or pushes. The trade-off: one more sentence at every filing.
+
+Source: branch (ad706e64); owner decision 2026-11-24. State: met. Confirmed: yes (2026-11-24).
+
 ## 4. Screening for secrets and personal data (SCR)
 
 ### SCR-1: A secret in imported or AI-written text stops the draft
@@ -549,8 +562,8 @@ warns you in your own text (SCR-2); you replace it, for example with "the on-cal
 addresses are screened. The trade-off: a prompt that really needs a
 team mailbox cannot be saved from session or AI text; you rephrase it or write that part as your own text.
 
-Source: branch (ad706e64, 7df79b46); owner decision 2026-11-16. State: **branch** (only on the unmerged
-security-bundle branch). Confirmed: yes (2026-11-16).
+Source: code; owner decision 2026-11-16 (git remotes in `ssh://git@host/path` form: owner decision
+2026-11-24). State: met. Confirmed: yes (2026-11-16).
 
 ### SCR-6: The reviewer reports other personal data in every prompt
 
@@ -567,8 +580,13 @@ number) is possible. Email addresses are handled by the screen instead (SCR-5).
 **Changes to earlier decisions:** V4 and the code check personal data only in the import review
 (`session` and `web`); this extends the reviewer's personal-data check to every origin.
 
-Source: V4 §Import review; code; owner decision 2026-11-16. State: **partial** (`session`, `web`: met;
-other origins: not met). Confirmed: yes (2026-11-16).
+**Amended 2026-11-24 (SCR-6):** a name that appears only in a license or attribution note in `references` is
+not a finding, because imported prompts must keep that note; contact data in it still is one. The kinds listed
+above are examples: other data that identifies a person counts too. The trade-off: a name in such a note is
+saved without a finding. Found by the security review before the security-bundle PR.
+
+Source: V4 §Import review; code; owner decision 2026-11-16. State: **partial** (met for every origin except
+`example`, which does not exist yet). Confirmed: yes (2026-11-16; amended 2026-11-24).
 
 ## 5. Review and optimization (REV)
 
@@ -672,8 +690,7 @@ file outside the project or a file reached through a symlink or junction.
 **Changes to earlier decisions:** extends the reviewer's scope from "the one record" to the record plus
 its attachments, as CAT-2 ("shown in the review") requires.
 
-**Mechanism (implementation decision, not part of the requirement).** On `main` the skill passes the
-reviewer an absolute record path and nothing bounds it. On the security-bundle branch, the validator's
+**Mechanism (implementation decision, not part of the requirement).** The validator's
 `review-path` checks the path (inside the catalog, a listed record, no link on the way) and the agent
 re-checks it, but a link swapped in between the check and the read still escapes. Passing the record's
 text and metadata inline (no file read left to steer) satisfies REV-6 only if the attachments' content is
@@ -681,8 +698,8 @@ passed too; extending `review-path` to attachments must also close the swap gap,
 read of each attachment that EXE-2's attachments amendment requires for a run. Either way, REV-1 to
 REV-6 and CAT-2 must hold together.
 
-Source: code + branch; owner decision 2026-11-16. State: **partial** (single-record review: met without a
-bound on `main`, bounded on the branch with the swap gap; attachments: not met). Confirmed: yes
+Source: code; owner decision 2026-11-16. State: **partial** (single-record review: bounded by `review-path`,
+with the swap gap; attachments: not met). Confirmed: yes
 (2026-11-16).
 
 ## 6. Verification and lifecycle (LIF)
@@ -1469,8 +1486,8 @@ with the owner, 2026-11-17).
 | CODE-1 | Catalog may not sit in `.git`, `.github` or Claude Code config folders | validator `FORBIDDEN_ROOTS` | Covered by CAT-7 |
 | CODE-2 | Hidden-character reporting in every text display and approval | validator, all three skills | Covered by RET-4 |
 | CODE-3 | Secret screen also blocks `claude` and `codex` text, and re-screens at every later step | validator | Covered by SCR-1, SCR-3 |
-| CODE-4 | Email screen with git-remote and example-domain exemptions | branch | Covered by SCR-5 |
-| CODE-5 | `review-path` record-path gate for the reviewer | branch | Mechanism of REV-6 |
+| CODE-4 | Email screen with git-remote and example-domain exemptions | validator | Covered by SCR-5 |
+| CODE-5 | `review-path` record-path gate for the reviewer | validator, prompt-library step 7 | Mechanism of REV-6 |
 | CODE-6 | Atomic writes and rollback of a partly failed status move | validator | Covered by CAT-6 |
 | CODE-7 | `discard-orphan` repair offer for an orphan from an interrupted draft | prompt-library step 1 | Covered by CAT-6, LIF-8 |
 | CODE-8 | `--expect-sha256` binding an approval to the shown text | validator | Mechanism of LIF-7 |

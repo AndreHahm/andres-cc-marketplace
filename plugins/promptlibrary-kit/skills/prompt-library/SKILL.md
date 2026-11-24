@@ -251,7 +251,7 @@ directly; last run 2026-11-16, 7 of 7 checks passed. It failed on a copy with a 
 - [ ] A slug that does not match the slug pattern is refused before any command runs with it.
 - [ ] `activate` of an already active record is reported and stops, with no question and no command.
 
-**Last dated run record:** validator fixture tests, 151 run (148 passing, 3 POSIX-only skipped on Windows), 2026-11-16
+**Last dated run record:** validator fixture tests, 151 run (148 passing, 3 POSIX-only skipped on Windows), 2026-11-24
 (`scripts/plib_test_catalog_validate.py`), after the email screen, its review fixes and `review-path`
 (link and junction refusal, tested with a real junction on Windows) were added. The step 6 sharing notice and
 the step 7 `catalog_root` hand-off and `Refused:` handling (2026-11-16) were checked by the smoke test and

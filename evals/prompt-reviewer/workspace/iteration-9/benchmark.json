@@ -1,0 +1,13 @@
+{
+  "iteration": 9,
+  "run_date": "2026-11-24",
+  "configurations": [
+    "with_skill"
+  ],
+  "scope": "new eval 14 plus re-runs of 4 and 12 after the security review fixes; no baseline arm. The diff placeholder wording ('removed' or 'kept, value not shown') and the exempted-name clause were changed after this run and are covered by iteration 10",
+  "with_skill": {
+    "passed": 12,
+    "total": 12,
+    "pass_rate": 1.0
+  }
+}

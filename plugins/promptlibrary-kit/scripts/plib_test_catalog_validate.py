@@ -270,6 +270,9 @@ class TextAndYaml(unittest.TestCase):
             "git@ssh.dev.azure.com:v3/org/project/repo",
             "git@myserver.com:project.git",  # a root-level remote, no slash after the colon
             "git@host.com:/srv/repo.git",
+            "ssh://git@github.com/org/repo.git",
+            "git+ssh://git@github.com/org/repo.git#main",
+            "ssh://git@host.com:2222/org/repo.git",
             "@types/node",
             "a@b",
         ):
@@ -285,7 +288,8 @@ class TextAndYaml(unittest.TestCase):
         self.assertNotIn("personal data", message)
 
     def test_email_followed_by_a_remote_shaped_suffix_is_still_screened(self):
-        # Only git@host:path is a remote; any other user@host keeps its address screened.
+        # Only git@host:path and ssh://git@host/path are remotes; any other user@host keeps its
+        # address screened.
         for text in (
             "mail bob" + "@acme.io:gitlab",
             "bob" + "@acme.io:x.github",
@@ -295,6 +299,13 @@ class TextAndYaml(unittest.TestCase):
             "deploy" + "@ci.corp.net:repo.git",
             "agit" + "@acme.io:org/repo",
             "Mail git" + "@acme.io: thanks",  # a space after the colon: prose, not a remote
+            "ssh://jane" + "@acme.io/org/repo.git",
+            "ssh://agit" + "@acme.io/org/repo.git",
+            "https://git" + "@acme.io/org/repo.git",
+            "git" + "@acme.io/org/repo.git",  # no ssh:// in front: not a remote form
+            "ssh://git" + "@acme.io",  # no path
+            "ssh://git" + "@acme.io/ thanks",
+            "ssh://git@github.com/jane.doe" + "@acme.io",  # an address inside the path
         ):
             self.assertEqual([h["pattern"] for h in V.screen_text(text)], ["email_address"], text)
 
@@ -333,6 +344,8 @@ class TextAndYaml(unittest.TestCase):
             "x@a.co:" + "b" * 200000,
             "git@" + "a." * 100000,
             "git@" + "a-" * 100000 + ":",
+            "ssh://git@" + "a." * 100000,
+            "ssh://git@a/" * 20000,
         ):
             started = time.perf_counter()
             email.search(line)

@@ -210,13 +210,14 @@ SECRET_PATTERNS = (
     # The domain must end where no label character or ".label" follows, so the engine
     # cannot retry a shorter domain to dodge an exemption. Not matched: RFC 2606 example domains
     # (placeholders, never a person), and a git SSH remote, git@host:path (git@github.com:org/repo,
-    # git@host.com:project.git). Only the local part "git" is exempt: any other user@host:path is
-    # screened, so a suffix such as ":/x" or ":x.git" cannot hide a real address. ASCII addresses
-    # only.
+    # git@host.com:project.git) or ssh://git@host/path (also git+ssh://). Only the local part "git"
+    # is exempt: any other user@host:path or ssh://user@host/path is screened, so a suffix such as
+    # ":/x" or ":x.git" cannot hide a real address. ASCII addresses only.
     (
         "email_address",
         re.compile(
             r"(?<![A-Za-z0-9._%+-])(?!git@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*:[^\s@])"
+            r"(?!(?<=ssh://)git@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*/[^\s@])"
             r"[A-Za-z0-9._%+-]+@"
             r"(?!(?:[A-Za-z0-9-]+\.)*(?i:example\.(?:com|net|org))(?![A-Za-z0-9-]|\.[A-Za-z0-9]))"
             r"[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*"

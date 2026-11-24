@@ -21,7 +21,8 @@ an attestation; a hand-edited `origin` is outside this plugin's guarantees (the 
   to. Session transcripts can hold secrets and private data, and text Claude drafts is
   built from that same context, and `codex` text arrives by paste from a session, so screening is not
   optional for those origins. Of personal data, the screen catches only ASCII email addresses (not RFC 2606
-  example domains or git SSH remotes of the form `git@host:path`; any other `user@host:path` is screened) and home-directory paths; `prompt-reviewer` reports the rest. Text of `user` origin is not blocked, because a user's own prompt may
+  example domains or git SSH remotes of the form `git@host:path` or `ssh://git@host/path`; with any other user name the address is
+  screened) and home-directory paths; `prompt-reviewer` reports other personal data for every origin. Text of `user` origin is not blocked, because a user's own prompt may
   legitimately contain a path or an example string; the screen output is still shown as an early warning.
 - A consolidated multi-turn draft must still fit the 50-nonblank-line limit; if it does not, ask the user
   to condense it. Do not truncate silently.

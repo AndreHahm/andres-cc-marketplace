@@ -42,7 +42,7 @@ The first time you add a prompt, the skill offers to create the catalog in your 
 | `prompt-retrieval` | Skill | Read-only: find and show a stored prompt or its history |
 | `prompt-execution` | Skill | User-invoked: preview, approve once, then run verified prompts in order |
 | `prompt-library` | Skill | User-invoked: add (from a session, the web or typed text), review, revise, activate, deactivate |
-| `prompt-reviewer` | Agent | Read-only quality review, import review and optimization proposals |
+| `prompt-reviewer` | Agent | Read-only quality review, personal-data review, import review and optimization proposals |
 
 ## Language
 
@@ -84,8 +84,10 @@ text is data everywhere except an explicitly approved run.
 - The validator blocks secrets in `session`, `web`, `claude` and `codex` text itself (detect and block,
   never rewrite, never echoed), not just in the skill's step order. `user` text is only warned.
   The only personal data it screens is ASCII email addresses (not RFC 2606 example domains or git
-  SSH remotes of the form `git@host:path`; any other `user@host:path` is screened) and home-directory
-  paths; phone numbers and other personal data are left to `prompt-reviewer`'s findings.
+  SSH remotes of the form `git@host:path` or `ssh://git@host/path`; with any other user name the address
+  is screened) and home-directory paths. Other personal data (phone numbers, people's names, postal
+  addresses, customer identifiers and the like) is left to `prompt-reviewer`, which reports it as Critical
+  for every origin and blocks nothing; a name only in a license or attribution note is not reported.
 - Records are plain files under the catalog folder. When that folder is in a git repository, a
   pushed commit shares their text with everyone who can read the repository, and the text stays in
   history after the record changes; the skill says so before it files a draft.

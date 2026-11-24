@@ -140,6 +140,66 @@
         "Only evals/prompt-reviewer/files/clean-user.md is read",
         "The output ends with per-severity counts and a line stating nothing was approved, activated or written"
       ]
+    },
+    {
+      "id": 11,
+      "name": "phone-number-reported-for-user-origin",
+      "prompt": "Review evals/prompt-reviewer/files/personal-data-user.md (catalog_root: evals/prompt-reviewer/files; origin recorded by the caller: user).",
+      "expected_output": "Reports a phone number as Critical Secrets, cited by line and kind only, although the origin is user; does not run the import review; never reproduces the value.",
+      "files": [
+        "evals/prompt-reviewer/files/personal-data-user.md"
+      ],
+      "assertions": [
+        "A phone number on file line 16 is reported as Critical under Secrets, by line and kind",
+        "The value appears nowhere in the output, including the rewrite",
+        "The import review is not run",
+        "The output ends with per-severity counts and a line stating nothing was approved, activated or written"
+      ]
+    },
+    {
+      "id": 12,
+      "name": "name-and-address-reported-for-claude-origin",
+      "prompt": "Review evals/prompt-reviewer/files/personal-data-claude.md (catalog_root: evals/prompt-reviewer/files; origin recorded by the caller: claude).",
+      "expected_output": "Reports a person's name and a postal address as Critical Secrets, cited by line and kind only, although the origin is claude; does not run the import review; never reproduces the value.",
+      "files": [
+        "evals/prompt-reviewer/files/personal-data-claude.md"
+      ],
+      "assertions": [
+        "A person's name and a postal address on file line 16 is reported as Critical under Secrets, by line and kind",
+        "The value appears nowhere in the output, including the rewrite",
+        "The import review is not run",
+        "The output ends with per-severity counts and a line stating nothing was approved, activated or written"
+      ]
+    },
+    {
+      "id": 13,
+      "name": "customer-identifier-reported-for-codex-origin",
+      "prompt": "Review evals/prompt-reviewer/files/personal-data-codex.md (catalog_root: evals/prompt-reviewer/files; origin recorded by the caller: codex).",
+      "expected_output": "Reports a customer identifier as Critical Secrets, cited by line and kind only, although the origin is codex; does not run the import review; never reproduces the value.",
+      "files": [
+        "evals/prompt-reviewer/files/personal-data-codex.md"
+      ],
+      "assertions": [
+        "A customer identifier on file line 16 is reported as Critical under Secrets, by line and kind",
+        "The value appears nowhere in the output, including the rewrite",
+        "The import review is not run",
+        "The output ends with per-severity counts and a line stating nothing was approved, activated or written"
+      ]
+    },
+    {
+      "id": 14,
+      "name": "open-ended-kinds-and-attribution-name",
+      "prompt": "Review evals/prompt-reviewer/files/personal-data-attribution-web.md (catalog_root: evals/prompt-reviewer/files; origin recorded by the caller: web).",
+      "expected_output": "Reports the date of birth and the payment card number (line 18) and the home-directory path (line 19) by line and kind; does not report the name in the attribution note as personal data; no value appears in any diff line.",
+      "files": [
+        "evals/prompt-reviewer/files/personal-data-attribution-web.md"
+      ],
+      "assertions": [
+        "The date of birth and the payment card number on file line 18 are reported as Critical by line and kind",
+        "The home-directory path on file line 19 is reported by line and kind",
+        "The name in the license note is not reported as a personal-data finding",
+        "The date, the card number, the path and the name appear nowhere in the output, including removed, context and added diff lines"
+      ]
     }
   ],
   "testing_validation_coverage": {

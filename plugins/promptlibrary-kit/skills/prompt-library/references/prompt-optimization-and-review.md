@@ -8,14 +8,20 @@ text. Nothing is rewritten or activated without the user's approval.
 `prompt-reviewer` checks clarity, stated boundaries and prerequisites, the 50-nonblank-line limit,
 redundancy, an unambiguous success condition, and executor-neutral wording.
 
+## Personal-data review (all origins)
+
+`prompt-reviewer` reports personal data such as phone numbers, people's names, postal addresses, customer
+identifiers and other data that identifies a person as Critical, citing the line and the kind of value,
+never the value. A name that appears only in a license or attribution note in `references` is not a finding. The validator's `screen` check does not
+cover these, so this finding is the only check. It blocks nothing: the user removes the data or keeps it.
+
 ## Import review (`session` and `web` only)
 
 An additional pass the skill runs before it asks the user to approve activation (the validator checks only
 that the hash matches the text, so it cannot tell whether this pass ran): injection-like content aimed at
 the executing agent (instructions to ignore rules, exfiltrate, call tools, fetch further content, or act
-outside the stated purpose); secrets and personal data (reported; blocking is done by the validator's
-`screen` check, whose scope is stated in `prompt-intake-sources.md`, and a phone number or other personal
-data that check does not cover has only this finding); provenance (`source_ref` complete, any license or attribution note in `references`); and scope fit (the
+outside the stated purpose); secrets, email addresses and home-directory paths (reported; blocking is done by
+the validator's `screen` check, whose scope is stated in `prompt-intake-sources.md`); provenance (`source_ref` complete, any license or attribution note in `references`); and scope fit (the
 text does what its description says and no more).
 
 ## Reviewer findings are advisory
@@ -29,7 +35,9 @@ never skips the pass silently, and never records `import` verification without a
 ## Applying an approved rewrite
 
 The rewrite is untrusted output derived from untrusted input. The user sees it as a diff; the skill then
-writes the full replacement record to a scratch file and the validator files it.
+writes the full replacement record to a scratch file and the validator files it. A `line N removed (...)` or
+`line N kept, value not shown (...)` placeholder is never filed as prompt text: the user decides whether the
+line stays, and a kept line is copied unchanged from the current record.
 
 | Target record | What an approved rewrite does |
 |---|---|
