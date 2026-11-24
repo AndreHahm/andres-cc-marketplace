@@ -106,7 +106,10 @@ END {
 # certain: a top-level git command, after assignments or `env` with assignments, with the
 # subcommand found past git's global options, and only commit -m/--message, tag
 # -m/--message and --format, branch --format and clean -e/--exclude, after options known to
-# take no value or a known value (commit -S, --author, --date, --trailer; tag -u). An unknown
+# take no value or a known value (commit -S, --author, --date, --trailer; tag -u). A tag
+# argument that is one single-quoted word (a name or a pattern) is blanked too, but only when the
+# whole command is plain words and single-quoted strings: a later command could run the argument
+# again (`$_`, BASH_COMMAND). An unknown
 # option stops blanking for that command (`commit -F x -m` would make -m the file). Blanking
 # stops for the rest of the command at anything not modeled here: $( ), a backtick, ${ },
 # <( ), a heredoc, [[ ]], case, alias, function or a parenthesis inside a command; a word
@@ -151,7 +154,7 @@ function endcmd() {
 }
 function raw(k) { return substr(s, cs[k], ce[k] - cs[k]) }
 function span(a, b) { nb++; sa[nb] = a; sb[nb] = b }
-function blank_cmd(    k, set, v, long, long2, longb, sv, so, lv, lo, o, p, r, re) {
+function blank_cmd(    k, set, v, long, long2, longb, sv, so, lv, lo, o, p, r, re, tag) {
     for (k = 1; k <= nk; k++) if (cg[k]) return
     k = 1
     while (k <= nk && raw(k) ~ /^[A-Za-z_][A-Za-z0-9_]*=/) k++
@@ -179,7 +182,7 @@ function blank_cmd(    k, set, v, long, long2, longb, sv, so, lv, lo, o, p, r, r
     # else the next word (`tag -u key`), lv a long one with the value in the next word or after
     # `=`. so and lo take only an attached value: `commit -Sm` signs with key m, so -S ends its
     # word and nothing in it is a message; lo is the long form (`--gpg-sign=key`).
-    sv = ""; so = ""; lv = ""; lo = ""; long2 = ""
+    sv = ""; so = ""; lv = ""; lo = ""; long2 = ""; tag = (cn[k] == "tag")
     if (cn[k] == "commit") {
         set = "asneqviopz"; v = "m"; long = "--message"; so = "S"
         lv = "|--author|--date|--trailer|"; lo = "|--gpg-sign|"
@@ -204,7 +207,11 @@ function blank_cmd(    k, set, v, long, long2, longb, sv, so, lv, lo, o, p, r, r
         o = cn[k]
         # A cut word read as an option could end differently; a cut value is skipped above.
         if (ct[k] || o == "--") return
-        if (o !~ /^-/) continue
+        if (o !~ /^-/) {
+            # Not an option and not a value of one: a name or a pattern, whose text is no flag.
+            if (tag && plain && raw(k) ~ ("^" sq "[^" sq "]*" sq "$")) span(cs[k], ce[k])
+            continue
+        }
         if (o ~ (re "$") || o == long || (long2 != "" && o == long2)) {
             # Under `set -k` bash moves a NAME=value word out of the arguments, so the
             # next word would be the value: stop rather than guess.
@@ -261,6 +268,7 @@ END {
         for (k = 1; k <= m; k += 2) ln[++h] = (k < m) ? ln[k] "\n" ln[k + 1] : ln[k]
     }
     s = ln[1]
+    plain = (mode == "blank" && length(s) < 4096 && s ~ ("^([A-Za-z0-9_./ \t-]|" sq "[^" sq "\n]*" sq ")*$"))
     n = length(s); i = 1; wb = 1
     while (i <= n) {
         c = substr(s, i, 1); c2 = substr(s, i + 1, 1)
@@ -581,7 +589,8 @@ ABBREV_GIT_RE+="|branch([^;&|]*[[:space:]])?-[a-zA-Z]*[dD][a-zA-Z]*${GIT_SUB_END
 ABBREV_GIT_RE+="|tag([^;&|]*[[:space:]])?-i*d[a-zA-Z]*${GIT_SUB_END}"
 ABBREV_GIT_RE+="|pull([^;&|]*[[:space:]])?-[a-zA-Z]*r${GIT_SUB_END}"
 # A setting given for one command only (`git -c ...`, `--config-env`, GIT_CONFIG_* variables)
-# that turns off clean's force check, makes pull rebase or merge, or defines any alias (an
+# that turns off clean's force check, makes pull rebase or merge (branch.autoSetupRebase does
+# so for a later pull on a branch created with it), or defines any alias (an
 # alias can name a forbidden subcommand, `alias.x=stash`, or run a shell, `alias.x=!cmd`).
 # The exec-policy rules cannot see it: the command no longer starts with `git clean`.
 # A persistent `git config` stays with the rules, which ask the user. Known limits of a text
@@ -594,7 +603,7 @@ ABBREV_GIT_RE+="|pull([^;&|]*[[:space:]])?-[a-zA-Z]*r${GIT_SUB_END}"
 # `-c pull.rebase` as true, and so may `pull.ff`, whose bare `true` overrides a persistent
 # `pull.ff=only`. `branch.<name>.mergeOptions` passes options such as `--no-ff` to the merge
 # that pull runs. A GIT_CONFIG_KEY_<n> value is the bare key.
-CONFIG_KEYS='(clean\.requireforce|pull\.(rebase|ff)|merge\.ff|branch\.[^[:space:]=]*\.(rebase|mergeoptions)|alias\.[^[:space:]=]*)'
+CONFIG_KEYS='(clean\.requireforce|pull\.(rebase|ff)|merge\.ff|branch\.[^[:space:]=]*\.(rebase|mergeoptions)|branch\.autosetuprebase|alias\.[^[:space:]=]*)'
 # A `-c` value written in the command is read too: `pull.ff=only` keeps pull fast-forward-only
 # and `clean.requireForce=true` keeps the force check, so only another value of those two keys
 # is blocked. A value must be exactly that word, ended by a blank, a quote, an operator or the
@@ -607,7 +616,7 @@ CONFIG_NOT_ONLY="(${CONFIG_VALUE_END}|(o|on|onl)${CONFIG_VALUE_END}|[^o${CONFIG_
 CONFIG_NOT_ONLY+="|o[^n${CONFIG_VALUE_NOT}]|on[^l${CONFIG_VALUE_NOT}]|onl[^y${CONFIG_VALUE_NOT}]|only[^${CONFIG_VALUE_NOT}])"
 CONFIG_NOT_TRUE="(${CONFIG_VALUE_END}|(t|tr|tru)${CONFIG_VALUE_END}|[^t${CONFIG_VALUE_NOT}]"
 CONFIG_NOT_TRUE+="|t[^r${CONFIG_VALUE_NOT}]|tr[^u${CONFIG_VALUE_NOT}]|tru[^e${CONFIG_VALUE_NOT}]|true[^${CONFIG_VALUE_NOT}])"
-CONFIG_C_SET="((pull\.rebase|merge\.ff|branch\.[^[:space:]=]*\.(rebase|mergeoptions)|alias\.[^[:space:]=]*)="
+CONFIG_C_SET="((pull\.rebase|merge\.ff|branch\.[^[:space:]=]*\.(rebase|mergeoptions)|branch\.autosetuprebase|alias\.[^[:space:]=]*)="
 CONFIG_C_SET+="|pull\.ff=${CONFIG_NOT_ONLY}|clean\.requireforce=${CONFIG_NOT_TRUE})"
 # The option itself; under `set -k` a dropped NAME=value word may stand before the key.
 CONFIG_FLAG_C="-c(${GIT_ASSIGN})*[[:space:]]*"
@@ -770,8 +779,17 @@ search_only_command() {
     re+="([[:blank:]]+(${opt}|${word}))*[[:blank:]]*\$"
     [[ "${cmd}" =~ ${re} ]]
 }
+# A longer key is another key (`pull.ffx`), but the shell or `env -S` can cut the rest off
+# (`${v%X}`, IFS, `\c`), and another program can rewrite it (`xargs -I`). So the key's end is read
+# only when the whole command is one line of plain assignments, git and plain words, where nothing
+# is expanded, split, unquoted or decoded.
+other_key_only() {
+    local re='^([A-Za-z_][A-Za-z0-9_]*=[A-Za-z0-9_./-]* +)+git( [A-Za-z0-9_=./ -]*)?$'
+    [[ "${ORIG_CMD}" != *GIT_CONFIG_PARAMETERS* && "${ORIG_CMD}" =~ ${re} ]] || return 1
+    ! matches "${GIT_CONFIG_ENV}([^[:alnum:].-]|\$)"
+}
 if { matches "${GIT_CONFIG_ENV}" || matches_code "${GIT_CONFIG_ENV}" ||
-    matches_flags "${GIT_CONFIG_ENV}"; } && ! search_only_command; then
+    matches_flags "${GIT_CONFIG_ENV}"; } && ! search_only_command && ! other_key_only; then
     block "Do not set clean.requireForce or a shell alias for one git command; ask the user."
 fi
 

@@ -563,6 +563,61 @@ B	git -c branch.main.mergeOptions=--no-ff pull
 B	git --config-env branch.x.mergeOptions=E pull
 B	GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=branch.main.mergeOptions GIT_CONFIG_VALUE_0=--no-ff git pull
 A	git -c branch.main.merge=refs/heads/main pull
+# --- issue #863: branch.autoSetupRebase makes git set branch.<name>.rebase for a new tracking
+# branch, so a later plain pull rebases
+B	git -c branch.autoSetupRebase=always checkout -b x origin/x
+B	git -c branch.autosetuprebase=remote switch -c x origin/x
+B	git -c "branch.autoSetupRebase=local" branch --track x main
+B	git --config-env branch.autoSetupRebase=V checkout -b x origin/x
+B	git --config-env=branch.autoSetupRebase=V checkout -b x origin/x
+B	GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=branch.autoSetupRebase GIT_CONFIG_VALUE_0=always git checkout -b x origin/x
+B	GIT_CONFIG_PARAMETERS="'branch.autoSetupRebase'='always'" git checkout -b x origin/x
+B	bash -c 'git -c branch.autoSetupRebase=always checkout -b x origin/x'
+A	git -c branch.autoSetupMerge=always checkout -b x origin/x
+# a GIT_CONFIG_* key ends where git's key ends: only a further key character makes it another key
+A	GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=pull.ffx GIT_CONFIG_VALUE_0=1 git status
+A	GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=branch.x.rebaseOther GIT_CONFIG_VALUE_0=1 git status
+B	GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=pull.ff GIT_CONFIG_VALUE_0=false git pull
+B	export GIT_CONFIG_KEY_0=pull.ff
+B	GIT_CONFIG_KEY_0="pull.ff" GIT_CONFIG_COUNT=1 GIT_CONFIG_VALUE_0=false git pull
+B	GIT_CONFIG_KEY_0=pull.ff$E GIT_CONFIG_COUNT=1 GIT_CONFIG_VALUE_0=false git pull
+B	GIT_CONFIG_KEY_0=pull.ff${E} GIT_CONFIG_COUNT=1 GIT_CONFIG_VALUE_0=false git pull
+B	GIT_CONFIG_KEY_0=pull.ff; export GIT_CONFIG_KEY_0
+B	GIT_CONFIG_KEY_0=$'pull.f\\x66' GIT_CONFIG_COUNT=1 GIT_CONFIG_VALUE_0=false git pull
+B	GIT_CONFIG_PARAMETERS="'pull.ff'='false'" git pull
+B	GIT_CONFIG_PARAMETERS="'pull.ff=false'" git pull
+B	env -S'GIT_CONFIG_KEY_0=pull.ff\\tGIT_CONFIG_COUNT=1 git pull'
+B	GIT_CONFIG_KEY_0=aliasx.y GIT_CONFIG_KEY_1=alias.x GIT_CONFIG_VALUE_1=stash git x
+# a single-quoted argument of git tag that is not an option or a value is a name or a pattern
+A	git tag -l 'v -di'
+A	git tag --list 'v -d x'
+A	git -C . tag -l 'v -d'
+A	git tag -l ' -d'
+B	git tag -l 'v -di' -d v1
+B	git tag 'v x' -di
+B	git tag '-di' v1
+B	git tag -'d' v1
+B	git tag -d 'v -l'
+B	git tag -l 'v -di'; git tag -d v1
+B	git tag -l 'v -di'; git tag -di v1
+B	git tag -l 'v'" -di" -di v1
+B	git tag -l 'v $(git tag -di v1)' $(git tag -di v1)
+B	set -k; git tag -u X=1 'k' -di v1
+# the shell or env can cut the key's end off, or run the argument again
+B	v=GIT_CONFIG_KEY_0=pull.rebaseX; GIT_CONFIG_COUNT=1 GIT_CONFIG_VALUE_0=true env "${v%X}" git pull
+B	IFS=Z; v=GIT_CONFIG_COUNT=1ZGIT_CONFIG_KEY_0=pull.rebaseZGIT_CONFIG_VALUE_0=trueZgitZpull; env $v
+B	GIT_CONFIG_COUNT=1 GIT_CONFIG_VALUE_0=true GIT_CONFIG_KEY_0=$(tr<<<pull.rebaseX -d X) git pull
+B	: $((1<<2)); GIT_CONFIG_COUNT=1 GIT_CONFIG_VALUE_0=true env -S GIT_CONFIG_KEY_0=pull.r\\ebase\\\\c git pull
+B	GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=pull.ffx GIT_CONFIG_KEY_1=pull.ff GIT_CONFIG_VALUE_1=false git pull
+B	GIT_CONFIG_KEY_0=pull.ffx\ngit status
+B	xargs -a f -I X env GIT_CONFIG_PARAMETERS=Xpull.ffX git pull
+B	xargs -a f -I X env GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=pull.ffX GIT_CONFIG_VALUE_0=false git pull
+B	GIT_CONFIG_PARAMETERS=pull.ffx git pull
+B	git tag -l 'git tag -di v1'; $_
+B	git tag -l 'v1 -di'; git tag $_
+B	git tag -l 'git tag -di v1'; eval "$_"
+B	git tag -l 'git tag -di v1'\n$_
+B	git tag -l 'git tag -di v1' && echo ok
 CASES
 
 printf 'pass=%d fail=%d (%s)\n' "${pass}" "${fail}" "${HOOK}"
