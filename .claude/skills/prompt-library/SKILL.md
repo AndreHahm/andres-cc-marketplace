@@ -3,12 +3,12 @@ name: prompt-library
 description: >-
   Manages the project's prompt catalog: add a prompt extracted from a session, imported from the web or
   typed, check it is not better as a skill or a duplicate, have it reviewed and optimized, then create,
-  revise, activate or deactivate it. User-invoked only: use for "save this as a prompt", "add a prompt to
+  revise, activate or deactivate it, or discard a draft. User-invoked only: use for "save this as a prompt", "add a prompt to
   the library", "extract a prompt from this session", "revise prompt X". Not for finding or showing
   prompts (prompt-retrieval) or running them (prompt-execution).
 disable-model-invocation: true
-argument-hint: "[add|revise|activate|deactivate] [slug]"
-allowed-tools: Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" validate:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" show:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" hash:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" screen:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" init:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" new-id:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" draft:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" update-draft:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" discard-orphan:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" record-verification:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" activate:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" deactivate:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" finalize:*), Agent(prompt-reviewer), Skill(session-detail)
+argument-hint: "[add|revise|activate|deactivate|discard] [slug]"
+allowed-tools: Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" validate:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" show:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" hash:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" screen:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" init:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" new-id:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" draft:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" update-draft:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" discard-orphan:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" discard-draft:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" record-verification:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" activate:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" deactivate:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" finalize:*), Agent(prompt-reviewer), Skill(session-detail)
 ---
 
 # Prompt Library
@@ -26,14 +26,14 @@ the user seeing a prompt.
 ## Quick Start
 
 1. Validate the catalog (initialize it if none exists).
-2. Pick the mode: add, revise, activate or deactivate.
+2. Pick the mode: add, revise, activate, deactivate or discard.
 3. For add or revise: intake the text, screen it, triage it, file the draft, have `prompt-reviewer` review
    it, and let the user decide.
 4. After the user approves the exact text, record its verification and activate.
 
 ## When to Use
 
-- Saving, importing or extracting a prompt; revising, activating or deactivating a stored one.
+- Saving, importing or extracting a prompt; revising, activating or deactivating a stored one; discarding a draft.
 
 ## When NOT to Use
 
@@ -84,8 +84,8 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
    hand, guided by `references/prompt-record-format.md`, then runs `/prompt-library` again. Explain that a
    record whose text was changed on purpose is not repaired in place: restore it, then make the change
    as a revision. Never edit, restore or repair a catalog file yourself.
-2. **Mode.** Use the first word of `$ARGUMENTS` (`add`, `revise`, `activate`, `deactivate`) and, for
-   the last three, the second word as the slug; if either is absent, ask with `AskUserQuestion`.
+2. **Mode.** Use the first word of `$ARGUMENTS` (`add`, `revise`, `activate`, `deactivate`, `discard`) and,
+   for all but `add`, the second word as the slug; if either is absent, ask with `AskUserQuestion`.
    - The slug must match `^[a-z0-9]+(-[a-z0-9]+)*__[a-z0-9]+(-[a-z0-9]+)*$` in full (no leading or
      trailing space or newline), the same check `prompt-execution` applies; refuse anything else before
      running any command with it, because the slug goes into a shell command line.
@@ -94,6 +94,11 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
    - `activate` of a record that is already `active`, or `deactivate` of one that is not, is reported
      ("already active", or its current status) and stops here, with no question and no command.
    - `deactivate`, and `activate` of an inactive record, skip steps 3 to 8: go to step 9.
+   - `discard` applies only to a draft: if the slug has none, say so and stop. Otherwise show the draft's
+     version, text and `text_hash` from `<CLI> show <slug> --history` (with its `hidden_characters` listed as
+     in step 8), which version stays active (or that none does), and for a version 1 draft that its slug can
+     never be used again. Ask once with `AskUserQuestion` (Discard, Keep), and on Discard run
+     `<CLI> discard-draft <internal_id> --expect-sha256 <that hash>`, then go to step 10.
    - A draft left by an interrupted add or revise (also when `activate` names a draft) resumes by its
      state, read from the record's `missing_verification` list in `validate` or `show <slug> --history`:
      at step 7 if it includes `quality` (no record field shows whether `prompt-reviewer` already ran, so
@@ -209,7 +214,7 @@ A persisted smoke test, `scripts/smoke_test.py`, checks this skill's frontmatter
 grants (no pre-approved Read, Write, Edit or WebFetch), and runs the validator end to end: a web-origin
 draft carrying a fake key is refused with nothing filed, and a clean draft goes through activation and
 deactivation. It also checks that the triage step is its own `AskUserQuestion` with skill options. Run it
-directly; last run 2026-11-15, 7 of 7 checks passed. It failed on a copy with a pre-approved Write
+directly; last run 2026-11-24, 7 of 7 checks passed. It failed on a copy with a pre-approved Write
 (2026-10-03) and on a copy with the pre-fix triage step (2026-10-14).
 
 **Verify this skill activates on:** (explicit invocation only; it cannot be model-triggered)
@@ -242,8 +247,10 @@ directly; last run 2026-11-15, 7 of 7 checks passed. It failed on a copy with a 
       the user asks for another.
 - [ ] A slug that does not match the slug pattern is refused before any command runs with it.
 - [ ] `activate` of an already active record is reported and stops, with no question and no command.
+- [ ] `discard` removes only a draft, after one question that shows its text and what stays active; a version
+      that has run is refused.
 
-**Last dated run record:** validator fixture tests, 136 run (133 passing, 3 POSIX-only skipped on Windows), 2026-11-15
+**Last dated run record:** validator fixture tests, 148 run (145 passing, 3 POSIX-only skipped on Windows), 2026-11-24
 (`scripts/plib_test_catalog_validate.py`). The latest live run, 2026-10-14 (plugin loaded with
 `--plugin-dir`), ran add, near-duplicate, revise, finalize and deactivate, each status change behind its
 own approval; the step 5 triage skip it found was fixed in PR #566. An earlier hand-followed run of steps
@@ -265,3 +272,4 @@ added 2026-10-14, made text carrying its own parser a prompt. After the rule was
 scenario 5 and a new scenario 16 (text that only names a script stays a prompt): a mean pass rate of 100% with
 the skill against 25% without. These dry runs are separate from the live
 `--plugin-dir` run recorded above, and no eval has been run from a marketplace install.
+On 2026-11-24 scenario 23 (discard, with-skill only, `workspace/iteration-9/`) passed 5 of 5 checks.

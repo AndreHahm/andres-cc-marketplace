@@ -15,7 +15,8 @@ asked for inactive or historical records too.
 
 `Verified` is `yes` only when the validator reports `verified: true`: every required hash is present and
 matches the current text. It means "unchanged since a hash was recorded", not "reviewed". Sort by area,
-then name.
+then name. For a search, add a `Matched in` column: `label` when `matched_in` names any field other than
+`text`, `text` when it names `text`, or both.
 
 ## Detail layout
 

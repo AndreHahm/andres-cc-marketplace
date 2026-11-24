@@ -4,7 +4,7 @@ Pattern: one markdown file per record, YAML frontmatter plus the prompt text as 
 single home of the record model; the validator (`scripts/plib_catalog_validate.py`) is the authority that
 enforces it, so when the two disagree the validator wins and this file is the one to fix.
 
-## Fields (catalog_version 1)
+## Fields (catalog_version 1 and 2)
 
 | Field | Required | Rule |
 |---|---|---|
@@ -77,12 +77,14 @@ exact text, collected before the hash is recorded and again in the preview befor
 
 `name` and `area` never build a path. A slug is reserved when its first record is created and never reused
 by another lineage; renaming creates a new lineage with a new slug. The validator enforces slug format
-and refuses a second lineage while the slug is in the catalog; it cannot know about a slug retired
+and refuses a second lineage while the slug is in the catalog or in `reserved_slugs`, where
+`discard-draft` puts the slug of a discarded version 1 draft; it cannot know about a slug retired
 outside the catalog, so never reusing one is a policy the people running the library keep.
 
 ```text
 <catalog-root>/
-  catalog.yaml            # catalog_version, scope, snapshot_id, records (listed paths)
+  catalog.yaml            # catalog_version, scope, snapshot_id, records (listed paths),
+                          # and from version 2 reserved_slugs
   <slug>/
     active.md             # the active record only
     <internal_id>.md      # draft, inactive and historical records
@@ -96,6 +98,7 @@ not listed, makes the catalog invalid. Management writes `catalog.yaml` last, af
 ```text
 initial draft --verify (+import review)--> activate --> active <--> inactive
 active or inactive --revise--> draft successor (unverified)
+draft (never active) --discard--> removed; a version 1 draft's slug stays reserved
 finalize successor --> successor active or inactive; predecessor historical
 ```
 
@@ -106,7 +109,8 @@ user's approval.
 
 ## Extension seams
 
-`catalog.yaml` carries `catalog_version` (only `1`) and `scope` (only `repo`). The validator selects its
+`catalog.yaml` carries `catalog_version` (`1`, or `2` once a slug is
+reserved; an older plugin version refuses a version 2 catalog) and `scope` (only `repo`). The validator selects its
 field list by `catalog_version`, so an added optional field is an additive change with a version bump, and
 older catalogs stay valid. Verification hashes cover prompt text only, so a record keeps its verification
 if it moves to another catalog.

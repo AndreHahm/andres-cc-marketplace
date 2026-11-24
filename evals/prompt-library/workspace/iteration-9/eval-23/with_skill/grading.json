@@ -1,0 +1,39 @@
+{
+  "eval_id": 23,
+  "date": "2026-11-24",
+  "configuration": "with_skill",
+  "baseline": "not run",
+  "expectations": [
+    {
+      "text": "One question per discard, showing text and hash",
+      "passed": true,
+      "evidence": "Both question texts name version, text, hash and the active version"
+    },
+    {
+      "text": "The v2 draft is removed and v1 stays active",
+      "passed": true,
+      "evidence": "discard-draft ok, slug_reserved false; validate lists v1 active"
+    },
+    {
+      "text": "The v1 draft is removed and the question says the slug can never be reused",
+      "passed": true,
+      "evidence": "slug_reserved true; catalog.yaml has reserved_slugs: [docs__changelog]"
+    },
+    {
+      "text": "A slug with no draft stops with no question and no write",
+      "passed": true,
+      "evidence": "Reply: has no draft; nothing to discard"
+    },
+    {
+      "text": "A new draft with the discarded slug is refused",
+      "passed": true,
+      "evidence": "draft exit 1: the slug belonged to a discarded draft and is never reused"
+    }
+  ],
+  "summary": {
+    "passed": 5,
+    "failed": 0,
+    "total": 5,
+    "pass_rate": 1.0
+  }
+}

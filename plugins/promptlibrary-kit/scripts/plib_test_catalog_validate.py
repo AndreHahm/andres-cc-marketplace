@@ -1402,7 +1402,7 @@ class Interrupted(Base):
         self.assertEqual(self.run_cli("init")[0], 0)
         cat = self.root / "catalog.yaml"
         text = cat.read_text(encoding="utf-8")
-        cat.write_text(text.replace("catalog_version: 1", "catalog_version: 2"), encoding="utf-8")
+        cat.write_text(text.replace("catalog_version: 1", "catalog_version: 99"), encoding="utf-8")
         code, res = self.run_cli("validate")
         self.assertEqual(code, 1)
         self.assertTrue(any("unsupported catalog_version" in e for e in res["errors"]))
@@ -1464,17 +1464,17 @@ class ValidatorEdgeCases(Base):
         self.assertIn("verification must be a map", res["error"])
 
     def test_scratch_drafts_are_checked_against_the_catalogs_own_version(self):
-        # A hypothetical catalog_version 2 that adds one optional record field: a draft using it
+        # A hypothetical catalog_version 3 that adds one optional record field: a draft using it
         # is accepted only when the scratch check reads the catalog's version, not a fixed 1.
         self.assertEqual(self.run_cli("init")[0], 0)
         cat = self.root / "catalog.yaml"
         text = cat.read_text(encoding="utf-8")
-        cat.write_bytes(text.replace("catalog_version: 1", "catalog_version: 2").encode("utf-8"))
+        cat.write_bytes(text.replace("catalog_version: 1", "catalog_version: 3").encode("utf-8"))
         with (
-            mock.patch.object(V, "SUPPORTED_CATALOG_VERSIONS", {1, 2}),
-            mock.patch.dict(V.CATALOG_FIELDS, {2: V.CATALOG_FIELDS[1]}),
-            mock.patch.dict(V.RECORD_REQUIRED, {2: V.RECORD_REQUIRED[1]}),
-            mock.patch.dict(V.RECORD_OPTIONAL, {2: (*V.RECORD_OPTIONAL[1], "owner")}),
+            mock.patch.object(V, "SUPPORTED_CATALOG_VERSIONS", {1, 2, 3}),
+            mock.patch.dict(V.CATALOG_FIELDS, {3: V.CATALOG_FIELDS[1]}),
+            mock.patch.dict(V.RECORD_REQUIRED, {3: V.RECORD_REQUIRED[1]}),
+            mock.patch.dict(V.RECORD_OPTIONAL, {3: (*V.RECORD_OPTIONAL[1], "owner")}),
         ):
             code, res = self.run_cli("draft", self.scratch(owner="platform-team"))
         self.assertEqual(code, 0, res)
@@ -1557,6 +1557,148 @@ class ValidatorEdgeCases(Base):
         self.assertTrue((self.root / SLUG / "p000000000001.md").is_file())
         self.assertFalse((self.root / SLUG / "active.md").exists())
         self.assertEqual(self.run_cli("validate")[0], 0)
+
+
+class Search(Base):
+    def search(self, query):
+        return self.run_cli("validate", "--search", query)
+
+    def test_matches_labels_and_text_and_says_which(self):
+        self.make_active()
+        for query, where in (
+            ("MISSING tests", ["slug", "name", "text"]),
+            ("lack tests", ["short_description"]),
+            ("missing tests list each", ["text"]),  # across punctuation and a line break
+        ):
+            with self.subTest(query=query):
+                code, res = self.search(query)
+                self.assertEqual(code, 0, res)
+                self.assertEqual([r["matched_in"] for r in res["records"]], [where])
+                self.assertNotIn("prompt_text", res["records"][0])
+
+    def test_no_match_is_ok_and_empty(self):
+        self.make_active()
+        code, res = self.search("nowhere to be found")
+        self.assertEqual((code, res["records"]), (0, []))
+
+    def test_a_query_without_words_is_refused(self):
+        self.make_active()
+        code, res = self.search(" ?! ")
+        self.assertEqual(code, 1)
+        self.assertIn("letter or digit", res["error"])
+
+    def test_an_invalid_catalog_lists_nothing(self):
+        self.make_active()
+        active = self.root / SLUG / "active.md"
+        active.write_text(active.read_text(encoding="utf-8") + "\nextra\n", encoding="utf-8")
+        code, res = self.search("missing")
+        self.assertEqual(code, 1)
+        self.assertNotIn("records", res)
+
+
+class DiscardDraft(Base):
+    RID, NEXT = "p000000000001", "p000000000002"
+
+    def discard(self, rid, sha=None):
+        return self.run_cli("discard-draft", rid, "--expect-sha256", sha or self.hash_of(rid))
+
+    def add_successor(self):
+        self.add_draft(self.NEXT, version=2, previous_id=self.RID, _body="New text.")
+
+    def test_a_first_draft_is_removed_and_its_slug_stays_reserved(self):
+        self.add_draft()
+        code, res = self.discard(self.RID)
+        self.assertEqual(code, 0, res)
+        self.assertTrue(res["slug_reserved"])
+        self.assertFalse((self.root / SLUG).exists())
+        code, res = self.run_cli("validate")
+        self.assertEqual((code, res["records"], res["catalog_version"]), (0, [], 2))
+        code, res = self.run_cli("draft", self.scratch(internal_id=self.NEXT))
+        self.assertEqual(code, 1)
+        self.assertIn("never reused", res["error"])
+        stray = self.root / SLUG / f"{self.NEXT}.md"
+        stray.parent.mkdir()
+        stray.write_text(record(internal_id=self.NEXT), encoding="utf-8")
+        code, res = self.run_cli("register", f"{SLUG}/{self.NEXT}.md")
+        self.assertEqual(code, 1)
+        self.assertIn("never reused", res["error"])
+
+    def test_reserved_slugs_survive_later_changes(self):
+        self.add_draft()
+        self.assertEqual(self.discard(self.RID)[0], 0)
+        self.make_active(self.NEXT, slug="docs__changelog")
+        self.assertEqual(self.run_cli("deactivate", self.NEXT)[0], 0)
+        self.add_draft("p000000000003", slug="docs__other")
+        self.assertEqual(self.discard("p000000000003")[0], 0)
+        cat = V.parse_yaml((self.root / "catalog.yaml").read_text(encoding="utf-8"))
+        self.assertEqual(cat["reserved_slugs"], ["docs__other", SLUG])
+
+    def test_a_successor_is_removed_and_the_active_version_stays(self):
+        self.make_active()
+        before = (self.root / SLUG / "active.md").read_bytes()
+        self.add_successor()
+        code, res = self.discard(self.NEXT)
+        self.assertEqual(code, 0, res)
+        self.assertFalse(res["slug_reserved"])
+        self.assertEqual((self.root / SLUG / "active.md").read_bytes(), before)
+        self.assertEqual(self.run_cli("validate")[1]["catalog_version"], 1)
+        self.add_successor()  # a fresh revise is possible again
+
+    def test_anything_that_has_run_is_refused(self):
+        self.make_active()
+        self.assert_refused("active")
+        self.assertEqual(self.run_cli("deactivate", self.RID)[0], 0)
+        self.assert_refused("inactive")
+        self.add_successor()
+        self.assertEqual(self.verify(self.NEXT)[0], 0)
+        self.assertEqual(self.fin(self.NEXT, "--inactive")[0], 0)
+        self.assert_refused("historical")
+
+    def assert_refused(self, status):
+        records = self.run_cli("validate")[1]["records"]
+        self.assertIn(status, [r["status"] for r in records if r["internal_id"] == self.RID])
+        code, res = self.discard(self.RID)
+        self.assertEqual(code, 1)
+        self.assertIn("only a draft", res["error"])
+        self.assertEqual(self.run_cli("validate")[1]["records"], records)
+
+    def test_a_draft_that_changed_since_it_was_shown_is_kept(self):
+        self.add_draft()
+        code, res = self.discard(self.RID, "0" * 64)
+        self.assertEqual(code, 1)
+        self.assertIn("changed since", res["error"])
+        self.assertEqual(len(self.run_cli("validate")[1]["records"]), 1)
+
+    def test_a_draft_with_a_later_version_is_refused(self):
+        self.add_draft()  # only a hand-edited catalog can hold a successor of a draft
+        rel = f"{SLUG}/{self.NEXT}.md"
+        (self.root / rel).write_text(
+            record(internal_id=self.NEXT, version=2, previous_id=self.RID), encoding="utf-8"
+        )
+        cat = V.parse_yaml((self.root / "catalog.yaml").read_text(encoding="utf-8"))
+        V.write_catalog(self.root, cat, [f"{SLUG}/{self.RID}.md", rel])
+        code, res = self.discard(self.RID)
+        self.assertEqual(code, 1)
+        self.assertIn("a later version follows", res["error"])
+
+    def test_a_failed_delete_lists_the_draft_again(self):
+        self.add_draft()
+        sha = self.hash_of(self.RID)
+        with mock.patch.object(V.Path, "unlink", side_effect=OSError("locked")):
+            code, _ = self.discard(self.RID, sha)
+        self.assertEqual(code, 1)
+        code, res = self.run_cli("validate")
+        self.assertEqual((code, len(res["records"]), res["catalog_version"]), (0, 1, 1))
+
+    def test_malformed_or_misplaced_reserved_slugs_are_errors(self):
+        self.assertEqual(self.run_cli("init")[0], 0)
+        cat = self.root / "catalog.yaml"
+        text = cat.read_text(encoding="utf-8")
+        cat.write_text(text + "reserved_slugs: []\n", encoding="utf-8")
+        self.assertIn("unknown field", self.run_cli("validate")[1]["errors"][0])
+        text = text.replace("catalog_version: 1", "catalog_version: 2")
+        cat.write_text(text + "reserved_slugs:\n  - ../x\n", encoding="utf-8")
+        self.assertIn("list of slugs", self.run_cli("validate")[1]["errors"][0])
 
 
 if __name__ == "__main__":
