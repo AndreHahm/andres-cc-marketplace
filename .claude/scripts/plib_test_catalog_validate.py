@@ -1260,6 +1260,24 @@ class Lifecycle(Base):
         self.assertEqual(code, 1)
         self.assertIn("not a record file", res["error"])
 
+    def test_review_record_refuses_a_hard_link_made_after_the_open(self):
+        rel = self.add_draft()["path"]
+        record_file, other = self.root / rel, self.root.parent / "other.md"
+        real_fstat = os.fstat
+
+        def linking_fstat(fd):
+            st = real_fstat(fd)
+            if not other.exists() and os.path.samestat(st, os.lstat(record_file)):
+                os.link(record_file, other)
+            return st
+
+        with mock.patch.object(V.os, "fstat", side_effect=linking_fstat):
+            code, res = self.run_cli("review-record", rel)
+        self.assertTrue(other.exists())
+        self.assertEqual(code, 1)
+        self.assertIn("changed while it was being read", res["error"])
+        self.assertNotIn("record_text", res)
+
     def test_review_record_closes_the_handle_of_a_folder_that_opens(self):
         """POSIX opens a folder for reading; simulated here so that it is also tested on Windows."""
         rel = self.add_draft()["path"]
@@ -2148,6 +2166,12 @@ class ValidatorEdgeCases(Base):
                 for prefix in ("", "# ", "#\xa0# "):
                     found = V._comment_hits(f"# notes{sep}{prefix}TOKEN=x")
                     self.assertEqual(found, "dotenv_secret_line")
+
+    def test_a_trailing_line_separator_does_not_hide_an_email_address(self):
+        for sep in ("\u2028", "\u2029", "\x85", "\x1c"):
+            with self.subTest(sep=f"U+{ord(sep):04X}"):
+                hits = V.screen_text("git@" + "corp.com:" + sep)
+                self.assertEqual(hits, [{"line": 1, "pattern": "email_address"}])
 
     def test_a_record_write_is_flushed_to_disk_before_the_rename(self):
         self.assertEqual(self.run_cli("init")[0], 0)

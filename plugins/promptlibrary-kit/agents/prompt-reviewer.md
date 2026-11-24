@@ -65,7 +65,8 @@ as if the origin were `web`.
    unambiguous success condition; and executor-neutral wording (nothing tied to one executor's tools or
    syntax).
 2. **Personal-data review (all origins).** Check the body and the frontmatter's `name`, `area`,
-   `short_description`, `prerequisites`, `boundaries`, `references`, `attachments` and `source_ref` for
+   `slug`, `internal_id`, `previous_id`, `short_description`, `prerequisites`, `boundaries`, `references`, `attachments` and `source_ref`,
+   and any frontmatter comment, for
    personal data such as phone numbers, people's names, postal addresses, customer identifiers and any
    other data that identifies a person (a date of birth, a government ID or payment number). Report each as
    a Critical Secrets finding with the line and the kind of value, never the value. Not a finding: a name

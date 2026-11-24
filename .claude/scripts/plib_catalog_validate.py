@@ -1169,7 +1169,8 @@ def _read_once(root: Path, parts: list[str]) -> str:
             raise CatalogError("the record file has more than one hard link")
         data = handle.read(MAX_INPUT_BYTES + 1)
         _refuse_links(root, parts)
-        if not contained(path, root) or not os.path.samestat(st, os.lstat(path)):
+        now = os.lstat(path)
+        if not contained(path, root) or not os.path.samestat(st, now) or now.st_nlink != 1:
             raise CatalogError("the record file changed while it was being read")
     if len(data) > MAX_INPUT_BYTES:
         raise CatalogError("the file is too large")
@@ -1281,10 +1282,13 @@ def screen_text(text: str) -> list[dict]:
     for lineno, line in enumerate(re.split(r"\r\n|\r|\n", text), start=1):
         # Each piece between other line separators (U+2028, NEL, form feed) too, for that reason,
         # and still the whole line, for a pattern that spans one. The line number stays the file's.
-        pieces = {line, *line.splitlines()}
+        pieces = line.splitlines()
+        texts = [line, *pieces] if pieces != [line] else [line]
         for name, pattern in SECRET_PATTERNS:
-            if any(pattern.search(piece) for piece in pieces):
-                found.append({"line": lineno, "pattern": name})
+            for piece in texts:
+                if pattern.search(piece):
+                    found.append({"line": lineno, "pattern": name})
+                    break
     return found
 
 
