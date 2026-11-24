@@ -1830,8 +1830,9 @@ only `workflow_dispatch`, runs only from `main`, and is never a check on a pull 
 - **The head's MCP servers:** the config check compares only `[features]`, so another step fails the job when
   `codex mcp list` shows a server in the head, or one of an untrusted control project. The same control must
   show its server when trusted. Measured on 0.170.0 with a local mock model: `codex exec` started the MCP server
-  and used the `model_instructions_file` of a project only when it was trusted. Hooks were not measured: none
-  fired in either case.
+  and used the `model_instructions_file` of a project only when it was trusted. A
+  project hook ran only with the project trusted and hook trust bypassed; with the bypass alone it did not. A hook
+  that runs sees the key (the policy below does not cover hooks), so nothing here may trust the head.
 - **The key:** there is no `codex login`, because a read-only sandbox can read the file it writes. The run step
   passes `CODEX_API_KEY`, and a Codex `shell_environment_policy` keeps it out of the commands Codex runs; without
   it they see the variable. A step before the run fails the job unless a canary shows that a sandboxed command
