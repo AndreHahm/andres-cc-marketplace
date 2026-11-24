@@ -1,0 +1,275 @@
+{
+  "arm": "new",
+  "arm_sha": "6ab40547139d2721403d2b4ec368399d7cee6bc0",
+  "reviewed_paths": [
+    "plugins/plugin-devkit/skills/command-development/SKILL.md",
+    "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+    "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+    "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md",
+    "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md",
+    "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+  ],
+  "reviewers": [
+    "plugin-rulebook-checker",
+    "dependency-reviewer",
+    "security-reviewer",
+    "skill-reviewer"
+  ],
+  "failed_reviewers": {},
+  "provenance": {
+    "head_sha": "916bac6f1c38a4d11cf9e3cfc2ce3aa4bdd14852",
+    "merge_ref_sha": "916bac6f1c38a4d11cf9e3cfc2ce3aa4bdd14852",
+    "base_sha": "d3a3dcb5f5e5d16c2c6c0b2278aa0af5a60ac44f",
+    "configured_model": "gpt-6-luna",
+    "pinned_cli_version": "0.170.0",
+    "model": "GPT-6",
+    "cli_version": ""
+  },
+  "diff_scoped": true,
+  "findings": [
+    {
+      "reviewer": "security-reviewer",
+      "severity": "Minor",
+      "rule": "permission-risk/tool-scoping",
+      "path": "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md",
+      "line": 21,
+      "evidence": "The command pre-approves `Bash(gh pr view:*)`, `Bash(gh pr diff:*)`, and `Bash(gh pr checks:*)`. Its documented process uses specific arguments for each subcommand, while these entries pre-approve arbitrary arguments to those subcommands without a prompt.",
+      "remediation": "Narrow the grants to the minimum argument patterns supported, or omit pre-approval where the needed scope cannot be expressed narrowly.",
+      "reporters": [
+        "security-reviewer"
+      ],
+      "components": [
+        "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md"
+      ],
+      "in_diff": true,
+      "blocking": false,
+      "confidence": "high",
+      "evidence_type": null,
+      "rule_class": "judgment",
+      "category": "allowed-tools-grant",
+      "risk": null,
+      "source": "model",
+      "gate": "notice",
+      "suppressed": false,
+      "exception": null,
+      "fingerprint": null,
+      "waiver": null,
+      "waiver_line": null,
+      "tracked_issue": null
+    },
+    {
+      "reviewer": "security-reviewer",
+      "severity": "Minor",
+      "rule": "permission-risk/tool-scoping",
+      "path": "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md",
+      "line": 397,
+      "evidence": "The command pre-approves `Bash(git add:*)` and `Bash(git commit:*)`; its documented process stages validated file paths and commits with a supplied message. The wildcard scopes also pre-approve other arguments to those subcommands.",
+      "remediation": "Pre-approve only the minimum argument patterns supported for the documented calls, or omit pre-approval where the needed scope cannot be expressed narrowly.",
+      "reporters": [
+        "security-reviewer"
+      ],
+      "components": [
+        "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+      ],
+      "in_diff": true,
+      "blocking": false,
+      "confidence": "high",
+      "evidence_type": null,
+      "rule_class": "judgment",
+      "category": "allowed-tools-grant",
+      "risk": null,
+      "source": "model",
+      "gate": "notice",
+      "suppressed": false,
+      "exception": null,
+      "fingerprint": null,
+      "waiver": null,
+      "waiver_line": null,
+      "tracked_issue": null
+    },
+    {
+      "reviewer": "security-reviewer",
+      "severity": "Minor",
+      "rule": "prompt-injection-surface",
+      "path": "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+      "line": 478,
+      "evidence": "The comparison pattern accepts any existing files, then directs the command to read and compare them. Unlike the nearby file-reading examples, it does not limit paths to the repository or say that file contents are data rather than instructions.",
+      "remediation": "Limit inputs to files in the repository and explicitly instruct the command to treat their contents as data only, never as directives.",
+      "reporters": [
+        "security-reviewer"
+      ],
+      "components": [
+        "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md"
+      ],
+      "in_diff": true,
+      "blocking": false,
+      "confidence": "medium",
+      "evidence_type": null,
+      "rule_class": "judgment",
+      "category": "other",
+      "risk": null,
+      "source": "model",
+      "gate": "notice",
+      "suppressed": false,
+      "exception": null,
+      "fingerprint": null,
+      "waiver": null,
+      "waiver_line": null,
+      "tracked_issue": null
+    },
+    {
+      "reviewer": "skill-reviewer",
+      "severity": "Major",
+      "rule": "security",
+      "path": "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+      "line": 478,
+      "evidence": "The pattern accepts any existing files and then reads them, without requiring that they remain inside the repository. A command author copying it can accept an absolute path or traversal path to a local sensitive file and expose its contents through the comparison.",
+      "remediation": "Require each argument to resolve to an existing file whose canonical path is beneath the repository root; reject paths that resolve outside it before reading.",
+      "reporters": [
+        "skill-reviewer"
+      ],
+      "components": [],
+      "in_diff": true,
+      "blocking": true,
+      "confidence": "high",
+      "evidence_type": null,
+      "rule_class": "judgment",
+      "category": "other",
+      "risk": null,
+      "source": "model",
+      "gate": "block",
+      "suppressed": false,
+      "exception": null,
+      "fingerprint": null,
+      "waiver": null,
+      "waiver_line": null,
+      "tracked_issue": null
+    }
+  ],
+  "by_reviewer": {
+    "plugin-rulebook-checker": [],
+    "dependency-reviewer": [],
+    "security-reviewer": [
+      {
+        "reviewer": "security-reviewer",
+        "severity": "Minor",
+        "rule": "permission-risk/tool-scoping",
+        "path": "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md",
+        "line": 21,
+        "evidence": "The command pre-approves `Bash(gh pr view:*)`, `Bash(gh pr diff:*)`, and `Bash(gh pr checks:*)`. Its documented process uses specific arguments for each subcommand, while these entries pre-approve arbitrary arguments to those subcommands without a prompt.",
+        "remediation": "Narrow the grants to the minimum argument patterns supported, or omit pre-approval where the needed scope cannot be expressed narrowly.",
+        "reporters": [
+          "security-reviewer"
+        ],
+        "components": [
+          "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md"
+        ],
+        "in_diff": true,
+        "blocking": false,
+        "confidence": "high",
+        "evidence_type": null,
+        "rule_class": "judgment",
+        "category": "allowed-tools-grant",
+        "risk": null,
+        "source": "model",
+        "gate": "notice",
+        "suppressed": false,
+        "exception": null,
+        "fingerprint": null,
+        "waiver": null,
+        "waiver_line": null,
+        "tracked_issue": null
+      },
+      {
+        "reviewer": "security-reviewer",
+        "severity": "Minor",
+        "rule": "permission-risk/tool-scoping",
+        "path": "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md",
+        "line": 397,
+        "evidence": "The command pre-approves `Bash(git add:*)` and `Bash(git commit:*)`; its documented process stages validated file paths and commits with a supplied message. The wildcard scopes also pre-approve other arguments to those subcommands.",
+        "remediation": "Pre-approve only the minimum argument patterns supported for the documented calls, or omit pre-approval where the needed scope cannot be expressed narrowly.",
+        "reporters": [
+          "security-reviewer"
+        ],
+        "components": [
+          "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+        ],
+        "in_diff": true,
+        "blocking": false,
+        "confidence": "high",
+        "evidence_type": null,
+        "rule_class": "judgment",
+        "category": "allowed-tools-grant",
+        "risk": null,
+        "source": "model",
+        "gate": "notice",
+        "suppressed": false,
+        "exception": null,
+        "fingerprint": null,
+        "waiver": null,
+        "waiver_line": null,
+        "tracked_issue": null
+      },
+      {
+        "reviewer": "security-reviewer",
+        "severity": "Minor",
+        "rule": "prompt-injection-surface",
+        "path": "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+        "line": 478,
+        "evidence": "The comparison pattern accepts any existing files, then directs the command to read and compare them. Unlike the nearby file-reading examples, it does not limit paths to the repository or say that file contents are data rather than instructions.",
+        "remediation": "Limit inputs to files in the repository and explicitly instruct the command to treat their contents as data only, never as directives.",
+        "reporters": [
+          "security-reviewer"
+        ],
+        "components": [
+          "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md"
+        ],
+        "in_diff": true,
+        "blocking": false,
+        "confidence": "medium",
+        "evidence_type": null,
+        "rule_class": "judgment",
+        "category": "other",
+        "risk": null,
+        "source": "model",
+        "gate": "notice",
+        "suppressed": false,
+        "exception": null,
+        "fingerprint": null,
+        "waiver": null,
+        "waiver_line": null,
+        "tracked_issue": null
+      }
+    ],
+    "skill-reviewer": [
+      {
+        "reviewer": "skill-reviewer",
+        "severity": "Major",
+        "rule": "security",
+        "path": "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+        "line": 478,
+        "evidence": "The pattern accepts any existing files and then reads them, without requiring that they remain inside the repository. A command author copying it can accept an absolute path or traversal path to a local sensitive file and expose its contents through the comparison.",
+        "remediation": "Require each argument to resolve to an existing file whose canonical path is beneath the repository root; reject paths that resolve outside it before reading.",
+        "reporters": [
+          "skill-reviewer"
+        ],
+        "components": [],
+        "in_diff": true,
+        "blocking": true,
+        "confidence": "high",
+        "evidence_type": null,
+        "rule_class": "judgment",
+        "category": "other",
+        "risk": null,
+        "source": "model",
+        "gate": "block",
+        "suppressed": false,
+        "exception": null,
+        "fingerprint": null,
+        "waiver": null,
+        "waiver_line": null,
+        "tracked_issue": null
+      }
+    ]
+  }
+}

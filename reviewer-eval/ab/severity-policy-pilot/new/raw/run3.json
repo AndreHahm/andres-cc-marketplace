@@ -1,0 +1,196 @@
+{
+  "reports": [
+    {
+      "reviewer": "plugin-rulebook-checker",
+      "status": "completed",
+      "output": {
+        "contract_version": "1.0",
+        "dispatch": {
+          "id": "6ab40547139d-96ab443f",
+          "reviewer": "plugin-rulebook-checker",
+          "backend": "",
+          "target_paths": [
+            "plugins/plugin-devkit/skills/command-development/SKILL.md",
+            "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+            "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+            "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md",
+            "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md",
+            "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+          ]
+        },
+        "provenance": {
+          "provider": "OpenAI",
+          "model": "GPT-6",
+          "cli_version": "",
+          "execution_profile": "read-only"
+        },
+        "findings": [],
+        "verdict": "PASS",
+        "inspection_limits": []
+      },
+      "error": null,
+      "attempts": 1,
+      "unsandboxed": false,
+      "fallback_over_cap": false
+    },
+    {
+      "reviewer": "dependency-reviewer",
+      "status": "completed",
+      "output": {
+        "contract_version": "1.0",
+        "dispatch": {
+          "id": "6ab40547139d-96ab443f",
+          "reviewer": "dependency-reviewer",
+          "backend": "static file review",
+          "target_paths": [
+            "plugins/plugin-devkit/skills/command-development/SKILL.md",
+            "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+            "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+            "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md",
+            "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md",
+            "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+          ]
+        },
+        "provenance": {
+          "provider": "OpenAI",
+          "model": "GPT-6",
+          "cli_version": "unknown",
+          "execution_profile": "read-only"
+        },
+        "findings": [],
+        "verdict": "Pass",
+        "inspection_limits": [
+          "The working-tree git diff was empty, so the prior contents of the listed changed lines could not be compared. The review used the supplied changed-line ranges and current file contents."
+        ]
+      },
+      "error": null,
+      "attempts": 1,
+      "unsandboxed": false,
+      "fallback_over_cap": false
+    },
+    {
+      "reviewer": "security-reviewer",
+      "status": "completed",
+      "output": {
+        "contract_version": "1.0",
+        "dispatch": {
+          "id": "6ab40547139d-96ab443f",
+          "reviewer": "security-reviewer",
+          "backend": "unknown",
+          "target_paths": [
+            "plugins/plugin-devkit/skills/command-development/SKILL.md",
+            "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+            "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+            "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md",
+            "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md",
+            "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+          ]
+        },
+        "provenance": {
+          "provider": "OpenAI",
+          "model": "GPT-6",
+          "cli_version": "unknown",
+          "execution_profile": "read-only static review"
+        },
+        "findings": [
+          {
+            "id": "m1",
+            "severity": "minor",
+            "axis": "permission-risk/tool-scoping",
+            "location": "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md:21",
+            "components": [
+              "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md"
+            ],
+            "evidence": "The command pre-approves `Bash(gh pr view:*)`, `Bash(gh pr diff:*)`, and `Bash(gh pr checks:*)`. Its documented process uses specific arguments for each subcommand, while these entries pre-approve arbitrary arguments to those subcommands without a prompt.",
+            "finding": "The command's `allowed-tools` grants are broader than its documented calls. This is a pre-approval hygiene issue; the field does not restrict other available tools.",
+            "fix": "Narrow the grants to the minimum argument patterns supported, or omit pre-approval where the needed scope cannot be expressed narrowly.",
+            "confidence": "high",
+            "category": "allowed-tools-grant"
+          },
+          {
+            "id": "m2",
+            "severity": "minor",
+            "axis": "permission-risk/tool-scoping",
+            "location": "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md:397",
+            "components": [
+              "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+            ],
+            "evidence": "The command pre-approves `Bash(git add:*)` and `Bash(git commit:*)`; its documented process stages validated file paths and commits with a supplied message. The wildcard scopes also pre-approve other arguments to those subcommands.",
+            "finding": "The command's `allowed-tools` grants are broader than the documented staging and commit calls. This is a pre-approval hygiene issue; the field does not restrict other available tools.",
+            "fix": "Pre-approve only the minimum argument patterns supported for the documented calls, or omit pre-approval where the needed scope cannot be expressed narrowly.",
+            "confidence": "high",
+            "category": "allowed-tools-grant"
+          },
+          {
+            "id": "m3",
+            "severity": "minor",
+            "axis": "prompt-injection-surface",
+            "location": "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md:478",
+            "components": [
+              "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md"
+            ],
+            "evidence": "The comparison pattern accepts any existing files, then directs the command to read and compare them. Unlike the nearby file-reading examples, it does not limit paths to the repository or say that file contents are data rather than instructions.",
+            "finding": "This example leaves the handling of potentially adversarial file contents ambiguous. A copied command could be steered away from the comparison task by instructions embedded in a file.",
+            "fix": "Limit inputs to files in the repository and explicitly instruct the command to treat their contents as data only, never as directives.",
+            "confidence": "medium",
+            "category": "other"
+          }
+        ],
+        "verdict": "Pass",
+        "inspection_limits": [
+          "The working-tree diff was empty; findings were anchored using the supplied changed-line list and the live file contents."
+        ]
+      },
+      "error": null,
+      "attempts": 1,
+      "unsandboxed": false,
+      "fallback_over_cap": false
+    },
+    {
+      "reviewer": "skill-reviewer",
+      "status": "completed",
+      "output": {
+        "contract_version": "1",
+        "dispatch": {
+          "id": "6ab40547139d-96ab443f",
+          "reviewer": "skill-reviewer",
+          "backend": "Codex",
+          "target_paths": [
+            "plugins/plugin-devkit/skills/command-development/SKILL.md",
+            "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+            "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+            "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md",
+            "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md",
+            "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+          ]
+        },
+        "provenance": {
+          "provider": "OpenAI",
+          "model": "GPT-6-based",
+          "cli_version": "unknown",
+          "execution_profile": "read-only"
+        },
+        "findings": [
+          {
+            "id": "M1",
+            "severity": "major",
+            "axis": "security",
+            "location": "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md:478",
+            "components": null,
+            "evidence": "The pattern accepts any existing files and then reads them, without requiring that they remain inside the repository. A command author copying it can accept an absolute path or traversal path to a local sensitive file and expose its contents through the comparison.",
+            "finding": "The file-comparison pattern permits reading files outside the repository.",
+            "fix": "Require each argument to resolve to an existing file whose canonical path is beneath the repository root; reject paths that resolve outside it before reading.",
+            "confidence": "high",
+            "category": "other"
+          }
+        ],
+        "verdict": "Major finding",
+        "inspection_limits": []
+      },
+      "error": null,
+      "attempts": 1,
+      "unsandboxed": false,
+      "fallback_over_cap": false
+    }
+  ]
+}

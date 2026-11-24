@@ -1,0 +1,268 @@
+{
+  "arm": "old",
+  "arm_sha": "bafaee59800b099eb5d3ec8fbfa21ace71b2ac32",
+  "reviewed_paths": [
+    "plugins/plugin-devkit/skills/command-development/SKILL.md",
+    "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+    "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+    "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md",
+    "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md",
+    "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+  ],
+  "reviewers": [
+    "plugin-rulebook-checker",
+    "dependency-reviewer",
+    "security-reviewer",
+    "skill-reviewer"
+  ],
+  "failed_reviewers": {},
+  "provenance": {
+    "head_sha": "916bac6f1c38a4d11cf9e3cfc2ce3aa4bdd14852",
+    "merge_ref_sha": "916bac6f1c38a4d11cf9e3cfc2ce3aa4bdd14852",
+    "base_sha": "d3a3dcb5f5e5d16c2c6c0b2278aa0af5a60ac44f",
+    "configured_model": "gpt-6-luna",
+    "pinned_cli_version": "0.170.0",
+    "model": "GPT-6",
+    "cli_version": "unknown"
+  },
+  "diff_scoped": true,
+  "findings": [
+    {
+      "reviewer": "plugin-rulebook-checker",
+      "severity": "Minor",
+      "rule": "plugin-rulebook:R6",
+      "path": "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md",
+      "line": 397,
+      "evidence": "The changed grant pre-approves `Bash(git add:*)` and `Bash(git commit:*)`, while the documented forms are `git add -- '<file>'` and `git commit -m '<message>'`. These prefixes also pre-approve other state-changing forms, such as `git commit --amend` or `--no-verify`.",
+      "remediation": "Remove these pre-approvals so each operation requires normal user approval, or use narrower grants that cover only the documented forms.",
+      "reporters": [
+        "plugin-rulebook-checker"
+      ],
+      "components": [
+        "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+      ],
+      "in_diff": true,
+      "blocking": false,
+      "confidence": "medium",
+      "evidence_type": null,
+      "rule_class": "judgment",
+      "category": "allowed-tools-grant",
+      "risk": null,
+      "source": "model",
+      "gate": "notice",
+      "suppressed": false,
+      "exception": null,
+      "fingerprint": null,
+      "waiver": null,
+      "waiver_line": null,
+      "tracked_issue": null
+    },
+    {
+      "reviewer": "security-reviewer",
+      "severity": "Major",
+      "rule": "prompt-injection-surface",
+      "path": "plugins/plugin-devkit/skills/command-development/SKILL.md",
+      "line": 146,
+      "evidence": "The guidance says an argument-named file should be checked and then read with Read, but does not define the check or say to treat the contents as data. The adjacent example also reviews @src/api/users.ts without that boundary.",
+      "remediation": "Require the resolved file to remain inside the repository, including rejecting symlink escapes, and explicitly instruct the command to treat file contents as data, never as instructions.",
+      "reporters": [
+        "security-reviewer"
+      ],
+      "components": [],
+      "in_diff": true,
+      "blocking": true,
+      "confidence": "high",
+      "evidence_type": null,
+      "rule_class": "judgment",
+      "category": null,
+      "risk": null,
+      "source": "model",
+      "gate": "block",
+      "suppressed": false,
+      "exception": null,
+      "fingerprint": null,
+      "waiver": null,
+      "waiver_line": null,
+      "tracked_issue": null
+    },
+    {
+      "reviewer": "security-reviewer",
+      "severity": "Major",
+      "rule": "prompt-injection-surface",
+      "path": "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+      "line": 478,
+      "evidence": "The pattern accepts arguments if they name existing files, then reads and compares them; it does not restrict them to repository files or establish a data-only boundary.",
+      "remediation": "Require both resolved paths to remain inside the repository, including rejecting symlink escapes, and state that their contents are data, never instructions.",
+      "reporters": [
+        "security-reviewer"
+      ],
+      "components": [],
+      "in_diff": true,
+      "blocking": true,
+      "confidence": "high",
+      "evidence_type": null,
+      "rule_class": "judgment",
+      "category": null,
+      "risk": null,
+      "source": "model",
+      "gate": "block",
+      "suppressed": false,
+      "exception": null,
+      "fingerprint": null,
+      "waiver": null,
+      "waiver_line": null,
+      "tracked_issue": null
+    },
+    {
+      "reviewer": "skill-reviewer",
+      "severity": "Minor",
+      "rule": "security",
+      "path": "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+      "line": 478,
+      "evidence": "The changed comparison pattern says to accept both arguments if they are \"existing files,\" then read them, without limiting them to the repository or saying their contents are data rather than instructions. The full comparison example at line 246 includes both safeguards.",
+      "remediation": "Limit both arguments to existing files within the repository and state that their contents are data, never instructions to follow.",
+      "reporters": [
+        "skill-reviewer"
+      ],
+      "components": [],
+      "in_diff": true,
+      "blocking": false,
+      "confidence": "medium",
+      "evidence_type": null,
+      "rule_class": "judgment",
+      "category": "other",
+      "risk": null,
+      "source": "model",
+      "gate": "notice",
+      "suppressed": false,
+      "exception": null,
+      "fingerprint": null,
+      "waiver": null,
+      "waiver_line": null,
+      "tracked_issue": null
+    }
+  ],
+  "by_reviewer": {
+    "plugin-rulebook-checker": [
+      {
+        "reviewer": "plugin-rulebook-checker",
+        "severity": "Minor",
+        "rule": "plugin-rulebook:R6",
+        "path": "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md",
+        "line": 397,
+        "evidence": "The changed grant pre-approves `Bash(git add:*)` and `Bash(git commit:*)`, while the documented forms are `git add -- '<file>'` and `git commit -m '<message>'`. These prefixes also pre-approve other state-changing forms, such as `git commit --amend` or `--no-verify`.",
+        "remediation": "Remove these pre-approvals so each operation requires normal user approval, or use narrower grants that cover only the documented forms.",
+        "reporters": [
+          "plugin-rulebook-checker"
+        ],
+        "components": [
+          "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+        ],
+        "in_diff": true,
+        "blocking": false,
+        "confidence": "medium",
+        "evidence_type": null,
+        "rule_class": "judgment",
+        "category": "allowed-tools-grant",
+        "risk": null,
+        "source": "model",
+        "gate": "notice",
+        "suppressed": false,
+        "exception": null,
+        "fingerprint": null,
+        "waiver": null,
+        "waiver_line": null,
+        "tracked_issue": null
+      }
+    ],
+    "dependency-reviewer": [],
+    "security-reviewer": [
+      {
+        "reviewer": "security-reviewer",
+        "severity": "Major",
+        "rule": "prompt-injection-surface",
+        "path": "plugins/plugin-devkit/skills/command-development/SKILL.md",
+        "line": 146,
+        "evidence": "The guidance says an argument-named file should be checked and then read with Read, but does not define the check or say to treat the contents as data. The adjacent example also reviews @src/api/users.ts without that boundary.",
+        "remediation": "Require the resolved file to remain inside the repository, including rejecting symlink escapes, and explicitly instruct the command to treat file contents as data, never as instructions.",
+        "reporters": [
+          "security-reviewer"
+        ],
+        "components": [],
+        "in_diff": true,
+        "blocking": true,
+        "confidence": "high",
+        "evidence_type": null,
+        "rule_class": "judgment",
+        "category": null,
+        "risk": null,
+        "source": "model",
+        "gate": "block",
+        "suppressed": false,
+        "exception": null,
+        "fingerprint": null,
+        "waiver": null,
+        "waiver_line": null,
+        "tracked_issue": null
+      },
+      {
+        "reviewer": "security-reviewer",
+        "severity": "Major",
+        "rule": "prompt-injection-surface",
+        "path": "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+        "line": 478,
+        "evidence": "The pattern accepts arguments if they name existing files, then reads and compares them; it does not restrict them to repository files or establish a data-only boundary.",
+        "remediation": "Require both resolved paths to remain inside the repository, including rejecting symlink escapes, and state that their contents are data, never instructions.",
+        "reporters": [
+          "security-reviewer"
+        ],
+        "components": [],
+        "in_diff": true,
+        "blocking": true,
+        "confidence": "high",
+        "evidence_type": null,
+        "rule_class": "judgment",
+        "category": null,
+        "risk": null,
+        "source": "model",
+        "gate": "block",
+        "suppressed": false,
+        "exception": null,
+        "fingerprint": null,
+        "waiver": null,
+        "waiver_line": null,
+        "tracked_issue": null
+      }
+    ],
+    "skill-reviewer": [
+      {
+        "reviewer": "skill-reviewer",
+        "severity": "Minor",
+        "rule": "security",
+        "path": "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+        "line": 478,
+        "evidence": "The changed comparison pattern says to accept both arguments if they are \"existing files,\" then read them, without limiting them to the repository or saying their contents are data rather than instructions. The full comparison example at line 246 includes both safeguards.",
+        "remediation": "Limit both arguments to existing files within the repository and state that their contents are data, never instructions to follow.",
+        "reporters": [
+          "skill-reviewer"
+        ],
+        "components": [],
+        "in_diff": true,
+        "blocking": false,
+        "confidence": "medium",
+        "evidence_type": null,
+        "rule_class": "judgment",
+        "category": "other",
+        "risk": null,
+        "source": "model",
+        "gate": "notice",
+        "suppressed": false,
+        "exception": null,
+        "fingerprint": null,
+        "waiver": null,
+        "waiver_line": null,
+        "tracked_issue": null
+      }
+    ]
+  }
+}

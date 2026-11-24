@@ -1,0 +1,392 @@
+{
+  "arm": "old",
+  "arm_sha": "bafaee59800b099eb5d3ec8fbfa21ace71b2ac32",
+  "reviewed_paths": [
+    "plugins/plugin-devkit/skills/command-development/SKILL.md",
+    "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+    "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+    "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md",
+    "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md",
+    "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+  ],
+  "reviewers": [
+    "plugin-rulebook-checker",
+    "dependency-reviewer",
+    "security-reviewer",
+    "skill-reviewer"
+  ],
+  "failed_reviewers": {},
+  "provenance": {
+    "head_sha": "916bac6f1c38a4d11cf9e3cfc2ce3aa4bdd14852",
+    "merge_ref_sha": "916bac6f1c38a4d11cf9e3cfc2ce3aa4bdd14852",
+    "base_sha": "d3a3dcb5f5e5d16c2c6c0b2278aa0af5a60ac44f",
+    "configured_model": "gpt-6-luna",
+    "pinned_cli_version": "0.170.0",
+    "model": "GPT-6",
+    "cli_version": "not reported"
+  },
+  "diff_scoped": true,
+  "findings": [
+    {
+      "reviewer": "plugin-rulebook-checker",
+      "severity": "Minor",
+      "rule": "plugin-rulebook:R6",
+      "path": "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+      "line": 220,
+      "evidence": "The changed line directs the command to start a review with the code-reviewer agent, but this example's command frontmatter has no Agent entry in allowed-tools.",
+      "remediation": "Add the Agent tool to this example command's allowed-tools frontmatter.",
+      "reporters": [
+        "plugin-rulebook-checker"
+      ],
+      "components": [
+        "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md"
+      ],
+      "in_diff": true,
+      "blocking": false,
+      "confidence": "high",
+      "evidence_type": null,
+      "rule_class": "judgment",
+      "category": "allowed-tools-grant",
+      "risk": null,
+      "source": "model",
+      "gate": "notice",
+      "suppressed": false,
+      "exception": null,
+      "fingerprint": null,
+      "waiver": null,
+      "waiver_line": null,
+      "tracked_issue": null
+    },
+    {
+      "reviewer": "plugin-rulebook-checker",
+      "severity": "Minor",
+      "rule": "plugin-rulebook:R6",
+      "path": "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md",
+      "line": 346,
+      "evidence": "The changed line directs the command to start deep analysis with the code-analyzer agent, but this example's command frontmatter has no Agent entry in allowed-tools.",
+      "remediation": "Add the Agent tool to this example command's allowed-tools frontmatter.",
+      "reporters": [
+        "plugin-rulebook-checker"
+      ],
+      "components": [
+        "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+      ],
+      "in_diff": true,
+      "blocking": false,
+      "confidence": "high",
+      "evidence_type": null,
+      "rule_class": "judgment",
+      "category": "allowed-tools-grant",
+      "risk": null,
+      "source": "model",
+      "gate": "notice",
+      "suppressed": false,
+      "exception": null,
+      "fingerprint": null,
+      "waiver": null,
+      "waiver_line": null,
+      "tracked_issue": null
+    },
+    {
+      "reviewer": "plugin-rulebook-checker",
+      "severity": "Minor",
+      "rule": "plugin-rulebook:R6",
+      "path": "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md",
+      "line": 415,
+      "evidence": "The new text says each `gh api` call prompts, without noting that the user's own settings or permission mode may already allow it.",
+      "remediation": "Qualify the prompt claim to say it occurs unless the user's settings or permission mode already allow the command; use an explicit user confirmation before the call if that approval is required.",
+      "reporters": [
+        "plugin-rulebook-checker"
+      ],
+      "components": [
+        "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md"
+      ],
+      "in_diff": true,
+      "blocking": false,
+      "confidence": "high",
+      "evidence_type": null,
+      "rule_class": "judgment",
+      "category": "other",
+      "risk": null,
+      "source": "model",
+      "gate": "notice",
+      "suppressed": false,
+      "exception": null,
+      "fingerprint": null,
+      "waiver": null,
+      "waiver_line": null,
+      "tracked_issue": null
+    },
+    {
+      "reviewer": "dependency-reviewer",
+      "severity": "Critical",
+      "rule": "dependency-graph",
+      "path": "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+      "line": 220,
+      "evidence": "The changed example directs the command to start a review with the `code-reviewer` agent. No matching `plugins/plugin-devkit/agents/code-reviewer.md` target exists.",
+      "remediation": "Either add the missing agent to the target plugin or clarify that this example requires the consuming plugin to define `code-reviewer` (or correct the reference).",
+      "reporters": [
+        "dependency-reviewer"
+      ],
+      "components": [],
+      "in_diff": true,
+      "blocking": true,
+      "confidence": "high",
+      "evidence_type": null,
+      "rule_class": "judgment",
+      "category": null,
+      "risk": null,
+      "source": "model",
+      "gate": "block",
+      "suppressed": false,
+      "exception": null,
+      "fingerprint": null,
+      "waiver": null,
+      "waiver_line": null,
+      "tracked_issue": null
+    },
+    {
+      "reviewer": "dependency-reviewer",
+      "severity": "Critical",
+      "rule": "dependency-graph",
+      "path": "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md",
+      "line": 346,
+      "evidence": "The changed example directs the command to start analysis with the `code-analyzer` agent. No matching `plugins/plugin-devkit/agents/code-analyzer.md` target exists.",
+      "remediation": "Either add the missing agent to the target plugin or clarify that this example requires the consuming plugin to define `code-analyzer` (or correct the reference).",
+      "reporters": [
+        "dependency-reviewer"
+      ],
+      "components": [],
+      "in_diff": true,
+      "blocking": true,
+      "confidence": "high",
+      "evidence_type": null,
+      "rule_class": "judgment",
+      "category": null,
+      "risk": null,
+      "source": "model",
+      "gate": "block",
+      "suppressed": false,
+      "exception": null,
+      "fingerprint": null,
+      "waiver": null,
+      "waiver_line": null,
+      "tracked_issue": null
+    },
+    {
+      "reviewer": "security-reviewer",
+      "severity": "Major",
+      "rule": "path-scope",
+      "path": "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+      "line": 478,
+      "evidence": "The pattern accepts `$0` and `$1` if they are \u201cexisting files,\u201d then reads both with the Read tool; it sets no allowed root or repository-containment check.",
+      "remediation": "Constrain both paths to an explicitly approved root and reject paths that resolve outside it before reading.",
+      "reporters": [
+        "security-reviewer"
+      ],
+      "components": [
+        "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md"
+      ],
+      "in_diff": true,
+      "blocking": true,
+      "confidence": "medium",
+      "evidence_type": null,
+      "rule_class": "judgment",
+      "category": "other",
+      "risk": null,
+      "source": "model",
+      "gate": "block",
+      "suppressed": false,
+      "exception": null,
+      "fingerprint": null,
+      "waiver": null,
+      "waiver_line": null,
+      "tracked_issue": null
+    }
+  ],
+  "by_reviewer": {
+    "plugin-rulebook-checker": [
+      {
+        "reviewer": "plugin-rulebook-checker",
+        "severity": "Minor",
+        "rule": "plugin-rulebook:R6",
+        "path": "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+        "line": 220,
+        "evidence": "The changed line directs the command to start a review with the code-reviewer agent, but this example's command frontmatter has no Agent entry in allowed-tools.",
+        "remediation": "Add the Agent tool to this example command's allowed-tools frontmatter.",
+        "reporters": [
+          "plugin-rulebook-checker"
+        ],
+        "components": [
+          "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md"
+        ],
+        "in_diff": true,
+        "blocking": false,
+        "confidence": "high",
+        "evidence_type": null,
+        "rule_class": "judgment",
+        "category": "allowed-tools-grant",
+        "risk": null,
+        "source": "model",
+        "gate": "notice",
+        "suppressed": false,
+        "exception": null,
+        "fingerprint": null,
+        "waiver": null,
+        "waiver_line": null,
+        "tracked_issue": null
+      },
+      {
+        "reviewer": "plugin-rulebook-checker",
+        "severity": "Minor",
+        "rule": "plugin-rulebook:R6",
+        "path": "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md",
+        "line": 346,
+        "evidence": "The changed line directs the command to start deep analysis with the code-analyzer agent, but this example's command frontmatter has no Agent entry in allowed-tools.",
+        "remediation": "Add the Agent tool to this example command's allowed-tools frontmatter.",
+        "reporters": [
+          "plugin-rulebook-checker"
+        ],
+        "components": [
+          "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+        ],
+        "in_diff": true,
+        "blocking": false,
+        "confidence": "high",
+        "evidence_type": null,
+        "rule_class": "judgment",
+        "category": "allowed-tools-grant",
+        "risk": null,
+        "source": "model",
+        "gate": "notice",
+        "suppressed": false,
+        "exception": null,
+        "fingerprint": null,
+        "waiver": null,
+        "waiver_line": null,
+        "tracked_issue": null
+      },
+      {
+        "reviewer": "plugin-rulebook-checker",
+        "severity": "Minor",
+        "rule": "plugin-rulebook:R6",
+        "path": "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md",
+        "line": 415,
+        "evidence": "The new text says each `gh api` call prompts, without noting that the user's own settings or permission mode may already allow it.",
+        "remediation": "Qualify the prompt claim to say it occurs unless the user's settings or permission mode already allow the command; use an explicit user confirmation before the call if that approval is required.",
+        "reporters": [
+          "plugin-rulebook-checker"
+        ],
+        "components": [
+          "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md"
+        ],
+        "in_diff": true,
+        "blocking": false,
+        "confidence": "high",
+        "evidence_type": null,
+        "rule_class": "judgment",
+        "category": "other",
+        "risk": null,
+        "source": "model",
+        "gate": "notice",
+        "suppressed": false,
+        "exception": null,
+        "fingerprint": null,
+        "waiver": null,
+        "waiver_line": null,
+        "tracked_issue": null
+      }
+    ],
+    "dependency-reviewer": [
+      {
+        "reviewer": "dependency-reviewer",
+        "severity": "Critical",
+        "rule": "dependency-graph",
+        "path": "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+        "line": 220,
+        "evidence": "The changed example directs the command to start a review with the `code-reviewer` agent. No matching `plugins/plugin-devkit/agents/code-reviewer.md` target exists.",
+        "remediation": "Either add the missing agent to the target plugin or clarify that this example requires the consuming plugin to define `code-reviewer` (or correct the reference).",
+        "reporters": [
+          "dependency-reviewer"
+        ],
+        "components": [],
+        "in_diff": true,
+        "blocking": true,
+        "confidence": "high",
+        "evidence_type": null,
+        "rule_class": "judgment",
+        "category": null,
+        "risk": null,
+        "source": "model",
+        "gate": "block",
+        "suppressed": false,
+        "exception": null,
+        "fingerprint": null,
+        "waiver": null,
+        "waiver_line": null,
+        "tracked_issue": null
+      },
+      {
+        "reviewer": "dependency-reviewer",
+        "severity": "Critical",
+        "rule": "dependency-graph",
+        "path": "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md",
+        "line": 346,
+        "evidence": "The changed example directs the command to start analysis with the `code-analyzer` agent. No matching `plugins/plugin-devkit/agents/code-analyzer.md` target exists.",
+        "remediation": "Either add the missing agent to the target plugin or clarify that this example requires the consuming plugin to define `code-analyzer` (or correct the reference).",
+        "reporters": [
+          "dependency-reviewer"
+        ],
+        "components": [],
+        "in_diff": true,
+        "blocking": true,
+        "confidence": "high",
+        "evidence_type": null,
+        "rule_class": "judgment",
+        "category": null,
+        "risk": null,
+        "source": "model",
+        "gate": "block",
+        "suppressed": false,
+        "exception": null,
+        "fingerprint": null,
+        "waiver": null,
+        "waiver_line": null,
+        "tracked_issue": null
+      }
+    ],
+    "security-reviewer": [
+      {
+        "reviewer": "security-reviewer",
+        "severity": "Major",
+        "rule": "path-scope",
+        "path": "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+        "line": 478,
+        "evidence": "The pattern accepts `$0` and `$1` if they are \u201cexisting files,\u201d then reads both with the Read tool; it sets no allowed root or repository-containment check.",
+        "remediation": "Constrain both paths to an explicitly approved root and reject paths that resolve outside it before reading.",
+        "reporters": [
+          "security-reviewer"
+        ],
+        "components": [
+          "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md"
+        ],
+        "in_diff": true,
+        "blocking": true,
+        "confidence": "medium",
+        "evidence_type": null,
+        "rule_class": "judgment",
+        "category": "other",
+        "risk": null,
+        "source": "model",
+        "gate": "block",
+        "suppressed": false,
+        "exception": null,
+        "fingerprint": null,
+        "waiver": null,
+        "waiver_line": null,
+        "tracked_issue": null
+      }
+    ],
+    "skill-reviewer": []
+  }
+}

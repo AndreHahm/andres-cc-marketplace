@@ -1,0 +1,167 @@
+{
+  "reports": [
+    {
+      "reviewer": "plugin-rulebook-checker",
+      "status": "completed",
+      "output": {
+        "contract_version": "1.0",
+        "dispatch": {
+          "id": "6ab40547139d-c9cf56d9",
+          "reviewer": "plugin-rulebook-checker",
+          "backend": "",
+          "target_paths": [
+            "plugins/plugin-devkit/skills/command-development/SKILL.md",
+            "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+            "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+            "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md",
+            "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md",
+            "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+          ]
+        },
+        "provenance": {
+          "provider": "OpenAI",
+          "model": "GPT-6",
+          "cli_version": "unknown",
+          "execution_profile": "read-only"
+        },
+        "findings": [],
+        "verdict": "PASS",
+        "inspection_limits": []
+      },
+      "error": null,
+      "attempts": 1,
+      "unsandboxed": false,
+      "fallback_over_cap": false
+    },
+    {
+      "reviewer": "dependency-reviewer",
+      "status": "completed",
+      "output": {
+        "contract_version": "1.0",
+        "dispatch": {
+          "id": "6ab40547139d-c9cf56d9",
+          "reviewer": "dependency-reviewer",
+          "backend": "codex",
+          "target_paths": [
+            "plugins/plugin-devkit/skills/command-development/SKILL.md",
+            "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+            "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+            "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md",
+            "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md",
+            "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+          ]
+        },
+        "provenance": {
+          "provider": "OpenAI",
+          "model": "GPT-6",
+          "cli_version": "unknown",
+          "execution_profile": "read-only"
+        },
+        "findings": [],
+        "verdict": "Pass",
+        "inspection_limits": []
+      },
+      "error": null,
+      "attempts": 1,
+      "unsandboxed": false,
+      "fallback_over_cap": false
+    },
+    {
+      "reviewer": "security-reviewer",
+      "status": "completed",
+      "output": {
+        "contract_version": "1.0",
+        "dispatch": {
+          "id": "6ab40547139d-c9cf56d9",
+          "reviewer": "security-reviewer",
+          "backend": "codex",
+          "target_paths": [
+            "plugins/plugin-devkit/skills/command-development/SKILL.md",
+            "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+            "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+            "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md",
+            "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md",
+            "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+          ]
+        },
+        "provenance": {
+          "provider": "OpenAI",
+          "model": "GPT-6",
+          "cli_version": "unknown",
+          "execution_profile": "read-only"
+        },
+        "findings": [],
+        "verdict": "Pass",
+        "inspection_limits": []
+      },
+      "error": null,
+      "attempts": 1,
+      "unsandboxed": false,
+      "fallback_over_cap": false
+    },
+    {
+      "reviewer": "skill-reviewer",
+      "status": "completed",
+      "output": {
+        "contract_version": "1.0",
+        "dispatch": {
+          "id": "6ab40547139d-c9cf56d9",
+          "reviewer": "skill-reviewer",
+          "backend": "codex",
+          "target_paths": [
+            "plugins/plugin-devkit/skills/command-development/SKILL.md",
+            "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+            "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+            "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md",
+            "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md",
+            "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+          ]
+        },
+        "provenance": {
+          "provider": "OpenAI",
+          "model": "GPT-6",
+          "cli_version": "unknown",
+          "execution_profile": "read-only"
+        },
+        "findings": [
+          {
+            "id": "M1",
+            "severity": "major",
+            "axis": "scope-security",
+            "location": "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md:130",
+            "components": [
+              "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+              "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+            ],
+            "evidence": "The new instruction accepts any existing file path in the repository and then reads it with Read. A repository path that is a symlink to an external secret file satisfies that check lexically; Read follows the symlink, exposing the external file to the generated command.",
+            "finding": "The file checks do not require the resolved target to remain inside the repository, so a supplied in-repository symlink can escape the stated path boundary.",
+            "fix": "Require resolving the target and verifying it remains inside the repository after symlink resolution before reading; reject paths whose resolved target escapes.",
+            "confidence": "high",
+            "category": "other"
+          },
+          {
+            "id": "m1",
+            "severity": "minor",
+            "axis": "permission-scope",
+            "location": "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md:128",
+            "components": [
+              "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+              "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+            ],
+            "evidence": "The added `allowed-tools: Read` entries pre-approve Read without path limits, while the example instructions only call for reading files in the repository. `allowed-tools` removes permission prompts but does not restrict Read to those paths.",
+            "finding": "The Read pre-approval is broader than the repository-only use described in these examples.",
+            "fix": "Remove the Read pre-approval where per-use confirmation is desired, or pair it with an effective path boundary outside `allowed-tools`.",
+            "confidence": "high",
+            "category": "allowed-tools-grant"
+          }
+        ],
+        "verdict": "reject",
+        "inspection_limits": []
+      },
+      "error": null,
+      "attempts": 1,
+      "unsandboxed": false,
+      "fallback_over_cap": false
+    }
+  ]
+}

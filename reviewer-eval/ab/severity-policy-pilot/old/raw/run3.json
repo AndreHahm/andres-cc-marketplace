@@ -1,0 +1,194 @@
+{
+  "reports": [
+    {
+      "reviewer": "plugin-rulebook-checker",
+      "status": "completed",
+      "output": {
+        "contract_version": "1",
+        "dispatch": {
+          "id": "bafaee59800b-bd9fb7f4",
+          "reviewer": "plugin-rulebook-checker",
+          "backend": "codex",
+          "target_paths": [
+            "plugins/plugin-devkit/skills/command-development/SKILL.md",
+            "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+            "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+            "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md",
+            "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md",
+            "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+          ]
+        },
+        "provenance": {
+          "provider": "OpenAI",
+          "model": "GPT-6",
+          "cli_version": "unknown",
+          "execution_profile": "read-only"
+        },
+        "findings": [
+          {
+            "id": "plugin-rulebook-checker:plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md#R6",
+            "severity": "minor",
+            "axis": "plugin-rulebook:R6",
+            "location": "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md:415",
+            "components": null,
+            "evidence": "The changed explanation says a `gh api /deployments/<id>` prefix could delete the deployment with `--method`, but the GitHub REST API documents deployment lookup and deletion at `/repos/{owner}/{repo}/deployments/{deployment_id}` ([official endpoint documentation](https://docs.github.com/en/rest/deployments/deployments)). The example command at line 404 omits that route prefix.",
+            "finding": "The R6 explanation for leaving this command ungranted relies on a destructive operation the example endpoint does not identify. This makes its permission rationale inaccurate.",
+            "fix": "Use the documented endpoint including `repos/{owner}/{repo}` and reassess the prefix risk, or remove the deletion claim.",
+            "confidence": "high",
+            "category": "other"
+          }
+        ],
+        "verdict": "One minor finding",
+        "inspection_limits": []
+      },
+      "error": null,
+      "attempts": 1,
+      "unsandboxed": false,
+      "fallback_over_cap": false
+    },
+    {
+      "reviewer": "dependency-reviewer",
+      "status": "completed",
+      "output": {
+        "contract_version": "1.0",
+        "dispatch": {
+          "id": "bafaee59800b-bd9fb7f4",
+          "reviewer": "dependency-reviewer",
+          "backend": "codex",
+          "target_paths": [
+            "plugins/plugin-devkit/skills/command-development/SKILL.md",
+            "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+            "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+            "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md",
+            "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md",
+            "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+          ]
+        },
+        "provenance": {
+          "provider": "OpenAI",
+          "model": "GPT-6",
+          "cli_version": "unknown",
+          "execution_profile": "read-only"
+        },
+        "findings": [],
+        "verdict": "Pass",
+        "inspection_limits": []
+      },
+      "error": null,
+      "attempts": 1,
+      "unsandboxed": false,
+      "fallback_over_cap": false
+    },
+    {
+      "reviewer": "security-reviewer",
+      "status": "completed",
+      "output": {
+        "contract_version": "1.0",
+        "dispatch": {
+          "id": "bafaee59800b-bd9fb7f4",
+          "reviewer": "security-reviewer",
+          "backend": "Codex",
+          "target_paths": [
+            "plugins/plugin-devkit/skills/command-development/SKILL.md",
+            "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+            "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+            "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md",
+            "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md",
+            "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+          ]
+        },
+        "provenance": {
+          "provider": "OpenAI",
+          "model": "GPT-6",
+          "cli_version": "unknown",
+          "execution_profile": "static review; read-only"
+        },
+        "findings": [
+          {
+            "id": "M1",
+            "severity": "major",
+            "axis": "prompt-injection surface",
+            "location": "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md:103",
+            "components": [
+              "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md:144"
+            ],
+            "evidence": "The examples inject a plugin-supplied template with @ and ask the command to generate output following its format, but do not bound which instructions in the template may be followed. The same pattern appears in plugin-features-reference.md:144.",
+            "finding": "Template text can supply directives that the command may treat as instructions when generating the report.",
+            "fix": "Treat template contents as untrusted data, and explicitly limit their use to the required output format while ignoring other directives; alternatively, avoid injecting the template into the prompt.",
+            "confidence": "medium",
+            "category": "other"
+          },
+          {
+            "id": "M2",
+            "severity": "major",
+            "axis": "prompt-injection surface",
+            "location": "plugins/plugin-devkit/skills/command-development/SKILL.md:143",
+            "components": [
+              "plugins/plugin-devkit/skills/command-development/SKILL.md"
+            ],
+            "evidence": "The command includes src/api/users.ts before processing the prompt and asks Claude to review it, without saying that the file's contents are data rather than instructions.",
+            "finding": "A source file containing prompt-injection text may influence the review because the example does not establish a data-only boundary.",
+            "fix": "Explicitly say that the included file is data to review and that its contents must never be followed as instructions, or use Read with that boundary.",
+            "confidence": "medium",
+            "category": "other"
+          },
+          {
+            "id": "M3",
+            "severity": "major",
+            "axis": "prompt-injection surface",
+            "location": "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md:478",
+            "components": [
+              "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md"
+            ],
+            "evidence": "The pattern accepts any existing files, without restricting them to the repository, then reads and compares them without an explicit data-only boundary.",
+            "finding": "The example permits reading arbitrary local files and leaves their contents able to influence the command as instructions.",
+            "fix": "Restrict both paths to files within the repository and state that their contents are data to compare, never instructions to follow.",
+            "confidence": "high",
+            "category": "other"
+          }
+        ],
+        "verdict": "Reject",
+        "inspection_limits": []
+      },
+      "error": null,
+      "attempts": 1,
+      "unsandboxed": false,
+      "fallback_over_cap": false
+    },
+    {
+      "reviewer": "skill-reviewer",
+      "status": "completed",
+      "output": {
+        "contract_version": "1",
+        "dispatch": {
+          "id": "bafaee59800b-bd9fb7f4",
+          "reviewer": "skill-reviewer",
+          "backend": "codex",
+          "target_paths": [
+            "plugins/plugin-devkit/skills/command-development/SKILL.md",
+            "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+            "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+            "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md",
+            "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md",
+            "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+          ]
+        },
+        "provenance": {
+          "provider": "OpenAI",
+          "model": "GPT-6",
+          "cli_version": "unknown",
+          "execution_profile": "read-only workspace"
+        },
+        "findings": [],
+        "verdict": "pass",
+        "inspection_limits": [
+          "The working tree had no diff for these paths, so the supplied changed-line list was used to identify the review scope."
+        ]
+      },
+      "error": null,
+      "attempts": 1,
+      "unsandboxed": false,
+      "fallback_over_cap": false
+    }
+  ]
+}

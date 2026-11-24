@@ -1,0 +1,275 @@
+{
+  "arm": "old",
+  "arm_sha": "bafaee59800b099eb5d3ec8fbfa21ace71b2ac32",
+  "reviewed_paths": [
+    "plugins/plugin-devkit/skills/command-development/SKILL.md",
+    "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+    "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+    "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md",
+    "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md",
+    "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+  ],
+  "reviewers": [
+    "plugin-rulebook-checker",
+    "dependency-reviewer",
+    "security-reviewer",
+    "skill-reviewer"
+  ],
+  "failed_reviewers": {},
+  "provenance": {
+    "head_sha": "916bac6f1c38a4d11cf9e3cfc2ce3aa4bdd14852",
+    "merge_ref_sha": "916bac6f1c38a4d11cf9e3cfc2ce3aa4bdd14852",
+    "base_sha": "d3a3dcb5f5e5d16c2c6c0b2278aa0af5a60ac44f",
+    "configured_model": "gpt-6-luna",
+    "pinned_cli_version": "0.170.0",
+    "model": "GPT-6",
+    "cli_version": "unknown"
+  },
+  "diff_scoped": true,
+  "findings": [
+    {
+      "reviewer": "plugin-rulebook-checker",
+      "severity": "Minor",
+      "rule": "plugin-rulebook:R6",
+      "path": "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md",
+      "line": 415,
+      "evidence": "The changed explanation says a `gh api /deployments/<id>` prefix could delete the deployment with `--method`, but the GitHub REST API documents deployment lookup and deletion at `/repos/{owner}/{repo}/deployments/{deployment_id}` ([official endpoint documentation](https://docs.github.com/en/rest/deployments/deployments)). The example command at line 404 omits that route prefix.",
+      "remediation": "Use the documented endpoint including `repos/{owner}/{repo}` and reassess the prefix risk, or remove the deletion claim.",
+      "reporters": [
+        "plugin-rulebook-checker"
+      ],
+      "components": [],
+      "in_diff": true,
+      "blocking": false,
+      "confidence": "high",
+      "evidence_type": null,
+      "rule_class": "judgment",
+      "category": "other",
+      "risk": null,
+      "source": "model",
+      "gate": "notice",
+      "suppressed": false,
+      "exception": null,
+      "fingerprint": null,
+      "waiver": null,
+      "waiver_line": null,
+      "tracked_issue": null
+    },
+    {
+      "reviewer": "security-reviewer",
+      "severity": "Major",
+      "rule": "prompt-injection surface",
+      "path": "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+      "line": 103,
+      "evidence": "The examples inject a plugin-supplied template with @ and ask the command to generate output following its format, but do not bound which instructions in the template may be followed. The same pattern appears in plugin-features-reference.md:144.",
+      "remediation": "Treat template contents as untrusted data, and explicitly limit their use to the required output format while ignoring other directives; alternatively, avoid injecting the template into the prompt.",
+      "reporters": [
+        "security-reviewer"
+      ],
+      "components": [
+        "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md:144"
+      ],
+      "in_diff": true,
+      "blocking": true,
+      "confidence": "medium",
+      "evidence_type": null,
+      "rule_class": "judgment",
+      "category": "other",
+      "risk": null,
+      "source": "model",
+      "gate": "block",
+      "suppressed": false,
+      "exception": null,
+      "fingerprint": null,
+      "waiver": null,
+      "waiver_line": null,
+      "tracked_issue": null
+    },
+    {
+      "reviewer": "security-reviewer",
+      "severity": "Major",
+      "rule": "prompt-injection surface",
+      "path": "plugins/plugin-devkit/skills/command-development/SKILL.md",
+      "line": 143,
+      "evidence": "The command includes src/api/users.ts before processing the prompt and asks Claude to review it, without saying that the file's contents are data rather than instructions.",
+      "remediation": "Explicitly say that the included file is data to review and that its contents must never be followed as instructions, or use Read with that boundary.",
+      "reporters": [
+        "security-reviewer"
+      ],
+      "components": [
+        "plugins/plugin-devkit/skills/command-development/SKILL.md"
+      ],
+      "in_diff": true,
+      "blocking": true,
+      "confidence": "medium",
+      "evidence_type": null,
+      "rule_class": "judgment",
+      "category": "other",
+      "risk": null,
+      "source": "model",
+      "gate": "block",
+      "suppressed": false,
+      "exception": null,
+      "fingerprint": null,
+      "waiver": null,
+      "waiver_line": null,
+      "tracked_issue": null
+    },
+    {
+      "reviewer": "security-reviewer",
+      "severity": "Major",
+      "rule": "prompt-injection surface",
+      "path": "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+      "line": 478,
+      "evidence": "The pattern accepts any existing files, without restricting them to the repository, then reads and compares them without an explicit data-only boundary.",
+      "remediation": "Restrict both paths to files within the repository and state that their contents are data to compare, never instructions to follow.",
+      "reporters": [
+        "security-reviewer"
+      ],
+      "components": [
+        "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md"
+      ],
+      "in_diff": true,
+      "blocking": true,
+      "confidence": "high",
+      "evidence_type": null,
+      "rule_class": "judgment",
+      "category": "other",
+      "risk": null,
+      "source": "model",
+      "gate": "block",
+      "suppressed": false,
+      "exception": null,
+      "fingerprint": null,
+      "waiver": null,
+      "waiver_line": null,
+      "tracked_issue": null
+    }
+  ],
+  "by_reviewer": {
+    "plugin-rulebook-checker": [
+      {
+        "reviewer": "plugin-rulebook-checker",
+        "severity": "Minor",
+        "rule": "plugin-rulebook:R6",
+        "path": "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md",
+        "line": 415,
+        "evidence": "The changed explanation says a `gh api /deployments/<id>` prefix could delete the deployment with `--method`, but the GitHub REST API documents deployment lookup and deletion at `/repos/{owner}/{repo}/deployments/{deployment_id}` ([official endpoint documentation](https://docs.github.com/en/rest/deployments/deployments)). The example command at line 404 omits that route prefix.",
+        "remediation": "Use the documented endpoint including `repos/{owner}/{repo}` and reassess the prefix risk, or remove the deletion claim.",
+        "reporters": [
+          "plugin-rulebook-checker"
+        ],
+        "components": [],
+        "in_diff": true,
+        "blocking": false,
+        "confidence": "high",
+        "evidence_type": null,
+        "rule_class": "judgment",
+        "category": "other",
+        "risk": null,
+        "source": "model",
+        "gate": "notice",
+        "suppressed": false,
+        "exception": null,
+        "fingerprint": null,
+        "waiver": null,
+        "waiver_line": null,
+        "tracked_issue": null
+      }
+    ],
+    "dependency-reviewer": [],
+    "security-reviewer": [
+      {
+        "reviewer": "security-reviewer",
+        "severity": "Major",
+        "rule": "prompt-injection surface",
+        "path": "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+        "line": 103,
+        "evidence": "The examples inject a plugin-supplied template with @ and ask the command to generate output following its format, but do not bound which instructions in the template may be followed. The same pattern appears in plugin-features-reference.md:144.",
+        "remediation": "Treat template contents as untrusted data, and explicitly limit their use to the required output format while ignoring other directives; alternatively, avoid injecting the template into the prompt.",
+        "reporters": [
+          "security-reviewer"
+        ],
+        "components": [
+          "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md:144"
+        ],
+        "in_diff": true,
+        "blocking": true,
+        "confidence": "medium",
+        "evidence_type": null,
+        "rule_class": "judgment",
+        "category": "other",
+        "risk": null,
+        "source": "model",
+        "gate": "block",
+        "suppressed": false,
+        "exception": null,
+        "fingerprint": null,
+        "waiver": null,
+        "waiver_line": null,
+        "tracked_issue": null
+      },
+      {
+        "reviewer": "security-reviewer",
+        "severity": "Major",
+        "rule": "prompt-injection surface",
+        "path": "plugins/plugin-devkit/skills/command-development/SKILL.md",
+        "line": 143,
+        "evidence": "The command includes src/api/users.ts before processing the prompt and asks Claude to review it, without saying that the file's contents are data rather than instructions.",
+        "remediation": "Explicitly say that the included file is data to review and that its contents must never be followed as instructions, or use Read with that boundary.",
+        "reporters": [
+          "security-reviewer"
+        ],
+        "components": [
+          "plugins/plugin-devkit/skills/command-development/SKILL.md"
+        ],
+        "in_diff": true,
+        "blocking": true,
+        "confidence": "medium",
+        "evidence_type": null,
+        "rule_class": "judgment",
+        "category": "other",
+        "risk": null,
+        "source": "model",
+        "gate": "block",
+        "suppressed": false,
+        "exception": null,
+        "fingerprint": null,
+        "waiver": null,
+        "waiver_line": null,
+        "tracked_issue": null
+      },
+      {
+        "reviewer": "security-reviewer",
+        "severity": "Major",
+        "rule": "prompt-injection surface",
+        "path": "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+        "line": 478,
+        "evidence": "The pattern accepts any existing files, without restricting them to the repository, then reads and compares them without an explicit data-only boundary.",
+        "remediation": "Restrict both paths to files within the repository and state that their contents are data to compare, never instructions to follow.",
+        "reporters": [
+          "security-reviewer"
+        ],
+        "components": [
+          "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md"
+        ],
+        "in_diff": true,
+        "blocking": true,
+        "confidence": "high",
+        "evidence_type": null,
+        "rule_class": "judgment",
+        "category": "other",
+        "risk": null,
+        "source": "model",
+        "gate": "block",
+        "suppressed": false,
+        "exception": null,
+        "fingerprint": null,
+        "waiver": null,
+        "waiver_line": null,
+        "tracked_issue": null
+      }
+    ],
+    "skill-reviewer": []
+  }
+}

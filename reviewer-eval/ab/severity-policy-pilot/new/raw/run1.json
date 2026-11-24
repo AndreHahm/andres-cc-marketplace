@@ -1,0 +1,191 @@
+{
+  "reports": [
+    {
+      "reviewer": "plugin-rulebook-checker",
+      "status": "completed",
+      "output": {
+        "contract_version": "1",
+        "dispatch": {
+          "id": "6ab40547139d-2d21be94",
+          "reviewer": "plugin-rulebook-checker",
+          "backend": "codex",
+          "target_paths": [
+            "plugins/plugin-devkit/skills/command-development/SKILL.md",
+            "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+            "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+            "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md",
+            "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md",
+            "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+          ]
+        },
+        "provenance": {
+          "provider": "OpenAI",
+          "model": "GPT-6",
+          "cli_version": "unknown",
+          "execution_profile": "read-only"
+        },
+        "findings": [
+          {
+            "id": "plugin-rulebook-checker:plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md#R6",
+            "severity": "minor",
+            "axis": "plugin-rulebook:R6",
+            "location": "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md:397",
+            "components": [
+              "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+            ],
+            "evidence": "The changed grants `Bash(git add:*)` and `Bash(git commit:*)`, while the example body documents only staging named files and committing with `-m`. These prefixes also pre-approve other flags, including `git commit --no-verify`.",
+            "finding": "The git prefixes pre-approve more command forms than the documented workflow uses, so those forms can run without a tool permission prompt.",
+            "fix": "Remove the pre-approvals if every invocation should prompt, or narrow them to the supported staging and commit forms where the permission syntax allows.",
+            "confidence": "high",
+            "category": "allowed-tools-grant"
+          }
+        ],
+        "verdict": "One minor R6 finding.",
+        "inspection_limits": []
+      },
+      "error": null,
+      "attempts": 1,
+      "unsandboxed": false,
+      "fallback_over_cap": false
+    },
+    {
+      "reviewer": "dependency-reviewer",
+      "status": "completed",
+      "output": {
+        "contract_version": "1.0",
+        "dispatch": {
+          "id": "6ab40547139d-2d21be94",
+          "reviewer": "dependency-reviewer",
+          "backend": "codex",
+          "target_paths": [
+            "plugins/plugin-devkit/skills/command-development/SKILL.md",
+            "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+            "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+            "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md",
+            "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md",
+            "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+          ]
+        },
+        "provenance": {
+          "provider": "OpenAI",
+          "model": "GPT-6",
+          "cli_version": "unknown",
+          "execution_profile": "read-only static review"
+        },
+        "findings": [],
+        "verdict": "Pass",
+        "inspection_limits": []
+      },
+      "error": null,
+      "attempts": 1,
+      "unsandboxed": false,
+      "fallback_over_cap": false
+    },
+    {
+      "reviewer": "security-reviewer",
+      "status": "completed",
+      "output": {
+        "contract_version": "1.0",
+        "dispatch": {
+          "id": "6ab40547139d-2d21be94",
+          "reviewer": "security-reviewer",
+          "backend": "claude-code",
+          "target_paths": [
+            "plugins/plugin-devkit/skills/command-development/SKILL.md",
+            "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+            "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+            "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md",
+            "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md",
+            "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+          ]
+        },
+        "provenance": {
+          "provider": "OpenAI",
+          "model": "GPT-6",
+          "cli_version": "unknown",
+          "execution_profile": "read-only static review"
+        },
+        "findings": [],
+        "verdict": "Pass",
+        "inspection_limits": []
+      },
+      "error": null,
+      "attempts": 1,
+      "unsandboxed": false,
+      "fallback_over_cap": false
+    },
+    {
+      "reviewer": "skill-reviewer",
+      "status": "completed",
+      "output": {
+        "contract_version": "1",
+        "dispatch": {
+          "id": "6ab40547139d-2d21be94",
+          "reviewer": "skill-reviewer",
+          "backend": "codex",
+          "target_paths": [
+            "plugins/plugin-devkit/skills/command-development/SKILL.md",
+            "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+            "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+            "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md",
+            "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md",
+            "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+          ]
+        },
+        "provenance": {
+          "provider": "OpenAI",
+          "model": "GPT-6",
+          "cli_version": "unknown",
+          "execution_profile": "read-only sandbox"
+        },
+        "findings": [
+          {
+            "id": "M1",
+            "severity": "major",
+            "axis": "security",
+            "location": "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md:478",
+            "components": null,
+            "evidence": "This example tells Claude to read two user-supplied files and compare them, but does not say their contents are data rather than instructions. A file containing directions to omit differences can enter the prompt without a boundary and distort the comparison.",
+            "finding": "The file-comparison example leaves file contents able to influence the command as instructions, which can corrupt its comparison results.",
+            "fix": "State that both files' contents are untrusted data, never instructions, and that embedded directions must be ignored while comparing the files.",
+            "confidence": "medium",
+            "category": "other"
+          },
+          {
+            "id": "m1",
+            "severity": "minor",
+            "axis": "security",
+            "location": "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md:105",
+            "components": [
+              "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+              "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+            ],
+            "evidence": "\u26a0\ufe0f Unverified: The check requires an existing file in the repository but does not specify resolving symlinks. An in-repository symlink to an external file could pass a path-existence check, after which Read may load that external content. Confirm with a symlink pointing outside the repository.",
+            "finding": "The repository-boundary check may allow a symlink path to resolve outside the repository, exposing external file contents to the generated command.",
+            "fix": "Require the resolved target path to remain inside the repository, and reject symlinks whose targets leave it.",
+            "confidence": "low",
+            "category": "other"
+          },
+          {
+            "id": "m2",
+            "severity": "minor",
+            "axis": "tool-scope",
+            "location": "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md:21",
+            "components": null,
+            "evidence": "The example grants Grep, but its workflow only names `gh pr view`, `gh pr diff`, and `gh pr checks`; it does not call Grep.",
+            "finding": "The Grep grant is unused and provides unnecessary pre-approval.",
+            "fix": "Remove Grep from `allowed-tools`, or add an explicit Grep step if the workflow needs it.",
+            "confidence": "high",
+            "category": "allowed-tools-grant"
+          }
+        ],
+        "verdict": "Reject",
+        "inspection_limits": []
+      },
+      "error": null,
+      "attempts": 1,
+      "unsandboxed": false,
+      "fallback_over_cap": false
+    }
+  ]
+}
