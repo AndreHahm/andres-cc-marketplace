@@ -668,6 +668,58 @@ A	gh pr create --title "[docs] x" --body "$(cat <<'EOF'\nDo not use git push ori
 B	x=([1<<2]=1); git $'reb\\x61se' main
 A	: $((1<<2)); git status
 A	[ -f x ] && cat <<'EOF'\ngit status\nEOF
+# --- further gaps: submodule update and push flags, bare merge.ff, push.default, and a word
+# that an operator ends
+B	git submodule update --rebase
+B	git submodule update --merge
+B	git submodule update --reb
+B	git submodule --quiet update --init -r
+B	git -C . submodule update --init --merge
+B	bash -c 'git submodule update --rebase'
+A	git submodule update --init --recursive
+A	git submodule update --remote --checkout
+A	git submodule update --reference x --recommend-shallow
+B	git push --mirror
+B	git push --mirr origin
+B	git -C . push -q --mirror origin
+A	git push origin my--mirror
+B	git -c merge.ff pull
+B	bash -c 'git -c merge.ff pull'
+B	git -c push.default=matching push
+B	git --config-env push.default=V push
+B	GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=push.default GIT_CONFIG_VALUE_0=matching git push
+B	git push origin main>log
+B	git push origin main;true
+B	git push origin main&
+B	git push origin main|cat
+B	git push origin main<<<x
+B	(git push origin main)
+B	git push origin HEAD:main>log
+B	git push origin x -f>log
+B	sudo>log ls
+B	dd>log
+B	mkfs>log x
+B	curl x | bash>log
+A	git push origin main2
+A	git push origin main-x
+A	git push origin feature/main;true
+A	git -c push.default=current push
+A	git -c "push.default=simple" push
+A	git -c push.default=nothing push
+B	git -c push.default=currentx push
+B	git -c push.default=upstream push
+B	git -c push.default=cur push
+B	git -c push.default= push
+B	git -c push.default=$x push
+B	git -c push.default=current -c push.default=matching push
+B	git --config-env push.default=current push
+A	git commit -m "fix git push check (not for main)"
+B	x=$(git push origin main)
+B	bash -c 'git push --mirror'
+B	git submodule 2>/dev/null update --rebase
+B	set -k; git submodule X=1 update --merge
+B	git submodule--helper update --rebase
+B	git submodule update -qr
 CASES
 
 printf 'pass=%d fail=%d (%s)\n' "${pass}" "${fail}" "${HOOK}"
