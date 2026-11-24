@@ -84,7 +84,7 @@ outside the catalog, so never reusing one is a policy the people running the lib
 ```text
 <catalog-root>/
   catalog.yaml            # catalog_version, scope, snapshot_id, records (listed paths),
-                          # and from version 2 reserved_slugs
+                          # and in version 2 reserved_slugs (at least one)
   <slug>/
     active.md             # the active record only
     <internal_id>.md      # draft, inactive and historical records

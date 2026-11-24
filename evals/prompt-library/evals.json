@@ -121,6 +121,13 @@
       "prompt": "/prompt-library discard review__missing-tests (active v1, draft v2); then discard docs__changelog (first draft only); then discard review__missing-tests again; then add a new docs__changelog.",
       "expected_output": "Each discard asks one question showing the draft's text and what stays active; the v2 draft goes and v1 stays active; the first draft goes and its slug is reserved; the third request stops with no question; the add is refused as a reused slug.",
       "files": []
+    },
+    {
+      "id": 24,
+      "name": "discard-keep-and-suspicious-orphan",
+      "prompt": "/prompt-library discard review__missing-tests, answered Keep. Then the same request on a catalog holding an unlisted file named p$(touch PWNED).md.",
+      "expected_output": "Keep runs no discard and leaves every file as it was; the unlisted file is reported as suspicious, its name reaches no command, and nothing is discarded.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {

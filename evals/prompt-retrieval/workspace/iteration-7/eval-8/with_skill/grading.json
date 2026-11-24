@@ -1,0 +1,24 @@
+{
+  "eval_id": 8,
+  "date": "2026-11-24",
+  "configuration": "with_skill",
+  "baseline": "not run",
+  "expectations": [
+    {
+      "text": "Only drafts are listed when only drafts are asked for",
+      "passed": true,
+      "evidence": "One row: review__missing-tests v3 draft"
+    },
+    {
+      "text": "A phrase inside other words is not a match",
+      "passed": true,
+      "evidence": "validate --search 'port checks' returned no records; reported as not found"
+    }
+  ],
+  "summary": {
+    "passed": 2,
+    "failed": 0,
+    "total": 2,
+    "pass_rate": 1.0
+  }
+}

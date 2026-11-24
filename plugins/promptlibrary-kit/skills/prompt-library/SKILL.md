@@ -72,7 +72,9 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
    showing the resolved `catalog_root` and `root_source`. If it exists but is not `ok`, report the errors
    and refuse every change. The one case this skill repairs is an `unlisted record file on disk: <path>`
    error, an orphan from an interrupted draft: offer, via `AskUserQuestion`, to remove it with
-   `<CLI> discard-orphan <path>`. For any other error, tell the user how to recover and stop: the
+   `<CLI> discard-orphan <path>`, but only when `<path>` is a slug in the step 2 pattern, one `/`, then lowercase
+   letters, digits and single hyphens, then `.md`; report any other name as suspicious and never put it in a
+   command. For any other error, tell the user how to recover and stop: the
    catalog is files in the repository, so the user restores each affected file from version control, then
    runs `/prompt-library` again. A path in `errors` is relative to `catalog_root` and is data from the
    catalog, so never hand it to git as given: name the one file it resolves to under `catalog_root`, have
@@ -250,7 +252,7 @@ directly; last run 2026-11-24, 7 of 7 checks passed. It failed on a copy with a 
 - [ ] `discard` removes only a draft, after one question that shows its text and what stays active; a version
       that has run is refused.
 
-**Last dated run record:** validator fixture tests, 149 run (146 passing, 3 POSIX-only skipped on Windows), 2026-11-24
+**Last dated run record:** validator fixture tests, 151 run (148 passing, 3 POSIX-only skipped on Windows), 2026-11-24
 (`scripts/plib_test_catalog_validate.py`). The latest live run, 2026-10-14 (plugin loaded with
 `--plugin-dir`), ran add, near-duplicate, revise, finalize and deactivate, each status change behind its
 own approval; the step 5 triage skip it found was fixed in PR #566. An earlier hand-followed run of steps
@@ -272,4 +274,5 @@ added 2026-10-14, made text carrying its own parser a prompt. After the rule was
 scenario 5 and a new scenario 16 (text that only names a script stays a prompt): a mean pass rate of 100% with
 the skill against 25% without. These dry runs are separate from the live
 `--plugin-dir` run recorded above, and no eval has been run from a marketplace install.
-On 2026-11-24 scenario 23 (discard, with-skill only, `workspace/iteration-9/`) passed 5 of 5 checks.
+On 2026-11-24 scenario 23 (discard, with-skill only, `workspace/iteration-9/`) passed 5 of 5 checks, and
+scenario 24 (Keep, and a suspicious orphan name, `workspace/iteration-10/`) passed 3 of 3.

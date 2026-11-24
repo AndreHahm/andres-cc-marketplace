@@ -1576,6 +1576,16 @@ class Search(Base):
                 self.assertEqual([r["matched_in"] for r in res["records"]], [where])
                 self.assertNotIn("prompt_text", res["records"][0])
 
+    def test_matches_whole_words_only(self):
+        self.make_active()
+        self.assertEqual(self.search("missing test")[1]["records"], [])
+        self.assertEqual(len(self.search("missing tests")[1]["records"]), 1)
+
+    def test_combining_marks_are_kept(self):
+        self.assertNotEqual(V.search_words("दिन"), V.search_words("दीन"))
+        self.assertEqual(V.search_words("café"), V.search_words("café"))
+        self.assertEqual(V.search_words("fast ❤️ tests"), "fast tests")
+
     def test_no_match_is_ok_and_empty(self):
         self.make_active()
         code, res = self.search("nowhere to be found")
@@ -1714,6 +1724,10 @@ class DiscardDraft(Base):
         text = text.replace("catalog_version: 1", "catalog_version: 2")
         cat.write_text(text + "reserved_slugs:\n  - ../x\n", encoding="utf-8")
         self.assertIn("list of slugs", self.run_cli("validate")[1]["errors"][0])
+        for lost in ("", "reserved_slugs: []\n"):
+            with self.subTest(lost=lost):
+                cat.write_text(text + lost, encoding="utf-8")
+                self.assertIn("at least one slug", self.run_cli("validate")[1]["errors"][0])
 
 
 if __name__ == "__main__":
