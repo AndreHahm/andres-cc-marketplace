@@ -44,7 +44,7 @@ From `$REPO_ROOT`, run
   has spaces or whose path is not plain. It never overwrites an existing file.
 - `$RUN/accepted.codex.md` is the same without two things (issue #697), each printed as
   `not briefed to Codex:`: a line for a sensitive file name, which would send the name and a hash of the
-  line to Codex, or with a sensitive value in its rule or path, or
+  line to Codex, or with a sensitive value or file name in its rule or path, or
   a sensitive word or value in the flagged line's own text, and a tracked issue whose title or summary has a sensitive word or file name, a value in a
   common credential format or assignment, 16 or more mixed letters and digits in a row (8 when they end
   the text), or an email address. The formats are not complete, and the text is cut before the check, so another

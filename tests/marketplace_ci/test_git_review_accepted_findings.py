@@ -896,6 +896,11 @@ def test_brief_keeps_a_tracked_issue_with_a_sensitive_name_for_claude_only(
     [
         ("credential-pii-leakage", "s/plain.md", "plain line", True),
         ("sk" + "-abcdefgh12345678", "s/plain.md", "plain line", False),
+        ("plugin-rulebook:R6", "s/plain.md", "plain line", True),
+        (".env", "s/plain.md", "plain line", False),
+        ("server.pem", "s/plain.md", "plain line", False),
+        ("security/server.pem", "s/plain.md", "plain line", False),
+        ("x:(.npmrc)", "s/plain.md", "plain line", False),
         ("R9", "s/Zk9" + "qLmXw2TbVr8Ns.md", "plain line", False),
         ("R9", "s/plain.md", "pwd = 'hunter2'", False),
         ("R9", "s/plain.md", "password = 'hunter2'", False),
