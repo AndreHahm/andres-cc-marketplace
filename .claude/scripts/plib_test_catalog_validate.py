@@ -837,6 +837,52 @@ class Lifecycle(Base):
         self.assertEqual(code, 1)
         self.assertIn("cannot change when updating a draft", res["error"])
 
+    def test_update_draft_clears_verification_on_metadata_only_change(self):
+        self.add_draft()
+        for field, value in (
+            ("name", "Renamed"),
+            ("area", "other"),
+            ("short_description", "Another description."),
+            ("prerequisites", "A checkout."),
+            ("boundaries", "No edits."),
+            ("references", ["https://example.com/a"]),
+            ("attachments", ["notes.md"]),
+        ):
+            with self.subTest(field=field):
+                base = self.scratch(internal_id="p000000000001")
+                self.assertEqual(self.run_cli("update-draft", "p000000000001", base)[0], 0)
+                self.assertEqual(self.verify("p000000000001")[0], 0)
+                changed = self.scratch(internal_id="p000000000001", **{field: value})
+                self.assertEqual(self.run_cli("update-draft", "p000000000001", changed)[0], 0)
+                rec = V.read_record(self.root / SLUG / "p000000000001.md")
+                self.assertNotIn("verification", rec)
+                self.assertEqual(V.missing_verification(rec), ["quality"])
+
+    def test_update_draft_clears_verification_when_an_optional_field_is_removed(self):
+        extra = {"boundaries": "No edits.", "references": ["https://example.com/a"]}
+        self.add_draft(**extra)
+        path = self.root / SLUG / "p000000000001.md"
+        self.assertEqual(self.verify("p000000000001")[0], 0)
+        same = self.scratch(internal_id="p000000000001", **extra)
+        self.assertEqual(self.run_cli("update-draft", "p000000000001", same)[0], 0)
+        self.assertIn("quality", V.read_record(path)["verification"])
+        removed = self.scratch(internal_id="p000000000001", boundaries=extra["boundaries"])
+        self.assertEqual(self.run_cli("update-draft", "p000000000001", removed)[0], 0)
+        self.assertNotIn("verification", V.read_record(path))
+
+    def test_update_draft_metadata_change_clears_the_import_verification_too(self):
+        web = {
+            "origin": "web",
+            "source_ref": {"url": "https://example.com/p", "retrieved_on": "2026-10-03"},
+        }
+        self.add_draft(**web)
+        for kind in ("quality", "import"):
+            self.assertEqual(self.verify("p000000000001", kind)[0], 0)
+        changed = self.scratch(internal_id="p000000000001", short_description="Other.", **web)
+        self.assertEqual(self.run_cli("update-draft", "p000000000001", changed)[0], 0)
+        rec = V.read_record(self.root / SLUG / "p000000000001.md")
+        self.assertEqual(V.missing_verification(rec), ["quality", "import"])
+
     def test_update_draft_refuses_non_drafts(self):
         self.make_active()
         code, res = self.run_cli("update-draft", "p000000000001", self.scratch())

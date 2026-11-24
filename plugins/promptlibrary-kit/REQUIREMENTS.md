@@ -610,8 +610,11 @@ sync is not reviewed before it becomes active; it is still screened for secrets.
 
 Source: V4 §Quality review; owner decision 2026-11-16. State: met (the skill enforces it; the validator
 checks only that a recorded hash matches the text, so it cannot tell whether a review ran: records verified
-before 2026-11-24, drafts as well as active and inactive prompts, and a hash written into a record outside the
-skill, for example in a cloned repository, are not covered). Confirmed: yes (2026-11-16).
+before 2026-11-24, drafts as well as active and inactive prompts, a hash written into a record outside the
+skill, for example in a cloned repository, and metadata changed outside `update-draft` under a valid hash, for
+example by a hand edit or a merge, are not covered; nothing in the validator stops a verification being
+recorded after a metadata change that was not reviewed again, only the skill's step 7). Confirmed: yes
+(2026-11-16; state note amended 2026-11-24).
 
 ### REV-2: Imported and AI-written text is checked for hidden instructions
 

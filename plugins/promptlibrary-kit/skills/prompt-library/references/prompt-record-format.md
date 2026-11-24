@@ -67,7 +67,8 @@ For `session` origin use `session_id` and `turns` (one text value such as `3-5, 
 `verification.quality` (and `import`) is the SHA-256 of the prompt text after normalizing line endings to
 LF and dropping leading and trailing newline characters (a line holding only spaces or tabs is kept and
 hashed). A Windows and a Linux checkout therefore agree, and any edit to the text makes an earlier hash
-stop matching. `... hash <file>` prints it.
+stop matching. `... hash <file>` prints it. The hash covers the text only: `update-draft` clears
+verification when any other field changes, but metadata changed another way (a hand edit, a merge) keeps it.
 
 A recorded hash means "unchanged since the hash was recorded". It does not prove the text was reviewed: a
 change that rewrites both the text and the hash would still match. Review is the user's approval of the

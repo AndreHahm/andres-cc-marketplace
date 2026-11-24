@@ -53,7 +53,7 @@ line stays, and a kept line is copied unchanged from the current record.
 
 | Target record | What an approved rewrite does |
 |---|---|
-| Draft (initial, or a successor not yet finalized) | `update-draft` replaces the draft in place. Its verification is cleared if the text changed. The original stays recoverable from the displayed diff and from version control. |
+| Draft (initial, or a successor not yet finalized) | `update-draft` replaces the draft in place. Its verification is cleared if the text or any other field changed. The original stays recoverable from the displayed diff and from version control. |
 | Active or inactive record | Becomes an ordinary revision: a draft successor (new `internal_id`, `previous_id` set) that must itself be verified. |
 
 Verification hashes are recorded only after the user approves the review of the final text, with the hash

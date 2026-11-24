@@ -152,7 +152,7 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
    proposed rewrite as a diff. If the user approves a rewrite, write the full replacement record to a
    scratch file, with no reviewer placeholder (`line N removed` or `line N kept, value not shown`) in it, and
    run `<CLI> update-draft <internal_id> <scratch-file>`; it screens the new text and
-   clears the earlier verification when the text changed. This works on any draft, initial or successor.
+   clears the earlier verification when the text or any other field changed. This works on any draft, initial or successor.
    Run one review round, then go on to step 8; run this step again when the user asks for another round,
    and whenever the filed text or metadata (any field the reviewer checks) is neither what was reviewed nor
    the reviewer's approved rewrite (apart from kept lines copied unchanged). See `references/prompt-optimization-and-review.md`; an active or inactive record
@@ -184,15 +184,17 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
 
 ## Gotchas
 
-- Editing text clears or invalidates verification: never activate on a hash recorded before the last
-  edit. The script enforces this with `--expect-sha256`; do not pass a hash you did not show the user.
+- Changing text or any other field through `update-draft` clears verification: never activate on a hash
+  recorded before the last edit. `--expect-sha256` and the recorded hash detect text changes only: metadata
+  changed another way (a hand edit, a merge) keeps its verification undetected, so if you notice such a change
+  to a draft, run step 7 again before step 8 or 9. Do not pass a hash you did not show the user.
 - `prompt-reviewer` only reports and proposes. It cannot approve, activate or write; the user approves.
   Its findings are advisory, and the validator cannot tell whether the review ran. Show a Critical
   finding prominently and ask the user to acknowledge it before step 8. If `review-path` fails, the dispatch
   fails, it returns the `Refused:` line or its output is not a completed review, no review ran: ask whether to
   retry or stop. Never go on to step 8 without a completed review; on stop, the prompt stays a draft and
   `/prompt-library activate <slug>` resumes with the review. If a requested further round fails, the earlier
-  completed review counts only while the text is unchanged since it.
+  completed review counts only while the text and metadata are unchanged since it.
 - A draft, initial or successor, is replaced in place (`update-draft`); an active or inactive record gets
   a successor.
 - A revision never retires the active prompt before `finalize`.
@@ -260,7 +262,7 @@ directly; last run 2026-11-16, 7 of 7 checks passed. It failed on a copy with a 
 - [ ] A slug that does not match the slug pattern is refused before any command runs with it.
 - [ ] `activate` of an already active record is reported and stops, with no question and no command.
 
-**Last dated run record:** validator fixture tests, 151 run (148 passing, 3 POSIX-only skipped on Windows), 2026-11-24
+**Last dated run record:** validator fixture tests, 154 run (151 passing, 3 POSIX-only skipped on Windows), 2026-11-24
 (`scripts/plib_test_catalog_validate.py`), after the email screen, its review fixes and `review-path`
 (link and junction refusal, tested with a real junction on Windows) were added. The step 6 sharing notice and
 the step 7 `catalog_root` hand-off and `Refused:` handling (2026-11-16) were checked by the smoke test and

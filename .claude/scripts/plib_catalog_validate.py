@@ -1352,7 +1352,13 @@ def cmd_update_draft(args) -> dict:
     for field in ("internal_id", "slug", "version", "previous_id", "origin", "source_ref"):
         if meta.get(field) != current.get(field):
             raise CatalogError(f"{field} cannot change when updating a draft")
-    if text_hash(meta["_body"]) == text_hash(current["_body"]) and current.get("verification"):
+    unchanged = all(
+        meta.get(f) == current.get(f)
+        for f in {*meta, *current}
+        if not f.startswith("_") and f != "verification"
+    ) and text_hash(meta["_body"]) == text_hash(current["_body"])
+    # a changed text or any changed field (the review covers both) starts unverified again
+    if unchanged and current.get("verification"):
         meta["verification"] = current["verification"]
     write_record(_inside(root, root / current["_path"]), meta)
     info.update(ok=True, internal_id=meta["internal_id"], text_hash=text_hash(meta["_body"]))
