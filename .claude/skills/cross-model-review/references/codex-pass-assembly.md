@@ -89,7 +89,7 @@ form too complex to verify". In such a session only, and only after such a refus
   approval of that call covers every command in the script, including the `git diff`, `git show` and
   `export` lines that otherwise prompt one by one.
 - **Stdin text for the write helper:** write the text to a file in the scratchpad directory with the
-  `Write` tool, then pass it as stdin: `bash '<plugin root>/scripts/git-review-write-run-file.sh' '<literal $RUN>' <name> [--append] <part>... - < <scratchpad file>`.
+  `Write` tool, then pass it as stdin: `bash '<plugin root>/scripts/git-review-write-run-file.sh' '<literal $RUN>' <name> [--append] <part>... - < '<scratchpad file>'`.
   This covers the Phase 1 instruction file's "do not run `git diff`" line and the self-authored JSON
   envelopes. Whether the helper's `allowed-tools` grant matches a call that ends in this redirect is not
   verified, so the call may prompt; approve that one call, never a persistent allow rule.

@@ -174,7 +174,7 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
     assignments before the Inputs block, and a value with a single quote, a newline or a leading `-`
     stops the run with a question instead), the user is shown the script, and it
     runs as one `bash <scratchpad>/preflight.sh` call from the worktree cwd; stdin text comes from a
-    scratchpad file (`- < <file>`); every later call that needs the throwaway index (manifest
+    scratchpad file (`- < '<file>'`); every later call that needs the throwaway index (manifest
     cross-check, folder-pick planner re-run, fallback name list) sets `GIT_INDEX_FILE` as a prefix
     assignment on its own command, and a Codex dispatch or timeout retry does the same with its
     `CODEX_KIT_REVIEW_*` variables, never in a separate `export` call. `Write` touches only the scratchpad, never the repository or `$RUN`, is
