@@ -168,7 +168,7 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
 38. In a session that used `EnterWorktree`, the chained Preflight call, a write-helper heredoc whose text
     names git, a JSON heredoc, or a helper call containing a shell variable is refused by the
     worktree-isolation check (issues #723, #866) → a helper call typed directly carries only single-quoted
-    literal values (plugin root from its own `printf '%s\n' "${CLAUDE_PLUGIN_ROOT:-.claude}"` call); the
+    literal values (plugin root from SKILL.md's "trusted root" sentence); the
     Inputs block and steps 1-6 go verbatim into `<scratchpad>/preflight.sh` (only `BASE`/`SCOPE`/`PLANNER_APPROVED`
     filled in, never text from the diff, a run file or Codex output; `BASE`/`SCOPE` only as single-quoted
     assignments before the Inputs block, and a value with a single quote, a newline or a leading `-`
@@ -188,8 +188,19 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
     after the unwaived ones. A malformed line is listed in `inspection_limits` as `not applied:`; a
     missing list writes nothing and changes nothing else. The helper's parser, fingerprint and match key
     are pinned to CI's by `tests/marketplace_ci/test_git_review_accepted_findings.py` (16 tests).
+40. Sensitive names and the dispatcher's origin (issue #697): an untracked, non-ignored `deploy-credentials.txt`
+    → `codex_eligible: false`, absent from every `.codex.diff`, `--target-paths` and `<untracked_files>`
+    block, and named in First-Send clause (e); Claude's own pass still reads it. With no installed codex-kit
+    in an ordinary repository that ships `plugins/codex-kit/.../bridge-invoke.mjs` → that file never runs and
+    the run goes single-model; in this marketplace's own repository it runs only after clause (g) and a
+    permission prompt. An empty plugin root stops the chain before any helper runs.
 
 ## Quality gates
+
+- [ ] No file in `sensitive_paths` is embedded, listed as untracked or passed as a target for Codex, in the
+      planned run and the unscoped fallback alike
+- [ ] `allowed-tools` never grants a path relative to the working directory, and no command gives
+      `${CLAUDE_PLUGIN_ROOT}` a default
 
 - [ ] Preflight step 5 always sources reviewer instructions from `$BASE` via `git show`, never
       directly from `${CLAUDE_PLUGIN_ROOT}/skills/cross-model-review/...` on the happy path — the
@@ -279,10 +290,10 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
       on its own
 - [ ] The stated scenario count in SKILL.md's pointer to this file always matches this file's actual
       count — never left stale after a scenario is added or removed
-- [ ] A failed `git add -N` never aborts the chained Preflight invocation before `git diff` runs (a
-      `$SCOPE` resolving only to a deletion), and only the helper's own refusal (exit 2) sets
+- [ ] The intent-add step never aborts the chained Preflight invocation before `git diff` runs (a
+      `$SCOPE` resolving only to a deletion passes), and any other helper failure sets
       `$INTENT_ADD_REFUSED`, which stops the review at Preflight step 1, never as "nothing to review"
-- [ ] The review scope planner is always run through the fixed-shape wrapper named by `allowed-tools`'s exact `bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope-run.sh` grant, spelled out literally in Preflight step 1, never through an array, and always resolved from the installed plugin root through `${CLAUDE_PLUGIN_ROOT:-.claude}` (the `.claude/` mirror when the variable is empty, a form deliberately left ungranted so it prompts), never from the `plugins/` folder of the repository under review; the wrapper accepts no `--repo`, `--output` or `--diff-dir`
+- [ ] The review scope planner is always run through the fixed-shape wrapper named by `allowed-tools`'s exact `bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope-run.sh` grant, spelled out literally in Preflight step 1, never through an array, and always resolved from the installed plugin root through `${CLAUDE_PLUGIN_ROOT}` (this marketplace's own sessions write the `.claude/` mirror root instead, a form deliberately left ungranted so it prompts), never from the `plugins/` folder of the repository under review; the wrapper accepts no `--repo`, `--output` or `--diff-dir`
 - [ ] The throwaway index is seeded only through `git-review-copy-index.sh` (one file to `$RUN/index`, no overwrite), never through a bare `cp` or a `Bash(cp:*)` grant
 - [ ] Every file the model authors or assembles is written through `git-review-write-run-file.sh` (one file directly under `$RUN`, parts only from `$RUN` or the two fixed prompts); the only other writes are Preflight's own `git show`/`git diff` redirects to fixed `$RUN` names; `allowed-tools` has no `Write` entry. The one exception, only in an `EnterWorktree` session after an isolation-check refusal, is `Write` to the session's scratchpad directory for the Preflight script or the helper's stdin text, never into the repository or `$RUN`; in that session every call that needs `GIT_INDEX_FILE` or a `CODEX_KIT_REVIEW_*` variable sets it as a prefix assignment on its own command
 - [ ] An `<untracked_files>` block always ends with the untrusted-data sentence, and Phase 2's closing boundary names those files' contents too
@@ -336,6 +347,11 @@ Moved here from SKILL.md's Testing & Validation section, which keeps only the la
 - **2026-11-24, `iteration-24`:** re-runs eval 25 after PR #871's first review round (the quoting the text
   requires was not asserted; `echo` became `printf`). One assertion added and one reworded before the run, same
   prompt and baseline, both arms `claude-opus-5-5`: `with_skill` 6/6, baseline 4/6 (+33.3 points).
+- **2026-11-24, `iteration-25`:** adds eval 26 for scenario 40 (issue #697), baseline arm reading `main`'s text,
+  one run per arm: `with_skill` 6/6, baseline 0/6. The assertions were written down after the responses and
+  graded by the authoring session. Eval 25's expected output changed (the plugin root no longer comes from a
+  `printf` call) and it has not been re-run. The scripts are covered by `tests/marketplace_ci/`. No live Codex
+  dispatch through the new launcher, and nothing was run on Windows.
 
 Every eval run listed above is a dry run of the committed text, not a live dispatch (the live checks that
 some entries name are separate from their evals), and none is a live run of the scoped flow (one ran

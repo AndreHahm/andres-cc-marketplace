@@ -785,3 +785,33 @@ def test_issue_lookups_are_kept_per_repository(monkeypatch):
     assert helper.issue_is_open(7, "up/stream") is True
     assert helper.issue_is_open(7, helper._ORIGIN_REPO) is False
     assert helper.issue_is_open(0, "up/stream") is False
+
+
+@pytest.mark.skipif(os.name == "nt", reason="uses a shell script as the planted program")
+def test_git_and_gh_are_never_run_from_the_repository(checkout, tmp_path, monkeypatch):
+    (tmp_path / ".git").mkdir(exist_ok=True)
+    for name in ("git", "gh"):
+        planted = tmp_path / name
+        planted.write_text("#!/bin/sh\ntouch ran697\n", encoding="utf-8")
+        planted.chmod(0o755)
+    monkeypatch.setenv("PATH", os.pathsep.join([str(tmp_path), os.environ["PATH"]]))
+    assert helper._git("status") is None
+    with pytest.raises(FileNotFoundError, match="gh on PATH lies inside"):
+        helper._tool("gh")
+    assert not (tmp_path / "ran697").exists()
+
+
+def test_brief_leaves_out_sensitive_paths(checkout, tmp_path, capsys):
+    run = tmp_path / "run"
+    run.mkdir(mode=0o700)
+    (checkout / "api_token.txt").write_text("TOKEN=dummy697\n", encoding="utf-8")
+    fingerprint = helper.line_fingerprint("TOKEN=dummy697")
+    (checkout / ".claude/accepted-review-findings.local.md").write_text(
+        f"- R9 api_token.txt:1 @{fingerprint} – accepted\n"
+        f"- tool-scoping s/SKILL.md:15 @{FP} – accepted\n",
+        encoding="utf-8",
+    )
+    assert helper.main(["brief", "--run-dir", str(run)]) == 0
+    text = (run / "accepted.md").read_text(encoding="utf-8")
+    assert "s/SKILL.md" in text and "api_token" not in text and fingerprint not in text
+    assert "not briefed: 1 line(s)" in capsys.readouterr().out

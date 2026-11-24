@@ -28,16 +28,16 @@ another repository or another output path. The `export` lines (`GIT_INDEX_FILE`,
 `CODEX_KIT_REVIEW_REPO_ROOT`, `CODEX_KIT_REVIEW_TIMEOUT_MS`) have no grant, so they prompt; `git add -N` runs
 through `git-review-intent-add.sh`, which fixes the index to `<run-dir>/index`. In
 this repository's own sessions `CLAUDE_PLUGIN_ROOT` is empty, the skill itself loads from the `.claude/`
-mirror, and the command's `:-.claude` default selects that mirror's wrapper
-(`.claude/scripts/git-review-scope-run.sh`, relative to the checkout root the chain runs from). That adds no
+mirror, and, only after the yes SKILL.md's Inputs section asks for, the session writes the mirror root into the command
+(`.claude/scripts/git-review-scope-run.sh`, relative to the checkout root the chain runs from). The command
+has no `:-.claude` default: Claude Code fills in only the bare variable, so in an installed plugin a default
+selected the reviewed repository's own file (observed with 2.1.325, issue #697). The mirror form adds no
 trust beyond the skill text that named it: in that mode the repository already supplies the skill. The
 mirror form is deliberately **not** granted: a grant for a path relative to the repository would ship to
 every installed user and let a hostile repository's own file run unprompted, so in this repository the
-mirror form raises a permission prompt, which is the intended human gate. **Not
-covered:** the Codex dispatch beside it still runs `plugins/codex-kit/.../bridge-invoke.mjs` by a path
-relative to the repository, under its own pre-approved grant. In an unrelated repository that happens to
-contain a file at that path, that file would run, so do not run this skill's Codex pass there. That is
-codex-kit's own exposure, outside this change, and is reported as an open item. The `PLANNER_TOUCHED`
+mirror form raises a permission prompt, which is the intended human gate. The Codex dispatch beside it
+runs the installed codex-kit through `git-review-codex-kit.py`, which refuses a copy inside the repository or
+one of its worktrees. The `PLANNER_TOUCHED`
 check below covers a diff that *changes* the planner or its mirror.
 
 The planner must run in the call that exports `GIT_INDEX_FILE`, so intent-added untracked files are
@@ -55,14 +55,12 @@ echo "$UNSCOPED_CHANGED_FILES" | grep -qiE 'plugins/git-kit/scripts/|\.claude/sc
 and Preflight step 1 then runs the planner behind the same flag:
 
 ```bash
-if [ -z "$PLANNER_TOUCHED" ] || [ -n "$PLANNER_APPROVED" ]; then bash "${CLAUDE_PLUGIN_ROOT:-.claude}/scripts/git-review-scope-run.sh" "$RUN" 1 "$MERGE_BASE" "$BASE" ${SCOPE:+--scope "$SCOPE"} || PLAN_FAILED=1; fi
+if [ -z "$PLANNER_TOUCHED" ] || [ -n "$PLANNER_APPROVED" ]; then bash "${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope-run.sh" "$RUN" 1 "$MERGE_BASE" "$BASE" ${SCOPE:+--scope "$SCOPE"} || PLAN_FAILED=1; fi
 "${DIFF[@]}" > "$RUN/full.diff"; DIFF_STATUS=$?
 ```
 
 The wrapper command is spelled out literally (not through an array) so the `allowed-tools` grant
-`Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope-run.sh:*)` can match it. How Claude Code
-matches a grant against a command that contains a `${VAR:-default}` expansion is not verified here; if it
-does not match, the command prompts, which fails safe. The wrapper runs
+`Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope-run.sh:*)` can match it. The wrapper runs
 the planner as `python3 -I`, which keeps the script's own folder off the import path, so a file such as
 `json.py` added to that folder is not imported. The `grep -i` pattern covers the whole scripts folder and
 is case-insensitive. The tag is `1` for the first plan, and `1b` for the re-run after a folder pick.
@@ -81,7 +79,7 @@ is case-insensitive. The tag is `1` for the first plan, and `1b` for the re-run 
   review the whole diff unscoped (section 7), or stop. Record "review scope planner unavailable" in
   `inspection_limits` if unscoped is chosen.
 - Read `$RUN/manifest-1.json` with `Read`. Fields used: `files` (`path`, `bytes`, `slice`,
-  `codex_eligible`), `slices` (`name`, `files`, `bytes`), `dropped_slices`, `excluded`,
+  `codex_eligible`), `sensitive_paths`, `slices` (`name`, `files`, `bytes`), `dropped_slices`, `excluded`,
   `inspection_limits`, `candidate_dirs`, `max_slice_bytes`.
 - **Cross-check the manifest against the real changed files.** Write the changed-file names to
   `$RUN/changed.names` (`git diff --no-renames --name-only "$MERGE_BASE" > "$RUN/changed.names"`, with
@@ -175,7 +173,7 @@ slice, and write the new manifest and diffs to the new `$RUN`. A slice name must
 those:
 
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT:-.claude}/scripts/git-review-scope-run.sh" "$RUN" 1 "$MERGE_BASE" "$BASE" ${SCOPE:+--scope "$SCOPE"} --prior-manifest "<earlier manifest path>" --completed-slice <name> --completed-slice <name2> || PLAN_FAILED=1
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope-run.sh" "$RUN" 1 "$MERGE_BASE" "$BASE" ${SCOPE:+--scope "$SCOPE"} --prior-manifest "<earlier manifest path>" --completed-slice <name> --completed-slice <name2> || PLAN_FAILED=1
 ```
 
 Never list a slice that timed out or failed. The planner then skips files unchanged since a round that
@@ -201,8 +199,11 @@ safe-charset rule, so no typed path can carry shell text:
 
 1. List the changed names into `$RUN/changed.names` (section 1's command, with the `export
    GIT_INDEX_FILE` prefix). Keep a name for Codex only if it matches `^[A-Za-z0-9._/-]+$` (`grep -E`),
-   is a regular file (`test -f`), and is not a symlink (`test -L`; a symlink that stays inside the checkout
-   is dropped too, which is stricter than the planner's own rule but simple). Everything else stays in
+   does not match the sensitive-name pattern (`grep -iE
+   'secret|credential|password|token|(^|/)(\.env[^/]*|[^/]*\.env|[^/]*\.(key|pem|p12|pfx|jks|kdbx)(\.[^/]*)?|id_(rsa|ed25519|ecdsa|dsa)(\.[^/]*)?|service-account\.json|\.npmrc|\.pgpass|\.netrc|\.pypirc|\.htpasswd)(/|$)'`;
+   the matches are this run's `sensitive_paths`, named in the First-Send question),
+   is a regular file (`test -f`), and has no symlink on its path (`realpath -- <name>` prints exactly
+   `$REPO_ROOT/<name>`; a check of the last component alone misses a symlinked folder). Everything else stays in
    Claude's review only and is listed in `inspection_limits`.
 2. `$TARGET_PATHS` is the kept names, comma-separated. The Codex diff is one command over only those
    names: `git diff --no-renames --text --no-ext-diff --no-textconv --ignore-submodules=none

@@ -1773,7 +1773,9 @@ def test_the_intent_add_helper_checks_the_run_directory_and_the_pathspec(
     assert not list(good.iterdir()) and not list(wrong_name.iterdir())
     # a pathspec that looks like an option is a pathspec, never an option
     odd = _intent_add(repo, str(good), "--all")
-    assert odd.returncode != 0 and "--all" in odd.stderr
+    assert odd.returncode == 0 and not list(
+        good.iterdir()
+    )  # it matches no file, so nothing is added
 
 
 def test_the_intent_add_helper_does_not_run_a_hook_from_the_reviewed_tree(
@@ -1878,3 +1880,97 @@ def test_the_writer_append_keeps_the_owner_only_mode_and_drops_git_config_variab
         env=env,
     )
     assert ran.returncode == 0, ran.stderr  # no hijacked rev-parse: still sees the real repo
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        ".env",
+        "app/.env.local",
+        "deploy-credentials.txt",
+        "config/Secrets/prod.yaml",
+        "API_TOKEN",
+        "my password.txt",
+        "keys/server.PEM",
+        "id_ed25519",
+        ".npmrc",
+        "a/service-account.json",
+        "x.env",
+        ".env/prod",
+        ".envrc",
+        "id_rsa.old",
+        "server.key.bak",
+        "vault.kdbx",
+    ],
+)
+def test_a_sensitive_name_is_recognised(path):
+    assert M.common.is_sensitive(path)
+
+
+@pytest.mark.parametrize("path", ["README.md", "environment.py", "keyboard.py", "a.keys"])
+def test_an_ordinary_name_is_not_sensitive(path):
+    assert not M.common.is_sensitive(path)
+
+
+def test_the_planner_covers_every_commit_scan_pattern():
+    """The planner's list follows git-scan-staged-files.sh's `case` patterns (#697)."""
+    text = SCRIPT.with_name("git-scan-staged-files.sh").read_text(encoding="utf-8")
+    block = text.split('case "$name" in', 1)[1].split(")", 1)[0]
+    patterns = [p.strip("\\\n ") for p in block.split("|")]
+    assert len(patterns) > 10
+    for pattern in patterns:
+        assert M.common.is_sensitive("dir/" + pattern.replace("*", "x")), pattern
+
+
+def test_end_to_end_a_sensitive_untracked_file_never_reaches_codex(repo, tmp_path, mktemp_dirs):
+    run_dir = mktemp_dirs()
+    shutil.copyfile(repo / ".git/index", run_dir / "index")
+    (repo / "deploy-credentials.txt").write_text("TOKEN=dummy697\n", encoding="utf-8")
+    (repo / "plain697.txt").write_text("plain\n", encoding="utf-8")
+    env = {**os.environ, "GIT_INDEX_FILE": str(run_dir / "index")}
+    subprocess.run(["git", "add", "-N", "."], cwd=repo, env=env, check=True)
+    base = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=repo, check=True, capture_output=True, text=True
+    ).stdout.strip()
+    out, diffs = tmp_path / "m.json", tmp_path / "diffs"
+    argv = ["--merge-base", base, "--base-ref", "main", "--output", str(out)]
+    subprocess.run(
+        [sys.executable, str(SCRIPT), *argv, "--diff-dir", str(diffs)],
+        cwd=repo,
+        env=env,
+        check=True,
+    )
+    manifest = json.loads(out.read_text(encoding="utf-8"))
+    eligible = {f["path"]: f["codex_eligible"] for f in manifest["files"]}
+    assert eligible["deploy-credentials.txt"] is False and eligible["plain697.txt"] is True
+    assert manifest["sensitive_paths"] == ["deploy-credentials.txt"]
+    assert any("sensitive file name" in note for note in manifest["inspection_limits"])
+    codex = b"".join(f.read_bytes() for f in diffs.glob("*.codex.diff"))
+    assert b"dummy697" not in codex and b"plain697" in codex
+
+
+def test_the_intent_add_helper_reports_a_git_failure_but_not_a_deletion_only_scope(
+    repo, mktemp_dirs
+):
+    run_dir = mktemp_dirs()
+    shutil.copyfile(repo / ".git/index", run_dir / "index")
+    assert _intent_add(repo, str(run_dir), "no-such-file.txt").returncode == 0
+    (repo / "new697.txt").write_text("x\n", encoding="utf-8")
+    (run_dir / "index.lock").touch()
+    result = _intent_add(repo, str(run_dir))
+    assert result.returncode == 2
+    assert "could not intent-add" in result.stderr
+
+
+@pytest.mark.skipif(os.name == "nt", reason="uses a shell script as the planted program")
+def test_the_planner_never_runs_a_git_from_the_repository(repo, monkeypatch):
+    planted = repo / "git"
+    planted.write_text("#!/bin/sh\ntouch ran697\n", encoding="utf-8")
+    planted.chmod(0o755)
+    real = os.environ["PATH"]
+    monkeypatch.setenv("PATH", os.pathsep.join(["", ".", real]))
+    assert M._git(repo, "rev-parse", "HEAD").returncode == 0
+    monkeypatch.setenv("PATH", os.pathsep.join([str(repo), real]))
+    with pytest.raises(FileNotFoundError, match="inside the repository"):
+        M._git(repo, "rev-parse", "HEAD")
+    assert not (repo / "ran697").exists()

@@ -61,6 +61,8 @@ check timed out but the review actually finished", "retry the Codex review check
 - **Triggering Codex's first review of a PR** — that already happens automatically when a PR is opened
   non-draft or a draft PR is marked ready for review. Don't post `@codex review` just to kick off a review
   that hasn't run yet; only use this skill once a review is claimed done but stuck.
+- **Running a local Codex review of the working diff** — that's `cross-model-review`; this skill only
+  recovers a stuck PR check.
 - **You have no confirmation Codex actually finished** — if the user hasn't checked Codex's own dashboard,
   ask them to check first (step 2 below) rather than treating "it's been a while" as equivalent
   confirmation.

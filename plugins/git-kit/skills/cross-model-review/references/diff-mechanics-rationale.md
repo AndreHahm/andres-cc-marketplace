@@ -14,15 +14,15 @@ same diff command shows its full content as an addition. Without this, an all-un
 (the common case right after `git init` or creating a wholly new file) reports "nothing to review"
 despite genuinely having something to review.
 
-## Why a `git add -N` failure is tolerated for a deletion-only `$SCOPE`
+## Why a deletion-only `$SCOPE` passes while any other intent-add failure stops the review
 
-A deletion-only `$SCOPE` pathspec needs a disk match, so `git add -N` fails outright against it — and,
-untolerated, that failure aborts the whole `&&`-chained Preflight sequence before any later step runs.
-`git diff "$MERGE_BASE" -- "$SCOPE"` still shows the deletion correctly on its own; `git add -N`'s
-failure here is expected and harmless, not a sign anything is actually wrong.
+A deletion-only `$SCOPE` pathspec matches nothing on disk, so `git add -N` fails outright against it,
+although `git diff "$MERGE_BASE" -- "$SCOPE"` shows the deletion correctly on its own. The helper
+therefore lists the untracked files first and exits 0 when there are none to add.
 
-The tolerance stops at git's own failure. `git-review-intent-add.sh` exits 2 when it refuses to run at
-all, for example on a run directory it will not accept, and then no untracked file reaches the diff.
+Every other failure exits 2, git's own included (issue #697: an index lock made `git add` exit 128, which
+the chain then took for the deletion case). The chain treats any non-zero exit, a missing helper's 127
+too, as a refusal: no untracked file can be trusted to have reached the diff.
 That sets `$INTENT_ADD_REFUSED=1` (issue #637: a refusal here used to vanish behind a bare `|| true`).
 The chain still continues so its closing `echo` runs, then Preflight step 1 stops the review: the diff
 can't be trusted. A refused run directory is refused by the index helper too, so the throwaway index
@@ -41,13 +41,7 @@ an empty placeholder (verified empirically: intent-adding a two-line untracked f
 shows both lines, not a contentless add) — so an untracked file inside `$SCOPE` normally already
 appears in full in whatever diff includes it.
 
-The gap is narrower than "Codex can't see untracked files at all": an untracked path can still be
-present in `$UNTRACKED_FILES` while being *excluded* from `$TARGET_PATHS`/the eligible-files list that
-the `.codex.diff` files are scoped to — the invalid-character check and the no-longer-exists check (Preflight
-step 2) only reassign `$TARGET_PATHS`, not `$UNTRACKED_FILES`; only the symlink-outside-repo check
-(also step 2) reassigns both. An untracked file dropped from `$TARGET_PATHS` for either of those two
-reasons stays fully visible in Claude's own native `$DIFF_STR` but never appears in the `.codex.diff` files at
-all. If `$UNTRACKED_FILES` is non-empty, Phase 1 and Phase 2 both additionally append it explicitly to
-Codex's instructions (see each phase's Codex-facing assembly step) so Codex reads those files directly
-via a read-only file tool, covering exactly this gap rather than a general "Codex can't see untracked
-files" claim.
+Phase 1 and Phase 2 still name the batch's untracked files in an `<untracked_files>` block, because Codex's
+own subprocess never sees intent-added files in the index. Since issue #697 the block holds only eligible
+paths: a file dropped from `$TARGET_PATHS` (odd characters, a symlink, a sensitive name) is never listed
+as untracked either, and stays in Claude's own review only.

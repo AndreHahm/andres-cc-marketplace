@@ -13,7 +13,10 @@
 # index file, if it exists, must be a regular file, not a symlink (a swap after that check is not
 # prevented). Git hooks and fsmonitor are disabled for the call. The one optional pathspec is passed
 # after `--`. Besides the index (and its lock file), git may write the fixed empty blob object.
-set -euo pipefail
+# Exit 0 means every untracked file was added, or there was none to add (a pathspec naming only a
+# deletion). Anything else exits 2, git's own failures and bash errors included (issue #697).
+set -Eeuo pipefail
+trap 'exit 2' ERR
 
 fail() {
   echo "git-review-intent-add.sh: $*" >&2
@@ -63,4 +66,9 @@ fi
 # Writing an index can run a post-index-change hook or a core.fsmonitor command, and either could come
 # from the branch under review (a core.hooksPath inside the work tree), so both are switched off.
 export GIT_INDEX_FILE=$index
-exec git -c core.hooksPath=/dev/null -c core.fsmonitor=false add -N -- "$spec"
+git_safe=(git -c core.hooksPath=/dev/null -c core.fsmonitor=false)
+# `git add` fails on a pathspec that matches no file on disk, which is not an error here.
+untracked=$("${git_safe[@]}" ls-files --others --exclude-standard -- "$spec") ||
+  fail "could not list untracked files"
+[ -n "$untracked" ] || exit 0
+"${git_safe[@]}" add -N -- "$spec" || fail "git could not intent-add the untracked files"

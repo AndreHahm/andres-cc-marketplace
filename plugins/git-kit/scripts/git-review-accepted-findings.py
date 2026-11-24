@@ -43,6 +43,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib.util
 import json
 import os
 import re
@@ -50,6 +51,20 @@ import stat
 import subprocess
 import sys
 from pathlib import Path
+from types import ModuleType
+
+
+def _load_common() -> ModuleType:
+    path = Path(__file__).resolve().with_name("git_review_common.py")
+    spec = importlib.util.spec_from_file_location("git_review_common", path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.dont_write_bytecode = True
+    spec.loader.exec_module(module)
+    return module
+
+
+common = _load_common()
 
 LOCAL_LIST = Path(".claude/accepted-review-findings.local.md")
 FINGERPRINT_LEN = 32
@@ -78,6 +93,10 @@ _SUMMARY_HEADING = re.compile(r"^#{1,6}\s+Summary\s*$", re.IGNORECASE)
 _CONTROL_CHARS = re.compile(r"[\x00-\x1f\x7f]")
 MAX_TRACKED_ISSUES = 10
 _MAX_TRACKED_SUMMARY = 600
+
+
+def _tool(name: str) -> str:
+    return common.tool(name, common.checkout_root(Path.cwd()))
 
 
 def line_fingerprint(text: str) -> str:
@@ -263,7 +282,7 @@ def _open_issue_fields(number: int, repo: str | None) -> tuple[str, str] | None:
                 raise OSError("no github.com repository")
             done = subprocess.run(
                 [
-                    "gh",
+                    _tool("gh"),
                     "api",
                     f"repos/{slug}/issues/{number}",
                     "--jq",
@@ -358,7 +377,7 @@ def _git(*args: str) -> tuple[int, str, str] | None:
     env = {k: v for k, v in os.environ.items() if k != "GIT_INDEX_FILE"}
     try:
         done = subprocess.run(
-            ["git", *args],
+            [_tool("git"), *args],
             capture_output=True,
             text=True,
             errors="surrogateescape",
@@ -406,7 +425,7 @@ def open_pull_request() -> tuple[str, str, str | None] | None:
     own URL, never from `origin`: gh may resolve the branch against another repository."""
     try:
         done = subprocess.run(
-            ["gh", "pr", "view", "--json", "state,number,url,body"],
+            [_tool("gh"), "pr", "view", "--json", "state,number,url,body"],
             capture_output=True,
             text=True,
             encoding="utf-8",
@@ -627,8 +646,14 @@ def cmd_brief(run_dir: str) -> int:
     # Issue #814, as CI's `render_accepted_findings_briefing`: a model cannot check a
     # fingerprint, so only a waiver whose flagged line is still in the working tree is briefed,
     # under the line it is on now; one in the earlier format (no fingerprint) never is.
+    # A line for a sensitive path would send its name and a hash of its content to Codex (#697).
+    sensitive = [w for w in waivers if common.is_sensitive(w["path"])]
+    if sensitive:
+        print(f"not briefed: {len(sensitive)} line(s) for a sensitive file name")
     briefable = []
     for w in waivers:
+        if w in sensitive:
+            continue
         if not (_SAFE_RULE.fullmatch(w["rule"]) and _safe_relative(w["path"])):
             continue
         if w["fingerprint"] is None:
