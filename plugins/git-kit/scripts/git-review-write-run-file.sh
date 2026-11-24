@@ -20,7 +20,7 @@
 # verbatim, in order, so the caller supplies any newlines it wants between them.
 set -euo pipefail
 # shellcheck source=git-review-path.sh
-source "${BASH_SOURCE[0]%/*}/git-review-path.sh" # before any program runs
+source "${BASH_SOURCE[0]%[/\\]*}/git-review-path.sh" || exit 2 # before any program runs; Git Bash may pass backslashes
 
 fail() {
   echo "git-review-write-run-file.sh: $*" >&2

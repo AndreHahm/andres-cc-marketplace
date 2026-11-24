@@ -2028,3 +2028,13 @@ def test_the_shell_helpers_never_run_a_program_from_the_repository(
     ran = subprocess.run(argv, cwd=repo, input="x", capture_output=True, text=True)
     assert not list(planted.glob("*.ran")), ran.stderr
     assert ran.returncode == 0, ran.stderr
+
+
+def test_every_shell_helper_sources_the_path_filter_by_either_separator():
+    """Git Bash can pass a helper's own path with backslashes, which `%/*` would not strip."""
+    for name in ("copy-index", "intent-add", "scope-run", "write-run-file"):
+        text = SCRIPT.with_name(f"git-review-{name}.sh").read_text(encoding="utf-8")
+        line = next(s for s in text.splitlines() if s.startswith("source"))
+        assert line.startswith(r'source "${BASH_SOURCE[0]%[/\\]*}/git-review-path.sh" || exit 2'), (
+            name
+        )
