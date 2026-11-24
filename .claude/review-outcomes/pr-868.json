@@ -1,0 +1,175 @@
+{
+  "entries": [
+    {
+      "disposition": "false_positive",
+      "finding": "4677554792",
+      "line": 268,
+      "note": "GitHub lists untouched jobs again under the new attempt (11 public runs checked).",
+      "path": "plugins/git-kit/scripts/git-required-checks.py",
+      "pr": 868,
+      "recorded_at": "2026-11-24T09:21:47+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4677554931",
+      "line": 76,
+      "note": "Checkout paths quoted in 0d4b155c.",
+      "path": "plugins/git-kit/references/git-bypass-attestation-protocol.md",
+      "pr": 868,
+      "recorded_at": "2026-11-24T09:21:47+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4677555146",
+      "line": 99,
+      "note": "README lists python3 and GitHub read access, 0d4b155c.",
+      "path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+      "pr": 868,
+      "recorded_at": "2026-11-24T09:21:47+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4677555461",
+      "line": 170,
+      "note": "Eval 37 covers step 2's wait.",
+      "path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+      "pr": 868,
+      "recorded_at": "2026-11-24T09:34:21+00:00"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "4677636985",
+      "line": 59,
+      "note": "merge-pr step 1 stops on the same pattern first.",
+      "path": "plugins/git-kit/scripts/git-required-checks.py",
+      "pr": 868,
+      "recorded_at": "2026-11-24T09:21:47+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4677636994",
+      "line": 249,
+      "note": "Replacement fails closed on skips, 0d4b155c.",
+      "path": "plugins/git-kit/scripts/git-required-checks.py",
+      "pr": 868,
+      "recorded_at": "2026-11-24T09:21:47+00:00"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "4677637000",
+      "line": 273,
+      "note": "4(c) waits for unfinished Marketplace CI entries (0d4b155c); a run whose jobs do not exist yet is a disclosed residual.",
+      "path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+      "pr": 868,
+      "recorded_at": "2026-11-24T09:34:21+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-claude-delta-r1-mp165",
+      "line": 165,
+      "note": "Reworded in 0d4b155c.",
+      "path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+      "pr": 868,
+      "recorded_at": "2026-11-24T09:21:47+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-claude-delta-r1-rc58",
+      "line": 58,
+      "note": "Dot-only repository names rejected in 0d4b155c.",
+      "path": "plugins/git-kit/scripts/git-required-checks.py",
+      "pr": 868,
+      "recorded_at": "2026-11-24T09:21:47+00:00"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "ci-codex-dependency-reviewer-r1-commit48",
+      "line": 48,
+      "note": "Pre-existing commit/create-pr pair with a documented loop-breaker; waived in the PR body.",
+      "path": "plugins/git-kit/skills/commit/SKILL.md",
+      "pr": 868,
+      "recorded_at": "2026-11-24T09:21:47+00:00"
+    },
+    {
+      "disposition": "declined",
+      "finding": "ci-codex-grant-scope-r1-commit12",
+      "line": 12,
+      "note": "Disclosed limit of the marker script grant.",
+      "path": "plugins/git-kit/skills/commit/SKILL.md",
+      "pr": 868,
+      "recorded_at": "2026-11-24T09:21:47+00:00"
+    },
+    {
+      "disposition": "declined",
+      "finding": "ci-codex-grant-scope-r1-createpr9",
+      "line": 9,
+      "note": "Disclosed limit of the marker script grant.",
+      "path": "plugins/git-kit/skills/create-pr/SKILL.md",
+      "pr": 868,
+      "recorded_at": "2026-11-24T09:21:47+00:00"
+    },
+    {
+      "disposition": "declined",
+      "finding": "ci-codex-rulebook-r1-commit12",
+      "line": 12,
+      "note": "Pre-existing; the scratchpad Edit rule was chosen deliberately.",
+      "path": "plugins/git-kit/skills/commit/SKILL.md",
+      "pr": 868,
+      "recorded_at": "2026-11-24T09:21:47+00:00"
+    },
+    {
+      "disposition": "declined",
+      "finding": "ci-codex-rulebook-r2-mp6",
+      "line": 6,
+      "note": "Disclosed limit of the marker script grant.",
+      "path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+      "pr": 868,
+      "recorded_at": "2026-11-24T09:34:21+00:00"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "ci-codex-rulebook-r2-mp99",
+      "line": 99,
+      "note": "R26 covers expensive actions; this is one read-only gh call per workflow run, 15 runs in 4.7 seconds, no model calls. Waived in the PR body.",
+      "path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+      "pr": 868,
+      "recorded_at": "2026-11-24T09:34:21+00:00"
+    },
+    {
+      "disposition": "declined",
+      "finding": "ci-codex-security-r2-mp6",
+      "line": 6,
+      "note": "Pre-existing grants, limits disclosed in the bypass protocol.",
+      "path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+      "pr": 868,
+      "recorded_at": "2026-11-24T09:34:21+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-codex-security-reviewer-r1-rc269",
+      "line": 269,
+      "note": "Same cause as 4677636994, fixed in 0d4b155c.",
+      "path": "plugins/git-kit/scripts/git-required-checks.py",
+      "pr": 868,
+      "recorded_at": "2026-11-24T09:21:47+00:00"
+    },
+    {
+      "disposition": "declined",
+      "finding": "ci-codex-skill-reviewer-r2-mp6",
+      "line": 6,
+      "note": "Disclosed limit of the marker script grant.",
+      "path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+      "pr": 868,
+      "recorded_at": "2026-11-24T09:34:21+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-codex-skill-reviewer-r2-readme16",
+      "line": 16,
+      "note": "README names repository rulesets.",
+      "path": "plugins/git-kit/README.md",
+      "pr": 868,
+      "recorded_at": "2026-11-24T09:34:21+00:00"
+    }
+  ]
+}

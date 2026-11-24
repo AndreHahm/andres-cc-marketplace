@@ -1,0 +1,26 @@
+{
+  "eval_id": 37,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Keeps waiting after polls 1 and 2 (no COMPLETED `Unit tests` entry later than the baseline), whatever the script reports",
+      "passed": true,
+      "evidence": "'not strictly later than the 10:00:00 baseline, so (a) is not met'; 'IN_PROGRESS, so it is not COMPLETED and (a) is not met'"
+    },
+    {
+      "text": "Keeps waiting after poll 3 (`Codacy` missing) and poll 4 (the first of two clean results)",
+      "passed": true,
+      "evidence": "'reports Codacy missing, so (b) fails and the consecutive count resets to zero'; 'first clean consecutive poll (count = 1)'"
+    },
+    {
+      "text": "Ends the wait at poll 5 and classifies from the last script output, with the head unchanged",
+      "passed": true,
+      "evidence": "'second consecutive clean poll (count = 2), so the wait ends here'; 'Classify from the last script output (poll 5)'; 'a different head stops the run'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

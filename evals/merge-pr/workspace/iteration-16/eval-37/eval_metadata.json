@@ -1,0 +1,21 @@
+{
+  "eval_id": 37,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "Keeps waiting after polls 1 and 2 (no COMPLETED `Unit tests` entry later than the baseline), whatever the script reports",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "Keeps waiting after poll 3 (`Codacy` missing) and poll 4 (the first of two clean results)",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "Ends the wait at poll 5 and classifies from the last script output, with the head unchanged",
+      "type": "functionality",
+      "target": "answer.md"
+    }
+  ]
+}
