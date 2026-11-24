@@ -55,8 +55,8 @@
         "max": 0,
         "agree": 3,
         "stable": null,
-        "labelled": 0,
-        "precision": null,
+        "labelled": 5,
+        "precision": 0.6,
         "findings": [
           {
             "rule": "plugin-rulebook:R6",
@@ -71,8 +71,8 @@
           },
           {
             "rule": "plugin-rulebook:R6",
-            "path": "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
-            "line": 220,
+            "path": "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md",
+            "line": 346,
             "severities": {
               "Minor": 1
             },
@@ -82,8 +82,8 @@
           },
           {
             "rule": "plugin-rulebook:R6",
-            "path": "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md",
-            "line": 346,
+            "path": "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+            "line": 220,
             "severities": {
               "Minor": 1
             },
@@ -118,8 +118,8 @@
         "max": 0,
         "agree": 3,
         "stable": null,
-        "labelled": 0,
-        "precision": null,
+        "labelled": 1,
+        "precision": 1.0,
         "findings": [
           {
             "rule": "plugin-rulebook:R6",
@@ -150,8 +150,8 @@
         "max": 2,
         "agree": 2,
         "stable": null,
-        "labelled": 0,
-        "precision": null,
+        "labelled": 2,
+        "precision": 0.0,
         "findings": [
           {
             "rule": "dependency-graph",
@@ -211,11 +211,22 @@
         "max": 3,
         "agree": 1,
         "stable": null,
-        "labelled": 0,
-        "precision": null,
+        "labelled": 6,
+        "precision": 0.8333333333333334,
         "findings": [
           {
             "rule": "path-scope",
+            "path": "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+            "line": 478,
+            "severities": {
+              "Major": 1
+            },
+            "reported": 1,
+            "blocking": 1,
+            "runs": 3
+          },
+          {
+            "rule": "prompt-injection-surface",
             "path": "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
             "line": 478,
             "severities": {
@@ -237,9 +248,9 @@
             "runs": 3
           },
           {
-            "rule": "prompt-injection-surface",
-            "path": "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
-            "line": 478,
+            "rule": "prompt-injection surface",
+            "path": "plugins/plugin-devkit/skills/command-development/SKILL.md",
+            "line": 143,
             "severities": {
               "Major": 1
             },
@@ -268,17 +279,6 @@
             "reported": 1,
             "blocking": 1,
             "runs": 3
-          },
-          {
-            "rule": "prompt-injection surface",
-            "path": "plugins/plugin-devkit/skills/command-development/SKILL.md",
-            "line": 143,
-            "severities": {
-              "Major": 1
-            },
-            "reported": 1,
-            "blocking": 1,
-            "runs": 3
           }
         ]
       },
@@ -296,9 +296,20 @@
         "max": 0,
         "agree": 3,
         "stable": null,
-        "labelled": 0,
-        "precision": null,
+        "labelled": 3,
+        "precision": 0.6666666666666666,
         "findings": [
+          {
+            "rule": "permission-risk/tool-scoping",
+            "path": "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md",
+            "line": 397,
+            "severities": {
+              "Minor": 1
+            },
+            "reported": 1,
+            "blocking": 0,
+            "runs": 3
+          },
           {
             "rule": "prompt-injection-surface",
             "path": "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
@@ -314,17 +325,6 @@
             "rule": "permission-risk/tool-scoping",
             "path": "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md",
             "line": 21,
-            "severities": {
-              "Minor": 1
-            },
-            "reported": 1,
-            "blocking": 0,
-            "runs": 3
-          },
-          {
-            "rule": "permission-risk/tool-scoping",
-            "path": "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md",
-            "line": 397,
             "severities": {
               "Minor": 1
             },
@@ -350,8 +350,8 @@
         "max": 0,
         "agree": 3,
         "stable": null,
-        "labelled": 0,
-        "precision": null,
+        "labelled": 1,
+        "precision": 1.0,
         "findings": [
           {
             "rule": "security",
@@ -380,8 +380,8 @@
         "max": 1,
         "agree": 2,
         "stable": null,
-        "labelled": 0,
-        "precision": null,
+        "labelled": 6,
+        "precision": 0.3333333333333333,
         "findings": [
           {
             "rule": "security",
@@ -395,9 +395,9 @@
             "runs": 3
           },
           {
-            "rule": "tool-scope",
-            "path": "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md",
-            "line": 21,
+            "rule": "security",
+            "path": "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+            "line": 105,
             "severities": {
               "Minor": 1
             },
@@ -406,9 +406,9 @@
             "runs": 3
           },
           {
-            "rule": "security",
-            "path": "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
-            "line": 105,
+            "rule": "tool-scope",
+            "path": "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md",
+            "line": 21,
             "severities": {
               "Minor": 1
             },
