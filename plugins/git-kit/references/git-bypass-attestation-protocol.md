@@ -73,7 +73,7 @@ login/repo-name character rules make this safe, unlike a shell-string compositio
       reason holding an HTML comment delimiter, a backslash followed by `u`, or a non-printable character;
       report that and stop (ask for a rephrase of such a reason). When
       `CLAUDE_PLUGIN_ROOT` is empty (this repository's own sessions), run the `.claude/scripts/` copy from
-      the checkout root as `python3 -I $PWD/.claude/scripts/git-bypass-attestation-marker.py ...`; that form
+      the checkout root as `python3 -I "$PWD/.claude/scripts/git-bypass-attestation-marker.py" ...`; that form
       is not granted, so it prompts unless the user's settings allow it. If neither copy exists, stop. When the
       PR's changed files hold either copy of the script, or the checkout's copy differs from the base
       branch's (committed on the checked-out branch or not) or could not be compared with it, say so first
