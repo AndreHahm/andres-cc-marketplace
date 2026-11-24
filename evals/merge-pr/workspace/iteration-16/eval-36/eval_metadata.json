@@ -1,0 +1,21 @@
+{
+  "eval_id": 36,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "Keeps waiting after poll 1 because an unfinished Marketplace CI entry means a run may still create its policy job",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "Keeps waiting after polls 2 and 3 (pending; the condition must hold on two consecutive polls)",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "Captures the baseline after poll 4, before touching the label",
+      "type": "functionality",
+      "target": "answer.md"
+    }
+  ]
+}

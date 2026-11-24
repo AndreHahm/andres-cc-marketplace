@@ -1,0 +1,26 @@
+{
+  "eval_id": 36,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Keeps waiting after poll 1 because an unfinished Marketplace CI entry means a run may still create its policy job",
+      "passed": true,
+      "evidence": "'`Codex delta review` is IN_PROGRESS, so a Marketplace CI run is in flight. It has not created its policy job yet'"
+    },
+    {
+      "text": "Keeps waiting after polls 2 and 3 (pending; the condition must hold on two consecutive polls)",
+      "passed": true,
+      "evidence": "'Poll 2: wait ... B fails: the exception covers only missing'; 'Poll 3: wait one more poll ... one qualifying poll is not enough'"
+    },
+    {
+      "text": "Captures the baseline after poll 4, before touching the label",
+      "passed": true,
+      "evidence": "'Poll 4: go on ... Now, before touching the label, run ... and record the `startedAt`'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

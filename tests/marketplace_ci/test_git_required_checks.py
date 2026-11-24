@@ -318,6 +318,10 @@ def test_exit_codes_and_branch_quoting(monkeypatch, capsys):
         ["o/r", "main"],
         ["o/r/x", "main", SHA],
         ["{owner}/{repo}", "main", SHA],
+        ["o/..", "main", SHA],
+        ["o/.", "main", SHA],
+        ["o/r", "..", SHA],
+        ["o/r", "a/../b", SHA],
         ["o/r", "a b", SHA],
         ["o/r", "main", "HEAD"],
     ],
@@ -376,9 +380,12 @@ def test_a_partial_rerun_keeps_the_other_same_name_job(monkeypatch):
     [
         (["failure", "skipped"], ["success"], "failing"),
         (["failure", "success"], ["skipped", "success"], "failing"),
-        (["failure", "skipped"], ["success", "skipped"], "passing"),
+        (["failure", "skipped"], ["success", "skipped"], "failing"),
+        (["failure", "skipped"], ["skipped", "success"], "failing"),
+        (["failure", "failure"], ["success", "success"], "passing"),
+        (["failure", "success"], ["success"], "failing"),
         (["failure"], ["skipped"], "failing"),
-        (["failure"], ["success", "skipped"], "passing"),
+        (["failure"], ["success", "skipped"], "failing"),
     ],
 )
 def test_a_skipped_same_name_job_does_not_hide_a_partial_rerun(
@@ -390,6 +397,32 @@ def test_a_skipped_same_name_job_does_not_hide_a_partial_rerun(
     found = jobs(*range(1, split)) + jobs(*range(split, len(conclusions) + 1), attempt=2)
     got = state(monkeypatch, checks=checks, runs=[run(10, attempt=2)], jobs={10: found})
     assert got == expected
+
+
+def test_exclusive_same_name_jobs_do_not_replace_each_other_across_runs(monkeypatch):
+    got = state(
+        monkeypatch,
+        checks=[
+            check(1, conclusion="failure"),
+            check(2, conclusion="skipped"),
+            check(3, conclusion="skipped", suite=2),
+            check(4, suite=2),
+        ],
+        runs=[run(10), run(20, suite=2)],
+        jobs={10: jobs(1, 2), 20: jobs(3, 4)},
+    )
+    assert got == "failing"
+
+
+def test_a_job_carried_into_a_failed_rerun_still_passes(monkeypatch):
+    # GitHub lists a job that a partial re-run did not touch again, with a new id (seen live).
+    got = state(
+        monkeypatch,
+        checks=[check(1), check(2)],
+        runs=[run(10, attempt=2, conclusion="failure")],
+        jobs={10: jobs(1) + jobs(2, attempt=2)},
+    )
+    assert got == "passing"
 
 
 def test_only_token_made_entries_are_missing(monkeypatch):

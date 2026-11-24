@@ -20,25 +20,24 @@ on the head is then attributed to a source that the server sets, never to a disp
   skipped counts instead, if there is one. An unfinished entry older than that skip never counts.
 - a commit status: its creator. A failure posted with a workflow's token is never replaced.
 
-Within a workflow source the newest run counts, by run id, so re-running an old run replaces
-nothing. Until that run's current attempt has the context's job, the context is pending while the
-run is unfinished; a finished run or cancelled attempt without the job makes it missing. A skipped
-entry never replaces another result. A context passes only when every source passes,
-and a context whose entries were all made with a workflow's token (check run or commit status) is
-missing. With a named app only that app's entries count.
+Within a workflow source a newer run, by run id, replaces an older one (see Limits), so re-running
+an old run replaces nothing. Until that run's current attempt has the context's job, the context is
+pending while the run is unfinished; a finished run or cancelled attempt without the job makes it
+missing. A skipped entry never replaces another result. A context passes only when every source
+passes, and a context whose entries were all made with a workflow's token (check run or commit
+status) is missing. With a named app only that app's entries count.
 
 Limits: runs of two pull requests with the same head commit are not told apart, as in GitHub's own
 per-commit rules. Any workflow's real job with the required name counts, so it can stand in for a
 job that never ran. Two same-name jobs in one workflow can pass before the second one is created.
-One app's several same-name check runs count as one. When an attempt lists fewer same-name jobs
-than an earlier one, every attempt's entries count, so a failure that a partial re-run fixed keeps
-the context failing until a full re-run (fails closed). Attempts are compared by that number only,
-so a partial re-run that leaves out a failed job but adds as many others is not noticed. Same-name
-jobs that exclude each other are not told apart, so one's success replaces the other's failure of
-an earlier run or attempt. Only `required_status_checks` rules are evaluated, not required
-workflows, code scanning or deployments. A failing token-created entry is never superseded (fails
-closed). An unfinished job of any run, even an older one, keeps the context pending until it ends
-(fails closed). `gh` is resolved through PATH.
+One app's several same-name check runs count as one. An attempt or run replaces the earlier results
+of its workflow source only when none of its same-name jobs is skipped and it has at least as many
+of them. Until such a one exists (often only with a new commit) an earlier failure counts: for jobs
+that exclude each other, a later run with fewer of them, or a job skipped in every later run (fails
+closed). A partial re-run lists the jobs it did not re-run again, with new ids (seen live). Only
+`required_status_checks` rules are evaluated, not required workflows, code scanning or deployments.
+A failing token-created entry is never superseded (fails closed). An unfinished job of any run, even
+an older one, keeps the context pending until it ends (fails closed). `gh` is resolved through PATH.
 
 Prints one JSON object. Exit 0 when every required context passes, 1 when one does not, 2 when the
 answer could not be determined (nothing on stdout then). Every request is a GET against github.com
@@ -55,8 +54,8 @@ from typing import Any
 from urllib.parse import quote
 
 GH_TIMEOUT = 120
-REPO_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]*/[A-Za-z0-9._-]+")
-BRANCH_RE = re.compile(r"[A-Za-z0-9._/@+=-]+")
+REPO_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]*/(?!\.+\Z)[A-Za-z0-9._-]+")
+BRANCH_RE = re.compile(r"(?!.*\.\.)[A-Za-z0-9._/@+=-]+")
 SHA_RE = re.compile(r"[0-9a-f]{40}")
 APP_LOGIN_RE = re.compile(r"([A-Za-z0-9-]+)\[bot\]")
 ACTIONS_SLUG = "github-actions"
@@ -233,20 +232,19 @@ def status_entries(statuses: list[dict[str, Any]], app_of_creator):
         }
 
 
-def run_result(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """The non-skipped entries of one run that count: the last attempt's, or all (see below)."""
-    ran = [e for e in items if e["state"] != "skipped"]
-    last = max(e["attempt"] for e in ran)
-
-    def shrank(entries: list[dict[str, Any]]) -> bool:
-        counts: dict[int, int] = {}
-        for entry in entries:
-            counts[entry["attempt"]] = counts.get(entry["attempt"], 0) + 1
-        return any(n > counts[last] for attempt, n in counts.items() if attempt < last)
-
-    # An attempt that lists fewer same-name jobs than an earlier one, skipped ones included or not,
-    # re-ran only some of them, so the others' earlier results still count.
-    return ran if shrank(items) or shrank(ran) else [e for e in ran if e["attempt"] == last]
+def counted_entries(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The entries of one workflow source not replaced by a newer attempt or run."""
+    groups: dict[tuple[int, int], list[dict[str, Any]]] = {}
+    for item in items:
+        groups.setdefault((item["run"], item["attempt"]), []).append(item)
+    newest_first = [groups[key] for key in sorted(groups, reverse=True)]
+    counted: list[dict[str, Any]] = []
+    for index, group in enumerate(newest_first):
+        counted += group
+        larger_before = any(len(older) > len(group) for older in newest_first[index + 1 :])
+        if not larger_before and all(e["state"] != "skipped" for e in group):
+            break
+    return counted
 
 
 def job_group_state(items: list[dict[str, Any]], runs: list[dict[str, Any]]) -> str:
@@ -256,22 +254,14 @@ def job_group_state(items: list[dict[str, Any]], runs: list[dict[str, Any]]) -> 
         (r for r in runs if (r["workflow_id"], r["event"]) == (workflow, event)),
         key=lambda r: r["id"],
     )
-    by_run: dict[int, list[dict[str, Any]]] = {}
-    for item in items:
-        by_run.setdefault(item["run"], []).append(item)
-    latest = by_run.get(newest["id"], [])
+    latest = [e for e in items if e["run"] == newest["id"]]
     if not any(e["attempt"] == newest["run_attempt"] for e in latest):
         if newest["status"] != "completed":
             return "pending"
         # Only a successful attempt can be one that kept an earlier attempt's job.
         if not latest or newest["conclusion"] != "success":
             return "missing"
-    # A skipped entry never replaces another result, of an earlier attempt or an earlier run.
-    for run_id in sorted(by_run, reverse=True):
-        if any(e["state"] != "skipped" for e in by_run[run_id]):
-            counted = run_result(by_run[run_id])
-            return "failing" if any(e["state"] == "failing" for e in counted) else "passing"
-    return "passing"
+    return "failing" if any(e["state"] == "failing" for e in counted_entries(items)) else "passing"
 
 
 def classify(

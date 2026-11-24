@@ -306,6 +306,8 @@ a fresh `gh repo view` (skill-reviewer M1, 2026-08-31):**
 - A run started by a body edit is still in progress when the bypass path reaches 4(c) → 4(c) waits until
   it finishes before capturing the `Publish Codex policy result` baseline, so its stale result cannot
   land after the baseline
+- Every required context is settled, `Publish Codex policy result` has no entry yet and the `Marketplace CI`
+  run's `Codex delta review` is `IN_PROGRESS` → 4(c) keeps waiting, since that run's policy job comes later
 
 **Verify the security-review fixes (pre-ship review of this change):**
 - `--bypass-codex-review` given and step 1.5 finds a touched, non-deferred item → nothing is fixed or
