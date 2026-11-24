@@ -1673,6 +1673,23 @@ class Robustness(Base):
         found, _ = V.hidden_characters("a b\u00a0c\u2009d\u3000e")
         self.assertEqual([h["codepoint"] for h in found], ["U+00A0", "U+2009", "U+3000"])
 
+    def test_show_reports_hidden_characters_in_metadata(self):
+        self.add_draft(boundaries="Report only\u200b.", references=["ok", "a\u202eb"])
+        res = self.run_cli("show", SLUG, "--history")[1]["records"][0]
+        self.assertEqual(res["hidden_characters"], [])
+        self.assertEqual(
+            [(h["field"], h["codepoint"]) for h in res["hidden_metadata"]],
+            [("boundaries", "U+200B"), ("references", "U+202E")],
+        )
+        self.assertFalse(res["hidden_metadata_truncated"])
+
+    def test_show_caps_the_hidden_metadata_list_across_fields(self):
+        zw = "\u200b" * 40
+        self.add_draft(boundaries="b" + zw, prerequisites="p" + zw)
+        res = self.run_cli("show", SLUG, "--history")[1]["records"][0]
+        self.assertEqual(len(res["hidden_metadata"]), V.MAX_HIDDEN_REPORTED)
+        self.assertTrue(res["hidden_metadata_truncated"])
+
     def test_a_draft_verification_holds_only_hashes(self):
         self.add_draft()
         self.assertEqual(self.verify("p000000000001")[0], 0)

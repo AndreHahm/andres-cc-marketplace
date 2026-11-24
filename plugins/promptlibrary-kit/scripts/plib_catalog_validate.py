@@ -403,6 +403,32 @@ def hidden_characters(text: str) -> tuple[list[dict], bool]:
     return found, False
 
 
+def hidden_metadata(meta: dict) -> tuple[list[dict], bool]:
+    """The same report for the metadata the user approves beside the text, with the field's name."""
+    found: list[dict] = []
+    for field in (
+        "name",
+        "area",
+        "short_description",
+        "prerequisites",
+        "boundaries",
+        "references",
+        "attachments",
+        "source_ref",
+    ):
+        value = meta.get(field)
+        values = list(value.values()) if isinstance(value, dict) else value
+        for item in values if isinstance(values, list) else [values]:
+            entries, cut = hidden_characters("" if item is None else str(item))
+            for entry in entries:
+                if len(found) >= MAX_HIDDEN_REPORTED:
+                    return found, True
+                found.append({"field": field, **entry})
+            if cut:
+                return found, True
+    return found, False
+
+
 def text_hash(text: str) -> str:
     return hashlib.sha256(normalize_text(text).encode("utf-8")).hexdigest()
 
@@ -1089,6 +1115,7 @@ def cmd_show(args) -> dict:
         entry["hidden_characters"], entry["hidden_characters_truncated"] = hidden_characters(
             m["_body"]
         )
+        entry["hidden_metadata"], entry["hidden_metadata_truncated"] = hidden_metadata(m)
     return info
 
 

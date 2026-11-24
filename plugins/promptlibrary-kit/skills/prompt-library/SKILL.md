@@ -163,8 +163,8 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
    `quality` verification stands for it). Get the final prompt text and its `text_hash` from the filed record (`<CLI> show <slug>
    --history`), not from the scratch copy. Show both to the user, with the metadata `show` returns (`name`, `area`,
    `short_description`, `prerequisites`, `boundaries`, `references`, `attachments`, `source_ref`). If the record's `hidden_characters`
-   is not empty, list each entry (line, column, code point, name) above the text, add "50 or more" when
-   `hidden_characters_truncated` is true, and say these characters are invisible in the text shown.
+   or `hidden_metadata` (entries also name a `field`) is not empty, list each entry (line, column, code point, name) above the text, add "50 or more" when
+   `hidden_characters_truncated` or `hidden_metadata_truncated` is true, and say these characters are invisible in what is shown.
    Then ask with `AskUserQuestion` whether to approve exactly this text, naming the hidden-character
    count in the question when there are any. On yes, run `<CLI> record-verification <internal_id> --kind
    quality --expect-sha256 <that hash>` and, for `session` or `web` origin, again with `--kind import`
@@ -173,7 +173,7 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
    metadata shown is not covered (see Gotchas).
 9. **Change status.** Only after step 8, or when step 2 sends the record here. Take the hash from `<CLI> show <slug> --history`. Show the proposed change and ask
    with `AskUserQuestion`, naming the slug, the status change, the first 8 characters of that hash and,
-   for `activate` or `finalize`, the hidden-character count if any. Then run one of:
+   for `activate` or `finalize`, the hidden-character count (text and metadata) if any. Then run one of:
    - `<CLI> activate <id> --expect-sha256 <hash>` for an initial draft or an inactive record;
    - `<CLI> finalize <id> --expect-sha256 <hash>` for a successor. Add `--active` or `--inactive` to
      choose; one is required when the predecessor was inactive. When the predecessor was active the
