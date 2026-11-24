@@ -720,6 +720,70 @@ B	git submodule 2>/dev/null update --rebase
 B	set -k; git submodule X=1 update --merge
 B	git submodule--helper update --rebase
 B	git submodule update -qr
+# --- last group: push forms, submodule foreach, a redirection with & before a flag
+B	git push origin refs/heads/main
+B	git push origin x:heads/main
+B	git push -uf origin x
+B	git push -fu origin x
+B	git push --all
+B	git push --al origin
+B	git push --branches
+B	git push origin :
+B	git push origin :x
+B	git push --delete origin x
+B	git push --de origin x
+B	git push -d origin x
+B	git push -qd origin x
+B	bash -c 'git push --all'
+A	git push -u origin x
+A	git push -o ci.skip origin x
+A	git push --dry-run origin x
+A	git push --atomic origin x
+A	git push --follow-tags origin x
+A	git push origin HEAD:feature
+A	git push -u origin feature/all-branches
+B	git submodule foreach git rebase main
+B	git submodule foreach 'git rebase main'
+B	git submodule foreach --recursive git stash
+B	git -C . submodule -q foreach "git -C . commit --am"
+B	git submodule "foreach" git tag -di v1
+B	git submodule foreach git -c alias.x=stash x
+B	git submodule foreach 'git push --mirror'
+A	git submodule foreach git status
+A	git submodule foreach 'git fetch; git log -1'
+B	git push 2>&1 --mirror
+B	git push 2>&1 -f origin x
+B	git push 2>&1 origin main
+B	git push >&2 -f origin x
+B	git push &>log --mirror
+B	git submodule update 2>&1 --rebase
+B	git -C . branch 2>&1 -D x
+B	git branch 2>&1 -Dq x
+B	git commit 2>&1 --am
+B	git pull 2>&1 --reb
+B	git -C . tag 2>& 1 -d x
+B	: $((1<<2)); git push 2>&1 -f origin x
+A	git status 2>&1 | cat
+A	git push origin x 2>&1
+A	git log 2>&1 && echo -f
+B	git submodule foreach 'git rebase main # foreach x'
+B	git submodule foreach git stash push -- foreach x
+B	git submodule foreach 'git push origin main'
+B	git submodule foreach 'git push origin x -f'
+B	git submodule f''oreach 'git rebase main'
+B	git submodule \\foreach 'git rebase main'
+B	git submodule--helper foreach git rebase main
+B	git submodule foreach >log 'git rebase main'
+B	git submodule 2>&1 foreach 'git rebase main'
+B	bash -c 'git submodule foreach git rebase main'
+B	set -k; git submodule X=1 -q update --rebase
+B	git push origin 'refs/heads/*'
+B	git push origin refs/heads/*:refs/heads/*
+A	git commit -m "fix git push :tada:"
+A	gh pr create --body "After git push run x --all"
+A	gh pr create --body "after git push use curl -data"
+A	gh pr create --body "Run git submodule foreach git rebase main"
+A	git push origin x -o data
 CASES
 
 printf 'pass=%d fail=%d (%s)\n' "${pass}" "${fail}" "${HOOK}"
