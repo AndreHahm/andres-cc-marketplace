@@ -1,0 +1,67 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4683485583",
+      "line": 850,
+      "note": "foreach string checked as own command in c749bcf6",
+      "path": ".codex/hooks/block-dangerous-command.sh",
+      "pr": 876,
+      "recorded_at": "2026-11-24T17:48:47+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4683496259",
+      "line": 759,
+      "note": "mirror check uses text exclusions in c749bcf6",
+      "path": ".codex/hooks/block-dangerous-command.sh",
+      "pr": 876,
+      "recorded_at": "2026-11-24T17:48:47+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4683496453",
+      "line": 774,
+      "note": "push option values consumed in c749bcf6",
+      "path": ".codex/hooks/block-dangerous-command.sh",
+      "pr": 876,
+      "recorded_at": "2026-11-24T17:48:47+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4683496649",
+      "line": 831,
+      "note": "submodule text exempt in c749bcf6",
+      "path": ".codex/hooks/block-dangerous-command.sh",
+      "pr": 876,
+      "recorded_at": "2026-11-24T17:48:47+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4683496921",
+      "line": 850,
+      "note": "foreach string checked as own command in c749bcf6",
+      "path": ".codex/hooks/block-dangerous-command.sh",
+      "pr": 876,
+      "recorded_at": "2026-11-24T17:48:47+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4683497173",
+      "line": 667,
+      "note": "quoted -c value read without quotes in c749bcf6",
+      "path": ".codex/hooks/block-dangerous-command.sh",
+      "pr": 876,
+      "recorded_at": "2026-11-24T17:48:47+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4683497369",
+      "line": 277,
+      "note": "rerun ignored in one plain command in c749bcf6",
+      "path": ".codex/hooks/block-dangerous-command.sh",
+      "pr": 876,
+      "recorded_at": "2026-11-24T17:48:47+00:00"
+    }
+  ]
+}
