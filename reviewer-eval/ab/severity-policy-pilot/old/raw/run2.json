@@ -1,0 +1,193 @@
+{
+  "reports": [
+    {
+      "reviewer": "plugin-rulebook-checker",
+      "status": "completed",
+      "output": {
+        "contract_version": "1.0",
+        "dispatch": {
+          "id": "bafaee59800b-282492e6",
+          "reviewer": "plugin-rulebook-checker",
+          "backend": "codex",
+          "target_paths": [
+            "plugins/plugin-devkit/skills/command-development/SKILL.md",
+            "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+            "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+            "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md",
+            "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md",
+            "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+          ]
+        },
+        "provenance": {
+          "provider": "OpenAI",
+          "model": "GPT-6",
+          "cli_version": "unknown",
+          "execution_profile": "read-only"
+        },
+        "findings": [
+          {
+            "id": "plugin-rulebook-checker:plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md#R6",
+            "severity": "minor",
+            "axis": "plugin-rulebook:R6",
+            "location": "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md:397",
+            "components": [
+              "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+            ],
+            "evidence": "The changed grant pre-approves `Bash(git add:*)` and `Bash(git commit:*)`, while the documented forms are `git add -- '<file>'` and `git commit -m '<message>'`. These prefixes also pre-approve other state-changing forms, such as `git commit --amend` or `--no-verify`.",
+            "finding": "R6 least-privilege advisory: the prefixes pre-approve broader Git operations than this example documents.",
+            "fix": "Remove these pre-approvals so each operation requires normal user approval, or use narrower grants that cover only the documented forms.",
+            "confidence": "medium",
+            "category": "allowed-tools-grant"
+          }
+        ],
+        "verdict": "PASS_WITH_ADVISORY",
+        "inspection_limits": []
+      },
+      "error": null,
+      "attempts": 1,
+      "unsandboxed": false,
+      "fallback_over_cap": false
+    },
+    {
+      "reviewer": "dependency-reviewer",
+      "status": "completed",
+      "output": {
+        "contract_version": "1.0",
+        "dispatch": {
+          "id": "bafaee59800b-282492e6",
+          "reviewer": "dependency-reviewer",
+          "backend": "Codex",
+          "target_paths": [
+            "plugins/plugin-devkit/skills/command-development/SKILL.md",
+            "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+            "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+            "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md",
+            "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md",
+            "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+          ]
+        },
+        "provenance": {
+          "provider": "OpenAI",
+          "model": "GPT-6.2",
+          "cli_version": "unknown",
+          "execution_profile": "read-only static review"
+        },
+        "findings": [],
+        "verdict": "Pass",
+        "inspection_limits": []
+      },
+      "error": null,
+      "attempts": 1,
+      "unsandboxed": false,
+      "fallback_over_cap": false
+    },
+    {
+      "reviewer": "security-reviewer",
+      "status": "completed",
+      "output": {
+        "contract_version": "1.0",
+        "dispatch": {
+          "id": "bafaee59800b-282492e6",
+          "reviewer": "security-reviewer",
+          "backend": "Codex",
+          "target_paths": [
+            "plugins/plugin-devkit/skills/command-development/SKILL.md",
+            "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+            "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+            "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md",
+            "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md",
+            "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+          ]
+        },
+        "provenance": {
+          "provider": "OpenAI",
+          "model": "GPT-6",
+          "cli_version": "unknown",
+          "execution_profile": "read-only static review"
+        },
+        "findings": [
+          {
+            "id": "M1",
+            "severity": "major",
+            "axis": "prompt-injection-surface",
+            "location": "plugins/plugin-devkit/skills/command-development/SKILL.md:146",
+            "components": [],
+            "evidence": "The guidance says an argument-named file should be checked and then read with Read, but does not define the check or say to treat the contents as data. The adjacent example also reviews @src/api/users.ts without that boundary.",
+            "finding": "This pattern leaves file scope and content trust ambiguous: a command may read outside the repository or let directives embedded in reviewed files steer its processing.",
+            "fix": "Require the resolved file to remain inside the repository, including rejecting symlink escapes, and explicitly instruct the command to treat file contents as data, never as instructions.",
+            "confidence": "high",
+            "category": null
+          },
+          {
+            "id": "M2",
+            "severity": "major",
+            "axis": "prompt-injection-surface",
+            "location": "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md:478",
+            "components": [],
+            "evidence": "The pattern accepts arguments if they name existing files, then reads and compares them; it does not restrict them to repository files or establish a data-only boundary.",
+            "finding": "An example command following this pattern could read arbitrary local files and leave embedded file directives able to influence the comparison.",
+            "fix": "Require both resolved paths to remain inside the repository, including rejecting symlink escapes, and state that their contents are data, never instructions.",
+            "confidence": "high",
+            "category": null
+          }
+        ],
+        "verdict": "Reject",
+        "inspection_limits": [
+          "The workspace had no local diff for these paths; review scope was taken from the supplied changed-line list and checked against the current file contents.",
+          "a finding's components[] entry was dropped: out-of-scope or nonexistent citation",
+          "a finding's components[] entry was dropped: out-of-scope or nonexistent citation"
+        ]
+      },
+      "error": null,
+      "attempts": 1,
+      "unsandboxed": false,
+      "fallback_over_cap": false
+    },
+    {
+      "reviewer": "skill-reviewer",
+      "status": "completed",
+      "output": {
+        "contract_version": "1.0",
+        "dispatch": {
+          "id": "bafaee59800b-282492e6",
+          "reviewer": "skill-reviewer",
+          "backend": "codex",
+          "target_paths": [
+            "plugins/plugin-devkit/skills/command-development/SKILL.md",
+            "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+            "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+            "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md",
+            "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md",
+            "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+          ]
+        },
+        "provenance": {
+          "provider": "OpenAI",
+          "model": "GPT-6",
+          "cli_version": "unknown",
+          "execution_profile": "read-only"
+        },
+        "findings": [
+          {
+            "id": "m1",
+            "severity": "minor",
+            "axis": "security",
+            "location": "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md:478",
+            "components": null,
+            "evidence": "The changed comparison pattern says to accept both arguments if they are \"existing files,\" then read them, without limiting them to the repository or saying their contents are data rather than instructions. The full comparison example at line 246 includes both safeguards.",
+            "finding": "This abbreviated pattern leaves file scope and content trust unspecified, so a copied command could read paths outside the repository or follow instructions embedded in the files.",
+            "fix": "Limit both arguments to existing files within the repository and state that their contents are data, never instructions to follow.",
+            "confidence": "medium",
+            "category": "other"
+          }
+        ],
+        "verdict": "Pass",
+        "inspection_limits": []
+      },
+      "error": null,
+      "attempts": 1,
+      "unsandboxed": false,
+      "fallback_over_cap": false
+    }
+  ]
+}

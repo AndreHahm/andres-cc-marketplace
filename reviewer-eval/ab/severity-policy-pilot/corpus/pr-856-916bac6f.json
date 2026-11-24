@@ -1,0 +1,218 @@
+{
+  "schema_version": 1,
+  "pr": 856,
+  "head_sha": "916bac6f1c38a4d11cf9e3cfc2ce3aa4bdd14852",
+  "kind": "findings",
+  "findings": [
+    {
+      "id": "f1",
+      "reviewer": "dependency-reviewer",
+      "path": "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+      "line": 220,
+      "rule": "dependency-graph",
+      "label": "false_positive",
+      "source": "owner",
+      "note": "owner: a placeholder name in an example is not a broken dependency; the ledger records it as fixed (marked as placeholder)",
+      "known_issue": null
+    },
+    {
+      "id": "f2",
+      "reviewer": "dependency-reviewer",
+      "path": "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md",
+      "line": 346,
+      "rule": "dependency-graph",
+      "label": "false_positive",
+      "source": "owner",
+      "note": "owner: a placeholder name in an example is not a broken dependency; the ledger records it as fixed (marked as placeholder)",
+      "known_issue": null
+    },
+    {
+      "id": "f3",
+      "reviewer": "plugin-rulebook-checker",
+      "path": "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+      "line": 220,
+      "rule": "plugin-rulebook:R6",
+      "label": "pre_existing",
+      "source": "owner",
+      "note": "owner: grant was already missing before the PR",
+      "known_issue": null
+    },
+    {
+      "id": "f4",
+      "reviewer": "plugin-rulebook-checker",
+      "path": "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md",
+      "line": 415,
+      "rule": "plugin-rulebook:R6",
+      "label": "true",
+      "source": "ledger",
+      "note": "fixed: caveat added that each call prompts unless already allowed. Old run 3 raises a different claim (the API route) under this key.",
+      "known_issue": null
+    },
+    {
+      "id": "f5",
+      "reviewer": "plugin-rulebook-checker",
+      "path": "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md",
+      "line": 346,
+      "rule": "plugin-rulebook:R6",
+      "label": "pre_existing",
+      "source": "owner",
+      "note": "owner: grant was already missing before the PR",
+      "known_issue": null
+    },
+    {
+      "id": "f6",
+      "reviewer": "plugin-rulebook-checker",
+      "path": "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md",
+      "line": 397,
+      "rule": "plugin-rulebook:R6",
+      "label": "true",
+      "source": "ledger",
+      "note": "fixed: a note names the other forms the grants reach",
+      "known_issue": null
+    },
+    {
+      "id": "f7",
+      "reviewer": "security-reviewer",
+      "path": "plugins/plugin-devkit/skills/command-development/SKILL.md",
+      "line": 143,
+      "rule": "prompt-injection surface",
+      "label": "true",
+      "source": "ledger",
+      "note": "fixed: the example now says the contents are data",
+      "known_issue": null
+    },
+    {
+      "id": "f8",
+      "reviewer": "security-reviewer",
+      "path": "plugins/plugin-devkit/skills/command-development/SKILL.md",
+      "line": 146,
+      "rule": "prompt-injection-surface",
+      "label": "true",
+      "source": "owner",
+      "note": "owner: real; the PR rewrote the line to make the file read safe. The check it calls undefined is at SKILL.md:175.",
+      "known_issue": null
+    },
+    {
+      "id": "f9",
+      "reviewer": "security-reviewer",
+      "path": "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+      "line": 103,
+      "rule": "prompt-injection surface",
+      "label": "pre_existing",
+      "source": "owner",
+      "note": "owner: the line is unchanged by the PR",
+      "known_issue": null
+    },
+    {
+      "id": "f10",
+      "reviewer": "security-reviewer",
+      "path": "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+      "line": 478,
+      "rule": "path-scope",
+      "label": "true",
+      "source": "owner",
+      "note": "owner: real; the PR rewrote the line to make the file read safe. The ledger records the data boundary as fixed; containment was not added.",
+      "known_issue": null
+    },
+    {
+      "id": "f11",
+      "reviewer": "security-reviewer",
+      "path": "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+      "line": 478,
+      "rule": "prompt-injection surface",
+      "label": "true",
+      "source": "owner",
+      "note": "owner: real; the PR rewrote the line to make the file read safe. The ledger records the data boundary as fixed; containment was not added.",
+      "known_issue": null
+    },
+    {
+      "id": "f12",
+      "reviewer": "security-reviewer",
+      "path": "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+      "line": 478,
+      "rule": "prompt-injection-surface",
+      "label": "true",
+      "source": "owner",
+      "note": "owner: real; the PR rewrote the line to make the file read safe. The ledger records the data boundary as fixed; containment was not added.",
+      "known_issue": null
+    },
+    {
+      "id": "f13",
+      "reviewer": "security-reviewer",
+      "path": "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md",
+      "line": 21,
+      "rule": "permission-risk/tool-scoping",
+      "label": "out_of_scope",
+      "source": "owner",
+      "note": "owner: wildcard arguments of narrowed gh grants",
+      "known_issue": null
+    },
+    {
+      "id": "f14",
+      "reviewer": "security-reviewer",
+      "path": "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md",
+      "line": 397,
+      "rule": "permission-risk/tool-scoping",
+      "label": "true",
+      "source": "ledger",
+      "note": "fixed: a note names the other forms the grants reach",
+      "known_issue": null
+    },
+    {
+      "id": "f15",
+      "reviewer": "skill-reviewer",
+      "path": "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+      "line": 105,
+      "rule": "security",
+      "label": "pre_existing",
+      "source": "owner",
+      "note": "owner: hardening gap the PR narrowed; path resolution elsewhere was accepted as residual in the ledger",
+      "known_issue": null
+    },
+    {
+      "id": "f16",
+      "reviewer": "skill-reviewer",
+      "path": "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+      "line": 128,
+      "rule": "permission-scope",
+      "label": "out_of_scope",
+      "source": "owner",
+      "note": "owner: unscoped Read pre-approval",
+      "known_issue": null
+    },
+    {
+      "id": "f17",
+      "reviewer": "skill-reviewer",
+      "path": "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+      "line": 130,
+      "rule": "scope-security",
+      "label": "pre_existing",
+      "source": "owner",
+      "note": "owner: hardening gap the PR narrowed; path resolution elsewhere was accepted as residual in the ledger",
+      "known_issue": null
+    },
+    {
+      "id": "f18",
+      "reviewer": "skill-reviewer",
+      "path": "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+      "line": 478,
+      "rule": "security",
+      "label": "true",
+      "source": "owner",
+      "note": "owner: real; the PR rewrote the line to make the file read safe. The ledger records the data boundary as fixed; containment was not added.",
+      "known_issue": null
+    },
+    {
+      "id": "f19",
+      "reviewer": "skill-reviewer",
+      "path": "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md",
+      "line": 21,
+      "rule": "tool-scope",
+      "label": "pre_existing",
+      "source": "owner",
+      "note": "owner: Grep was already granted before the PR",
+      "known_issue": null
+    }
+  ],
+  "known_issues": []
+}

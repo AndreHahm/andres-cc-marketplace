@@ -1,0 +1,445 @@
+{
+  "manifest": {
+    "schema_version": 1,
+    "head_sha": "916bac6f1c38a4d11cf9e3cfc2ce3aa4bdd14852",
+    "base_sha": "d3a3dcb5f5e5d16c2c6c0b2278aa0af5a60ac44f",
+    "arms": {
+      "old": "bafaee59800b099eb5d3ec8fbfa21ace71b2ac32",
+      "new": "6ab40547139d2721403d2b4ec368399d7cee6bc0"
+    },
+    "repeats": 3,
+    "planned_calls": 24,
+    "reviewed_paths": [
+      "plugins/plugin-devkit/skills/command-development/SKILL.md",
+      "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+      "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+      "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md",
+      "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md",
+      "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+    ],
+    "prompts": {
+      "plugin-rulebook-checker": {
+        "old": "768eea290b310ce3b0e1b8a9fef7d1ace9c3f66bf9835e1079fd310f667cb85d",
+        "new": "a75d04675b258c10122482fff5f2c7c31d1b852fcca1b9acb92a0cc8e0956193"
+      },
+      "dependency-reviewer": {
+        "old": "90325a9280f58cba9fc7a295b69a0cea67ab7f3d8c1ea6d5822335defb5ebfa4",
+        "new": "c5664644acf3e5a3ebf39ad706a9a9a5f494a65bc7c58613074f4524b1b8f12e"
+      },
+      "security-reviewer": {
+        "old": "281a33dfee03b383ab0bbc8420f520376f6ccde9ac83a45ce27050f85489c3c5",
+        "new": "81d4cfb52d1ea042f1fc501a7380aec3dd533c4764130be87cfbf99334932818"
+      },
+      "skill-reviewer": {
+        "old": "83559e7b32311b925fe276665506d46fe38d7655ff5864dcc98f28da1828abab",
+        "new": "ae8e37c58086e015a60941b0beafac2e9b03fb237f847878f12c7d79786f84aa"
+      }
+    },
+    "identical_prompts": [],
+    "configured_model": "gpt-6-luna",
+    "pinned_cli_version": "0.170.0"
+  },
+  "reviewers": {
+    "plugin-rulebook-checker": {
+      "old": {
+        "runs": 3,
+        "failed": 0,
+        "missing": 0,
+        "blocking_per_run": [
+          0,
+          0,
+          0
+        ],
+        "min": 0,
+        "median": 0,
+        "max": 0,
+        "agree": 3,
+        "stable": null,
+        "labelled": 0,
+        "precision": null,
+        "findings": [
+          {
+            "rule": "plugin-rulebook:R6",
+            "path": "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md",
+            "line": 415,
+            "severities": {
+              "Minor": 2
+            },
+            "reported": 2,
+            "blocking": 0,
+            "runs": 3
+          },
+          {
+            "rule": "plugin-rulebook:R6",
+            "path": "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+            "line": 220,
+            "severities": {
+              "Minor": 1
+            },
+            "reported": 1,
+            "blocking": 0,
+            "runs": 3
+          },
+          {
+            "rule": "plugin-rulebook:R6",
+            "path": "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md",
+            "line": 346,
+            "severities": {
+              "Minor": 1
+            },
+            "reported": 1,
+            "blocking": 0,
+            "runs": 3
+          },
+          {
+            "rule": "plugin-rulebook:R6",
+            "path": "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md",
+            "line": 397,
+            "severities": {
+              "Minor": 1
+            },
+            "reported": 1,
+            "blocking": 0,
+            "runs": 3
+          }
+        ]
+      },
+      "new": {
+        "runs": 3,
+        "failed": 0,
+        "missing": 0,
+        "blocking_per_run": [
+          0,
+          0,
+          0
+        ],
+        "min": 0,
+        "median": 0,
+        "max": 0,
+        "agree": 3,
+        "stable": null,
+        "labelled": 0,
+        "precision": null,
+        "findings": [
+          {
+            "rule": "plugin-rulebook:R6",
+            "path": "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md",
+            "line": 397,
+            "severities": {
+              "Minor": 1
+            },
+            "reported": 1,
+            "blocking": 0,
+            "runs": 3
+          }
+        ]
+      }
+    },
+    "dependency-reviewer": {
+      "old": {
+        "runs": 3,
+        "failed": 0,
+        "missing": 0,
+        "blocking_per_run": [
+          2,
+          0,
+          0
+        ],
+        "min": 0,
+        "median": 0,
+        "max": 2,
+        "agree": 2,
+        "stable": null,
+        "labelled": 0,
+        "precision": null,
+        "findings": [
+          {
+            "rule": "dependency-graph",
+            "path": "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+            "line": 220,
+            "severities": {
+              "Critical": 1
+            },
+            "reported": 1,
+            "blocking": 1,
+            "runs": 3
+          },
+          {
+            "rule": "dependency-graph",
+            "path": "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md",
+            "line": 346,
+            "severities": {
+              "Critical": 1
+            },
+            "reported": 1,
+            "blocking": 1,
+            "runs": 3
+          }
+        ]
+      },
+      "new": {
+        "runs": 3,
+        "failed": 0,
+        "missing": 0,
+        "blocking_per_run": [
+          0,
+          0,
+          0
+        ],
+        "min": 0,
+        "median": 0,
+        "max": 0,
+        "agree": 3,
+        "stable": null,
+        "labelled": 0,
+        "precision": null,
+        "findings": []
+      }
+    },
+    "security-reviewer": {
+      "old": {
+        "runs": 3,
+        "failed": 0,
+        "missing": 0,
+        "blocking_per_run": [
+          1,
+          2,
+          3
+        ],
+        "min": 1,
+        "median": 2,
+        "max": 3,
+        "agree": 1,
+        "stable": null,
+        "labelled": 0,
+        "precision": null,
+        "findings": [
+          {
+            "rule": "path-scope",
+            "path": "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+            "line": 478,
+            "severities": {
+              "Major": 1
+            },
+            "reported": 1,
+            "blocking": 1,
+            "runs": 3
+          },
+          {
+            "rule": "prompt-injection-surface",
+            "path": "plugins/plugin-devkit/skills/command-development/SKILL.md",
+            "line": 146,
+            "severities": {
+              "Major": 1
+            },
+            "reported": 1,
+            "blocking": 1,
+            "runs": 3
+          },
+          {
+            "rule": "prompt-injection-surface",
+            "path": "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+            "line": 478,
+            "severities": {
+              "Major": 1
+            },
+            "reported": 1,
+            "blocking": 1,
+            "runs": 3
+          },
+          {
+            "rule": "prompt-injection surface",
+            "path": "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+            "line": 478,
+            "severities": {
+              "Major": 1
+            },
+            "reported": 1,
+            "blocking": 1,
+            "runs": 3
+          },
+          {
+            "rule": "prompt-injection surface",
+            "path": "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+            "line": 103,
+            "severities": {
+              "Major": 1
+            },
+            "reported": 1,
+            "blocking": 1,
+            "runs": 3
+          },
+          {
+            "rule": "prompt-injection surface",
+            "path": "plugins/plugin-devkit/skills/command-development/SKILL.md",
+            "line": 143,
+            "severities": {
+              "Major": 1
+            },
+            "reported": 1,
+            "blocking": 1,
+            "runs": 3
+          }
+        ]
+      },
+      "new": {
+        "runs": 3,
+        "failed": 0,
+        "missing": 0,
+        "blocking_per_run": [
+          0,
+          0,
+          0
+        ],
+        "min": 0,
+        "median": 0,
+        "max": 0,
+        "agree": 3,
+        "stable": null,
+        "labelled": 0,
+        "precision": null,
+        "findings": [
+          {
+            "rule": "prompt-injection-surface",
+            "path": "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+            "line": 478,
+            "severities": {
+              "Minor": 1
+            },
+            "reported": 1,
+            "blocking": 0,
+            "runs": 3
+          },
+          {
+            "rule": "permission-risk/tool-scoping",
+            "path": "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md",
+            "line": 21,
+            "severities": {
+              "Minor": 1
+            },
+            "reported": 1,
+            "blocking": 0,
+            "runs": 3
+          },
+          {
+            "rule": "permission-risk/tool-scoping",
+            "path": "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md",
+            "line": 397,
+            "severities": {
+              "Minor": 1
+            },
+            "reported": 1,
+            "blocking": 0,
+            "runs": 3
+          }
+        ]
+      }
+    },
+    "skill-reviewer": {
+      "old": {
+        "runs": 3,
+        "failed": 0,
+        "missing": 0,
+        "blocking_per_run": [
+          0,
+          0,
+          0
+        ],
+        "min": 0,
+        "median": 0,
+        "max": 0,
+        "agree": 3,
+        "stable": null,
+        "labelled": 0,
+        "precision": null,
+        "findings": [
+          {
+            "rule": "security",
+            "path": "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+            "line": 478,
+            "severities": {
+              "Minor": 1
+            },
+            "reported": 1,
+            "blocking": 0,
+            "runs": 3
+          }
+        ]
+      },
+      "new": {
+        "runs": 3,
+        "failed": 0,
+        "missing": 0,
+        "blocking_per_run": [
+          1,
+          1,
+          1
+        ],
+        "min": 1,
+        "median": 1,
+        "max": 1,
+        "agree": 2,
+        "stable": null,
+        "labelled": 0,
+        "precision": null,
+        "findings": [
+          {
+            "rule": "security",
+            "path": "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+            "line": 478,
+            "severities": {
+              "Major": 2
+            },
+            "reported": 2,
+            "blocking": 2,
+            "runs": 3
+          },
+          {
+            "rule": "tool-scope",
+            "path": "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md",
+            "line": 21,
+            "severities": {
+              "Minor": 1
+            },
+            "reported": 1,
+            "blocking": 0,
+            "runs": 3
+          },
+          {
+            "rule": "security",
+            "path": "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+            "line": 105,
+            "severities": {
+              "Minor": 1
+            },
+            "reported": 1,
+            "blocking": 0,
+            "runs": 3
+          },
+          {
+            "rule": "permission-scope",
+            "path": "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+            "line": 128,
+            "severities": {
+              "Minor": 1
+            },
+            "reported": 1,
+            "blocking": 0,
+            "runs": 3
+          },
+          {
+            "rule": "scope-security",
+            "path": "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+            "line": 130,
+            "severities": {
+              "Major": 1
+            },
+            "reported": 1,
+            "blocking": 1,
+            "runs": 3
+          }
+        ]
+      }
+    }
+  }
+}

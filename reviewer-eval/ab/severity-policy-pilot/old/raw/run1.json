@@ -1,0 +1,226 @@
+{
+  "reports": [
+    {
+      "reviewer": "plugin-rulebook-checker",
+      "status": "completed",
+      "output": {
+        "contract_version": "1.0",
+        "dispatch": {
+          "id": "bafaee59800b-15302cb0",
+          "reviewer": "plugin-rulebook-checker",
+          "backend": "codex",
+          "target_paths": [
+            "plugins/plugin-devkit/skills/command-development/SKILL.md",
+            "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+            "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+            "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md",
+            "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md",
+            "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+          ]
+        },
+        "provenance": {
+          "provider": "OpenAI",
+          "model": "GPT-6",
+          "cli_version": "not reported",
+          "execution_profile": "read-only"
+        },
+        "findings": [
+          {
+            "id": "plugin-rulebook-checker:plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md#R6",
+            "severity": "minor",
+            "axis": "plugin-rulebook:R6",
+            "location": "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md:220",
+            "components": [
+              "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md"
+            ],
+            "evidence": "The changed line directs the command to start a review with the code-reviewer agent, but this example's command frontmatter has no Agent entry in allowed-tools.",
+            "finding": "The command uses the Agent tool without pre-approving it in allowed-tools, violating R6's tool-used-but-not-granted check.",
+            "fix": "Add the Agent tool to this example command's allowed-tools frontmatter.",
+            "confidence": "high",
+            "category": "allowed-tools-grant"
+          },
+          {
+            "id": "plugin-rulebook-checker:plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md#R6",
+            "severity": "minor",
+            "axis": "plugin-rulebook:R6",
+            "location": "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md:346",
+            "components": [
+              "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+            ],
+            "evidence": "The changed line directs the command to start deep analysis with the code-analyzer agent, but this example's command frontmatter has no Agent entry in allowed-tools.",
+            "finding": "The command uses the Agent tool without pre-approving it in allowed-tools, violating R6's tool-used-but-not-granted check.",
+            "fix": "Add the Agent tool to this example command's allowed-tools frontmatter.",
+            "confidence": "high",
+            "category": "allowed-tools-grant"
+          },
+          {
+            "id": "plugin-rulebook-checker:plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md#R6",
+            "severity": "minor",
+            "axis": "plugin-rulebook:R6",
+            "location": "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md:415",
+            "components": [
+              "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md"
+            ],
+            "evidence": "The new text says each `gh api` call prompts, without noting that the user's own settings or permission mode may already allow it.",
+            "finding": "The example presents a permission prompt as guaranteed, although the user's settings may allow the command without prompting.",
+            "fix": "Qualify the prompt claim to say it occurs unless the user's settings or permission mode already allow the command; use an explicit user confirmation before the call if that approval is required.",
+            "confidence": "high",
+            "category": "other"
+          }
+        ],
+        "verdict": "FAIL",
+        "inspection_limits": []
+      },
+      "error": null,
+      "attempts": 1,
+      "unsandboxed": false,
+      "fallback_over_cap": false
+    },
+    {
+      "reviewer": "dependency-reviewer",
+      "status": "completed",
+      "output": {
+        "contract_version": "1.0",
+        "dispatch": {
+          "id": "bafaee59800b-15302cb0",
+          "reviewer": "dependency-reviewer",
+          "backend": "unknown",
+          "target_paths": [
+            "plugins/plugin-devkit/skills/command-development/SKILL.md",
+            "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+            "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+            "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md",
+            "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md",
+            "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+          ]
+        },
+        "provenance": {
+          "provider": "OpenAI",
+          "model": "GPT-6",
+          "cli_version": "unknown",
+          "execution_profile": "read-only static review"
+        },
+        "findings": [
+          {
+            "id": "C1",
+            "severity": "critical",
+            "axis": "dependency-graph",
+            "location": "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md:220",
+            "components": [],
+            "evidence": "The changed example directs the command to start a review with the `code-reviewer` agent. No matching `plugins/plugin-devkit/agents/code-reviewer.md` target exists.",
+            "finding": "The example references an agent dependency that does not resolve in the plugin component set.",
+            "fix": "Either add the missing agent to the target plugin or clarify that this example requires the consuming plugin to define `code-reviewer` (or correct the reference).",
+            "confidence": "high",
+            "category": null
+          },
+          {
+            "id": "C2",
+            "severity": "critical",
+            "axis": "dependency-graph",
+            "location": "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md:346",
+            "components": [],
+            "evidence": "The changed example directs the command to start analysis with the `code-analyzer` agent. No matching `plugins/plugin-devkit/agents/code-analyzer.md` target exists.",
+            "finding": "The example references an agent dependency that does not resolve in the plugin component set.",
+            "fix": "Either add the missing agent to the target plugin or clarify that this example requires the consuming plugin to define `code-analyzer` (or correct the reference).",
+            "confidence": "high",
+            "category": null
+          }
+        ],
+        "verdict": "Reject",
+        "inspection_limits": [
+          "a finding's components[] entry was dropped: out-of-scope or nonexistent citation",
+          "a finding's components[] entry was dropped: out-of-scope or nonexistent citation",
+          "a finding's components[] entry was dropped: out-of-scope or nonexistent citation",
+          "a finding's components[] entry was dropped: out-of-scope or nonexistent citation"
+        ]
+      },
+      "error": null,
+      "attempts": 1,
+      "unsandboxed": false,
+      "fallback_over_cap": false
+    },
+    {
+      "reviewer": "security-reviewer",
+      "status": "completed",
+      "output": {
+        "contract_version": "1.0",
+        "dispatch": {
+          "id": "bafaee59800b-15302cb0",
+          "reviewer": "security-reviewer",
+          "backend": "codex",
+          "target_paths": [
+            "plugins/plugin-devkit/skills/command-development/SKILL.md",
+            "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+            "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+            "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md",
+            "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md",
+            "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+          ]
+        },
+        "provenance": {
+          "provider": "OpenAI",
+          "model": "GPT-6",
+          "cli_version": "",
+          "execution_profile": "read-only"
+        },
+        "findings": [
+          {
+            "id": "M1",
+            "severity": "major",
+            "axis": "path-scope",
+            "location": "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md:478",
+            "components": [
+              "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md"
+            ],
+            "evidence": "The pattern accepts `$0` and `$1` if they are \u201cexisting files,\u201d then reads both with the Read tool; it sets no allowed root or repository-containment check.",
+            "finding": "Commands copied from this pattern can read arbitrary existing paths, including files outside the project that may contain sensitive data.",
+            "fix": "Constrain both paths to an explicitly approved root and reject paths that resolve outside it before reading.",
+            "confidence": "medium",
+            "category": "other"
+          }
+        ],
+        "verdict": "Pass",
+        "inspection_limits": [
+          "The working-tree diff was empty, so I could not compare the current text with its prior version. I reviewed the supplied changed-line locations in the current files."
+        ]
+      },
+      "error": null,
+      "attempts": 1,
+      "unsandboxed": false,
+      "fallback_over_cap": false
+    },
+    {
+      "reviewer": "skill-reviewer",
+      "status": "completed",
+      "output": {
+        "contract_version": "1.0",
+        "dispatch": {
+          "id": "bafaee59800b-15302cb0",
+          "reviewer": "skill-reviewer",
+          "backend": "codex",
+          "target_paths": [
+            "plugins/plugin-devkit/skills/command-development/SKILL.md",
+            "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+            "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+            "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md",
+            "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md",
+            "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+          ]
+        },
+        "provenance": {
+          "provider": "OpenAI",
+          "model": "GPT-6",
+          "cli_version": "unknown",
+          "execution_profile": "read-only"
+        },
+        "findings": [],
+        "verdict": "Pass",
+        "inspection_limits": []
+      },
+      "error": null,
+      "attempts": 1,
+      "unsandboxed": false,
+      "fallback_over_cap": false
+    }
+  ]
+}

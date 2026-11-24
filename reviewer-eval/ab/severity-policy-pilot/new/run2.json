@@ -1,0 +1,162 @@
+{
+  "arm": "new",
+  "arm_sha": "6ab40547139d2721403d2b4ec368399d7cee6bc0",
+  "reviewed_paths": [
+    "plugins/plugin-devkit/skills/command-development/SKILL.md",
+    "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+    "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+    "plugins/plugin-devkit/skills/command-development/references/advanced-workflows.md",
+    "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md",
+    "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+  ],
+  "reviewers": [
+    "plugin-rulebook-checker",
+    "dependency-reviewer",
+    "security-reviewer",
+    "skill-reviewer"
+  ],
+  "failed_reviewers": {},
+  "provenance": {
+    "head_sha": "916bac6f1c38a4d11cf9e3cfc2ce3aa4bdd14852",
+    "merge_ref_sha": "916bac6f1c38a4d11cf9e3cfc2ce3aa4bdd14852",
+    "base_sha": "d3a3dcb5f5e5d16c2c6c0b2278aa0af5a60ac44f",
+    "configured_model": "gpt-6-luna",
+    "pinned_cli_version": "0.170.0",
+    "model": "GPT-6",
+    "cli_version": "unknown"
+  },
+  "diff_scoped": true,
+  "findings": [
+    {
+      "reviewer": "skill-reviewer",
+      "severity": "Major",
+      "rule": "scope-security",
+      "path": "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+      "line": 130,
+      "evidence": "The new instruction accepts any existing file path in the repository and then reads it with Read. A repository path that is a symlink to an external secret file satisfies that check lexically; Read follows the symlink, exposing the external file to the generated command.",
+      "remediation": "Require resolving the target and verifying it remains inside the repository after symlink resolution before reading; reject paths whose resolved target escapes.",
+      "reporters": [
+        "skill-reviewer"
+      ],
+      "components": [
+        "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+        "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+      ],
+      "in_diff": true,
+      "blocking": true,
+      "confidence": "high",
+      "evidence_type": null,
+      "rule_class": "judgment",
+      "category": "other",
+      "risk": null,
+      "source": "model",
+      "gate": "block",
+      "suppressed": false,
+      "exception": null,
+      "fingerprint": null,
+      "waiver": null,
+      "waiver_line": null,
+      "tracked_issue": null
+    },
+    {
+      "reviewer": "skill-reviewer",
+      "severity": "Minor",
+      "rule": "permission-scope",
+      "path": "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+      "line": 128,
+      "evidence": "The added `allowed-tools: Read` entries pre-approve Read without path limits, while the example instructions only call for reading files in the repository. `allowed-tools` removes permission prompts but does not restrict Read to those paths.",
+      "remediation": "Remove the Read pre-approval where per-use confirmation is desired, or pair it with an effective path boundary outside `allowed-tools`.",
+      "reporters": [
+        "skill-reviewer"
+      ],
+      "components": [
+        "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+        "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+      ],
+      "in_diff": true,
+      "blocking": false,
+      "confidence": "high",
+      "evidence_type": null,
+      "rule_class": "judgment",
+      "category": "allowed-tools-grant",
+      "risk": null,
+      "source": "model",
+      "gate": "notice",
+      "suppressed": false,
+      "exception": null,
+      "fingerprint": null,
+      "waiver": null,
+      "waiver_line": null,
+      "tracked_issue": null
+    }
+  ],
+  "by_reviewer": {
+    "plugin-rulebook-checker": [],
+    "dependency-reviewer": [],
+    "security-reviewer": [],
+    "skill-reviewer": [
+      {
+        "reviewer": "skill-reviewer",
+        "severity": "Major",
+        "rule": "scope-security",
+        "path": "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+        "line": 130,
+        "evidence": "The new instruction accepts any existing file path in the repository and then reads it with Read. A repository path that is a symlink to an external secret file satisfies that check lexically; Read follows the symlink, exposing the external file to the generated command.",
+        "remediation": "Require resolving the target and verifying it remains inside the repository after symlink resolution before reading; reject paths whose resolved target escapes.",
+        "reporters": [
+          "skill-reviewer"
+        ],
+        "components": [
+          "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+          "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+        ],
+        "in_diff": true,
+        "blocking": true,
+        "confidence": "high",
+        "evidence_type": null,
+        "rule_class": "judgment",
+        "category": "other",
+        "risk": null,
+        "source": "model",
+        "gate": "block",
+        "suppressed": false,
+        "exception": null,
+        "fingerprint": null,
+        "waiver": null,
+        "waiver_line": null,
+        "tracked_issue": null
+      },
+      {
+        "reviewer": "skill-reviewer",
+        "severity": "Minor",
+        "rule": "permission-scope",
+        "path": "plugins/plugin-devkit/skills/command-development/examples/simple-commands.md",
+        "line": 128,
+        "evidence": "The added `allowed-tools: Read` entries pre-approve Read without path limits, while the example instructions only call for reading files in the repository. `allowed-tools` removes permission prompts but does not restrict Read to those paths.",
+        "remediation": "Remove the Read pre-approval where per-use confirmation is desired, or pair it with an effective path boundary outside `allowed-tools`.",
+        "reporters": [
+          "skill-reviewer"
+        ],
+        "components": [
+          "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+          "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md"
+        ],
+        "in_diff": true,
+        "blocking": false,
+        "confidence": "high",
+        "evidence_type": null,
+        "rule_class": "judgment",
+        "category": "allowed-tools-grant",
+        "risk": null,
+        "source": "model",
+        "gate": "notice",
+        "suppressed": false,
+        "exception": null,
+        "fingerprint": null,
+        "waiver": null,
+        "waiver_line": null,
+        "tracked_issue": null
+      }
+    ]
+  }
+}
