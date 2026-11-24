@@ -154,6 +154,15 @@
       "recorded_at": "2026-11-24T09:21:47+00:00"
     },
     {
+      "disposition": "false_positive",
+      "finding": "ci-codex-skill-reviewer-r2-mp169",
+      "line": 169,
+      "note": "The wait is bounded (40 polls, ten minutes), read-only, without model calls, and older than the PR; R26 covers expensive actions. Waived in the PR body.",
+      "path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+      "pr": 868,
+      "recorded_at": "2026-11-24T12:00:37+00:00"
+    },
+    {
       "disposition": "declined",
       "finding": "ci-codex-skill-reviewer-r2-mp6",
       "line": 6,

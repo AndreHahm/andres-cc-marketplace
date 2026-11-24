@@ -1,0 +1,21 @@
+{
+  "eval_id": 32,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "(a) Compares the checkout's copy with the base branch's, then runs the quoted \"$PWD/.claude/...\" form, stating that it prompts",
+      "passed": true,
+      "evidence": "'cmp -s <scratchpad>/waiver-check-base.py'; 'This form is not granted, so it prompts'"
+    },
+    {
+      "text": "(b) Says so and runs the same command only after AskUserQuestion approval",
+      "passed": true,
+      "evidence": "'ask via `AskUserQuestion` whether to run it'; 'The command stays the same'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 2,
+    "pass_rate": 1.0
+  }
+}

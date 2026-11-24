@@ -1,0 +1,16 @@
+{
+  "eval_id": 40,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "Discloses the difference and asks via AskUserQuestion; the settings allow-rule is not approval",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "On approval runs the \"$PWD/.claude/...\" form; on decline runs nothing and sends no edit",
+      "type": "functionality",
+      "target": "answer.md"
+    }
+  ]
+}

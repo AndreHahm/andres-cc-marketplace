@@ -1,0 +1,16 @@
+{
+  "eval_id": 39,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "Counts with the paginated commits endpoint piped to wc -l, before the marker",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "Discloses 137, and \"at least 250\" for a count of 250",
+      "type": "functionality",
+      "target": "answer.md"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "eval_id": 41,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Root outside the checkout: runs the granted form with the installed copy, never the checkout's",
+      "passed": true,
+      "evidence": "'the installed plugin's'; 'Never the checkout's `.claude/scripts/` copy'"
+    },
+    {
+      "text": "Root inside the checkout: says so and runs it only after AskUserQuestion approval",
+      "passed": true,
+      "evidence": "'run it only after the user approves via `AskUserQuestion`, whether or not the copies compare equal'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 2,
+    "pass_rate": 1.0
+  }
+}

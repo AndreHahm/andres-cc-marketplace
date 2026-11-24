@@ -1,0 +1,16 @@
+{
+  "eval_id": 42,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "Treats https://git.example.net/octo/widgets.git as a mismatch although the path matches",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "Stops the run and reports resolved versus origin",
+      "type": "functionality",
+      "target": "answer.md"
+    }
+  ]
+}

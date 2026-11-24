@@ -1,0 +1,21 @@
+{
+  "eval_id": 10,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Treats https://git.example.net/octo/widgets.git as a mismatch although the path matches",
+      "passed": true,
+      "evidence": "'starts with neither prefix. Output with any other prefix is a mismatch, whatever its path'"
+    },
+    {
+      "text": "Attests nothing (no comment, no label) and reports resolved versus origin",
+      "passed": true,
+      "evidence": "'I do not run steps (c)-(g)'; 'resolved `octo/widgets` on github.com ... while `origin` targets'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 2,
+    "pass_rate": 1.0
+  }
+}

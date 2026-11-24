@@ -260,7 +260,7 @@
       "id": 32,
       "name": "Step 1.6 waiver check from the mirror, and a PR that edits the checker",
       "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT attempt any `gh`/`git` calls or edit any repository file -- you are given the data those calls would have returned, as facts for this exercise. Describe what you would do, step by step, and write your answer to a file named answer.md. Step 1.6 on PR 923 in this marketplace repository's own session: CLAUDE_PLUGIN_ROOT is empty, the shell's cwd is the worktree root that step 1.5 verified, and the user approved a body update. (a) Write the exact command you run for the waiver-section check. (b) Now suppose instead that the PR's changed-file list includes `.claude/scripts/git-pr-body-waiver-check.py`. What changes in how you run that check?",
-      "expected_output": "(a) python3 -I $PWD/.claude/scripts/git-pr-body-waiver-check.py <scratchpad>/body-base.txt <scratchpad-path>, from the verified checkout root; (b) says the pre-approved copy is the PR's own new code and runs it only after the user approves that run, never through the pre-approved form.",
+      "expected_output": "(a) python3 -I \"$PWD/.claude/scripts/git-pr-body-waiver-check.py\" <scratchpad>/body-base.txt <scratchpad-path>, from the verified checkout root (not granted, so it prompts), after comparing the copy with the base branch's; (b) says so first and runs that same form only after the user approves via AskUserQuestion, never through the granted plugin-root form.",
       "files": []
     },
     {
@@ -296,6 +296,41 @@
       "name": "Step 2: the wait for this skill's own runs needs a fresh entry and two clean results (PR #868 review)",
       "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT attempt any `gh`/`git` calls, run any script or edit any repository file -- you are given the data those calls would have returned, as facts for this exercise. Describe what you would do, step by step, and write your answer to a file named answer.md. PR 934 in octo/widgets. Step 1.5 of this run pushed a fix commit, head SHA 2222222222222222222222222222222222222222; step 1.6 made no body edit. Just before that push the latest `startedAt` in the rollup was 10:00:00. The required contexts are `Unit tests` (a `CheckRun` with workflowName `CI`, its pre-push entry) and `Codacy` (a check run of another app, with no workflowName). You are now in step 2's wait for this skill's own runs. Poll 1: `Unit tests` has only its old COMPLETED entry started 09:50; the script reports `Unit tests` passing and `Codacy` passing. Poll 2: `Unit tests` has a new entry IN_PROGRESS started 10:01; the script reports it pending. Poll 3: that entry is COMPLETED (started 10:01); the script, run after this poll, reports `Codacy` as missing. Poll 4: the same rollup; the script reports every context passing. Poll 5: the same rollup; the script reports every context passing. Poll 6: not needed. For each of polls 1 to 5, say whether the wait ends there or continues, and why. Then say what you do after the wait ends.",
       "expected_output": "Continues after polls 1 and 2 (no COMPLETED `Unit tests` entry later than the baseline), 3 (`Codacy` missing) and 4 (only the first clean result); ends at poll 5, with the head unchanged, and classifies from the last script output.",
+      "files": []
+    },
+    {
+      "id": 38,
+      "name": "Origin identity is read by hand, with no sed (issue #608)",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT attempt any `gh`/`git` calls, run any script or edit any repository file -- you are given the data those calls would have returned, as facts for this exercise. Describe what you would do, step by step, and write your answer to a file named answer.md. No PR reference was given. `gh pr view` resolved PR 940 at https://github.com/octo/widgets/pull/940. `git remote get-url origin` prints `git@github.com:mona/widgets.git`. Write the exact command(s) you run for step 1's origin check, how you turn the output into an owner/repo, and what happens next.",
+      "expected_output": "Runs only `git remote get-url origin`, strips the SSH prefix and `.git` by reading the output (no sed or other pipeline), gets mona/widgets, and stops reporting that octo/widgets was resolved while origin targets mona/widgets.",
+      "files": []
+    },
+    {
+      "id": 39,
+      "name": "Squash disclosure counts every commit (issue #864)",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT attempt any `gh`/`git` calls, run any script or edit any repository file -- you are given the data those calls would have returned, as facts for this exercise. Describe what you would do, step by step, and write your answer to a file named answer.md. PR 941 in octo/widgets has 137 commits; `pr_merge_type` is `SQUASH`; every step before 7(c) passed. Write the exact command that gives the commit count you disclose, and what you would say had it returned 250.",
+      "expected_output": "Counts with `gh api repos/octo/widgets/pulls/941/commits --paginate --jq '.[].sha' | wc -l` (not `gh pr view --json commits`), discloses 137 commits collapsing into one; on 250 says at least 250.",
+      "files": []
+    },
+    {
+      "id": 40,
+      "name": "Step 1.6 waiver check: the checkout copy differs from the base branch's",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT attempt any `gh`/`git` calls, run any script or edit any repository file -- you are given the data those calls would have returned, as facts for this exercise. Describe what you would do, step by step, and write your answer to a file named answer.md. Step 1.6 on PR 942 in this marketplace repository's own session: CLAUDE_PLUGIN_ROOT is empty, the shell's cwd is the worktree root that step 1.5 verified, and the user approved a body update. The PR's changed files do not include the waiver checker, but the checkout's `.claude/scripts/git-pr-body-waiver-check.py` is not identical to the base branch's copy. The user's settings contain an allow-rule matching the checker command. Say what you do before and when running the waiver-section check, with the exact command.",
+      "expected_output": "Says the copy differs and asks via AskUserQuestion before running (the settings allow-rule is not approval); on approval runs python3 -I \"$PWD/.claude/scripts/git-pr-body-waiver-check.py\" <scratchpad>/body-base.txt <scratchpad-path>; without approval sends no body edit.",
+      "files": []
+    },
+    {
+      "id": 41,
+      "name": "Step 1.6 waiver check: an installed plugin copy is used even when the PR edits the checker",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT attempt any `gh`/`git` calls, run any script or edit any repository file -- you are given the data those calls would have returned, as facts for this exercise. Describe what you would do, step by step, and write your answer to a file named answer.md. Step 1.6 on PR 943 in this marketplace repository. CLAUDE_PLUGIN_ROOT is /home/u/.claude/plugins/cache/mkt/git-kit/1.0.0 (outside the checkout), the shell's cwd is the worktree root step 1.5 verified, and the user approved a body update. The PR's changed files include `.claude/scripts/git-pr-body-waiver-check.py`. Say which command runs the waiver-section check, which copy of the script that is, and whether you ask the user first. Then say what changes if CLAUDE_PLUGIN_ROOT instead lies inside the checkout.",
+      "expected_output": "Runs the granted plugin-root form with the installed copy, never the checkout's, without the extra approval; with the root inside the checkout it says so and runs that form only after AskUserQuestion approval.",
+      "files": []
+    },
+    {
+      "id": 42,
+      "name": "An origin on another host is a mismatch even when the path matches (PR review fix)",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT attempt any `gh`/`git` calls, run any script or edit any repository file -- you are given the data those calls would have returned, as facts for this exercise. Describe what you would do, step by step, and write your answer to a file named answer.md. No PR reference was given. `gh pr view` resolved PR 944 at https://github.com/octo/widgets/pull/944. `git remote get-url origin` prints `https://git.example.net/octo/widgets.git`. Say the result of step 1's origin check and what happens next.",
+      "expected_output": "Mismatch: the prefix is neither https://github.com/ nor git@github.com:, so the run stops and reports what was resolved versus what origin targets, although the path reads octo/widgets.",
       "files": []
     }
   ],

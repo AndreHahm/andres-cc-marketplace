@@ -1,0 +1,16 @@
+{
+  "eval_id": 41,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "Root outside the checkout: runs the granted form with the installed copy, never the checkout's",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "Root inside the checkout: says so and runs it only after AskUserQuestion approval",
+      "type": "functionality",
+      "target": "answer.md"
+    }
+  ]
+}

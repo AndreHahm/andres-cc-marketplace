@@ -1,0 +1,16 @@
+{
+  "eval_id": 32,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "(a) Compares the checkout's copy with the base branch's, then runs the quoted \"$PWD/.claude/...\" form, stating that it prompts",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "(b) Says so and runs the same command only after AskUserQuestion approval",
+      "type": "functionality",
+      "target": "answer.md"
+    }
+  ]
+}
