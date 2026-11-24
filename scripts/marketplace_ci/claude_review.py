@@ -465,8 +465,12 @@ def apply_waivers(
             reviewers=reviewers,
             confirmed=keys.__contains__,
         )
+        # The fields the publish re-check (R19) reads from a Codex entry. `reporters` keeps
+        # `security-reviewer`, so a security-pass waiver still needs its confirmation there.
+        f["rule"], f["reviewer"], f["reporters"] = rule, rule, reviewers
         if waiver is not None:
             f["waiver"] = waiver.text[:300]
+            f["waiver_line"] = waiver.text
             used.append(waiver)
             continue
         mark = tracked_mark(f.get("title"))
@@ -487,6 +491,8 @@ def apply_waivers(
             )
         if issue is not None:
             f["waiver"] = tracked_waiver_text(issue)
+            f["waiver_line"] = None
+            f["tracked_issue"] = issue
             continue
         unwaived.append((rule, f["path"], f["line"], f["fingerprint"]))
         if why_not is not None:
