@@ -18,7 +18,7 @@
 set -Eeuo pipefail
 trap 'exit 2' ERR
 # shellcheck source=git-review-path.sh
-source "${BASH_SOURCE[0]%/*}/git-review-path.sh" # before any program runs
+source "${BASH_SOURCE[0]%[/\\]*}/git-review-path.sh" || exit 2 # before any program runs; Git Bash may pass backslashes
 
 fail() {
   echo "git-review-intent-add.sh: $*" >&2
