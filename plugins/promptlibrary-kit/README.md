@@ -161,7 +161,8 @@ verification hashes that cover prompt text only.
   `session-detail` skill being listed under that name; pasting the turns always works.
 - `prompt-reviewer`'s trigger check has not run: the repository's trigger-test script crashed on this and
   on known-good agents in the environment used. Its behavior (secrets cited by line only, hostile text
-  not followed, origin mismatch, a clean record) is covered by dry-run evals in `evals/prompt-reviewer/`.
+  not followed, origin mismatch, a clean record, personal data in `user`, `web`, `claude` and `codex`
+  records, refused paths) is covered by dry-run evals in `evals/prompt-reviewer/`.
 
 ## Tests
 

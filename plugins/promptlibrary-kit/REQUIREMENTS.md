@@ -4,8 +4,8 @@
 this document wins; V4 stays the design history.
 
 **Sources:** concept V4 (`2026-10-02`, the design source), concept V5 (`2026-10-14`, status only, no
-design change), the plugin on `main` at 51fc2b13, and the unmerged branch
-`fix/promptlibrary-kit-security-bundle` (head f064a851).
+design change), the plugin on `main` at 51fc2b13, and the security bundle (branch
+`fix/promptlibrary-kit-security-bundle`), since merged.
 
 ## How to read this
 
@@ -14,8 +14,8 @@ design change), the plugin on `main` at 51fc2b13, and the unmerged branch
 - **Requirement**: what a user (or the owner) must be able to rely on, stated as an outcome, not as an
   implementation.
 - **Source**: `V4 §<section>` for the concept, `code` for behavior that exists in the plugin but was never
-  written down as a requirement, `branch` for behavior only on the security-bundle branch.
-- **State**: `met` (on `main`), `partial`, `not met`, `branch` (only on the unmerged branch), `deferred`
+  written down as a requirement.
+- **State**: `met` (on `main`), `partial`, `not met`, `deferred`
   (planned later, V4 "Deferred").
 - **Confirm**: `?` until the owner decides; then `yes`, `changed` or `dropped`.
 
@@ -469,7 +469,7 @@ folder is in a git repository, a pushed commit shares the text and the text stay
 record changes. You get the notice for every new draft and every origin. It blocks nothing, and the plugin
 never commits or pushes. The trade-off: one more sentence at every filing.
 
-Source: branch (ad706e64); owner decision 2026-11-24. State: met. Confirmed: yes (2026-11-24).
+Source: code; owner decision 2026-11-24. State: met. Confirmed: yes (2026-11-24).
 
 ## 4. Screening for secrets and personal data (SCR)
 
