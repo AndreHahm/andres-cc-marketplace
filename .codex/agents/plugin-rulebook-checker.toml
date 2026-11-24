@@ -134,4 +134,23 @@ When dispatched through codex-kit's `codex-review-bridge` (a findings envelope i
 
 - A pipeline or orchestrator (e.g. `plugin-lifecycle-downstream`'s Phase 1 Validate step) needs an isolated rulebook batch sweep across a whole plugin, run as a background task so the main conversation's context isn't spent on ~500 lines of rulebook teaching prose per dispatch.
 - A developer just applied a fix for 1-3 specific REQUIRED FAILs and wants a fast, cheap re-check confirming those specific rules now pass on those specific files, without re-sweeping the whole plugin.
-- A grading or rollup script, or another agent, asks for \"structured output\" or \"machine-readable findings\" directly — e.g. \"run the rulebook check in structured output mode\" — rather than being handed a narrative report to parse."""
+- A grading or rollup script, or another agent, asks for \"structured output\" or \"machine-readable findings\" directly — e.g. \"run the rulebook check in structured output mode\" — rather than being handed a narrative report to parse.
+
+## Severity Policy
+
+This section overrides any severity stated above. Everything else above still applies.
+
+SEVERITY
+Critical and Major block the merge. Minor does not.
+- critical: the change breaks behavior outright, bypasses a safety or governance boundary, or corrupts authoritative state.
+- major: the change materially degrades correctness, security or scope compliance.
+- minor: real but low impact: hygiene, polish, hardening, or advice.
+For critical or major, the evidence must name the trigger, the affected consumer and the concrete harm, and cite the line. If you cannot state all three, use minor, or omit it if it is speculation. \"Could\", \"might\" or \"a reader may\" without a concrete path is not harm.
+When two levels fit, use the lower one.
+
+MINOR AT MOST
+1. Pre-approval in the `allowed-tools` of a skill or command: a missing, unused, broad, wildcard or ineffective grant, a grant that reaches more than the body uses, or a read-only claim beside a write grant. `allowed-tools` only pre-approves tools; it does not restrict them.
+2. Rulebook results rated ADVISORY, Weak Warning, Soft Warning or Warning, whatever the rule's own label.
+3. A placeholder agent, script, path or name in an example or reference. It is not a broken dependency unless something executes it.
+4. Wording, structure, completeness and style of documentation, and defense-in-depth suggestions where a stated control already covers the case.
+Item 1 does not cover an agent's `tools` field, hooks, settings.json permissions, or workflow permissions. Items 1-4 never lower a separate defect merely because it sits near one: untrusted input reaching a shell command, instructions taken from untrusted content, path escape, secret exposure, or a weakened gate. Rate that defect by its own evidence, and do not restate a grant finding as one of these."""

@@ -207,3 +207,22 @@ top_priority_fixes: [highest-impact fix, second fix, third fix]
 ```
 
 `gatekeepers.c1_line_count` uses `pass | weak_warning | soft_warning | warning | critical`; `c2_code_blocks` uses `pass | weak_warning | warning | critical`; `c3_frontmatter`/`c4_description_voice` use `pass | fail`; `findings[].severity` uses `critical | major | minor`, ordered Critical-first same as the narrative report. `findings[].action` is a closed enum naming the specific machine-executable remediation, loaded from `<plugin-rulebook-dir>/assets/settings.json → structured_output.action_enum` in Step 1 (fallback if `plugin-rulebook` is absent: `move_to_references | delete | replace_line | add_field | fix_frontmatter`) — this list is shared with `subagent-reviewer`'s Structured Output Mode, so a future change to it should update the canonical `settings.json` entry, not just one agent's copy. Use whichever value is the closest match, and omit the field only if no enum value fits (a caller should still fall back to the free-text `fix`). `counts` gives the calling skill a single field to check for loop-termination or branching instead of counting list entries itself. Do not emit the "Suggested next step" trailer in this mode — a caller requesting structured output already knows to decide this itself from `counts`/`verdict`.
+
+## Severity Policy
+
+This section overrides any severity stated above. Everything else above still applies.
+
+SEVERITY
+Critical and Major block the merge. Minor does not.
+- critical: the change breaks behavior outright, bypasses a safety or governance boundary, or corrupts authoritative state.
+- major: the change materially degrades correctness, security or scope compliance.
+- minor: real but low impact: hygiene, polish, hardening, or advice.
+For critical or major, the evidence must name the trigger, the affected consumer and the concrete harm, and cite the line. If you cannot state all three, use minor, or omit it if it is speculation. "Could", "might" or "a reader may" without a concrete path is not harm.
+When two levels fit, use the lower one.
+
+MINOR AT MOST
+1. Pre-approval in the `allowed-tools` of a skill or command: a missing, unused, broad, wildcard or ineffective grant, a grant that reaches more than the body uses, or a read-only claim beside a write grant. `allowed-tools` only pre-approves tools; it does not restrict them.
+2. Rulebook results rated ADVISORY, Weak Warning, Soft Warning or Warning, whatever the rule's own label.
+3. A placeholder agent, script, path or name in an example or reference. It is not a broken dependency unless something executes it.
+4. Wording, structure, completeness and style of documentation, and defense-in-depth suggestions where a stated control already covers the case.
+Item 1 does not cover an agent's `tools` field, hooks, settings.json permissions, or workflow permissions. Items 1-4 never lower a separate defect merely because it sits near one: untrusted input reaching a shell command, instructions taken from untrusted content, path escape, secret exposure, or a weakened gate. Rate that defect by its own evidence, and do not restate a grant finding as one of these.

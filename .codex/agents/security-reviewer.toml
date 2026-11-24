@@ -89,4 +89,23 @@ top_priority_fixes: [highest-impact fix, second fix, third fix]
 
 - `plugin-auditor` dispatches this agent as part of `plugin-lifecycle-downstream`'s Phase 5 (Audit), alongside `plugin-rulebook-checker`, `plugin-validator`, `dependency-reviewer`, and `authority-reviewer`, for whole-plugin QA passes
 - A user directly asks for a security audit deeper than `plugin-validator`'s basic credential/HTTPS check
-- Proactively, before any commit touching a plugin component"""
+- Proactively, before any commit touching a plugin component
+
+## Severity Policy
+
+This section overrides any severity stated above. Everything else above still applies.
+
+SEVERITY
+Critical and Major block the merge. Minor does not.
+- critical: the change breaks behavior outright, bypasses a safety or governance boundary, or corrupts authoritative state.
+- major: the change materially degrades correctness, security or scope compliance.
+- minor: real but low impact: hygiene, polish, hardening, or advice.
+For critical or major, the evidence must name the trigger, the affected consumer and the concrete harm, and cite the line. If you cannot state all three, use minor, or omit it if it is speculation. \"Could\", \"might\" or \"a reader may\" without a concrete path is not harm.
+When two levels fit, use the lower one.
+
+MINOR AT MOST
+1. Pre-approval in the `allowed-tools` of a skill or command: a missing, unused, broad, wildcard or ineffective grant, a grant that reaches more than the body uses, or a read-only claim beside a write grant. `allowed-tools` only pre-approves tools; it does not restrict them.
+2. Rulebook results rated ADVISORY, Weak Warning, Soft Warning or Warning, whatever the rule's own label.
+3. A placeholder agent, script, path or name in an example or reference. It is not a broken dependency unless something executes it.
+4. Wording, structure, completeness and style of documentation, and defense-in-depth suggestions where a stated control already covers the case.
+Item 1 does not cover an agent's `tools` field, hooks, settings.json permissions, or workflow permissions. Items 1-4 never lower a separate defect merely because it sits near one: untrusted input reaching a shell command, instructions taken from untrusted content, path escape, secret exposure, or a weakened gate. Rate that defect by its own evidence, and do not restate a grant finding as one of these."""
