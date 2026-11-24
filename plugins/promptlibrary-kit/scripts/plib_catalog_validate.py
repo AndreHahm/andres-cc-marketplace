@@ -441,7 +441,7 @@ def _comment_lines(text: str) -> str:
 def _comment_hits(text: str) -> str:
     """The names of the screen patterns a comment matches, never its text. Screened as written and
     without its leading `#`, so a commented-out assignment matches the line-anchored patterns."""
-    bare = "\n".join(ln.lstrip().lstrip("# \t") for ln in text.split("\n"))
+    bare = "\n".join(re.sub(r"^[\s#]+", "", ln) for ln in text.splitlines())
     return ", ".join(sorted({h["pattern"] for h in screen_text(text + "\n" + bare)}))
 
 
@@ -1177,8 +1177,12 @@ def _read_once(root: Path, parts: list[str]) -> str:
     return text.replace("\r\n", "\n").replace("\r", "\n")
 
 
-def _need_reviewable(text: str) -> None:
-    if len(json.dumps(text, ensure_ascii=False)) > MAX_REVIEW_CHARS:
+def _review_chars(text: str) -> int:
+    return len(json.dumps(text, ensure_ascii=False))
+
+
+def _need_reviewable(text: str, spare: int = 0) -> None:
+    if _review_chars(text) - spare > MAX_REVIEW_CHARS:
         raise CatalogError("the record is too long to review in one piece; shorten it")
 
 
@@ -1212,10 +1216,15 @@ def cmd_review_record(args) -> dict:
     meta["_body"], meta["_path"] = normalize_text(body), listed[rel]["_path"]
     if _canonical(meta) != _canonical(listed[rel]):
         raise CatalogError("the record file changed while it was being read")
-    _need_reviewable(text)
+    _assert_clean(meta)
+    # The hashes recorded since filing do not count, or a draft that could be filed could not be
+    # reviewed again.
+    bare = {key: value for key, value in meta.items() if key != "verification"}
+    _need_reviewable(text, _review_chars(record_text(meta)) - _review_chars(record_text(bare)))
     info["ok"] = True
     info["origin"] = meta["origin"]
     info["text_hash"] = text_hash(body)
+    info["record_lines"] = text.rstrip().count("\n") + 1
     info["record_text"] = text
     info["boundary"] = "record-" + hashlib.sha256(text.encode("utf-8")).hexdigest()
     return info
@@ -1270,8 +1279,11 @@ def screen_text(text: str) -> list[dict]:
     # A lone CR ends a line too, or a line-anchored pattern (dotenv_secret_line) would miss an
     # assignment that follows one.
     for lineno, line in enumerate(re.split(r"\r\n|\r|\n", text), start=1):
+        # Each piece between other line separators (U+2028, NEL, form feed) too, for that reason,
+        # and still the whole line, for a pattern that spans one. The line number stays the file's.
+        pieces = {line, *line.splitlines()}
         for name, pattern in SECRET_PATTERNS:
-            if pattern.search(line):
+            if any(pattern.search(piece) for piece in pieces):
                 found.append({"line": lineno, "pattern": name})
     return found
 
@@ -1542,6 +1554,7 @@ def cmd_register(args) -> dict:
         raise CatalogError("; ".join(problems[:4]))
     _assert_clean(meta)
     meta.pop("verification", None)  # verification is recorded by record-verification only
+    _need_reviewable(record_text(meta))
     write_record(path, meta)  # the canonical form: a comment in the file was never screened
     write_catalog(root, cat, [m["_path"] for m in records.values()] + [rel])
     info["ok"] = True

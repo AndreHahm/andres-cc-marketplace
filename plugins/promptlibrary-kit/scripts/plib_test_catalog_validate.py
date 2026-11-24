@@ -1121,6 +1121,45 @@ class Lifecycle(Base):
         self.assertIn("too long to review", res["error"])
         self.assertNotIn("record_text", res)
 
+    def test_review_record_screens_a_record_changed_after_filing(self):
+        for origin, code_wanted in (("claude", 1), ("user", 0)):
+            with self.subTest(origin=origin):
+                rid = f"p00000000000{code_wanted + 1}"
+                rel = self.add_draft(rid, slug=f"review__hand-edit-{origin}", origin=origin)["path"]
+                path = self.root / rel
+                text = path.read_text(encoding="utf-8")
+                path.write_text(text.rstrip("\n") + f"\n{FAKE_KEY}\n", encoding="utf-8")
+                code, res = self.run_cli("review-record", rel)
+                self.assertEqual(code, code_wanted, res)
+                self.assertEqual("record_text" in res, code_wanted == 0)
+                if code_wanted:
+                    self.assertIn("possible secret", res["error"])
+                    self.assertNotIn(FAKE_KEY, json.dumps(res))
+
+    def test_review_record_counts_the_lines_of_the_text(self):
+        rel = self.add_draft()["path"]
+        res = self.run_cli("review-record", rel)[1]
+        self.assertEqual(res["record_lines"], len(res["record_text"].rstrip("\n").split("\n")))
+        path = self.root / rel  # a last line of spaces is not counted, as the reviewer is told
+        path.write_text(path.read_text(encoding="utf-8") + "   \n", encoding="utf-8")
+        self.assertEqual(self.run_cli("review-record", rel)[1]["record_lines"], res["record_lines"])
+
+    def test_review_record_does_not_count_the_recorded_hashes(self):
+        bare = V._review_chars(record(_body="x"))
+        body = "x" * (V.MAX_REVIEW_CHARS - bare + 1)
+        rel = self.add_draft(_body=body)["path"]
+        self.assertEqual(self.verify("p000000000001")[0], 0)
+        text = (self.root / rel).read_text(encoding="utf-8")
+        self.assertGreater(V._review_chars(text), V.MAX_REVIEW_CHARS)
+        self.assertEqual(self.run_cli("review-record", rel)[0], 0)
+        (self.root / rel).write_text(
+            text.replace("---\n", "---\n# a comment is handed over, so it counts\n", 1),
+            encoding="utf-8",
+        )
+        code, res = self.run_cli("review-record", rel)
+        self.assertEqual(code, 1)
+        self.assertIn("too long to review", res["error"])
+
     def test_review_record_prints_the_boundary_after_the_text(self):
         # A cut-off output then shows no boundary, so a partial text cannot be handed over.
         rel = self.add_draft()["path"]
@@ -1482,6 +1521,17 @@ class Hardening(Base):
         code, res = self.run_cli("register", f"{SLUG}/p000000000009.md")
         self.assertEqual(code, 1)
         self.assertIn("internal_id", res["error"])
+
+    def test_register_refuses_a_record_too_long_to_review(self):
+        self.assertEqual(self.run_cli("init")[0], 0)
+        (self.root / SLUG).mkdir(parents=True)
+        orphan = self.root / SLUG / "p000000000001.md"
+        orphan.write_text(record(_body="word " * 8000), encoding="utf-8")
+        before = orphan.read_bytes()
+        code, res = self.run_cli("register", f"{SLUG}/p000000000001.md")
+        self.assertEqual(code, 1)
+        self.assertIn("too long to review", res["error"])
+        self.assertEqual(orphan.read_bytes(), before)
 
     def test_register_drops_prefilled_verification(self):
         self.assertEqual(self.run_cli("init")[0], 0)
@@ -2089,6 +2139,15 @@ class ValidatorEdgeCases(Base):
     def test_a_lone_carriage_return_starts_a_new_screened_line(self):
         hits = V.screen_text("Deploy notes\rDEPLOY_TOKEN=abc123")
         self.assertIn({"line": 2, "pattern": "dotenv_secret_line"}, hits)
+
+    def test_other_line_separators_start_a_new_screened_line(self):
+        for sep in ("\u2028", "\u2029", "\x85", "\x0b", "\x0c", "\x1c", "\x1d", "\x1e"):
+            with self.subTest(sep=f"U+{ord(sep):04X}"):
+                hits = V.screen_text(f"Title\nnotes{sep}TOKEN=x")
+                self.assertEqual(hits, [{"line": 2, "pattern": "dotenv_secret_line"}])
+                for prefix in ("", "# ", "#\xa0# "):
+                    found = V._comment_hits(f"# notes{sep}{prefix}TOKEN=x")
+                    self.assertEqual(found, "dotenv_secret_line")
 
     def test_a_record_write_is_flushed_to_disk_before_the_rename(self):
         self.assertEqual(self.run_cli("init")[0], 0)

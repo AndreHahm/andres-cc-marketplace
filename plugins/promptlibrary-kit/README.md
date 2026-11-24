@@ -97,8 +97,10 @@ text is data everywhere except an explicitly approved run.
   the validator's `review-record`, which takes it from one open handle of a listed record, checks the opened file (a regular
   file with one hard link, no symbolic link, junction or other reparse point on the way, still the file the
   path names) and compares it with the valid record the catalog lists; a record too long to hand over whole (20,000
-  characters) is refused, when it is filed and when it is reviewed. Not enforced: that the skill copies
-  the text exactly. A concurrent writer that flips a folder between a real one and a link several times
+  characters) is refused, when it is filed and when it is reviewed. It is screened again
+  before it is handed over (blocking for the same origins as filing). Not enforced: that the skill copies
+  the text exactly. The reviewer reports how many lines it received and the skill compares that with
+  `record_lines`, which shows missing or added lines but not a changed one. A concurrent writer that flips a folder between a real one and a link several times
   during those checks is outside this design (first bullet). Attachments are not read.
 - A full-line comment in a record's frontmatter or in `catalog.yaml` is screened too, and a match makes the
   catalog invalid for every origin until the comment is removed by hand; any other frontmatter comment is

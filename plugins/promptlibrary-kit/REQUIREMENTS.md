@@ -706,7 +706,8 @@ with the single read of each attachment that EXE-2's attachments amendment requi
 REV-1 to REV-6 and CAT-2 must hold together.
 
 Source: code; owner decisions 2026-11-16 and 2026-11-24. State: **partial** (single-record review: met, except
-that the validator cannot check that the skill copied the text exactly; attachments: not met). Confirmed: yes
+that the validator cannot check that the skill copied the text exactly; the reviewer's line count, which the
+skill compares with `record_lines`, shows missing or added lines only; attachments: not met). Confirmed: yes
 (2026-11-16; mechanism and state note amended 2026-11-24).
 
 ## 6. Verification and lifecycle (LIF)

@@ -147,9 +147,9 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
    text; if it fails or its JSON is cut off, report that and do not dispatch (no review ran, see Gotchas).
    Otherwise dispatch `prompt-reviewer`, which has no tools, with the returned `boundary` on a line of its own,
    the decoded `record_text` (real line breaks, every line, unchanged), the same `boundary` on a line of its own,
-   then the record's `origin`. If it returns its
+   then the record's `origin`, never `record_lines`. If it returns its
    `Refused:` line, the dispatch fails or the output is not a completed review (defined in
-   `references/prompt-optimization-and-review.md`), no review ran (see Gotchas). Present its findings and its
+   `references/prompt-optimization-and-review.md`, its line count included), no review ran (see Gotchas). Present its findings and its
    proposed rewrite as a diff. If the user approves a rewrite, write the full replacement record to a
    scratch file, with no reviewer placeholder (`line N removed` or `line N kept, value not shown`) in it, and
    run `<CLI> update-draft <internal_id> <scratch-file>`; it screens the new text and
@@ -264,7 +264,7 @@ directly; last run 2026-11-24, 8 of 8 checks passed. It failed on a copy with a 
 - [ ] A slug that does not match the slug pattern is refused before any command runs with it.
 - [ ] `activate` of an already active record is reported and stops, with no question and no command.
 
-**Last dated run record:** validator fixture tests, 176 run (173 passing, 3 POSIX-only skipped on Windows), 2026-11-24
+**Last dated run record:** validator fixture tests, 181 run (178 passing, 3 POSIX-only skipped on Windows), 2026-11-24
 (`scripts/plib_test_catalog_validate.py`), after the email screen, its review fixes, the comment screen and `review-record`
 (link, hard-link and swap refusal, tested with a real junction on Windows) were added. The step 6 sharing notice and
 the earlier step 7 path hand-off (2026-11-16, replaced by the inline record text) were checked by the smoke test and
