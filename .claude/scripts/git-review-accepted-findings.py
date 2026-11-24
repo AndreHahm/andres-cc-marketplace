@@ -98,6 +98,13 @@ _SUMMARY_HEADING = re.compile(r"^#{1,6}\s+Summary\s*$", re.IGNORECASE)
 _CONTROL_CHARS = re.compile(r"[\x00-\x1f\x7f]")
 MAX_TRACKED_ISSUES = 10
 _MAX_TRACKED_SUMMARY = 600
+# Common credential formats, credentials in a URL and email addresses; not complete. The title and
+# summary may be cut in the middle of a value: so the low lengths, and the end of the text (`\Z`).
+_SECRET_VALUE_RE = re.compile(
+    r"(?<![A-Za-z0-9])(?:gh[oprsu]_|github_pat_|sk-|AKIA|ASIA|AIza|xox[a-z]-|glpat-|npm_)[\w-]{8}"
+    r"|-----BEGIN [A-Z ]*PRIVATE KEY|eyJ[\w-]{8,}\.[\w-]{4}|://[^\s:/@]*:[^\s/@]+(?:@|\Z)"
+    r"|[\w.+-]+@(?:[\w-]+\.\w|[\w-]*\.?\Z)"
+)
 
 
 def _tool(name: str) -> str:
@@ -620,7 +627,10 @@ def cmd_lines() -> int:
 
 
 def _names_sensitive(text: str) -> bool:
-    """Whether a word of the text is a sensitive name (#697): the issue text goes to Codex."""
+    """Whether a word of the text is a sensitive name, or the text has a value in a common
+    credential format or an email address (#697): the issue text goes to Codex."""
+    if _SECRET_VALUE_RE.search(text):
+        return True
     words = re.split(r"[^\w./-]+", text)
     # Also without the punctuation around it, such as Markdown's `_server.pem_`.
     words += [w.lstrip("_-").rstrip("._-") for w in words]
@@ -691,18 +701,24 @@ def cmd_brief(run_dir: str) -> int:
         print(f"git-review-accepted-findings: {problem}", file=sys.stderr)
         return 2
     waivers, skipped, tracked, from_body, repo = _load(for_briefing=True)
+    # A tracked line is named by its issue number only: the rest of it is free text.
     for line in skipped:
-        print(f"not applied: {line}")
+        m = _TRACKED_LINE.match(line)
+        what = f"tracked #{int(m['issue'])} (over the limit)" if m else line
+        print(f"not applied: {what}")
     records, codex_records = [], []
-    for number, raw in tracked:
+    for number, _ in tracked:
         record = open_issue(number, repo)
         if record is None:
             where = "the pull request's repository" if from_body else "origin"
-            print(f"not applied: {raw} (gh cannot read #{number} as an open issue of {where})")
+            print(f"not applied: tracked #{number} (gh cannot read it as an open issue of {where})")
             continue
         records.append(record)
         if _names_sensitive(record["title"]) or _names_sensitive(record["summary"]):
-            print(f"not briefed to Codex: {raw} (the issue text has a sensitive word or file name)")
+            print(
+                f"not briefed to Codex: tracked #{number} "
+                "(the issue text has a sensitive word, file name or value)"
+            )
         else:
             codex_records.append(record)
     # Issue #814, as CI's `render_accepted_findings_briefing`: a model cannot check a

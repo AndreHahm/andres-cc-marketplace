@@ -69,8 +69,9 @@ directory, so a worktree whose `.git` is gone or altered is not recognized. A ch
 when one of the programs the review runs by name is a link in it that leads inside or passes through.
 Built-ins cannot read a file link, so `/usr/bin/readlink` does, by absolute path and one step at a time. A link
 it cannot read (no such program, as on NixOS) drops the folder, which can leave no PATH and stop the chain. Not
-caught: a link to a program outside that list, and a hard link. Windows names with an extension (`git.exe`)
-were not checked; `safe_path` covers them for `codex`, `node` and `git`. If nothing is left, the chain stops: an empty PATH would make the shell look in the current
+caught: a link to a program outside that list, and a hard link. Each name is also checked with `.exe`, the
+suffix Git Bash adds; this was run on Linux only (issue #877). `safe_path` covers the other Windows suffixes
+for `codex`, `node` and `git`. If nothing is left, the chain stops: an empty PATH would make the shell look in the current
 directory. `builtin` keeps a user's own `cd` function out of it. Each Bash call is a fresh shell, hence the
 `export PATH` statement on later calls. An entry that could not be entered is dropped for the chain only, unless
 it is spelled inside the checkout.
