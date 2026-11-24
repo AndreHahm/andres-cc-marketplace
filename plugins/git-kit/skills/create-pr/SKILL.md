@@ -6,7 +6,7 @@ description: >-
   request", or "push this and make a PR" — for linking an issue at creation time or reviewer actions on
   an existing PR, see `collaborating-on-a-pr` instead.
 argument-hint: (optional) an issue number to close or reference, and/or --bypass-codex-review "<reason>", and/or --bypass-cross-model-review "<reason>" — otherwise an interactive guide
-allowed-tools: Bash(gh pr create:*), Bash(gh pr view:*), Bash(gh pr comment:*), Bash(gh pr edit:*), Bash(gh api user:*), Bash(gh api repos/*/collaborators/*/permission:*), Bash(gh api repos/*/labels/*:*), Bash(gh repo view:*), Bash(git status:*), Bash(git push:*), Bash(git diff --name-only -z:*), Bash(grep -zqxF:*), Bash(jq -n --arg:*), Bash(jq -n --rawfile:*), Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh:*), Bash(uv run python "${CLAUDE_PLUGIN_ROOT}/scripts/git-check-pr-title.py":*), Bash(uv run python "${CLAUDE_PLUGIN_ROOT}/scripts/git-codex-parity-review.py":*), Bash(uv run python .claude/scripts/git-codex-parity-review.py:*), Bash(python3 -I "${CLAUDE_PLUGIN_ROOT}/scripts/git-review-accepted-findings.py" lines:*), AskUserQuestion, Read, Write, Skill(commit), Skill(collaborating-on-a-pr), Skill(cross-model-review), Skill(github-issue-lifecycle)
+allowed-tools: Bash(gh pr create:*), Bash(gh pr view:*), Bash(gh pr comment:*), Bash(gh pr edit:*), Bash(gh api user:*), Bash(gh api repos/*/collaborators/*/permission:*), Bash(gh api repos/*/labels/*:*), Bash(gh repo view:*), Bash(git status:*), Bash(git push:*), Bash(git diff --name-only -z:*), Bash(grep -zqxF:*), Bash(python3 -I "${CLAUDE_PLUGIN_ROOT}/scripts/git-bypass-attestation-marker.py":*), Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh:*), Bash(uv run python "${CLAUDE_PLUGIN_ROOT}/scripts/git-check-pr-title.py":*), Bash(uv run python "${CLAUDE_PLUGIN_ROOT}/scripts/git-codex-parity-review.py":*), Bash(uv run python .claude/scripts/git-codex-parity-review.py:*), Bash(python3 -I "${CLAUDE_PLUGIN_ROOT}/scripts/git-review-accepted-findings.py" lines:*), AskUserQuestion, Read, Write, Skill(commit), Skill(collaborating-on-a-pr), Skill(cross-model-review), Skill(github-issue-lifecycle)
 ---
 
 # How to Create a Pull Request Using GitHub CLI
@@ -446,7 +446,7 @@ loop.
 - "summarize this PR's changes" / "update this PR's description" → `explain-pr-changes`
 - "merge this PR" / "is this ready to merge" → `merge-pr`
 
-**Last dated run record:** 2026-11-21, `evals/create-pr/workspace/iteration-5/` — evals 7-8 (accepted findings carried into the body, issue #808), `skill-tester` Quick Workflow dry runs, `with_skill` only, 5/5; 2026-10-08, `scripts/smoke_test.py` (5 checks pass; structural only, no live bypass run) — see `references/verification-log.md`.
+**Last dated run record:** 2026-11-24, `evals/create-pr/workspace/iteration-6/` — eval 4 re-run after the marker moved from `jq` to `git-bypass-attestation-marker.py` (issue #861), Quick Workflow, `with_skill` only, 4 of 4. Previous record: 2026-11-21, `evals/create-pr/workspace/iteration-5/` — evals 7-8 (accepted findings carried into the body, issue #808), `skill-tester` Quick Workflow dry runs, `with_skill` only, 5/5; 2026-10-08, `scripts/smoke_test.py` (5 checks pass; structural only, no live bypass run) — see `references/verification-log.md`.
 See `references/test-scenarios.md` for detailed verification scenarios covering the Pre-flight Checks
 step 4 cross-model-review gate, step 3.5's session open-issues check, and `--bypass-codex-review`
 behavior (R30 extraction — kept out of this file to stay under R13's line budget).
@@ -458,7 +458,7 @@ behavior (R30 extraction — kept out of this file to stay under R13's line budg
 - [ ] Step 4.5 runs the CI-parity Codex round after step 4 and before the first push; exit 2 is never treated as a pass, and a bypass is only ever the user's `AskUserQuestion` choice, disclosed in the PR body. An exit 0 with incomplete `coverage` or a true `advisory` is reported as advisory, never as a clean pass, and named in Open Items.
 - [ ] Draft versus ready-to-merge is always asked via `AskUserQuestion`; the `gh-pr-create` marker is written immediately before the create command.
 - [ ] Title policy, assignee and the one `p:` label are resolved before creation (steps 3.5, 3.75, 3.85); a policy `FAIL` blocks creation.
-- [ ] `--bypass-codex-review` is rejected on an empty reason or a bot-trigger mention, builds its comment body with `jq --rawfile`, and reports a failed attestation as a failure.
+- [ ] `--bypass-codex-review` is rejected on an empty reason or a bot-trigger mention, builds its comment body with `git-bypass-attestation-marker.py`, and reports a failed attestation as a failure.
 - [ ] PR titles and bodies are in English, follow the resolved template's exact headers, and never contain a literal bot-trigger mention.
 
 See `references/verification-log.md` for dated "verified live" notes on steps 3.5, 3.75, 3.85, Best

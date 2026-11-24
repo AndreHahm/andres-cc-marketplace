@@ -9,7 +9,7 @@ description: >-
   GitHub label (`--bypass-codex-review`) to attest a Codex-review bypass on an already-open PR.
 argument-hint: Optional flags (--no-verify, --amend, --push, --bypass-codex-review "<reason>") followed by an optional commit message
 model: haiku
-allowed-tools: Bash(git status:*), Bash(git add:*), Bash(git diff --cached), Bash(git commit:*), Bash(git checkout -b:*), Bash(git push -u origin:*), Bash(git push origin:*), Bash(git ls-files:*), Bash(git rev-parse:*), Bash(git remote get-url origin:*), Bash(gh pr view:*), Bash(gh pr comment:*), Bash(gh pr edit:*), Bash(gh api user:*), Bash(gh api repos/*/collaborators/*/permission:*), Bash(gh api repos/*/labels/*:*), Bash(jq -n --arg:*), Bash(jq -n --rawfile:*), Bash(pnpm lint:*), Bash(npm run lint:*), Bash(yarn lint:*), Bash(bun lint:*), Bash(uv run python -m scripts.marketplace_ci:*), Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/git-scan-staged-files.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/git-unstage-flagged-files.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/git-lint-staged-python.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/git-stage-selected-files.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/git-lint-commit-message.sh:*), AskUserQuestion, Read, Edit(//tmp/claude-*/*/*/scratchpad/**), Skill(create-pr)
+allowed-tools: Bash(git status:*), Bash(git add:*), Bash(git diff --cached), Bash(git commit:*), Bash(git checkout -b:*), Bash(git push -u origin:*), Bash(git push origin:*), Bash(git ls-files:*), Bash(git rev-parse:*), Bash(git remote get-url origin:*), Bash(gh pr view:*), Bash(gh pr comment:*), Bash(gh pr edit:*), Bash(gh api user:*), Bash(gh api repos/*/collaborators/*/permission:*), Bash(gh api repos/*/labels/*:*), Bash(python3 -I "${CLAUDE_PLUGIN_ROOT}/scripts/git-bypass-attestation-marker.py":*), Bash(pnpm lint:*), Bash(npm run lint:*), Bash(yarn lint:*), Bash(bun lint:*), Bash(uv run python -m scripts.marketplace_ci:*), Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/git-scan-staged-files.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/git-unstage-flagged-files.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/git-lint-staged-python.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/git-stage-selected-files.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/git-lint-commit-message.sh:*), AskUserQuestion, Read, Edit(//tmp/claude-*/*/*/scratchpad/**), Skill(create-pr)
 ---
 
 # Claude Command: Commit
@@ -45,7 +45,7 @@ unstaged changes into a properly formatted commit.
 
 ## Flags
 
-Parse `$ARGUMENTS` for these flags (each may appear alone or combined with the others, in any order, optionally followed by a commit message to use instead of generating one). `--bypass-codex-review "<reason>"` is handled independently, the same way `merge-pr`/`create-pr` already isolate it — its `<reason>` text is never reached by the commit-message parsing below, and it never reaches a command line directly — it's written to a scratchpad file via `Write` and read back with `jq -n --rawfile` at step 16.5(c-g)'s shared protocol, never composed into a Bash command string:
+Parse `$ARGUMENTS` for these flags (each may appear alone or combined with the others, in any order, optionally followed by a commit message to use instead of generating one). `--bypass-codex-review "<reason>"` is handled independently, the same way `merge-pr`/`create-pr` already isolate it — its `<reason>` text is never reached by the commit-message parsing below, and it never reaches a command line directly — it's written to a scratchpad file via `Write` and read back by `git-bypass-attestation-marker.py` at step 16.5(c-g)'s shared protocol, never composed into a Bash command string:
 
 | Flag | Effect |
 |------|--------|
@@ -383,7 +383,7 @@ pattern/examples, never as a separate source of truth):**
   concerns?" signal exists to catch this mid-flow (a diff that looks split-worthy once already staged),
   not to make `commit` a second entry point for a request to split in the first place
 
-**Last dated run record:** `2026-09-21, evals/commit/` — 8 scenarios (step 16.5's own bypass-attestation
+**Last dated run record:** 2026-11-24, `evals/commit/workspace/iteration-4/` — eval 8 re-run after the marker moved from `jq` to `git-bypass-attestation-marker.py` (issue #861), Quick Workflow, `with_skill` only, 3 of 3. Previous record: `2026-09-21, evals/commit/` — 8 scenarios (step 16.5's own bypass-attestation
 behavior, including eval 8's injection-payload scenario added after cross-model-review round 2; a ninth, the
 `GH_REPO` origin-binding scenario, was added later), 36/36
 assertions passed via `skill-tester` Quick Workflow dry-run agents (see
@@ -398,7 +398,7 @@ checks only; the 2026-10-08 entry in `references/staging-fix-verification-log.md
 - [ ] Staging, unstaging and the Python lint loop never compose a shell command from a filename; they pass plain digit indices or run inside the helper scripts.
 - [ ] Step 16 always pushes with `git push origin HEAD` and skips entirely (including its question) when invoked from `create-pr`'s Pre-flight; step 17's Auto-PR skip travels with it.
 - [ ] Step 13.5 runs the real commitlint before the step 14 confirmation, treats exit 2 as an infrastructure skip, and rewraps a body line over 100 characters once.
-- [ ] Step 16.5 only fires when `--bypass-codex-review` has a non-empty reason and step 16 actually pushed, builds the comment from a reason file via `jq --rawfile`, and never polls for CI.
+- [ ] Step 16.5 only fires when `--bypass-codex-review` has a non-empty reason and step 16 actually pushed, builds the comment from a reason file via `git-bypass-attestation-marker.py`, and never polls for CI.
 - [ ] Generated messages never contain a local path, session context or a literal bot-trigger mention.
 
 **Step 7.5 (lint/format/type-check staged Python files) — verified live, 2026-08-16.** See

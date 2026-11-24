@@ -91,8 +91,8 @@ def check_bash_grants():
     fm_line_match = re.search(r"^allowed-tools:\s*(.+)$", frontmatter, re.MULTILINE)
     if not fm_line_match:
         return True, "no allowed-tools line found (skip)"
-    granted_cmds = re.findall(r"Bash\(([\w.*/${} -]+?)(?::|\))", fm_line_match.group(1))
-    granted_cmds = [c.lstrip("*/") for c in granted_cmds]
+    granted_cmds = re.findall(r"Bash\(([\w.*/${} \"-]+?)(?::|\))", fm_line_match.group(1))
+    granted_cmds = [c.lstrip("*/").replace('"', "") for c in granted_cmds]
 
     body = fm_text[header_end:]
     # Shell quotes around a script path are not part of the grant text.
@@ -1159,11 +1159,40 @@ def check_step2_required_checks_include_rulesets():
     step2 = _get_step_text(2)
     if step2 is None:
         return False, "step 2 ('## Instructions') not found"
-    if "rules/branches/<baseRefName>" not in step2 or "required_status_checks" not in step2:
+    if "git-required-checks.py" not in step2 or "every ruleset on the base branch" not in step2:
         return False, "step 2 no longer adds the ruleset-required contexts"
     if "union" not in step2 or "Branch not protected" not in step2:
         return False, "step 2 lost the union or the 404 exception"
     return True, "required checks = classic protection + ruleset contexts"
+
+
+def check_step2_check_sources():
+    # Issue #858: grouping same-name checks by workflow display name hid a failing one.
+    step2 = _get_step_text(2)
+    if step2 is None:
+        return False, "step 2 ('## Instructions') not found"
+    needed = (
+        "workflow id and event",
+        "Every source must pass",
+        "**Exit `2`**",
+        "approves that run",
+    )
+    missing = [n for n in needed if n not in step2]
+    if missing:
+        return False, "step 2's check-source rule is incomplete, missing: " + ", ".join(missing)
+    return True, "step 2 separates same-name checks by server-set source"
+
+
+def check_no_jq_program_grant():
+    # Issue #861: any `jq -n ...` prefix grant also pre-approves a program that reads $ENV.
+    for skill in ("merge-pr", "commit", "create-pr"):
+        text = (SKILL_DIR.parent / skill / "SKILL.md").read_text(encoding="utf-8")
+        grants = text.split("\n---\n", 1)[0]
+        if "Bash(jq" in grants:
+            return False, f"{skill} grants jq again, which can print the environment"
+        if "git-bypass-attestation-marker.py" not in grants:
+            return False, f"{skill} does not grant the attestation marker script"
+    return True, "no skill of the bypass protocol grants jq"
 
 
 def check_step2_review_outcomes_recorded():
@@ -1249,6 +1278,8 @@ CHECKS = [
     check_step5_states_advisory_disclosures,
     check_stop_on_review_findings_opt_in,
     check_step2_required_checks_include_rulesets,
+    check_step2_check_sources,
+    check_no_jq_program_grant,
     check_step2_review_outcomes_recorded,
     check_open_items_batched_and_body_edited_once,
 ]
