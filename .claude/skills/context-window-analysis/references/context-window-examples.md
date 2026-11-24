@@ -112,8 +112,9 @@ Recommendations:
 
 ```text
 Warning Signs to Watch:
-  - If responses slow further, act immediately
-  - Watch for truncation or "I don't recall" responses
+  - If responses slow further or recall gets worse, run /context again
+  - If the conversation is truncated or operations fail on the
+    context limit, act immediately
 ```
 
 ## Example: Critical State

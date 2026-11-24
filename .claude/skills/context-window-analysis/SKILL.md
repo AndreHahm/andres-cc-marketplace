@@ -182,7 +182,8 @@ added eval 6, very slow responses as the only sign. Iteration-9 (2026-11-24, sam
 evals 5 and 6 after unrelated failures stopped counting as an indicator, and iteration-10 (7/7) re-ran
 evals 4, 5 and 6 after the Observable signals list was aligned with Step 2. Iteration-11 (2/2) added
 eval 7, repeated auto-compact messages without a Critical sign, and iteration-12 (2/2) re-ran it after
-the WARNING advice named the 80% threshold. The remaining 2 scenarios
+the WARNING advice named the 80% threshold. Iteration-13 (6/6) re-ran evals 4 and 7 with assertions that
+require that threshold and no immediate action on further slowdown. The remaining 2 scenarios
 ("should I compact now", and a direct request for the automatic hook-driven behavior itself) are named
 in `evals.json`'s own `uncovered` list, not yet exercised. The structural claims
 this section documents (the examples-reference link, Option 4's real session-kit reference, no

@@ -1,0 +1,26 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Reports a WARNING estimate, labelled an estimate rather than a measurement",
+      "passed": true,
+      "evidence": "Estimated Status: WARNING (an estimate, not a measurement)."
+    },
+    {
+      "text": "Recommends running /context and compacting only if the measured percentage is 80% or more (so a measured 90% or more also compacts), not running /compact or /clear now",
+      "passed": true,
+      "evidence": "Run /context and share the output. Compact only if the measured percentage is 80% or more; no upper limit, so 90% or more is included."
+    },
+    {
+      "text": "Further slowdown leads to running /context again, not to immediate action",
+      "passed": true,
+      "evidence": "If responses slow further or recall gets worse, run /context again."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}
