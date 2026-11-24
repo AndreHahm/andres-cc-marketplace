@@ -168,8 +168,8 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
 38. In a session that used `EnterWorktree`, the chained Preflight call, a write-helper heredoc whose text
     names git, a JSON heredoc, or a helper call containing a shell variable is refused by the
     worktree-isolation check (issues #723, #866) → a helper call typed directly carries only single-quoted
-    literal values (plugin root from its own `echo "${CLAUDE_PLUGIN_ROOT:-.claude}"` call); the Inputs block
-    and steps 1-6 go verbatim into `<scratchpad>/preflight.sh` (only `BASE`/`SCOPE`/`PLANNER_APPROVED`
+    literal values (plugin root from its own `printf '%s\n' "${CLAUDE_PLUGIN_ROOT:-.claude}"` call); the
+    Inputs block and steps 1-6 go verbatim into `<scratchpad>/preflight.sh` (only `BASE`/`SCOPE`/`PLANNER_APPROVED`
     filled in, never text from the diff, a run file or Codex output; `BASE`/`SCOPE` only as single-quoted
     assignments before the Inputs block, and a value with a single quote, a newline or a leading `-`
     stops the run with a question instead), the user is shown the script, and it
@@ -333,6 +333,10 @@ Moved here from SKILL.md's Testing & Validation section, which keeps only the la
   `${CLAUDE_PLUGIN_ROOT}`, `"$RUN"` or `${SCOPE:+...}` were refused, and the literal write-helper, prompt-copy,
   planner and accepted-findings calls ran, as did two Codex dispatches in the pre-PR review. Not run live: an
   installed plugin.
+- **2026-11-24, `iteration-24`:** re-runs eval 25 after PR #871's first review round (the quoting the text
+  requires was not asserted; `echo` became `printf`). One assertion added and one reworded before the run, same
+  prompt and baseline, both arms `claude-opus-5-5`: `with_skill` 6/6, baseline 4/6 (+33.3 points).
 
-All of these are dry runs of the committed text, not live dispatches, and include no live run of the
-scoped flow (one ran 2026-10-14 for PR #567, see the #568 report).
+Every eval run listed above is a dry run of the committed text, not a live dispatch (the live checks that
+some entries name are separate from their evals), and none is a live run of the scoped flow (one ran
+2026-10-14 for PR #567, see the #568 report).

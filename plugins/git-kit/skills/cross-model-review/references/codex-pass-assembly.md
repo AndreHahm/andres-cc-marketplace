@@ -70,9 +70,10 @@ form too complex to verify". In such a session only, and only after such a refus
   typed directly (not inside `preflight.sh`) write each documented variable as its literal value:
   `"${CLAUDE_PLUGIN_ROOT:-.claude}"`, `"${CLAUDE_PLUGIN_ROOT}"`, `"$RUN"`, `"$MERGE_BASE"`, `"$BASE"`,
   `"$REPO_ROOT"`, and `${SCOPE:+--scope "$SCOPE"}` as `--scope '<value>'` or nothing. Take the plugin root
-  only from `echo "${CLAUDE_PLUGIN_ROOT:-.claude}"` run as its own call, never from the `plugins/` folder
-  of the repository under review. `RUN`, `BASE`, `REPO_ROOT` and the merge base (the SHA in `DIFF_STR`)
-  come from the Preflight's closing `echo`, and `SCOPE` from the user's request. Each value is
+  only from `printf '%s\n' "${CLAUDE_PLUGIN_ROOT:-.claude}"` run as its own call (`echo` would swallow a
+  value such as `-n`), never from the `plugins/` folder of the repository under review.
+  `RUN`, `BASE`, `REPO_ROOT` and the merge base (the SHA in `DIFF_STR`) come from the Preflight's closing
+  `echo`, and `SCOPE` from the user's request. Each value is
   data: single-quote it, and if it contains a single quote or a newline, or starts with `-`, stop and ask
   the user. The `.claude` form has no grant, so it may prompt; approve that one call only. This
   covers the write helper, the `@plugin:` prompt copy, the planner re-runs and the accepted-findings calls.
