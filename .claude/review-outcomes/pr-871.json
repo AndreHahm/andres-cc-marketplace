@@ -21,6 +21,16 @@
     },
     {
       "disposition": "fixed",
+      "finding": "82d370fcc88983660e827a68936e5c55",
+      "line": 92,
+      "note": "stdin redirect path quoted; CI Codex finding without a thread",
+      "path": "plugins/git-kit/skills/cross-model-review/references/codex-pass-assembly.md",
+      "pr": 871,
+      "recorded_at": "2026-11-24T10:14:02+00:00",
+      "rule": "reliability"
+    },
+    {
+      "disposition": "fixed",
       "finding": "a623ccbbb2f254664a6df6e384d0289d",
       "line": 73,
       "note": "echo replaced by printf; CI Codex finding without a thread",
