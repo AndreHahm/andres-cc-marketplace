@@ -451,6 +451,18 @@ def _empty_variable_run(*, with_mirror: bool) -> str:
         return run_bash(repo, script).stdout
 
 
+def test_a_relative_path_entry_stops_the_chain():
+    with tempfile.TemporaryDirectory() as tmp:
+        repo = pathlib.Path(tmp)
+        planner_repo(repo)
+        for entry in (".", "node_modules/.bin", ""):
+            result = run_bash(repo, f'PATH="{entry}:$PATH"\n' + planner_chain("true"))
+            stopped = "PATH has an empty or relative entry" in result.stdout
+            if not stopped or "PLANNER_CHAIN_COMPLETED" in result.stdout:
+                return False, f"PATH entry {entry!r} did not stop the chain: {result.stdout}"
+        return True, "an empty or relative PATH entry stops the chain"
+
+
 def test_an_empty_plugin_root_never_runs_the_repositorys_own_scripts():
     with_mirror = _empty_variable_run(with_mirror=True)
     without_mirror = _empty_variable_run(with_mirror=False)
@@ -515,6 +527,7 @@ CHECKS = [
     test_a_diff_touching_the_review_scripts_stops_the_chain_until_approved,
     test_the_planner_block_joined_with_and_and_still_completes,
     test_an_empty_plugin_root_never_runs_the_repositorys_own_scripts,
+    test_a_relative_path_entry_stops_the_chain,
     test_an_intent_add_git_failure_is_disclosed,
     test_dispatcher_check_matches_a_case_variant_path,
     test_untracked_file_included,

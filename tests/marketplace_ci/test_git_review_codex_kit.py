@@ -176,3 +176,47 @@ def test_usage_errors(argv):
 def test_the_home_variable_cannot_pick_the_registry(monkeypatch, tmp_path):
     monkeypatch.setenv("HOME", str(tmp_path))
     assert _load_module()._home() != tmp_path
+
+
+@pytest.mark.skipif(os.name == "nt" or shutil.which("node") is None, reason="needs node and POSIX")
+def test_the_bridge_path_has_no_entry_from_the_repository(env, monkeypatch, capfd):
+    repo, tmp, register = env
+    root = _codex_kit(tmp / "cache")
+    (root / mod.BRIDGE).write_text("console.log(process.env.PATH);\n", encoding="utf-8")
+    register(root)
+    (repo / "bin").mkdir()
+    outside = tmp / "outside"
+    outside.mkdir()
+    (repo / "codex").write_text("#!/bin/sh\n", encoding="utf-8")
+    (outside / "codex").symlink_to(repo / "codex")
+    real = os.environ["PATH"]
+    entries = ["", ".", "node_modules/.bin", str(repo / "bin"), str(outside), real]
+    monkeypatch.setenv("PATH", os.pathsep.join(entries))
+    assert mod.main(["bridge"]) == 0
+    assert capfd.readouterr().out.strip() == mod.common.safe_path([repo])
+    kept = mod.common.safe_path([repo]).split(os.pathsep)
+    assert str(outside) not in kept and str(repo / "bin") not in kept and "." not in kept
+
+
+@pytest.mark.skipif(os.name == "nt", reason="uses a shell script as the planted program")
+def test_a_git_in_the_main_checkout_is_refused_from_a_linked_worktree(env, monkeypatch):
+    repo, tmp, register = env
+    ident = ["-c", "user.name=t", "-c", "user.email=t@example.invalid"]
+    argv = ["git", *ident, "commit", "-q", "--allow-empty", "-m", "i"]
+    subprocess.run(argv, cwd=repo, check=True)
+    subprocess.run(["git", "worktree", "add", "-q", str(tmp / "wt")], cwd=repo, check=True)
+    (repo / "git").write_text("#!/bin/sh\ntouch ran\n", encoding="utf-8")
+    (repo / "git").chmod(0o755)
+    monkeypatch.chdir(tmp / "wt")
+    monkeypatch.setenv("PATH", os.pathsep.join([str(repo), os.environ["PATH"]]))
+    with pytest.raises(FileNotFoundError, match="inside the repository"):
+        mod.common.tool("git", mod.common.checkout_root(tmp / "wt"))
+    register(_codex_kit(tmp / "cache"))
+    with pytest.raises(FileNotFoundError):
+        mod.locate()
+
+
+def test_an_unreadable_path_entry_is_skipped(env, monkeypatch):
+    repo, tmp, _register = env
+    monkeypatch.setenv("PATH", os.pathsep.join([str(tmp / "gone"), os.environ["PATH"]]))
+    assert mod.common.tool("git", [repo])

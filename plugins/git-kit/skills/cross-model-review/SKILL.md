@@ -108,6 +108,7 @@ still-real index — the throwaway path doesn't exist yet until the `export` lin
 ```bash
 umask 077
 [ -n "${CLAUDE_PLUGIN_ROOT}" ] || { echo "plugin root is empty: nothing was run"; exit 0; }
+case ":$PATH:" in *::*|*:[!/]*) echo "PATH has an empty or relative entry: nothing was run"; exit 0;; esac
 BASE="${BASE:-main}"
 MERGE_BASE=$(git merge-base "$BASE" HEAD)
 UNSCOPED_CHANGED_FILES=$({ git diff --no-renames --name-only "$MERGE_BASE"; git ls-files --others --exclude-standard; })
