@@ -175,11 +175,12 @@ to read it.
 ## Testing & Validation
 
 `evals/context-window-analysis/evals.json` exists — a skill-tester Full Pipeline baseline-comparison
-run (iteration-1, 2026-09-17), 2 of the 5 declared scenarios covered (a direct "how full is my
+run (iteration-1, 2026-09-17) covered 2 of the 5 declared scenarios (a direct "how full is my
 context" health question, and a broader footprint-audit request correctly declined in favor of
-`context-audit`), 1.0 with_skill pass rate vs. 0.0 baseline. The remaining 3 scenarios ("should I
-compact now", responses feeling slow, and a direct request for the automatic hook-driven behavior
-itself) are named in `evals.json`'s own `uncovered` list, not yet exercised. The structural claims
+`context-audit`), 1.0 with_skill pass rate vs. 0.0 baseline. Iteration-7 (2026-11-20, plan-only,
+with-skill-only, 7/7 assertions) added a third, responses feeling slow, plus two extra evals for
+Step 2's estimate mapping. The remaining 2 scenarios ("should I compact now", and a direct request
+for the automatic hook-driven behavior itself) are named in `evals.json`'s own `uncovered` list, not yet exercised. The structural claims
 this section documents (the examples-reference link, Option 4's real session-kit reference, no
 oversized blocks) are separately covered by the persisted `scripts/smoke_test.py`.
 

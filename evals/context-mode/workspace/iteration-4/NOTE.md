@@ -1,8 +1,9 @@
 # Iteration 4 (2026-11-20): Quick Workflow re-run
 
 `skill-tester` Quick Workflow, `with_skill` only, no baseline and no timing. All 10 evals were re-run
-plan-only against branch `docs/context-kit-rulebook-gaps` (issue #461) at commit `4b03923c`, whose only
-change to this skill rewords a dead `references/dev.md` pointer in `references/design-history.md`. A later
+plan-only against branch `docs/context-kit-rulebook-gaps` (issue #461) at commit
+`docs(context-kit): close R35 and R34 gaps`, whose only change to this skill
+rewords a dead `references/dev.md` pointer in `references/design-history.md`. A later
 commit on the same branch also added a note to that file's header; it is documentation-only and these
 runs predate it. The assertions are copied unchanged from the latest iteration of each eval (iteration 1
 for evals 1-8, iteration 2 for eval 9, iteration 3 for eval 10). Grading was done by the session that
