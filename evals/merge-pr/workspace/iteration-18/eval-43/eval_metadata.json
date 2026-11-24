@@ -1,0 +1,16 @@
+{
+  "eval_id": 43,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "Runs git remote get-url --push --all origin",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "Treats the differing push URL as a mismatch and skips step 1.5",
+      "type": "functionality",
+      "target": "answer.md"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "eval_id": 11,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Runs git remote get-url --push --all origin",
+      "passed": true,
+      "evidence": "'git remote get-url --push --all origin'"
+    },
+    {
+      "text": "Attests nothing and reports the push URL mismatch",
+      "passed": true,
+      "evidence": "'bypass was not attested ... push destination is mona/mirror'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 2,
+    "pass_rate": 1.0
+  },
+  "note": "Subject model claude-opus-5-5 (inherited); one subject answered all evals of its skill and arm; graded by the author."
+}

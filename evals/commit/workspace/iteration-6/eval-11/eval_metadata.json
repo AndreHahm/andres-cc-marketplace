@@ -1,0 +1,16 @@
+{
+  "eval_id": 11,
+  "skill_path": "plugins/git-kit/skills/commit/SKILL.md",
+  "assertions": [
+    {
+      "text": "Runs git remote get-url --push --all origin",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "Attests nothing and reports the push URL mismatch",
+      "type": "functionality",
+      "target": "answer.md"
+    }
+  ]
+}

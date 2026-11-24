@@ -1,0 +1,16 @@
+{
+  "eval_id": 44,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "Runs the paginated commits request with no pipe",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "Treats the count as unknown and never proceeds with REBASE on it",
+      "type": "functionality",
+      "target": "answer.md"
+    }
+  ]
+}

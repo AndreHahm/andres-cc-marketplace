@@ -1,0 +1,16 @@
+{
+  "eval_id": 39,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "Counts with one unpaginated request for the PR's .commits field, with no pipe",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "Discloses 137 and 312 as is, and says undetermined on exit 1",
+      "type": "functionality",
+      "target": "answer.md"
+    }
+  ]
+}
