@@ -1,0 +1,21 @@
+{
+  "eval_id": 8,
+  "skill_path": "plugins/context-kit/skills/context-window-analysis/SKILL.md",
+  "assertions": [
+    {
+      "text": "Reports WARNING as a measured status at 84%, not labelled an estimate",
+      "type": "structure",
+      "target": "outputs/"
+    },
+    {
+      "text": "Healthy indicators do not lower the measured status",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Recommends /compact or /clear and does not ask for /context again before doing so",
+      "type": "functionality",
+      "target": "outputs/"
+    }
+  ]
+}

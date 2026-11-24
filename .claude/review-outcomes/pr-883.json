@@ -1,0 +1,79 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4685897466",
+      "note": "WARNING example no longer says act immediately on slowdown; fixed in 79c92182",
+      "path": "plugins/context-kit/skills/context-window-analysis/references/context-window-examples.md",
+      "pr": 883,
+      "recorded_at": "2026-11-24T20:21:17+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4685897659",
+      "line": 279,
+      "note": "hook test-coverage gap narrowed to what is untested; fixed in 79c92182",
+      "path": "plugins/context-kit/skills/strategic-compact/SKILL.md",
+      "pr": 883,
+      "recorded_at": "2026-11-24T20:21:18+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4685897839",
+      "note": "evals 4 and 7 require 80% or more, re-run as iteration 13; fixed in 79c92182",
+      "path": "evals/context-window-analysis/evals.json",
+      "pr": 883,
+      "recorded_at": "2026-11-24T20:21:18+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4406397a9a5e9f2af513d6cc2a247ee2",
+      "line": 129,
+      "note": "plugin-devkit pointer reworded; fixed in 79c92182 (Codex delta, no thread)",
+      "path": "plugins/context-kit/skills/strategic-compact/SKILL.md",
+      "pr": 883,
+      "recorded_at": "2026-11-24T20:21:18+00:00",
+      "rule": "self-containment"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "622819b456cd2744ec774b961ff5a451",
+      "line": 127,
+      "note": "measured and estimated status told apart (Codex delta, no thread)",
+      "path": "plugins/context-kit/skills/context-window-analysis/SKILL.md",
+      "pr": 883,
+      "recorded_at": "2026-11-24T20:27:43+00:00",
+      "rule": "Implementation - Workflow Clarity"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "a871e0007238952152bd3f13f94ba584",
+      "line": 276,
+      "note": "testing claim limited to hook firing; advice evals named (Codex delta Major, no thread)",
+      "path": "plugins/context-kit/skills/strategic-compact/SKILL.md",
+      "pr": 883,
+      "recorded_at": "2026-11-24T20:27:42+00:00",
+      "rule": "Implementation - Disclosure"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "c68042c746220a6c52696d7a0e7dac86",
+      "line": 107,
+      "note": "11-line block, advisory; user chose to leave it (Codex delta, no thread)",
+      "path": "plugins/context-kit/skills/context-window-analysis/references/context-window-examples.md",
+      "pr": 883,
+      "recorded_at": "2026-11-24T20:21:19+00:00",
+      "rule": "plugin-rulebook:R18"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "claude-delta-79c92182-L120",
+      "line": 120,
+      "note": "by design: only an estimate below CRITICAL defers compaction; user kept it",
+      "path": "plugins/context-kit/skills/context-window-analysis/SKILL.md",
+      "pr": 883,
+      "recorded_at": "2026-11-24T20:27:43+00:00",
+      "rule": "claude-delta-general"
+    }
+  ]
+}

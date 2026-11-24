@@ -1,0 +1,26 @@
+{
+  "eval_id": 8,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Reports WARNING as a measured status at 84%, not labelled an estimate",
+      "passed": true,
+      "evidence": "Measured Status: WARNING (84%, 168k of 200k tokens, about 32k left)."
+    },
+    {
+      "text": "Healthy indicators do not lower the measured status",
+      "passed": true,
+      "evidence": "'There are no signs of degradation yet, but that doesn't lower the status.'"
+    },
+    {
+      "text": "Recommends /compact or /clear and does not ask for /context again before doing so",
+      "passed": true,
+      "evidence": "'Then run /compact if you are continuing this task, or /clear if you are starting a new one.' No request for /context."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

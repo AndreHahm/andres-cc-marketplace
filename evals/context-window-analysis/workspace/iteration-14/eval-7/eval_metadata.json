@@ -1,0 +1,21 @@
+{
+  "eval_id": 7,
+  "skill_path": "plugins/context-kit/skills/context-window-analysis/SKILL.md",
+  "assertions": [
+    {
+      "text": "Reports a WARNING estimate, not CRITICAL, labelled an estimate rather than a measurement",
+      "type": "structure",
+      "target": "outputs/"
+    },
+    {
+      "text": "Recommends running /context and compacting only if the measured percentage is 80% or more (so a measured 90% or more also compacts), not running /compact or /clear now",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Further slowdown leads to running /context again, not to immediate action",
+      "type": "functionality",
+      "target": "outputs/"
+    }
+  ]
+}

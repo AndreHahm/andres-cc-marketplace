@@ -1,21 +1,22 @@
 # Testing History
 
-Why this skill is tested through its hook scripts rather than LLM-judged evals, and the dated history of
+Why this skill's hooks are tested through their scripts rather than LLM-judged evals, and the dated history of
 its smoke-test runs. `SKILL.md`'s `## Testing & Validation` section carries the current summary and the
 checklists; this file holds the detail moved out of it.
 
-## Why evals don't cover this skill's behavior
+## Why evals don't cover this skill's hook behavior
 
 `evals/strategic-compact/evals.json` exists, but doesn't exercise this skill's actual hook-driven
 behavior. That is by design, not omission (fixed 2026-09-21: the section previously said the file didn't
 exist at all, which contradicted the recorded-run sentence two sentences later; found by CodeRabbit's
 automated PR review against PR #368).
 
-This skill's behavior is hook-driven automation (6 Bash scripts and 3 shared Python hooks, all wired via
-`hooks/hooks.json`), not model-invoked guidance that a `skill-tester` blind-comparison eval measures.
-There's no "with skill vs. without skill" prompt-completion difference to compare, since the skill never
-depends on the model reading and following its own body text to act; the hooks fire deterministically
-regardless.
+The automation is hook-driven (6 Bash scripts and 3 shared Python hooks, all wired via
+`hooks/hooks.json`): the hooks fire deterministically, whether or not the model reads this skill, so a
+`skill-tester` run cannot verify that they fire. The skill also gives model-facing advice on when to
+compact, which such a run can measure: evals 1 and 2 check that advice. Both recorded runs were
+`with_skill` only, so no baseline comparison has been made (corrected 2026-11-24: this section
+previously said there was no difference to measure at all; found by the Codex delta review of PR #883).
 
 A `skill-tester` Quick Workflow run was performed anyway on 2026-09-21, at explicit user request, to
 confirm the mismatch directly rather than by assertion. 6/6 assertions passed, with 0 of this skill's
