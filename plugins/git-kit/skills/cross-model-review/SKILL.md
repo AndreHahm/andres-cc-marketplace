@@ -85,21 +85,14 @@ This skill is triggered conversationally, not through slash-command argument syn
 Build the **canonical diff command** once in preflight and reuse it everywhere below — never
 re-spell the diff inline. Build it as an **argv array**, not a string, so a `$SCOPE` containing
 spaces or glob characters survives intact. **Use the merge-base as a single ref, not the two-dot
-`$BASE...HEAD` form** — `git diff A...B` only shows *committed* differences between the merge-base
-and `B`; it never includes staged or unstaged working-tree changes. Since this skill's own stated
-purpose is reviewing "the current diff" / "the local working diff" (see the intro and "When to
-Use"), a two-dot diff would silently skip any uncommitted work-in-progress — including the common
-case of reviewing before the first commit is even made. A single-ref `git diff <merge-base>`
-includes the working tree (index and unstaged changes both) on top of the merge-base.
+`$BASE...HEAD` form**, which would silently skip uncommitted work (`references/diff-mechanics-rationale.md`).
 
 **Intent-add untracked files before diffing, or they never appear at all** — `git diff` produces no
 output at all for untracked content until `git add -N` intent-adds it. See
 `references/diff-mechanics-rationale.md` for the full empirical verification.
 
-**Do this against a throwaway index, never the repository's real one.** `git add -N` against the
-real `.git/index` is a persistent mutation that outlives this skill's own run — a later, unrelated
-`git commit -a` would commit that file's full content, even though it was genuinely untracked before
-this report-only review touched it. Point `GIT_INDEX_FILE` at a path inside a freshly `mktemp -d`'d
+**Do this against a throwaway index, never the repository's real one**, where `git add -N` would outlive
+this run (`references/index-seeding-rationale.md`). Point `GIT_INDEX_FILE` at a path inside a freshly `mktemp -d`'d
 scratch dir (`$RUN`, resolved here rather than in Preflight step 3 — see
 `references/index-seeding-rationale.md` for why `mktemp -u` alone isn't safe), exported once and
 inherited by every later git command here. Capture the untracked list **first**, against the
@@ -442,7 +435,7 @@ fields. Note any `inspection_limits` from either side, including: the Preflight 
 deleted-path exclusion if it happened, any Claude finding dropped from the Codex challenge for that
 same reason, Preflight step 5's unverified-instructions fallback if either `REVIEW_UNVERIFIED` or
 `REFUTE_UNVERIFIED` was set, Preflight step 6's dispatcher-not-verified disclosure if the diff
-touched the Codex scripts, `$INDEX_COPY_FAILED` (`references/index-seeding-rationale.md`).
+touched the Codex scripts, and `$INDEX_COPY_FAILED` (`references/index-seeding-rationale.md`).
 Also report the scope plan as `references/scoped-review.md` section 6 says: the planner's own
 `inspection_limits`, every dropped slice (it **must be read**, not skimmed), folders excluded by a pick,
 unfinished batches, slices left out by the batch limit, `PLANNER_TOUCHED`, and the manifest path with the **completed slice names** a

@@ -64,3 +64,9 @@ correctly-seeded index would agree). This isn't severe enough to abort the whole
 index this thoroughly broken is already an unusual repository state, and the fallback still produces
 a usable, if narrower, diff — but it must be disclosed rather than silently absorbed, as
 `$INTENT_ADD_REFUSED` is for a refused `git add -N` (`references/diff-mechanics-rationale.md`).
+
+## Why the real index is never used
+
+`git add -N` against the real `.git/index` is a persistent mutation that outlives this skill's own run: a
+later, unrelated `git commit -a` would commit that file's full content, even though it was genuinely
+untracked before this report-only review touched it.
