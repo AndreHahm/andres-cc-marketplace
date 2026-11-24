@@ -75,8 +75,14 @@ login/repo-name character rules make this safe, unlike a shell-string compositio
       `CLAUDE_PLUGIN_ROOT` is empty (this repository's own sessions), run the `.claude/scripts/` copy from
       the checkout root as `python3 -I $PWD/.claude/scripts/git-bypass-attestation-marker.py ...`; that form
       is not granted, so it prompts unless the user's settings allow it. If neither copy exists, stop. When the
-      PR's changed files or the checkout's uncommitted changes hold either copy of the script, say so first and
-      run it only once the user approves that run. Never build the marker with `jq` instead: a `jq -n` prefix
+      PR's changed files hold either copy of the script, or the checkout's copy differs from the base
+      branch's (committed on the checked-out branch or not) or could not be compared with it, say so first
+      and ask via `AskUserQuestion`; a settings allow-rule is not approval. One approval covers this
+      invocation's runs while the file is unchanged: after a push, compare again first. To compare: save
+      `gh api -X GET repos/{owner}/{repo}/contents/.claude/scripts/<script> -f ref=<base branch> -H "Accept:
+      application/vnd.github.raw"` to a scratchpad file and `cmp -s` it with the local copy. A failed call,
+      a call the skill is not granted (no need to make it) or a comparison by eye counts as "could not be
+      compared". Never build the marker with `jq` instead: a `jq -n` prefix
       grant also pre-approves printing the whole environment, whatever flag follows it (issue #861).
    c. Write the script's output, verbatim and nothing else, to a second scratchpad file. The marker must be the last thing in the body — CI ignores a comment with
       any text after it — so write the marker alone and add no footer. Then, as the last step before the comment and in its own `Bash` call, run
@@ -132,7 +138,7 @@ push`/similar broad grants:
 - `git-bypass-attestation-marker.py`'s grant accepts any reason-file path, so it can print any readable
   text file up to 16 KiB — this protocol only ever passes step 3(a)'s file. Its `.claude/scripts/` copy is
   never pre-approved, since it is whatever the checkout holds: it prompts unless the user's own settings or
-  permission mode already allow it. Approve each run once, and do not add a persistent allow rule for it.
+  permission mode already allow it. At that permission prompt, approve each run once, and do not add a persistent allow rule for it; step 3(b)'s `AskUserQuestion` is separate.
 - `gh pr edit` permits `--base`, `--title`, `--body`, `--add-reviewer`, `--milestone` at the permission
   layer — this protocol never edits a PR's base, title, body, reviewers, or milestone, only the one label.
 - `gh api repos/*/labels/*` is read-only *by convention* only — this protocol never issues a

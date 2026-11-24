@@ -218,6 +218,25 @@ def test_an_app_entry_its_next_one_replaced_does_not_stay_pending(monkeypatch):
     assert state(monkeypatch, checks=checks) == "pending"
 
 
+def test_an_apps_skip_does_not_replace_its_earlier_result(monkeypatch):
+    failed = check(1, app=CODACY, conclusion="failure")
+    skip = check(9, app=CODACY, conclusion="skipped")
+    assert state(monkeypatch, checks=[failed, skip]) == "failing"
+    assert state(monkeypatch, checks=[check(1, app=CODACY), skip]) == "passing"
+    assert state(monkeypatch, checks=[skip]) == "passing"
+    # A finished result between the failure and the skip has already replaced the failure.
+    assert state(monkeypatch, checks=[failed, check(2, app=CODACY), skip]) == "passing"
+    # An unfinished entry was replaced (it may never complete), so it neither counts nor blocks.
+    stale = check(2, app=CODACY, status="in_progress")
+    assert state(monkeypatch, checks=[failed, stale, skip]) == "failing"
+    assert state(monkeypatch, checks=[stale, skip]) == "passing"
+
+
+def test_a_check_run_without_an_app_is_undetermined(monkeypatch):
+    with pytest.raises(M.Undetermined):
+        state(monkeypatch, checks=[check(1, app=None, conclusion="failure"), check(2, app=None)])
+
+
 def test_only_the_named_app_counts(monkeypatch):
     wrong = [check(1, app=99)]
     assert state(monkeypatch, checks=wrong, protect=need(CODACY)) == "missing"
@@ -350,6 +369,27 @@ def test_a_partial_rerun_keeps_the_other_same_name_job(monkeypatch):
         jobs={10: jobs(1, 2) + jobs(3, attempt=2)},
     )
     assert got == "failing"
+
+
+@pytest.mark.parametrize(
+    ("first", "second", "expected"),
+    [
+        (["failure", "skipped"], ["success"], "failing"),
+        (["failure", "success"], ["skipped", "success"], "failing"),
+        (["failure", "skipped"], ["success", "skipped"], "passing"),
+        (["failure"], ["skipped"], "failing"),
+        (["failure"], ["success", "skipped"], "passing"),
+    ],
+)
+def test_a_skipped_same_name_job_does_not_hide_a_partial_rerun(
+    monkeypatch, first, second, expected
+):
+    conclusions = first + second
+    checks = [check(i, conclusion=c) for i, c in enumerate(conclusions, 1)]
+    split = len(first) + 1
+    found = jobs(*range(1, split)) + jobs(*range(split, len(conclusions) + 1), attempt=2)
+    got = state(monkeypatch, checks=checks, runs=[run(10, attempt=2)], jobs={10: found})
+    assert got == expected
 
 
 def test_only_token_made_entries_are_missing(monkeypatch):

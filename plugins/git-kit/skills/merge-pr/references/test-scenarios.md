@@ -291,6 +291,7 @@ a fresh `gh repo view` (skill-reviewer M1, 2026-08-31):**
   not the older run's success
 - Only a token-created check run carries the required name → **missing**
 - The PR changes `git-required-checks.py` → the run is disclosed and needs the user's approval first
+- The PR changes neither script, but the checked-out branch's commits do → disclosed and needs approval the same way
 
 **Verify step 2's review-outcomes check (issue #640):**
 - `.claude/review-outcomes` is absent on the base branch (`404`) → the check passes as not applicable
