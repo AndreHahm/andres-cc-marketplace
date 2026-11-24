@@ -113,7 +113,10 @@ def check_no_sed_pipeline():
     body = text[text.find("\n---\n", 4) + 5 :]  # the instructions, not the history in references
     if re.search(r"\|\s*sed\b", body):
         return False, "a step pipes through sed, but the skill holds no sed grant"
-    return True, "no step pipes through sed"
+    exact = "strip exactly the prefix `https://github.com/` or `git@github.com:`"
+    if exact not in body or "any other prefix is a mismatch" not in body:
+        return False, "step 16.5 no longer rejects an origin on another host"
+    return True, "no step pipes through sed and only github.com origins match"
 
 
 def check_step_sequence():

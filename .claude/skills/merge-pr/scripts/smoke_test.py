@@ -307,6 +307,11 @@ def check_step7_squash_disclosure():
             "step 7(c) no longer states the disclosure fires even when SQUASH "
             "was already configured",
         )
+    marker = 'git-write-marker.sh" gh-pr-merge'
+    if marker not in step7 or step7.index("apply (c)'s disclosure") > step7.index(marker):
+        return False, "step 7(b) places (c)'s disclosure after the single-use merge marker"
+    if "'.commits | length'" in step7:
+        return False, "step 7(c) counts commits with the 100-capped `gh pr view` again (issue #864)"
     return (
         True,
         "step 7(c)'s squash-tradeoff disclosure is documented and forward-referenced from 7(b)",
@@ -1195,6 +1200,53 @@ def check_no_jq_program_grant():
     return True, "no skill of the bypass protocol grants jq"
 
 
+def check_no_sed():
+    # Issue #608: `sed -E` also writes files (-i, w) and runs commands (e), so no grant and no pipe.
+    text = SKILL_MD.read_text(encoding="utf-8")
+    frontmatter, body = text.split("\n---\n", 1)
+    if re.search(r"Bash\([^)]*\bg?sed\b", frontmatter):
+        return False, "merge-pr grants sed again"
+    ref = SKILL_DIR / "references" / "session-open-items-and-body-check.md"
+    if re.search(r"\|\s*sed\b", body + ref.read_text(encoding="utf-8")):
+        return False, "a step pipes through sed, but the skill holds no sed grant"
+    exact = "strip exactly the prefix `https://github.com/` or `git@github.com:`"
+    if "any other prefix is a mismatch" not in body or exact not in body:
+        return False, "step 1 no longer rejects an origin on another host"
+    flat = " ".join(ref.read_text(encoding="utf-8").split())
+    if "any other prefix is a mismatch" not in flat or exact not in flat:
+        return False, "step 1.5 no longer rejects an origin on another host"
+    return True, "no sed grant, no sed pipe, and only github.com origins match"
+
+
+def check_waiver_check_grant():
+    # Issue #864: one quoted spelling in grant and command, and the checkout copy is never granted.
+    frontmatter = SKILL_MD.read_text(encoding="utf-8").split("\n---\n", 1)[0]
+    script = "/scripts/git-pr-body-waiver-check.py"
+    command = f'python3 -I "${{CLAUDE_PLUGIN_ROOT}}{script}"'
+    granted = frontmatter.count(script) == 1 and f"Bash({command}:*)" in frontmatter
+    pinned = ' -I "${CLAUDE_PLUGIN_ROOT}/scripts/git-'
+    uses = re.findall(r"Bash\((?:[^)]*\s)?python3?\b([^)]*)", frontmatter)
+    unpinned = [u for u in uses if not u.startswith(pinned)]
+    if not granted or "$PWD" in frontmatter or unpinned:
+        return False, "the waiver check must have exactly one grant, the quoted plugin-root form"
+    ref = SKILL_DIR / "references" / "session-open-items-and-body-check.md"
+    text = ref.read_text(encoding="utf-8")
+    if command not in text or f'python3 -I "$PWD/.claude{script}"' not in text:
+        return False, "step 1.6 no longer names both quoted forms of the waiver check"
+    flat = " ".join(text.split())
+    for rule in (
+        "only once the user approves via `AskUserQuestion`",
+        "a settings allow-rule is not approval",
+        "could not be compared with it",
+        "never the checkout's copy",
+        "run it only after the same approval",
+        "If the user declines",
+    ):
+        if rule not in flat:
+            return False, f"step 1.6's waiver-check approval lost: {rule}"
+    return True, "the waiver check's grant matches its command; the checkout copy is not granted"
+
+
 def check_step2_review_outcomes_recorded():
     # Issue #640: a PR whose review outcomes were never recorded reached the merge step unnoticed.
     step2 = _get_step_text(2)
@@ -1280,6 +1332,8 @@ CHECKS = [
     check_step2_required_checks_include_rulesets,
     check_step2_check_sources,
     check_no_jq_program_grant,
+    check_no_sed,
+    check_waiver_check_grant,
     check_step2_review_outcomes_recorded,
     check_open_items_batched_and_body_edited_once,
 ]
