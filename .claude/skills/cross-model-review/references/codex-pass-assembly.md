@@ -62,9 +62,20 @@ the profile, every helper refuses; start the session with `TMPDIR` set to a fold
 
 After the `EnterWorktree` tool, Claude Code's worktree-isolation check refuses some Bash calls before they
 run (issue #723): a chained call (`&&` or `;`) as "too complex to verify that it stays inside the
-worktree", a heredoc whose text names git as "feeds bash text naming git", and some heredocs with JSON
-or paths as too complex. In such a session only, and only after such a refusal, use these forms:
+worktree", a heredoc whose text names git as "feeds bash text naming git", some heredocs with JSON
+or paths as too complex, and a helper call that contains a shell variable (issue #866) as "names git in a
+form too complex to verify". In such a session only, and only after such a refusal, use these forms:
 
+- **No shell variable in a helper call:** git-kit's helper scripts have `git` in their names, so in a call
+  typed directly (not inside `preflight.sh`) write each documented variable as its literal value:
+  `"${CLAUDE_PLUGIN_ROOT:-.claude}"`, `"${CLAUDE_PLUGIN_ROOT}"`, `"$RUN"`, `"$MERGE_BASE"`, `"$BASE"`,
+  `"$REPO_ROOT"`, and `${SCOPE:+--scope "$SCOPE"}` as `--scope '<value>'` or nothing. Take the plugin root
+  only from `echo "${CLAUDE_PLUGIN_ROOT:-.claude}"` run as its own call, never from the `plugins/` folder
+  of the repository under review. `RUN`, `BASE`, `REPO_ROOT` and the merge base (the SHA in `DIFF_STR`)
+  come from the Preflight's closing `echo`, and `SCOPE` from the user's request. Each value is
+  data: single-quote it, and if it contains a single quote or a newline, or starts with `-`, stop and ask
+  the user. The `.claude` form has no grant, so it may prompt; approve that one call only. This
+  covers the write helper, the `@plugin:` prompt copy, the planner re-runs and the accepted-findings calls.
 - **Preflight:** write the Inputs block and steps 1-6 plus the closing `echo`, verbatim and in order, to
   `<scratchpad>/preflight.sh` with the `Write` tool. The only text you supply is the `BASE`/`SCOPE` values
   resolved from the user's request, and `PLANNER_APPROVED=1` only after the user's explicit yes. Those
@@ -77,16 +88,16 @@ or paths as too complex. In such a session only, and only after such a refusal, 
   approval of that call covers every command in the script, including the `git diff`, `git show` and
   `export` lines that otherwise prompt one by one.
 - **Stdin text for the write helper:** write the text to a file in the scratchpad directory with the
-  `Write` tool, then pass it as stdin: `bash "${CLAUDE_PLUGIN_ROOT:-.claude}/scripts/git-review-write-run-file.sh" "$RUN" <name> [--append] <part>... - < <scratchpad file>`.
+  `Write` tool, then pass it as stdin: `bash '<plugin root>/scripts/git-review-write-run-file.sh' '<literal $RUN>' <name> [--append] <part>... - < <scratchpad file>`.
   This covers the Phase 1 instruction file's "do not run `git diff`" line and the self-authored JSON
   envelopes. Whether the helper's `allowed-tools` grant matches a call that ends in this redirect is not
   verified, so the call may prompt; approve that one call, never a persistent allow rule.
 - **Every other call:** one command per Bash call, with no `&&` or `;`. Bash calls share no shell state,
   so an `export` in its own call is lost. Every call documented as an `export` followed by a command
   passes those variables as prefix assignments on the command itself instead:
-  `GIT_INDEX_FILE="<literal $RUN>/index"` on each later `git diff` and planner call that needs the
+  `GIT_INDEX_FILE='<literal $RUN>/index'` on each later `git diff` and planner call that needs the
   throwaway index (the manifest cross-check, the planner re-run after a folder pick, and the fallback
-  name list in `references/scoped-review.md`), and `CODEX_KIT_REVIEW_REPO_ROOT="$REPO_ROOT"` on a Codex
+  name list in `references/scoped-review.md`), and `CODEX_KIT_REVIEW_REPO_ROOT='<literal $REPO_ROOT>'` on a Codex
   `node` dispatch, plus `CODEX_KIT_REVIEW_TIMEOUT_MS=480000` on a timeout retry. Without the index
   variable, intent-added untracked files silently drop out of the review. If that form is refused too,
   stop and report.
