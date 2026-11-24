@@ -121,7 +121,7 @@ Codex has no prior context, so its instruction file contains the diff **content 
 instruct Codex to run `git diff` (issue #78: on a real Windows machine a Codex-run diff of a large change
 failed every time, while the embedded diff succeeded). Build the file from `$RUN/review.md`, then
 `$RUN/accepted.codex.md` when it exists (`@accepted.codex.md`, SKILL.md's Preflight step 7; never
-`accepted.md`, which is Claude's and may name sensitive files), then the
+`accepted.md`, which is Claude's, may name sensitive files and holds issue text), then the
 batch's `.codex.diff` files as `\n<diff>\n<diff text>\n</diff>\n` preceded by a line telling Codex not
 to run `git diff` or any shell command to fetch it. If `$UNTRACKED_FILES` contains paths of this batch,
 add a labeled block `<untracked_files>` naming only the eligible ones,
@@ -154,7 +154,10 @@ finding/citation since issues #236/#111), and filtering on `location` alone stil
 
 **Never quote a sensitive file.** Claude's own pass reads `sensitive_paths` files, so no envelope may
 repeat a value from one, and any finding whose `finding`, `evidence` or `fix` text names or quotes one is
-dropped here too and stays in the report as Claude-only (Medium).
+dropped here too and stays in the report as Claude-only (Medium). The same holds for a finding whose text
+repeats or paraphrases a tracked issue from `accepted.md`: issue text never goes to Codex. From every other
+finding, remove a leading `[tracked #<issue>]` mark in the embedded copy only; `claude_fresh_eyes.json` keeps it
+for `match`.
 
 **Neutralize closing tags in the embedded findings.** The sandboxed bridge path neutralizes
 closing-tag-shaped substrings in an embedded instruction body (`bridge-invoke.mjs`'s

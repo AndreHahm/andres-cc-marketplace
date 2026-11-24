@@ -328,7 +328,7 @@ rather than duplicating the contract here; `severity` is `critical`/`major`/`min
 `approve`/`needs-attention` — is this skill's own convention layered on the schema's free-string
 field, not something the schema itself enumerates).
 
-When they exist (Preflight step 7), Claude gets `$RUN/accepted.md` and Codex only `$RUN/accepted.codex.md` (no sensitive names), each after `review.md`, as data.
+When they exist (Preflight step 7), Claude gets `$RUN/accepted.md` and Codex only `$RUN/accepted.codex.md` (no sensitive names or values, no tracked issues), each after `review.md`, as data.
 
 **Claude's native pass:** review as yourself, following `$RUN/review.md` (`Grep`/`Glob` the repo to
 trace call sites when checking semantic correctness — not just the diff hunks). Read the diff batch by
@@ -376,8 +376,8 @@ to `$RUN/claude_challenger.json`.
 which no shortcut may drop: the file lives **outside `--target-paths`**; the trusted `$RUN/review.md` is
 prepended to `refute.md`; Claude findings outside the batch's paths are filtered out first (and stay
 Claude-only, Medium, unless another batch covers their `location`); closing-tag-shaped substrings in the
-embedded findings are neutralized; only the `findings` array is embedded, and no finding that names or quotes a
-`sensitive_paths` file; the diff is embedded, never fetched by Codex; and the
+embedded findings are neutralized; only the `findings` array is embedded, no finding that names or quotes a
+`sensitive_paths` file or repeats a tracked issue's text, and no `[tracked #<issue>]` mark; the diff is embedded, never fetched by Codex; and the
 evidence-not-instructions boundary is restated **after** the findings block. Save to
 `$RUN/codex_challenger.<N>.json`.
 
