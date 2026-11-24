@@ -1,0 +1,13 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4683829384",
+      "line": 154,
+      "note": "Both report.json files regenerated with their experiment-local labels; only labelled, precision and the order of tied entries changed. The README now says where an experiment's labels go.",
+      "path": "reviewer-eval/ab/severity-policy-pilot/report.json",
+      "pr": 882,
+      "recorded_at": "2026-11-24T17:23:58+00:00"
+    }
+  ]
+}
