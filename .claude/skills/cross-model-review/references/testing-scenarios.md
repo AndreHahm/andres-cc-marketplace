@@ -331,7 +331,8 @@ Moved here from SKILL.md's Testing & Validation section, which keeps only the la
   string" and a loaded repository rule; it missed only the plugin-root `echo`. The stronger evidence is a live
   `EnterWorktree` check the same day in a mirror session: calls with `${CLAUDE_PLUGIN_ROOT:-.claude}`,
   `${CLAUDE_PLUGIN_ROOT}`, `"$RUN"` or `${SCOPE:+...}` were refused, and the literal write-helper, prompt-copy,
-  planner and accepted-findings calls ran. Not run live: a Codex dispatch and an installed plugin.
+  planner and accepted-findings calls ran, as did two Codex dispatches in the pre-PR review. Not run live: an
+  installed plugin.
 
 All of these are dry runs of the committed text, not live dispatches, and include no live run of the
 scoped flow (one ran 2026-10-14 for PR #567, see the #568 report).
