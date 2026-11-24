@@ -32,7 +32,7 @@ normal permission prompt, and approving the run is not approval of that.
 
 - Looking up, listing or displaying a prompt without running it: use `prompt-retrieval`, which is
   read-only and never starts anything.
-- Adding, editing, verifying, activating or deactivating a prompt: use `prompt-library`. It is
+- Adding, editing, verifying, activating, deactivating or discarding a prompt: use `prompt-library`. It is
   user-invoked only, so tell the user to run `/prompt-library`.
 - Running text that is not in the catalog, or a prompt the user has not named: this skill never selects
   prompts on its own and never runs unverified text.

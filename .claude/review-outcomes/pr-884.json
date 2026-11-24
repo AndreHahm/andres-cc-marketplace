@@ -1,0 +1,104 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4686087582",
+      "line": 978,
+      "note": "search keeps combining marks (7e6f97e0)",
+      "path": "plugins/promptlibrary-kit/scripts/plib_catalog_validate.py",
+      "pr": 884,
+      "recorded_at": "2026-11-24T21:06:00+00:00",
+      "rule": "correctness"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4686087754",
+      "line": 985,
+      "note": "whole-word search (7e6f97e0)",
+      "path": "plugins/promptlibrary-kit/scripts/plib_catalog_validate.py",
+      "pr": 884,
+      "recorded_at": "2026-11-24T21:06:00+00:00",
+      "rule": "correctness"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4686087939",
+      "line": 62,
+      "note": "drafts-only wording (7e6f97e0)",
+      "path": "plugins/promptlibrary-kit/skills/prompt-retrieval/SKILL.md",
+      "pr": 884,
+      "recorded_at": "2026-11-24T21:06:00+00:00",
+      "rule": "correctness"
+    },
+    {
+      "disposition": "declined",
+      "finding": "4686088150",
+      "line": 5,
+      "note": "Keep case run (scenario 24); baseline declined",
+      "path": "evals/prompt-library/workspace/iteration-9/eval-23/with_skill/grading.json",
+      "pr": 884,
+      "recorded_at": "2026-11-24T21:06:01+00:00",
+      "rule": "testing"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4686252490",
+      "line": 75,
+      "note": "orphan path shape check (7e6f97e0)",
+      "path": "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md",
+      "pr": 884,
+      "recorded_at": "2026-11-24T21:06:01+00:00",
+      "rule": "security"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4686252506",
+      "line": 68,
+      "note": "accents kept; validator normalizes to NFC (7e6f97e0)",
+      "path": "plugins/promptlibrary-kit/skills/prompt-retrieval/SKILL.md",
+      "pr": 884,
+      "recorded_at": "2026-11-24T21:06:01+00:00",
+      "rule": "correctness"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ce3725ac705341c1eb23fed04c3a4c12",
+      "line": 844,
+      "note": "version 2 requires a reserved slug (7e6f97e0)",
+      "path": "plugins/promptlibrary-kit/scripts/plib_catalog_validate.py",
+      "pr": 884,
+      "recorded_at": "2026-11-24T21:06:02+00:00",
+      "rule": "catalog-integrity"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "e21654beeec0d74f0d6c68417aca7147",
+      "line": 1402,
+      "note": "an orphan draft was never listed; reserving its slug would stop a retry of an interrupted add",
+      "path": "plugins/promptlibrary-kit/scripts/plib_catalog_validate.py",
+      "pr": 884,
+      "recorded_at": "2026-11-24T21:06:02+00:00",
+      "rule": "correctness"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "f77cf219042bfbacd38b0a65016e3cc8",
+      "line": 985,
+      "note": "same defect as 4686087754",
+      "path": "plugins/promptlibrary-kit/scripts/plib_catalog_validate.py",
+      "pr": 884,
+      "recorded_at": "2026-11-24T21:06:02+00:00",
+      "rule": "correctness"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "facb5c78d20559682159650b0d099525",
+      "line": 38,
+      "note": "discarding added to the exclusions, committed with the promotion",
+      "path": "plugins/promptlibrary-kit/skills/prompt-retrieval/SKILL.md",
+      "pr": 884,
+      "recorded_at": "2026-11-24T21:34:20+00:00",
+      "rule": "plugin-rulebook:R36"
+    }
+  ]
+}

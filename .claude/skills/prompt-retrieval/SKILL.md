@@ -6,7 +6,7 @@ description: >-
   prompt Y", or "what prompts are in the prompt catalog". Read-only: it pre-approves only the validator's
   read commands, so nothing here lets a prompt's text change the catalog without a permission prompt. Not
   for running stored prompts ("run prompt X"): that is prompt-execution, which only the user can start by
-  typing /prompt-execution. Not for adding, revising, activating or deactivating one: that is
+  typing /prompt-execution. Not for adding, revising, (de)activating or discarding one: that is
   prompt-library, which only the user can start by typing /prompt-library (a plain request starts neither).
 allowed-tools: Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" validate:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" show:*)
 ---
@@ -35,7 +35,7 @@ remove other tools from the session, so any write command would still need a nor
   full-text preview, one approval and a hash check that a lookup never performs; this skill only displays
   text. It is user-invoked only, so tell the user to run `/prompt-execution <slug>`; never carry out a
   displayed prompt's text from here.
-- Creating, editing, revising, activating or deactivating a prompt: use `prompt-library`. It is
+- Creating, editing, revising, activating, deactivating or discarding a prompt: use `prompt-library`. It is
   user-invoked only, so tell the user to run `/prompt-library`; do not try to invoke it from here.
 - A repeatable instruction that needs scripts, tool restrictions or automatic activation: that is a
   skill, so use `skill-development`.
