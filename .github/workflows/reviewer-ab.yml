@@ -301,6 +301,32 @@ jobs:
             exit 1
           fi
 
+      # The config check above compares [features] only. An MCP server is a program Codex starts outside
+      # its sandbox, so this checks the list in the reviewed head, with the policy config the run uses:
+      # none there, none from a known project config while untrusted, and that server once its project
+      # is trusted (the control). Measured on 0.170.0: `codex exec` started it only when trusted too;
+      # re-measure that on a pin change.
+      - name: Check Codex lists no MCP server from the reviewed head
+        run: |
+          set -euo pipefail
+          servers() { codex mcp list --json | jq -c 'if type == "array" then map(.name) else error("not a list") end'; }
+          control_dir=$(mktemp -d "$RUNNER_TEMP/codex-mcp.XXXXXX")
+          control_home=$(mktemp -d "$RUNNER_TEMP/codex-mcp-home.XXXXXX")
+          mkdir "$control_dir/.git" "$control_dir/.codex"
+          printf '[mcp_servers.ab-control]\ncommand = "true"\n' > "$control_dir/.codex/config.toml"
+          printf '[projects."%s"]\ntrust_level = "trusted"\n' "$control_dir" > "$control_home/config.toml"
+          trusted=$(cd "$control_dir" && CODEX_HOME="$control_home" servers)
+          if [ "$trusted" != '["ab-control"]' ]; then
+            echo "::error::a trusted project's MCP server is not listed, so this check shows nothing -- re-check it after a Codex pin change"
+            exit 1
+          fi
+          untrusted=$(cd "$control_dir" && servers)
+          head=$(cd "$RUNNER_TEMP/head" && servers)
+          if [ "$untrusted" != "[]" ] || [ "$head" != "[]" ]; then
+            echo "::error::Codex lists an MCP server of an untrusted project or of the reviewed head -- refusing to start reviewers"
+            exit 1
+          fi
+
       - name: Run the approved calls
         env:
           CODEX_API_KEY: ${{ secrets.OPENAI_API_KEY }}

@@ -100,6 +100,7 @@ def test_the_checks_come_before_the_run_and_the_config_check_runs_in_the_head():
         "Check Codex does not apply the repository's own config",
         "Check the overrides keep AGENTS.md and skills out of the model input",
         "Check the reviewers' sandbox cannot see the key",
+        "Check Codex lists no MCP server from the reviewed head",
         "Run the approved calls",
     ]
     assert [n for n in names if n in order] == order
@@ -376,3 +377,64 @@ def test_the_probe_itself_finds_the_key_when_nothing_hides_it(tmp_path):
         assert line in result.stdout.splitlines()
     argv = (tmp_path / "argv").read_text(encoding="utf-8").splitlines()
     assert argv[:3] == ["sandbox", "-c", 'sandbox_mode="read-only"']
+
+
+def _mcp_check(tmp_path, *, trusted="ab-control", untrusted="", head="", raw=None, fail=None):
+    """Runs the step with a stub `codex` that lists servers by directory and CODEX_HOME. With `raw`,
+    the head's answer is that text as it is; the `fail` answer comes with a non-zero exit."""
+    stub = tmp_path / "bin"
+    stub.mkdir()
+    (tmp_path / "head").mkdir()
+
+    def listed(name):
+        return json.dumps([{"name": name}] if name else [])
+
+    (tmp_path / "trusted.json").write_text(listed(trusted), encoding="utf-8")
+    (tmp_path / "untrusted.json").write_text(listed(untrusted), encoding="utf-8")
+    (tmp_path / "head.json").write_text(listed(head) if raw is None else raw, encoding="utf-8")
+    codex = stub / "codex"
+    rc = {name: int(name == fail) for name in ("head", "untrusted")}
+    codex.write_text(
+        "#!/usr/bin/env bash\n"
+        '[ "$*" = "mcp list --json" ] || exit 9\n'
+        f'if [ "$PWD" = "{tmp_path}/head" ]; then\n'
+        f'cat "{tmp_path}/head.json"; exit {rc["head"]}; fi\n'
+        "grep -q mcp_servers .codex/config.toml || exit 8\n"
+        'if [ -z "${CODEX_HOME:-}" ]; then\n'
+        f'cat "{tmp_path}/untrusted.json"; exit {rc["untrusted"]}; fi\n'
+        'grep -qF "[projects.\\"$PWD\\"]" "$CODEX_HOME/config.toml" || exit 7\n'
+        f'cat "{tmp_path}/trusted.json"\n',
+        encoding="utf-8",
+    )
+    codex.chmod(0o755)
+    env = {"PATH": f"{stub}:{os.environ['PATH']}", "RUNNER_TEMP": str(tmp_path)}
+    return _bash(_named(_steps(AB, "run"), "Check Codex lists no MCP")["run"], env, tmp_path)
+
+
+def test_the_mcp_check_passes_when_only_the_trusted_control_lists_a_server(tmp_path):
+    result = _mcp_check(tmp_path)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+@pytest.mark.parametrize(
+    "answers",
+    [
+        {"trusted": ""},
+        {"untrusted": "ab-control"},
+        {"head": "evil"},
+        {"raw": ""},
+        {"raw": "no"},
+        {"raw": "{}"},
+        {"raw": '[{"name": ""}]'},
+        {"raw": "[{}]"},
+        {"fail": "head"},
+        {"fail": "untrusted"},
+    ],
+    ids=lambda a: "-".join(f"{k}:{v}" for k, v in a.items()),
+)
+def test_the_mcp_check_fails_otherwise(tmp_path, answers):
+    assert _mcp_check(tmp_path, **answers).returncode != 0
+
+
+def test_the_mcp_check_always_runs_without_the_key():
+    assert set(_named(_steps(AB, "run"), "Check Codex lists no MCP")) == {"name", "run"}

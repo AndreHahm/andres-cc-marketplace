@@ -56,6 +56,16 @@
     },
     {
       "disposition": "fixed",
+      "finding": "ci-codex-delta-dependency-reviewer-mcp",
+      "line": 232,
+      "note": "Harm not reproduced on 0.170.0 (untrusted project config is not applied); a step now checks the MCP list with a trusted control.",
+      "path": ".github/workflows/reviewer-ab.yml",
+      "pr": 872,
+      "recorded_at": "2026-11-24T11:59:35+00:00",
+      "rule": "security-boundary"
+    },
+    {
+      "disposition": "fixed",
       "finding": "ci-codex-delta-rulebook-checker-key",
       "line": 276,
       "note": "Same defect as the Claude finding on this line.",
@@ -63,6 +73,16 @@
       "pr": 872,
       "recorded_at": "2026-11-24T10:23:30+00:00",
       "rule": "security"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-codex-delta-rulebook-checker-model-var",
+      "line": 121,
+      "note": "docs/ci.md states the model variable must be set; failing the plan without it is intended.",
+      "path": ".github/workflows/reviewer-ab.yml",
+      "pr": 872,
+      "recorded_at": "2026-11-24T11:59:35+00:00",
+      "rule": "workflow-usability"
     },
     {
       "disposition": "fixed",
