@@ -750,13 +750,14 @@ def cmd_brief(run_dir: str) -> int:
             briefable.append({**w, "line": line})
     # A line for a sensitive path would send its name and a hash of its content to Codex (#697).
     # So would a line whose own text is sensitive. A rule may be named after a sensitive word, so
-    # only its value is checked.
+    # only its value and file names are checked.
     codex_briefable = [
         w
         for w in briefable
         if not (
             _names_sensitive(w["path"])
             or _SECRET_VALUE_RE.search(w["rule"])
+            or common.has_sensitive_name(w["rule"])
             or _names_sensitive(_flagged_text(w["path"], w["line"]))
         )
     ]

@@ -31,6 +31,11 @@ def is_sensitive(path: str) -> bool:
     )
 
 
+def has_sensitive_name(text: str) -> bool:
+    """Whether a part of the text is a sensitive file name; a sensitive word alone is not one."""
+    return any(_SENSITIVE_NAME_RE.fullmatch(part) for part in re.split(r"[/:()]", text))
+
+
 def common_git_dir(folder: Path) -> Path | None:
     """The common git directory that `folder`'s own `.git` names, read without running git."""
     found = folder / ".git"
