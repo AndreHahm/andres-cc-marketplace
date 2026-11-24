@@ -1215,7 +1215,10 @@ def check_no_sed():
     flat = " ".join(ref.read_text(encoding="utf-8").split())
     if "any other prefix is a mismatch" not in flat or exact not in flat:
         return False, "step 1.5 no longer rejects an origin on another host"
-    redacted = "is reported without anything before an `@` in it"
+    redacted = (
+        "any other prefix is a mismatch, whatever its path, "
+        "and is reported without its query string and anything before its last `@`"
+    )
     if redacted not in body or redacted not in flat:
         return False, "steps 1 and 1.5 must both report a mismatched origin without its credentials"
     return True, "no sed grant, no sed pipe, and only github.com origins match"
