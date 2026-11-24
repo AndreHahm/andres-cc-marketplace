@@ -120,7 +120,9 @@ run's delta. Waivers, carried findings and tracked issues are not applied.
 
 The report counts what was observed, per reviewer and arm: blocking findings per run, how many runs agreed
 on the blocking set, and in how many runs each finding appeared. A run a reviewer failed in is
-counted as failed, not as a run without findings. Precision covers only findings with a corpus label for
+counted as failed, and a run that never happened or was lost as missing, never as a run
+without findings. Each reviewer is gated alone for these numbers: the merged `findings` list gives every
+reporter of a finding the highest severity among them. Precision covers only findings with a corpus label for
 the same head, reviewer, path and line. Three repeats cannot separate a prompt's effect from run-to-run
 variation, and `stable` stays `null` below five. Each arm's
 `raw/` holds the reviewers' reports as returned, with token-shaped text redacted.
