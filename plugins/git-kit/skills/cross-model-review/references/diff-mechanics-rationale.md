@@ -45,3 +45,11 @@ Phase 1 and Phase 2 still name the batch's untracked files in an `<untracked_fil
 own subprocess never sees intent-added files in the index. Since issue #697 the block holds only eligible
 paths: a file dropped from `$TARGET_PATHS` (odd characters, a symlink, a sensitive name) is never listed
 as untracked either, and stays in Claude's own review only.
+
+## Why the canonical diff uses the merge-base as a single ref
+
+`git diff A...B` only shows *committed* differences between the merge-base and `B`; it never includes
+staged or unstaged working-tree changes. Since this skill reviews "the current diff" / "the local working
+diff", the `$BASE...HEAD` form would silently skip any uncommitted work-in-progress, including the common
+case of reviewing before the first commit is even made. A single-ref `git diff <merge-base>` includes the
+working tree (index and unstaged changes both) on top of the merge-base.
