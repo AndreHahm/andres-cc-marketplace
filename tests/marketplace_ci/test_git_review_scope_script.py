@@ -7,6 +7,7 @@ temporary git repository.
 import importlib.util
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -1901,6 +1902,16 @@ def test_the_writer_append_keeps_the_owner_only_mode_and_drops_git_config_variab
         "id_rsa.old",
         "server.key.bak",
         "vault.kdbx",
+        "service-account-prod.json",
+        "id_rsa_backup",
+        "prod_id_rsa",
+        ".npmrc.bak",
+        "key.ppk",
+        "apns.p8",
+        "release.keystore",
+        "prod.tfvars",
+        "terraform.tfstate.backup",
+        "kubeconfig",
     ],
 )
 def test_a_sensitive_name_is_recognised(path):
@@ -1974,3 +1985,16 @@ def test_the_planner_never_runs_a_git_from_the_repository(repo, monkeypatch):
     refused = M._git(repo, "rev-parse", "HEAD")
     assert refused.returncode == 127 and b"inside the repository" in refused.stderr
     assert not (repo / "ran697").exists()
+
+
+def test_the_unscoped_fallback_pattern_agrees_with_the_planner():
+    """scoped-review.md section 7's grep pattern is a second copy of is_sensitive (#697)."""
+    skill = SCRIPT.parents[1] / "skills/cross-model-review/references/scoped-review.md"
+    text = skill.read_text(encoding="utf-8")
+    pattern = text.split("grep -iE\n   '", 1)[1].split("'", 1)[0]
+    names = [".env", "a/.envrc", "x.env", "k.pem", "k.key.bak", "prod_id_rsa", "api_token.txt"]
+    names += ["service-account-x.json", ".npmrc.bak", "kubeconfig", "a.tfvars", ".env/prod"]
+    names += ["README.md", "environment.py", "keyboard.py", "a.keys", "src/app.py"]
+    for name in names:
+        hit = re.search(pattern, name, re.IGNORECASE) is not None
+        assert hit == M.common.is_sensitive(name), name

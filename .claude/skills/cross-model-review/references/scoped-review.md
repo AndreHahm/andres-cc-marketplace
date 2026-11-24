@@ -200,7 +200,7 @@ safe-charset rule, so no typed path can carry shell text:
 1. List the changed names into `$RUN/changed.names` (section 1's command, with the `export
    GIT_INDEX_FILE` prefix). Keep a name for Codex only if it matches `^[A-Za-z0-9._/-]+$` (`grep -E`),
    does not match the sensitive-name pattern (`grep -iE
-   'secret|credential|password|token|(^|/)(\.env[^/]*|[^/]*\.env|[^/]*\.(key|pem|p12|pfx|jks|kdbx)(\.[^/]*)?|id_(rsa|ed25519|ecdsa|dsa)(\.[^/]*)?|service-account\.json|\.npmrc|\.pgpass|\.netrc|\.pypirc|\.htpasswd)(/|$)'`;
+   'secret|credential|password|token|(^|/)(\.env[^/]*|[^/]*\.env|[^/]*\.(key|pem|p12|p8|pfx|ppk|jks|keystore|kdbx|tfvars|tfstate)(\.[^/]*)?|[^/]*id_(rsa|ed25519|ecdsa|dsa)[^/]*|service-account[^/]*\.json|kubeconfig[^/]*|\.(npmrc|pgpass|netrc|pypirc|htpasswd)[^/]*)(/|$)'`;
    the matches are this run's `sensitive_paths`, named in the First-Send question),
    is a regular file (`test -f`), and has no symlink on its path (`realpath -- <name>` prints exactly
    `$REPO_ROOT/<name>`; a check of the last component alone misses a symlinked folder). Everything else stays in
