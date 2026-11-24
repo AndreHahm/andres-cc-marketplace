@@ -1,0 +1,180 @@
+{
+  "reports": [
+    {
+      "reviewer": "plugin-rulebook-checker",
+      "status": "completed",
+      "output": {
+        "contract_version": "1",
+        "dispatch": {
+          "id": "bafaee59800b-3f559d10",
+          "reviewer": "plugin-rulebook-checker",
+          "backend": "codex",
+          "target_paths": [
+            ".claude/review-outcomes.json",
+            "docs/ci.md",
+            "plugins/git-kit/scripts/git-review-ledger.py",
+            "plugins/git-kit/scripts/git-verify-fix-diff.py",
+            "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+            "plugins/git-kit/skills/handling-review-findings/references/fix-self-review.md",
+            "plugins/git-kit/skills/handling-review-findings/references/next-round-trigger.md",
+            "plugins/git-kit/skills/handling-review-findings/references/testing-scenarios.md"
+          ]
+        },
+        "provenance": {
+          "provider": "OpenAI",
+          "model": "GPT-6",
+          "cli_version": "unknown",
+          "execution_profile": "read-only"
+        },
+        "findings": [],
+        "verdict": "PASS",
+        "inspection_limits": [
+          "The checkout had no available PR diff or base comparison; I used the supplied changed-line ranges and inspected the current files and surrounding context."
+        ]
+      },
+      "error": null,
+      "attempts": 1,
+      "unsandboxed": false,
+      "fallback_over_cap": false
+    },
+    {
+      "reviewer": "dependency-reviewer",
+      "status": "completed",
+      "output": {
+        "contract_version": "1.0",
+        "dispatch": {
+          "id": "bafaee59800b-3f559d10",
+          "reviewer": "dependency-reviewer",
+          "backend": "",
+          "target_paths": [
+            ".claude/review-outcomes.json",
+            "docs/ci.md",
+            "plugins/git-kit/scripts/git-review-ledger.py",
+            "plugins/git-kit/scripts/git-verify-fix-diff.py",
+            "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+            "plugins/git-kit/skills/handling-review-findings/references/fix-self-review.md",
+            "plugins/git-kit/skills/handling-review-findings/references/next-round-trigger.md",
+            "plugins/git-kit/skills/handling-review-findings/references/testing-scenarios.md"
+          ]
+        },
+        "provenance": {
+          "provider": "OpenAI",
+          "model": "GPT-6",
+          "cli_version": "unknown",
+          "execution_profile": "read-only static review"
+        },
+        "findings": [],
+        "verdict": "Pass",
+        "inspection_limits": []
+      },
+      "error": null,
+      "attempts": 1,
+      "unsandboxed": false,
+      "fallback_over_cap": false
+    },
+    {
+      "reviewer": "security-reviewer",
+      "status": "completed",
+      "output": {
+        "contract_version": "1.0",
+        "dispatch": {
+          "id": "bafaee59800b-3f559d10",
+          "reviewer": "security-reviewer",
+          "backend": "Codex",
+          "target_paths": [
+            ".claude/review-outcomes.json",
+            "docs/ci.md",
+            "plugins/git-kit/scripts/git-review-ledger.py",
+            "plugins/git-kit/scripts/git-verify-fix-diff.py",
+            "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+            "plugins/git-kit/skills/handling-review-findings/references/fix-self-review.md",
+            "plugins/git-kit/skills/handling-review-findings/references/next-round-trigger.md",
+            "plugins/git-kit/skills/handling-review-findings/references/testing-scenarios.md"
+          ]
+        },
+        "provenance": {
+          "provider": "OpenAI",
+          "model": "GPT-6",
+          "cli_version": "unknown",
+          "execution_profile": "static security review"
+        },
+        "findings": [
+          {
+            "id": "M1",
+            "severity": "major",
+            "axis": "trust-boundary",
+            "location": "plugins/git-kit/scripts/git-verify-fix-diff.py:100",
+            "components": [
+              "plugins/git-kit/scripts/git-verify-fix-diff.py",
+              "docs/ci.md"
+            ],
+            "evidence": "\u26a0\ufe0f Unverified: runtime configuration was not exercised. Statically, _target_ref() reads the local refs/remotes/origin/HEAD ref without checking which repository origin points to. _trusted_commit() uses that ref to select a merge base, and _load_verifiers() imports and runs verifier code from that commit. docs/ci.md:556-557 notes that origin must be the canonical upstream, but the script does not enforce that condition.",
+            "finding": "If origin points to a contributor-controlled fork, this verifier can treat that fork's branch as trusted and execute its verifier code during a self-review run.",
+            "fix": "Before extracting or importing verifier code, verify that origin resolves to the configured canonical upstream and that the selected target ref belongs to it; exit 2 if the trusted remote cannot be established.",
+            "confidence": "high",
+            "category": "other"
+          }
+        ],
+        "verdict": "Reject",
+        "inspection_limits": []
+      },
+      "error": null,
+      "attempts": 1,
+      "unsandboxed": false,
+      "fallback_over_cap": false
+    },
+    {
+      "reviewer": "skill-reviewer",
+      "status": "completed",
+      "output": {
+        "contract_version": "1",
+        "dispatch": {
+          "id": "bafaee59800b-3f559d10",
+          "reviewer": "skill-reviewer",
+          "backend": "unknown",
+          "target_paths": [
+            ".claude/review-outcomes.json",
+            "docs/ci.md",
+            "plugins/git-kit/scripts/git-review-ledger.py",
+            "plugins/git-kit/scripts/git-verify-fix-diff.py",
+            "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+            "plugins/git-kit/skills/handling-review-findings/references/fix-self-review.md",
+            "plugins/git-kit/skills/handling-review-findings/references/next-round-trigger.md",
+            "plugins/git-kit/skills/handling-review-findings/references/testing-scenarios.md"
+          ]
+        },
+        "provenance": {
+          "provider": "OpenAI",
+          "model": "GPT-6",
+          "cli_version": "unknown",
+          "execution_profile": "read-only"
+        },
+        "findings": [
+          {
+            "id": "R1",
+            "severity": "minor",
+            "axis": "workflow-completeness",
+            "location": "plugins/git-kit/skills/handling-review-findings/SKILL.md:278",
+            "components": [
+              "plugins/git-kit/skills/handling-review-findings/references/fix-self-review.md",
+              "plugins/git-kit/skills/handling-review-findings/SKILL.md"
+            ],
+            "evidence": "The changed fixed path now records a disposition after resolving the thread, and fix-self-review.md:71 says to record one disposition per finding. The Issue and Decline paths at SKILL.md:280-323 do not record dispositions; the Decline path explicitly says there is no tracking artifact.",
+            "finding": "The ledger workflow records fixed findings but leaves filed and declined findings out, despite describing the ledger as one disposition per finding. This makes the outcomes corpus incomplete for those dispositions.",
+            "fix": "Record the settled disposition on the Issue and Decline paths too, or narrow the ledger documentation and stated corpus purpose to the dispositions it actually records.",
+            "confidence": "high",
+            "category": "other"
+          }
+        ],
+        "verdict": "Pass with one minor finding",
+        "inspection_limits": [
+          "The checkout has no refs/remotes/origin/HEAD, so the target-branch verifier-loading path could only be reviewed statically."
+        ]
+      },
+      "error": null,
+      "attempts": 1,
+      "unsandboxed": false,
+      "fallback_over_cap": false
+    }
+  ]
+}

@@ -1,0 +1,236 @@
+{
+  "reports": [
+    {
+      "reviewer": "plugin-rulebook-checker",
+      "status": "completed",
+      "output": {
+        "contract_version": "1",
+        "dispatch": {
+          "id": "6ab40547139d-1f39faab",
+          "reviewer": "plugin-rulebook-checker",
+          "backend": "codex",
+          "target_paths": [
+            ".claude/review-outcomes.json",
+            "docs/ci.md",
+            "plugins/git-kit/scripts/git-review-ledger.py",
+            "plugins/git-kit/scripts/git-verify-fix-diff.py",
+            "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+            "plugins/git-kit/skills/handling-review-findings/references/fix-self-review.md",
+            "plugins/git-kit/skills/handling-review-findings/references/next-round-trigger.md",
+            "plugins/git-kit/skills/handling-review-findings/references/testing-scenarios.md"
+          ]
+        },
+        "provenance": {
+          "provider": "OpenAI",
+          "model": "GPT-6",
+          "cli_version": "unknown",
+          "execution_profile": "read-only"
+        },
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "major",
+            "axis": "security",
+            "location": "plugins/git-kit/scripts/git-verify-fix-diff.py:100",
+            "components": [
+              "plugins/git-kit/scripts/git-verify-fix-diff.py",
+              "docs/ci.md"
+            ],
+            "evidence": "The script trusts the local refs/remotes/origin/HEAD without checking the remote identity. In a clone whose origin is a contributor's fork, the fork owner can control that ref; the script then finds the merge-base and imports and executes verifier modules from it. Running the checker can execute fork-controlled code in the developer's context or produce a false clean result.",
+            "finding": "The verifier trust anchor can point to an untrusted fork, despite the checker treating modules loaded from it as trusted.",
+            "fix": "Validate that origin is the canonical upstream before using its HEAD, or require an explicitly identified trusted remote/ref and fail closed when it cannot be established.",
+            "confidence": "high",
+            "category": "other"
+          },
+          {
+            "id": "F2",
+            "severity": "minor",
+            "axis": "workflow-correctness",
+            "location": "plugins/git-kit/skills/handling-review-findings/references/fix-self-review.md:71",
+            "components": [
+              "plugins/git-kit/skills/handling-review-findings/references/fix-self-review.md",
+              "plugins/git-kit/skills/handling-review-findings/SKILL.md"
+            ],
+            "evidence": "The new ledger instructions require one disposition per finding, including `declined`, while the workflow's Decline path says to leave no tracking artifact. Following that path omits declined findings from the ledger and the outcomes corpus.",
+            "finding": "The ledger's per-finding recording requirement conflicts with the Decline path, so the documented workflow cannot both follow step 6 and record every disposition.",
+            "fix": "Clarify whether declined findings should be recorded; align step 6 and the ledger instructions so the outcome is handled consistently.",
+            "confidence": "high",
+            "category": "other"
+          },
+          {
+            "id": "F3",
+            "severity": "minor",
+            "axis": "allowed-tools-grant",
+            "location": "plugins/git-kit/skills/handling-review-findings/SKILL.md:16",
+            "components": [
+              "plugins/git-kit/skills/handling-review-findings/SKILL.md"
+            ],
+            "evidence": "The new `Bash(git diff:*)` grant pre-approves arbitrary `git diff` arguments, including `--output=<path>`, which writes a file. The workflow only needs to inspect a fix diff, but this grant removes the permission prompt for that write-capable form.",
+            "finding": "The `git diff` allowed-tools grant is broader than the read-only diff inspection described by the skill.",
+            "fix": "Narrow the grant to the read-only diff invocation the workflow uses, or leave other argument forms subject to a permission prompt.",
+            "confidence": "medium",
+            "category": "allowed-tools-grant"
+          }
+        ],
+        "verdict": "FAIL",
+        "inspection_limits": []
+      },
+      "error": null,
+      "attempts": 1,
+      "unsandboxed": false,
+      "fallback_over_cap": false
+    },
+    {
+      "reviewer": "dependency-reviewer",
+      "status": "completed",
+      "output": {
+        "contract_version": "1.0",
+        "dispatch": {
+          "id": "6ab40547139d-1f39faab",
+          "reviewer": "dependency-reviewer",
+          "backend": "Codex",
+          "target_paths": [
+            ".claude/review-outcomes.json",
+            "docs/ci.md",
+            "plugins/git-kit/scripts/git-review-ledger.py",
+            "plugins/git-kit/scripts/git-verify-fix-diff.py",
+            "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+            "plugins/git-kit/skills/handling-review-findings/references/fix-self-review.md",
+            "plugins/git-kit/skills/handling-review-findings/references/next-round-trigger.md",
+            "plugins/git-kit/skills/handling-review-findings/references/testing-scenarios.md"
+          ]
+        },
+        "provenance": {
+          "provider": "OpenAI",
+          "model": "GPT-6",
+          "cli_version": "unknown",
+          "execution_profile": "read-only"
+        },
+        "findings": [],
+        "verdict": "Pass",
+        "inspection_limits": []
+      },
+      "error": null,
+      "attempts": 1,
+      "unsandboxed": false,
+      "fallback_over_cap": false
+    },
+    {
+      "reviewer": "security-reviewer",
+      "status": "completed",
+      "output": {
+        "contract_version": "1.0",
+        "dispatch": {
+          "id": "6ab40547139d-1f39faab",
+          "reviewer": "security-reviewer",
+          "backend": "codex",
+          "target_paths": [
+            ".claude/review-outcomes.json",
+            "docs/ci.md",
+            "plugins/git-kit/scripts/git-review-ledger.py",
+            "plugins/git-kit/scripts/git-verify-fix-diff.py",
+            "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+            "plugins/git-kit/skills/handling-review-findings/references/fix-self-review.md",
+            "plugins/git-kit/skills/handling-review-findings/references/next-round-trigger.md",
+            "plugins/git-kit/skills/handling-review-findings/references/testing-scenarios.md"
+          ]
+        },
+        "provenance": {
+          "provider": "OpenAI",
+          "model": "GPT-6",
+          "cli_version": "unknown",
+          "execution_profile": "read-only static review"
+        },
+        "findings": [
+          {
+            "id": "M1",
+            "severity": "major",
+            "axis": "permission-risk",
+            "location": "plugins/git-kit/skills/handling-review-findings/references/fix-self-review.md:78",
+            "components": [
+              "plugins/git-kit/skills/handling-review-findings/references/fix-self-review.md",
+              "plugins/git-kit/scripts/git-review-ledger.py"
+            ],
+            "evidence": "\u26a0\ufe0f Unverified (static analysis): The skill passes reviewer-derived `--path` and `--rule` values to a shell command, but only says to put them in single quotes and escape apostrophes. POSIX shells do not treat backslash as an escape inside single quotes. If an assistant uses `\\'` for a reviewer-controlled apostrophe, a value such as `x'; <command>; #` can terminate the quoted argument and execute shell syntax before `git-review-ledger.py` runs.",
+            "finding": "The shell-quoting guidance does not define a safe way to represent apostrophes, leaving reviewer-controlled values able to become shell syntax in the ledger invocation.",
+            "fix": "Use a shell-safe quoting method such as `shlex.quote` for each argument, or invoke the script with an argv-based mechanism that does not interpolate reviewer-controlled values into shell text.",
+            "confidence": "medium",
+            "category": "other"
+          },
+          {
+            "id": "m1",
+            "severity": "minor",
+            "axis": "permission-risk",
+            "location": "plugins/git-kit/skills/handling-review-findings/SKILL.md:16",
+            "components": [
+              "plugins/git-kit/skills/handling-review-findings/SKILL.md"
+            ],
+            "evidence": "`Write` is pre-approved for the skill, while the documented process uses it for issue drafts and scratchpad files. The grant itself is not path-restricted, so it pre-approves writes beyond those artifacts.",
+            "finding": "The `Write` allowed-tools grant is broader than the documented write destinations. This is a grant-hygiene issue; it does not restrict tool availability.",
+            "fix": "Remove `Write` from `allowed-tools` so intended writes require their own permission prompt.",
+            "confidence": "high",
+            "category": "allowed-tools-grant"
+          }
+        ],
+        "verdict": "Reject",
+        "inspection_limits": []
+      },
+      "error": null,
+      "attempts": 1,
+      "unsandboxed": false,
+      "fallback_over_cap": false
+    },
+    {
+      "reviewer": "skill-reviewer",
+      "status": "completed",
+      "output": {
+        "contract_version": "1",
+        "dispatch": {
+          "id": "6ab40547139d-1f39faab",
+          "reviewer": "skill-reviewer",
+          "backend": "codex",
+          "target_paths": [
+            ".claude/review-outcomes.json",
+            "docs/ci.md",
+            "plugins/git-kit/scripts/git-review-ledger.py",
+            "plugins/git-kit/scripts/git-verify-fix-diff.py",
+            "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+            "plugins/git-kit/skills/handling-review-findings/references/fix-self-review.md",
+            "plugins/git-kit/skills/handling-review-findings/references/next-round-trigger.md",
+            "plugins/git-kit/skills/handling-review-findings/references/testing-scenarios.md"
+          ]
+        },
+        "provenance": {
+          "provider": "OpenAI",
+          "model": "GPT-6",
+          "cli_version": "unknown",
+          "execution_profile": "read-only static review"
+        },
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "major",
+            "axis": "security/trust-boundary",
+            "location": "plugins/git-kit/scripts/git-verify-fix-diff.py:256",
+            "components": [
+              "plugins/git-kit/scripts/git-verify-fix-diff.py:100",
+              "plugins/git-kit/scripts/git-verify-fix-diff.py:276",
+              "docs/ci.md:556"
+            ],
+            "evidence": "When `origin` points to a contributor-controlled fork, `_target_ref` accepts its local `refs/remotes/origin/HEAD`; `_trusted_commit` then selects the merge-base against that ref, and `_load_verifiers` imports and runs the archived verifier modules. The script never checks that `origin` fetches from the canonical base repository. A user running the fix verifier in this common fork setup can therefore execute Python code supplied by the fork. The new documentation acknowledges that `origin` must be canonical, but the script does not enforce that precondition.",
+            "finding": "The verifier trust anchor is an unchecked local remote-tracking ref. A fork-controlled `origin/HEAD` can cause PR-controlled verifier code to execute on the user's machine.",
+            "fix": "Before loading verifiers, validate the fetch URL for the selected target remote against the PR's canonical base repository, or require an explicitly supplied trusted remote and fail closed when its identity cannot be verified.",
+            "confidence": "high",
+            "category": "other"
+          }
+        ],
+        "verdict": "reject",
+        "inspection_limits": []
+      },
+      "error": null,
+      "attempts": 1,
+      "unsandboxed": false,
+      "fallback_over_cap": false
+    }
+  ]
+}
