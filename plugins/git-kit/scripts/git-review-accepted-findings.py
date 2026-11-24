@@ -98,11 +98,20 @@ _SUMMARY_HEADING = re.compile(r"^#{1,6}\s+Summary\s*$", re.IGNORECASE)
 _CONTROL_CHARS = re.compile(r"[\x00-\x1f\x7f]")
 MAX_TRACKED_ISSUES = 10
 _MAX_TRACKED_SUMMARY = 600
-# Common credential formats, credentials in a URL and email addresses; not complete. The title and
-# summary may be cut in the middle of a value: so the low lengths, and the end of the text (`\Z`).
+# Common credential formats and assignments, credentials in a URL, email addresses, and any long
+# run of mixed letters and digits (a commit id too); not complete. The title and summary may be cut
+# in the middle of a value: so the low lengths, and the end of the text (`\Z`). A short fragment of
+# a cut value or name can still pass.
 _SECRET_VALUE_RE = re.compile(
-    r"(?<![A-Za-z0-9])(?:gh[oprsu]_|github_pat_|sk-|AKIA|ASIA|AIza|xox[a-z]-|glpat-|npm_)[\w-]{8}"
-    r"|-----BEGIN [A-Z ]*PRIVATE KEY|eyJ[\w-]{8,}\.[\w-]{4}|://[^\s:/@]*:[^\s/@]+(?:@|\Z)"
+    r"(?<![A-Za-z0-9])(?:gh[oprsu]_|github_pat_|sk-|[prs]k_(?:live|test)_|AKIA|ASIA|AIza|xox[a-z]-"
+    r"|xapp-|gl(?:pat|rt|dt)-|shp[a-z]+_|GOCSPX-|npm_|pypi-|hf_|whsec_|dop_v1_|ya29\.|SG\.)[\w-]{8}"
+    r"|hooks\.slack\.com/services/"
+    r"|(?i:(?:passwd|passphrase|pwd|(?:api|access|account)[ _-]?key\w*|pass|authorization)"
+    r"\W{0,3}[:=]"
+    r"|(?:bearer|basic)\s+\S{8}|--(?:api-key|token)\s)"
+    r"|(?=[A-Za-z0-9]*[0-9])(?=[0-9]*[A-Za-z])[A-Za-z0-9]{8}(?:[A-Za-z0-9]{8}|[A-Za-z0-9]*\Z)"
+    r"|-----BEGIN [A-Z ]*PRIVATE KEY|eyJ[\w-]{8,}\.[\w-]{4}|://[^\s:/@]*:[^\s@]+@"
+    r"|://[^\s:/@]*:[^\s/@]+\Z"
     r"|[\w.+-]+@(?:[\w-]+\.\w|[\w-]*\.?\Z)"
 )
 
@@ -591,6 +600,12 @@ def working_tree_locate(path: str, fingerprint: str, near: int) -> int | None:
     return min(hits, key=lambda i: (abs(i - near), i)) if hits else None
 
 
+def _flagged_text(path: str, line: int) -> str:
+    """The text of `path`'s line in the working tree, empty for line 0 or an unreadable file."""
+    lines = _working_tree_lines(path) or []
+    return lines[line - 1] if 0 < line <= len(lines) else ""
+
+
 def _location(value: object) -> tuple[str, int] | None:
     if not isinstance(value, str):
         return None
@@ -724,7 +739,7 @@ def cmd_brief(run_dir: str) -> int:
     # Issue #814, as CI's `render_accepted_findings_briefing`: a model cannot check a
     # fingerprint, so only a waiver whose flagged line is still in the working tree is briefed,
     # under the line it is on now; one in the earlier format (no fingerprint) never is.
-    briefable = []
+    briefable: list[dict] = []
     for w in waivers:
         if not (_SAFE_RULE.fullmatch(w["rule"]) and _safe_relative(w["path"])):
             continue
@@ -734,10 +749,20 @@ def cmd_brief(run_dir: str) -> int:
         if line is not None:
             briefable.append({**w, "line": line})
     # A line for a sensitive path would send its name and a hash of its content to Codex (#697).
-    codex_briefable = [w for w in briefable if not common.is_sensitive(w["path"])]
+    # So would a line whose own text is sensitive. A rule may be named after a sensitive word, so
+    # only its value is checked.
+    codex_briefable = [
+        w
+        for w in briefable
+        if not (
+            _names_sensitive(w["path"])
+            or _SECRET_VALUE_RE.search(w["rule"])
+            or _names_sensitive(_flagged_text(w["path"], w["line"]))
+        )
+    ]
     if len(codex_briefable) < len(briefable):
         left_out = len(briefable) - len(codex_briefable)
-        print(f"not briefed to Codex: {left_out} line(s) for a sensitive file name")
+        print(f"not briefed to Codex: {left_out} line(s) for a sensitive name or value")
     for name, text in (
         ("accepted.md", _briefing(briefable, records)),
         ("accepted.codex.md", _briefing(codex_briefable, codex_records)),
