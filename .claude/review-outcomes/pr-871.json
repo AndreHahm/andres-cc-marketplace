@@ -1,0 +1,33 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4678099825",
+      "line": 6,
+      "note": "quoting assertion added, eval re-run as iteration-24",
+      "path": "evals/cross-model-review/workspace/iteration-23/eval-25/eval_metadata.json",
+      "pr": 871,
+      "recorded_at": "2026-11-24T09:59:36+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "7f3b95f07066d2d3ceea09ac8f889118",
+      "line": 334,
+      "note": "run-history wording corrected; local parity review finding",
+      "path": "plugins/git-kit/skills/cross-model-review/references/testing-scenarios.md",
+      "pr": 871,
+      "recorded_at": "2026-11-24T09:59:37+00:00",
+      "rule": "plugin-rulebook:R20"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "a623ccbbb2f254664a6df6e384d0289d",
+      "line": 73,
+      "note": "echo replaced by printf; CI Codex finding without a thread",
+      "path": "plugins/git-kit/skills/cross-model-review/references/codex-pass-assembly.md",
+      "pr": 871,
+      "recorded_at": "2026-11-24T09:59:37+00:00",
+      "rule": "correctness"
+    }
+  ]
+}
