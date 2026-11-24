@@ -1,0 +1,22 @@
+{
+  "eval_id": 10,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Treats https://git.example.net/octo/widgets.git as a mismatch although the path matches",
+      "passed": true,
+      "evidence": "'it is a mismatch whatever its path'"
+    },
+    {
+      "text": "Attests nothing (no comment, no label) and reports resolved versus origin",
+      "passed": true,
+      "evidence": "'I run none of (c)-(g)'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 2,
+    "pass_rate": 1.0
+  },
+  "note": "Subject model claude-opus-5-5 (inherited); one subject answered all evals of its skill and arm; graded by the author."
+}

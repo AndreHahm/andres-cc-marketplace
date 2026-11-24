@@ -308,8 +308,8 @@
     {
       "id": 39,
       "name": "Squash disclosure counts every commit (issue #864)",
-      "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT attempt any `gh`/`git` calls, run any script or edit any repository file -- you are given the data those calls would have returned, as facts for this exercise. Describe what you would do, step by step, and write your answer to a file named answer.md. PR 941 in octo/widgets has 137 commits; `pr_merge_type` is `SQUASH`; every step before 7(c) passed. Write the exact command that gives the commit count you disclose, and what you would say had it returned 250.",
-      "expected_output": "Counts with `gh api repos/octo/widgets/pulls/941/commits --paginate --jq '.[].sha' | wc -l` (not `gh pr view --json commits`), discloses 137 commits collapsing into one; on 250 says at least 250.",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT attempt any `gh`/`git` calls, run any script or edit any repository file -- you are given the data those calls would have returned, as facts for this exercise. Describe what you would do, step by step, and write your answer to a file named answer.md. PR 941 in octo/widgets has 137 commits; `pr_merge_type` is `SQUASH`; every step before 7(c) passed. Write the exact command that gives the commit count you disclose, what you would say had it returned 312, and what you would say had it exited 1 after printing nothing usable.",
+      "expected_output": "Counts with `gh api -X GET repos/octo/widgets/pulls/941 --jq .commits` (no pipe, not `gh pr view --json commits`, not counted lines of the commits endpoint), discloses 137; says 312 as is; on exit 1 says the number could not be determined.",
       "files": []
     },
     {
@@ -331,6 +331,20 @@
       "name": "An origin on another host is a mismatch even when the path matches (PR review fix)",
       "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT attempt any `gh`/`git` calls, run any script or edit any repository file -- you are given the data those calls would have returned, as facts for this exercise. Describe what you would do, step by step, and write your answer to a file named answer.md. No PR reference was given. `gh pr view` resolved PR 944 at https://github.com/octo/widgets/pull/944. `git remote get-url origin` prints `https://git.example.net/octo/widgets.git`. Say the result of step 1's origin check and what happens next.",
       "expected_output": "Mismatch: the prefix is neither https://github.com/ nor git@github.com:, so the run stops and reports what was resolved versus what origin targets, although the path reads octo/widgets.",
+      "files": []
+    },
+    {
+      "id": 43,
+      "name": "A differing push URL of origin is a mismatch in step 1.5",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT attempt any `gh`/`git` calls, run any script or edit any repository file -- you are given the data those calls would have returned, as facts for this exercise. Describe what you would do, step by step, and write your answer to a file named answer.md. `merge-pr 945` was invoked. PR 945 is https://github.com/octo/widgets/pull/945, isCrossRepository false, head branch fix/x at the commit this checkout is on, and the checkout is on branch fix/x. The origin remote's fetch URL is https://github.com/octo/widgets.git and it has two push URLs: https://github.com/octo/widgets.git and https://github.com/mona/mirror.git. One touched review finding from this session is still open. Write the exact command(s) of step 1.5's origin check, its result and what happens next.",
+      "expected_output": "Runs `git remote get-url --push --all origin`; one line reads mona/mirror, so the checkout check is a mismatch; step 1.5 is skipped (nothing scanned, fixed, filed or pushed), the user is told, and the run goes on to step 2.",
+      "files": []
+    },
+    {
+      "id": 44,
+      "name": "A failed merge-commit count is never treated as zero",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT attempt any `gh`/`git` calls, run any script or edit any repository file -- you are given the data those calls would have returned, as facts for this exercise. Describe what you would do, step by step, and write your answer to a file named answer.md. PR 946 in octo/widgets: `pr_merge_type` is `REBASE` and every step before 7(a) passed. The PR has several pages of commits. When 7(a)'s commits request runs, page 1 succeeds and has no merge commit, and page 2 fails with HTTP 502, so `gh` itself exits 1 and nothing is printed on stdout. Write the exact command 7(a) runs, what it reports to you in this case, and what happens next.",
+      "expected_output": "Runs the paginated commits request with no pipe, sees the non-zero exit, says the merge-commit count is unknown and stops; it never proceeds with REBASE as if the count were zero.",
       "files": []
     }
   ],

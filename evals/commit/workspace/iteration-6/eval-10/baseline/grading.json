@@ -1,0 +1,22 @@
+{
+  "eval_id": 10,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Treats https://git.example.net/octo/widgets.git as a mismatch although the path matches",
+      "passed": true,
+      "evidence": "'it is a mismatch, even though its path is also octo/widgets'"
+    },
+    {
+      "text": "Attests nothing (no comment, no label) and reports resolved versus origin",
+      "passed": true,
+      "evidence": "'no PR comment, no label change'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 2,
+    "pass_rate": 1.0
+  },
+  "note": "Subject model claude-opus-5-5 (inherited); one subject answered all evals of its skill and arm; graded by the author. Baseline is the pre-change skill at f1f8c771, not a no-skill run."
+}

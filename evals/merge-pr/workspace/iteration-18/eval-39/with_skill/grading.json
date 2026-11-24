@@ -1,0 +1,22 @@
+{
+  "eval_id": 39,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Counts with one unpaginated request for the PR's .commits field, with no pipe",
+      "passed": true,
+      "evidence": "'gh api -X GET repos/octo/widgets/pulls/941 --jq .commits'"
+    },
+    {
+      "text": "Discloses 137 and 312 as is, and says undetermined on exit 1",
+      "passed": true,
+      "evidence": "'The number is taken as is.'; 'could not be determined'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 2,
+    "pass_rate": 1.0
+  },
+  "note": "Subject model claude-opus-5-5 (inherited); one subject answered all evals of its skill and arm; graded by the author."
+}

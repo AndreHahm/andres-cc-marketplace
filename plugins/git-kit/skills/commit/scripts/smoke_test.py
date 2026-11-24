@@ -61,7 +61,7 @@ def _collect_search_text(body: str) -> str:
         d = SKILL_DIR / sub
         if d.is_dir():
             for f in sorted(d.rglob("*")):
-                if f.is_file():
+                if f.is_file() and f != pathlib.Path(__file__).resolve():  # not this test
                     try:
                         search_text += "\n" + f.read_text(encoding="utf-8", errors="ignore")
                     except OSError:
@@ -122,6 +122,10 @@ def check_no_sed_pipeline():
     )
     if redacted not in body:
         return False, "step 16.5 must report a mismatched origin without its credentials"
+    push = "git remote get-url --push --all origin"
+    every = "every line must match, and a failed command or empty output is a mismatch"
+    if f"run `{push}`" not in body or every not in body or f"Bash({push})" not in text:
+        return False, "step 16.5 must compare every push URL of origin"
     return True, "no step pipes through sed and only github.com origins match"
 
 

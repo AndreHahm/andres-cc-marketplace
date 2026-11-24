@@ -76,7 +76,7 @@ def _collect_search_text(body: str) -> str:
         d = SKILL_DIR / sub
         if d.is_dir():
             for f in sorted(d.rglob("*")):
-                if f.is_file():
+                if f.is_file() and f != pathlib.Path(__file__).resolve():  # not this test
                     try:
                         search_text += "\n" + f.read_text(encoding="utf-8", errors="ignore")
                     except OSError:
@@ -1296,8 +1296,34 @@ def check_open_items_batched_and_body_edited_once():
     return True, "one open-items batch, one body edit, runs awaited"
 
 
+def check_push_urls_and_commit_counts():
+    # A push goes to every push URL, and a pipe hides a gh failure on a later page.
+    text = SKILL_MD.read_text(encoding="utf-8")
+    ref = SKILL_DIR / "references" / "session-open-items-and-body-check.md"
+    flat = " ".join(ref.read_text(encoding="utf-8").split())
+    push = "git remote get-url --push --all origin"
+    if f"Bash({push})" not in text or f"run `{push}`" not in flat:
+        return False, "step 1.5 must read every push URL of origin"
+    if "**Every** line must match; a failed command or empty output is a mismatch" not in flat:
+        return False, "step 1.5 must treat a differing, missing or failed push URL as a mismatch"
+    if "Bash(wc" in text or "piped to `wc" in text or "sha' | wc" in text:
+        return False, "a count is piped through wc again, which hides a gh failure"
+    step7 = _get_step_text(7)
+    needed = (
+        "On a non-zero exit code the count is unknown, also when some lines were printed",
+        "never treat it as zero",
+        "gh api -X GET repos/{owner}/{repo}/pulls/<number> --jq .commits",
+        "on a non-zero exit code, or output that is not a positive integer",
+    )
+    missing = [n for n in needed if step7 is None or n not in step7]
+    if missing:
+        return False, "step 7's commit counts lost: " + ", ".join(missing)
+    return True, "push URLs are all compared and commit counts never hide a failure"
+
+
 CHECKS = [
     check_frontmatter,
+    check_push_urls_and_commit_counts,
     check_referenced_files,
     check_bash_grants,
     check_step_sequence,

@@ -1,0 +1,22 @@
+{
+  "eval_id": 11,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Runs git remote get-url --push --all origin",
+      "passed": false,
+      "evidence": "'git remote get-url origin'"
+    },
+    {
+      "text": "Attests nothing and reports the push URL mismatch",
+      "passed": true,
+      "evidence": "Stops; 'the skill's literal command would have passed here; I stop only because the scenario supplies the push URL'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 1,
+    "pass_rate": 0.5
+  },
+  "note": "Subject model claude-opus-5-5 (inherited); one subject answered all evals of its skill and arm; graded by the author. Baseline is the pre-change skill at f1f8c771, not a no-skill run."
+}

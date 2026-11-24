@@ -198,8 +198,8 @@ a fresh `gh repo view` (skill-reviewer M1, 2026-08-31):**
 - The final recheck passes → step 7(b) proceeds to write the marker and merge exactly as before this fix
 
 **Verify step 1.5 (session open-issues check):**
-- `isCrossRepository: false`, the `origin` remote's `owner/repo` (from `git remote get-url origin`,
-  never `gh repo view`) matches step 1's resolved `{owner}/{repo}`, its branch matches `headRefName`,
+- `isCrossRepository: false`, the `owner/repo` of every `origin` push URL (from `git remote get-url
+  --push --all origin`, never `gh repo view`) matches step 1's resolved `{owner}/{repo}`, its branch matches `headRefName`,
   and `git rev-parse HEAD` matches step 1's `headRefOid` — all four pass, so step 1.5 proceeds to scan
 - `GH_REPO` is set (or a local `gh repo set-default` exists) so `gh repo view` would report step 1's
   `{owner}/{repo}` while `origin` actually points at a different repository → step 1.5 is still skipped,

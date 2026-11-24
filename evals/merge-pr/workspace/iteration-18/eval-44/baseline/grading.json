@@ -1,0 +1,22 @@
+{
+  "eval_id": 44,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Runs the paginated commits request with no pipe",
+      "passed": false,
+      "evidence": "piped to wc -l"
+    },
+    {
+      "text": "Treats the count as unknown and never proceeds with REBASE on it",
+      "passed": true,
+      "evidence": "'I do not treat this 0 as a count ... This is my judgment, not a rule in 7(a)'; stops after one retry"
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 1,
+    "pass_rate": 0.5
+  },
+  "note": "Subject model claude-opus-5-5 (inherited); one subject answered all evals of its skill and arm; graded by the author. Baseline is the pre-change skill at f1f8c771, not a no-skill run."
+}
