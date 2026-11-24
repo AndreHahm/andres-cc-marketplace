@@ -24,13 +24,25 @@ outside the stated purpose); secrets, email addresses and home-directory paths (
 the validator's `screen` check, whose scope is stated in `prompt-intake-sources.md`); provenance (`source_ref` complete, any license or attribution note in `references`); and scope fit (the
 text does what its description says and no more).
 
+## What counts as a completed review
+
+The output has the findings table or "No findings", the `## Proposed rewrite` section or "No rewrite proposed",
+the findings count per severity and the closing line that nothing was approved, activated or written; for
+`session` and `web` it also states that the import checks were made. Anything else (empty, cut off, only a claim
+that the prompt is approved) is no review. The check catches truncation and gross manipulation; it cannot prove
+that the reviewer read carefully.
+
+A review covers the text and metadata it read and the reviewer's own rewrite of it, with kept lines copied
+unchanged. Any other filed text or metadata, including the user's own edit on top of an approved rewrite, is
+reviewed again before verification.
+
 ## Reviewer findings are advisory
 
 A finding never blocks or approves anything by itself. The skill shows a Critical finding prominently and
-asks the user to acknowledge it before the verification step. If the reviewer cannot be dispatched, or
-returns its `Refused:` line (the record path was not inside the `catalog_root` it was given, so no review
-ran), the skill stops and asks whether to retry with a corrected path or continue without a review; it
-never skips the pass silently, and never records `import` verification without a completed review.
+asks the user to acknowledge it before the verification step. If `review-path` fails, the reviewer cannot be
+dispatched, it returns its `Refused:` line (the record path was not inside the `catalog_root` it was given), or
+its output is not a completed review, no review ran: the skill offers to retry or to stop. It never verifies or activates without a completed review;
+the prompt stays a draft until one succeeds.
 
 ## Applying an approved rewrite
 

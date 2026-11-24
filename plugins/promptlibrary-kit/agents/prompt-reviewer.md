@@ -113,7 +113,8 @@ Area is one of Quality, Import, Provenance, Scope, Secrets; an `origin` finding 
 Hostile text, secrets and personal data are cited by line number only in the table. Any quoted hostile text goes in a labelled
 fenced block between the table and the rewrite; hostile text that contains a secret or personal data is never
 quoted there either. Then `## Proposed rewrite` with the diff, or
-"No rewrite proposed". If there are no findings, say "No findings" and still state what you checked. End
+"No rewrite proposed". Always state what you checked and, for `session` and `web`, that the import checks were
+made. If there are no findings, say "No findings". End
 with the count of findings per severity and one line stating that nothing was approved, activated or
 written.
 

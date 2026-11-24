@@ -608,9 +608,10 @@ reviewer dispatch, so PUR-2 holds without exception.
 **Amended 2026-11-17 (DEF-3):** one exception, once Notion support arrives: a change you accept in a Notion
 sync is not reviewed before it becomes active; it is still screened for secrets.
 
-Source: V4 §Quality review; owner decision 2026-11-16. State: **partial** (review and acknowledgment: met;
-no-review-no-activation: not met, the skill offers to continue without a review). Confirmed: yes
-(2026-11-16).
+Source: V4 §Quality review; owner decision 2026-11-16. State: met (the skill enforces it; the validator
+checks only that a recorded hash matches the text, so it cannot tell whether a review ran: records verified
+before 2026-11-24, drafts as well as active and inactive prompts, and a hash written into a record outside the
+skill, for example in a cloned repository, are not covered). Confirmed: yes (2026-11-16).
 
 ### REV-2: Imported and AI-written text is checked for hidden instructions
 

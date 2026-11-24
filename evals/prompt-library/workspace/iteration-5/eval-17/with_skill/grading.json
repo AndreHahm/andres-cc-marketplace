@@ -1,0 +1,28 @@
+{
+  "eval_id": 17,
+  "configuration": "with_skill",
+  "run_date": "2026-11-24",
+  "method": "Plan-only dry run 2026-11-24: a fresh general-purpose agent read the worktree's SKILL.md and references with Read only and reported each step and question against a simulated refused reviewer; no command was run, no baseline arm, graded by the operator's session. Re-run the same day on the final step 7-9 wording with the same result.",
+  "assertions_evaluated": [
+    {
+      "text": "Resumes at step 7 and runs review-path before dispatching prompt-reviewer",
+      "passed": true,
+      "evidence": "Order: validate, show --history, review-path, dispatch"
+    },
+    {
+      "text": "Reports that no review ran and asks only whether to retry or stop",
+      "passed": true,
+      "evidence": "One question with the options 'Retry review' and 'Stop'; no 'continue without a review'"
+    },
+    {
+      "text": "On stop, records no verification and activates nothing",
+      "passed": true,
+      "evidence": "record-verification and activate named as not run, citing step 8 and Gotchas"
+    },
+    {
+      "text": "Says the prompt stays a draft and names the resume command",
+      "passed": true,
+      "evidence": "'The prompt is still a draft' and '/prompt-library activate docs__todo-summary'"
+    }
+  ]
+}

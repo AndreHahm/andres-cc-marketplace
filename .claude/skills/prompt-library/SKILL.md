@@ -143,18 +143,22 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
    lists it in the catalog together. Keep the `text_hash` and `path` it returns.
 7. **Review and optimize.** Run `<CLI> review-path <path>`, with `path` from step 6's `draft` output or,
    for a resumed draft, from `<CLI> show <slug> --history`. It refuses a path through a link or junction
-   or one that is not a listed record; if it fails, report its error and do not dispatch. Otherwise dispatch
+   or one that is not a listed record; if it fails, report its error and do not dispatch (no review ran, see Gotchas).
+   Otherwise dispatch
    `prompt-reviewer` with the `path` and `catalog_root` it returned, exactly as returned, and the record's
    `origin`; it is read-only and refuses a path outside that `catalog_root`. If it returns its
-   `Refused:` line, no review ran: handle it like a failed
-   dispatch (see Gotchas), and never record `import` verification without a completed review. Present its findings and its
+   `Refused:` line, the dispatch fails or the output is not a completed review (defined in
+   `references/prompt-optimization-and-review.md`), no review ran (see Gotchas). Present its findings and its
    proposed rewrite as a diff. If the user approves a rewrite, write the full replacement record to a
-   scratch file and run `<CLI> update-draft <internal_id> <scratch-file>`; it screens the new text and
+   scratch file, with no reviewer placeholder (`line N removed` or `line N kept, value not shown`) in it, and
+   run `<CLI> update-draft <internal_id> <scratch-file>`; it screens the new text and
    clears the earlier verification when the text changed. This works on any draft, initial or successor.
-   Run one review round, then go on to step 8; dispatch `prompt-reviewer` again only when the user asks
-   for another round. See `references/prompt-optimization-and-review.md`; an active or inactive record
+   Run one review round, then go on to step 8; run this step again when the user asks for another round,
+   and whenever the filed text or metadata (any field the reviewer checks) is neither what was reviewed nor
+   the reviewer's approved rewrite (apart from kept lines copied unchanged). See `references/prompt-optimization-and-review.md`; an active or inactive record
    is never edited in place, a revision is a new draft.
-8. **Verify.** Get the final prompt text and its `text_hash` from the filed record (`<CLI> show <slug>
+8. **Verify.** Only after a completed review of this text (step 7; on a resume at this step, the recorded
+   `quality` verification stands for it). Get the final prompt text and its `text_hash` from the filed record (`<CLI> show <slug>
    --history`), not from the scratch copy. Show both to the user. If the record's `hidden_characters`
    is not empty, list each entry (line, column, code point, name) above the text, add "50 or more" when
    `hidden_characters_truncated` is true, and say these characters are invisible in the text shown.
@@ -163,7 +167,7 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
    quality --expect-sha256 <that hash>` and, for `session` or `web` origin, again with `--kind import`
    (for a resumed draft, only the kinds in its `missing_verification`, see step 2).
    The expected hash makes the script refuse if the file changed after the user approved it.
-9. **Change status.** Take the hash from `<CLI> show <slug> --history`. Show the proposed change and ask
+9. **Change status.** Only after step 8, or when step 2 sends the record here. Take the hash from `<CLI> show <slug> --history`. Show the proposed change and ask
    with `AskUserQuestion`, naming the slug, the status change, the first 8 characters of that hash and,
    for `activate` or `finalize`, the hidden-character count if any. Then run one of:
    - `<CLI> activate <id> --expect-sha256 <hash>` for an initial draft or an inactive record;
@@ -184,9 +188,11 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
   edit. The script enforces this with `--expect-sha256`; do not pass a hash you did not show the user.
 - `prompt-reviewer` only reports and proposes. It cannot approve, activate or write; the user approves.
   Its findings are advisory, and the validator cannot tell whether the review ran. Show a Critical
-  finding prominently and ask the user to acknowledge it before step 8; if the dispatch fails or returns
-  the `Refused:` line, stop and ask whether to retry or continue without a review rather than skipping
-  it silently.
+  finding prominently and ask the user to acknowledge it before step 8. If `review-path` fails, the dispatch
+  fails, it returns the `Refused:` line or its output is not a completed review, no review ran: ask whether to
+  retry or stop. Never go on to step 8 without a completed review; on stop, the prompt stays a draft and
+  `/prompt-library activate <slug>` resumes with the review. If a requested further round fails, the earlier
+  completed review counts only while the text is unchanged since it.
 - A draft, initial or successor, is replaced in place (`update-draft`); an active or inactive record gets
   a successor.
 - A revision never retires the active prompt before `finalize`.
@@ -246,8 +252,11 @@ directly; last run 2026-11-16, 7 of 7 checks passed. It failed on a copy with a 
       untouched until `finalize`.
 - [ ] Every status change and every draft filing was preceded by an `AskUserQuestion` approval.
 - [ ] A resumed draft with no recorded quality verification goes back through `prompt-reviewer` (step 7).
+- [ ] When no review ran (an incomplete output included), the skill offers only retry or stop; the draft is
+      neither verified nor activated.
+- [ ] Text or metadata changed after the review, other than the approved rewrite, is reviewed again before step 8.
 - [ ] A resume records only the kinds in `missing_verification`, and step 7 runs one review round unless
-      the user asks for another.
+      the user asks for another or the text or metadata changed (step 7).
 - [ ] A slug that does not match the slug pattern is refused before any command runs with it.
 - [ ] `activate` of an already active record is reported and stops, with no question and no command.
 
@@ -256,7 +265,9 @@ directly; last run 2026-11-16, 7 of 7 checks passed. It failed on a copy with a 
 (link and junction refusal, tested with a real junction on Windows) were added. The step 6 sharing notice and
 the step 7 `catalog_root` hand-off and `Refused:` handling (2026-11-16) were checked by the smoke test and
 by `prompt-reviewer`'s own dry runs (`evals/prompt-reviewer/workspace/iteration-4/` and `-6/`); no
-`evals/prompt-library/` scenario was re-run for them. The latest live run, 2026-10-14 (plugin loaded with
+`evals/prompt-library/` scenario was re-run for them. Scenarios 17 to 19 (a refused review, an incomplete review
+output, a user edit on top of a rewrite) passed as plan-only dry runs on 2026-11-24
+(`evals/prompt-library/workspace/iteration-5/` and `-6/`, with-skill only; 18 and 19 before the metadata wording). The latest live run, 2026-10-14 (plugin loaded with
 `--plugin-dir`), ran add, near-duplicate, revise, finalize and deactivate, each status change behind its
 own approval; the step 5 triage skip it found was fixed in PR #566. An earlier hand-followed run of steps
 1 to 6 (2026-10-04, not persisted) confirmed a fake key is reported unechoed and refused by `draft`.

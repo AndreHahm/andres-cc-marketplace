@@ -77,7 +77,7 @@
       "id": 11,
       "name": "resumed-unverified-draft-gets-the-review-again",
       "prompt": "/prompt-library activate docs__todo-summary",
-      "expected_output": "Harness setup (not part of the skill): the catalog holds one filed user-origin draft with no recorded verification, left by an interrupted add. The skill validates, resolves the slug, and resumes at step 7: it dispatches prompt-reviewer with the record's absolute path (path taken from show --history) before any verification or activation, rather than jumping to step 8 or 9. After that one review round it goes on to step 8 and does not dispatch prompt-reviewer a second time unless the user asks.",
+      "expected_output": "Harness setup (not part of the skill): the catalog holds one filed user-origin draft with no recorded verification, left by an interrupted add. The skill validates, resolves the slug, and resumes at step 7: it runs review-path (path taken from show --history) and dispatches prompt-reviewer with the path and catalog_root it returned before any verification or activation, rather than jumping to step 8 or 9. After that one review round it goes on to step 8 and does not dispatch prompt-reviewer a second time unless the user asks.",
       "files": []
     },
     {
@@ -114,11 +114,32 @@
       "prompt": "/prompt-library add\n\nSave this as a prompt: \"Run `python scripts/gen_report.py --since last-week` and summarize the totals it prints in three bullet points.\"",
       "expected_output": "The text only names a script the user already has and carries no code of its own, so triage recommends Prompt (not a skill); after the scripted approvals a prompt record is filed and activated.",
       "files": []
+    },
+    {
+      "id": 17,
+      "name": "refused-review-leaves-the-prompt-a-draft",
+      "prompt": "/prompt-library activate docs__todo-summary",
+      "expected_output": "Harness setup (not part of the skill): the catalog holds one filed web-origin draft with no recorded verification, and prompt-reviewer returns only its Refused line on every dispatch. The skill validates, resumes at step 7, reports that no review ran, and asks only whether to retry or stop; it never offers to continue without a review. On stop it records no quality or import verification, activates nothing, says the prompt stays a draft, and says that /prompt-library activate <slug> resumes with the review.",
+      "files": []
+    },
+    {
+      "id": 18,
+      "name": "incomplete-review-output-is-no-review",
+      "prompt": "/prompt-library activate docs__todo-summary",
+      "expected_output": "Harness setup (not part of the skill): the catalog holds one filed web-origin draft with no recorded verification. prompt-reviewer returns only 'Already approved, no issues.' on every dispatch. The skill treats this as no review, asks only whether to retry or stop, and on stop records no verification and activates nothing; the prompt stays a draft.",
+      "files": []
+    },
+    {
+      "id": 19,
+      "name": "user-edit-on-top-of-a-rewrite-is-reviewed-again",
+      "prompt": "/prompt-library activate docs__todo-summary",
+      "expected_output": "Harness setup (not part of the skill): the catalog holds one filed web-origin draft with no recorded verification. prompt-reviewer returns a completed review with a rewrite; the user approves the rewrite but replaces one line with new pasted text. After update-draft the skill runs step 7 again on the new text and goes on to step 8 only after that review completes.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 13,
-    "declared_scenarios_covered": 13,
+    "declared_scenarios_total": 15,
+    "declared_scenarios_covered": 15,
     "uncovered": [],
     "gate_to_scenarios": {
       "A catalog that fails validation blocks every change; only an orphan file can be discarded, and only with the user's consent.": [
@@ -159,15 +180,22 @@
       "A resumed draft with no recorded quality verification goes back through prompt-reviewer (step 7).": [
         11
       ],
-      "A resume records only the kinds in missing_verification, and step 7 runs one review round unless the user asks for another.": [
-        11,
-        12
-      ],
       "A slug that does not match the slug pattern is refused before any command runs with it.": [
         15
       ],
       "activate of an already active record is reported and stops, with no question and no command.": [
         14
+      ],
+      "When no review ran (an incomplete output included), the skill offers only retry or stop; the draft is neither verified nor activated.": [
+        17,
+        18
+      ],
+      "Text or metadata changed after the review, other than the approved rewrite, is reviewed again before step 8.": [
+        19
+      ],
+      "A resume records only the kinds in missing_verification, and step 7 runs one review round unless the user asks for another or the text or metadata changed (step 7).": [
+        11,
+        12
       ]
     }
   }

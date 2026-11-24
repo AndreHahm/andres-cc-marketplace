@@ -1,0 +1,28 @@
+{
+  "eval_id": 18,
+  "configuration": "with_skill",
+  "run_date": "2026-11-24",
+  "method": "Plan-only dry run 2026-11-24: a fresh general-purpose agent read the worktree's SKILL.md and the review reference with Read only and reported each step and question against a simulated reviewer; no command was run, no baseline arm, graded by the operator's session. Run before the 'text or metadata' wording of step 7 was added.",
+  "assertions_evaluated": [
+    {
+      "text": "Treats the incomplete output as no review",
+      "passed": true,
+      "evidence": "'It is therefore not a completed review, so no review ran'"
+    },
+    {
+      "text": "Asks only whether to retry or stop",
+      "passed": true,
+      "evidence": "Options 'Retry the review' / 'Stop'"
+    },
+    {
+      "text": "On stop, records no verification and activates nothing",
+      "passed": true,
+      "evidence": "record-verification, activate and finalize named as not run"
+    },
+    {
+      "text": "Says the prompt stays a draft",
+      "passed": true,
+      "evidence": "'docs__todo-summary is still a draft'"
+    }
+  ]
+}
