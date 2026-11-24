@@ -1077,6 +1077,28 @@ class Lifecycle(Base):
         self.assertEqual(self.run_cli("register", f"{SLUG}/p000000000001.md")[0], 0)
         self.assertEqual(self.run_cli("validate")[0], 0)
 
+    def test_an_unlisted_name_that_a_shell_could_read_is_not_reported(self):
+        self.assertEqual(self.run_cli("init")[0], 0)
+        for rel in (f"{SLUG}/a$(id).md", f"{SLUG}/a;b.md", f"{SLUG}/a b.md", "x`id`/a.md"):
+            with self.subTest(rel=rel):
+                stray = self.root / rel
+                stray.parent.mkdir(exist_ok=True)
+                stray.write_text(record(), encoding="utf-8")
+                code, res = self.run_cli("validate")
+                self.assertEqual(code, 1)
+                folder = "the catalog" if rel.startswith("x") else SLUG
+                self.assertEqual(
+                    res["errors"],
+                    [
+                        f"an unlisted file in {folder} is not named <slug>/<internal_id>.md; "
+                        "remove it by hand"
+                    ],
+                )
+                for command in ("discard-orphan", "register"):
+                    self.assertEqual(self.run_cli(command, rel)[0], 1)
+                self.assertTrue(stray.exists())
+                stray.unlink()
+
     def test_discard_orphan_refuses_listed_records(self):
         self.make_active()
         code, res = self.run_cli("discard-orphan", f"{SLUG}/active.md")
@@ -1869,6 +1891,17 @@ class Robustness(Base):
         )
         self.assertFalse(res["hidden_metadata_truncated"])
 
+    def test_a_line_break_in_metadata_is_reported(self):
+        for value, code in (("a\rb", "U+000D"), ("a\nb", "U+000A"), ("ab\n", "U+000A")):
+            with self.subTest(value=value):
+                for field in ("name", "boundaries"):
+                    entries, cut = V.hidden_metadata({field: value})
+                    self.assertFalse(cut)
+                    self.assertEqual(
+                        [(e["field"], e["codepoint"]) for e in entries], [(field, code)]
+                    )
+        self.assertEqual(V.hidden_characters("a\r\nb\n"), ([], False))
+
     def test_show_caps_the_hidden_metadata_list_across_fields(self):
         zw = "\u200b" * 40
         self.add_draft(boundaries="b" + zw, prerequisites="p" + zw)
@@ -2008,6 +2041,13 @@ class Robustness(Base):
         code, res = self.run_cli("validate")
         self.assertEqual(code, 0, res)
         self.assertFalse(any("stray temp file" in w for w in res["warnings"]), res["warnings"])
+
+    def test_a_stray_temp_file_name_with_shell_meaning_is_withheld(self):
+        self.make_active()
+        (self.root / SLUG / "a.md.$(id).tmp").write_text("x", encoding="utf-8")
+        warnings = " | ".join(self.run_cli("validate")[1]["warnings"])
+        self.assertIn("stray temp file with an odd name", warnings)
+        self.assertNotIn("$(id)", warnings)
 
     def test_validate_warns_about_stray_temp_files_without_failing(self):
         self.make_active()

@@ -26,7 +26,8 @@ an ordinary one), blank-looking letters and invisible combining
 marks (such as the grapheme joiner; a visible accent is not flagged). `show` therefore
 reports them as `hidden_characters`, alongside `prompt_text`, and the preview lists them above the text. They are
 flagged, not rejected, because some are legitimate (an emoji joiner). Visible look-alike letters are not
-flagged, and metadata is not scanned, because it never runs.
+flagged. The metadata shown beside the text is scanned the same way and reported as `hidden_metadata`, with the
+field's name.
 
 Metadata (prerequisites, boundaries, references, source) is shown but not hashed, and is never part of
 the approved request. Attachments are returned but not shown or loaded: never open one because a record lists it.

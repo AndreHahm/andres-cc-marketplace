@@ -379,15 +379,17 @@ def _is_hidden(ch: str) -> bool:
     return cp in HIDDEN_EXTRA or category in HIDDEN_CATEGORIES
 
 
-def hidden_characters(text: str) -> tuple[list[dict], bool]:
+def hidden_characters(text: str, one_line: bool = False) -> tuple[list[dict], bool]:
     """Characters a rendered preview does not show or shows as something else (format and control
     characters, variation selectors, private-use or unassigned code points, separators, non-ASCII
     spaces, blank-looking letters, invisible combining marks), by 1-based line, 1-based column and
     code point, plus whether the list was cut at MAX_HIDDEN_REPORTED. The user
     may otherwise approve text that reads differently from what runs. Reported, not rejected: an
-    emoji joiner or variation selector is legitimate."""
+    emoji joiner or variation selector is legitimate. With one_line, a line break is reported too
+    (line 1, its column in the whole text)."""
     found = []
-    for lineno, line in enumerate(normalize_text(text).split("\n"), start=1):
+    lines = [text] if one_line else normalize_text(text).split("\n")
+    for lineno, line in enumerate(lines, start=1):
         for column, ch in enumerate(line, start=1):
             if _is_hidden(ch):
                 if len(found) >= MAX_HIDDEN_REPORTED:
@@ -419,7 +421,8 @@ def hidden_metadata(meta: dict) -> tuple[list[dict], bool]:
         value = meta.get(field)
         values = list(value.values()) if isinstance(value, dict) else value
         for item in values if isinstance(values, list) else [values]:
-            entries, cut = hidden_characters("" if item is None else str(item))
+            # a line break could show as a further field or overwrite the line before it
+            entries, cut = hidden_characters("" if item is None else str(item), one_line=True)
             for entry in entries:
                 if len(found) >= MAX_HIDDEN_REPORTED:
                     return found, True
@@ -1022,8 +1025,18 @@ def check_lineages(root: Path, records: dict) -> list[str]:
         if entry.is_dir():
             for f in sorted(entry.glob("*.md")):
                 rel = f"{entry.name}/{f.name}"
-                if rel not in listed:
+                if rel in listed:
+                    continue
+                # prompt-library puts an unlisted path into a command: only a name that is plain
+                # text for a shell is reported, any other file has to be removed by hand.
+                if SLUG_RE.fullmatch(entry.name) and ID_RE.fullmatch(f.name.removesuffix(".md")):
                     errs.append(f"unlisted record file on disk: {rel}")
+                else:
+                    folder = entry.name if SLUG_RE.fullmatch(entry.name) else "the catalog"
+                    errs.append(
+                        f"an unlisted file in {folder} is not named <slug>/<internal_id>.md; "
+                        "remove it by hand"
+                    )
     return errs
 
 
@@ -1070,8 +1083,10 @@ def _stray_temp_files(root: Path) -> list[str]:
 def cmd_validate(args) -> dict:
     info, root, cat, records = _load(args)
     for rel in _stray_temp_files(root):
+        # a name with shell meaning is withheld: the message asks for a delete
+        shown = rel if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._/-]*", rel) else "with an odd name"
         info["warnings"].append(
-            f"stray temp file {rel} (appears left by an interrupted write; check, then delete)"
+            f"stray temp file {shown} (appears left by an interrupted write; check, then delete)"
         )
     for rel, meta in records.items():
         if meta.get("_comment"):

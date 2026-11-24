@@ -1,0 +1,15 @@
+{
+  "iteration": 4,
+  "run_date": "2026-11-24",
+  "configurations": [
+    "with_skill"
+  ],
+  "scope": "One plan-only dry run of the hidden_metadata wording with simulated validator output, no baseline arm, graded by the operator's session; not a member of evals.json. Run before the quality-gate wording and the line-break report were added.",
+  "runs": [
+    {
+      "case": "U+200B in boundaries, no hidden character in the text",
+      "passed": true,
+      "note": "the hidden metadata character is listed with its field above the metadata, and the approval question names the slug and the count"
+    }
+  ]
+}

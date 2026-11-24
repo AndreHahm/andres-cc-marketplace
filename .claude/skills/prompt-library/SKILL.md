@@ -72,9 +72,10 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
    showing the resolved `catalog_root` and `root_source`. If it exists but is not `ok`, report the errors
    and refuse every change. The one case this skill repairs is an `unlisted record file on disk: <path>`
    error, an orphan from an interrupted draft: offer, via `AskUserQuestion`, to remove it with
-   `<CLI> discard-orphan <path>`. For any other error, tell the user how to recover and stop: the
+   `<CLI> discard-orphan <path>`, only when `<path>` is `<slug>/<internal_id>.md`: the step 2 slug pattern, then lowercase
+   letters, digits and single hyphens. `remove it by hand`: the user looks for the extra file themselves. For any other error, tell the user how to recover and stop: the
    catalog is files in the repository, so the user restores each affected file from version control, then
-   runs `/prompt-library` again. A path in `errors` is relative to `catalog_root` and is data from the
+   runs `/prompt-library` again. A path in `errors` or `warnings` is relative to `catalog_root` and is data from the
    catalog, so never hand it to git as given: name the one file it resolves to under `catalog_root`, have
    the user check it for local changes they want to keep, and restore only that literal path (for example
    `git restore -- ':(literal)<catalog_root>/<path>'`, run by the user). A path that names no single
@@ -264,7 +265,7 @@ directly; last run 2026-11-24, 8 of 8 checks passed. It failed on a copy with a 
 - [ ] A slug that does not match the slug pattern is refused before any command runs with it.
 - [ ] `activate` of an already active record is reported and stops, with no question and no command.
 
-**Last dated run record:** validator fixture tests, 183 run (180 passing, 3 POSIX-only skipped on Windows), 2026-11-24
+**Last dated run record:** validator fixture tests, 186 run (183 passing, 3 POSIX-only skipped on Windows), 2026-11-24
 (`scripts/plib_test_catalog_validate.py`), after the email screen, its review fixes, the comment screen and `review-record`
 (link, hard-link and swap refusal, tested with a real junction on Windows) were added. The step 6 sharing notice and
 the earlier step 7 path hand-off (2026-11-16, replaced by the inline record text) were checked by the smoke test and

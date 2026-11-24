@@ -35,7 +35,8 @@ Hidden character: line <line>, column <column>, <code point> <name> (invisible i
 ```
 
 and, when `hidden_characters_truncated` is true, a final line "50 or more hidden characters; the list
-stops at 50".
+stops at 50". When `hidden_metadata` is not empty, add one line per entry above the metadata, with
+`in <field>` after `Hidden character`, and the same final line when `hidden_metadata_truncated` is true.
 
 Then the full `prompt_text` in a fenced block, and the `text_hash` on its own line for later comparison.
 
