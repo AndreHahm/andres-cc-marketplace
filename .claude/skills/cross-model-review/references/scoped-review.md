@@ -201,10 +201,13 @@ safe-charset rule, so no typed path can carry shell text:
    GIT_INDEX_FILE` prefix). Keep a name for Codex only if it matches `^[A-Za-z0-9._/-]+$` (`grep -E`),
    does not match the sensitive-name pattern (`grep -iE
    'secret|credential|password|token|(^|/)(\.env[^/]*|[^/]*\.env|[^/]*\.(key|pem|p12|p8|pfx|ppk|jks|keystore|kdbx|tfvars|tfstate)(\.[^/]*)?|[^/]*id_(rsa|ed25519|ecdsa|dsa)[^/]*|service-account[^/]*\.json|kubeconfig[^/]*|\.(npmrc|pgpass|netrc|pypirc|htpasswd)[^/]*)(/|$)'`;
-   the matches are this run's `sensitive_paths`, named in the First-Send question),
+   the matches in `$RUN/all_changed.names`, below, are this run's `sensitive_paths`, named in the First-Send question),
+   is no folder of a name in `$RUN/all_changed.names` (a file that replaced a folder: its diff also shows what the folder held),
    is a regular file (`test -f`), and has no symlink on its path (`realpath -- <name>` prints exactly
    `$REPO_ROOT/<name>`; a check of the last component alone misses a symlinked folder). Everything else stays in
-   Claude's review only and is listed in `inspection_limits`.
+   Claude's review only and is listed in `inspection_limits`. `$RUN/all_changed.names` is the same command
+   without `-- "$SCOPE"`, plus `git ls-files --full-name --others --exclude-standard` appended: a scope must not hide a name.
+   Git prints an unusual name in double quotes: in both checks, read such a line without its quotes.
 2. `$TARGET_PATHS` is the kept names, comma-separated. The Codex diff is one command over only those
    names: `git diff --no-renames --text --no-ext-diff --no-textconv --ignore-submodules=none
    "$MERGE_BASE" -- <kept names>`, redirected to `$RUN/codex_unscoped.diff`. These names passed the

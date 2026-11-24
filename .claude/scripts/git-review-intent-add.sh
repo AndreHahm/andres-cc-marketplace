@@ -17,6 +17,7 @@
 # deletion). Anything else exits 2, git's own failures and bash errors included (issue #697).
 set -Eeuo pipefail
 trap 'exit 2' ERR
+[[ ${BASH_SOURCE[0]} == *[/\\]* ]] || { echo "git-review-intent-add.sh: run this helper by its path" >&2; exit 2; }
 # shellcheck source=git-review-path.sh
 source "${BASH_SOURCE[0]%[/\\]*}/git-review-path.sh" || exit 2 # before any program runs; Git Bash may pass backslashes
 

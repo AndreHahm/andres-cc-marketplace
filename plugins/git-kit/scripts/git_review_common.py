@@ -31,30 +31,56 @@ def is_sensitive(path: str) -> bool:
     )
 
 
+def common_git_dir(folder: Path) -> Path | None:
+    """The common git directory that `folder`'s own `.git` names, read without running git."""
+    found = folder / ".git"
+    try:
+        if found.is_file():
+            found = folder / found.read_text(encoding="utf-8").removeprefix("gitdir:").strip()
+        if (found / "commondir").is_file():
+            found = found / (found / "commondir").read_text(encoding="utf-8").strip()
+        return found.resolve() if found.is_dir() else None
+    except (OSError, ValueError, RuntimeError):
+        return None
+
+
 def inside(path: Path, roots: Sequence[Path]) -> bool:
-    """Whether `path` or a directory above it is one of `roots`, by identity, not by spelling."""
+    """Whether `path` or a directory above it is one of `roots`, by identity, not by spelling, or a
+    worktree whose common git directory is one of them."""
     for ancestor in (path, *path.parents):
-        for root in roots:
-            try:
-                if ancestor.samefile(root):
-                    return True
-            except OSError:
-                continue
+        common_dir = common_git_dir(ancestor)
+        for candidate in (ancestor,) if common_dir is None else (ancestor, common_dir):
+            for root in roots:
+                try:
+                    if candidate.samefile(root):
+                        return True
+                except (OSError, ValueError):
+                    continue
     return False
 
 
 def checkout_root(start: Path) -> list[Path]:
-    """The nearest directory with a `.git` entry, found without running git, or `start`; for a
-    linked worktree also the main checkout. Other worktrees are not known here."""
+    """The nearest directory with a `.git` entry, or `start`, then the repository's git directory,
+    main checkout and other worktrees, all found without running git."""
     start = start.resolve()
     roots = [d for d in (start, *start.parents) if os.path.lexists(d / ".git")][:1] or [start]
-    try:
-        text = (roots[0] / ".git").read_text(encoding="utf-8")
-        gitdir = roots[0] / text.removeprefix("gitdir:").strip()
-        common_dir = (gitdir / (gitdir / "commondir").read_text(encoding="utf-8").strip()).resolve()
-    except (OSError, ValueError):
+    common_dir = common_git_dir(roots[0])
+    if common_dir is None:
         return roots
-    return [*roots, common_dir.parent] if common_dir.name == ".git" else roots
+    roots.append(common_dir)
+    if common_dir.name == ".git":
+        roots.append(common_dir.parent)
+    try:
+        entries = sorted((common_dir / "worktrees").iterdir())
+    except OSError:
+        return roots
+    for entry in entries:
+        try:
+            # <worktree>/.git, absolute or relative to the entry.
+            roots.append((entry / (entry / "gitdir").read_text("utf-8").strip()).parent)
+        except (OSError, ValueError):
+            continue
+    return roots
 
 
 def tool(name: str, forbidden: Sequence[Path]) -> str:
@@ -85,11 +111,14 @@ def safe_path(forbidden: Sequence[Path]) -> str:
         if not os.path.isabs(entry):
             continue
         folder = Path(entry)
-        names = [n + ext for n in ("codex", "node", "git") for ext in ("", ".exe", ".cmd", ".bat")]
+        suffixes = ("", ".exe", ".com", ".cmd", ".bat")
+        names = [n + ext for n in ("codex", "node", "git") for ext in suffixes]
         programs = [folder / n for n in names if os.path.isfile(folder / n)]
-        if inside(folder, forbidden) or inside(folder.resolve(), forbidden):
+        try:
+            resolved = [p.resolve() for p in (folder, *programs)]
+        except (OSError, RuntimeError):  # a symlink loop
             continue
-        if any(inside(program.resolve(), forbidden) for program in programs):
+        if any(inside(p, forbidden) for p in (folder, *resolved)):
             continue
         kept.append(entry)
     return os.pathsep.join(kept)

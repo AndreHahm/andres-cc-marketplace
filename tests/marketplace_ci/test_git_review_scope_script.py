@@ -1961,6 +1961,53 @@ def test_end_to_end_a_sensitive_untracked_file_never_reaches_codex(repo, tmp_pat
     assert b"dummy697" not in codex and b"plain697" in codex
 
 
+def _run_planner(repo, tmp_path, base, *extra):
+    out, diffs = tmp_path / "m.json", tmp_path / "diffs"
+    argv = ["--merge-base", base, "--base-ref", "main", "--output", str(out), *extra]
+    argv += ["--diff-dir", str(diffs)]
+    subprocess.run([sys.executable, str(SCRIPT), *argv], cwd=repo, check=True)
+    return json.loads(out.read_text(encoding="utf-8")), diffs
+
+
+@pytest.mark.parametrize("scope", [[], ["--scope", "conf*"]])
+def test_a_file_that_replaced_a_folder_never_shows_the_folders_files_to_codex(
+    repo, tmp_path, scope
+):
+    ident = ["-c", "user.name=t", "-c", "user.email=t@example.invalid"]
+    (repo / "config").mkdir()
+    (repo / "config/deploy-secret.txt").write_text("dummy697\n", encoding="utf-8")
+    subprocess.run(["git", "add", "config"], cwd=repo, check=True)
+    subprocess.run(["git", *ident, "commit", "-qm", "c"], cwd=repo, check=True)
+    base = _head(repo)
+    shutil.rmtree(repo / "config")
+    (repo / "config").write_text("plain\n", encoding="utf-8")
+    subprocess.run(["git", "add", "-A", "config"], cwd=repo, check=True)
+    manifest, diffs = _run_planner(repo, tmp_path, base, *scope)
+    eligible = {f["path"]: f["codex_eligible"] for f in manifest["files"]}
+    assert eligible["config"] is False
+    assert b"dummy697" not in b"".join(f.read_bytes() for f in diffs.glob("*.codex.diff"))
+    native = b"".join(f.read_bytes() for f in diffs.glob("*.diff") if ".codex." not in f.name)
+    assert b"dummy697" in native
+
+
+def test_sensitive_paths_name_files_outside_the_scope_too(repo, tmp_path):
+    (repo / "deploy-credentials.txt").write_text("x\n", encoding="utf-8")  # untracked
+    (repo / "in_scope.py").write_text("x = 1\n", encoding="utf-8")
+    subprocess.run(["git", "add", "-N", "in_scope.py"], cwd=repo, check=True)
+    manifest, _ = _run_planner(repo, tmp_path, _head(repo), "--scope", "in_scope.py")
+    assert [f["path"] for f in manifest["files"]] == ["in_scope.py"]
+    assert manifest["sensitive_paths"] == ["deploy-credentials.txt"]
+
+
+@pytest.mark.skipif(os.name == "nt", reason="bash resolves a bare name differently there")
+def test_a_shell_helper_run_by_its_bare_name_says_so():
+    for name in ("copy-index", "intent-add", "scope-run", "write-run-file"):
+        result = subprocess.run(
+            [BASH, f"git-review-{name}.sh", "x"], cwd=SCRIPT.parent, capture_output=True, text=True
+        )
+        assert result.returncode == 2 and "run this helper by its path" in result.stderr
+
+
 def test_the_intent_add_helper_reports_a_git_failure_but_not_a_deletion_only_scope(
     repo, mktemp_dirs
 ):

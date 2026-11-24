@@ -10,6 +10,7 @@
 # overwrites, and the copy is readable by the owner only. GIT_INDEX_FILE (and the other variables that
 # redirect git) are ignored on purpose: the caller has already pointed GIT_INDEX_FILE at the copy.
 set -euo pipefail
+[[ ${BASH_SOURCE[0]} == *[/\\]* ]] || { echo "git-review-copy-index.sh: run this helper by its path" >&2; exit 2; }
 # shellcheck source=git-review-path.sh
 source "${BASH_SOURCE[0]%[/\\]*}/git-review-path.sh" || exit 2 # before any program runs; Git Bash may pass backslashes
 

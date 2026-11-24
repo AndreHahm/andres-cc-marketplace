@@ -173,7 +173,7 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
     filled in, never text from the diff, a run file or Codex output; `BASE`/`SCOPE` only as single-quoted
     assignments before the Inputs block, and a value with a single quote, a newline or a leading `-`
     stops the run with a question instead), the user is shown the script, and it
-    runs as one `bash <scratchpad>/preflight.sh` call from the worktree cwd; stdin text comes from a
+    runs as one `/bin/bash <scratchpad>/preflight.sh` call from the worktree cwd; stdin text comes from a
     scratchpad file (`- < '<file>'`); every later call that needs the throwaway index (manifest
     cross-check, folder-pick planner re-run, fallback name list) sets `GIT_INDEX_FILE` as a prefix
     assignment on its own command, and a Codex dispatch or timeout retry does the same with its
@@ -194,8 +194,10 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
     in an ordinary repository that ships `plugins/codex-kit/.../bridge-invoke.mjs` → that file never runs and
     the run goes single-model; in this marketplace's own repository it runs only after clause (g) and a
     permission prompt. An empty plugin root stops the chain before any helper runs.
-    A PATH entry inside the checkout → dropped before any program runs, and `PATH_FILTERED=1` makes each
-    later Bash call begin with `export PATH='<value>'`; nothing left on PATH → the chain stops.
+    A PATH entry inside the checkout or another worktree of it → dropped before any program runs, and `PATH_FILTERED=1` makes each
+    later Bash call begin with `export PATH='<value>'`; nothing left on PATH → the chain stops. A file that
+    replaced a folder → `codex_eligible: false`. Accepted findings with a sensitive name → in Claude's
+    `accepted.md` only, never in `accepted.codex.md`.
 
 ## Quality gates
 
@@ -358,6 +360,11 @@ Moved here from SKILL.md's Testing & Validation section, which keeps only the la
   `tests/marketplace_ci/test_git_review_scope_script.py`, run with bash on Linux; eval 27 covers the instructions
   for later calls, one plan-only `with_skill` run, no baseline: 6/6. Not run: zsh, Windows, and a live session
   that follows the `export PATH` instruction.
+- **2026-11-24, `iteration-28`:** eval 26 again with its assertions fixed before both responses (PR #879 review),
+  baseline arm reading `main`'s text: `with_skill` 6/6, baseline 0/6. New eval 28 (the two briefs, a file that
+  replaced a folder, other worktrees), one plan-only `with_skill` run, no baseline: 5/5. Both were graded by the
+  authoring session and ran before the fallback's `$RUN/all_changed.names` and the absolute `/bin/bash` were added.
+  Evals 5 and 6 got new expected outputs and were not run again.
 
 Every eval run listed above is a dry run of the committed text, not a live dispatch (the live checks that
 some entries name are separate from their evals), and none is a live run of the scoped flow (one ran

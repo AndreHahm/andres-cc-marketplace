@@ -42,11 +42,10 @@ From `$REPO_ROOT`, run
 - It writes `$RUN/accepted.md` only when there is something to brief: the valid lines as one JSON object
   each (rule, path, line, fingerprint, kind), never their free-text reason, and never a line whose rule
   has spaces or whose path is not plain. It never overwrites an existing file.
-- A line for a sensitive file name is never briefed: it would send the name and a hash of the line to
-  Codex (issue #697). `brief` prints how many it left out; `match` still applies them.
-- A tracked issue whose title or summary has a sensitive word or file name is not briefed either, and `brief`
-  prints its line as `not briefed:`. The words overlap with ordinary ones (`token`); a false match only costs the brief.
-  A file name with a space in it is checked word by word, so it can be missed.
+- `$RUN/accepted.codex.md` is the same without two things (issue #697), each printed as
+  `not briefed to Codex:`: a line for a sensitive file name, which would send the name and a hash of the
+  line to Codex, and a tracked issue whose title or summary has a sensitive word or file name. The words
+  overlap with ordinary ones (`token`); a false match only costs Codex's brief. `match` still applies both.
 - A model cannot check a fingerprint, so `brief` does (issue #814, as CI): a line is briefed only when a
   working-tree line of its path still has its fingerprint, with that line's number; a line without a
   fingerprint is not briefed. It still applies in Phase 3's `match`.
@@ -56,13 +55,13 @@ From `$REPO_ROOT`, run
   anyone can open an issue. A last line tells a cross-examination pass to put the mark right after its
   classification (`Novel: [tracked #<issue>] ...`), where `match` also reads it.
 - It prints `not applied: <line>` for each line it could not read, an unknown kind such as `declined`
-  included. Report those in Phase 3's `inspection_limits`.
+  included. Report those and the `not briefed to Codex:` lines in Phase 3's `inspection_limits`.
 - A failure (exit 2: a run directory that is not private, a file it cannot create) is an inspection
   limit, never a reason to stop the review.
-- Both Phase 1 passes get `$RUN/accepted.md` after `review.md` (for Codex, as `@accepted.md`; see
+- Claude's Phase 1 pass gets `$RUN/accepted.md` after `review.md`, Codex's only `@accepted.codex.md` (see
   `codex-pass-assembly.md`), as data: the one finding a line names by rule, path and line is not
   reported again; a finding with the same rule on another line of the same path still is. Both Phase 2
-  passes get it too, after `refute.md`, so a tracked defect a challenger finds first can be marked.
+  passes get their own file too, after `refute.md`, so a tracked defect a challenger finds first can be marked.
 
 ## Phase 3: mark
 

@@ -221,6 +221,92 @@ def test_a_git_in_the_main_checkout_is_refused_from_a_linked_worktree(env, monke
         mod.locate()
 
 
+@pytest.mark.skipif(os.name == "nt" or shutil.which("node") is None, reason="needs node and POSIX")
+def test_an_empty_filtered_path_never_reaches_the_bridge(env, monkeypatch, capfd):
+    repo, tmp, register = env
+    register(_codex_kit(tmp / "cache"))
+    only = tmp / "only"
+    only.mkdir()
+    (repo / "codex").write_text("#!/bin/sh\n", encoding="utf-8")
+    (only / "codex").symlink_to(repo / "codex")
+    for name in ("git", "node"):
+        program = shutil.which(name)
+        assert program is not None
+        (only / name).symlink_to(program)
+    monkeypatch.setenv("PATH", str(only))
+    assert mod.main(["bridge"]) == 3
+    out, err = capfd.readouterr()
+    assert out == "" and json.loads(err)["category"] == "cli_unavailable"
+    assert mod.main(["locate"]) == 0  # `locate` starts nothing with that PATH
+
+
+@pytest.mark.skipif(os.name == "nt", reason="uses a shell script as the planted program")
+@pytest.mark.parametrize("relative", [False, True])
+def test_a_git_in_a_sibling_worktree_is_refused(env, monkeypatch, relative):
+    repo, tmp, register = env
+    ident = ["-c", "user.name=t", "-c", "user.email=t@example.invalid"]
+    argv = ["git", *ident, "commit", "-q", "--allow-empty", "-m", "i"]
+    subprocess.run(argv, cwd=repo, check=True)
+    for name in ("wt", "sibling"):
+        subprocess.run(["git", "worktree", "add", "-q", str(tmp / name)], cwd=repo, check=True)
+    if relative:
+        (repo / ".git/worktrees/sibling/gitdir").write_text("../../../../sibling/.git\n")
+    (tmp / "sibling/git").write_text("#!/bin/sh\ntouch ran\n", encoding="utf-8")
+    (tmp / "sibling/git").chmod(0o755)
+    monkeypatch.setenv("PATH", os.pathsep.join([str(tmp / "sibling"), os.environ["PATH"]]))
+    register(_codex_kit(tmp / "cache"))
+    for cwd in (repo, tmp / "wt"):
+        monkeypatch.chdir(cwd)
+        with pytest.raises(FileNotFoundError, match="git on PATH lies inside"):
+            mod.locate()
+        assert not (cwd / "ran").exists()
+
+
+@pytest.mark.skipif(os.name == "nt", reason="the file names are not valid there")
+@pytest.mark.parametrize("name", ["o'brien", "line\nbreak"])
+def test_an_install_path_that_single_quotes_cannot_hold_is_refused(env, name):
+    _repo, tmp, register = env
+    register(_codex_kit(tmp / name))
+    with pytest.raises(mod.Unavailable, match="quoted"):
+        mod.locate()
+
+
+@pytest.mark.skipif(os.name == "nt", reason="uses a shell script as the planted program")
+def test_a_main_checkout_with_a_separate_git_directory_is_inside(env, monkeypatch):
+    _repo, tmp, _register = env
+    ident = ["-c", "user.name=t", "-c", "user.email=t@example.invalid"]
+    main = tmp / "main"
+    argv = ["git", "init", "-q", "--separate-git-dir", str(tmp / "store"), str(main)]
+    subprocess.run(argv, check=True)
+    argv = ["git", *ident, "commit", "-q", "--allow-empty", "-m", "i"]
+    subprocess.run(argv, cwd=main, check=True)
+    subprocess.run(["git", "worktree", "add", "-q", str(tmp / "wt")], cwd=main, check=True)
+    (main / "git").write_text("#!/bin/sh\n", encoding="utf-8")
+    (main / "git").chmod(0o755)
+    monkeypatch.setenv("PATH", os.pathsep.join([str(main), os.environ["PATH"]]))
+    with pytest.raises(FileNotFoundError, match="inside the repository"):
+        mod.common.tool("git", mod.common.checkout_root(tmp / "wt"))
+
+
+@pytest.mark.needs_symlinks
+def test_a_symlink_loop_on_path_is_dropped(env, monkeypatch):
+    repo, tmp, _register = env
+    (tmp / "loop").symlink_to(tmp / "loop")
+    monkeypatch.setenv("PATH", os.pathsep.join([str(tmp / "loop"), os.environ["PATH"]]))
+    assert mod.common.safe_path([repo])
+
+
+@pytest.mark.needs_symlinks
+def test_a_com_program_that_leads_inside_drops_its_folder(env, monkeypatch):
+    repo, tmp, _register = env
+    folder = tmp / "folder"
+    folder.mkdir()
+    (repo / "codex.com").touch()
+    (folder / "codex.com").symlink_to(repo / "codex.com")
+    monkeypatch.setenv("PATH", str(folder))
+    assert mod.common.safe_path([repo]) == ""
+
+
 def test_an_unreadable_path_entry_is_skipped(env, monkeypatch):
     repo, tmp, _register = env
     monkeypatch.setenv("PATH", os.pathsep.join([str(tmp / "gone"), os.environ["PATH"]]))

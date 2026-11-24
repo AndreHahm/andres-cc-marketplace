@@ -63,10 +63,10 @@ entries are dropped instead, with built-ins only. The lines are the same as `git
 shell helpers source first; a test compares the two. The chain still stops on an empty or relative entry.
 An entry counts as inside when it is spelled inside (also with a `..` that leads out again) or resolves
 inside, so an entry spelled inside that is a link leading out is dropped too. A chain of links that only passes
-through the checkout, from an entry outside to a target outside, is not followed. A linked worktree's main checkout counts as inside when its git directory is an ordinary
-`.git`; for a bare repository, a separate git directory or a worktree of a submodule only the checkout itself is
-known. Not caught: an entry outside the repository that holds a link to a program inside it, and entries inside
-other worktrees. If nothing is left, the chain stops: an empty PATH would make the shell look in the current
+through the checkout, from an entry outside to a target outside, is not followed. Another worktree of the
+repository, the main checkout included, counts as inside: the folder's own `.git` must name the same common git
+directory, so a worktree whose `.git` is gone or altered is not recognized. A checkout at `/` is not recognized either. Not caught: an entry outside the
+repository that holds a link to a program inside it. If nothing is left, the chain stops: an empty PATH would make the shell look in the current
 directory. `builtin` keeps a user's own `cd` function out of it. Each Bash call is a fresh shell, hence the
 `export PATH` statement on later calls. An entry that could not be entered is dropped for the chain only, unless
 it is spelled inside the checkout.

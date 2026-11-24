@@ -51,7 +51,7 @@ import re
 import stat
 import subprocess
 import sys
-from collections.abc import Callable, Iterator, Sequence
+from collections.abc import Callable, Collection, Iterator, Sequence
 from importlib.machinery import SourceFileLoader
 from pathlib import Path, PurePosixPath
 from types import CodeType, ModuleType
@@ -810,10 +810,12 @@ def _write_fresh(output: Path, text: str) -> None:
 _CODEX_PATH_RE = re.compile(r"[A-Za-z0-9._/-]+\Z")
 
 
-def _codex_eligible(repo: Path, path: str) -> bool:
+def _codex_eligible(repo: Path, path: str, folders: Collection[str]) -> bool:
     """Whether a path may go to Codex: not a sensitive name, the dispatch scripts' charset, a
-    regular file that still exists, and no symlink anywhere along it."""
-    if common.is_sensitive(path):
+    regular file that still exists, and no symlink anywhere along it. Not a file that replaced a
+    folder either (`folders`: every folder of a changed path): its diff also shows what the folder
+    held."""
+    if common.is_sensitive(path) or path in folders:
         return False
     if not _CODEX_PATH_RE.match(path) or path.startswith("/") or ".." in path.split("/"):
         return False
@@ -892,12 +894,20 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _fail("; ".join(picks_notes))
     diff_args = ["diff", "--no-renames", "--ignore-submodules=none", "--name-only", "-z"]
     diff_args.append(args.merge_base)
-    if args.scope:
-        diff_args += ["--", args.scope]
-    listing = _git(repo, *diff_args)
-    if listing.returncode != 0:
-        return _fail(f"git diff failed: {listing.stderr.decode('utf-8', 'replace')}")
-    changed = sorted(p for p in listing.stdout.decode("utf-8", "surrogateescape").split("\0") if p)
+    listings = []
+    for command in (
+        [*diff_args, "--", args.scope] if args.scope else diff_args,
+        diff_args,
+        ["ls-files", "--full-name", "--others", "--exclude-standard", "-z"],
+    ):
+        listing = _git(repo, *command)
+        if listing.returncode != 0:
+            return _fail(f"git {command[0]} failed: {listing.stderr.decode('utf-8', 'replace')}")
+        names = listing.stdout.decode("utf-8", "surrogateescape").split("\0")
+        listings.append(sorted(p for p in names if p))
+    changed = listings[0]
+    # Whatever --scope says, untracked files included.
+    all_changed = sorted({*listings[1], *listings[2]})
 
     resolved = _git(
         repo, "rev-parse", "--verify", "--quiet", "--end-of-options", f"{args.base_ref}^{{commit}}"
@@ -977,10 +987,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         base=args.merge_base,
         scope=args.scope,
     )
+    folders = {str(f) for p in all_changed for f in PurePosixPath(p).parents}
     for entry in manifest["files"]:
-        entry["codex_eligible"] = _codex_eligible(repo, entry["path"])
-    # Every changed file, left-out ones too: the First-Send question names them all.
-    manifest["sensitive_paths"] = [p for p in changed if common.is_sensitive(p)]
+        entry["codex_eligible"] = _codex_eligible(repo, entry["path"], folders)
+    # Every changed file, left-out and out-of-scope ones too: First-Send names them all.
+    manifest["sensitive_paths"] = [p for p in all_changed if common.is_sensitive(p)]
     if manifest["sensitive_paths"]:
         manifest["inspection_limits"].append(
             f"never sent to Codex, sensitive file name: {_listed(manifest['sensitive_paths'])}"

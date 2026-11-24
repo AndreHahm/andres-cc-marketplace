@@ -16,6 +16,7 @@
 # is kept, because the skill relies on it. <base-ref> is trusted for settings and the mirror map, so
 # pass the branch the work will land on, never HEAD.
 set -euo pipefail
+[[ ${BASH_SOURCE[0]} == *[/\\]* ]] || { echo "git-review-scope-run.sh: run this helper by its path" >&2; exit 2; }
 # shellcheck source=git-review-path.sh
 source "${BASH_SOURCE[0]%[/\\]*}/git-review-path.sh" || exit 2 # before any program runs; Git Bash may pass backslashes
 

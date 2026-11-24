@@ -19,6 +19,7 @@
 # regular file's content comes first. The result is readable by the owner only. Parts are concatenated
 # verbatim, in order, so the caller supplies any newlines it wants between them.
 set -euo pipefail
+[[ ${BASH_SOURCE[0]} == *[/\\]* ]] || { echo "git-review-write-run-file.sh: run this helper by its path" >&2; exit 2; }
 # shellcheck source=git-review-path.sh
 source "${BASH_SOURCE[0]%[/\\]*}/git-review-path.sh" || exit 2 # before any program runs; Git Bash may pass backslashes
 
