@@ -349,8 +349,8 @@ Moved here from SKILL.md's Testing & Validation section, which keeps only the la
   prompt and baseline, both arms `claude-opus-5-5`: `with_skill` 6/6, baseline 4/6 (+33.3 points).
 - **2026-11-24, `iteration-25`:** adds eval 26 for scenario 40 (issue #697), baseline arm reading `main`'s text,
   one run per arm: `with_skill` 6/6, baseline 0/6. The assertions were written down after the responses and
-  graded by the authoring session. Eval 25's expected output changed (the plugin root no longer comes from a
-  `printf` call) and it has not been re-run. The scripts are covered by `tests/marketplace_ci/`. No live Codex
+  graded by the authoring session. `iteration-26` re-runs eval 25, `with_skill` only, after its expected output
+  changed (the plugin root no longer comes from a `printf` call): 6/6. The scripts are covered by `tests/marketplace_ci/`. No live Codex
   dispatch through the new launcher, and nothing was run on Windows.
 
 Every eval run listed above is a dry run of the committed text, not a live dispatch (the live checks that

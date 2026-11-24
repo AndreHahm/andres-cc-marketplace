@@ -14,8 +14,9 @@ from pathlib import Path
 # git-scan-staged-files.sh's patterns and a few more, each applied to every path segment.
 _SENSITIVE_WORD_RE = re.compile(r"secret|credential|password|token", re.IGNORECASE)
 _SENSITIVE_NAME_RE = re.compile(
-    r"\.env.*|.*\.env|.*\.(key|pem|p12|pfx|jks|kdbx)(\..*)?|id_(rsa|ed25519|ecdsa|dsa)(\..*)?"
-    r"|service-account\.json|\.npmrc|\.pgpass|\.netrc|\.pypirc|\.htpasswd",
+    r"\.env.*|.*\.env|.*\.(key|pem|p12|p8|pfx|ppk|jks|keystore|kdbx|tfvars|tfstate)(\..*)?"
+    r"|.*id_(rsa|ed25519|ecdsa|dsa).*|service-account.*\.json|kubeconfig.*"
+    r"|\.(npmrc|pgpass|netrc|pypirc|htpasswd).*",
     re.IGNORECASE | re.DOTALL,
 )
 
