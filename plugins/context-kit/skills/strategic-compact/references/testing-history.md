@@ -28,15 +28,17 @@ move of this history out of `SKILL.md`.
 The meaningful test surface is the hook scripts' own input/output contracts, verified directly (stdin to
 stdout and exit code, against realistic and adversarial JSON payloads) rather than via an LLM-judged
 eval; see `hook-development/scripts/test-hook.sh`. The persisted `scripts/smoke_test.py` exercises
-`ctx-compact-milestone-detector.sh`, `ctx-compact-skill-category-detector.sh`, `ctx-compact-stop-check.sh`
-and `ctx-compact-session-init.sh` directly against this contract, and imports and cross-checks
-`context-monitor.py`'s `get_session_dir()` implementation.
+`ctx-compact-milestone-detector.sh`, `ctx-compact-skill-category-detector.sh`, `ctx-compact-stop-check.sh`,
+`ctx-compact-session-init.sh` and `ctx-compact-track-and-suggest.sh` directly against this contract, and
+imports and cross-checks `context-monitor.py`'s `get_session_dir()` implementation.
 
-**Known gap (hook-reviewer, 2026-09-18):** `ctx-compact-track-and-suggest.sh` (the most complex script:
-async, with cross-process locking), `ctx-compact-instructions.sh`, `ctx-pre-compact.py` and
-`ctx-post-compact-restore.py` have no direct stdin/stdout contract test of their own yet, only incidental
-coverage via shared helper functions and constant cross-checks. Tracked as an open item, not silently
-claimed as covered.
+**Known gap (hook-reviewer, 2026-09-18; narrowed 2026-11-24):** `ctx-compact-instructions.sh`,
+`ctx-pre-compact.py` and the plan restore in `ctx-post-compact-restore.py` have no direct stdin/stdout
+contract test of their own yet, only incidental coverage via shared helper functions and constant
+cross-checks. `context-mode`'s `scripts/smoke_test.py` covers the mode restore. The original gap also
+named `ctx-compact-track-and-suggest.sh`: `scripts/smoke_test.py` runs it directly (thresholds, the
+context gate, phase alerts), but not its cross-process locking under concurrent calls. Tracked as an
+open item, not silently claimed as covered.
 
 ## Smoke-test run history
 

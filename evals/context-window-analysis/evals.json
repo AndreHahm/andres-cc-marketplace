@@ -28,7 +28,7 @@
       "id": 4,
       "name": "Two Warning signs, no /context output (estimate gives WARNING)",
       "prompt": "Situation: a long session. Responses have been slower than usual and the agent has twice forgotten a decision made earlier in the session. There is no auto-compact message and no truncation warning. The user has not shared /context output.\nUser message: how full is my context right now",
-      "expected_output": "Reports a WARNING estimate right away, labelled an estimate; recommends running /context and compacting only if the measured percentage confirms it, not running /compact or /clear now.",
+      "expected_output": "Reports a WARNING estimate right away, labelled an estimate; recommends running /context and compacting only if the measured percentage is 80% or more (so a measured 90% or more also compacts), not running /compact or /clear now.",
       "files": []
     },
     {
@@ -49,7 +49,7 @@
       "id": 7,
       "name": "Repeated auto-compact messages without a Critical sign (WARNING)",
       "prompt": "Situation: a long session (about 90 turns). An auto-compact message has appeared three times. Responses are normal speed, earlier decisions are still recalled correctly, the conversation is not truncated and no operation has failed. The user has not shared /context output.\nUser message: auto-compact keeps triggering, how full is my context?",
-      "expected_output": "Reports a WARNING estimate right away, labelled an estimate, not CRITICAL: auto-compact messages alone map to WARNING. Recommends running /context and compacting only if the measured percentage confirms it, not running /compact or /clear now.",
+      "expected_output": "Reports a WARNING estimate right away, labelled an estimate, not CRITICAL: auto-compact messages alone map to WARNING. Recommends running /context and compacting only if the measured percentage is 80% or more (so a measured 90% or more also compacts), not running /compact or /clear now.",
       "files": []
     }
   ],

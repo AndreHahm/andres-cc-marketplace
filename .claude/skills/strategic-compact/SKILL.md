@@ -126,7 +126,7 @@ suggestion, not a potentially-noisy repeated command the way a Bash milestone pa
 this hook also fired on `PostToolUse`, claiming the skill had "finished." That claim was false almost
 every time it fired: a Skill() call's own `PostToolUse` event fires once the skill's instructions have
 loaded into the conversation as a message, not once the model has actually finished executing the
-workflow those instructions describe (see `plugin-devkit/references/pdk-design-patterns.md`, "Skill
+workflow those instructions describe (see plugin-devkit's `references/pdk-design-patterns.md`, "Skill
 content lifecycle") — there is no hook event in Claude Code that fires on real workflow completion for
 a foreground skill. Rather than keep a message that reads as factually wrong most of the time, the
 finish phase was dropped entirely (found by Codex's automated PR review, 2026-09-21, against PR #368).
@@ -276,10 +276,11 @@ full list of what each hook writes is in `references/state-and-side-effects.md`.
 hook-driven automation, so a `skill-tester` with-skill versus baseline comparison has no prompt-completion
 difference to measure: `evals/strategic-compact/evals.json` exercises 0 of the 18 declared scenarios below,
 by design. The test surface is the hook scripts' stdin/stdout/exit-code contract, which the persisted
-`scripts/smoke_test.py` checks directly. Four scripts (`ctx-compact-track-and-suggest.sh`,
-`ctx-compact-instructions.sh`, `ctx-pre-compact.py`, `ctx-post-compact-restore.py`) still have no
-direct contract test of their own (known gap, tracked as an open item). The full reasoning, the eval runs
-and the smoke-test history are in `references/testing-history.md`.
+`scripts/smoke_test.py` checks directly. `ctx-compact-instructions.sh`, `ctx-pre-compact.py` and the
+plan restore in `ctx-post-compact-restore.py` still have no direct contract test, and the locking in
+`ctx-compact-track-and-suggest.sh` is not tested with concurrent calls (known gap, tracked as an open
+item). `context-mode`'s smoke test covers the mode restore. The full reasoning, the eval runs and the
+smoke-test history are in `references/testing-history.md`.
 
 **Last dated run record:** `scripts/smoke_test.py`, 55/55 checks passing as of 2026-11-10; earlier runs
 are listed in `references/testing-history.md`.
