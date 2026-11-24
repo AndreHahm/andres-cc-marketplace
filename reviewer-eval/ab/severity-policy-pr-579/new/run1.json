@@ -1,0 +1,412 @@
+{
+  "arm": "new",
+  "arm_sha": "6ab40547139d2721403d2b4ec368399d7cee6bc0",
+  "reviewed_paths": [
+    ".claude/review-outcomes.json",
+    "docs/ci.md",
+    "plugins/git-kit/scripts/git-review-ledger.py",
+    "plugins/git-kit/scripts/git-verify-fix-diff.py",
+    "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+    "plugins/git-kit/skills/handling-review-findings/references/fix-self-review.md",
+    "plugins/git-kit/skills/handling-review-findings/references/next-round-trigger.md",
+    "plugins/git-kit/skills/handling-review-findings/references/testing-scenarios.md"
+  ],
+  "reviewers": [
+    "plugin-rulebook-checker",
+    "dependency-reviewer",
+    "security-reviewer",
+    "skill-reviewer"
+  ],
+  "failed_reviewers": {},
+  "provenance": {
+    "head_sha": "4d2053108deb1d2be3b5d3109ff6279b2ec37ee3",
+    "merge_ref_sha": "4d2053108deb1d2be3b5d3109ff6279b2ec37ee3",
+    "base_sha": "0d0c1a82304253c90129451c9943d3c85163a671",
+    "configured_model": "gpt-6-luna",
+    "pinned_cli_version": "0.170.0",
+    "model": "GPT-6",
+    "cli_version": "unknown"
+  },
+  "diff_scoped": true,
+  "findings": [
+    {
+      "reviewer": "plugin-rulebook-checker",
+      "severity": "Major",
+      "rule": "security",
+      "path": "plugins/git-kit/scripts/git-verify-fix-diff.py",
+      "line": 100,
+      "evidence": "The script trusts the local refs/remotes/origin/HEAD without checking the remote identity. In a clone whose origin is a contributor's fork, the fork owner can control that ref; the script then finds the merge-base and imports and executes verifier modules from it. Running the checker can execute fork-controlled code in the developer's context or produce a false clean result.",
+      "remediation": "Validate that origin is the canonical upstream before using its HEAD, or require an explicitly identified trusted remote/ref and fail closed when it cannot be established.",
+      "reporters": [
+        "plugin-rulebook-checker"
+      ],
+      "components": [
+        "plugins/git-kit/scripts/git-verify-fix-diff.py",
+        "docs/ci.md"
+      ],
+      "in_diff": true,
+      "blocking": true,
+      "confidence": "high",
+      "evidence_type": null,
+      "rule_class": "judgment",
+      "category": "other",
+      "risk": null,
+      "source": "model",
+      "gate": "block",
+      "suppressed": false,
+      "exception": null,
+      "fingerprint": null,
+      "waiver": null,
+      "waiver_line": null,
+      "tracked_issue": null
+    },
+    {
+      "reviewer": "plugin-rulebook-checker",
+      "severity": "Minor",
+      "rule": "workflow-correctness",
+      "path": "plugins/git-kit/skills/handling-review-findings/references/fix-self-review.md",
+      "line": 71,
+      "evidence": "The new ledger instructions require one disposition per finding, including `declined`, while the workflow's Decline path says to leave no tracking artifact. Following that path omits declined findings from the ledger and the outcomes corpus.",
+      "remediation": "Clarify whether declined findings should be recorded; align step 6 and the ledger instructions so the outcome is handled consistently.",
+      "reporters": [
+        "plugin-rulebook-checker"
+      ],
+      "components": [
+        "plugins/git-kit/skills/handling-review-findings/references/fix-self-review.md",
+        "plugins/git-kit/skills/handling-review-findings/SKILL.md"
+      ],
+      "in_diff": true,
+      "blocking": false,
+      "confidence": "high",
+      "evidence_type": null,
+      "rule_class": "judgment",
+      "category": "other",
+      "risk": null,
+      "source": "model",
+      "gate": "notice",
+      "suppressed": false,
+      "exception": null,
+      "fingerprint": null,
+      "waiver": null,
+      "waiver_line": null,
+      "tracked_issue": null
+    },
+    {
+      "reviewer": "plugin-rulebook-checker",
+      "severity": "Minor",
+      "rule": "allowed-tools-grant",
+      "path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+      "line": 16,
+      "evidence": "The new `Bash(git diff:*)` grant pre-approves arbitrary `git diff` arguments, including `--output=<path>`, which writes a file. The workflow only needs to inspect a fix diff, but this grant removes the permission prompt for that write-capable form.",
+      "remediation": "Narrow the grant to the read-only diff invocation the workflow uses, or leave other argument forms subject to a permission prompt.",
+      "reporters": [
+        "plugin-rulebook-checker"
+      ],
+      "components": [
+        "plugins/git-kit/skills/handling-review-findings/SKILL.md"
+      ],
+      "in_diff": true,
+      "blocking": false,
+      "confidence": "medium",
+      "evidence_type": null,
+      "rule_class": "judgment",
+      "category": "allowed-tools-grant",
+      "risk": null,
+      "source": "model",
+      "gate": "notice",
+      "suppressed": false,
+      "exception": null,
+      "fingerprint": null,
+      "waiver": null,
+      "waiver_line": null,
+      "tracked_issue": null
+    },
+    {
+      "reviewer": "security-reviewer",
+      "severity": "Major",
+      "rule": "permission-risk",
+      "path": "plugins/git-kit/skills/handling-review-findings/references/fix-self-review.md",
+      "line": 78,
+      "evidence": "\u26a0\ufe0f Unverified (static analysis): The skill passes reviewer-derived `--path` and `--rule` values to a shell command, but only says to put them in single quotes and escape apostrophes. POSIX shells do not treat backslash as an escape inside single quotes. If an assistant uses `\\'` for a reviewer-controlled apostrophe, a value such as `x'; <command>; #` can terminate the quoted argument and execute shell syntax before `git-review-ledger.py` runs.",
+      "remediation": "Use a shell-safe quoting method such as `shlex.quote` for each argument, or invoke the script with an argv-based mechanism that does not interpolate reviewer-controlled values into shell text.",
+      "reporters": [
+        "security-reviewer"
+      ],
+      "components": [
+        "plugins/git-kit/skills/handling-review-findings/references/fix-self-review.md",
+        "plugins/git-kit/scripts/git-review-ledger.py"
+      ],
+      "in_diff": true,
+      "blocking": true,
+      "confidence": "medium",
+      "evidence_type": null,
+      "rule_class": "judgment",
+      "category": "other",
+      "risk": null,
+      "source": "model",
+      "gate": "block",
+      "suppressed": false,
+      "exception": null,
+      "fingerprint": null,
+      "waiver": null,
+      "waiver_line": null,
+      "tracked_issue": null
+    },
+    {
+      "reviewer": "security-reviewer",
+      "severity": "Minor",
+      "rule": "permission-risk",
+      "path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+      "line": 16,
+      "evidence": "`Write` is pre-approved for the skill, while the documented process uses it for issue drafts and scratchpad files. The grant itself is not path-restricted, so it pre-approves writes beyond those artifacts.",
+      "remediation": "Remove `Write` from `allowed-tools` so intended writes require their own permission prompt.",
+      "reporters": [
+        "security-reviewer"
+      ],
+      "components": [
+        "plugins/git-kit/skills/handling-review-findings/SKILL.md"
+      ],
+      "in_diff": true,
+      "blocking": false,
+      "confidence": "high",
+      "evidence_type": null,
+      "rule_class": "judgment",
+      "category": "allowed-tools-grant",
+      "risk": null,
+      "source": "model",
+      "gate": "notice",
+      "suppressed": false,
+      "exception": null,
+      "fingerprint": null,
+      "waiver": null,
+      "waiver_line": null,
+      "tracked_issue": null
+    },
+    {
+      "reviewer": "skill-reviewer",
+      "severity": "Major",
+      "rule": "security/trust-boundary",
+      "path": "plugins/git-kit/scripts/git-verify-fix-diff.py",
+      "line": 256,
+      "evidence": "When `origin` points to a contributor-controlled fork, `_target_ref` accepts its local `refs/remotes/origin/HEAD`; `_trusted_commit` then selects the merge-base against that ref, and `_load_verifiers` imports and runs the archived verifier modules. The script never checks that `origin` fetches from the canonical base repository. A user running the fix verifier in this common fork setup can therefore execute Python code supplied by the fork. The new documentation acknowledges that `origin` must be canonical, but the script does not enforce that precondition.",
+      "remediation": "Before loading verifiers, validate the fetch URL for the selected target remote against the PR's canonical base repository, or require an explicitly supplied trusted remote and fail closed when its identity cannot be verified.",
+      "reporters": [
+        "skill-reviewer"
+      ],
+      "components": [
+        "plugins/git-kit/scripts/git-verify-fix-diff.py:100",
+        "plugins/git-kit/scripts/git-verify-fix-diff.py:276",
+        "docs/ci.md:556"
+      ],
+      "in_diff": true,
+      "blocking": true,
+      "confidence": "high",
+      "evidence_type": null,
+      "rule_class": "judgment",
+      "category": "other",
+      "risk": null,
+      "source": "model",
+      "gate": "block",
+      "suppressed": false,
+      "exception": null,
+      "fingerprint": null,
+      "waiver": null,
+      "waiver_line": null,
+      "tracked_issue": null
+    }
+  ],
+  "by_reviewer": {
+    "plugin-rulebook-checker": [
+      {
+        "reviewer": "plugin-rulebook-checker",
+        "severity": "Major",
+        "rule": "security",
+        "path": "plugins/git-kit/scripts/git-verify-fix-diff.py",
+        "line": 100,
+        "evidence": "The script trusts the local refs/remotes/origin/HEAD without checking the remote identity. In a clone whose origin is a contributor's fork, the fork owner can control that ref; the script then finds the merge-base and imports and executes verifier modules from it. Running the checker can execute fork-controlled code in the developer's context or produce a false clean result.",
+        "remediation": "Validate that origin is the canonical upstream before using its HEAD, or require an explicitly identified trusted remote/ref and fail closed when it cannot be established.",
+        "reporters": [
+          "plugin-rulebook-checker"
+        ],
+        "components": [
+          "plugins/git-kit/scripts/git-verify-fix-diff.py",
+          "docs/ci.md"
+        ],
+        "in_diff": true,
+        "blocking": true,
+        "confidence": "high",
+        "evidence_type": null,
+        "rule_class": "judgment",
+        "category": "other",
+        "risk": null,
+        "source": "model",
+        "gate": "block",
+        "suppressed": false,
+        "exception": null,
+        "fingerprint": null,
+        "waiver": null,
+        "waiver_line": null,
+        "tracked_issue": null
+      },
+      {
+        "reviewer": "plugin-rulebook-checker",
+        "severity": "Minor",
+        "rule": "workflow-correctness",
+        "path": "plugins/git-kit/skills/handling-review-findings/references/fix-self-review.md",
+        "line": 71,
+        "evidence": "The new ledger instructions require one disposition per finding, including `declined`, while the workflow's Decline path says to leave no tracking artifact. Following that path omits declined findings from the ledger and the outcomes corpus.",
+        "remediation": "Clarify whether declined findings should be recorded; align step 6 and the ledger instructions so the outcome is handled consistently.",
+        "reporters": [
+          "plugin-rulebook-checker"
+        ],
+        "components": [
+          "plugins/git-kit/skills/handling-review-findings/references/fix-self-review.md",
+          "plugins/git-kit/skills/handling-review-findings/SKILL.md"
+        ],
+        "in_diff": true,
+        "blocking": false,
+        "confidence": "high",
+        "evidence_type": null,
+        "rule_class": "judgment",
+        "category": "other",
+        "risk": null,
+        "source": "model",
+        "gate": "notice",
+        "suppressed": false,
+        "exception": null,
+        "fingerprint": null,
+        "waiver": null,
+        "waiver_line": null,
+        "tracked_issue": null
+      },
+      {
+        "reviewer": "plugin-rulebook-checker",
+        "severity": "Minor",
+        "rule": "allowed-tools-grant",
+        "path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+        "line": 16,
+        "evidence": "The new `Bash(git diff:*)` grant pre-approves arbitrary `git diff` arguments, including `--output=<path>`, which writes a file. The workflow only needs to inspect a fix diff, but this grant removes the permission prompt for that write-capable form.",
+        "remediation": "Narrow the grant to the read-only diff invocation the workflow uses, or leave other argument forms subject to a permission prompt.",
+        "reporters": [
+          "plugin-rulebook-checker"
+        ],
+        "components": [
+          "plugins/git-kit/skills/handling-review-findings/SKILL.md"
+        ],
+        "in_diff": true,
+        "blocking": false,
+        "confidence": "medium",
+        "evidence_type": null,
+        "rule_class": "judgment",
+        "category": "allowed-tools-grant",
+        "risk": null,
+        "source": "model",
+        "gate": "notice",
+        "suppressed": false,
+        "exception": null,
+        "fingerprint": null,
+        "waiver": null,
+        "waiver_line": null,
+        "tracked_issue": null
+      }
+    ],
+    "dependency-reviewer": [],
+    "security-reviewer": [
+      {
+        "reviewer": "security-reviewer",
+        "severity": "Major",
+        "rule": "permission-risk",
+        "path": "plugins/git-kit/skills/handling-review-findings/references/fix-self-review.md",
+        "line": 78,
+        "evidence": "\u26a0\ufe0f Unverified (static analysis): The skill passes reviewer-derived `--path` and `--rule` values to a shell command, but only says to put them in single quotes and escape apostrophes. POSIX shells do not treat backslash as an escape inside single quotes. If an assistant uses `\\'` for a reviewer-controlled apostrophe, a value such as `x'; <command>; #` can terminate the quoted argument and execute shell syntax before `git-review-ledger.py` runs.",
+        "remediation": "Use a shell-safe quoting method such as `shlex.quote` for each argument, or invoke the script with an argv-based mechanism that does not interpolate reviewer-controlled values into shell text.",
+        "reporters": [
+          "security-reviewer"
+        ],
+        "components": [
+          "plugins/git-kit/skills/handling-review-findings/references/fix-self-review.md",
+          "plugins/git-kit/scripts/git-review-ledger.py"
+        ],
+        "in_diff": true,
+        "blocking": true,
+        "confidence": "medium",
+        "evidence_type": null,
+        "rule_class": "judgment",
+        "category": "other",
+        "risk": null,
+        "source": "model",
+        "gate": "block",
+        "suppressed": false,
+        "exception": null,
+        "fingerprint": null,
+        "waiver": null,
+        "waiver_line": null,
+        "tracked_issue": null
+      },
+      {
+        "reviewer": "security-reviewer",
+        "severity": "Minor",
+        "rule": "permission-risk",
+        "path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+        "line": 16,
+        "evidence": "`Write` is pre-approved for the skill, while the documented process uses it for issue drafts and scratchpad files. The grant itself is not path-restricted, so it pre-approves writes beyond those artifacts.",
+        "remediation": "Remove `Write` from `allowed-tools` so intended writes require their own permission prompt.",
+        "reporters": [
+          "security-reviewer"
+        ],
+        "components": [
+          "plugins/git-kit/skills/handling-review-findings/SKILL.md"
+        ],
+        "in_diff": true,
+        "blocking": false,
+        "confidence": "high",
+        "evidence_type": null,
+        "rule_class": "judgment",
+        "category": "allowed-tools-grant",
+        "risk": null,
+        "source": "model",
+        "gate": "notice",
+        "suppressed": false,
+        "exception": null,
+        "fingerprint": null,
+        "waiver": null,
+        "waiver_line": null,
+        "tracked_issue": null
+      }
+    ],
+    "skill-reviewer": [
+      {
+        "reviewer": "skill-reviewer",
+        "severity": "Major",
+        "rule": "security/trust-boundary",
+        "path": "plugins/git-kit/scripts/git-verify-fix-diff.py",
+        "line": 256,
+        "evidence": "When `origin` points to a contributor-controlled fork, `_target_ref` accepts its local `refs/remotes/origin/HEAD`; `_trusted_commit` then selects the merge-base against that ref, and `_load_verifiers` imports and runs the archived verifier modules. The script never checks that `origin` fetches from the canonical base repository. A user running the fix verifier in this common fork setup can therefore execute Python code supplied by the fork. The new documentation acknowledges that `origin` must be canonical, but the script does not enforce that precondition.",
+        "remediation": "Before loading verifiers, validate the fetch URL for the selected target remote against the PR's canonical base repository, or require an explicitly supplied trusted remote and fail closed when its identity cannot be verified.",
+        "reporters": [
+          "skill-reviewer"
+        ],
+        "components": [
+          "plugins/git-kit/scripts/git-verify-fix-diff.py:100",
+          "plugins/git-kit/scripts/git-verify-fix-diff.py:276",
+          "docs/ci.md:556"
+        ],
+        "in_diff": true,
+        "blocking": true,
+        "confidence": "high",
+        "evidence_type": null,
+        "rule_class": "judgment",
+        "category": "other",
+        "risk": null,
+        "source": "model",
+        "gate": "block",
+        "suppressed": false,
+        "exception": null,
+        "fingerprint": null,
+        "waiver": null,
+        "waiver_line": null,
+        "tracked_issue": null
+      }
+    ]
+  }
+}

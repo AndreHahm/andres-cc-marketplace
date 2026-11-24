@@ -1,0 +1,207 @@
+{
+  "schema_version": 1,
+  "pr": 579,
+  "head_sha": "4d2053108deb1d2be3b5d3109ff6279b2ec37ee3",
+  "kind": "findings",
+  "findings": [
+    {
+      "id": "f1",
+      "reviewer": "dependency-reviewer",
+      "path": "plugins/git-kit/scripts/git-review-ledger.py",
+      "line": 59,
+      "rule": "path-validation",
+      "label": "true",
+      "source": "owner",
+      "note": "owner: reproduced, an intermediate symlink is accepted",
+      "known_issue": null
+    },
+    {
+      "id": "f2",
+      "reviewer": "plugin-rulebook-checker",
+      "path": "plugins/git-kit/scripts/git-verify-fix-diff.py",
+      "line": 100,
+      "rule": "security",
+      "label": "true",
+      "source": "owner",
+      "note": "owner: trust of origin/HEAD",
+      "known_issue": "k2"
+    },
+    {
+      "id": "f3",
+      "reviewer": "plugin-rulebook-checker",
+      "path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+      "line": 16,
+      "rule": "allowed-tools-grant",
+      "label": "true",
+      "source": "owner",
+      "note": "owner: git diff grant added by the PR",
+      "known_issue": null
+    },
+    {
+      "id": "f4",
+      "reviewer": "plugin-rulebook-checker",
+      "path": "plugins/git-kit/skills/handling-review-findings/references/fix-self-review.md",
+      "line": 71,
+      "rule": "workflow-correctness",
+      "label": "true",
+      "source": "owner",
+      "note": "owner: the Decline path contradicts the per-finding ledger record",
+      "known_issue": null
+    },
+    {
+      "id": "f5",
+      "reviewer": "security-reviewer",
+      "path": "plugins/git-kit/scripts/git-verify-fix-diff.py",
+      "line": 100,
+      "rule": "trust-boundary",
+      "label": "true",
+      "source": "owner",
+      "note": "owner: trust of origin/HEAD",
+      "known_issue": "k2"
+    },
+    {
+      "id": "f6",
+      "reviewer": "security-reviewer",
+      "path": "plugins/git-kit/scripts/git-verify-fix-diff.py",
+      "line": 100,
+      "rule": "trusted-code provenance",
+      "label": "true",
+      "source": "owner",
+      "note": "owner: trust of origin/HEAD",
+      "known_issue": "k2"
+    },
+    {
+      "id": "f7",
+      "reviewer": "security-reviewer",
+      "path": "plugins/git-kit/scripts/git-verify-fix-diff.py",
+      "line": 106,
+      "rule": "permission-risk",
+      "label": "true",
+      "source": "owner",
+      "note": "owner: trust of origin/HEAD",
+      "known_issue": "k2"
+    },
+    {
+      "id": "f8",
+      "reviewer": "security-reviewer",
+      "path": "plugins/git-kit/scripts/git-verify-fix-diff.py",
+      "line": 157,
+      "rule": "trust-boundary",
+      "label": "true",
+      "source": "owner",
+      "note": "owner: trust of origin/HEAD",
+      "known_issue": "k2"
+    },
+    {
+      "id": "f9",
+      "reviewer": "security-reviewer",
+      "path": "plugins/git-kit/scripts/git-verify-fix-diff.py",
+      "line": 243,
+      "rule": "security-gate",
+      "label": "true",
+      "source": "owner",
+      "note": "owner: reproduced with GIT_CEILING_DIRECTORIES, exit 0",
+      "known_issue": null
+    },
+    {
+      "id": "f10",
+      "reviewer": "security-reviewer",
+      "path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+      "line": 16,
+      "rule": "permission-risk",
+      "label": "true",
+      "source": "owner",
+      "note": "owner: unscoped Write grant; same label as the corpus case",
+      "known_issue": "k1"
+    },
+    {
+      "id": "f11",
+      "reviewer": "security-reviewer",
+      "path": "plugins/git-kit/skills/handling-review-findings/references/fix-self-review.md",
+      "line": 78,
+      "rule": "permission-risk",
+      "label": "true",
+      "source": "owner",
+      "note": "owner: the quoting instruction allows an unsafe escape",
+      "known_issue": null
+    },
+    {
+      "id": "f12",
+      "reviewer": "skill-reviewer",
+      "path": "plugins/git-kit/scripts/git-review-ledger.py",
+      "line": 16,
+      "rule": "security",
+      "label": "true",
+      "source": "owner",
+      "note": "owner: reproduced, a sibling module is imported",
+      "known_issue": null
+    },
+    {
+      "id": "f13",
+      "reviewer": "skill-reviewer",
+      "path": "plugins/git-kit/scripts/git-verify-fix-diff.py",
+      "line": 256,
+      "rule": "security/trust-boundary",
+      "label": "true",
+      "source": "owner",
+      "note": "owner: trust of origin/HEAD",
+      "known_issue": "k2"
+    },
+    {
+      "id": "f14",
+      "reviewer": "skill-reviewer",
+      "path": "plugins/git-kit/scripts/git-verify-fix-diff.py",
+      "line": 99,
+      "rule": "security",
+      "label": "true",
+      "source": "owner",
+      "note": "owner: trust of origin/HEAD",
+      "known_issue": "k2"
+    },
+    {
+      "id": "f15",
+      "reviewer": "skill-reviewer",
+      "path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+      "line": 278,
+      "rule": "workflow-completeness",
+      "label": "true",
+      "source": "owner",
+      "note": "owner: the Decline path contradicts the per-finding ledger record",
+      "known_issue": null
+    },
+    {
+      "id": "f16",
+      "reviewer": "skill-reviewer",
+      "path": "plugins/git-kit/skills/handling-review-findings/references/fix-self-review.md",
+      "line": 78,
+      "rule": "security",
+      "label": "true",
+      "source": "owner",
+      "note": "owner: the quoting instruction allows an unsafe escape",
+      "known_issue": null
+    },
+    {
+      "id": "f17",
+      "reviewer": "skill-reviewer",
+      "path": "plugins/git-kit/skills/handling-review-findings/references/next-round-trigger.md",
+      "line": 35,
+      "rule": "skill-quality",
+      "label": "out_of_scope",
+      "source": "owner",
+      "note": "owner: a second reference load is advice",
+      "known_issue": null
+    }
+  ],
+  "known_issues": [
+    {
+      "id": "k1",
+      "path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+      "description": "allowed-tools grants an unscoped Write, so the skill can modify the scripts it runs"
+    },
+    {
+      "id": "k2",
+      "path": "plugins/git-kit/scripts/git-verify-fix-diff.py",
+      "description": "verifier code is imported from a commit reached via an unvalidated origin/HEAD or --base"
+    }
+  ]
+}
