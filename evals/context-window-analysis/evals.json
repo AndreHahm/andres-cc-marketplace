@@ -35,7 +35,7 @@
       "id": 5,
       "name": "Unrelated failed command is not a CRITICAL sign",
       "prompt": "Situation: a short session (5 turns). The last Bash command failed because of a typo in a file name. There are no truncation warnings, no auto-compact message and no memory gaps. The user has not shared /context output.\nUser message: how full is my context right now",
-      "expected_output": "Does not report CRITICAL: treats the typo failure as unrelated to the context (at most one Warning sign), giving HEALTHY or MONITOR labelled an estimate, and does not tell the user to run /compact or /clear now.",
+      "expected_output": "Does not report CRITICAL: treats the typo failure as unrelated to the context (no indicator at all), giving HEALTHY labelled an estimate with 'no action needed', and does not tell the user to run /compact or /clear now.",
       "files": []
     },
     {

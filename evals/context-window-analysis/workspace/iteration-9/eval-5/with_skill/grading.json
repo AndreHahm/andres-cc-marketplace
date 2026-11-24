@@ -1,0 +1,21 @@
+{
+  "eval_id": 5,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Reports a HEALTHY estimate, labelled an estimate rather than a measurement",
+      "passed": true,
+      "evidence": "Estimated Status: HEALTHY (an estimate, not a measurement); the typo 'doesn't count against context health'."
+    },
+    {
+      "text": "Does not tell the user to run /compact or /clear now",
+      "passed": true,
+      "evidence": "Recommendations: No action needed."
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 2,
+    "pass_rate": 1.0
+  }
+}
