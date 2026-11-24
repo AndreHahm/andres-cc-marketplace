@@ -141,7 +141,8 @@ def make_plan(
         raise AbError(f"the reviewer bridge does not accept the path {unsafe[0]!r}")
     # Here, before a call is paid for, so a verifier that cannot run costs nothing.
     try:
-        outcomes = review_verifiers.run_verifiers(repo, changed, base_sha, structural=())
+        structural = review.run_delta_structural_checks(repo, tuple(changed))
+        outcomes = review_verifiers.run_verifiers(repo, changed, base_sha, structural=structural)
     except Exception as exc:  # fail closed, as run-codex-review does
         raise AbError(f"script verifier failed: {exc!r}") from exc
     with tempfile.TemporaryDirectory(prefix="reviewer-ab-") as scratch:
@@ -211,6 +212,7 @@ def _run_once(plan: Plan, arm: str, raw: Path) -> dict:
             continue
         validated.append(review.relative_citations(result, plan.repo))
     validated = list(review.mark_symlinked(validated, plan.repo))
+    models = tuple(validated)  # before the script results, whose names are not reviewers
     validated.extend(
         review.ReviewResult(reviewer=o.name, verdict="script", findings=o.findings)
         for o in plan.outcomes
@@ -252,7 +254,7 @@ def _run_once(plan: Plan, arm: str, raw: Path) -> dict:
         "findings": findings,
         # Each reviewer gated alone. The merged list above gives every reporter of a finding the
         # highest severity among them, which would credit one reviewer with another's rating.
-        "by_reviewer": {r.reviewer: gate([r])[0] for r in validated if r.verdict != "script"},
+        "by_reviewer": {r.reviewer: gate([r])[0] for r in models},
     }
 
 
@@ -295,8 +297,16 @@ def _reported_by(result: dict, reviewer: str) -> list[dict]:
     return result["by_reviewer"].get(reviewer, [])
 
 
+def _label_of(finding: dict, reviewer: str, labels: dict[tuple, list[tuple]]) -> str | None:
+    """The corpus label of `finding`, or None when there is none or the candidates disagree. A label
+    with a rule applies to that rule only; one without a rule to any finding on its line."""
+    key = (reviewer, finding["path"], finding["line"])
+    found = {label for rule, label in labels.get(key, ()) if rule in (None, finding["rule"])}
+    return found.pop() if len(found) == 1 else None
+
+
 def _arm_summary(
-    reviewer: str, results: list[dict], labels: dict[tuple, str], planned: int
+    reviewer: str, results: list[dict], labels: dict[tuple, list[tuple]], planned: int
 ) -> dict:
     runs = [r for r in results if reviewer in r["reviewers"]]
     sets = [
@@ -314,7 +324,7 @@ def _arm_summary(
         for finding in mine:
             key = _finding_key(finding)
             severities.setdefault(key, Counter())[finding["severity"]] += 1
-            label = labels.get((reviewer, finding["path"], finding["line"]))
+            label = _label_of(finding, reviewer, labels)
             judged += label is not None
             correct += label == "true"
         # Once per run, however often a run repeats a key.
@@ -353,12 +363,12 @@ def build_report(out: Path, cases: Sequence[dict]) -> dict:
     """Per reviewer and arm: the spread of blocking findings over the runs. A run the reviewer
     failed in is counted in `failed`, never as a run without findings."""
     manifest = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
-    labels = {
-        (f["reviewer"], f["path"], f["line"]): f["label"]
-        for case in cases
-        if case["head_sha"] == manifest["head_sha"]
-        for f in case["findings"]
-    }
+    labels: dict[tuple, list[tuple]] = {}
+    for case in cases:
+        if case["head_sha"] == manifest["head_sha"]:
+            for f in case["findings"]:
+                key = (f["reviewer"], f["path"], f["line"])
+                labels.setdefault(key, []).append((f["rule"], f["label"]))
     results = {
         arm: [
             json.loads(path.read_text(encoding="utf-8"))
