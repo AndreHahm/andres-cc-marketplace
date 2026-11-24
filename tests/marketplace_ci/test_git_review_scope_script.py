@@ -1971,6 +1971,6 @@ def test_the_planner_never_runs_a_git_from_the_repository(repo, monkeypatch):
     monkeypatch.setenv("PATH", os.pathsep.join(["", ".", real]))
     assert M._git(repo, "rev-parse", "HEAD").returncode == 0
     monkeypatch.setenv("PATH", os.pathsep.join([str(repo), real]))
-    with pytest.raises(FileNotFoundError, match="inside the repository"):
-        M._git(repo, "rev-parse", "HEAD")
+    refused = M._git(repo, "rev-parse", "HEAD")
+    assert refused.returncode == 127 and b"inside the repository" in refused.stderr
     assert not (repo / "ran697").exists()

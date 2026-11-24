@@ -43,9 +43,17 @@ def inside(path: Path, roots: Sequence[Path]) -> bool:
 
 
 def checkout_root(start: Path) -> list[Path]:
-    """The nearest directory with a `.git` entry, found without running git, or `start`."""
+    """The nearest directory with a `.git` entry, found without running git, or `start`; for a
+    linked worktree also the main checkout. Other worktrees are not known here."""
     start = start.resolve()
-    return [d for d in (start, *start.parents) if os.path.lexists(d / ".git")][:1] or [start]
+    roots = [d for d in (start, *start.parents) if os.path.lexists(d / ".git")][:1] or [start]
+    try:
+        text = (roots[0] / ".git").read_text(encoding="utf-8")
+        gitdir = roots[0] / text.removeprefix("gitdir:").strip()
+        common_dir = (gitdir / (gitdir / "commondir").read_text(encoding="utf-8").strip()).resolve()
+    except (OSError, ValueError):
+        return roots
+    return [*roots, common_dir.parent] if common_dir.name == ".git" else roots
 
 
 def tool(name: str, forbidden: Sequence[Path]) -> str:
@@ -60,9 +68,27 @@ def tool(name: str, forbidden: Sequence[Path]) -> str:
         if not os.path.isabs(entry):
             continue
         candidate = Path(entry) / name
-        if not candidate.is_file() or not os.access(candidate, os.X_OK):
+        if not os.path.isfile(candidate) or not os.access(candidate, os.X_OK):
             continue
         if inside(candidate, forbidden) or inside(candidate.resolve(), forbidden):
             raise FileNotFoundError(f"the {name} on PATH lies inside the repository under review")
         return str(candidate)
     raise FileNotFoundError(f"{name} was not found on PATH")
+
+
+def safe_path(forbidden: Sequence[Path]) -> str:
+    """PATH without relative entries, entries inside `forbidden`, and entries whose `codex`, `node`
+    or `git` leads back inside."""
+    kept = []
+    for entry in os.environ.get("PATH", "").split(os.pathsep):
+        if not os.path.isabs(entry):
+            continue
+        folder = Path(entry)
+        names = [n + ext for n in ("codex", "node", "git") for ext in ("", ".exe", ".cmd", ".bat")]
+        programs = [folder / n for n in names if os.path.isfile(folder / n)]
+        if inside(folder, forbidden) or inside(folder.resolve(), forbidden):
+            continue
+        if any(inside(program.resolve(), forbidden) for program in programs):
+            continue
+        kept.append(entry)
+    return os.pathsep.join(kept)

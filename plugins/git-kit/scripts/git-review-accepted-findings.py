@@ -43,7 +43,6 @@ from __future__ import annotations
 
 import argparse
 import hashlib
-import importlib.util
 import json
 import os
 import re
@@ -56,11 +55,9 @@ from types import ModuleType
 
 def _load_common() -> ModuleType:
     path = Path(__file__).resolve().with_name("git_review_common.py")
-    spec = importlib.util.spec_from_file_location("git_review_common", path)
-    assert spec is not None and spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    sys.dont_write_bytecode = True
-    spec.loader.exec_module(module)
+    module = ModuleType("git_review_common")
+    # From the source, never through an import, which would also run a planted __pycache__ file.
+    exec(compile(path.read_bytes(), str(path), "exec"), module.__dict__)
     return module
 
 

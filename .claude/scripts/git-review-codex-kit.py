@@ -16,6 +16,7 @@ can write to the user's own plugin folder is trusted.
 
 `git` and `node` are looked up in the absolute PATH entries only and refused inside the repository:
 a bare name would let Windows find one in the working directory, which is the reviewed repository.
+The bridge gets a PATH reduced the same way, because it looks `codex` up itself.
 On Windows `~` is the user profile variable, which a trusted workspace's settings could set.
 
 `locate` prints `{"ok": true, "root": ...}` (exit 0) or `{"ok": false, "reason": ...}` (exit 3).
@@ -26,7 +27,6 @@ and NODE_* variables (some preload code) are dropped for it. With no usable root
 
 from __future__ import annotations
 
-import importlib.util
 import json
 import os
 import subprocess
@@ -38,11 +38,9 @@ from types import ModuleType
 
 def _load_common() -> ModuleType:
     path = Path(__file__).resolve().with_name("git_review_common.py")
-    spec = importlib.util.spec_from_file_location("git_review_common", path)
-    assert spec is not None and spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    sys.dont_write_bytecode = True
-    spec.loader.exec_module(module)
+    module = ModuleType("git_review_common")
+    # From the source, never through an import, which would also run a planted __pycache__ file.
+    exec(compile(path.read_bytes(), str(path), "exec"), module.__dict__)
     return module
 
 
@@ -145,9 +143,10 @@ def main(argv: Sequence[str]) -> int:
     if argv[0] == "locate":
         print(json.dumps({"ok": True, "root": root.as_posix()}))
         return 0
+    env = {**_clean_env(), "PATH": common.safe_path(repo_roots)}
     try:
         return subprocess.run(
-            [node, str(root / BRIDGE), *argv[1:]], env=_clean_env(), check=False
+            [node, str(root / BRIDGE), *argv[1:]], env=env, check=False
         ).returncode
     except OSError as err:
         failure = {"ok": False, "category": "cli_unavailable", "detail": f"node: {err.strerror}"}
