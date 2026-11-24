@@ -39,8 +39,8 @@ reviewed again before verification.
 ## Reviewer findings are advisory
 
 A finding never blocks or approves anything by itself. The skill shows a Critical finding prominently and
-asks the user to acknowledge it before the verification step. If `review-path` fails, the reviewer cannot be
-dispatched, it returns its `Refused:` line (the record path was not inside the `catalog_root` it was given), or
+asks the user to acknowledge it before the verification step. If `review-record` fails, the reviewer cannot be
+dispatched, it returns its `Refused:` line (the record text or a marker line was missing), or
 its output is not a completed review, no review ran: the skill offers to retry or to stop. It never verifies or activates without a completed review;
 the prompt stays a draft until one succeeds.
 
@@ -63,7 +63,7 @@ shown to the user passed as `--expect-sha256` so the script refuses a file that 
 
 | Actor | May | May not |
 |---|---|---|
-| `prompt-reviewer` | Read one record, report findings, propose a rewrite | Approve, activate, edit or write |
+| `prompt-reviewer` | Review the one record text it is given, report findings, propose a rewrite | Approve, activate, edit or write |
 | `prompt-library` | Write scratch drafts; run lifecycle commands after the user approves | Activate without a matching expected hash; edit catalog files directly |
 | The validator | Write catalog files, enforce screening, hashes and containment | Decide anything for the user |
 | The user | Approve text, rewrites and every status change | n/a |

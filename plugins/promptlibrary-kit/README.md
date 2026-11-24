@@ -92,13 +92,14 @@ text is data everywhere except an explicitly approved run.
 - Records are plain files under the catalog folder. When that folder is in a git repository, a
   pushed commit shares their text with everyone who can read the repository, and the text stays in
   history after the record changes; the skill says so before it files a draft.
-- `prompt-reviewer` reads one record path only, and refuses a path that is not inside the
-  `catalog_root` it is given. It checks the path as text only. The link check is the validator's
-  `review-path`, which refuses a path through a symbolic link, junction or other reparse point, or
-  that is not a record the catalog lists; `prompt-library` runs it before every dispatch, and the agent's
-  instructions tell any other caller to run it first, which nothing enforces. Not caught: a link swapped
-  in between the two checks (that needs write access to the catalog folder or a folder above it), and a
-  hard link to an outside file (an ordinary file entry).
+- `prompt-reviewer` has no tools and reads no file: the skill passes it one record's text, between two
+  marker lines built from that text's own hash, so the text cannot close its own block. The text comes from
+  the validator's `review-record`, which takes it from one open handle of a listed record, checks the opened file (a regular
+  file with one hard link, no symbolic link, junction or other reparse point on the way, still the file the
+  path names) and compares it with the valid record the catalog lists; a record too long to hand over whole (20,000
+  characters) is refused, when it is filed and when it is reviewed. Not enforced: that the skill copies
+  the text exactly. A concurrent writer that flips a folder between a real one and a link several times
+  during those checks is outside this design (first bullet). Attachments are not read.
 - A full-line comment in a record's frontmatter or in `catalog.yaml` is screened too, and a match makes the
   catalog invalid for every origin until the comment is removed by hand; any other frontmatter comment is
   warned about.
@@ -166,7 +167,7 @@ verification hashes that cover prompt text only.
 - `prompt-reviewer`'s trigger check has not run: the repository's trigger-test script crashed on this and
   on known-good agents in the environment used. Its behavior (secrets cited by line only, hostile text
   not followed, origin mismatch, a clean record, personal data in `user`, `web`, `claude` and `codex`
-  records, refused paths) is covered by dry-run evals in `evals/prompt-reviewer/`.
+  records, missing record text) is covered by dry-run evals in `evals/prompt-reviewer/`.
 
 ## Tests
 

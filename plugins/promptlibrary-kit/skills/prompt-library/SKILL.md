@@ -8,7 +8,7 @@ description: >-
   prompts (prompt-retrieval) or running them (prompt-execution).
 disable-model-invocation: true
 argument-hint: "[add|revise|activate|deactivate] [slug]"
-allowed-tools: Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" validate:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" show:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" review-path:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" hash:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" screen:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" init:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" new-id:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" draft:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" update-draft:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" discard-orphan:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" record-verification:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" activate:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" deactivate:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" finalize:*), Agent(prompt-reviewer), Skill(session-detail)
+allowed-tools: Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" validate:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" show:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" review-record:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" hash:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" screen:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" init:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" new-id:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" draft:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" update-draft:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" discard-orphan:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" record-verification:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" activate:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" deactivate:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" finalize:*), Agent(prompt-reviewer), Skill(session-detail)
 ---
 
 # Prompt Library
@@ -143,12 +143,12 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
    this question. On yes, `<CLI> draft
    <scratch-file>`; it validates, enforces the secret screen for `session`, `web`, `claude` and `codex` text, writes the record and
    lists it in the catalog together. Keep the `text_hash` and `path` it returns.
-7. **Review and optimize.** Run `<CLI> review-path <path>`, with `path` from step 6's `draft` output or,
-   for a resumed draft, from `<CLI> show <slug> --history`. It refuses a path through a link or junction
-   or one that is not a listed record; if it fails, report its error and do not dispatch (no review ran, see Gotchas).
-   Otherwise dispatch
-   `prompt-reviewer` with the `path` and `catalog_root` it returned, exactly as returned, and the record's
-   `origin`; it is read-only and refuses a path outside that `catalog_root`. If it returns its
+7. **Review and optimize.** Run `<CLI> review-record <path>`, with `path` from step 6's `draft` output or,
+   for a resumed draft, from `<CLI> show <slug> --history`. It reads a listed record and returns its
+   text; if it fails or its JSON is cut off, report that and do not dispatch (no review ran, see Gotchas).
+   Otherwise dispatch `prompt-reviewer`, which has no tools, with the returned `boundary` on a line of its own,
+   the decoded `record_text` (real line breaks, every line, unchanged), the same `boundary` on a line of its own,
+   then the record's `origin`. If it returns its
    `Refused:` line, the dispatch fails or the output is not a completed review (defined in
    `references/prompt-optimization-and-review.md`), no review ran (see Gotchas). Present its findings and its
    proposed rewrite as a diff. If the user approves a rewrite, write the full replacement record to a
@@ -165,7 +165,7 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
    `short_description`, `prerequisites`, `boundaries`, `references`, `attachments`, `source_ref`). If the record's `hidden_characters`
    or `hidden_metadata` (entries also name a `field`) is not empty, list each entry (line, column, code point, name) above the text, add "50 or more" when
    `hidden_characters_truncated` or `hidden_metadata_truncated` is true, and say these characters are invisible in what is shown.
-   Then ask with `AskUserQuestion` whether to approve exactly this text, naming the hidden-character
+   If that JSON is cut off, do not ask and stop. Then ask with `AskUserQuestion` whether to approve exactly this text, naming the hidden-character
    count in the question when there are any. On yes, run `<CLI> record-verification <internal_id> --kind
    quality --expect-sha256 <that hash>` and, for `session` or `web` origin, again with `--kind import`
    (for a resumed draft, only the kinds in its `missing_verification`, see step 2).
@@ -194,7 +194,7 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
   to a draft, run step 7 again before step 8 or 9. Do not pass a hash you did not show the user.
 - `prompt-reviewer` only reports and proposes. It cannot approve, activate or write; the user approves.
   Its findings are advisory, and the validator cannot tell whether the review ran. Show a Critical
-  finding prominently and ask the user to acknowledge it before step 8. If `review-path` fails, the dispatch
+  finding prominently and ask the user to acknowledge it before step 8. If `review-record` fails, the dispatch
   fails, it returns the `Refused:` line or its output is not a completed review, no review ran: ask whether to
   retry or stop. Never go on to step 8 without a completed review; on stop, the prompt stays a draft and
   `/prompt-library activate <slug>` resumes with the review. If a requested further round fails, the earlier
@@ -229,7 +229,7 @@ A persisted smoke test, `scripts/smoke_test.py`, checks this skill's frontmatter
 grants (no pre-approved Read, Write, Edit or WebFetch), and runs the validator end to end: a web-origin
 draft carrying a fake key is refused with nothing filed, and a clean draft goes through activation and
 deactivation. It also checks that the triage step is its own `AskUserQuestion` with skill options. Run it
-directly; last run 2026-11-16, 7 of 7 checks passed. It failed on a copy with a pre-approved Write
+directly; last run 2026-11-24, 8 of 8 checks passed. It failed on a copy with a pre-approved Write
 (2026-10-03) and on a copy with the pre-fix triage step (2026-10-14).
 
 **Verify this skill activates on:** (explicit invocation only; it cannot be model-triggered)
@@ -266,10 +266,10 @@ directly; last run 2026-11-16, 7 of 7 checks passed. It failed on a copy with a 
 - [ ] A slug that does not match the slug pattern is refused before any command runs with it.
 - [ ] `activate` of an already active record is reported and stops, with no question and no command.
 
-**Last dated run record:** validator fixture tests, 162 run (159 passing, 3 POSIX-only skipped on Windows), 2026-11-24
-(`scripts/plib_test_catalog_validate.py`), after the email screen, its review fixes and `review-path`
-(link and junction refusal, tested with a real junction on Windows) were added. The step 6 sharing notice and
-the step 7 `catalog_root` hand-off and `Refused:` handling (2026-11-16) were checked by the smoke test and
+**Last dated run record:** validator fixture tests, 175 run (172 passing, 3 POSIX-only skipped on Windows), 2026-11-24
+(`scripts/plib_test_catalog_validate.py`), after the email screen, its review fixes, the comment screen and `review-record`
+(link, hard-link and swap refusal, tested with a real junction on Windows) were added. The step 6 sharing notice and
+the earlier step 7 path hand-off (2026-11-16, replaced by the inline record text) were checked by the smoke test and
 by `prompt-reviewer`'s own dry runs (`evals/prompt-reviewer/workspace/iteration-4/` and `-6/`); no
 `evals/prompt-library/` scenario was re-run for them. Scenarios 17 to 19 (a refused review, an incomplete review
 output, a user edit on top of a rewrite) passed as plan-only dry runs on 2026-11-24

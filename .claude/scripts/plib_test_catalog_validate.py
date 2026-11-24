@@ -9,6 +9,7 @@ working tree. Standard library only.
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import importlib.util
 import io
 import json
@@ -1082,15 +1083,100 @@ class Lifecycle(Base):
         self.assertEqual(code, 1)
         self.assertIn("is not an unlisted record file", res["error"])
 
-    def test_review_path_returns_the_record_file_inside_the_root(self):
+    def test_review_record_returns_the_record_text_and_no_path(self):
         rel = self.add_draft()["path"]
-        code, res = self.run_cli("review-path", rel)
+        raw = (self.root / rel).read_text(encoding="utf-8")
+        code, res = self.run_cli("review-record", rel)
         self.assertEqual(code, 0, res)
-        self.assertEqual(Path(res["path"]), self.root / rel)
-        self.assertEqual(res["catalog_root"], str(self.root))
-        self.assertEqual(self.run_cli("review-path", rel.replace("/", "\\"))[0], 0)
+        self.assertEqual(res["record_text"], raw)
+        self.assertEqual(res["origin"], "user")
+        self.assertEqual(res["text_hash"], V.text_hash(BODY))
+        self.assertNotIn("path", res)
+        self.assertIn(hashlib.sha256(raw.encode("utf-8")).hexdigest(), res["boundary"])
+        self.assertNotIn(res["boundary"], raw)
+        self.assertEqual(self.run_cli("review-record", rel.replace("/", "\\"))[0], 0)
 
-    def test_review_path_refuses_paths_that_are_not_records_in_the_root(self):
+    def test_review_record_refuses_a_record_that_is_not_valid(self):
+        rel = self.add_draft()["path"]
+        path = self.root / rel
+        path.write_text(
+            path.read_text(encoding="utf-8").replace("---\n", f"---\n# {FAKE_KEY}\n", 1),
+            encoding="utf-8",
+        )
+        code, res = self.run_cli("review-record", rel)
+        self.assertEqual(code, 1)
+        self.assertNotIn(FAKE_KEY, json.dumps(res))
+
+    def test_review_record_refuses_text_too_long_to_hand_over_whole(self):
+        rel = self.add_draft()["path"]
+        long_body = "word " * 8000  # one long line is within the line limit
+        scratch = self.scratch(internal_id="p000000000009", _body=long_body)
+        code, res = self.run_cli("draft", scratch)
+        self.assertEqual(code, 1)
+        self.assertIn("too long to review", res["error"])
+        (self.root / rel).write_text(record(_body=long_body), encoding="utf-8")
+        self.assertEqual(self.run_cli("validate")[0], 0)
+        code, res = self.run_cli("review-record", rel)
+        self.assertEqual(code, 1)
+        self.assertIn("too long to review", res["error"])
+        self.assertNotIn("record_text", res)
+
+    def test_review_record_prints_the_boundary_after_the_text(self):
+        # A cut-off output then shows no boundary, so a partial text cannot be handed over.
+        rel = self.add_draft()["path"]
+        keys = list(self.run_cli("review-record", rel)[1])
+        self.assertEqual(keys[-2:], ["record_text", "boundary"])
+
+    def test_review_record_refuses_a_hard_link_to_an_outside_file(self):
+        rel = self.add_draft()["path"]
+        outside = self._outside_record() / "x.md"
+        (self.root / rel).unlink()
+        try:
+            os.link(outside, self.root / rel)
+        except OSError:
+            self.skipTest("hard links are not possible here")
+        code, res = self.run_cli("review-record", rel)
+        self.assertEqual(code, 1)
+        self.assertIn("more than one hard link", res["error"])
+        self.assertNotIn("record_text", res)
+
+    def _swap_folder_around_open(self, rel: str, swap_back: bool) -> tuple[int, dict]:
+        """Run review-record while the record's folder is swapped for a link to an outside folder
+        just before the record is opened, and optionally swapped back right after."""
+        outside = self._outside_record()
+        (outside / Path(rel).name).write_text(record(_body="outside text"), encoding="utf-8")
+        folder = self.root / SLUG
+        kept = self.root.parent / "kept"
+        real_open = os.open
+
+        def swapping_open(path, *a, **k):
+            if Path(path).name != Path(rel).name or kept.exists():
+                return real_open(path, *a, **k)
+            folder.rename(kept)
+            self._link_folder(outside, folder)
+            fd = real_open(path, *a, **k)
+            if swap_back:
+                folder.rmdir() if os.name == "nt" else folder.unlink()
+                kept.rename(folder)
+            return fd
+
+        with mock.patch.object(V.os, "open", side_effect=swapping_open):
+            return self.run_cli("review-record", rel)
+
+    def test_review_record_refuses_a_folder_swapped_for_a_link(self):
+        rel = self.add_draft()["path"]
+        code, res = self._swap_folder_around_open(rel, swap_back=False)
+        self.assertEqual(code, 1, res)
+        self.assertNotIn("outside text", json.dumps(res))
+
+    def test_review_record_refuses_a_folder_swapped_and_swapped_back(self):
+        rel = self.add_draft()["path"]
+        code, res = self._swap_folder_around_open(rel, swap_back=True)
+        self.assertEqual(code, 1, res)
+        self.assertIn("changed while it was being read", res["error"])
+        self.assertNotIn("outside text", json.dumps(res))
+
+    def test_review_record_refuses_paths_that_are_not_records_in_the_root(self):
         rel = self.add_draft()["path"]
         slug = rel.split("/")[0]
         for bad in (
@@ -1112,23 +1198,23 @@ class Lifecycle(Base):
             "\\\\.\\C:\\x.md",
             f"{slug}/x\x00.md",
         ):
-            code, res = self.run_cli("review-path", bad)
+            code, res = self.run_cli("review-record", bad)
             self.assertEqual(code, 1, bad)
-            self.assertNotIn("path", res, bad)
+            self.assertNotIn("record_text", res, bad)
 
-    def test_review_path_refuses_an_unlisted_markdown_file_in_the_root(self):
+    def test_review_record_refuses_an_unlisted_markdown_file_in_the_root(self):
         rel = self.add_draft()["path"]
         stray = self.root / rel.split("/")[0] / "notes.md"
         stray.write_text("private notes\n", encoding="utf-8")
-        code, res = self.run_cli("review-path", f"{rel.split('/')[0]}/notes.md")
+        code, res = self.run_cli("review-record", f"{rel.split('/')[0]}/notes.md")
         self.assertEqual(code, 1)
         self.assertIn("not a record listed in the catalog", res["error"])
-        self.assertNotIn("path", res)
+        self.assertNotIn("record_text", res)
 
-    def test_review_path_refuses_a_folder_named_like_a_record(self):
+    def test_review_record_refuses_a_folder_named_like_a_record(self):
         self.add_draft()
         (self.root / SLUG / "folder.md").mkdir()
-        code, res = self.run_cli("review-path", f"{SLUG}/folder.md")
+        code, res = self.run_cli("review-record", f"{SLUG}/folder.md")
         self.assertEqual(code, 1)
         self.assertIn("not a record file", res["error"])
 
@@ -1141,14 +1227,14 @@ class Lifecycle(Base):
         else:
             os.symlink(target, link, target_is_directory=True)
 
-    def test_review_path_refuses_a_link_even_when_it_points_inside_the_root(self):
+    def test_review_record_refuses_a_link_even_when_it_points_inside_the_root(self):
         rel = self.add_draft()["path"]
         self._link_folder(self.root / rel.split("/")[0], self.root / "alias")
-        code, res = self.run_cli("review-path", "alias/" + rel.split("/")[1])
+        code, res = self.run_cli("review-record", "alias/" + rel.split("/")[1])
         self.assertEqual(code, 1)
         self.assertIn("link or junction", res["error"])
 
-    def test_review_path_fails_closed_when_an_entry_cannot_be_read(self):
+    def test_review_record_fails_closed_when_an_entry_cannot_be_read(self):
         rel = self.add_draft()["path"]
         real_lstat = os.lstat
 
@@ -1158,7 +1244,7 @@ class Lifecycle(Base):
             return real_lstat(path, *a, **k)
 
         with mock.patch.object(V.os, "lstat", side_effect=denied):
-            code, res = self.run_cli("review-path", rel)
+            code, res = self.run_cli("review-record", rel)
         self.assertEqual(code, 1)
         self.assertIn("link or junction", res["error"])
 
@@ -1168,22 +1254,22 @@ class Lifecycle(Base):
         (outside / "x.md").write_text(record(), encoding="utf-8")
         return outside
 
-    def test_review_path_refuses_a_linked_record_file(self):
+    def test_review_record_refuses_a_linked_record_file(self):
         self.add_draft()
         outside = self._outside_record()
         try:
             os.symlink(outside / "x.md", self.root / SLUG / "link.md")
         except (OSError, NotImplementedError):
             self.skipTest("symlinks are not permitted here")
-        code, res = self.run_cli("review-path", f"{SLUG}/link.md")
+        code, res = self.run_cli("review-record", f"{SLUG}/link.md")
         self.assertEqual(code, 1)
         self.assertIn("link or junction", res["error"])
 
-    def test_review_path_refuses_a_linked_or_junctioned_folder(self):
+    def test_review_record_refuses_a_linked_or_junctioned_folder(self):
         self.add_draft()
         outside = self._outside_record()
         self._link_folder(outside, self.root / "linked")
-        code, res = self.run_cli("review-path", "linked/x.md")
+        code, res = self.run_cli("review-record", "linked/x.md")
         self.assertEqual(code, 1)
         self.assertIn("link or junction", res["error"])
 

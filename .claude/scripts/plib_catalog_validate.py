@@ -8,8 +8,8 @@ Every subcommand prints one JSON object on stdout and exits 0 (ok) or 1 (not ok)
 library only.
 
 Usage: plib_catalog_validate.py [--root PATH] <subcommand> [args]
-Subcommands: validate, show, review-path, hash, screen, init, new-id, draft, update-draft, register,
-             discard-orphan, record-verification, activate, deactivate, finalize
+Subcommands: validate, show, review-record, hash, screen, init, new-id, draft, update-draft,
+             register, discard-orphan, record-verification, activate, deactivate, finalize
 """
 
 from __future__ import annotations
@@ -522,10 +522,13 @@ def _write_atomic(path: Path, text: str) -> None:
         raise
 
 
-def write_record(path: Path, meta: dict) -> None:
+def record_text(meta: dict) -> str:
     clean = {k: v for k, v in meta.items() if not k.startswith("_")}
-    text = "---\n" + dump_yaml(clean, FIELD_ORDER) + "---\n\n" + meta["_body"] + "\n"
-    _write_atomic(path, text)
+    return "---\n" + dump_yaml(clean, FIELD_ORDER) + "---\n\n" + meta["_body"] + "\n"
+
+
+def write_record(path: Path, meta: dict) -> None:
+    _write_atomic(path, record_text(meta))
 
 
 def nonblank_lines(text: str) -> int:
@@ -1133,15 +1136,58 @@ def _is_link(path: Path) -> bool:
     return stat.S_ISLNK(st.st_mode) or bool(reparse)
 
 
-def cmd_review_path(args) -> dict:
-    """Check a record path before prompt-reviewer reads it.
+def _refuse_links(root: Path, parts: list[str]) -> Path:
+    current = root
+    for part in parts:
+        current = current / part
+        if _is_link(current):
+            raise CatalogError(f"the record path goes through a link or junction: {part}")
+    return current
 
-    The reviewer can only check the path as text, so a link inside the catalog root could point it
-    at a file outside. This resolves the path here: no link or junction on the way, a `.md` file
-    that stays inside the root and is a record the catalog lists. The reviewer still opens the
-    path itself afterwards, so a link
-    swapped in between the two is not caught; that needs write access to the catalog folder or a
-    folder above it. A hard link is not detected either (it is an ordinary file entry).
+
+def _read_once(root: Path, parts: list[str]) -> str:
+    """The text of one record file, read from a single open handle.
+
+    The handle is opened first and checked afterwards, so a path swapped before or after the open
+    cannot substitute another file's text: the file it names now must be the one that was opened,
+    with no link on the way and no second hard link.
+    """
+    path = _refuse_links(root, parts)
+    flags = os.O_RDONLY
+    for name in ("O_BINARY", "O_NOFOLLOW", "O_NONBLOCK"):  # each exists on some platforms only
+        flags |= getattr(os, name, 0)
+    try:
+        fd = os.open(path, flags)
+    except OSError as exc:  # a folder, a missing file, a link swapped in (O_NOFOLLOW)
+        raise CatalogError("not a record file inside the catalog root") from exc
+    with os.fdopen(fd, "rb") as handle:
+        st = os.fstat(handle.fileno())
+        if not stat.S_ISREG(st.st_mode):
+            raise CatalogError("not a record file inside the catalog root")
+        if st.st_nlink != 1:
+            raise CatalogError("the record file has more than one hard link")
+        data = handle.read(MAX_INPUT_BYTES + 1)
+        _refuse_links(root, parts)
+        if not contained(path, root) or not os.path.samestat(st, os.lstat(path)):
+            raise CatalogError("the record file changed while it was being read")
+    if len(data) > MAX_INPUT_BYTES:
+        raise CatalogError("the file is too large")
+    text = data.decode("utf-8-sig")
+    return text.replace("\r\n", "\n").replace("\r", "\n")
+
+
+def _need_reviewable(text: str) -> None:
+    if len(json.dumps(text, ensure_ascii=False)) > MAX_REVIEW_CHARS:
+        raise CatalogError("the record is too long to review in one piece; shorten it")
+
+
+def cmd_review_record(args) -> dict:
+    """Return one listed record's text for prompt-reviewer, which has no tool to read a file.
+
+    The returned text is read once, from a handle that is checked after it is opened, and must match
+    the valid record a separate catalog load lists. No path is returned. `boundary` contains the
+    text's own hash, so the text cannot contain the line that closes it, and comes last, so a
+    cut-off output has none.
     """
     info = resolve_root(getattr(args, "root", None))
     root = Path(info["catalog_root"])
@@ -1155,22 +1201,28 @@ def cmd_review_path(args) -> dict:
         or any(part in ("", ".", "..") or part != part.rstrip(". ") for part in parts)
     ):
         raise CatalogError("not a record path relative to the catalog root")
-    current = root
-    for part in parts:
-        current = current / part
-        if _is_link(current):
-            raise CatalogError(f"the record path goes through a link or junction: {part}")
-    if not current.is_file() or not contained(current, root):
-        raise CatalogError("not a record file inside the catalog root")
-    _, records, _ = load_catalog(root)
-    if rel not in {listed.replace("\\", "/") for listed in records}:
+    text = _read_once(root, parts)
+    _, records, info["errors"] = load_catalog(root)
+    listed = {key.replace("\\", "/"): meta for key, meta in records.items()}
+    if rel not in listed:
         raise CatalogError("not a record listed in the catalog")
+    _need_ok(info)
+    meta, body = split_record(text)
+    meta["_body"], meta["_path"] = normalize_text(body), listed[rel]["_path"]
+    if _canonical(meta) != _canonical(listed[rel]):
+        raise CatalogError("the record file changed while it was being read")
+    _need_reviewable(text)
     info["ok"] = True
-    info["path"] = str(current)
+    info["origin"] = meta["origin"]
+    info["text_hash"] = text_hash(body)
+    info["record_text"] = text
+    info["boundary"] = "record-" + hashlib.sha256(text.encode("utf-8")).hexdigest()
     return info
 
 
 MAX_INPUT_BYTES = 262144
+# A longer output can be cut off before the skill sees all of it, and a partial text is no review.
+MAX_REVIEW_CHARS = 20000
 
 
 def _inside(root: Path, path: Path) -> Path:
@@ -1381,6 +1433,7 @@ def _scratch_record(path_text: str, root: Path, version: int) -> dict:
         raise CatalogError("; ".join(errs[:4]))
     meta.pop("verification", None)  # a new or changed draft starts unverified
     _assert_clean(meta)
+    _need_reviewable(record_text(meta))
     return meta
 
 
@@ -1663,7 +1716,7 @@ def build_parser() -> argparse.ArgumentParser:
     s = sub.add_parser("show")
     s.add_argument("slug")
     s.add_argument("--history", action="store_true")
-    rp = sub.add_parser("review-path")
+    rp = sub.add_parser("review-record")
     rp.add_argument(
         "path", help="record path relative to the catalog root, e.g. <slug>/<internal_id>.md"
     )
@@ -1708,7 +1761,7 @@ def build_parser() -> argparse.ArgumentParser:
 COMMANDS = {
     "validate": cmd_validate,
     "show": cmd_show,
-    "review-path": cmd_review_path,
+    "review-record": cmd_review_record,
     "hash": cmd_hash,
     "screen": cmd_screen,
     "init": cmd_init,

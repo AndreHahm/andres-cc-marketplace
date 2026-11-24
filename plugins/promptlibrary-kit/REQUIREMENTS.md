@@ -662,7 +662,7 @@ manipulate the reviewer can at most produce a wrong report, which I see before d
 your approval, never by the reviewer. A prompt that tells the reviewer to approve, activate or change files
 has no effect beyond the reviewer's report.
 
-Source: V4 §Optimization, §Components; code (agent `tools: Read`). State: met. Confirmed: yes (2026-11-16).
+Source: V4 §Optimization, §Components; code (agent `tools: []`). State: met. Confirmed: yes (2026-11-16).
 
 ### REV-5: The reviewer treats the prompt as data, never as orders
 
@@ -695,16 +695,16 @@ file outside the project or a file reached through a symlink or junction.
 its attachments, as CAT-2 ("shown in the review") requires.
 
 **Mechanism (implementation decision, not part of the requirement).** The validator's
-`review-path` checks the path (inside the catalog, a listed record, no link on the way) and the agent
-re-checks it, but a link swapped in between the check and the read still escapes. Passing the record's
-text and metadata inline (no file read left to steer) satisfies REV-6 only if the attachments' content is
-passed too; extending `review-path` to attachments must also close the swap gap, with the same single
-read of each attachment that EXE-2's attachments amendment requires for a run. Either way, REV-1 to
-REV-6 and CAT-2 must hold together.
+`review-record` returns the listed record's text from one open handle, which it checks after opening (regular file, one hard
+link, no link on the way, still the file the path names), and returns its text; the skill passes that text
+inline to the reviewer, which has no tools, so no file read is left to steer (owner decision 2026-11-24,
+replacing the `review-path` check and its swap gap). The attachments' content must be passed the same way,
+with the single read of each attachment that EXE-2's attachments amendment requires for a run. Either way,
+REV-1 to REV-6 and CAT-2 must hold together.
 
-Source: code; owner decision 2026-11-16. State: **partial** (single-record review: bounded by `review-path`,
-with the swap gap; attachments: not met). Confirmed: yes
-(2026-11-16).
+Source: code; owner decisions 2026-11-16 and 2026-11-24. State: **partial** (single-record review: met, except
+that the validator cannot check that the skill copied the text exactly; attachments: not met). Confirmed: yes
+(2026-11-16; mechanism and state note amended 2026-11-24).
 
 ## 6. Verification and lifecycle (LIF)
 
@@ -1491,7 +1491,7 @@ with the owner, 2026-11-17).
 | CODE-2 | Hidden-character reporting in every text display and approval | validator, all three skills | Covered by RET-4 |
 | CODE-3 | Secret screen also blocks `claude` and `codex` text, and re-screens at every later step | validator | Covered by SCR-1, SCR-3 |
 | CODE-4 | Email screen with git-remote and example-domain exemptions | validator | Covered by SCR-5 |
-| CODE-5 | `review-path` record-path gate for the reviewer | validator, prompt-library step 7 | Mechanism of REV-6 |
+| CODE-5 | `review-record` single-read record text for the reviewer | validator, prompt-library step 7 | Mechanism of REV-6 |
 | CODE-6 | Atomic writes and rollback of a partly failed status move | validator | Covered by CAT-6 |
 | CODE-7 | `discard-orphan` repair offer for an orphan from an interrupted draft | prompt-library step 1 | Covered by CAT-6, LIF-8 |
 | CODE-8 | `--expect-sha256` binding an approval to the shown text | validator | Mechanism of LIF-7 |
