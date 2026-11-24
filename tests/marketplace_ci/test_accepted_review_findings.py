@@ -1761,6 +1761,23 @@ def test_a_withdrawn_confirmation_blocks_a_tracked_claude_security_finding_at_re
     assert _recheck([entry], "- tracked #7", open_issues=[7]) != []
 
 
+def test_a_second_apply_drops_a_claude_waiver_that_no_longer_applies():
+    from scripts.marketplace_ci.claude_review import apply_waivers
+
+    finding = {**_claude_finding(pass_name="security"), "title": "[tracked #7] t"}
+    result = _claude_result(finding)
+    line = f"- claude-security s/SKILL.md:15 @{FP} – accepted"
+    waivers = read_waiver_section(_section(line), _never_open).waivers
+    confirmed = {("claude-security", "s/SKILL.md", FP), ("tracked #7", "s/SKILL.md", "")}
+    for first in ((waivers, confirmed, ()), ((), confirmed, (7,))):
+        w, c, tracked = first
+        apply_waivers(result, w, c, lambda path, line: GRANT, tracked)
+        assert result["status"] == "clean" and finding["waiver"]
+        apply_waivers(result, w, set(), lambda path, line: GRANT, tracked)
+        assert result["status"] == "findings" and result["verdict"] == "Changes Requested"
+        assert not {"waiver", "waiver_line", "tracked_issue"} & set(finding)
+
+
 def test_unwaived_and_non_waiver_entries_are_not_rechecked():
     blocking = {**_waived_entry(), "waiver": None, "blocking": True}
     assert _recheck([blocking, {"rule": "x", "path": "p", "line": 1}]) == []
