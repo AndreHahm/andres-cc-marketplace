@@ -37,7 +37,8 @@ so a partial re-run that leaves out a failed job but adds as many others is not 
 jobs that exclude each other are not told apart, so one's success replaces the other's failure of
 an earlier run or attempt. Only `required_status_checks` rules are evaluated, not required
 workflows, code scanning or deployments. A failing token-created entry is never superseded (fails
-closed). `gh` is resolved through PATH.
+closed). An unfinished job of any run, even an older one, keeps the context pending until it ends
+(fails closed). `gh` is resolved through PATH.
 
 Prints one JSON object. Exit 0 when every required context passes, 1 when one does not, 2 when the
 answer could not be determined (nothing on stdout then). Every request is a GET against github.com
