@@ -85,6 +85,16 @@
       "rule": "workflow-usability"
     },
     {
+      "disposition": "accepted",
+      "finding": "ci-codex-delta-security-reviewer-branch-dispatch",
+      "line": 332,
+      "note": "Residual accepted by the maintainer: a branch writer can already use the repository secret through any workflow; the only writer is the owner.",
+      "path": ".github/workflows/reviewer-ab.yml",
+      "pr": 872,
+      "recorded_at": "2026-11-24T12:16:10+00:00",
+      "rule": "credential-leakage"
+    },
+    {
       "disposition": "fixed",
       "finding": "ci-codex-delta-security-reviewer-key",
       "line": 276,
@@ -111,6 +121,33 @@
       "path": "docs/ci.md",
       "pr": 872,
       "recorded_at": "2026-11-24T10:23:31+00:00"
+    },
+    {
+      "disposition": "declined",
+      "finding": "claude-delta-security-reviewer-ab-190",
+      "line": 190,
+      "note": "Same step as codex-review; bwrap needs it on the hosted runner.",
+      "path": ".github/workflows/reviewer-ab.yml",
+      "pr": 872,
+      "recorded_at": "2026-11-24T12:16:11+00:00"
+    },
+    {
+      "disposition": "declined",
+      "finding": "claude-delta-security-reviewer-ab-212",
+      "line": 212,
+      "note": "The script is kept equal to codex-review's; the MCP step brings its own control for the same trust decision.",
+      "path": ".github/workflows/reviewer-ab.yml",
+      "pr": 872,
+      "recorded_at": "2026-11-24T12:16:11+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "claude-delta-security-reviewer-ab-309",
+      "line": 309,
+      "note": "Hooks measured on 0.170.0: none runs from an untrusted head, even with hook trust bypassed; docs/ci.md says so.",
+      "path": ".github/workflows/reviewer-ab.yml",
+      "pr": 872,
+      "recorded_at": "2026-11-24T12:16:10+00:00"
     }
   ]
 }
