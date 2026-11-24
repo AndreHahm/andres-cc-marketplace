@@ -1,0 +1,22 @@
+{
+  "eval_id": 32,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "(a) Compares the checkout's copy with the base branch's, then runs the quoted \"$PWD/.claude/...\" form, stating that it prompts",
+      "passed": false,
+      "evidence": "Compares no copy with the base branch's: '(a) assumes neither is listed'; runs the unquoted '$PWD/.claude/...' form: 'the form the skill's second grant pins'"
+    },
+    {
+      "text": "(b) Says so and runs the same command only after AskUserQuestion approval",
+      "passed": false,
+      "evidence": "Says so and asks, but runs another command: 'the verified root written out as an absolute path, quoted, instead of `$PWD`'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 0,
+    "pass_rate": 0.0
+  },
+  "baseline_note": "Baseline is the pre-change skill at c7b078e3, not a no-skill run; subject model claude-opus-5-5. The with_skill arm's model was not recorded."
+}

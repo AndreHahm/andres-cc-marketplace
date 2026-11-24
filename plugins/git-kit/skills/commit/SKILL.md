@@ -383,7 +383,7 @@ pattern/examples, never as a separate source of truth):**
   concerns?" signal exists to catch this mid-flow (a diff that looks split-worthy once already staged),
   not to make `commit` a second entry point for a request to split in the first place
 
-**Last dated run record:** 2026-11-24, `evals/commit/workspace/iteration-5/` — eval 10 (an origin on another host is a mismatch in step 16.5(b)), Quick Workflow, `with_skill` only, 2 of 2, graded by the author, run before the text on reporting a credential-free origin. Previous record: 2026-11-24, `evals/commit/workspace/iteration-4/` — eval 8 re-run after the marker moved from `jq` to `git-bypass-attestation-marker.py` (issue #861), Quick Workflow, `with_skill` only, 3 of 3. Previous record: `2026-09-21, evals/commit/` — 8 scenarios (step 16.5's own bypass-attestation
+**Last dated run record:** 2026-11-24, `evals/commit/workspace/iteration-5/` — eval 10 (an origin on another host is a mismatch in step 16.5(b)), 2 of 2 in both arms (baseline: the pre-change skill at c7b078e3, so no measured effect), graded by the author, the `with_skill` arm's model not recorded, run before the text on reporting a credential-free origin. Previous record: 2026-11-24, `evals/commit/workspace/iteration-4/` — eval 8 re-run after the marker moved from `jq` to `git-bypass-attestation-marker.py` (issue #861), Quick Workflow, `with_skill` only, 3 of 3. Previous record: `2026-09-21, evals/commit/` — 8 scenarios (step 16.5's own bypass-attestation
 behavior, including eval 8's injection-payload scenario added after cross-model-review round 2; a ninth, the
 `GH_REPO` origin-binding scenario, was added later), 36/36
 assertions passed via `skill-tester` Quick Workflow dry-run agents (see
