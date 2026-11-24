@@ -599,3 +599,49 @@ def test_report_markdown_leaves_no_link_or_reference_in_model_text(lab, monkeypa
     text = ab.render_markdown(report)
     for part in ("https://", "www.", " #12", "@me"):
         assert part not in text
+
+
+# --- from the cross-model review ------------------------------------------------------------------
+
+
+def test_a_reviewer_is_not_credited_with_another_reviewers_severity(lab, monkeypatch):
+    """Same rule, path and line: the merged finding takes the higher severity for every reporter."""
+
+    def outcome(sha, name):
+        return {"security-reviewer": "major", "dependency-reviewer": "minor"}.get(name)
+
+    report = _report(lab, monkeypatch, outcome)
+    security = report["reviewers"]["security-reviewer"]["old"]
+    dependency = report["reviewers"]["dependency-reviewer"]["old"]
+    assert security["blocking_per_run"] == [1, 1, 1]
+    assert dependency["blocking_per_run"] == [0, 0, 0]
+    assert dependency["findings"][0]["severities"] == {"Minor": 3}
+
+
+def test_the_combined_gate_result_keeps_the_merged_finding(lab, monkeypatch):
+    def outcome(sha, name):
+        return "major" if name == "security-reviewer" else "minor"
+
+    monkeypatch.setattr(review, "dispatch_reviewers", _fake_dispatch([], outcome))
+    out = lab["tmp"] / "out"
+    ab.run_experiment(_plan(lab, repeats=1), out)
+    result = json.loads((out / "old" / "run1.json").read_text(encoding="utf-8"))
+    (merged,) = [f for f in result["findings"] if f["source"] == "model"]
+    assert merged["blocking"] and set(merged["reporters"]) >= set(REVIEWERS)
+
+
+def test_report_counts_runs_that_never_happened(lab, monkeypatch):
+    calls: list = []
+    monkeypatch.setattr(review, "dispatch_reviewers", _fake_dispatch(calls, lambda *_: "FAIL"))
+    out = lab["tmp"] / "out"
+    ab.run_experiment(_plan(lab, repeats=3), out)
+    arms = ab.build_report(out, [])["reviewers"]["security-reviewer"]
+    assert (arms["old"]["failed"], arms["old"]["missing"]) == (1, 2)
+    assert (arms["new"]["runs"], arms["new"]["missing"]) == (0, 3)
+    assert "Missing" in ab.render_markdown(ab.build_report(out, []))
+
+
+def test_a_complete_run_reports_nothing_missing(lab, monkeypatch):
+    report = _report(lab, monkeypatch, lambda *_: None, repeats=2)
+    for arms in report["reviewers"].values():
+        assert {a["missing"] for a in arms.values()} == {0}

@@ -29,7 +29,7 @@ from scripts.marketplace_ci import __main__ as ci
 from scripts.marketplace_ci import review, review_contract, review_verifiers
 from scripts.marketplace_ci.git_state import ChangedPath
 from scripts.reviewer_eval.corpus import _HEAD_SHA, CorpusError, load_corpus
-from scripts.reviewer_eval.score import _rate, blocking_set, stability
+from scripts.reviewer_eval.score import _rate, stability
 
 MAX_REPEATS = 10
 _ROOT = Path(__file__).resolve().parents[2]
@@ -216,21 +216,13 @@ def _run_once(plan: Plan, arm: str, raw: Path) -> dict:
         for o in plan.outcomes
     )
     coverage = review_verifiers.script_coverage(plan.repo, plan.outcomes)
-    findings = review.aggregate_findings(validated, coverage)
-    blocking, in_diff, diff_scoped = ci._diff_scope(
-        findings, plan.repo, plan.base_sha, changed_paths, (ranges,), exceptions, coverage
-    )
-    provenance = ci._run_provenance(plan.repo, plan.base_sha, reports)
-    provenance["head_sha"] = plan.head_sha  # a merge commit's head is itself here, not its parent
-    return {
-        "arm": arm,
-        "arm_sha": plan.arms[arm],
-        "reviewed_paths": list(plan.scope.paths),
-        "reviewers": [r.reviewer for r in reports if r.reviewer not in failed],
-        "failed_reviewers": failed,
-        "provenance": provenance,
-        "diff_scoped": diff_scoped,
-        "findings": [
+
+    def gate(results: Sequence[review.ReviewResult]) -> tuple[list[dict], bool]:
+        findings = review.aggregate_findings(results, coverage)
+        blocking, in_diff, scoped = ci._diff_scope(
+            findings, plan.repo, plan.base_sha, changed_paths, (ranges,), exceptions, coverage
+        )
+        dicts = [
             ci._finding_to_dict(
                 f,
                 None if in_diff is None else f in in_diff,
@@ -243,7 +235,24 @@ def _run_once(plan: Plan, arm: str, raw: Path) -> dict:
                 ),
             )
             for f in findings
-        ],
+        ]
+        return dicts, scoped
+
+    findings, diff_scoped = gate(validated)
+    provenance = ci._run_provenance(plan.repo, plan.base_sha, reports)
+    provenance["head_sha"] = plan.head_sha  # a merge commit's head is itself here, not its parent
+    return {
+        "arm": arm,
+        "arm_sha": plan.arms[arm],
+        "reviewed_paths": list(plan.scope.paths),
+        "reviewers": [r.reviewer for r in reports if r.reviewer not in failed],
+        "failed_reviewers": failed,
+        "provenance": provenance,
+        "diff_scoped": diff_scoped,
+        "findings": findings,
+        # Each reviewer gated alone. The merged list above gives every reporter of a finding the
+        # highest severity among them, which would credit one reviewer with another's rating.
+        "by_reviewer": {r.reviewer: gate([r])[0] for r in validated if r.verdict != "script"},
     }
 
 
@@ -283,16 +292,17 @@ def _finding_key(finding: dict) -> tuple:
 
 
 def _reported_by(result: dict, reviewer: str) -> list[dict]:
-    return [
-        f
-        for f in result["findings"]
-        if f["source"] == "model" and reviewer in (f["reviewer"], *f["reporters"])
-    ]
+    return result["by_reviewer"].get(reviewer, [])
 
 
-def _arm_summary(reviewer: str, results: list[dict], labels: dict[tuple, str]) -> dict:
+def _arm_summary(
+    reviewer: str, results: list[dict], labels: dict[tuple, str], planned: int
+) -> dict:
     runs = [r for r in results if reviewer in r["reviewers"]]
-    sets = [blocking_set(r, reviewer) for r in runs]
+    sets = [
+        frozenset((f["path"], f["line"]) for f in _reported_by(r, reviewer) if f["blocking"])
+        for r in runs
+    ]
     per_run: list[int] = []
     reported: Counter[tuple] = Counter()
     blocked: Counter[tuple] = Counter()
@@ -314,6 +324,8 @@ def _arm_summary(reviewer: str, results: list[dict], labels: dict[tuple, str]) -
     return {
         "runs": len(runs),
         "failed": len(results) - len(runs),
+        # Stopped early, or lost after the calls (raw/ may still hold the reports).
+        "missing": planned - len(results),
         "blocking_per_run": per_run,
         "min": min(per_run, default=None),
         "median": statistics.median(per_run) if per_run else None,
@@ -361,7 +373,10 @@ def build_report(out: Path, cases: Sequence[dict]) -> dict:
     return {
         "manifest": manifest,
         "reviewers": {
-            name: {arm: _arm_summary(name, results[arm], labels) for arm in manifest["arms"]}
+            name: {
+                arm: _arm_summary(name, results[arm], labels, manifest["repeats"])
+                for arm in manifest["arms"]
+            }
             for name in manifest["prompts"]
         },
     }
@@ -385,15 +400,15 @@ def render_markdown(report: dict) -> str:
         "Counts of what was observed, not a significance test: a few repeats cannot separate a "
         "prompt's effect from run-to-run variation.",
         "",
-        "| Reviewer | Arm | Runs | Failed | Blocking per run | Median | Agree | Precision |",
-        "|---|---|---|---|---|---|---|---|",
+        "| Reviewer | Arm | Runs | Failed | Missing | Blocking | Median | Agree | Precision |",
+        "|---|---|---|---|---|---|---|---|---|",
     ]
     for name, arms in report["reviewers"].items():
         for arm, s in arms.items():
             precision = "-" if s["precision"] is None else f"{s['precision']:.2f}/{s['labelled']}"
             counts = ", ".join(map(str, s["blocking_per_run"])) or "-"
             cells = (
-                name, arm, s["runs"], s["failed"], counts,
+                name, arm, s["runs"], s["failed"], s["missing"], counts,
                 "-" if s["median"] is None else s["median"],
                 "-" if s["agree"] is None else s["agree"], precision,
             )  # fmt: skip
