@@ -1,0 +1,32 @@
+{
+  "eval_id": 28,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Claude's passes get accepted.md and Codex's passes only accepted.codex.md, in Phase 1 and Phase 2",
+      "passed": true,
+      "evidence": "accepted.md for Claude, accepted.codex.md for Codex, both phases"
+    },
+    {
+      "text": "With only accepted.md present, Codex gets no accepted-findings file",
+      "passed": true,
+      "evidence": "No brief for Codex, accepted.md never substituted"
+    },
+    {
+      "text": "The printed 'not briefed to Codex' line is reported in the inspection limits",
+      "passed": true,
+      "evidence": "Into Phase 3's inspection_limits"
+    },
+    {
+      "text": "Only app.py goes to Codex; config is left out because its diff would show the deleted folder's file",
+      "passed": true,
+      "evidence": "Only app.py; config's diff would show the deleted file"
+    },
+    {
+      "text": "A PATH folder in another worktree is dropped; an outside folder with a link to a program inside is kept as an accepted limit",
+      "passed": true,
+      "evidence": "Other worktree dropped; outside folder kept as accepted limit"
+    }
+  ],
+  "pass_rate": 1.0
+}

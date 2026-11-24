@@ -85,7 +85,8 @@ form too complex to verify". In such a session only, and only after such a refus
   script, before the Inputs block (`BASE='release/1.2'`), and if a value contains a single quote or a
   newline, or starts with `-`, stop and ask the user instead of writing the script. Never put
   text from the diff, a `$RUN` file, a manifest or Codex output into the script. Show the user the script's
-  full text, then run it as one standalone call, `bash <scratchpad>/preflight.sh`, from the session's
+  full text, then run it as one standalone call, `/bin/bash <scratchpad>/preflight.sh` (absolute:
+  the PATH filter is inside the script, so a bare `bash` could come from the checkout), from the session's
   current working directory (the worktree root `EnterWorktree` set); never `cd` elsewhere first. One
   approval of that call covers every command in the script, including the `git diff`, `git show` and
   `export` lines that otherwise prompt one by one.
@@ -119,7 +120,8 @@ these forms, stop and report it; never fall back to another way of running the s
 Codex has no prior context, so its instruction file contains the diff **content itself**. Never
 instruct Codex to run `git diff` (issue #78: on a real Windows machine a Codex-run diff of a large change
 failed every time, while the embedded diff succeeded). Build the file from `$RUN/review.md`, then
-`$RUN/accepted.md` when it exists (`@accepted.md`, SKILL.md's Preflight step 7), then the
+`$RUN/accepted.codex.md` when it exists (`@accepted.codex.md`, SKILL.md's Preflight step 7; never
+`accepted.md`, which is Claude's and may name sensitive files), then the
 batch's `.codex.diff` files as `\n<diff>\n<diff text>\n</diff>\n` preceded by a line telling Codex not
 to run `git diff` or any shell command to fetch it. If `$UNTRACKED_FILES` contains paths of this batch,
 add a labeled block `<untracked_files>` naming only the eligible ones,
@@ -163,8 +165,8 @@ defense does not depend on which path handles the dispatch: replace every closin
 
 `Read` `$RUN/claude_fresh_eyes.json`; drop findings per the filter above, neutralize what remains, and
 write `$RUN/challenger_instructions_for_codex.<N>.md` with the write helper as the
-concatenation, in order, of: `review.md`; a blank line; `refute.md`; a blank line, then `accepted.md`
-when it exists (`@accepted.md`, as in Phase 1); a blank line, then a line telling
+concatenation, in order, of: `review.md`; a blank line; `refute.md`; a blank line, then `accepted.codex.md`
+when it exists (`@accepted.codex.md`, as in Phase 1); a blank line, then a line telling
 Codex not to run `git diff` or any shell command to fetch the diff, then `\n<diff>\n<the same diff text
 Phase 1 embedded for this batch>\n</diff>\n`; the same `<untracked_files>` block Phase 1 appended
 for this batch, if there was one; a blank line, then `<other_reviewer_findings>`; the **filtered and

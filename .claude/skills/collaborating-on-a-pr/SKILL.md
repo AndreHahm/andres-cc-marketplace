@@ -8,7 +8,8 @@ description: >-
   its flow, and reuses merge-pr's CODEOWNERS check for reviewer context. For a raw one-off `gh pr` lookup
   or edit with no CODEOWNERS context or structured review action needed, see `gh-operations`' reference
   material instead — this skill owns the orchestrated review flow, not ad hoc `gh` calls. Not
-  `handling-review-findings`'s job of triaging findings already posted against an open PR.
+  `handling-review-findings`'s job of triaging findings already posted against an open PR. Not an
+  adversarial review of the local diff before a PR is opened or readied (`cross-model-review`).
 argument-hint: (optional) PR number or URL, and/or an issue number to link — defaults to the current branch's PR if omitted
 allowed-tools: Bash(gh pr view:*), Bash(gh pr review:*), Bash(gh pr comment:*), Bash(gh pr edit:*), Bash(gh api user --jq:*), Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh:*), Read, Write, Skill(create-pr)
 ---

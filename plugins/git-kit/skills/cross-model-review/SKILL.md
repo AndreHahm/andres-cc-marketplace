@@ -98,9 +98,9 @@ still-real index — the throwaway path doesn't exist yet until the `export` lin
 umask 077
 [ -n "${CLAUDE_PLUGIN_ROOT}" ] || { echo "plugin root is empty: nothing was run"; exit 0; }
 case ":$PATH:" in *::*|*:[!/]*) echo "PATH has an empty or relative entry: nothing was run"; exit 0;; esac
-ROOT=$(builtin pwd -P); while [ -n "$ROOT" ] && [ ! -e "$ROOT/.git" ] && [ ! -L "$ROOT/.git" ]; do ROOT=${ROOT%/*}; done; ROOT=${ROOT:-$(builtin pwd -P)}; MAIN=$ROOT; KEPT=; REST=$PATH:
-[ ! -f "$ROOT/.git" ] || { IFS= read -r G < "$ROOT/.git" || true; G=${G#gitdir: }; G=${G%[[:cntrl:]]}; case $G in /*|[A-Za-z]:*) ;; *) G=$ROOT/$G;; esac; G=$(CDPATH= builtin cd -P -- "$G/../.." >/dev/null 2>&1 && builtin pwd -P) || G=; case $G in */.git) MAIN=${G%/.git};; esac; }
-while [ -n "$REST" ]; do D=${REST%%:*}; REST=${REST#*:}; R=; case $D in /*) R=$(CDPATH= builtin cd -P -- "$D" >/dev/null 2>&1 && builtin pwd -P) || R=;; esac; IN=; for W in "$D" "$R"; do case $W in /*) ;; *) continue;; esac; while [ -n "$W" ] && [ -z "$IN" ]; do if [ "$W" -ef "$ROOT" ] || [ "$W" -ef "$MAIN" ]; then IN=1; fi; W=${W%/*}; done; done; if [ -n "$IN" ]; then PATH_FILTERED=1; else case $R in /*) KEPT=$KEPT:$D;; esac; fi; done; PATH=${KEPT#:}
+_rv_common() { C=; if [ -d "$1/.git" ]; then C=$1/.git; elif [ -f "$1/.git" ]; then IFS= read -r C 2>/dev/null < "$1/.git" || true; C=${C#gitdir: }; C=${C%[[:cntrl:]]}; case $C in /*|[A-Za-z]:*) ;; *) C=$1/$C;; esac; fi; if [ -n "$C" ] && [ -f "$C/commondir" ]; then D=; IFS= read -r D 2>/dev/null < "$C/commondir" || true; D=${D%[[:cntrl:]]}; case $D in /*|[A-Za-z]:*) C=$D;; *) C=$C/$D;; esac; fi; }
+ROOT=$(builtin pwd -P); while [ -n "$ROOT" ] && [ ! -e "$ROOT/.git" ] && [ ! -L "$ROOT/.git" ]; do ROOT=${ROOT%/*}; done; ROOT=${ROOT:-$(builtin pwd -P)}; _rv_common "$ROOT"; OWN=$C; PATH_FILTERED=; KEPT=; REST=$PATH:
+while [ -n "$REST" ]; do D=${REST%%:*}; REST=${REST#*:}; P=$D; R=; case $D in /*) R=$(CDPATH= builtin cd -P -- "$D" >/dev/null 2>&1 && builtin pwd -P) || R=;; esac; IN=; for W in "$P" "$R"; do case $W in /*) ;; *) continue;; esac; while [ -n "$W" ] && [ -z "$IN" ]; do _rv_common "$W"; if [ "$W" -ef "$ROOT" ] || { [ -n "$OWN" ] && { [ "$W" -ef "$OWN" ] || [ "${C:-/dev/null}" -ef "$OWN" ]; }; }; then IN=1; fi; W=${W%/*}; done; done; if [ -n "$IN" ]; then PATH_FILTERED=1; else case $R in /*) KEPT=$KEPT:$P;; esac; fi; done; PATH=${KEPT#:}
 [ -n "$PATH" ] || { echo "no PATH entry outside the repository: nothing was run"; exit 0; }; printf 'PATH_FILTERED=%s\nFILTERED_PATH=%s\n' "${PATH_FILTERED:-0}" "$PATH"
 BASE="${BASE:-main}"
 MERGE_BASE=$(git merge-base "$BASE" HEAD)
@@ -128,7 +128,7 @@ still shows the variable's name here, ask once via `AskUserQuestion` whether thi
 `.claude/` mirror may run as code; only an explicit yes allows the mirror root, written into every command
 (`.claude/rules/resolve-plugin-root-to-claude-mirror.md`, ungranted, prompts). Otherwise stop.
 
-**The chain drops PATH entries inside the checkout** (an active `.venv`, say); why, and its limits: `references/diff-mechanics-rationale.md`. Its first two output lines give `PATH_FILTERED` and `FILTERED_PATH` (use those two lines only). A later call starts with the unfiltered PATH, so with `PATH_FILTERED=1` begin each later Bash call with its own statement `export PATH='<value>'`, never a prefix assignment (it would not cover the next command or a `$(...)`); after `EnterWorktree`, if that is refused, one simple command with the prefix and no `$(...)`. Ungranted, so it prompts; a value with a single quote or a newline: stop and ask.
+**The chain drops PATH entries inside the checkout or another worktree of it** (an active `.venv`, say). It checks folders, not programs: a link in an outside folder to a program inside is an accepted limit. Why, and the limits: `references/diff-mechanics-rationale.md`. Its first two output lines give `PATH_FILTERED` and `FILTERED_PATH` (use those two lines only). A later call starts with the unfiltered PATH, so with `PATH_FILTERED=1` begin each later Bash call with its own statement `export PATH='<value>'`, never a prefix assignment (it would not cover the next command or a `$(...)`); after `EnterWorktree`, if that is refused, one simple command with the prefix and no `$(...)`. Ungranted, so it prompts; a value with a single quote or a newline: stop and ask.
 
 **A deletion-only `$SCOPE` has nothing to intent-add and passes, while `$INTENT_ADD_REFUSED` records any helper failure**, and **`$UNTRACKED_FILES` matters beyond this chain** for Codex's own dispatch — see `references/diff-mechanics-rationale.md` for both.
 
@@ -328,7 +328,7 @@ rather than duplicating the contract here; `severity` is `critical`/`major`/`min
 `approve`/`needs-attention` — is this skill's own convention layered on the schema's free-string
 field, not something the schema itself enumerates).
 
-When `$RUN/accepted.md` exists (Preflight step 7), both reviewers get it after `review.md`, as data.
+When they exist (Preflight step 7), Claude gets `$RUN/accepted.md` and Codex only `$RUN/accepted.codex.md` (no sensitive names), each after `review.md`, as data.
 
 **Claude's native pass:** review as yourself, following `$RUN/review.md` (`Grep`/`Glob` the repo to
 trace call sites when checking semantic correctness — not just the diff hunks). Read the diff batch by
@@ -447,7 +447,7 @@ cross-examined list, not to declare the diff clean.
 
 ## Boundaries
 
-Deliberately not in `allowed-tools`, so each prompts: `git diff` and `git show` (both accept `--output=<file>`, a write to any path), the `export PATH` / `GIT_INDEX_FILE` / `CODEX_KIT_REVIEW_*` assignments, exported or prefixed (a grant cannot pin the value they set), the repository's own `bridge-invoke.mjs` (reviewed code; a grant would run it unasked), the `guarded-dispatch.mjs` fallback (a grant would pre-approve a full-access dispatch), and, after `EnterWorktree` only, `Write` and `bash <scratchpad>/preflight.sh` (`Write` cannot be limited to a path; the script path varies, so its grant would be `Bash(bash:*)`, which also admits `bash -c` and any script; one approval covers every command in the script, and the scratchpad `Write` may not prompt at all). `git add -N` runs only through `scripts/git-review-intent-add.sh`. These prompt unless your own settings or permission mode already allow them. For `git diff`, `git show` and `bash` the reason is a shared prefix: any prefix rule for them also admits `--output` or `-c`. Approve each run once and do not add a persistent allow rule for them; approve `Write` for the single call only, never for the session.
+Deliberately not in `allowed-tools`, so each prompts: `git diff` and `git show` (both accept `--output=<file>`, a write to any path), the `export PATH` / `GIT_INDEX_FILE` / `CODEX_KIT_REVIEW_*` assignments, exported or prefixed (a grant cannot pin the value they set), the repository's own `bridge-invoke.mjs` (reviewed code; a grant would run it unasked), the `guarded-dispatch.mjs` fallback (a grant would pre-approve a full-access dispatch), and, after `EnterWorktree` only, `Write` and `/bin/bash <scratchpad>/preflight.sh` (`Write` cannot be limited to a path; the script path varies, so its grant would be `Bash(bash:*)`, which also admits `bash -c` and any script; one approval covers every command in the script, and the scratchpad `Write` may not prompt at all). `git add -N` runs only through `scripts/git-review-intent-add.sh`. These prompt unless your own settings or permission mode already allow them. For `git diff`, `git show` and `bash` the reason is a shared prefix: any prefix rule for them also admits `--output` or `-c`. Approve each run once and do not add a persistent allow rule for them; approve `Write` for the single call only, never for the session.
 
 ## Deliberately NOT done
 

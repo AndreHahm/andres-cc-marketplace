@@ -150,6 +150,9 @@ def locate() -> tuple[Path, list[Path]]:
     repo_roots = worktree_roots()
     if common.inside(root, repo_roots) or common.inside(bridge.resolve(), repo_roots):
         raise Unavailable("the installed codex-kit lies inside the repository under review")
+    # SKILL.md puts the root between single quotes in a shell command.
+    if "'" in root.as_posix() or not root.as_posix().isprintable():
+        raise Unavailable("the installed codex-kit's path cannot be quoted safely")
     return root, repo_roots
 
 
@@ -160,6 +163,10 @@ def main(argv: Sequence[str]) -> int:
     try:
         root, repo_roots = locate()
         node = common.tool("node", repo_roots) if argv[0] == "bridge" else ""
+        search_path = common.safe_path(repo_roots)
+        if argv[0] == "bridge" and not search_path:
+            # With an empty PATH the bridge would find `codex` in the working directory.
+            raise Unavailable("no PATH entry is usable outside the repository under review")
     except (Unavailable, FileNotFoundError) as err:
         if argv[0] == "locate":
             print(json.dumps({"ok": False, "reason": str(err)}))
@@ -170,7 +177,7 @@ def main(argv: Sequence[str]) -> int:
     if argv[0] == "locate":
         print(json.dumps({"ok": True, "root": root.as_posix()}))
         return 0
-    env = {**_clean_env(), "PATH": common.safe_path(repo_roots)}
+    env = {**_clean_env(), "PATH": search_path}
     try:
         return subprocess.run(
             [node, str(root / BRIDGE), *argv[1:]], env=env, check=False

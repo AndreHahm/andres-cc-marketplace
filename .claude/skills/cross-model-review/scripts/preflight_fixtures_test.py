@@ -472,6 +472,7 @@ def test_a_program_in_the_checkout_is_never_run():
         repo.mkdir()
         planner_repo(repo)
         run_bash(repo, "git worktree add -q --detach ../linked")
+        run_bash(repo, "git worktree add -q --detach ../sibling")
         planted = repo / "bin dir"
         planted.mkdir()
         for name in ("git", "bash", "python3", "mktemp", "grep"):
@@ -485,7 +486,11 @@ def test_a_program_in_the_checkout_is_never_run():
         (outside / "git").write_text(f'#!/bin/sh\ntouch "{planted}/out.ran"\n', encoding="utf-8")
         (outside / "git").chmod(0o755)
         (repo / "out").symlink_to(outside, target_is_directory=True)
-        entries = [planted, base / "link", base / "link" / ".." / "bin dir", repo / "out"]
+        sibling = base / "sibling" / "bin"
+        sibling.mkdir()
+        (sibling / "git").write_text(f'#!/bin/sh\ntouch "{planted}/sib.ran"\n', encoding="utf-8")
+        (sibling / "git").chmod(0o755)
+        entries = [planted, base / "link", base / "link" / ".." / "bin dir", repo / "out", sibling]
         for entry in entries:
             for cwd in (repo, repo / "sub", linked):
                 script = f'PATH="{entry}:$PATH"\n' + diff_build_chain(extra=echo)

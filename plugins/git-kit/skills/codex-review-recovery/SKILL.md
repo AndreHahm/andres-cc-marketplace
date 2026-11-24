@@ -8,7 +8,7 @@ description: >-
   user says Codex already finished. Not for triggering an initial Codex review (already automatic on
   PR-ready or draft→ready) or diagnosing why Codex hasn't started — only for a review that's done but
   stuck. Not `gh-operations`'s ungated `gh run rerun`, `merge-pr`'s bypass flow, or
-  `handling-review-findings`'s review triage.
+  `handling-review-findings`'s review triage. Not a Codex review of the local diff (`cross-model-review`).
 argument-hint: (optional) PR number or URL — defaults to the current branch's PR
 allowed-tools: Bash(gh pr view:*), Bash(gh pr comment:*), Bash(gh api:*), Bash(date:*), Bash(sleep:*), Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh:*)
 ---
