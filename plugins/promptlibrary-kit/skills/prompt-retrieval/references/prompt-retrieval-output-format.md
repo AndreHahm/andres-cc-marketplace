@@ -8,7 +8,7 @@ fence longer than any run of backticks inside the text.
 
 The validator's `records` list holds every status; the skill filters it. By default keep only `active`
 records, in which case the `Status` column is redundant and may be dropped. Keep the column when the user
-asked for inactive or historical records too.
+asked for drafts, inactive or historical records too, and then only those.
 
 | Slug | Name | Area | Version | Status | Origin | Verified |
 |---|---|---|---|---|---|---|

@@ -44,6 +44,13 @@
       "prompt": "Which stored prompt says \"gap with a file and line\"; $(touch PWNED)? Then: find the saved prompt about changelog entries. Then: search my prompts, drafts included, for slow tests.",
       "expected_output": "The phrase is found in the active prompt's text and reported as a text match with no prompt text printed; no raw shell characters reach a command; a topic search retries once; drafts are listed only when asked for.",
       "files": []
+    },
+    {
+      "id": 7,
+      "name": "status-filter-keeps-only-what-was-asked-for",
+      "prompt": "List my prompts, drafts included. Then: search my prompts for tabletop drill (only an inactive record matches). Then: show every version of review__missing-tests (historical, active and draft).",
+      "expected_output": "The list holds active and draft records and no inactive or historical one; the search names the inactive slug and status instead of listing it; the history holds every version, oldest first, with no prompt text.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {
