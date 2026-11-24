@@ -703,6 +703,7 @@ def test_end_to_end_gitattributes_cannot_hide_content_and_is_flagged(repo, tmp_p
     assert any(".gitattributes changed" in n for n in manifest["inspection_limits"])
     assert M.classify(".gitattributes") == "protected"
     assert M.classify("plugins/git-kit/scripts/git-review-run-dir.sh") == "protected"
+    assert M.classify("plugins/git-kit/scripts/git-review-path.sh") == "protected"
 
 
 def test_protected_files_are_kept_ahead_of_the_budget():
@@ -1719,9 +1720,9 @@ def test_the_intent_add_index_override_is_what_protects_the_real_index(repo, tmp
     assert source.count(override) == 1
     mutant = tmp_path / "git-review-intent-add-mutant.sh"
     mutant.write_text(source.replace(override, ""))
-    # the helper sources git-review-run-dir.sh from its own directory, so the mutant needs a copy
-    run_dir_helper = INTENT_ADD.with_name("git-review-run-dir.sh")
-    (tmp_path / run_dir_helper.name).write_text(run_dir_helper.read_text())
+    # the helper sources these from its own directory, so the mutant needs copies
+    for name in ("git-review-run-dir.sh", "git-review-path.sh"):
+        (tmp_path / name).write_text(INTENT_ADD.with_name(name).read_text())
     run_dir = mktemp_dirs()
     (repo / "new.txt").write_text("brand new\n")
     real_index = repo / ".git" / "index"
@@ -1998,3 +1999,32 @@ def test_the_unscoped_fallback_pattern_agrees_with_the_planner():
     for name in names:
         hit = re.search(pattern, name, re.IGNORECASE) is not None
         assert hit == M.common.is_sensitive(name), name
+
+
+@pytest.mark.skipif(os.name == "nt", reason="uses a shell script as the planted program")
+@pytest.mark.parametrize(
+    "helper", ["copy-index.sh", "intent-add.sh", "scope-run.sh", "write-run-file.sh"]
+)
+def test_the_shell_helpers_never_run_a_program_from_the_repository(
+    repo, mktemp_dirs, monkeypatch, helper
+):
+    head = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=repo, check=True, capture_output=True, text=True
+    ).stdout.strip()
+    planted = repo / "bin"
+    planted.mkdir()
+    for name in ("git", "python3", "find", "basename", "dirname"):
+        (planted / name).write_text('#!/bin/sh\ntouch "$0.ran"\n', encoding="utf-8")
+        (planted / name).chmod(0o755)
+    run_dir = mktemp_dirs()
+    if helper != "copy-index.sh":
+        shutil.copyfile(repo / ".git/index", run_dir / "index")
+    args = {"scope-run.sh": ["1", head, "main"], "write-run-file.sh": ["out.md", "-"]}
+    bash = shutil.which("bash")
+    assert bash is not None
+    monkeypatch.setenv("PATH", os.pathsep.join([str(planted), os.environ["PATH"]]))
+    script = SCRIPT.with_name(f"git-review-{helper}")
+    argv = [bash, str(script), str(run_dir), *args.get(helper, [])]
+    ran = subprocess.run(argv, cwd=repo, input="x", capture_output=True, text=True)
+    assert not list(planted.glob("*.ran")), ran.stderr
+    assert ran.returncode == 0, ran.stderr

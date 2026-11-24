@@ -16,6 +16,8 @@
 # is kept, because the skill relies on it. <base-ref> is trusted for settings and the mirror map, so
 # pass the branch the work will land on, never HEAD.
 set -euo pipefail
+# shellcheck source=git-review-path.sh
+source "${BASH_SOURCE[0]%/*}/git-review-path.sh" # before any program runs
 
 fail() {
   echo "git-review-scope-run.sh: $*" >&2

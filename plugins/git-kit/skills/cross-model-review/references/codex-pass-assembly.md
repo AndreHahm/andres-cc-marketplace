@@ -100,7 +100,7 @@ form too complex to verify". In such a session only, and only after such a refus
   `GIT_INDEX_FILE='<literal $RUN>/index'` on each later `git diff` and planner call that needs the
   throwaway index (the manifest cross-check, the planner re-run after a folder pick, and the fallback
   name list in `references/scoped-review.md`), and `CODEX_KIT_REVIEW_REPO_ROOT='<literal $REPO_ROOT>'` on a Codex
-  bridge dispatch, plus `CODEX_KIT_REVIEW_TIMEOUT_MS=480000` on a timeout retry. Without the index
+  bridge dispatch, plus `CODEX_KIT_REVIEW_TIMEOUT_MS=480000` on a timeout retry. With `PATH_FILTERED=1`, every call also takes the `PATH` prefix (SKILL.md); get the dispatch id's epoch from its own `date +%s` call and write it literally. Without the index
   variable, intent-added untracked files silently drop out of the review. If that form is refused too,
   stop and report.
 

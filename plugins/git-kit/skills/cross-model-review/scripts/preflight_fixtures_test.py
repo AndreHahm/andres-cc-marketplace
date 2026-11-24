@@ -437,6 +437,7 @@ def _empty_variable_run(*, with_mirror: bool) -> str:
                 "git-review-copy-index.sh",
                 "git-review-intent-add.sh",
                 "git-review-run-dir.sh",
+                "git-review-path.sh",
             ):
                 source = SKILL_DIR.parent.parent / "scripts" / name
                 (mirror / name).write_bytes(source.read_bytes())
@@ -461,6 +462,80 @@ def test_a_relative_path_entry_stops_the_chain():
             if not stopped or "PLANNER_CHAIN_COMPLETED" in result.stdout:
                 return False, f"PATH entry {entry!r} did not stop the chain: {result.stdout}"
         return True, "an empty or relative PATH entry stops the chain"
+
+
+def test_a_program_in_the_checkout_is_never_run():
+    """Absolute PATH entries inside the checkout, or its main checkout, are dropped (#697)."""
+    with tempfile.TemporaryDirectory() as tmp:
+        base = pathlib.Path(tmp)
+        repo, linked = base / "re'po", base / "linked"
+        repo.mkdir()
+        planner_repo(repo)
+        run_bash(repo, "git worktree add -q --detach ../linked")
+        planted = repo / "bin dir"
+        planted.mkdir()
+        for name in ("git", "bash", "python3", "mktemp", "grep"):
+            (planted / name).write_text('#!/bin/sh\ntouch "$0.ran"\n', encoding="utf-8")
+            (planted / name).chmod(0o755)
+        (base / "link").symlink_to(planted, target_is_directory=True)
+        (repo / "sub").mkdir()
+        echo = '\necho "FILTERED=${PATH_FILTERED:-0} PATH=$PATH"'
+        outside = base / "outside"
+        outside.mkdir()
+        (outside / "git").write_text(f'#!/bin/sh\ntouch "{planted}/out.ran"\n', encoding="utf-8")
+        (outside / "git").chmod(0o755)
+        (repo / "out").symlink_to(outside, target_is_directory=True)
+        entries = [planted, base / "link", base / "link" / ".." / "bin dir", repo / "out"]
+        for entry in entries:
+            for cwd in (repo, repo / "sub", linked):
+                script = f'PATH="{entry}:$PATH"\n' + diff_build_chain(extra=echo)
+                result = run_bash(cwd, script)
+                if list(planted.glob("*.ran")) or "DIFF_BUILD_COMPLETED" not in result.stdout:
+                    return False, f"{entry} from {cwd}: {result.stdout}\n{result.stderr}"
+                if f"PATH={entry}:" in result.stdout or "PATH_FILTERED=1" not in result.stdout:
+                    return False, f"{entry} from {cwd} was kept: {result.stdout}"
+
+        def finished(result):
+            return "DIFF_BUILD_COMPLETED" in result.stdout and "PATH_FILTERED=1" in result.stdout
+
+        missing = f'PATH="{repo}/node_modules/.bin:$PATH"\n' + diff_build_chain()
+        if "PATH_FILTERED=1" not in run_bash(repo, missing).stdout:
+            return False, "a missing entry spelled inside the checkout was not flagged"
+        noisy = 'cd() { builtin cd "$@" && echo listing; }\npwd() { echo x; }\n'
+        noisy += f'PATH="{planted}:$PATH"\n' + diff_build_chain()
+        result = run_bash(repo, noisy)
+        if (
+            list(planted.glob("*.ran"))
+            or f"PATH={planted}" in result.stdout
+            or not finished(result)
+        ):
+            return False, f"a cd function defeated the filter: {result.stdout}"
+        (repo / "git").write_text('#!/bin/sh\ntouch "bin dir/git.ran"\n', encoding="utf-8")
+        (repo / "git").chmod(0o755)
+        result = run_bash(repo, f'PATH="{planted}"\n' + diff_build_chain())
+        if list(planted.glob("*.ran")) or "no PATH entry outside" not in result.stdout:
+            return False, f"an empty PATH did not stop the chain: {result.stdout}"
+        (linked / ".git").write_text(
+            (linked / ".git").read_text(encoding="utf-8").strip() + "\r\n",
+            encoding="utf-8",
+            newline="",
+        )
+        result = run_bash(linked, f'PATH="{planted}:$PATH"\n' + diff_build_chain())
+        if (
+            list(planted.glob("*.ran"))
+            or f"PATH={planted}" in result.stdout
+            or not finished(result)
+        ):
+            return False, f"a CRLF .git file hid the main checkout: {result.stdout}"
+        return True, "programs inside the checkout or the main checkout are never run"
+
+
+def test_the_path_filter_is_the_helpers_own():
+    helper = (SKILL_DIR.parent.parent / "scripts/git-review-path.sh").read_text(encoding="utf-8")
+    block = helper.split("# >>> path filter\n")[1].split("# <<< path filter")[0]
+    if block not in extract_inputs_block():
+        return False, "the chain's PATH filter differs from git-review-path.sh"
+    return True, "the chain and the helpers filter PATH with the same lines"
 
 
 def test_an_empty_plugin_root_never_runs_the_repositorys_own_scripts():
@@ -528,6 +603,8 @@ CHECKS = [
     test_the_planner_block_joined_with_and_and_still_completes,
     test_an_empty_plugin_root_never_runs_the_repositorys_own_scripts,
     test_a_relative_path_entry_stops_the_chain,
+    test_a_program_in_the_checkout_is_never_run,
+    test_the_path_filter_is_the_helpers_own,
     test_an_intent_add_git_failure_is_disclosed,
     test_dispatcher_check_matches_a_case_variant_path,
     test_untracked_file_included,

@@ -1,0 +1,41 @@
+{
+  "eval_id": 27,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The brief and the dispatch call each begin with their own statement export PATH='/usr/local/bin:/usr/bin:/bin', never a prefix assignment",
+      "passed": true,
+      "evidence": "Both calls start with that export on its own line"
+    },
+    {
+      "text": "Every command of each call, the $(date) in the dispatch id included, runs after the export",
+      "passed": true,
+      "evidence": "The export precedes the second export, python3 and $(date +%s)"
+    },
+    {
+      "text": "The value comes from the chain's first two lines and the later PATH_FILTERED=0 line is ignored",
+      "passed": true,
+      "evidence": "Later line called repository-controlled data that must not turn the protection off"
+    },
+    {
+      "text": "A single quote or a newline in the value: stop and ask",
+      "passed": true,
+      "evidence": "'Stop and ask the user (same for a newline). Do not escape it'"
+    },
+    {
+      "text": "After EnterWorktree: one simple command with the PATH prefix and no $(...), so the dispatch id is literal",
+      "passed": true,
+      "evidence": "PATH prefix, epoch read by its own date call and written literally"
+    },
+    {
+      "text": "No PATH entry left: the review stops and nothing else is run",
+      "passed": true,
+      "evidence": "No step 7, no dispatch, no invented or unfiltered PATH; exit 0 not read as a pass"
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 6,
+    "pass_rate": 1.0
+  }
+}

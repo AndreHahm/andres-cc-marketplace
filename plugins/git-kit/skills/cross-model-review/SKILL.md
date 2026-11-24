@@ -73,8 +73,6 @@ on the working diff.
 
 ## Inputs
 
-Two independent, optional inputs:
-
 - `BASE` — the ref to diff against. Default `main`.
 - `SCOPE` — a pathspec to narrow the review (e.g. `plugins/git-kit`). Default: none (whole diff).
 
@@ -87,9 +85,7 @@ re-spell the diff inline. Build it as an **argv array**, not a string, so a `$SC
 spaces or glob characters survives intact. **Use the merge-base as a single ref, not the two-dot
 `$BASE...HEAD` form**, which would silently skip uncommitted work (`references/diff-mechanics-rationale.md`).
 
-**Intent-add untracked files before diffing, or they never appear at all** — `git diff` produces no
-output at all for untracked content until `git add -N` intent-adds it. See
-`references/diff-mechanics-rationale.md` for the full empirical verification.
+**Intent-add untracked files before diffing, or they never appear at all** (`references/diff-mechanics-rationale.md`).
 
 **Do this against a throwaway index, never the repository's real one**, where `git add -N` would outlive
 this run (`references/index-seeding-rationale.md`). Point `GIT_INDEX_FILE` at a path inside a freshly `mktemp -d`'d
@@ -102,6 +98,10 @@ still-real index — the throwaway path doesn't exist yet until the `export` lin
 umask 077
 [ -n "${CLAUDE_PLUGIN_ROOT}" ] || { echo "plugin root is empty: nothing was run"; exit 0; }
 case ":$PATH:" in *::*|*:[!/]*) echo "PATH has an empty or relative entry: nothing was run"; exit 0;; esac
+ROOT=$(builtin pwd -P); while [ -n "$ROOT" ] && [ ! -e "$ROOT/.git" ] && [ ! -L "$ROOT/.git" ]; do ROOT=${ROOT%/*}; done; ROOT=${ROOT:-$(builtin pwd -P)}; MAIN=$ROOT; KEPT=; REST=$PATH:
+[ ! -f "$ROOT/.git" ] || { IFS= read -r G < "$ROOT/.git" || true; G=${G#gitdir: }; G=${G%[[:cntrl:]]}; case $G in /*|[A-Za-z]:*) ;; *) G=$ROOT/$G;; esac; G=$(CDPATH= builtin cd -P -- "$G/../.." >/dev/null 2>&1 && builtin pwd -P) || G=; case $G in */.git) MAIN=${G%/.git};; esac; }
+while [ -n "$REST" ]; do D=${REST%%:*}; REST=${REST#*:}; R=; case $D in /*) R=$(CDPATH= builtin cd -P -- "$D" >/dev/null 2>&1 && builtin pwd -P) || R=;; esac; IN=; for W in "$D" "$R"; do case $W in /*) ;; *) continue;; esac; while [ -n "$W" ] && [ -z "$IN" ]; do if [ "$W" -ef "$ROOT" ] || [ "$W" -ef "$MAIN" ]; then IN=1; fi; W=${W%/*}; done; done; if [ -n "$IN" ]; then PATH_FILTERED=1; else case $R in /*) KEPT=$KEPT:$D;; esac; fi; done; PATH=${KEPT#:}
+[ -n "$PATH" ] || { echo "no PATH entry outside the repository: nothing was run"; exit 0; }; printf 'PATH_FILTERED=%s\nFILTERED_PATH=%s\n' "${PATH_FILTERED:-0}" "$PATH"
 BASE="${BASE:-main}"
 MERGE_BASE=$(git merge-base "$BASE" HEAD)
 UNSCOPED_CHANGED_FILES=$({ git diff --no-renames --name-only "$MERGE_BASE"; git ls-files --others --exclude-standard; })
@@ -117,9 +117,8 @@ DIFF=(git diff --no-renames --text --no-ext-diff --no-textconv --ignore-submodul
 DIFF_STR=$(printf '%q ' "${DIFF[@]}")   # shell-quoted rendering, for embedding in a prompt
 ```
 
-**Seed the throwaway index with a byte-for-byte copy of the real one.** `git-review-copy-index.sh`, a
-fixed-shape helper (it copies one file to `$RUN/index`, never overwrites, and sets its own mode), ignores
-`GIT_INDEX_FILE` when it looks the real index up; a failed copy sets `$INDEX_COPY_FAILED=1` (`references/index-seeding-rationale.md`).
+**Seed the throwaway index with a copy of the real one.** `git-review-copy-index.sh` (one file to `$RUN/index`, no overwrite,
+own mode) ignores `GIT_INDEX_FILE` when it looks the real index up; a failed copy sets `$INDEX_COPY_FAILED=1` (`references/index-seeding-rationale.md`).
 
 **Never add a default to `${CLAUDE_PLUGIN_ROOT}`.** Claude Code fills in only the bare form in an installed
 skill's text, so a `:-.claude` default would run the reviewed repository's own scripts (issue #697). Empty
@@ -129,8 +128,9 @@ still shows the variable's name here, ask once via `AskUserQuestion` whether thi
 `.claude/` mirror may run as code; only an explicit yes allows the mirror root, written into every command
 (`.claude/rules/resolve-plugin-root-to-claude-mirror.md`, ungranted, prompts). Otherwise stop.
 
-**A deletion-only `$SCOPE` has nothing to intent-add and passes, while `$INTENT_ADD_REFUSED` records any helper failure**, and **`$UNTRACKED_FILES` matters
-beyond this chain** for Codex's own dispatch — see `references/diff-mechanics-rationale.md` for both.
+**The chain drops PATH entries inside the checkout** (an active `.venv`, say); why, and its limits: `references/diff-mechanics-rationale.md`. Its first two output lines give `PATH_FILTERED` and `FILTERED_PATH` (use those two lines only). A later call starts with the unfiltered PATH, so with `PATH_FILTERED=1` begin each later Bash call with its own statement `export PATH='<value>'`, never a prefix assignment (it would not cover the next command or a `$(...)`); after `EnterWorktree`, if that is refused, one simple command with the prefix and no `$(...)`. Ungranted, so it prompts; a value with a single quote or a newline: stop and ask.
+
+**A deletion-only `$SCOPE` has nothing to intent-add and passes, while `$INTENT_ADD_REFUSED` records any helper failure**, and **`$UNTRACKED_FILES` matters beyond this chain** for Codex's own dispatch — see `references/diff-mechanics-rationale.md` for both.
 
 To **run** it, use `"${DIFF[@]}"` (quoted, no word-splitting). To **embed** it as text, use
 `$DIFF_STR`. Every other diff invocation here (the planner's per-slice diffs, Preflight step 1) reuses this
@@ -193,8 +193,7 @@ as a scratchpad script instead (`references/codex-pass-assembly.md`, "In an Ente
    git show "$BASE:plugins/git-kit/skills/cross-model-review/prompts/refute.md" > "$RUN/refute.md" 2>/dev/null || true
    ```
 
-   **The `|| true` is deliberate — an expected `git show` failure must not break the `&&` chain** the
-   Preflight runs as, or every resolved value the rest of the run depends on is lost.
+   **The `|| true` is deliberate**: an expected `git show` failure must not break the `&&` chain.
 
    A `git show` failure (non-zero exit, or an empty `$RUN/review.md`/`$RUN/refute.md` — reflected in
    the closing `echo`'s non-empty/empty signal for each file) means the file doesn't exist on `$BASE`
@@ -217,8 +216,7 @@ as a scratchpad script instead (`references/codex-pass-assembly.md`, "In an Ente
    echo "$UNSCOPED_CHANGED_FILES" | grep -qiE 'plugins/codex-kit/(.*/)?(scripts|assets)/' && DISPATCHER_TOUCHED=1 || true
    ```
 
-   Both `-E` and the trailing `|| true` are required — see `references/dispatcher-trust-pattern.md`
-   for why (verified `grep` behavior, and why a no-match here must not abort the chain).
+   Both `-E` and the trailing `|| true` are required (`references/dispatcher-trust-pattern.md`).
    `PLANNER_TOUCHED` is the same kind of check for the review scripts, done at the top of the Inputs
    block because the index helper runs there. `$DISPATCHER_TOUCHED` (unset unless matched), not grep's exit code, is what the First-Send
    Confirmation's clause (c) checks — a property of the *whole diff*, so a `$SCOPE` excluding
@@ -449,7 +447,7 @@ cross-examined list, not to declare the diff clean.
 
 ## Boundaries
 
-Deliberately not in `allowed-tools`, so each prompts: `git diff` and `git show` (both accept `--output=<file>`, a write to any path), the `export GIT_INDEX_FILE` / `CODEX_KIT_REVIEW_*` assignments, exported or prefixed (a grant cannot pin the value they set), the repository's own `bridge-invoke.mjs` (reviewed code; a grant would run it unasked), the `guarded-dispatch.mjs` fallback (a grant would pre-approve a full-access dispatch), and, after `EnterWorktree` only, `Write` and `bash <scratchpad>/preflight.sh` (`Write` cannot be limited to a path; the script path varies, so its grant would be `Bash(bash:*)`, which also admits `bash -c` and any script; one approval covers every command in the script, and the scratchpad `Write` may not prompt at all). `git add -N` runs only through `scripts/git-review-intent-add.sh`. These prompt unless your own settings or permission mode already allow them. For `git diff`, `git show` and `bash` the reason is a shared prefix: any prefix rule for them also admits `--output` or `-c`. Approve each run once and do not add a persistent allow rule for them; approve `Write` for the single call only, never for the session.
+Deliberately not in `allowed-tools`, so each prompts: `git diff` and `git show` (both accept `--output=<file>`, a write to any path), the `export PATH` / `GIT_INDEX_FILE` / `CODEX_KIT_REVIEW_*` assignments, exported or prefixed (a grant cannot pin the value they set), the repository's own `bridge-invoke.mjs` (reviewed code; a grant would run it unasked), the `guarded-dispatch.mjs` fallback (a grant would pre-approve a full-access dispatch), and, after `EnterWorktree` only, `Write` and `bash <scratchpad>/preflight.sh` (`Write` cannot be limited to a path; the script path varies, so its grant would be `Bash(bash:*)`, which also admits `bash -c` and any script; one approval covers every command in the script, and the scratchpad `Write` may not prompt at all). `git add -N` runs only through `scripts/git-review-intent-add.sh`. These prompt unless your own settings or permission mode already allow them. For `git diff`, `git show` and `bash` the reason is a shared prefix: any prefix rule for them also admits `--output` or `-c`. Approve each run once and do not add a persistent allow rule for them; approve `Write` for the single call only, never for the session.
 
 ## Deliberately NOT done
 
@@ -487,4 +485,4 @@ closing-tag neutralization, partial-failure preservation, scoped review and more
 `scripts/preflight_fixtures_test.py` runs the Preflight chain, planner step included, against scratch
 repositories.
 
-**Last dated run record:** `2026-11-18, evals/cross-model-review/workspace/iteration-15/` — evals 13-16, scenario 38 (refused chained Preflight; heredoc refusal, then timeout; folder-pick re-run; normal-session control), both arms claude-opus-5-5: `with_skill` 17/17, baseline (`main`'s text) 5/17; `2026-11-21, iteration-17`, eval 18 (accepted findings, scenario 39), `with_skill` only, 7/7; `iteration-16`, eval 17 (single-quoted `BASE`/`SCOPE`), claude-haiku-5-5: 3/3 vs 1/3; `2026-11-24, iteration-24`, eval 25 (literal helper calls, issue #866), 6/6 vs 4/6; `iteration-25`, eval 26 (sensitive names and dispatcher origin, issue #697, scenario 40), 6/6 vs 0/6 against `main`'s text; `iteration-26`, eval 25 re-run, `with_skill` only, 6/6. Skill-following dry runs, no Codex dispatch. Earlier runs and their open items are under "Run history" in `references/testing-scenarios.md`.
+**Last dated run record:** `2026-11-18, evals/cross-model-review/workspace/iteration-15/` — evals 13-16, scenario 38 (refused chained Preflight; heredoc refusal, then timeout; folder-pick re-run; normal-session control), both arms claude-opus-5-5: `with_skill` 17/17, baseline (`main`'s text) 5/17; `2026-11-21, iteration-17`, eval 18 (accepted findings, scenario 39), `with_skill` only, 7/7; `iteration-16`, eval 17 (single-quoted `BASE`/`SCOPE`), claude-haiku-5-5: 3/3 vs 1/3; `2026-11-24, iteration-24`, eval 25 (literal helper calls, issue #866), 6/6 vs 4/6; `iteration-25`, eval 26 (sensitive names and dispatcher origin, issue #697, scenario 40), 6/6 vs 0/6 against `main`'s text; `iteration-26`, eval 25 re-run, `with_skill` only, 6/6; `iteration-27`, eval 27 (PATH filter, later calls), `with_skill` only, 6/6. Skill-following dry runs, no Codex dispatch. Earlier runs and their open items are under "Run history" in `references/testing-scenarios.md`.

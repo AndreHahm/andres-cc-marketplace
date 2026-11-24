@@ -19,6 +19,8 @@
 # regular file's content comes first. The result is readable by the owner only. Parts are concatenated
 # verbatim, in order, so the caller supplies any newlines it wants between them.
 set -euo pipefail
+# shellcheck source=git-review-path.sh
+source "${BASH_SOURCE[0]%/*}/git-review-path.sh" # before any program runs
 
 fail() {
   echo "git-review-write-run-file.sh: $*" >&2
