@@ -75,13 +75,24 @@
         "max": 1,
         "agree": 2,
         "stable": null,
-        "labelled": 0,
-        "precision": null,
+        "labelled": 3,
+        "precision": 1.0,
         "findings": [
           {
             "rule": "allowed-tools-grant",
             "path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
             "line": 16,
+            "severities": {
+              "Minor": 1
+            },
+            "reported": 1,
+            "blocking": 0,
+            "runs": 3
+          },
+          {
+            "rule": "workflow-correctness",
+            "path": "plugins/git-kit/skills/handling-review-findings/references/fix-self-review.md",
+            "line": 71,
             "severities": {
               "Minor": 1
             },
@@ -98,17 +109,6 @@
             },
             "reported": 1,
             "blocking": 1,
-            "runs": 3
-          },
-          {
-            "rule": "workflow-correctness",
-            "path": "plugins/git-kit/skills/handling-review-findings/references/fix-self-review.md",
-            "line": 71,
-            "severities": {
-              "Minor": 1
-            },
-            "reported": 1,
-            "blocking": 0,
             "runs": 3
           }
         ]
@@ -147,8 +147,8 @@
         "max": 0,
         "agree": 3,
         "stable": null,
-        "labelled": 0,
-        "precision": null,
+        "labelled": 1,
+        "precision": 1.0,
         "findings": [
           {
             "rule": "path-validation",
@@ -179,8 +179,8 @@
         "max": 1,
         "agree": 1,
         "stable": null,
-        "labelled": 0,
-        "precision": null,
+        "labelled": 3,
+        "precision": 1.0,
         "findings": [
           {
             "rule": "permission-risk",
@@ -231,8 +231,8 @@
         "max": 1,
         "agree": 1,
         "stable": null,
-        "labelled": 0,
-        "precision": null,
+        "labelled": 4,
+        "precision": 1.0,
         "findings": [
           {
             "rule": "permission-risk",
@@ -296,8 +296,8 @@
         "max": 1,
         "agree": 1,
         "stable": null,
-        "labelled": 0,
-        "precision": null,
+        "labelled": 3,
+        "precision": 1.0,
         "findings": [
           {
             "rule": "security",
@@ -348,24 +348,13 @@
         "max": 1,
         "agree": 1,
         "stable": null,
-        "labelled": 0,
-        "precision": null,
+        "labelled": 4,
+        "precision": 0.75,
         "findings": [
           {
             "rule": "security/trust-boundary",
             "path": "plugins/git-kit/scripts/git-verify-fix-diff.py",
             "line": 256,
-            "severities": {
-              "Major": 1
-            },
-            "reported": 1,
-            "blocking": 1,
-            "runs": 3
-          },
-          {
-            "rule": "security",
-            "path": "plugins/git-kit/scripts/git-verify-fix-diff.py",
-            "line": 99,
             "severities": {
               "Major": 1
             },
@@ -382,6 +371,17 @@
             },
             "reported": 1,
             "blocking": 0,
+            "runs": 3
+          },
+          {
+            "rule": "security",
+            "path": "plugins/git-kit/scripts/git-verify-fix-diff.py",
+            "line": 99,
+            "severities": {
+              "Major": 1
+            },
+            "reported": 1,
+            "blocking": 1,
             "runs": 3
           },
           {

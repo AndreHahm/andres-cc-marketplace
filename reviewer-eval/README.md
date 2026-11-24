@@ -133,7 +133,9 @@ variation, and `stable` stays `null` below five. Each arm's
 `raw/` holds the reviewers' reports as returned, with token-shaped text redacted.
 
 `.github/workflows/reviewer-ab.yml` does this in CI with the API key, started by hand from `main` (see
-`docs/ci.md`). Its artifact is kept for 90 days; commit it under `ab/<experiment>/` to keep it. The files in
+`docs/ci.md`). Its artifact is kept for 90 days; commit it under `ab/<experiment>/` to keep it. Labels for that
+experiment go in `ab/<experiment>/corpus/`, since a case in `corpus/` would count toward the shipped reviewers'
+precision; after labelling, regenerate `report.json` with `report`'s `--corpus` set to that folder. The files in
 one arm's directory fit `score --stability`, which reads the merged `findings` list as it does for CI archives, so
 for a reviewer's own agreement use the report's `agree`. Never pass it runs of both arms, since it does not
 compare `arm_sha`.
