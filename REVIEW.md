@@ -37,6 +37,18 @@ Use this repository's shared four-tier scale ([`plugins/analysis-kit/references/
 
 A review's first line is the verdict: `LGTM` or `Changes Requested`. `Changes Requested` when any Critical or Major finding is open, or when a required test is missing for a `feat:`/`fix:` change. Cite every finding with file path and line number, and quote the evidence — a finding without a grounded citation is not actionable.
 
+These are Minor at most when a reviewer raises them, whatever rule it cites, `security-reviewer` included (issue #862). CI's script checks keep their own severities (`docs/ci.md`), and a change to them is judged as a gate change.
+
+1. An `allowed-tools` entry of a skill or command that is missing, unused, too broad, a wildcard or without effect, or a read-only claim beside a write grant. That field only pre-approves tools; it does not restrict them.
+2. A result the rulebook itself rates advisory, such as a Warning-tier size.
+3. A placeholder agent, script, path or name in an example or reference, unless a script, workflow, hook or an agent following the component would run or load it, or copying it as written would run code from a name someone else can register.
+4. Wording, structure, completeness or style of documentation that does not change what an agent or reader following it would do.
+5. An extra safeguard where an existing control, checked in the code or configuration that enforces it, already covers the case. A claim in prose, a comment or the PR body is not such a control.
+
+The list never lowers a defect that has its own trigger and harm, even on the same line or under a rule the list names. For example: untrusted input reaching a shell command, instructions taken from untrusted content, path escape, secret exposure, data loss or corrupted state, a missing, ineffective or weakened gate, or an instruction that makes an agent act wrongly. Item 1 does not cover an agent's `tools` field, hooks, `settings.json` permissions or workflow permissions.
+
+The evidence threshold for P0/P1, the example rule and "Later review rounds" apply only to the Codex App and live in `AGENTS.md`.
+
 ## The highest-stakes surface: the CI/review infrastructure itself
 
 A well-meaning workflow or Python change can undo a trust boundary without failing anything. This is where a review mistake is most consequential.
@@ -59,7 +71,7 @@ These are the product. A component change is reviewed the way you'd review a dep
 - **R1–R37 rulebook compliance** is checked by `plugin-rulebook-checker` in CI for changed components. Don't re-run it. *Do* flag a component that structurally mismatches its type's required shape (a rule needs Description/Incorrect/Correct, not numbered steps; a hook needs `hooks.json` with the right event) — that's a coherence issue the rulebook's formatting checks can miss.
 - **The multi-mirror/export convention.** Every plugin registered in `.claude/marketplace-sync.json`'s `plugin_mirrors` list gets its canonical `plugins/<name>/` sources mirrored into `.claude/` only. `.agents/` and `.codex/` are separate, narrower exports, not full plugin mirrors: only the specific skills named in `codex_exports.skills` export to `.agents/skills/`, and only the specific agents named in `codex_exports.agents` convert into `.codex/agents/`. `marketplace-parity` (CI) checks all three destinations. A change to one declared copy with no matching change to the others is the tell — but if CI is green, the declared copies are in sync, so don't re-check; instead flag a new mirror/export convention that CI does not yet cover.
 - **A `SKILL.md` is instructions an agent will follow.** Review an added or updated skill and its `references/` for: instructions written against *assumed* tool behavior instead of *checked* behavior (the cross-PR meta-pattern below); an `allowed-tools` grant that doesn't cover every `Bash(...)`/`Skill(...)` call in the body; a `disable-model-invocation: true` skill that gained an execution grant it will never use in CI.
-- **A new `Bash(...)`/`Skill(...)` call added to a skill body must have its exact matching grant in `allowed-tools` in the same edit.** The gap between "added the call" and "added the grant" is exactly the window a review round exists to catch.
+- **A new `Bash(...)`/`Skill(...)` call added to a skill body should have its exact matching grant in `allowed-tools` in the same edit; a missing one is Minor at most (see Severity and verdict).** The gap between "added the call" and "added the grant" is exactly the window a review round exists to catch.
 - **Don't flag a missing `AskUserQuestion` grant in `allowed-tools`.** It is always callable, so omitting it is correct and listing it is a redundant no-op (an ADVISORY at most). Claude Code's skills docs (code.claude.com/docs/en/skills, "Pre-approve tools for a skill") say `allowed-tools` "does not restrict which tools are available: every tool remains callable", and `plugin-rulebook` records this in `references/frontmatter-corrections.md` (R5) and the R6 completeness exemption. The rule above covers `Bash(...)`/`Skill(...)` calls, not this tool. A finding that claims the frontmatter "denies" or "blocks" `AskUserQuestion` misreads the field.
 - **No scratch files at the repository root.** This repo's `CLAUDE.md`/`AGENTS.md` prohibit temporary/test/scratch files at repo root (a recurring failure mode under local-permission constraints). A PR that adds an untracked-looking file at root — even one the author intends to delete — is a finding.
 
