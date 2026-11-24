@@ -1,0 +1,284 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4684189874",
+      "line": 173,
+      "note": "Empty filtered PATH is refused before the bridge starts.",
+      "path": "plugins/git-kit/scripts/git-review-codex-kit.py",
+      "pr": 879,
+      "recorded_at": "2026-11-24T18:30:12+00:00",
+      "rule": "empty-path"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4684201982",
+      "line": 654,
+      "note": "Separate briefs for Claude and Codex.",
+      "path": "plugins/git-kit/scripts/git-review-accepted-findings.py",
+      "pr": 879,
+      "recorded_at": "2026-11-24T18:30:12+00:00",
+      "rule": "shared-brief"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4684202256",
+      "line": 4,
+      "note": "Eval 26 rerun in iteration-28 with assertions fixed first.",
+      "path": "evals/cross-model-review/workspace/iteration-25/eval-26/eval_metadata.json",
+      "pr": 879,
+      "recorded_at": "2026-11-24T18:30:12+00:00",
+      "rule": "post-run-assertions"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4684202471",
+      "line": 236,
+      "note": "Expected outputs of evals 5 and 6 updated.",
+      "path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+      "pr": 879,
+      "recorded_at": "2026-11-24T18:30:12+00:00",
+      "rule": "stale-evals"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4684202769",
+      "line": 817,
+      "note": "A file that replaced a folder is not Codex-eligible; leak reproduced first.",
+      "path": "plugins/git-kit/scripts/git-review-scope.py",
+      "pr": 879,
+      "recorded_at": "2026-11-24T18:30:12+00:00",
+      "rule": "replaced-folder-leak"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4684336736",
+      "line": 81,
+      "note": "The .com suffix is checked.",
+      "path": "plugins/git-kit/scripts/git_review_common.py",
+      "pr": 879,
+      "recorded_at": "2026-11-24T18:30:12+00:00",
+      "rule": "pathext"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4684336764",
+      "line": 95,
+      "note": "Same defect as 4684189874, same fix.",
+      "path": "plugins/git-kit/scripts/git_review_common.py",
+      "pr": 879,
+      "recorded_at": "2026-11-24T18:30:12+00:00",
+      "rule": "empty-path"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4684336779",
+      "line": 623,
+      "note": "Service-account names with a space are recognized.",
+      "path": "plugins/git-kit/scripts/git-review-accepted-findings.py",
+      "pr": 879,
+      "recorded_at": "2026-11-24T18:30:12+00:00",
+      "rule": "spaced-name"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4684336797",
+      "line": 983,
+      "note": "Sensitive names outside the scope are named.",
+      "path": "plugins/git-kit/scripts/git-review-scope.py",
+      "pr": 879,
+      "recorded_at": "2026-11-24T18:30:12+00:00",
+      "rule": "scope-disclosure"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4684336811",
+      "line": 65,
+      "note": "Exclusion added to the description.",
+      "path": "plugins/git-kit/skills/codex-review-recovery/SKILL.md",
+      "pr": 879,
+      "recorded_at": "2026-11-24T18:30:12+00:00",
+      "rule": "description-exclusion"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4684336830",
+      "line": 46,
+      "note": "Exclusion added to the description.",
+      "path": "plugins/git-kit/skills/collaborating-on-a-pr/SKILL.md",
+      "pr": 879,
+      "recorded_at": "2026-11-24T18:30:12+00:00",
+      "rule": "description-exclusion"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "051968d10a2b659be4e241ba9da5fda9",
+      "line": 732,
+      "note": "Tracked issue text no longer goes to Codex.",
+      "path": "plugins/git-kit/scripts/git-review-accepted-findings.py",
+      "pr": 879,
+      "recorded_at": "2026-11-24T20:49:12+00:00",
+      "rule": "credential-pii-leakage"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "0ac33e10602611917c65ef8a11c50603",
+      "line": 255,
+      "note": "locate refuses a root that single quotes cannot hold.",
+      "path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+      "pr": 879,
+      "recorded_at": "2026-11-24T18:30:12+00:00",
+      "rule": "command-injection"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "28f60730890156cd0d3280716bab67db",
+      "line": 759,
+      "note": "Parts of a waiver rule are matched against the sensitive file names; plain labels stay allowed.",
+      "path": "plugins/git-kit/scripts/git-review-accepted-findings.py",
+      "pr": 879,
+      "recorded_at": "2026-11-24T20:23:28+00:00",
+      "rule": "security/privacy"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "47a90e7563e557269e6b09303256845a",
+      "line": 108,
+      "note": "Tracked issue text no longer goes to Codex; the host is matched in any letter case for waiver lines.",
+      "path": "plugins/git-kit/scripts/git-review-accepted-findings.py",
+      "pr": 879,
+      "recorded_at": "2026-11-24T20:49:11+00:00",
+      "rule": "security-privacy"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "5f0caece3d5f2b1b33e8370f",
+      "line": 15,
+      "note": "First accepted as a limit, then fixed with c8425b39.",
+      "path": "plugins/git-kit/scripts/git-review-path.sh",
+      "pr": 879,
+      "recorded_at": "2026-11-24T19:04:19+00:00",
+      "rule": "outside-link"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "66ce62ff285f1c3aa3f22b5e738d7327",
+      "line": 707,
+      "note": "Common credential formats and email addresses keep an issue out of Codex's brief; the list is documented as incomplete.",
+      "path": "plugins/git-kit/scripts/git-review-accepted-findings.py",
+      "pr": 879,
+      "recorded_at": "2026-11-24T19:52:20+00:00",
+      "rule": "credential-PII-leakage"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "78c8f1de0ae73cf80007831d7f2364fd",
+      "line": 59,
+      "note": "The reference says accepted.md can hold personal details.",
+      "path": "plugins/git-kit/skills/cross-model-review/references/accepted-findings.md",
+      "pr": 879,
+      "recorded_at": "2026-11-24T20:58:13+00:00",
+      "rule": "PII/credential-leakage"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "b9e2acdd049aa228ee8365c7c4abda78",
+      "line": 705,
+      "note": "Valid tracked lines are named by issue number; helper output is declared data.",
+      "path": "plugins/git-kit/scripts/git-review-accepted-findings.py",
+      "pr": 879,
+      "recorded_at": "2026-11-24T19:52:20+00:00",
+      "rule": "prompt-injection-surface"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "c6bd659696b5e85f179739faa9dc9775",
+      "line": 644,
+      "note": "brief requires the user profile on Windows; simulated on Linux only.",
+      "path": "plugins/git-kit/scripts/git-review-accepted-findings.py",
+      "pr": 879,
+      "recorded_at": "2026-11-24T19:04:19+00:00",
+      "rule": "data-confidentiality"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "c8425b398c78cf24b010690462beb05b",
+      "line": 15,
+      "note": "Links of the programs the review runs are followed step by step.",
+      "path": "plugins/git-kit/scripts/git-review-path.sh",
+      "pr": 879,
+      "recorded_at": "2026-11-24T19:04:19+00:00",
+      "rule": "path-based-code-execution"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "cb761a4ce5362a8c4b1de2c998070045",
+      "line": 15,
+      "note": "Other worktrees are recognized by their common git directory, in the shell and Python filters.",
+      "path": "plugins/git-kit/scripts/git-review-path.sh",
+      "pr": 879,
+      "recorded_at": "2026-11-24T18:30:12+00:00",
+      "rule": "path-tool-resolution"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "cbafafc19ad10625aaa0ab2f913fb3a0",
+      "line": 737,
+      "note": "Rule, path and the flagged line's text are screened before a waiver line goes to Codex.",
+      "path": "plugins/git-kit/scripts/git-review-accepted-findings.py",
+      "pr": 879,
+      "recorded_at": "2026-11-24T20:10:59+00:00",
+      "rule": "credential-pii-leakage"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "claude-delta-bare-name",
+      "line": 14,
+      "note": "The four helpers say to run them by path.",
+      "path": "plugins/git-kit/scripts/git-review-copy-index.sh",
+      "pr": 879,
+      "recorded_at": "2026-11-24T18:30:13+00:00",
+      "rule": "bare-script-name"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "d9f6b90b4644e0ca337d2b431c266ca2-R6",
+      "line": 103,
+      "note": "readlink is granted.",
+      "path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+      "pr": 879,
+      "recorded_at": "2026-11-24T19:52:19+00:00",
+      "rule": "plugin-rulebook:R6"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "d9f6b90b4644e0ca337d2b431c266ca2-security",
+      "line": 17,
+      "note": "Listed programs are also checked with .exe; run on Linux only.",
+      "path": "plugins/git-kit/scripts/git-review-path.sh",
+      "pr": 879,
+      "recorded_at": "2026-11-24T19:52:19+00:00",
+      "rule": "security"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "e9d1cd6b8aad54af7b774cca85afb99c",
+      "line": 104,
+      "note": "More formats, assignments and a generic letter-digit run; the list stays documented as incomplete.",
+      "path": "plugins/git-kit/scripts/git-review-accepted-findings.py",
+      "pr": 879,
+      "recorded_at": "2026-11-24T20:10:59+00:00",
+      "rule": "privacy"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ed7fc59aa9c16ebff6a796a7d4c94b08",
+      "line": 639,
+      "note": "brief requires a private mktemp directory outside the repository.",
+      "path": "plugins/git-kit/scripts/git-review-accepted-findings.py",
+      "pr": 879,
+      "recorded_at": "2026-11-24T18:30:13+00:00",
+      "rule": "path-containment"
+    }
+  ]
+}
