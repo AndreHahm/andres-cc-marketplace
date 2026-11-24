@@ -548,6 +548,10 @@ matches_flags() {
     grep -qiE "$1" <<<"${FLAGS_TEXT}"
 }
 
+# A word of a check that reads raw text ends at whitespace, the end or an operator written against
+# it (`git push origin main>log`). A backtick is left out: messages use it around commands.
+WORD_END='([[:space:];&|<>)]|$)'
+PUSH_END='([[:space:];&|<>]|$)'
 COMMAND_PREFIX='(^|;[[:space:]]*|&&[[:space:]]*|[|][|][[:space:]]*|[|][[:space:]]*)'
 # `git <subcommand>`, also after git's global options (`git -C repo push`, `git -c k=v push`,
 # `git --git-dir path push`), with an option value that may be quoted (`git -C "a b" push`).
@@ -619,10 +623,13 @@ ABBREV_GIT_RE+="|branch([^;&|]*[[:space:]])?-[a-zA-Z]*[dD][a-zA-Z]*${GIT_SUB_END
 # that option's value (`tag -mdone`, `tag -Fd`), and the match ignores case, so f would match F.
 ABBREV_GIT_RE+="|tag([^;&|]*[[:space:]])?-i*d[a-zA-Z]*${GIT_SUB_END}"
 ABBREV_GIT_RE+="|pull([^;&|]*[[:space:]])?-[a-zA-Z]*r${GIT_SUB_END}"
+ABBREV_GIT_RE+="|submodule(--helper)?([[:space:]]+(-q|--quiet|${REDIR_WORD}))*(${GIT_ASSIGN})*[[:space:]]+update([^;&|]*[[:space:]])?"
+ABBREV_GIT_RE+="(--reb(a(s(e)?)?)?|--m(e(r(g(e)?)?)?)?|-[a-zA-Z]*[rm])${GIT_SUB_END}"
 # A setting given for one command only (`git -c ...`, `--config-env`, GIT_CONFIG_* variables)
 # that turns off clean's force check, makes pull rebase or merge (branch.autoSetupRebase does
 # so for a later pull on a branch created with it), makes submodule update rebase, merge or run a
-# command, force-pushes (remote.<name>.mirror or push), expires reflogs, or defines any alias (an
+# command, force-pushes (remote.<name>.mirror or push), pushes more than one
+# branch (push.default), expires reflogs, or defines any alias (an
 # alias can name a forbidden subcommand, `alias.x=stash`, or run a shell, `alias.x=!cmd`).
 # The exec-policy rules cannot see it: the command no longer starts with `git clean`.
 # A persistent `git config` stays with the rules, which ask the user. Known limits of a text
@@ -632,24 +639,38 @@ ABBREV_GIT_RE+="|pull([^;&|]*[[:space:]])?-[a-zA-Z]*r${GIT_SUB_END}"
 # The -c and --config-env forms must follow `git` and its global options at the start of a
 # command or of a shell string (added below), and need `=` after the key, so `gcc -c alias.c`, `make -C alias.d` or a search for
 # `-c alias.x=` in text is not read as one; a rebase key may also stand alone, since git reads
-# `-c pull.rebase` as true, and so may `pull.ff`, whose bare `true` overrides a persistent
-# `pull.ff=only`. `branch.<name>.mergeOptions` passes options such as `--no-ff` to the merge
+# `-c pull.rebase` as true, and so may `pull.ff` and `merge.ff`, whose bare `true` overrides a
+# persistent `only`. `branch.<name>.mergeOptions` passes options such as `--no-ff` to the merge
 # that pull runs. A GIT_CONFIG_KEY_<n> value is the bare key.
-CONFIG_KEYS='(clean\.requireforce|pull\.(rebase|ff)|merge\.ff|branch\.[^[:space:]=]*\.(rebase|mergeoptions)|branch\.autosetuprebase|submodule\.[^[:space:]]*\.update|remote\.[^[:space:]]*\.(mirror|push)|gc\.([^[:space:]]*\.)?reflogexpire(unreachable)?|alias\.[^[:space:]=]*)'
+CONFIG_KEYS='(clean\.requireforce|pull\.(rebase|ff)|merge\.ff|branch\.[^[:space:]=]*\.(rebase|mergeoptions)|branch\.autosetuprebase|push\.default|submodule\.[^[:space:]]*\.update|remote\.[^[:space:]]*\.(mirror|push)|gc\.([^[:space:]]*\.)?reflogexpire(unreachable)?|alias\.[^[:space:]=]*)'
 # A `-c` value written in the command is read too: `pull.ff=only` keeps pull fast-forward-only
-# and `clean.requireForce=true` keeps the force check, so only another value of those two keys
-# is blocked. A value must be exactly that word, ended by a blank, a quote, an operator or the
+# and `clean.requireForce=true` keeps the force check, and `push.default=current`, `simple` or
+# `nothing` pushes at most the current branch, so only another value of those keys is blocked. A value must be exactly that word, ended by a blank, a quote, an operator or the
 # end; any other `-c` of the same key in the command is still matched on its own. A value
 # split by a backslash also reads as `_` in one copy, so it is blocked. --config-env and the
 # GIT_CONFIG_* forms take the value from elsewhere, so every value of these keys stays blocked.
 CONFIG_VALUE_END='([[:space:]"'"'"';&|)}`<>]|$)'
 CONFIG_VALUE_NOT='[:space:]"'"'"';&|)}`<>'
+# not_words <word>...: any value that is not exactly one of the words, which start with
+# different letters.
+not_words() {
+    local w i first='' out=${CONFIG_VALUE_END}
+    for w in "$@"; do
+        first+=${w:0:1}
+        for ((i = 1; i < ${#w}; i++)); do
+            out+="|${w:0:i}(${CONFIG_VALUE_END}|[^${w:i:1}${CONFIG_VALUE_NOT}])"
+        done
+        out+="|${w}[^${CONFIG_VALUE_NOT}]"
+    done
+    printf '%s' "(${out}|[^${first}${CONFIG_VALUE_NOT}])"
+}
 CONFIG_NOT_ONLY="(${CONFIG_VALUE_END}|(o|on|onl)${CONFIG_VALUE_END}|[^o${CONFIG_VALUE_NOT}]"
 CONFIG_NOT_ONLY+="|o[^n${CONFIG_VALUE_NOT}]|on[^l${CONFIG_VALUE_NOT}]|onl[^y${CONFIG_VALUE_NOT}]|only[^${CONFIG_VALUE_NOT}])"
 CONFIG_NOT_TRUE="(${CONFIG_VALUE_END}|(t|tr|tru)${CONFIG_VALUE_END}|[^t${CONFIG_VALUE_NOT}]"
 CONFIG_NOT_TRUE+="|t[^r${CONFIG_VALUE_NOT}]|tr[^u${CONFIG_VALUE_NOT}]|tru[^e${CONFIG_VALUE_NOT}]|true[^${CONFIG_VALUE_NOT}])"
 CONFIG_C_SET="((pull\.rebase|merge\.ff|branch\.[^[:space:]=]*\.(rebase|mergeoptions)|branch\.autosetuprebase|submodule\.[^[:space:]=]*\.update|remote\.[^[:space:]=]*\.(mirror|push)|gc\.([^[:space:]=]*\.)?reflogexpire(unreachable)?|alias\.[^[:space:]=]*)="
-CONFIG_C_SET+="|pull\.ff=${CONFIG_NOT_ONLY}|clean\.requireforce=${CONFIG_NOT_TRUE})"
+CONFIG_C_SET+="|pull\.ff=${CONFIG_NOT_ONLY}|clean\.requireforce=${CONFIG_NOT_TRUE}"
+CONFIG_C_SET+="|push\.default=$(not_words current simple nothing))"
 # The option itself; under `set -k` a dropped NAME=value word may stand before the key.
 CONFIG_FLAG_C="-c(${GIT_ASSIGN})*[[:space:]]*"
 CONFIG_FLAG_E="--config-env(${GIT_ASSIGN})*[=[:space:]]+"
@@ -661,7 +682,7 @@ config_set_re() {
 CONFIG_PRE="${SEGMENT_START}git${GIT_OPT}*[[:space:]]+"
 CONFIG_OPT="${CONFIG_PRE}${CONFIG_FLAG}"
 UNSAFE_CONFIG_RE=$(config_set_re "${CONFIG_PRE}")
-UNSAFE_CONFIG_RE+="|${CONFIG_OPT}((pull|branch\.[^[:space:]=]*)\.rebase|pull\.ff|remote\.[^[:space:]=]*\.mirror)${GIT_SUB_END}"
+UNSAFE_CONFIG_RE+="|${CONFIG_OPT}((pull|branch\.[^[:space:]=]*)\.rebase|(pull|merge)\.ff|remote\.[^[:space:]=]*\.mirror)${GIT_SUB_END}"
 # A GIT_CONFIG_* variable set for git (read below, after the other per-command checks).
 GIT_CONFIG_ENV="GIT_CONFIG_(KEY_[0-9]+|PARAMETERS)[+]?=[^[:space:]]*${CONFIG_KEYS}"
 # A forbidden git command inside a string that a shell runs (`bash -c 'git stash'`, also after
@@ -689,14 +710,14 @@ INNER_GIT_RE="^[[:space:]]*${SHELL_STRING_BODY}${SHELL_STRING_GIT}"
 # The per-command settings above, also inside such a string (`ssh host 'git -c alias.x=stash x'`).
 SHELL_CONFIG_PRE="${SHELL_STRING_START}git${GIT_OPT}*[[:space:]]+"
 UNSAFE_CONFIG_RE+="|$(config_set_re "${SHELL_CONFIG_PRE}")"
-UNSAFE_CONFIG_RE+="|${SHELL_CONFIG_PRE}${CONFIG_FLAG}((pull|branch\.[^[:space:]=]*)\.rebase|pull\.ff|remote\.[^[:space:]=]*\.mirror)${GIT_SUB_END_Q}"
+UNSAFE_CONFIG_RE+="|${SHELL_CONFIG_PRE}${CONFIG_FLAG}((pull|branch\.[^[:space:]=]*)\.rebase|(pull|merge)\.ff|remote\.[^[:space:]=]*\.mirror)${GIT_SUB_END_Q}"
 UNSAFE_CONFIG_RE+="|${SHELL_STRING_START}${GIT_CONFIG_ENV}"
 # Read in the copies without quote characters, for a key quoted inside the string
 # (`bash -c 'git -c "alias.x=stash" x'`) or a quoted argument before it (`ssh -o "A b" host`).
 SHELL_CONFIG_PRE='(^|[^A-Za-z0-9_.-])(bash|sh|zsh|dash|ksh|eval|su|ssh)[[:space:]]([^;&|]*[[:space:];&|({])?'
 SHELL_CONFIG_PRE+="git${GIT_OPT}*[[:space:]]+"
 UNSAFE_CONFIG_RE+="|$(config_set_re "${SHELL_CONFIG_PRE}")"
-UNSAFE_CONFIG_RE+="|${SHELL_CONFIG_PRE}${CONFIG_FLAG}((pull|branch\.[^[:space:]=]*)\.rebase|pull\.ff|remote\.[^[:space:]=]*\.mirror)${GIT_SUB_END}"
+UNSAFE_CONFIG_RE+="|${SHELL_CONFIG_PRE}${CONFIG_FLAG}((pull|branch\.[^[:space:]=]*)\.rebase|(pull|merge)\.ff|remote\.[^[:space:]=]*\.mirror)${GIT_SUB_END}"
 # chmod that makes a file writable by others: an octal mode whose last digit has the
 # write bit (2, 3, 6, 7), or a symbolic clause for o or a that adds or sets w. default.rules
 # lists a few exact modes; it cannot test the bit, so the hook catches the rest.
@@ -724,14 +745,17 @@ PUBLISH_RE+="([[:space:]]+(workspace[[:space:]]+[^;&|[:space:]]+|exec|-r|--recur
 PUBLISH_RE+="[[:space:]]+npm[[:space:]]+publish${GIT_SUB_END}"
 GIT_PUSH="${GIT_CMD}push"
 PUSH_FORCE_RE="${GIT_PUSH}([^;&|]*)--force"
-PUSH_FORCE_RE+="|${GIT_PUSH}([^;&|]*)[[:space:]]-f([[:space:]]|\$)"
+PUSH_FORCE_RE+="|${GIT_PUSH}([^;&|]*)[[:space:]]-f${WORD_END}"
+PUSH_FORCE_RE+="|${GIT_PUSH}([^;&|]*)[[:space:]]--m(i(r(r(o(r)?)?)?)?)?([\"'\`]|${WORD_END})"
 # A leading `+` on a refspec (`git push origin +main`) is also a force push.
 PUSH_FORCE_RE+="|${GIT_PUSH}([^;&|]*)[[:space:]][+]"
 DIRECT_MAIN_RE="${GIT_PUSH}([^;&|]*[[:space:]])?"
-DIRECT_MAIN_RE+='(origin[[:space:]]+)?[+]?(main|master)([[:space:]]|$)'
-DIRECT_MAIN_RE+="|${GIT_PUSH}[^;&|]*:(refs/heads/)?(main|master)([[:space:]]|\$)"
+DIRECT_MAIN_RE+="(origin[[:space:]]+)?[+]?(main|master)${PUSH_END}"
+DIRECT_MAIN_RE+="|${GIT_PUSH}[^;&|]*:(refs/heads/)?(main|master)${PUSH_END}"
+# `(git push origin main)`, only where a command starts: a message may end a parenthesis there.
+DIRECT_MAIN_GROUP_RE="${GIT_AT_START}push([^;&|]*[[:space:]])?([^[:space:];&|]*:(refs/heads/)?|[+])?(main|master)[)]"
 FETCH_TO_SHELL_RE='(curl|wget|iwr|irm|invoke-webrequest|invoke-restmethod)[^|]*[|][[:space:]]*'
-FETCH_TO_SHELL_RE+='(bash|sh|zsh|iex|invoke-expression)([[:space:]]|$)'
+FETCH_TO_SHELL_RE+="(bash|sh|zsh|iex|invoke-expression)${WORD_END}"
 
 # Check the flags of each rm invocation only, so `rm x && cp -rf a b` passes.
 # An rm behind a common wrapper (`xargs rm -rf`, `command rm`) or given by path
@@ -749,15 +773,15 @@ while IFS= read -r segment; do
     fi
 done <<<"${RM_SEGMENTS}"
 
-if matches "${COMMAND_PREFIX}sudo([[:space:]]|$)"; then
+if matches "${COMMAND_PREFIX}sudo${WORD_END}"; then
     block "Do not run sudo from Codex without explicit human approval."
 fi
 
-if matches "${COMMAND_PREFIX}mkfs([.[:alnum:]_-]*)([[:space:]]|$)"; then
+if matches "${COMMAND_PREFIX}mkfs([.[:alnum:]_-]*)${WORD_END}"; then
     block "Refusing filesystem formatting commands."
 fi
 
-if matches "${COMMAND_PREFIX}dd([[:space:]]|$)"; then
+if matches "${COMMAND_PREFIX}dd${WORD_END}"; then
     block "Refusing raw disk write command dd."
 fi
 
@@ -889,7 +913,7 @@ if matches_code "${CHMOD_WORLD_RE}"; then
     block "World-writable permissions are not allowed from Codex."
 fi
 
-if matches "${DIRECT_MAIN_RE}"; then
+if matches "${DIRECT_MAIN_RE}" || matches_code "${DIRECT_MAIN_GROUP_RE}"; then
     block "Use feature branches and PRs; do not push directly to main/master."
 fi
 
