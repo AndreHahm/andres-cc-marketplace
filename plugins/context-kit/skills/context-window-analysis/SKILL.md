@@ -117,10 +117,8 @@ With `/context` output, the percentage decides the status: map it onto the Conte
 above, and use the indicators below only to explain it. Without `/context` output, map the indicators below
 to a status and label it an estimate, not a measurement:
 
-- A Critical indicator tied to the context itself (truncation of the conversation, context rot, or an
-  operation failing on the context limit) → CRITICAL. A failure or a truncated tool result with no link
-  to the context, such as a mistyped command, is no indicator at all. Very slow responses count as one
-  Warning indicator (together with "Slower responses", still one).
+- Any Critical indicator → CRITICAL. A failure or a truncated tool result with no link to the context, such
+  as a mistyped command, is no indicator at all.
 - Two or more Warning indicators, or an auto-compact message → WARNING
 - One Warning indicator, or only Healthy indicators in a long session (many turns, large file reads or
   tool output) → MONITOR
@@ -141,16 +139,15 @@ Observable signals:
 
 **Warning Indicators:**
 
-- Slower responses
+- Slower or very slow responses (one indicator)
 - Occasional memory gaps
 - Auto-compact messages appearing
 
 **Critical Indicators:**
 
-- Very slow responses
 - Frequent context rot
-- Truncation warnings
-- Failed operations
+- Truncation of the conversation
+- Operations failing on the context limit
 
 ### Step 3: Provide Recommendations
 
@@ -182,7 +179,8 @@ context" health question, and a broader footprint-audit request correctly declin
 with-skill-only, 7/7 assertions) added a third, responses feeling slow, plus two extra evals for
 Step 2's estimate mapping. Iteration-8 (2026-11-24, same method, 13/13) re-ran evals 1, 3, 4 and 5 and
 added eval 6, very slow responses as the only sign. Iteration-9 (2026-11-24, same method, 5/5) re-ran
-evals 5 and 6 after unrelated failures stopped counting as an indicator. The remaining 2 scenarios
+evals 5 and 6 after unrelated failures stopped counting as an indicator, and iteration-10 (7/7) re-ran
+evals 4, 5 and 6 after the Observable signals list was aligned with Step 2. The remaining 2 scenarios
 ("should I compact now", and a direct request for the automatic hook-driven behavior itself) are named
 in `evals.json`'s own `uncovered` list, not yet exercised. The structural claims
 this section documents (the examples-reference link, Option 4's real session-kit reference, no
