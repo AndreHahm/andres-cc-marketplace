@@ -1175,7 +1175,7 @@ def check_step2_check_sources():
         "workflow id and event",
         "Every source must pass",
         "**Exit `2`**",
-        "approves that run",
+        "approves via `AskUserQuestion`",
     )
     missing = [n for n in needed if n not in step2]
     if missing:
