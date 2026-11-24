@@ -849,6 +849,30 @@ def test_brief_keeps_sensitive_paths_for_claude_only(checkout, capsys):
         ("Planner", "Prints eyJhbGciOiJI" + ".eyJzdWIi.x", False),
         ("Planner", "Clones https://me:" + "pw1@localhost/x", False),
         ("Ask jane.doe@example.com", "", False),
+        ("Planner", "Prints sk" + "_live_abcdefgh, cut", False),
+        ("Planner", "Prints whsec" + "_abcdefgh, cut", False),
+        ("Planner", "Sends Authorization: Basic abc", False),
+        ("Planner", "Reads api_key = abc", False),
+        ("Planner", "Prints Zk9" + "qLmXw2TbVr8Ns today.", False),
+        ("Planner", "Prints Zk9" + "qLmXw", False),
+        ("Planner", "Prints Zk9" + "qLmXw2TbVr8N here.", True),
+        ("Planner", "Prints an internationalization error.", True),
+        ("Planner", "Reads DB_PASS=abc", False),
+        ("Planner", "Reads passwd: abc", False),
+        ("Planner", "Reads pwd = abc", False),
+        ("Planner", "Reads AccountKey=abc", False),
+        ("Planner", "Reads access_key_id: abc", False),
+        ("Planner", "Sends Bearer abc-defgh now", False),
+        ("Planner", "Runs it with --api-key abc", False),
+        ("Planner", "Posts to hooks.slack.com/services/T", False),
+        ("Planner", "Clones https://me:" + "pa/ss@localhost/x", False),
+        ("Prints SG" + ".abcdefgh here", "", False),
+        ("Prints AIza" + "abcdefgh here", "", False),
+        ("Prints xoxb" + "-abcdefgh here", "", False),
+        ("Prints glpat" + "-abcdefgh here", "", False),
+        ("Prints github" + "_pat_abcdefgh here", "", False),
+        ("The global-configuration and basic checks both pass", "", True),
+        ("Planner", "Since 2026-11-24 release candidates of the keyboard module fail.", True),
         ("Planner", "A risk-assessment of @mentions and a@b here.", True),
     ],
 )
@@ -865,6 +889,32 @@ def test_brief_keeps_a_tracked_issue_with_a_sensitive_name_for_claude_only(
     assert title in (run / "accepted.md").read_text(encoding="utf-8")
     assert (run / "accepted.codex.md").exists() is briefed
     assert ("not briefed to Codex: " in capsys.readouterr().out) is not briefed
+
+
+@pytest.mark.parametrize(
+    ("rule", "path", "text", "briefed"),
+    [
+        ("credential-pii-leakage", "s/plain.md", "plain line", True),
+        ("sk" + "-abcdefgh12345678", "s/plain.md", "plain line", False),
+        ("R9", "s/Zk9" + "qLmXw2TbVr8Ns.md", "plain line", False),
+        ("R9", "s/plain.md", "pwd = 'hunter2'", False),
+        ("R9", "s/plain.md", "password = 'hunter2'", False),
+    ],
+)
+def test_brief_keeps_a_line_with_a_secret_value_for_claude_only(
+    checkout, capsys, rule, path, text, briefed
+):
+    run = _new_run()
+    (checkout / "s").mkdir(exist_ok=True)
+    (checkout / path).write_text(text + "\n", encoding="utf-8")
+    fingerprint = helper.line_fingerprint(text)
+    (checkout / ".claude/accepted-review-findings.local.md").write_text(
+        f"- {rule} {path}:1 @{fingerprint} \u2013 accepted\n", encoding="utf-8"
+    )
+    assert helper.main(["brief", "--run-dir", str(run)]) == 0
+    assert path in (run / "accepted.md").read_text(encoding="utf-8")
+    assert (run / "accepted.codex.md").exists() is briefed
+    assert ("not briefed to Codex: 1 line(s)" in capsys.readouterr().out) is not briefed
 
 
 @pytest.mark.parametrize(
