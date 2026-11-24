@@ -595,8 +595,11 @@ review` is the gate after the PR exists and reviews only the delta, to cut OpenA
   characters, which a long rule and path can fill before the kind and issue, and must be the first
   300 characters of `waiver_line`, or the entry counts as lapsed and the carry refuses it; an entry
   without `waiver_line` (one written before it existed, or by a writer that does not record it)
-  matches only a line equal to its `waiver`, so a line it cut short lapses. Accepted residual: a whole line can be as long as the PR body (65,536
-  characters), so 500 carried entries naming one such line make an artifact of about 32 MB; only
+  matches only a line equal to its `waiver`, so a line it cut short lapses. A Claude result records the
+  fields this re-check reads (`rule`, `reviewer`, `reporters`, `waiver_line`, `tracked_issue`; issue #849), but
+  no workflow passes one to `recheck-waivers`, and it is not a carry input. Accepted residual: a whole line can be as long as the PR body (65,536
+  characters), so 500 carried entries naming one such line make an artifact of about 32 MB (a
+  `claude-review-result` can repeat it once per finding too); only
   someone who can edit the body can cause it, and it fails nothing open), or the same tracked
   issue counts, re-checked with `find_waiver`/`find_tracked` against the fresh section, open issues and
   confirmations, so a line added during the run does not take the applied one's place. A carried entry of

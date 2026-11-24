@@ -1714,6 +1714,53 @@ def test_a_waiver_added_during_the_run_does_not_replace_the_one_applied():
     assert _recheck([_waived_entry()], _OTHER_LINE) != []
 
 
+def _claude_waived(*lines, pass_name="general", title="t", confirmed=(), tracked=()):
+    """One Claude finding after `apply_waivers`, as the Claude result file records it."""
+    from scripts.marketplace_ci.claude_review import apply_waivers
+
+    result = _claude_result({**_claude_finding(pass_name=pass_name), "title": title})
+    waivers = read_waiver_section(_section(*lines), _never_open).waivers
+    apply_waivers(result, waivers, set(confirmed), lambda path, line: GRANT, tracked)
+    (entry,) = result["findings"]
+    assert entry["waiver"]
+    return entry
+
+
+@pytest.mark.parametrize("note", ["", ": " + "x" * 400])
+def test_a_claude_waiver_is_rechecked_by_its_whole_line(note):
+    # Issue #849: the re-check needs the rule, and the whole line of one over 300 characters.
+    line = f"- claude-general s/SKILL.md:15 @{FP} – accepted{note}"
+    entry = _claude_waived(line)
+    assert entry["waiver_line"] == line and entry["waiver"] == line[:300]
+    assert _recheck([entry], line) == []
+    assert _recheck([entry]) != []
+    assert _recheck([entry], line + " reworded") != []
+
+
+def test_a_withdrawn_confirmation_blocks_a_claude_security_waiver_at_recheck():
+    line = f"- claude-security s/SKILL.md:15 @{FP} – accepted"
+    key = ("claude-security", "s/SKILL.md", FP)
+    entry = _claude_waived(line, pass_name="security", confirmed=[key])
+    assert _recheck([entry], line, confirmed=[key]) == []
+    assert _recheck([entry], line) != []
+
+
+def test_a_tracked_claude_finding_is_rechecked_by_its_issue():
+    entry = _claude_waived(title="[tracked #7] t", tracked=(7,))
+    assert entry["waiver"] == "tracked #7" and entry["waiver_line"] is None
+    assert _recheck([entry], "- tracked #7", open_issues=[7]) == []
+    assert _recheck([entry], "- tracked #7") != []
+
+
+def test_a_withdrawn_confirmation_blocks_a_tracked_claude_security_finding_at_recheck():
+    key = ("tracked #7", "s/SKILL.md", "")
+    entry = _claude_waived(
+        pass_name="security", title="[tracked #7] t", confirmed=[key], tracked=(7,)
+    )
+    assert _recheck([entry], "- tracked #7", open_issues=[7], confirmed=[key]) == []
+    assert _recheck([entry], "- tracked #7", open_issues=[7]) != []
+
+
 def test_unwaived_and_non_waiver_entries_are_not_rechecked():
     blocking = {**_waived_entry(), "waiver": None, "blocking": True}
     assert _recheck([blocking, {"rule": "x", "path": "p", "line": 1}]) == []
