@@ -1,11 +1,13 @@
 """git-kit's git-review-codex-kit.py runs only an installed codex-kit, never the repo's (#697)."""
 
+import ctypes
 import importlib.util
 import json
 import os
 import shutil
 import subprocess
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -220,3 +222,37 @@ def test_an_unreadable_path_entry_is_skipped(env, monkeypatch):
     repo, tmp, _register = env
     monkeypatch.setenv("PATH", os.pathsep.join([str(tmp / "gone"), os.environ["PATH"]]))
     assert mod.common.tool("git", [repo])
+
+
+def _fake_windll(result, value):
+    def get_path(_folder, _flags, _token, out):
+        out._obj.value = value
+        return result
+
+    return SimpleNamespace(shell32=SimpleNamespace(SHGetKnownFolderPath=get_path))
+
+
+@pytest.mark.skipif(os.name == "nt", reason="fakes the Windows API")
+def test_the_windows_profile_comes_from_the_api(monkeypatch, tmp_path):
+    monkeypatch.setenv("USERPROFILE", str(tmp_path / "forged"))
+    monkeypatch.setattr(ctypes, "windll", _fake_windll(0, str(tmp_path / "real")), raising=False)
+    assert mod._windows_profile() == tmp_path / "real"
+    for result, value in ((-1, str(tmp_path)), (0, None)):
+        monkeypatch.setattr(ctypes, "windll", _fake_windll(result, value), raising=False)
+        with pytest.raises(mod.Unavailable):
+            mod._windows_profile()
+
+
+@pytest.mark.skipif(os.name == "nt", reason="there is no Windows API here")
+def test_no_windows_api_is_refused():
+    with pytest.raises(mod.Unavailable):
+        mod._windows_profile()
+
+
+@pytest.mark.skipif(os.name != "nt", reason="calls the Windows API")
+def test_the_real_windows_profile_ignores_the_environment(monkeypatch, tmp_path):
+    before = _load_module()._home()
+    for name in ("USERPROFILE", "HOME", "HOMEPATH"):
+        monkeypatch.setenv(name, str(tmp_path))
+    assert _load_module()._home() == before != tmp_path
+    assert before.is_dir()

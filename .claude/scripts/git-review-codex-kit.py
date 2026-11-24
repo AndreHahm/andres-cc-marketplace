@@ -8,16 +8,16 @@ usage: git-review-codex-kit.py locate
 allowed-tools grant names this script instead of a path relative to the working directory. The
 codex-kit root is the `installPath` recorded under `codex-kit@andres-cc-marketplace` in
 `~/.claude/plugins/installed_plugins.json`, where `~` is the account's home from the password
-database on POSIX, not $HOME (a repository's own settings can set variables). CLAUDE_CONFIG_DIR is
-ignored for the same reason. The root is refused unless it is absolute, exists, holds the bridge as
-a regular file, and lies outside this repository and all of its worktrees; several different
-installed roots are refused as ambiguous. This is a check on the location, not on the content: who
-can write to the user's own plugin folder is trusted.
+database on POSIX and from the profile folder API on Windows, never from $HOME or %USERPROFILE% (a
+repository's own settings can set variables). CLAUDE_CONFIG_DIR is ignored for the same reason. The
+root is refused unless it is absolute, exists, holds the bridge as a regular file, and lies outside
+this repository and all of its worktrees; several different installed roots are refused as
+ambiguous. This is a check on the location, not on the content: who can write to the user's own
+plugin folder is trusted.
 
 `git` and `node` are looked up in the absolute PATH entries only and refused inside the repository:
 a bare name would let Windows find one in the working directory, which is the reviewed repository.
 The bridge gets a PATH reduced the same way, because it looks `codex` up itself.
-On Windows `~` is the user profile variable, which a trusted workspace's settings could set.
 
 `locate` prints `{"ok": true, "root": ...}` (exit 0) or `{"ok": false, "reason": ...}` (exit 3).
 `bridge` runs `node <root>/<bridge>` with the arguments unchanged and returns its exit status. GIT_*
@@ -27,10 +27,12 @@ and NODE_* variables (some preload code) are dropped for it. With no usable root
 
 from __future__ import annotations
 
+import ctypes
 import json
 import os
 import subprocess
 import sys
+import uuid
 from collections.abc import Sequence
 from pathlib import Path
 from types import ModuleType
@@ -49,6 +51,8 @@ common = _load_common()
 REGISTRY_KEY = "codex-kit@andres-cc-marketplace"
 BRIDGE = Path("skills/codex-review-bridge/scripts/bridge-invoke.mjs")
 _GIT_TIMEOUT_SECONDS = 30
+# FOLDERID_Profile, the current user's profile folder.
+_PROFILE_FOLDER = uuid.UUID("5e6c858f-0e22-4760-9afe-ea3317b67173")
 
 
 class Unavailable(Exception):
@@ -60,7 +64,23 @@ def _home() -> Path:
         import pwd
 
         return Path(pwd.getpwuid(os.getuid()).pw_dir)
-    return Path.home()
+    return _windows_profile()
+
+
+def _windows_profile() -> Path:
+    """The account's profile folder as Windows records it, whatever the environment says."""
+    windll = getattr(ctypes, "windll", None)
+    if windll is None:
+        raise Unavailable("the account's home could not be found")
+    folder = ctypes.create_string_buffer(_PROFILE_FOLDER.bytes_le, 16)
+    found = ctypes.c_wchar_p()
+    get_path = windll.shell32.SHGetKnownFolderPath
+    get_path.argtypes = [ctypes.c_char_p, ctypes.c_ulong, ctypes.c_void_p, ctypes.c_void_p]
+    get_path.restype = ctypes.c_long
+    result = get_path(folder, 0, None, ctypes.byref(found))
+    if result != 0 or not found.value:
+        raise Unavailable("the account's home could not be found")
+    return Path(found.value)
 
 
 def _clean_env() -> dict[str, str]:
