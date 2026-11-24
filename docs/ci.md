@@ -1825,7 +1825,13 @@ only `workflow_dispatch`, runs only from `main`, and is never a check on a pull 
   be on a branch here, because GitHub also serves a fork's commits by SHA.
 - **What runs:** the dispatcher, bridge and gate of `main`. The head is a separate worktree read as files. The
   model and timeout variables, CLI pin, sandbox probe, config check and isolation check are `codex-review`'s;
-  a test keeps the scripts equal.
+  a test keeps the scripts equal. Unlike there, `CODEX_KIT_REVIEW_MODEL` must be set: a run records its model, so
+  the plan fails without it.
+- **The head's MCP servers:** the config check compares only `[features]`, so another step fails the job when
+  `codex mcp list` shows a server in the head, or one of an untrusted control project. The same control must
+  show its server when trusted. Measured on 0.170.0 with a local mock model: `codex exec` started the MCP server
+  and used the `model_instructions_file` of a project only when it was trusted. Hooks were not measured: none
+  fired in either case.
 - **The key:** there is no `codex login`, because a read-only sandbox can read the file it writes. The run step
   passes `CODEX_API_KEY`, and a Codex `shell_environment_policy` keeps it out of the commands Codex runs; without
   it they see the variable. A step before the run fails the job unless a canary shows that a sandboxed command
@@ -1833,8 +1839,8 @@ only `workflow_dispatch`, runs only from `main`, and is never a check on a pull 
   this setup showed the key to no command and left it in no file under `CODEX_HOME`.
 - **Limits:** the gates stop accidents, not a writer: whoever can push a branch can dispatch an edited copy of
   the workflow. An arm's prompt is unreviewed, so read its diff before dispatching. The canary uses
-  `codex sandbox`, not `codex exec`, so re-measure on a pin change. Reviewers may be able to read earlier results of the same
-  experiment. Stored results have token-shaped text redacted, which an encoded token would pass.
+  `codex sandbox`, and the MCP check `codex mcp list`, not `codex exec`, so re-measure on a pin change.
+  Reviewers may be able to read earlier results of the same experiment. Stored results have token-shaped text redacted, which an encoded token would pass.
 
 ## Codacy: `git` through `subprocess` in plugin scripts
 
