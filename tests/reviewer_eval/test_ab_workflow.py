@@ -1,0 +1,259 @@
+"""Wiring of reviewer-ab.yml (issue #862): what starts it, what may reach the API key, and that its
+Codex setup is the one `codex-review` uses."""
+
+from __future__ import annotations
+
+import json
+import os
+import re
+import subprocess
+from pathlib import Path
+
+import pytest
+import yaml
+
+WORKFLOWS = Path(__file__).resolve().parents[2] / ".github" / "workflows"
+AB = yaml.safe_load((WORKFLOWS / "reviewer-ab.yml").read_text(encoding="utf-8"))
+CI = yaml.safe_load((WORKFLOWS / "marketplace-ci.yml").read_text(encoding="utf-8"))
+ON = AB[True]  # YAML 1.1 reads the key `on` as a boolean
+KEY = "secrets.OPENAI_API_KEY"
+
+
+def _steps(workflow: dict, job: str) -> list[dict]:
+    return workflow["jobs"][job]["steps"]
+
+
+def _named(steps: list[dict], name: str) -> dict:
+    (step,) = [s for s in steps if s.get("name", "").startswith(name)]
+    return step
+
+
+def test_only_a_manual_dispatch_starts_it():
+    assert list(ON) == ["workflow_dispatch"]
+
+
+def test_the_default_is_a_plan_without_calls():
+    assert str(ON["workflow_dispatch"]["inputs"]["approved_calls"]["default"]) == "0"
+
+
+def test_the_job_conditions_are_exactly_these():
+    """Compared whole: `always() || ...` would make `needs: plan` non-binding, and a re-run of `run`
+    would spend the same approval again."""
+    assert AB["jobs"]["plan"]["if"] == "github.ref == 'refs/heads/main'"
+    assert AB["jobs"]["run"]["if"] == (
+        "github.ref == 'refs/heads/main' && inputs.approved_calls != '0' && github.run_attempt == 1"
+    )
+
+
+def test_permissions_are_read_only_and_the_run_job_gets_only_contents():
+    assert AB["permissions"] == {"contents": "read"}
+    assert AB["jobs"]["plan"]["permissions"] == {"contents": "read", "actions": "read"}
+    assert AB["jobs"]["run"]["permissions"] == {"contents": "read"}
+
+
+def test_the_key_reaches_only_the_login_and_the_run_step():
+    assert str(AB).count(KEY) == 2  # nowhere else: no job or workflow env, no other step
+    holders = [s["name"] for s in _steps(AB, "run") if KEY in str(s)]
+    assert holders == ["Authenticate and smoke-check the Codex CLI", "Run the approved calls"]
+
+
+def test_the_run_job_waits_for_the_plan_and_its_provenance_checks():
+    assert AB["jobs"]["run"]["needs"] == "plan"
+    assert _named(_steps(AB, "plan"), "Check where the commits come from")
+
+
+def test_inputs_reach_scripts_only_through_the_environment():
+    for job in ("plan", "run"):
+        for step in _steps(AB, job):
+            assert "${{" not in step.get("run", ""), step.get("name")
+
+
+def test_no_checkout_keeps_credentials():
+    for job in ("plan", "run"):
+        for step in _steps(AB, job):
+            if step.get("uses", "").startswith("actions/checkout@"):
+                assert step["with"]["persist-credentials"] is False
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "Install Codex CLI",
+        "Authenticate and smoke-check the Codex CLI",
+        "Allow Codex's bwrap sandbox on the hosted runner",
+        "Check Codex does not apply the repository's own config",
+        "Check the overrides keep AGENTS.md and skills out of the model input",
+    ],
+)
+def test_the_codex_setup_is_the_same_script_as_codex_review(name):
+    ours = _named(_steps(AB, "run"), name)["run"]
+    assert ours == _named(_steps(CI, "codex-review"), name)["run"]
+
+
+def test_the_checks_come_before_the_run_and_the_config_check_runs_in_the_head():
+    names = [s.get("name", "") for s in _steps(AB, "run")]
+    order = [
+        "Allow Codex's bwrap sandbox on the hosted runner",
+        "Check Codex does not apply the repository's own config",
+        "Check the overrides keep AGENTS.md and skills out of the model input",
+        "Run the approved calls",
+    ]
+    assert [n for n in names if n in order] == order
+    check = _named(_steps(AB, "run"), "Check Codex does not apply")
+    assert check["working-directory"] == "${{ runner.temp }}/head"
+
+
+def test_the_model_and_timeout_are_the_ones_codex_review_uses():
+    ours = _named(_steps(AB, "run"), "Run the approved calls")["env"]
+    theirs = _named(_steps(CI, "codex-review"), "Dispatch reviewers directly")["env"]
+    for name in ("CODEX_KIT_REVIEW_MODEL", "CODEX_KIT_REVIEW_TIMEOUT_MS"):
+        assert ours[name] == theirs[name]
+
+
+def test_actions_are_pinned_to_a_commit():
+    for job in ("plan", "run"):
+        for step in _steps(AB, job):
+            uses = step.get("uses", "")
+            if uses and not uses.startswith("./"):
+                assert re.search(r"@[0-9a-f]{40}$", uses), uses
+
+
+def test_results_are_kept_even_after_a_failed_run():
+    assert _named(_steps(AB, "run"), "Keep the results")["if"] == "always()"
+
+
+def test_no_step_can_be_ignored_or_run_from_the_head():
+    """`python -m scripts...` run from the head would execute the head's own code."""
+    for job in ("plan", "run"):
+        for step in [AB["jobs"][job], *_steps(AB, job)]:
+            assert "continue-on-error" not in step
+    located = [s["name"] for s in _steps(AB, "run") if "working-directory" in s]
+    assert located == ["Check Codex does not apply the repository's own config"]
+    assert not [s for s in _steps(AB, "plan") if "working-directory" in s]
+    for node in (AB, *AB["jobs"].values()):
+        assert "defaults" not in node
+
+
+def test_the_main_checkout_names_no_other_ref():
+    for job in ("plan", "run"):
+        (checkout,) = [s for s in _steps(AB, job) if "actions/checkout@" in s.get("uses", "")]
+        assert "ref" not in checkout["with"]
+
+
+def test_the_kill_switch_comes_second_in_both_jobs():
+    for job in ("plan", "run"):
+        assert _steps(AB, job)[1]["uses"] == "./.github/actions/workflow-killswitch"
+
+
+def test_the_run_step_passes_the_approved_number():
+    assert '--approved-calls "$APPROVED_CALLS"' in _named(_steps(AB, "run"), "Run the app")["run"]
+
+
+SHA = "a" * 40
+GOOD = {"HEAD_SHA": SHA, "RANGE_BASE": SHA, "OLD_ARM": SHA, "NEW_ARM": SHA}
+GOOD |= {"REPEATS": "3", "APPROVED_CALLS": "0"}
+
+
+def _bash(script: str, env: dict[str, str], cwd: Path) -> subprocess.CompletedProcess:
+    full = {"PATH": os.environ["PATH"], "HOME": str(cwd), **env}
+    return subprocess.run(
+        ["bash", "-c", script], env=full, cwd=cwd, capture_output=True, text=True, check=False
+    )
+
+
+def test_the_input_check_passes_good_inputs(tmp_path):
+    assert (
+        _bash(_named(_steps(AB, "plan"), "Check the inputs")["run"], GOOD, tmp_path).returncode == 0
+    )
+
+
+@pytest.mark.parametrize("name", list(GOOD))
+@pytest.mark.parametrize("value", ["", "main", "-1", "00", "3 ", "3\n4", "A" * 40, SHA + "\n"])
+def test_the_input_check_refuses_bad_inputs(tmp_path, name, value):
+    script = _named(_steps(AB, "plan"), "Check the inputs")["run"]
+    assert _bash(script, {**GOOD, name: value}, tmp_path).returncode != 0
+
+
+@pytest.fixture
+def origin(tmp_path):
+    """A clone whose origin has one branch; `stray` is a commit it holds that is on no branch."""
+
+    def git(*args, cwd):
+        base = ["git", "-c", "user.name=t", "-c", "user.email=t@example.invalid"]
+        base += ["-c", "commit.gpgsign=false"]
+        return subprocess.run(
+            [*base, *args], cwd=cwd, check=True, capture_output=True, text=True
+        ).stdout.strip()
+
+    source = tmp_path / "source"
+    source.mkdir()
+    git("init", "-q", "-b", "main", cwd=source)
+    git("commit", "-q", "--allow-empty", "-m", "one", cwd=source)
+    clone = tmp_path / "clone"
+    git("clone", "-q", str(source), str(clone), cwd=tmp_path)
+    on_branch = git("rev-parse", "HEAD", cwd=clone)
+    git("commit", "-q", "--allow-empty", "-m", "stray", cwd=clone)
+    return clone, on_branch, git("rev-parse", "HEAD", cwd=clone)
+
+
+def _provenance(tmp_path, clone, runs, *, old, new, rc=0):
+    """Runs the step with a stub `gh` that applies the step's own jq filter to `runs`."""
+    stub = tmp_path / "bin"
+    stub.mkdir()
+    (tmp_path / "runs.json").write_text(json.dumps({"workflow_runs": runs}), encoding="utf-8")
+    gh = stub / "gh"
+    gh.write_text(
+        f'#!/usr/bin/env bash\n[ {rc} -eq 0 ] || exit {rc}\njq "$4" "{tmp_path}/runs.json"\n',
+        encoding="utf-8",
+    )
+    gh.chmod(0o755)
+    env = {**GOOD, "OLD_ARM": old, "NEW_ARM": new, "REPO": "o/r", "GH_TOKEN": "x"}
+    env["PATH"] = f"{stub}:{os.environ['PATH']}"
+    return _bash(_named(_steps(AB, "plan"), "Check where the commits")["run"], env, clone)
+
+
+def _run_of(repo: str | None, sha: str = SHA) -> dict:
+    return {"head_sha": sha, "head_repository": repo and {"full_name": repo}}
+
+
+def test_the_provenance_check_passes_this_repositorys_head_and_arms(tmp_path, origin):
+    clone, good, _ = origin
+    result = _provenance(tmp_path, clone, [_run_of("o/r")], old=good, new=good)
+    assert result.returncode == 0, result.stderr
+
+
+@pytest.mark.parametrize(
+    "runs",
+    [[], [_run_of("fork/r")], [_run_of(None)], [_run_of("o/r", "b" * 40)]],
+    ids=["no-run", "fork", "deleted-fork", "another-head"],
+)
+def test_the_provenance_check_refuses_a_head_that_is_not_this_repositorys(tmp_path, origin, runs):
+    clone, good, _ = origin
+    assert _provenance(tmp_path, clone, runs, old=good, new=good).returncode != 0
+
+
+def test_the_provenance_check_fails_closed_on_an_api_error(tmp_path, origin):
+    clone, good, _ = origin
+    assert _provenance(tmp_path, clone, [], old=good, new=good, rc=1).returncode != 0
+
+
+@pytest.mark.parametrize("arm", ["old", "new"])
+@pytest.mark.parametrize("kind", ["stray", "unknown"])
+def test_the_provenance_check_refuses_an_arm_on_no_branch(tmp_path, origin, arm, kind):
+    clone, good, stray = origin
+    arms = {"old": good, "new": good, arm: stray if kind == "stray" else "c" * 40}
+    assert _provenance(tmp_path, clone, [_run_of("o/r")], **arms).returncode != 0
+
+
+@pytest.mark.parametrize(
+    ("approved", "ok"), [("0", True), ("24", True), ("23", False), ("1", False)]
+)
+def test_the_plan_step_refuses_any_other_approved_number(tmp_path, approved, ok):
+    stub = tmp_path / "uv"
+    stub.write_text("#!/usr/bin/env bash\necho '{\"planned_calls\": 24}'\n", encoding="utf-8")
+    stub.chmod(0o755)
+    env = {**GOOD, "APPROVED_CALLS": approved, "RUNNER_TEMP": str(tmp_path)}
+    env |= {"PATH": f"{tmp_path}:{os.environ['PATH']}"}
+    env["GITHUB_STEP_SUMMARY"] = str(tmp_path / "summary")
+    result = _bash(_named(_steps(AB, "plan"), "Plan the calls")["run"], env, tmp_path)
+    assert (result.returncode == 0) is ok
