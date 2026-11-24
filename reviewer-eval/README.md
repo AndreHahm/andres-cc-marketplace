@@ -123,7 +123,8 @@ on the blocking set, and in how many runs each finding appeared. A run a reviewe
 counted as failed, and a run that never happened or was lost as missing, never as a run
 without findings. Each reviewer is gated alone for these numbers: the merged `findings` list gives every
 reporter of a finding the highest severity among them. Precision covers only findings with a corpus label for
-the same head, reviewer, path and line. Three repeats cannot separate a prompt's effect from run-to-run
+the same head, reviewer, path, line and rule (a label without a rule applies to any rule on its line); a
+location whose labels disagree is left out. Three repeats cannot separate a prompt's effect from run-to-run
 variation, and `stable` stays `null` below five. Each arm's
 `raw/` holds the reviewers' reports as returned, with token-shaped text redacted.
 

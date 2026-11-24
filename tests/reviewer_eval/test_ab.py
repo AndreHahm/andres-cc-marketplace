@@ -645,3 +645,60 @@ def test_a_complete_run_reports_nothing_missing(lab, monkeypatch):
     report = _report(lab, monkeypatch, lambda *_: None, repeats=2)
     for arms in report["reviewers"].values():
         assert {a["missing"] for a in arms.values()} == {0}
+
+
+def _labelled_case(lab, *rules_and_labels):
+    findings = [
+        {"reviewer": "security-reviewer", "path": SKILL, "line": 5, "rule": rule, "label": label}
+        for rule, label in rules_and_labels
+    ]
+    return {"pr": 1, "head_sha": lab["head"], "findings": findings, "known_issues": []}
+
+
+@pytest.mark.parametrize(
+    ("labels", "labelled", "precision"),
+    [
+        ([("injection-surface", "true"), ("other-rule", "false_positive")], 3, 1.0),
+        ([("other-rule", "true")], 0, None),
+        ([(None, "true"), (None, "false_positive")], 0, None),
+        ([(None, "true"), ("injection-surface", "true")], 3, 1.0),
+    ],
+    ids=["same-line-other-rule", "another-rule", "ambiguous", "agreeing"],
+)
+def test_labels_match_the_rule_and_ambiguous_ones_are_left_out(
+    lab, monkeypatch, labels, labelled, precision
+):
+    case = _labelled_case(lab, *labels)
+    report = _report(lab, monkeypatch, lambda *_: "major", cases=[case])
+    arm = report["reviewers"]["security-reviewer"]["old"]
+    assert (arm["labelled"], arm["precision"]) == (labelled, precision)
+
+
+def test_a_verdict_named_script_does_not_hide_a_reviewers_findings(lab, monkeypatch):
+    def dispatch(scope, *, base_sha, repo, **_):
+        reports = []
+        for name in (*scope.validate, *scope.audit):
+            output = _envelope(name, "major") | {"verdict": "script"}
+            reports.append(review.ReviewerReport(name, "completed", output=output))
+        return tuple(reports)
+
+    monkeypatch.setattr(review, "dispatch_reviewers", dispatch)
+    out = lab["tmp"] / "out"
+    ab.run_experiment(_plan(lab, repeats=1), out)
+    arm = ab.build_report(out, [])["reviewers"]["security-reviewer"]["old"]
+    assert arm["blocking_per_run"] == [1]
+
+
+def test_the_plan_runs_the_structural_checks_the_gate_uses(lab, monkeypatch):
+    seen: dict = {}
+    drift = (review.StructuralFinding(path=SKILL, operation="update", reason="drift"),)
+    real = ab.review_verifiers.run_verifiers
+
+    def spy(*args, **kwargs):
+        seen.update(kwargs)
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(review, "run_delta_structural_checks", lambda *_: drift)
+    monkeypatch.setattr(ab.review_verifiers, "run_verifiers", spy)
+    _plan(lab)
+    assert seen["structural"] == drift
