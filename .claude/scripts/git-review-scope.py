@@ -45,6 +45,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib.util
 import json
 import os
 import re
@@ -53,6 +54,20 @@ import subprocess
 import sys
 from collections.abc import Callable, Iterator, Sequence
 from pathlib import Path, PurePosixPath
+from types import ModuleType
+
+
+def _load_common() -> ModuleType:
+    path = Path(__file__).resolve().with_name("git_review_common.py")
+    spec = importlib.util.spec_from_file_location("git_review_common", path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.dont_write_bytecode = True
+    spec.loader.exec_module(module)
+    return module
+
+
+common = _load_common()
 
 MANIFEST_VERSION = 2
 SETTINGS_PATH = "plugins/git-kit/git-kit.settings.json"
@@ -100,7 +115,7 @@ NEVER_EXCLUDE = tuple(
         r"(^|/)skills/(codex-review-bridge|codex-windows-guardrails)/",
         r"(^|/)git-kit\.(settings|local)\.json\Z",
         r"(^|/)skills/cross-model-review/",
-        r"(^|/)git-review-(scope(-run\.sh|\.py)|copy-index\.sh|write-run-file\.sh|intent-add\.sh|run-dir\.sh)\Z",
+        r"(^|/)git-review-(scope(-run\.sh|\.py)|copy-index\.sh|write-run-file\.sh|intent-add\.sh|run-dir\.sh|codex-kit\.py|accepted-findings\.py)\Z|(^|/)git_review_common\.py\Z",
         r"(^|/)marketplace-sync\.json\Z",
         r"(^|/)\.gitattributes\Z",
         r"(^|/)\.gitmodules\Z",
@@ -608,7 +623,7 @@ def _git(
 ) -> subprocess.CompletedProcess[bytes]:
     try:
         return subprocess.run(
-            ["git", *args],
+            [common.tool("git", common.checkout_root(repo)), *args],
             cwd=repo,
             env=env,
             capture_output=True,
@@ -790,8 +805,10 @@ _CODEX_PATH_RE = re.compile(r"[A-Za-z0-9._/-]+\Z")
 
 
 def _codex_eligible(repo: Path, path: str) -> bool:
-    """Whether the Codex dispatch scripts accept this path: their charset, a regular file that
-    still exists, and no symlink anywhere along it."""
+    """Whether a path may go to Codex: not a sensitive name, the dispatch scripts' charset, a
+    regular file that still exists, and no symlink anywhere along it."""
+    if common.is_sensitive(path):
+        return False
     if not _CODEX_PATH_RE.match(path) or path.startswith("/") or ".." in path.split("/"):
         return False
     target = repo / path
@@ -956,6 +973,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     for entry in manifest["files"]:
         entry["codex_eligible"] = _codex_eligible(repo, entry["path"])
+    # Every changed file, left-out ones too: the First-Send question names them all.
+    manifest["sensitive_paths"] = [p for p in changed if common.is_sensitive(p)]
+    if manifest["sensitive_paths"]:
+        manifest["inspection_limits"].append(
+            f"never sent to Codex, sensitive file name: {_listed(manifest['sensitive_paths'])}"
+        )
     try:
         if diff_dir is not None:
             _write_diffs(diff_dir, manifest, file_diff)

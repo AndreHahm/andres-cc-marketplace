@@ -1,0 +1,26 @@
+{
+  "skill_name": "cross-model-review",
+  "iteration": 25,
+  "evals": [
+    {
+      "eval_id": 26,
+      "with_skill": {
+        "pass_rate": 1.0,
+        "assertions_passed": 6,
+        "assertions_total": 6,
+        "avg_tokens": 136719,
+        "avg_duration_ms": 14920
+      },
+      "baseline": {
+        "pass_rate": 0.0,
+        "assertions_passed": 0,
+        "assertions_total": 6,
+        "avg_tokens": 129346,
+        "avg_duration_ms": 24604
+      },
+      "delta": {
+        "pass_rate": 1.0
+      }
+    }
+  ]
+}

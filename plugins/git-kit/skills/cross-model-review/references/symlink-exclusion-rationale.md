@@ -16,12 +16,9 @@ Codex at all, not just its citation from surviving semantic validation afterward
 
 ## Why `$UNTRACKED_FILES` needs the same treatment
 
-`$UNTRACKED_FILES` is a separate list (`git ls-files --others`, computed in the Inputs section) —
-it never goes through this step's own changed-file computation above, so nothing else filters it.
-Phase 1 and Phase 2 both append it verbatim to Codex's instructions, telling Codex to read each path
-directly (see the Inputs section's own note on why). An untracked path that's a symlink resolving
-outside the repository would otherwise be named there unfiltered — and since the confirmation already
-states `--target-paths` doesn't constrain what a dispatched process can *read*, following that
-instruction could send content from outside the consented repository to Codex, on top of any
-resulting citation being dropped by semantic validation (per issues #236/#111, just that finding —
-not the whole envelope — but the read-boundary leak itself already happened by that point).
+`$UNTRACKED_FILES` is a separate list (`git ls-files --others`, computed in the Inputs section), and
+Phase 1 and Phase 2 tell Codex to read each path in it directly. `--target-paths` does not constrain what
+a dispatched process can *read*, so an unfiltered symlink would send whatever it points to: content
+outside the repository, or an ignored `.env` inside it, which a containment check accepts (issue #697).
+So only paths the planner marked `codex_eligible` are listed (the planner refuses a symlink anywhere on a
+path, wherever it leads); the unscoped fallback lists only its own kept names.

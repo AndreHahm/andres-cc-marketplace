@@ -179,6 +179,26 @@ def test_intent_add_refusal_is_disclosed():
         return True, "a refused intent-add sets INTENT_ADD_REFUSED=1 instead of vanishing"
 
 
+def test_an_intent_add_git_failure_is_disclosed():
+    """A git failure other than the deletion-only case (here an index lock) sets the flag (#697)."""
+    with tempfile.TemporaryDirectory() as tmp:
+        repo = pathlib.Path(tmp)
+        init_repo(repo)
+        (repo / "f.txt").write_text("line1\n", encoding="utf-8")
+        commit_all(repo, "init")
+        run_bash(repo, "git checkout -qb feature")
+        (repo / "new_untracked.txt").write_text("brand new\n", encoding="utf-8")
+        chain = diff_build_chain(extra='echo "REFUSED_VALUE=${INTENT_ADD_REFUSED:-UNSET}"')
+        marker = "|| INDEX_COPY_FAILED=1\n"
+        if marker not in chain:
+            return False, "could not find the index copy line in the extracted chain"
+        result = run_bash(repo, chain.replace(marker, marker + 'touch "$RUN/index.lock"\n'))
+        if "REFUSED_VALUE=1" not in result.stdout:
+            detail = f"(exit={result.returncode}): {result.stdout}\n{result.stderr}"
+            return False, f"a locked index did not set INTENT_ADD_REFUSED {detail}"
+        return True, "a git failure in the intent-add sets INTENT_ADD_REFUSED=1"
+
+
 def test_index_copy_failure_is_disclosed():
     with tempfile.TemporaryDirectory() as tmp:
         repo = pathlib.Path(tmp)
@@ -431,17 +451,13 @@ def _empty_variable_run(*, with_mirror: bool) -> str:
         return run_bash(repo, script).stdout
 
 
-def test_the_documented_mirror_substitution_runs_the_planner_when_the_variable_is_empty():
+def test_an_empty_plugin_root_never_runs_the_repositorys_own_scripts():
     with_mirror = _empty_variable_run(with_mirror=True)
     without_mirror = _empty_variable_run(with_mirror=False)
-    if "PLAN=0" not in with_mirror:
-        return False, f"the :-.claude default did not run the mirror's planner: {with_mirror}"
-    if "PLAN=1" not in without_mirror:
-        return False, f"a missing mirror planner must set PLAN_FAILED: {without_mirror}"
-    return (
-        True,
-        "empty CLAUDE_PLUGIN_ROOT: runs the .claude mirror's planner, or sets PLAN_FAILED",
-    )
+    for stdout in (with_mirror, without_mirror):
+        if "plugin root is empty" not in stdout or "PLAN=" in stdout:
+            return False, f"an empty plugin root did not stop the chain: {stdout}"
+    return True, "empty CLAUDE_PLUGIN_ROOT stops the chain, whatever .claude/scripts holds (#697)"
 
 
 def test_dispatcher_check_matches_a_case_variant_path():
@@ -498,7 +514,8 @@ CHECKS = [
     test_planner_failure_sets_a_flag_instead_of_aborting_the_chain,
     test_a_diff_touching_the_review_scripts_stops_the_chain_until_approved,
     test_the_planner_block_joined_with_and_and_still_completes,
-    test_the_documented_mirror_substitution_runs_the_planner_when_the_variable_is_empty,
+    test_an_empty_plugin_root_never_runs_the_repositorys_own_scripts,
+    test_an_intent_add_git_failure_is_disclosed,
     test_dispatcher_check_matches_a_case_variant_path,
     test_untracked_file_included,
     test_deletion_only_scope_does_not_abort,

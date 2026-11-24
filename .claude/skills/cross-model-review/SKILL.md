@@ -12,7 +12,7 @@ description: >-
   `collaborating-on-a-pr`'s reviewer actions, nor `codex-review-recovery`'s stuck-check recovery, nor
   `handling-review-findings`'s triage of posted PR findings — it never touches GitHub state. Not a
   Codex-only opinion on a design or document (`codex-peer-review`, `codex-verify`, if installed).
-allowed-tools: ["Bash(git rev-parse:*)", "Bash(git merge-base:*)", "Bash(git ls-files:*)", "Bash(mktemp:*)", "Bash(date:*)", "Bash(printf:*)", "Bash(grep:*)", "Bash(echo:*)", "Bash(realpath:*)", "Bash(test:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-copy-index.sh:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-intent-add.sh:*)", "Bash(umask:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-write-run-file.sh:*)", "Bash(node plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope-run.sh:*)", 'Bash(python3 -I "${CLAUDE_PLUGIN_ROOT}/scripts/git-review-accepted-findings.py":*)', "Read", "Grep", "Glob", "AskUserQuestion"]
+allowed-tools: ["Bash(git rev-parse:*)", "Bash(git merge-base:*)", "Bash(git ls-files:*)", "Bash(mktemp:*)", "Bash(date:*)", "Bash(printf:*)", "Bash(grep:*)", "Bash(echo:*)", "Bash(realpath:*)", "Bash(test:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-copy-index.sh:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-intent-add.sh:*)", "Bash(umask:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-write-run-file.sh:*)", 'Bash(python3 -I "${CLAUDE_PLUGIN_ROOT}/scripts/git-review-codex-kit.py":*)', "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope-run.sh:*)", 'Bash(python3 -I "${CLAUDE_PLUGIN_ROOT}/scripts/git-review-accepted-findings.py":*)', "Read", "Grep", "Glob", "AskUserQuestion"]
 ---
 
 # Cross-model review
@@ -107,16 +107,17 @@ still-real index — the throwaway path doesn't exist yet until the `export` lin
 
 ```bash
 umask 077
+[ -n "${CLAUDE_PLUGIN_ROOT}" ] || { echo "plugin root is empty: nothing was run"; exit 0; }
 BASE="${BASE:-main}"
 MERGE_BASE=$(git merge-base "$BASE" HEAD)
 UNSCOPED_CHANGED_FILES=$({ git diff --no-renames --name-only "$MERGE_BASE"; git ls-files --others --exclude-standard; })
 echo "$UNSCOPED_CHANGED_FILES" | grep -qiE 'plugins/git-kit/scripts/|\.claude/scripts/|skills/cross-model-review/' && PLANNER_TOUCHED=1 || true
 [ -z "$PLANNER_TOUCHED" ] || [ -n "$PLANNER_APPROVED" ] || { echo "PLANNER_TOUCHED=1: ask the user first"; exit 0; }
-UNTRACKED_FILES=$(git ls-files --others --exclude-standard -- "${SCOPE:-.}")
+UNTRACKED_FILES=$(git ls-files --full-name --others --exclude-standard -- "${SCOPE:-.}")
 RUN=$(mktemp -d)
 export GIT_INDEX_FILE="$RUN/index"
-bash "${CLAUDE_PLUGIN_ROOT:-.claude}/scripts/git-review-copy-index.sh" "$RUN" || INDEX_COPY_FAILED=1
-bash "${CLAUDE_PLUGIN_ROOT:-.claude}/scripts/git-review-intent-add.sh" "$RUN" ${SCOPE:+"$SCOPE"} || [ $? -ne 2 ] || INTENT_ADD_REFUSED=1
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/git-review-copy-index.sh" "$RUN" || INDEX_COPY_FAILED=1
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/git-review-intent-add.sh" "$RUN" ${SCOPE:+"$SCOPE"} || INTENT_ADD_REFUSED=1
 DIFF=(git diff --no-renames --text --no-ext-diff --no-textconv --ignore-submodules=none "$MERGE_BASE")
 [ -n "$SCOPE" ] && DIFF+=(-- "$SCOPE")   # [ ... ] invokes the test command; matches the Bash(test:*) grant
 DIFF_STR=$(printf '%q ' "${DIFF[@]}")   # shell-quoted rendering, for embedding in a prompt
@@ -124,11 +125,17 @@ DIFF_STR=$(printf '%q ' "${DIFF[@]}")   # shell-quoted rendering, for embedding 
 
 **Seed the throwaway index with a byte-for-byte copy of the real one.** `git-review-copy-index.sh`, a
 fixed-shape helper (it copies one file to `$RUN/index`, never overwrites, and sets its own mode), ignores
-`GIT_INDEX_FILE` when it looks the real index up; a failed copy sets `$INDEX_COPY_FAILED=1`. In this
-repository's own sessions the `:-.claude` mirror form is deliberately ungranted and prompts, like the
-planner wrapper's. See `references/index-seeding-rationale.md`.
+`GIT_INDEX_FILE` when it looks the real index up; a failed copy sets `$INDEX_COPY_FAILED=1` (`references/index-seeding-rationale.md`).
 
-**The `git add -N` failure tolerance matters for a deletion-only `$SCOPE`, while `$INTENT_ADD_REFUSED` records the helper refusing to run**, and **`$UNTRACKED_FILES` matters
+**Never add a default to `${CLAUDE_PLUGIN_ROOT}`.** Claude Code fills in only the bare form in an installed
+skill's text, so a `:-.claude` default would run the reviewed repository's own scripts (issue #697). Empty
+stops the chain. The trusted root is the value shown here: "${CLAUDE_PLUGIN_ROOT}". Reference files are not
+filled in: write that literal value wherever one shows the variable, never one from the environment. If it
+still shows the variable's name here, ask once via `AskUserQuestion` whether this is the marketplace's own repository and its
+`.claude/` mirror may run as code; only an explicit yes allows the mirror root, written into every command
+(`.claude/rules/resolve-plugin-root-to-claude-mirror.md`, ungranted, prompts). Otherwise stop.
+
+**A deletion-only `$SCOPE` has nothing to intent-add and passes, while `$INTENT_ADD_REFUSED` records any helper failure**, and **`$UNTRACKED_FILES` matters
 beyond this chain** for Codex's own dispatch — see `references/diff-mechanics-rationale.md` for both.
 
 To **run** it, use `"${DIFF[@]}"` (quoted, no word-splitting). To **embed** it as text, use
@@ -151,16 +158,13 @@ as a scratchpad script instead (`references/codex-pass-assembly.md`, "In an Ente
    section 1). The touched-script check already ran at the top of the Inputs block:
 
    ```bash
-   if [ -z "$PLANNER_TOUCHED" ] || [ -n "$PLANNER_APPROVED" ]; then bash "${CLAUDE_PLUGIN_ROOT:-.claude}/scripts/git-review-scope-run.sh" "$RUN" 1 "$MERGE_BASE" "$BASE" ${SCOPE:+--scope "$SCOPE"} || PLAN_FAILED=1; fi
+   if [ -z "$PLANNER_TOUCHED" ] || [ -n "$PLANNER_APPROVED" ]; then bash "${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope-run.sh" "$RUN" 1 "$MERGE_BASE" "$BASE" ${SCOPE:+--scope "$SCOPE"} || PLAN_FAILED=1; fi
    "${DIFF[@]}" > "$RUN/full.diff"; DIFF_STATUS=$?
    ```
 
    The planner runs through a fixed-shape wrapper from the installed plugin (`${CLAUDE_PLUGIN_ROOT}`),
    which binds the repository, writes only `$RUN/manifest-1.json` and `$RUN/diffs-1`, and passes through
-   just four options. With `CLAUDE_PLUGIN_ROOT` empty (this repository's own sessions) the `:-.claude`
-   default selects the `.claude/` mirror, deliberately **not** granted in `allowed-tools`, so it prompts
-   (`.claude/rules/resolve-plugin-root-to-claude-mirror.md`; details in `references/scoped-review.md`
-   section 1). A missing file means `PLAN_FAILED=1`.
+   just four options (`references/scoped-review.md` section 1). A missing file means `PLAN_FAILED=1`.
    **`PLANNER_TOUCHED=1` means the chain stopped at the top of the Inputs block**, before running any
    working-tree script (the index helper or the planner), because the diff changes them or this skill and
    the working tree may be the branch under review: ask via `AskUserQuestion`; only an explicit yes
@@ -175,11 +179,10 @@ as a scratchpad script instead (`references/codex-pass-assembly.md`, "In an Ente
    (`references/scoped-review.md` section 3). A pick of folders to leave out, a timeout retry and round
    two are in the same reference. Per batch, build the Codex target paths and instruction files as
    `references/codex-pass-assembly.md` says: only manifest entries with `codex_eligible: true` go to
-   Codex (the planner checks `^[A-Za-z0-9._/-]+$`, that the file still exists, and that no symlink is
-   on the path). Other paths stay in Claude's native review. Use a batch's `.codex.diff` text, never a
+   Codex (the planner refuses a sensitive name, and checks `^[A-Za-z0-9._/-]+$`, that the file still
+   exists, and that no symlink is on the path). Nothing in `sensitive_paths` ever goes to Codex. Other paths stay in Claude's native review. Use a batch's `.codex.diff` text, never a
    `.diff` file, in a Codex-bound file, and never type a manifest path into a command. Filter
-   `$UNTRACKED_FILES` the same way (pattern check, then `realpath -- <path>`; see
-   `references/symlink-exclusion-rationale.md`). A batch with no
+   `$UNTRACKED_FILES` to those same paths (`references/symlink-exclusion-rationale.md`; the unscoped fallback uses `realpath` instead). A batch with no
    eligible path skips Codex ("zero Codex-eligible paths in this batch"); if every batch is empty, enter
    single-model mode now with that reason, before any dispatch. Echo each batch's `$TARGET_PATHS`.
 3. `$RUN` — already resolved above (needed early for the throwaway index), also the scratch dir for
@@ -205,7 +208,7 @@ as a scratchpad script instead (`references/codex-pass-assembly.md`, "In an Ente
    review, so **never use it without consent**: once the chain returns, ask via `AskUserQuestion`
    whether to use the plugin's working-tree prompts for this run (not verified against `$BASE`), and
    stop the review on anything but an explicit yes. On yes, as separate tool calls using the just-resolved
-   `$RUN`: `bash "${CLAUDE_PLUGIN_ROOT:-.claude}/scripts/git-review-write-run-file.sh" "$RUN" review.md @plugin:review`
+   `$RUN`: `bash "${CLAUDE_PLUGIN_ROOT}/scripts/git-review-write-run-file.sh" "$RUN" review.md @plugin:review`
    (respectively `refute.md` / `@plugin:refute`; no `Read` needed), set `REVIEW_UNVERIFIED=1` /
    `REFUTE_UNVERIFIED=1` and record it in Phase 3's `inspection_limits` ("reviewer instructions were
    not trust-boundary-verified against $BASE this run"). Every later reference to `review.md` /
@@ -224,13 +227,12 @@ as a scratchpad script instead (`references/codex-pass-assembly.md`, "In an Ente
    for why (verified `grep` behavior, and why a no-match here must not abort the chain).
    `PLANNER_TOUCHED` is the same kind of check for the review scripts, done at the top of the Inputs
    block because the index helper runs there. `$DISPATCHER_TOUCHED` (unset unless matched), not grep's exit code, is what the First-Send
-   Confirmation's clause (c) checks — a property of the *whole diff*, which is why a `$SCOPE` excluding
-   `plugins/codex-kit` (e.g. `$SCOPE=plugins/git-kit`) can't silently hide a dispatcher change made
-   elsewhere in the same diff. The pattern's `(.*/)?` group and `assets/` alternative are both
-   required — see the same reference for why neither can be dropped. Step 5 protects the two
+   Confirmation's clause (c) checks — a property of the *whole diff*, so a `$SCOPE` excluding
+   `plugins/codex-kit` can't hide a dispatcher change. The pattern's `(.*/)?` group and `assets/`
+   alternative are both required (same reference). Step 5 protects the two
    *prompt* files against a self-modifying diff; it does nothing for the *executable* or these policy
-   inputs — `bridge-invoke.mjs`/`guarded-dispatch.mjs` (and everything both read at runtime) run from
-   the working tree by a repo-relative path with no `$BASE` verification of their own. If
+   inputs, which matter when step 8 finds no installed codex-kit and the repository's own copy is used:
+   that copy runs from the working tree with no `$BASE` verification of its own. If
    `$DISPATCHER_TOUCHED=1`, disclose it explicitly at the First-Send Confirmation below and record in
    Phase 3's `inspection_limits` that the Codex dispatcher itself wasn't trust-boundary-verified
    against `$BASE` for this run.
@@ -238,6 +240,8 @@ as a scratchpad script instead (`references/codex-pass-assembly.md`, "In an Ente
    (issue #834), else from the gitignored `.claude/accepted-review-findings.local.md`:
    `python3 -I "${CLAUDE_PLUGIN_ROOT}/scripts/git-review-accepted-findings.py" brief --run-dir "$RUN"`,
    from `$REPO_ROOT`. A failure is an inspection limit, never a stop (`references/accepted-findings.md`).
+8. **Locate the installed codex-kit**, from `$REPO_ROOT`: `python3 -I "${CLAUDE_PLUGIN_ROOT}/scripts/git-review-codex-kit.py" locate`.
+   Its `root` is `<codex-kit>` below. Exit 3: there is none outside the repository (next section).
 
 ## Codex dispatch resolver
 
@@ -249,23 +253,26 @@ The two scripts take different flags — never share one invocation shape betwee
 ```bash
 # Step 1 -- codex-review-bridge (sandboxed; any platform where read-only actually works):
 export CODEX_KIT_REVIEW_REPO_ROOT="$REPO_ROOT"   # bridge has no --repo-root flag; an unknown flag
-node plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs \
+python3 -I "${CLAUDE_PLUGIN_ROOT}/scripts/git-review-codex-kit.py" bridge \
   --reviewer-type "<persona>" --instruction-file "<path>" --execution-profile read-only \
   --target-paths "<changed files, comma-separated>" --dispatch-id "<id>" --cwd "$REPO_ROOT"
 ```
 
 ```bash
 # Step 2 fallback -- codex-windows-guardrails (danger-full-access, no sandbox at all):
-node plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.mjs \
+node '<codex-kit>/skills/codex-windows-guardrails/scripts/guarded-dispatch.mjs' \
   --reviewer-type "<persona>" --instruction-file "<path>" \
   --target-paths "<changed files, comma-separated>" --dispatch-id "<id>" --repo-root "$REPO_ROOT"
 ```
 
+**No installed codex-kit (Preflight step 8, exit 3):** Codex is unavailable (item 3), except that in this
+marketplace's own repository, and no other, the First-Send Confirmation may offer its `plugins/codex-kit`
+as `<codex-kit>`, running Step 1 as `node <codex-kit>/skills/codex-review-bridge/scripts/bridge-invoke.mjs`
+with the same flags: the reviewed repository's own code, deliberately ungranted, so each call prompts.
+
 1. **Attempt Step 1.** This is the right path on any platform with a working sandbox (e.g. Linux
-   CI). Passing `--repo-root` to this script instead of `--cwd`/`CODEX_KIT_REVIEW_REPO_ROOT` is
-   silently discarded — it isn't a flag the bridge recognizes — leaving both the dispatched process's
-   working directory and its containment root defaulting to wherever this skill happens to be
-   running from, not necessarily `$REPO_ROOT`. Always use the Step 1 form above, never mix the two.
+   CI). The bridge silently discards `--repo-root`, which leaves its working directory and containment
+   root at the current directory. Always use the Step 1 form above, never mix the two.
 2. **On `isolation_profile_unavailable`** (expected on local Windows — `read-only`/`workspace-write`
    sandboxes are confirmed non-functional there), **fall back to Step 2**. This path is **disabled by
    default** (`assets/settings.json` ships disabled; requires an untracked
@@ -273,9 +280,8 @@ node plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.
    `guardrails_disabled` typed failure here is expected, not a bug. The fallback script is deliberately not
    pre-approved in `allowed-tools`, so its first call raises Claude Code's own permission prompt. A verdict that read nothing is this failure too (`references/resolver-failure-handling.md`).
 3. **On any other typed failure from either path** — including `guardrails_disabled`, the `codex`
-   CLI itself missing, and **`codex-kit` not being installed at all** (`node` then fails at the OS
-   level before either script produces its own typed-failure JSON — the same `cli_unavailable`
-   fallback case `codex-backend.md` names explicitly): tell the user Codex is unavailable for this
+   CLI itself missing, and **`codex-kit` not being installed at all** (the launcher then reports
+   `cli_unavailable`, the fallback case `codex-backend.md` names): tell the user Codex is unavailable for this
    run and ask via `AskUserQuestion` whether to proceed single-model (Claude only — loses the
    cross-vendor benefit, findings default to Medium confidence since nothing cross-examines them) or
    stop.
@@ -302,11 +308,14 @@ credentials such as `~/.ssh` are reachable** — not Step 1's `read-only` profil
 permission again before it runs the fallback script (unless your permission settings already allow it; don't
 choose "don't ask again" for it), with an unanswerable question counting as declined;
 (c) if Preflight step 6 set `DISPATCHER_TOUCHED=1` or `PLANNER_TOUCHED=1`, that it wasn't
-trust-boundary-verified against `$BASE`; and (d) if Preflight step 5 set `REVIEW_UNVERIFIED` or
+trust-boundary-verified against `$BASE`; (d) if Preflight step 5 set `REVIEW_UNVERIFIED` or
 `REFUTE_UNVERIFIED`, that the reviewer instructions governing this dispatch came from the working
-tree, not `$BASE` — before Codex is judged against them, never deferred to `inspection_limits`. Ask
+tree, not `$BASE` — before Codex is judged against them, never deferred to `inspection_limits`; (e)
+every `sensitive_paths` entry by name, apart from the target paths, as not embedded and not a target (Codex
+could still read it, see (a)); (f) if `INDEX_COPY_FAILED=1`, that the diff may be incomplete; and (g) if the
+repository's own codex-kit would run, that it is unverified code from the repository under review. Ask
 before the backend resolves, covering both outcomes. Options: "Send to Codex for this run" / "Stay
-Claude-native for this run". Git-kit's own direct implementation of the first-send-confirmation
+Claude-native for this run"; in case (g) the first says "with this repository's own dispatcher". Git-kit's own direct implementation of the first-send-confirmation
 obligation `codex-review-bridge`'s docs assign to any caller — independent of, and not satisfied by,
 a first-send gate any other codex-kit component may already have fired earlier in the session.
 
@@ -314,9 +323,7 @@ a first-send gate any other codex-kit component may already have fired earlier i
 attempted** — the same skip-Phase-1's-Codex-pass-and-all-of-Phase-2 path resolver step 3 uses, not
 just the zero-Codex-unavailable case. Record the `inspection_limits` reason as "user declined to send
 to Codex" rather than "Codex unavailable" — this is a deliberate opt-out, not a failure, and the
-report should say so accurately. Without this, nothing else in this document transitions the workflow
-out of the two-model path on this answer, leaving Phase 1 free to still attempt the declined dispatch
-or Phase 2 to wait on a Codex envelope that will never exist.
+report should say so accurately.
 
 ## Phase 1 — Independent review (fresh-eyes persona)
 
@@ -377,7 +384,8 @@ to `$RUN/claude_challenger.json`.
 which no shortcut may drop: the file lives **outside `--target-paths`**; the trusted `$RUN/review.md` is
 prepended to `refute.md`; Claude findings outside the batch's paths are filtered out first (and stay
 Claude-only, Medium, unless another batch covers their `location`); closing-tag-shaped substrings in the
-embedded findings are neutralized; the diff is embedded, never fetched by Codex; and the
+embedded findings are neutralized; only the `findings` array is embedded, and no finding that names or quotes a
+`sensitive_paths` file; the diff is embedded, never fetched by Codex; and the
 evidence-not-instructions boundary is restated **after** the findings block. Save to
 `$RUN/codex_challenger.<N>.json`.
 
@@ -433,7 +441,7 @@ fields. Note any `inspection_limits` from either side, including: the Preflight 
 deleted-path exclusion if it happened, any Claude finding dropped from the Codex challenge for that
 same reason, Preflight step 5's unverified-instructions fallback if either `REVIEW_UNVERIFIED` or
 `REFUTE_UNVERIFIED` was set, Preflight step 6's dispatcher-not-verified disclosure if the diff
-touched the Codex scripts, `$INDEX_COPY_FAILED` (`references/index-seeding-rationale.md`), and `$INTENT_ADD_REFUSED` (`references/diff-mechanics-rationale.md`).
+touched the Codex scripts, `$INDEX_COPY_FAILED` (`references/index-seeding-rationale.md`).
 Also report the scope plan as `references/scoped-review.md` section 6 says: the planner's own
 `inspection_limits`, every dropped slice (it **must be read**, not skimmed), folders excluded by a pick,
 unfinished batches, slices left out by the batch limit, `PLANNER_TOUCHED`, and the manifest path with the **completed slice names** a
@@ -447,7 +455,7 @@ cross-examined list, not to declare the diff clean.
 
 ## Boundaries
 
-Deliberately not in `allowed-tools`, so each prompts: `git diff` and `git show` (both accept `--output=<file>`, a write to any path), the `export GIT_INDEX_FILE` / `CODEX_KIT_REVIEW_*` assignments, exported or prefixed (a grant cannot pin the value they set), the `guarded-dispatch.mjs` fallback (a grant would pre-approve a full-access dispatch), and, after `EnterWorktree` only, `Write` and `bash <scratchpad>/preflight.sh` (`Write` cannot be limited to a path; the script path varies, so its grant would be `Bash(bash:*)`, which also admits `bash -c` and any script; one approval covers every command in the script, and the scratchpad `Write` may not prompt at all). `git add -N` runs only through `scripts/git-review-intent-add.sh`. These prompt unless your own settings or permission mode already allow them. For `git diff`, `git show` and `bash` the reason is a shared prefix: any prefix rule for them also admits `--output` or `-c`. Approve each run once and do not add a persistent allow rule for them; approve `Write` for the single call only, never for the session.
+Deliberately not in `allowed-tools`, so each prompts: `git diff` and `git show` (both accept `--output=<file>`, a write to any path), the `export GIT_INDEX_FILE` / `CODEX_KIT_REVIEW_*` assignments, exported or prefixed (a grant cannot pin the value they set), the repository's own `bridge-invoke.mjs` (reviewed code; a grant would run it unasked), the `guarded-dispatch.mjs` fallback (a grant would pre-approve a full-access dispatch), and, after `EnterWorktree` only, `Write` and `bash <scratchpad>/preflight.sh` (`Write` cannot be limited to a path; the script path varies, so its grant would be `Bash(bash:*)`, which also admits `bash -c` and any script; one approval covers every command in the script, and the scratchpad `Write` may not prompt at all). `git add -N` runs only through `scripts/git-review-intent-add.sh`. These prompt unless your own settings or permission mode already allow them. For `git diff`, `git show` and `bash` the reason is a shared prefix: any prefix rule for them also admits `--output` or `-c`. Approve each run once and do not add a persistent allow rule for them; approve `Write` for the single call only, never for the session.
 
 ## Deliberately NOT done
 
@@ -459,7 +467,7 @@ See `references/deliberately-not-done.md` (extracted per plugin-rulebook's R13 l
 |---|---|
 | `references/scoped-review.md` | Planner run, folder pick, dispatch batches, timeouts, completed slices, round two |
 | `references/codex-pass-assembly.md`, `references/accepted-findings.md` | Per-batch Codex eligibility, Phase 1 and Phase 2 instruction files; briefing and marking accepted findings (issue #808) |
-| `references/testing-scenarios.md` | The 39 scenarios, the quality-gate checklist and the run history |
+| `references/testing-scenarios.md` | The 40 scenarios, the quality-gate checklist and the run history |
 | `references/resolver-failure-handling.md`, `references/dispatcher-trust-pattern.md` | Partial failure; why the dispatcher-touched check is built the way it is (planner trust is in `references/scoped-review.md`) |
 | `references/diff-mechanics-rationale.md`, `references/index-seeding-rationale.md`, `references/embed-diff-not-run-rationale.md`, `references/symlink-exclusion-rationale.md`, `references/self-authored-envelope-fields.md`, `references/deliberately-not-done.md` | Why the Inputs and Preflight steps are built the way they are |
 | `scripts/smoke_test.py`, `scripts/preflight_fixtures_test.py` | Structural self-check; Preflight chain run against scratch repositories |
@@ -479,10 +487,10 @@ See `references/deliberately-not-done.md` (extracted per plugin-rulebook's R13 l
 - "get a codex second opinion on this design" → `codex-peer-review`; "verify plan.md" → `codex-verify`
 
 **Concrete scenarios to check, and quality gates:** see
-`references/testing-scenarios.md` (extracted per R13): 39 numbered scenarios and the quality-gate
+`references/testing-scenarios.md` (extracted per R13): 40 numbered scenarios and the quality-gate
 checklist, covering single-model mode, `$MERGE_BASE` containment, dispatcher trust, reviewer identity,
 closing-tag neutralization, partial-failure preservation, scoped review and more.
 `scripts/preflight_fixtures_test.py` runs the Preflight chain, planner step included, against scratch
 repositories.
 
-**Last dated run record:** `2026-11-18, evals/cross-model-review/workspace/iteration-15/` — evals 13-16, scenario 38 (refused chained Preflight; heredoc refusal, then timeout; folder-pick re-run; normal-session control), both arms claude-opus-5-5: `with_skill` 17/17, baseline (`main`'s text) 5/17; `2026-11-21, iteration-17`, eval 18 (accepted findings, scenario 39), `with_skill` only, 7/7; `iteration-16`, eval 17 (single-quoted `BASE`/`SCOPE`), claude-haiku-5-5: 3/3 vs 1/3; `2026-11-24, iteration-24`, eval 25 (literal helper calls, issue #866), 6/6 vs 4/6. Skill-following dry runs, no Codex dispatch. Earlier runs and their open items are under "Run history" in `references/testing-scenarios.md`.
+**Last dated run record:** `2026-11-18, evals/cross-model-review/workspace/iteration-15/` — evals 13-16, scenario 38 (refused chained Preflight; heredoc refusal, then timeout; folder-pick re-run; normal-session control), both arms claude-opus-5-5: `with_skill` 17/17, baseline (`main`'s text) 5/17; `2026-11-21, iteration-17`, eval 18 (accepted findings, scenario 39), `with_skill` only, 7/7; `iteration-16`, eval 17 (single-quoted `BASE`/`SCOPE`), claude-haiku-5-5: 3/3 vs 1/3; `2026-11-24, iteration-24`, eval 25 (literal helper calls, issue #866), 6/6 vs 4/6; `iteration-25`, eval 26 (sensitive names and dispatcher origin, issue #697, scenario 40), 6/6 vs 0/6 against `main`'s text. Skill-following dry runs, no Codex dispatch. Earlier runs and their open items are under "Run history" in `references/testing-scenarios.md`.

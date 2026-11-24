@@ -4,6 +4,10 @@ Extracted from SKILL.md's Preflight step 6 per plugin-rulebook's R13 (SKILL.md g
 Critical threshold). SKILL.md keeps the check's actual command and the one-line summary that both
 alternatives matter; this file holds the fuller "why neither can be dropped" rationale.
 
+Since issue #697 the dispatcher that runs is normally the installed codex-kit's, found by
+`git-review-codex-kit.py`, so this check only matters when the marketplace's own repository copy is
+used instead. It looks at the diff alone and cannot see a hostile copy already on `$BASE`.
+
 The check's pattern is `plugins/codex-kit/(.*/)?(scripts|assets)/`, run against the unscoped
 changed-file list. Two parts of that pattern are each load-bearing on their own:
 
