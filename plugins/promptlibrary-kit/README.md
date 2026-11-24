@@ -99,6 +99,9 @@ text is data everywhere except an explicitly approved run.
   instructions tell any other caller to run it first, which nothing enforces. Not caught: a link swapped
   in between the two checks (that needs write access to the catalog folder or a folder above it), and a
   hard link to an outside file (an ordinary file entry).
+- A full-line comment in a record's frontmatter or in `catalog.yaml` is screened too, and a match makes the
+  catalog invalid for every origin until the comment is removed by hand; any other frontmatter comment is
+  warned about.
 - `record-verification`, `activate` and `finalize` take `--expect-sha256`, the hash the user was shown,
   and refuse if the text changed.
 - `hash`, `screen`, `draft` and `update-draft` read their input file only from inside the catalog root

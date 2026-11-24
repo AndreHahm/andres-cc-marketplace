@@ -20,7 +20,7 @@ enforces it, so when the two disagree the validator wins and this file is the on
 | `source_ref` | conditional | Required exactly for `session` (`session_id`, `turns`) and `web` (`url`, `retrieved_on`); no other keys, and not allowed for other origins. `turns` is one text value such as `3-5, 8`, not a list; a bare number is accepted, and `update-draft` must repeat the stored form (`3` and `"3"` differ) |
 | `prerequisites`, `boundaries` | no | Text |
 | `references`, `attachments` | no | Lists of text; `references` carries any license or attribution note for imported text |
-| `verification` | conditional | Required for `active` and `inactive`: `quality`, plus `import` for `session`/`web`; no other keys; each a 64-character lowercase hex SHA-256 that equals the current text's hash |
+| `verification` | conditional | Required for `active` and `inactive`: `quality`, plus `import` for `session`/`web`; no other keys; each a 64-character lowercase hex SHA-256 that equals the current text's hash (a draft may hold one of older text, and nothing else) |
 | `prompt_text` | yes | The markdown body; at most 50 nonblank lines |
 
 Unknown fields are rejected, and so is any frontmatter key that starts with `_`. Frontmatter uses a small YAML subset: scalars, one-level maps of scalars, and

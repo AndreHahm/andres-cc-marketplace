@@ -81,7 +81,8 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
    `<slug>/<internal_id>.md` file (pathspec syntax, wildcards) is reported as suspicious catalog content,
    never turned into a restore command. If no committed copy
    or backup exists (a catalog outside git, or never committed), the user fixes each reported error by
-   hand, guided by `references/prompt-record-format.md`, then runs `/prompt-library` again. Explain that a
+   hand, guided by `references/prompt-record-format.md`, then runs `/prompt-library` again; a comment that
+   matches the screen is removed by hand in any case. Explain that a
    record whose text was changed on purpose is not repaired in place: restore it, then make the change
    as a revision. Never edit, restore or repair a catalog file yourself.
 2. **Mode.** Use the first word of `$ARGUMENTS` (`add`, `revise`, `activate`, `deactivate`) and, for

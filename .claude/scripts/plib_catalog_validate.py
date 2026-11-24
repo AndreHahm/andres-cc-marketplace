@@ -407,6 +407,18 @@ def text_hash(text: str) -> str:
     return hashlib.sha256(normalize_text(text).encode("utf-8")).hexdigest()
 
 
+def _comment_lines(text: str) -> str:
+    """The full-line comments parse_yaml skips (same line split and same test), for the screen."""
+    return "\n".join(ln for ln in text.split("\n") if ln.lstrip().startswith("#"))
+
+
+def _comment_hits(text: str) -> str:
+    """The names of the screen patterns a comment matches, never its text. Screened as written and
+    without its leading `#`, so a commented-out assignment matches the line-anchored patterns."""
+    bare = "\n".join(ln.lstrip().lstrip("# \t") for ln in text.split("\n"))
+    return ", ".join(sorted({h["pattern"] for h in screen_text(text + "\n" + bare)}))
+
+
 def split_record(raw: str) -> tuple[dict, str]:
     raw = raw.replace("\r\n", "\n").replace("\r", "\n")
     if not raw.startswith("---\n"):
@@ -421,8 +433,9 @@ def split_record(raw: str) -> tuple[dict, str]:
     # reserved for this script's own keys (_body, _path): the field check and the screen skip them
     if any(key.startswith("_") for key in meta):
         raise CatalogError("a frontmatter key starts with an underscore")
-    if any(line.lstrip().startswith("#") for line in raw[4 : end + 1].split("\n")):
-        meta["_comment"] = True
+    comments = _comment_lines(raw[4 : end + 1])
+    if comments:
+        meta["_comment"] = comments
     return meta, raw[end + 5 :]
 
 
@@ -517,6 +530,10 @@ def hash_problems(meta: dict) -> list[str]:
     for kind in ver:
         if kind not in ("quality", "import"):
             problems.append(f"unknown verification field: {_shown_key(kind)}")
+        elif kind not in required and not (
+            isinstance(ver[kind], str) and HASH_RE.fullmatch(ver[kind])
+        ):
+            problems.append(f"verification.{kind} is not a SHA-256 hex digest")
     return problems
 
 
@@ -594,6 +611,16 @@ def validate_record(meta: dict, version: int) -> list[str]:
         errs.append(f"prompt_text exceeds {MAX_NONBLANK_LINES} nonblank lines")
     if meta["status"] in ("active", "inactive"):
         errs.extend(hash_problems(meta))
+    elif meta.get("verification") is not None:
+        ver = meta["verification"]
+        if not isinstance(ver, dict):
+            errs.append("verification must be a map of hashes")
+        else:  # a hash of older text is fine here; any other text would be unscreened
+            for kind, stored in ver.items():
+                if kind not in ("quality", "import"):
+                    errs.append(f"unknown verification field: {_shown_key(kind)}")
+                elif not isinstance(stored, str) or not HASH_RE.fullmatch(stored):
+                    errs.append(f"verification.{kind} is not a SHA-256 hex digest")
     return errs
 
 
@@ -867,12 +894,16 @@ def load_catalog(root: Path) -> tuple[dict, dict, list[str]]:
     if not cat_path.is_file():
         return {}, {}, ["catalog.yaml is missing"]
     try:
-        cat = parse_yaml(cat_path.read_text(encoding="utf-8-sig"))
+        cat_text = cat_path.read_text(encoding="utf-8-sig")
+        cat = parse_yaml(cat_text)
     except CatalogError as exc:
         return {}, {}, [f"catalog.yaml: {exc}"]
+    hits = _comment_hits(_comment_lines(cat_text))
+    if hits:
+        errs.append(f"catalog.yaml: a comment matches the screen ({hits})")
     version = cat.get("catalog_version")
     if version not in SUPPORTED_CATALOG_VERSIONS:
-        return cat, {}, [f"unsupported catalog_version: {version!r}"]
+        return cat, {}, errs + [f"unsupported catalog_version: {version!r}"]
     if cat.get("scope") not in SUPPORTED_SCOPES:
         errs.append(f"unsupported scope: {cat.get('scope')!r}")
     for f in cat:
@@ -909,6 +940,9 @@ def load_catalog(root: Path) -> tuple[dict, dict, list[str]]:
         meta["_path"] = rel
         problems = validate_record(meta, version)
         errs.extend(f"{rel}: {p}" for p in problems)
+        hits = _comment_hits(meta.get("_comment", ""))
+        if hits:
+            errs.append(f"{rel}: a frontmatter comment matches the screen ({hits})")
         records[rel] = meta
     errs.extend(check_lineages(root, records))
     return cat, records, errs
@@ -1012,9 +1046,7 @@ def cmd_validate(args) -> dict:
         )
     for rel, meta in records.items():
         if meta.get("_comment"):
-            info["warnings"].append(
-                f"{rel} has a frontmatter comment, which is not screened (the next write drops it)"
-            )
+            info["warnings"].append(f"{rel} has a frontmatter comment (the next write drops it)")
     info["ok"] = not info["errors"]
     info["catalog_version"] = cat.get("catalog_version")
     info["records"] = [summarize(m) for m in records.values()]

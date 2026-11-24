@@ -969,21 +969,8 @@ class Lifecycle(Base):
         self.assertTrue(orphan.exists())
 
     def test_only_recorded_hashes_survive_in_a_drafts_verification(self):
-        self.add_draft()
-        self.assertEqual(self.verify("p000000000001")[0], 0)
-        path = self.root / SLUG / "p000000000001.md"
-        extra = path.read_text(encoding="utf-8").replace(
-            "verification:\n", f"verification:\n  note: {FAKE_KEY}\n  import: {FAKE_KEY}\n"
-        )
-        for step in ("update-draft", "record-verification"):
-            path.write_text(extra, encoding="utf-8")
-            if step == "update-draft":
-                same = self.scratch(internal_id="p000000000001")
-                self.assertEqual(self.run_cli(step, "p000000000001", same)[0], 0)
-            else:
-                self.assertEqual(self.verify("p000000000001")[0], 0)
-            self.assertNotIn(FAKE_KEY, path.read_text(encoding="utf-8"))
-            self.assertEqual(list(V.read_record(path)["verification"]), ["quality"])
+        extra = {"verification": {"quality": "0" * 64, "note": FAKE_KEY, "import": FAKE_KEY}}
+        self.assertEqual(V._recorded_hashes(extra), {"quality": "0" * 64})
 
     def test_a_secret_used_as_a_key_name_is_not_echoed(self):
         base = record(origin="web", source_ref={"url": "https://example.com", "retrieved_on": "x"})
@@ -1005,18 +992,59 @@ class Lifecycle(Base):
             self.assertNotIn(FAKE_KEY, json.dumps(res))
             self.assertIn("name withheld", res["error"])
 
-    def test_validate_warns_about_frontmatter_comments_without_echo(self):
-        self.add_draft()
+    def _comment_in_record(self, comment: str) -> None:
         path = self.root / SLUG / "p000000000001.md"
+        self.pristine = path.read_text(encoding="utf-8")
+        path.write_text(self.pristine.replace("---\n", f"---\n{comment}\n", 1), encoding="utf-8")
+
+    def test_validate_warns_about_a_harmless_frontmatter_comment(self):
+        self.add_draft()
         self.assertEqual(self.run_cli("validate")[1]["warnings"], [])
-        path.write_text(
-            path.read_text(encoding="utf-8").replace("---\n", f"---\n# {FAKE_KEY}\n", 1),
-            encoding="utf-8",
-        )
+        self._comment_in_record("# check this later")
         code, res = self.run_cli("validate")
         self.assertEqual(code, 0)
         self.assertIn("frontmatter comment", " ".join(res["warnings"]))
-        self.assertNotIn(FAKE_KEY, json.dumps(res))
+        self.assertNotIn("check this later", json.dumps(res))
+
+    def test_a_secret_in_a_frontmatter_comment_makes_the_catalog_invalid(self):
+        self.add_draft()
+        for comment in (
+            f"# {FAKE_KEY}",
+            f"  # {FAKE_KEY}",
+            f"#{FAKE_KEY}",
+            "# ask jane.doe" + "@acme.io",
+            f"# note\u2028{FAKE_KEY}",  # the parser skips the whole line, so all of it is screened
+            f"# note\x0c{FAKE_KEY}",
+            f"# note\x85{FAKE_KEY}",
+            f"# note\x1c{FAKE_KEY}",
+            "# TOK" + "EN=abc123def456",  # a commented-out assignment
+            "# DB_PASS" + "WORD=hunter22x",
+            "# # TOK" + "EN=abc123def456",
+            "  ## export MY_API_" + "KEY=xyz123abc",
+        ):
+            self._comment_in_record(comment)
+            for args in (("validate",), ("show", SLUG, "--history")):
+                code, res = self.run_cli(*args)
+                self.assertEqual(code, 1, (comment, args))
+                out = json.dumps(res)
+                self.assertIn("frontmatter comment", out)
+                self.assertNotIn(FAKE_KEY, out)
+                self.assertNotIn("acme.io", out)
+            (self.root / SLUG / "p000000000001.md").write_text(self.pristine, encoding="utf-8")
+            self.assertEqual(self.run_cli("validate")[0], 0)
+
+    def test_a_secret_in_a_catalog_yaml_comment_makes_the_catalog_invalid(self):
+        self.add_draft()
+        path = self.root / "catalog.yaml"
+        clean = path.read_text(encoding="utf-8")
+        path.write_text(f"# harmless\n{clean}", encoding="utf-8")
+        self.assertEqual(self.run_cli("validate")[0], 0)
+        for comment in (f"# {FAKE_KEY}", f"# note\u2028{FAKE_KEY}", "# DB_PASS" + "WORD=hunter22x"):
+            path.write_text(f"{clean}{comment}\n", encoding="utf-8")
+            code, res = self.run_cli("validate")
+            self.assertEqual(code, 1, comment)
+            self.assertIn("catalog.yaml: a comment matches the screen", " ".join(res["errors"]))
+            self.assertNotIn(FAKE_KEY, json.dumps(res))
 
     def test_update_draft_refuses_non_drafts(self):
         self.make_active()
@@ -1644,6 +1672,47 @@ class Robustness(Base):
     def test_hidden_characters_flag_non_ascii_spaces_but_not_the_ascii_space(self):
         found, _ = V.hidden_characters("a b\u00a0c\u2009d\u3000e")
         self.assertEqual([h["codepoint"] for h in found], ["U+00A0", "U+2009", "U+3000"])
+
+    def test_a_draft_verification_holds_only_hashes(self):
+        self.add_draft()
+        self.assertEqual(self.verify("p000000000001")[0], 0)
+        path = self.root / SLUG / "p000000000001.md"
+        clean = path.read_text(encoding="utf-8")
+        for extra in (f"  note: {FAKE_KEY}\n", f"  import: {FAKE_KEY}\n", f"  {FAKE_KEY}: x\n"):
+            path.write_text(
+                clean.replace("verification:\n", "verification:\n" + extra), encoding="utf-8"
+            )
+            code, res = self.run_cli("validate")
+            self.assertEqual(code, 1, extra)
+            self.assertIn("verification", " ".join(res["errors"]))
+            self.assertNotIn(FAKE_KEY, json.dumps(res))
+        path.write_text(clean, encoding="utf-8")
+        self.assertEqual(self.run_cli("validate")[0], 0)
+
+    def test_an_unrequired_verification_value_is_still_a_hash(self):
+        self.make_active()
+        path = self.root / SLUG / "active.md"
+        text = path.read_text(encoding="utf-8")
+        path.write_text(
+            text.replace("verification:\n", f"verification:\n  import: {FAKE_KEY}\n"),
+            encoding="utf-8",
+        )
+        code, res = self.run_cli("validate")
+        self.assertEqual(code, 1)
+        self.assertIn("verification.import is not a SHA-256", " ".join(res["errors"]))
+        self.assertNotIn(FAKE_KEY, json.dumps(res))
+
+    def test_a_draft_hash_of_older_text_is_not_an_error(self):
+        self.add_draft()
+        path = self.root / SLUG / "p000000000001.md"
+        text = path.read_text(encoding="utf-8")
+        path.write_text(
+            text.replace("---\n", f"---\nverification:\n  quality: {'a' * 64}\n", 1),
+            encoding="utf-8",
+        )
+        code, res = self.run_cli("validate")
+        self.assertEqual(code, 0, res)
+        self.assertEqual(res["records"][0]["missing_verification"], ["quality"])
 
     def test_show_reports_no_hidden_characters_for_plain_text(self):
         self.make_active(_body="Tab\tis fine.\nSo is café and — a dash.")
