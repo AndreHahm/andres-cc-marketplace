@@ -702,3 +702,45 @@ def test_the_plan_runs_the_structural_checks_the_gate_uses(lab, monkeypatch):
     monkeypatch.setattr(ab.review_verifiers, "run_verifiers", spy)
     _plan(lab)
     assert seen["structural"] == drift
+
+
+# --- from PR review ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(("timeout_ms", "ok"), [("600000", True), ("1200000", False)])
+def test_plan_refuses_a_run_that_cannot_fit_the_job(lab, monkeypatch, timeout_ms, ok):
+    """Four reviewers are two waves: 22 minutes an arm run at 10 minutes a call, 40 at 20."""
+    monkeypatch.setenv("CODEX_KIT_REVIEW_TIMEOUT_MS", timeout_ms)
+    repeats = 5
+    if ok:
+        assert _plan(lab, repeats=repeats).repeats == repeats
+    else:
+        with pytest.raises(ab.AbError, match="fewer repeats"):
+            _plan(lab, repeats=repeats)
+
+
+def test_a_differently_spelled_path_is_the_same_finding(lab, monkeypatch):
+    spelled = iter([SKILL, f"./{SKILL}"] * 50)
+
+    def dispatch(scope, *, base_sha, repo, **_):
+        path = next(spelled) if base_sha == lab["old"] else SKILL
+        reports = []
+        for name in (*scope.validate, *scope.audit):
+            output = _envelope(name, "major")
+            output["findings"][0]["location"] = f"{path}:5"
+            reports.append(review.ReviewerReport(name, "completed", output=output))
+        return tuple(reports)
+
+    monkeypatch.setattr(review, "dispatch_reviewers", dispatch)
+    out = lab["tmp"] / "out"
+    ab.run_experiment(_plan(lab, repeats=2), out)
+    case = _labelled_case(lab, ("injection-surface", "true"))
+    arm = ab.build_report(out, [case])["reviewers"]["security-reviewer"]["old"]
+    assert arm["agree"] == 2
+    assert [(f["path"], f["reported"]) for f in arm["findings"]] == [(SKILL, 2)]
+    assert arm["labelled"] == 2
+
+
+def test_a_climbing_path_is_kept_as_written():
+    assert ab._path("a/../b.md") == "a/../b.md"
+    assert ab._path("./a//b.md") == "a/b.md"

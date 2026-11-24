@@ -1813,7 +1813,7 @@ Working on survivors (a test, or `# pragma: no mutate` with a reason): quality-k
 
 ## Reviewer A/B: comparing two prompts by hand
 
-`.github/workflows/reviewer-ab.yml` runs the Codex reviewers on one already reviewed head with the prompts
+`.github/workflows/reviewer-ab.yml` runs the Codex reviewers on one head with the prompts
 of two commits (issue #862; `reviewer-eval/README.md`, "Comparing two prompts"). It costs API calls, so it has
 only `workflow_dispatch`, runs only from `main`, and is never a check on a pull request.
 
@@ -1826,10 +1826,15 @@ only `workflow_dispatch`, runs only from `main`, and is never a check on a pull 
 - **What runs:** the dispatcher, bridge and gate of `main`. The head is a separate worktree read as files. The
   model and timeout variables, CLI pin, sandbox probe, config check and isolation check are `codex-review`'s;
   a test keeps the scripts equal.
+- **The key:** there is no `codex login`, because a read-only sandbox can read the file it writes. The run step
+  passes `CODEX_API_KEY`, and a Codex `shell_environment_policy` keeps it out of the commands Codex runs; without
+  it they see the variable. A step before the run fails the job unless a canary shows that a sandboxed command
+  sees the key neither as a variable nor in `/proc`. Measured on 0.170.0 with a local mock model: `codex exec` with
+  this setup showed the key to no command and left it in no file under `CODEX_HOME`.
 - **Limits:** the gates stop accidents, not a writer: whoever can push a branch can dispatch an edited copy of
-  the workflow. An arm's prompt is unreviewed, so read its diff before dispatching: Codex's sandbox limits
-  writes, and whether it keeps reviewers from reading the key or earlier results of the same experiment is
-  not verified. Stored results have token-shaped text redacted, which an encoded token would pass.
+  the workflow. An arm's prompt is unreviewed, so read its diff before dispatching. The canary uses
+  `codex sandbox`, not `codex exec`, so re-measure on a pin change. Reviewers may be able to read earlier results of the same
+  experiment. Stored results have token-shaped text redacted, which an encoded token would pass.
 
 ## Codacy: `git` through `subprocess` in plugin scripts
 

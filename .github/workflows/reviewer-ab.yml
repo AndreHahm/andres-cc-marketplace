@@ -1,6 +1,6 @@
 name: Reviewer A/B
 
-# Compares two versions of the Codex reviewer prompts on one already reviewed head (issue #862;
+# Compares two versions of the Codex reviewer prompts on one head this repository's CI has run on (issue #862;
 # reviewer-eval/README.md, "Comparing two prompts"). It costs API calls, so nothing starts it but a
 # manual dispatch from main, and the default is a plan: it prints how many dispatches a run makes. A
 # run starts only when `approved_calls` is exactly that number. Never a check on a pull request.
@@ -115,10 +115,11 @@ jobs:
           version: "0.13.7"
           enable-cache: "false"
           python-version: "3.13"
-      - run: uv sync --locked --no-config --group dev
+      - run: uv sync --locked --no-config --group dev --no-build --no-install-package csscompressor --no-install-package jsmin
       - name: Plan the calls
         env:
           CODEX_KIT_REVIEW_MODEL: ${{ vars.CODEX_KIT_REVIEW_MODEL }}
+          CODEX_KIT_REVIEW_TIMEOUT_MS: ${{ vars.CODEX_KIT_REVIEW_TIMEOUT_MS || '600000' }}
         run: |
           set -euo pipefail
           uv run --no-sync --no-build python -m scripts.reviewer_eval.ab plan \
@@ -138,7 +139,7 @@ jobs:
     # Attempt 1 only: a re-run replays the same inputs, so it would spend the approval again.
     if: github.ref == 'refs/heads/main' && inputs.approved_calls != '0' && github.run_attempt == 1
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 360  # ab.MAX_RUN_SECONDS plus setup and upload
     permissions:
       contents: read
     env:
@@ -172,24 +173,17 @@ jobs:
           version: "0.13.7"
           enable-cache: "false"
           python-version: "3.13"
-      - run: uv sync --locked --no-config --group dev
+      - run: uv sync --locked --no-config --group dev --no-build --no-install-package csscompressor --no-install-package jsmin
       - name: Set up Node (for the codex CLI and codex-review-bridge)
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # ratchet:actions/setup-node@v7.1.0
         with:
           node-version: "20"
 
-      # The next five steps are codex-review's (marketplace-ci.yml), where the reasons are; a test
-      # keeps the scripts equal. The config check runs in the reviewed head, with main's config as
+      # The next four steps are codex-review's (marketplace-ci.yml), where the reasons are; a test
+      # keeps the scripts equal, but for --ignore-scripts. The config check runs in the reviewed head, with main's config as
       # its control.
       - name: Install Codex CLI (pinned version, never floating latest)
-        run: npm install -g @openai/codex@0.170.0
-
-      - name: Authenticate and smoke-check the Codex CLI
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: |
-          printenv OPENAI_API_KEY | codex login --with-api-key
-          codex --version
+        run: npm install -g --ignore-scripts @openai/codex@0.170.0
 
       - name: Allow Codex's bwrap sandbox on the hosted runner
         run: |
@@ -271,9 +265,45 @@ jobs:
           done
           echo "With the overrides, neither a project AGENTS.md nor the project skill list reaches the model input"
 
+      # An arm's prompt is unreviewed text that steers a process holding the key, and Codex's read-only
+      # sandbox limits writes, not reads: a file `codex login` writes is readable in it (0.170.0). So
+      # there is no login here; the run step passes CODEX_API_KEY, and this policy keeps it out of the
+      # commands Codex runs (without it they see the variable, and Codex writes it to a shell snapshot
+      # they can read). The canary then checks that a sandboxed command sees the key neither as a
+      # variable nor in /proc. The controls show the probe itself can see a variable and read
+      # /proc, and that a process holds the canary. It runs `codex sandbox`, which gave the same answers as `codex exec` on 0.170.0.
+      - name: Check the reviewers' sandbox cannot see the key
+        run: |
+          set -euo pipefail
+          codex_home="${CODEX_HOME:-$HOME/.codex}"
+          if [ -e "$codex_home/auth.json" ] || [ -e "$codex_home/config.toml" ]; then
+            echo "::error::a Codex login (readable in a read-only sandbox) or config already exists"
+            exit 1
+          fi
+          mkdir -p "$codex_home"
+          printf '[shell_environment_policy]\nexclude = ["CODEX_API_KEY", "OPENAI_API_KEY"]\n' > "$codex_home/config.toml"
+          # A process outside the sandbox that does hold the canary, or `proc=hidden` means nothing.
+          AB_HOLDER=ab-canary-value sleep 120 &
+          holder=$!
+          trap 'kill "$holder"' EXIT
+          sleep 1
+          if ! grep -aq ab-canary-value "/proc/$holder/environ"; then
+            echo "::error::the canary process cannot be read outside the sandbox either, so the probe shows nothing"
+            exit 1
+          fi
+          # shellcheck disable=SC2016  # expanded inside the sandbox
+          probe='printf "control=%s\n" "${AB_CONTROL:-absent}"; printf "var=%s\n" "${CODEX_API_KEY:-absent}"; if grep -aq ab-control /proc/self/environ; then echo self=read; fi; if cat /proc/[0-9]*/environ 2>/dev/null | grep -aq ab-canary-value; then echo proc=seen; else echo proc=hidden; fi'
+          seen=$(AB_CONTROL=ab-control CODEX_API_KEY=ab-canary-value codex sandbox -c 'sandbox_mode="read-only"' -- sh -c "$probe")
+          expected=$(printf 'control=ab-control\nvar=absent\nself=read\nproc=hidden')
+          if [ "$seen" != "$expected" ]; then
+            echo "::error::the sandbox probe did not give the expected answer, so the key may be visible to reviewers -- re-check this step after a Codex pin change"
+            printf '%s\n' "$seen"
+            exit 1
+          fi
+
       - name: Run the approved calls
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          CODEX_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           CODEX_KIT_REVIEW_MODEL: ${{ vars.CODEX_KIT_REVIEW_MODEL }}
           CODEX_KIT_REVIEW_TIMEOUT_MS: ${{ vars.CODEX_KIT_REVIEW_TIMEOUT_MS || '600000' }}
         run: |

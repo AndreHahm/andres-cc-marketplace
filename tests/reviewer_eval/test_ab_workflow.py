@@ -7,10 +7,13 @@ import json
 import os
 import re
 import subprocess
+import tomllib
 from pathlib import Path
 
 import pytest
 import yaml
+
+from scripts.reviewer_eval import ab
 
 WORKFLOWS = Path(__file__).resolve().parents[2] / ".github" / "workflows"
 AB = yaml.safe_load((WORKFLOWS / "reviewer-ab.yml").read_text(encoding="utf-8"))
@@ -51,10 +54,10 @@ def test_permissions_are_read_only_and_the_run_job_gets_only_contents():
     assert AB["jobs"]["run"]["permissions"] == {"contents": "read"}
 
 
-def test_the_key_reaches_only_the_login_and_the_run_step():
-    assert str(AB).count(KEY) == 2  # nowhere else: no job or workflow env, no other step
+def test_the_key_reaches_only_the_run_step():
+    assert str(AB).count(KEY) == 1  # nowhere else: no job or workflow env, no other step
     holders = [s["name"] for s in _steps(AB, "run") if KEY in str(s)]
-    assert holders == ["Authenticate and smoke-check the Codex CLI", "Run the approved calls"]
+    assert holders == ["Run the approved calls"]
 
 
 def test_the_run_job_waits_for_the_plan_and_its_provenance_checks():
@@ -79,7 +82,6 @@ def test_no_checkout_keeps_credentials():
     "name",
     [
         "Install Codex CLI",
-        "Authenticate and smoke-check the Codex CLI",
         "Allow Codex's bwrap sandbox on the hosted runner",
         "Check Codex does not apply the repository's own config",
         "Check the overrides keep AGENTS.md and skills out of the model input",
@@ -87,6 +89,7 @@ def test_no_checkout_keeps_credentials():
 )
 def test_the_codex_setup_is_the_same_script_as_codex_review(name):
     ours = _named(_steps(AB, "run"), name)["run"]
+    ours = ours.replace("npm install -g --ignore-scripts ", "npm install -g ")
     assert ours == _named(_steps(CI, "codex-review"), name)["run"]
 
 
@@ -96,6 +99,7 @@ def test_the_checks_come_before_the_run_and_the_config_check_runs_in_the_head():
         "Allow Codex's bwrap sandbox on the hosted runner",
         "Check Codex does not apply the repository's own config",
         "Check the overrides keep AGENTS.md and skills out of the model input",
+        "Check the reviewers' sandbox cannot see the key",
         "Run the approved calls",
     ]
     assert [n for n in names if n in order] == order
@@ -257,3 +261,118 @@ def test_the_plan_step_refuses_any_other_approved_number(tmp_path, approved, ok)
     env["GITHUB_STEP_SUMMARY"] = str(tmp_path / "summary")
     result = _bash(_named(_steps(AB, "plan"), "Plan the calls")["run"], env, tmp_path)
     assert (result.returncode == 0) is ok
+
+
+def test_nothing_logs_codex_in():
+    """A login writes a file that a read-only sandbox can read."""
+    for job in ("plan", "run"):
+        for step in _steps(AB, job):
+            assert "codex login" not in step.get("run", ""), step.get("name")
+    assert "CODEX_API_KEY" in _named(_steps(AB, "run"), "Run the approved calls")["env"]
+
+
+GOOD_PROBE = "control=ab-control\nvar=absent\nself=read\nproc=hidden"
+
+
+@pytest.mark.parametrize(
+    ("answer", "login_file", "ok"),
+    [
+        (GOOD_PROBE, False, True),
+        (GOOD_PROBE, True, False),
+        (GOOD_PROBE.replace("var=absent", "var=ab-canary-value"), False, False),
+        (GOOD_PROBE.replace("proc=hidden", "proc=seen"), False, False),
+        (GOOD_PROBE.replace("control=ab-control", "control=absent"), False, False),
+        (GOOD_PROBE.replace("self=read\n", ""), False, False),
+        ("", False, False),
+    ],
+    ids=["hidden", "login-file", "variable", "proc", "no-control", "no-proc", "no-output"],
+)
+def test_the_key_check_fails_unless_the_canary_is_hidden(tmp_path, answer, login_file, ok):
+    stub = tmp_path / "bin"
+    stub.mkdir()
+    (tmp_path / "answer").write_text(answer + "\n", encoding="utf-8")
+    codex = stub / "codex"
+    codex.write_text(f'#!/usr/bin/env bash\ncat "{tmp_path}/answer"\n', encoding="utf-8")
+    codex.chmod(0o755)
+    if login_file:
+        (tmp_path / ".codex").mkdir()
+        (tmp_path / ".codex" / "auth.json").write_text("{}", encoding="utf-8")
+    script = _named(_steps(AB, "run"), "Check the reviewers' sandbox")["run"]
+    result = _bash(script, {"PATH": f"{stub}:{os.environ['PATH']}"}, tmp_path)
+    assert (result.returncode == 0) is ok, result.stdout
+
+
+def test_the_key_check_writes_the_policy_before_it_probes(tmp_path):
+    stub = tmp_path / "bin"
+    stub.mkdir()
+    codex = stub / "codex"
+    (tmp_path / "answer").write_text(GOOD_PROBE + "\n", encoding="utf-8")
+    codex.write_text(
+        f'#!/usr/bin/env bash\ncp "$HOME/.codex/config.toml" "{tmp_path}/seen.toml"\n'
+        f'cat "{tmp_path}/answer"\n',
+        encoding="utf-8",
+    )
+    codex.chmod(0o755)
+    script = _named(_steps(AB, "run"), "Check the reviewers' sandbox")["run"]
+    result = _bash(script, {"PATH": f"{stub}:{os.environ['PATH']}"}, tmp_path)
+    assert result.returncode == 0, result.stdout + result.stderr
+    policy = tomllib.loads((tmp_path / "seen.toml").read_text(encoding="utf-8"))
+    excluded = policy["shell_environment_policy"]["exclude"]
+    assert set(excluded) == {"CODEX_API_KEY", "OPENAI_API_KEY"}
+
+
+def test_the_key_check_refuses_a_codex_config_that_already_exists(tmp_path):
+    (tmp_path / ".codex").mkdir()
+    (tmp_path / ".codex" / "config.toml").write_text("", encoding="utf-8")
+    script = _named(_steps(AB, "run"), "Check the reviewers' sandbox")["run"]
+    result = _bash(script, {"PATH": os.environ["PATH"]}, tmp_path)
+    assert result.returncode != 0
+    assert "already exists" in result.stdout
+
+
+def test_the_key_check_fails_when_codex_does(tmp_path):
+    stub = tmp_path / "codex"
+    stub.write_text("#!/usr/bin/env bash\nexit 1\n", encoding="utf-8")
+    stub.chmod(0o755)
+    script = _named(_steps(AB, "run"), "Check the reviewers' sandbox")["run"]
+    result = _bash(script, {"PATH": f"{tmp_path}:{os.environ['PATH']}"}, tmp_path)
+    assert result.returncode != 0
+
+
+def test_the_job_outlasts_the_longest_run_a_plan_allows():
+    assert AB["jobs"]["run"]["timeout-minutes"] * 60 >= ab.MAX_RUN_SECONDS + 20 * 60
+    ours = _named(_steps(AB, "plan"), "Plan the calls")["env"]
+    theirs = _named(_steps(AB, "run"), "Run the approved calls")["env"]
+    for name in ("CODEX_KIT_REVIEW_MODEL", "CODEX_KIT_REVIEW_TIMEOUT_MS"):
+        assert ours[name] == theirs[name]
+
+
+def test_no_install_step_runs_package_scripts():
+    for job in ("plan", "run"):
+        for step in _steps(AB, job):
+            run = step.get("run", "")
+            assert "uv sync" not in run or "--no-build" in run
+            assert "npm install" not in run or "--ignore-scripts" in run
+
+
+def test_the_key_check_always_runs_and_under_the_default_environment():
+    assert set(_named(_steps(AB, "run"), "Check the reviewers' sandbox")) == {"name", "run"}
+
+
+def test_the_probe_itself_finds_the_key_when_nothing_hides_it(tmp_path):
+    """The stub runs the real probe unsandboxed: one that cannot see the canary would pass here."""
+    stub = tmp_path / "bin"
+    stub.mkdir()
+    codex = stub / "codex"
+    codex.write_text(
+        f'#!/usr/bin/env bash\nprintf "%s\\n" "$@" > "{tmp_path}/argv"\nexec sh -c "${{@: -1}}"\n',
+        encoding="utf-8",
+    )
+    codex.chmod(0o755)
+    script = _named(_steps(AB, "run"), "Check the reviewers' sandbox")["run"]
+    result = _bash(script, {"PATH": f"{stub}:{os.environ['PATH']}"}, tmp_path)
+    assert result.returncode != 0
+    for line in ("control=ab-control", "var=ab-canary-value", "self=read", "proc=seen"):
+        assert line in result.stdout.splitlines()
+    argv = (tmp_path / "argv").read_text(encoding="utf-8").splitlines()
+    assert argv[:3] == ["sandbox", "-c", 'sandbox_mode="read-only"']

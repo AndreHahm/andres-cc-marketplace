@@ -14,6 +14,7 @@ import hashlib
 import html
 import json
 import os
+import posixpath
 import re
 import statistics
 import subprocess
@@ -32,6 +33,8 @@ from scripts.reviewer_eval.corpus import _HEAD_SHA, CorpusError, load_corpus
 from scripts.reviewer_eval.score import _rate, stability
 
 MAX_REPEATS = 10
+# GitHub ends a hosted job after 360 minutes; the rest is setup and upload.
+MAX_RUN_SECONDS = 330 * 60
 _ROOT = Path(__file__).resolve().parents[2]
 _ARM_NAME = re.compile(r"[a-z][a-z0-9-]{0,30}")
 
@@ -98,6 +101,13 @@ def _prompt_digest(repo: Path, reviewer: str, arm: str, sha: str, scratch: Path)
     return hashlib.sha256(out.read_bytes()).hexdigest()
 
 
+def _worst_seconds(reviewers: int, arms: int, repeats: int) -> float:
+    """How long the runs take when every call uses its whole time limit."""
+    waves = -(-reviewers // review.DISPATCH_MAX_WORKERS)
+    call = review._per_call_seconds() + review._PROCESS_SLACK_SECONDS
+    return min(waves * call, review.DISPATCH_BUDGET_SECONDS) * arms * repeats
+
+
 def make_plan(
     *, repo: Path, head_sha: str, base_sha: str, arms: dict[str, str], repeats: int
 ) -> Plan:
@@ -136,6 +146,12 @@ def make_plan(
     reviewers = tuple(dict.fromkeys((*scope.validate, *scope.audit)))
     if not reviewers:
         raise AbError("this head starts no reviewer")
+    worst = _worst_seconds(len(reviewers), len(arms), repeats)
+    if worst > MAX_RUN_SECONDS:
+        raise AbError(
+            f"this run could take {worst / 60:.0f} minutes, over the limit of "
+            f"{MAX_RUN_SECONDS // 60}: use fewer repeats"
+        )
     unsafe = [p for p in scope.paths if not review._BRIEFING_SAFE_PATH.fullmatch(p)]
     if unsafe:
         raise AbError(f"the reviewer bridge does not accept the path {unsafe[0]!r}")
@@ -180,7 +196,8 @@ def _own_bridge() -> Generator[None]:
 
 
 def _run_once(plan: Plan, arm: str, raw: Path) -> dict:
-    """One run of every reviewer with `arm`'s prompts, gated as `run-codex-review` gates it. The
+    """One run of every reviewer with `arm`'s prompts, with `run-codex-review`'s
+    blocking rules, but without waivers, tracked issues, retries or the unsandboxed fallback. The
     reports go to `raw` first: a failure in the gating must not lose calls already paid for."""
     exceptions = review_contract.load_exceptions(review_contract.EXCEPTIONS_PATH)
     changed_paths = review._changed_path_set(plan.changed)
@@ -291,8 +308,13 @@ def run_experiment(plan: Plan, out: Path) -> int:
     return status
 
 
+def _path(path: str) -> str:
+    """`./x` and `x` are one file. A `..` may cross a symlink, so such a path stays as written."""
+    return path if ".." in path.split("/") else posixpath.normpath(path)
+
+
 def _finding_key(finding: dict) -> tuple:
-    return finding["rule"], finding["path"], finding["line"]
+    return finding["rule"], _path(finding["path"]), finding["line"]
 
 
 def _reported_by(result: dict, reviewer: str) -> list[dict]:
@@ -302,7 +324,7 @@ def _reported_by(result: dict, reviewer: str) -> list[dict]:
 def _label_of(finding: dict, reviewer: str, labels: dict[tuple, list[tuple]]) -> str | None:
     """The corpus label of `finding`, or None when there is none or the candidates disagree. A label
     with a rule applies to that rule only; one without a rule to any finding on its line."""
-    key = (reviewer, finding["path"], finding["line"])
+    key = (reviewer, _path(finding["path"]), finding["line"])
     found = {label for rule, label in labels.get(key, ()) if rule in (None, finding["rule"])}
     return found.pop() if len(found) == 1 else None
 
@@ -312,7 +334,7 @@ def _arm_summary(
 ) -> dict:
     runs = [r for r in results if reviewer in r["reviewers"]]
     sets = [
-        frozenset((f["path"], f["line"]) for f in _reported_by(r, reviewer) if f["blocking"])
+        frozenset((_path(f["path"]), f["line"]) for f in _reported_by(r, reviewer) if f["blocking"])
         for r in runs
     ]
     per_run: list[int] = []
@@ -369,7 +391,7 @@ def build_report(out: Path, cases: Sequence[dict]) -> dict:
     for case in cases:
         if case["head_sha"] == manifest["head_sha"]:
             for f in case["findings"]:
-                key = (f["reviewer"], f["path"], f["line"])
+                key = (f["reviewer"], _path(f["path"]), f["line"])
                 labels.setdefault(key, []).append((f["rule"], f["label"]))
     results = {
         arm: [
