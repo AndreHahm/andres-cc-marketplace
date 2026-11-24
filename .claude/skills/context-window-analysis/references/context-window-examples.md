@@ -137,7 +137,8 @@ Observable Indicators:
 ```
 
 ```text
-Auto-compact triggered: 3 times
+Auto-compact triggered: 3 times (alone, a WARNING estimate)
+Critical sign: conversation truncated, earlier turns are cut off
 
 Assessment:
   Context is near capacity. Significant degradation likely:
