@@ -1,0 +1,13 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4680112918",
+      "line": 461,
+      "note": "Baseline arm run and recorded in 12d48be2 (with_skill 14 of 14, baseline 9 of 14).",
+      "path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+      "pr": 874,
+      "recorded_at": "2026-11-24T12:59:44+00:00"
+    }
+  ]
+}
