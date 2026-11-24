@@ -95,12 +95,11 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
    - `activate` of a record that is already `active`, or `deactivate` of one that is not, is reported
      ("already active", or its current status) and stops here, with no question and no command.
    - `deactivate`, and `activate` of an inactive record, skip steps 3 to 8: go to step 9.
-   - A draft left by an interrupted add or revise (also when `activate` names a draft) resumes by its
-     state, read from the record's `missing_verification` list in `validate` or `show <slug> --history`:
-     at step 7 if it includes `quality` (no record field shows whether `prompt-reviewer` already ran, so
-     an unverified draft always gets the review again); at step 8 if it holds only `import` (`session` or
-     `web` origin); at step 9 once it is empty. A resume records only the kinds still in
-     `missing_verification`; a kind already bound to the current text is not recorded again.
+   - A draft left by an interrupted add or revise (also when `activate` names a draft) always
+     resumes at step 7, then 8 and 9, whatever is recorded: no field shows whether `prompt-reviewer` ran, and
+     a recorded hash does not cover the metadata. A resume records only the kinds still in the record's
+     `missing_verification` (from `validate` or `show <slug> --history`; if none, step 8 asks and records
+     nothing); a kind already bound to the current text is not recorded again.
    - A successor ends with `finalize`; never start a second successor.
 3. **Intake.** For `add`, follow `references/prompt-intake-sources.md`. The intake path sets `origin`:
    fetched text is always `web`, session text is always `session`; the user cannot label either as
@@ -159,8 +158,7 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
    and whenever the filed text or metadata (any field the reviewer checks) is neither what was reviewed nor
    the reviewer's approved rewrite (apart from kept lines copied unchanged). See `references/prompt-optimization-and-review.md`; an active or inactive record
    is never edited in place, a revision is a new draft.
-8. **Verify.** Only after a completed review of this text (step 7; on a resume at this step, the recorded
-   `quality` verification stands for it). Get the final prompt text and its `text_hash` from the filed record (`<CLI> show <slug>
+8. **Verify.** Only after a completed review of this text in this run (step 7). Get the final prompt text and its `text_hash` from the filed record (`<CLI> show <slug>
    --history`), not from the scratch copy. Show both to the user, with the metadata `show` returns (`name`, `area`,
    `short_description`, `prerequisites`, `boundaries`, `references`, `attachments`, `source_ref`). If the record's `hidden_characters`
    or `hidden_metadata` (entries also name a `field`) is not empty, list each entry (line, column, code point, name) above the text, add "50 or more" when
@@ -168,10 +166,10 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
    If that JSON is cut off, do not ask and stop. Then ask with `AskUserQuestion` whether to approve exactly this text, naming the hidden-character
    count in the question when there are any. On yes, run `<CLI> record-verification <internal_id> --kind
    quality --expect-sha256 <that hash>` and, for `session` or `web` origin, again with `--kind import`
-   (for a resumed draft, only the kinds in its `missing_verification`, see step 2).
+   (for a resumed draft, only the kinds in its `missing_verification`; none means no command, see step 2).
    The expected hash makes the script refuse if the prompt text changed after the user approved it; the
    metadata shown is not covered (see Gotchas).
-9. **Change status.** Only after step 8, or when step 2 sends the record here. Take the hash from `<CLI> show <slug> --history`. Show the proposed change and ask
+9. **Change status.** Only after step 8, or when step 2 sends a record that is not a draft here. Take the hash from `<CLI> show <slug> --history`. Show the proposed change and ask
    with `AskUserQuestion`, naming the slug, the status change, the first 8 characters of that hash and,
    for `activate` or `finalize`, the hidden-character count (text and metadata) if any. Then run one of:
    - `<CLI> activate <id> --expect-sha256 <hash>` for an initial draft or an inactive record;
@@ -190,8 +188,8 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
 
 - Changing text or any other field through `update-draft` clears verification: never activate on a hash
   recorded before the last edit. `--expect-sha256` and the recorded hash detect text changes only: metadata
-  changed another way (a hand edit, a merge) keeps its verification undetected, so if you notice such a change
-  to a draft, run step 7 again before step 8 or 9. Do not pass a hash you did not show the user.
+  changed another way (a hand edit, a merge) keeps its verification undetected, which is why every resume
+  goes through step 7. Do not pass a hash you did not show the user.
 - `prompt-reviewer` only reports and proposes. It cannot approve, activate or write; the user approves.
   Its findings are advisory, and the validator cannot tell whether the review ran. Show a Critical
   finding prominently and ask the user to acknowledge it before step 8. If `review-record` fails, the dispatch
@@ -257,7 +255,7 @@ directly; last run 2026-11-24, 8 of 8 checks passed. It failed on a copy with a 
 - [ ] A revision produces a successor with `previous_id` and `version` + 1, and the predecessor stays
       untouched until `finalize`.
 - [ ] Every status change and every draft filing was preceded by an `AskUserQuestion` approval.
-- [ ] A resumed draft with no recorded quality verification goes back through `prompt-reviewer` (step 7).
+- [ ] A resumed draft goes back through `prompt-reviewer` (step 7), whatever verification is recorded.
 - [ ] When no review ran (an incomplete output included), the skill offers only retry or stop; the draft is
       neither verified nor activated.
 - [ ] Text or metadata changed after the review, other than the approved rewrite, is reviewed again before step 8.
@@ -274,7 +272,9 @@ by `prompt-reviewer`'s own dry runs (`evals/prompt-reviewer/workspace/iteration-
 `evals/prompt-library/` scenario was re-run for them. Scenarios 17 to 19 (a refused review, an incomplete review
 output, a user edit on top of a rewrite) passed as plan-only dry runs on 2026-11-24
 (`evals/prompt-library/workspace/iteration-5/` and `-6/`, with-skill only; 18 and 19 before the metadata wording); 20 and 21 (metadata shown at step 8,
-carried into a revision) passed the same way (`iteration-7/`). The latest live run, 2026-10-14 (plugin loaded with
+carried into a revision) passed the same way (`iteration-7/`). A blind plan-only comparison with the
+version on main (`iteration-8/`: 11, 12, 17, 18, 19 and 22, one run each) scored 17 of 17 against 8 of 17; four of the
+17 criteria test rules added then, and it predates step 8's cut-off check. The latest live run, 2026-10-14 (plugin loaded with
 `--plugin-dir`), ran add, near-duplicate, revise, finalize and deactivate, each status change behind its
 own approval; the step 5 triage skip it found was fixed in PR #566. An earlier hand-followed run of steps
 1 to 6 (2026-10-04, not persisted) confirmed a fake key is reported unechoed and refused by `draft`.
@@ -284,8 +284,8 @@ follow this SKILL.md by hand against throwaway projects (approval questions scri
 inline). Its `evals.json` records which quality gates the scenarios cover. Scenario 11 (draft resume,
 2026-11-12, with-skill only, in `workspace/iteration-2/`) first passed 3 of 4 checks: no read
 subcommand returned the record path. After `path` was added to `show` (covered by a unit test), a re-run
-the same day passed 4 of 4. Scenario 12 (a session draft with only its quality verification resumes at
-step 8, read from `missing_verification`) passed 5 of 5 the same day. Scenario 13 (recovery advice for a
+the same day passed 4 of 4. Scenario 12 (a session draft with only its quality verification, under the
+earlier rule that resumed it at step 8) passed 5 of 5 the same day. Scenario 13 (recovery advice for a
 pathspec-shaped `errors` path) passed 5 of 5 against 3 of 5 for the earlier `git restore <path>` text.
 On 2026-11-15 every scenario was re-run with and without the skill against real fixture projects
 (`workspace/iteration-3/`, scenarios 1 to 15, adding 14 for an already active record and 15 for a

@@ -613,7 +613,8 @@ checks only that a recorded hash matches the text, so it cannot tell whether a r
 before 2026-11-24, drafts as well as active and inactive prompts, a hash written into a record outside the
 skill, for example in a cloned repository, and metadata changed outside `update-draft` under a valid hash, for
 example by a hand edit or a merge, are not covered; nothing in the validator stops a verification being
-recorded after a metadata change that was not reviewed again, only the skill's step 7). Confirmed: yes
+recorded after a metadata change that was not reviewed again, only the skill's step 7, which every resumed
+draft goes through). Confirmed: yes
 (2026-11-16; state note amended 2026-11-24).
 
 ### REV-2: Imported and AI-written text is checked for hidden instructions
@@ -836,7 +837,11 @@ for the missing step, for example activation. If the content changed since your 
 reviewed, it goes back through review and approval (LIF-2, REV-1). The secret screen runs again either way
 (SCR-3).
 
-Source: code. State: met. Confirmed: yes (2026-11-16).
+**Amended 2026-11-24 (LIF-8):** every resumed draft goes through the review and is shown for approval again,
+also when its fingerprint is unchanged, because the fingerprint covers the text and not the metadata; an
+approval already recorded for the current text is not recorded a second time.
+
+Source: code; owner decision 2026-11-24. State: met. Confirmed: yes (2026-11-16; amended 2026-11-24).
 
 ## 7. Retrieval (RET)
 

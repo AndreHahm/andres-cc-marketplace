@@ -34,7 +34,8 @@ that the reviewer read carefully.
 
 A review covers the text and metadata it read and the reviewer's own rewrite of it, with kept lines copied
 unchanged. Any other filed text or metadata, including the user's own edit on top of an approved rewrite, is
-reviewed again before verification.
+reviewed again before verification. A resumed draft is always reviewed again, because a recorded hash does not
+cover its metadata.
 
 ## Reviewer findings are advisory
 

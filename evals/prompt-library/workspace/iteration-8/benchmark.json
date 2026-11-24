@@ -1,0 +1,19 @@
+{
+  "iteration": 8,
+  "run_date": "2026-11-24",
+  "configurations": [
+    "with_skill",
+    "baseline"
+  ],
+  "scope": "Plan-only blind comparison 2026-11-24: one fresh agent per version followed its copy of SKILL.md (testing section removed), its references and the reviewer agent file on six scenarios that stated no expected result; a third agent graded both transcripts against fixed criteria without knowing which version was which. Baseline is origin/main. One run per version; no command of the skill was executed. Both runners used a shell read of the references despite the no-commands instruction (one also a heredoc write, the other one Glob). S1-c, S2-a, S6-a and S6-b test rules added in this round. After the run, step 8 gained a cut-off check and step 9 the words '(text and metadata)'.",
+  "with_skill": {
+    "passed": 17,
+    "total": 17,
+    "pass_rate": 1.0
+  },
+  "baseline": {
+    "passed": 8,
+    "total": 17,
+    "pass_rate": 0.471
+  }
+}
