@@ -1,0 +1,32 @@
+{
+  "eval_id": 28,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "note": "Re-run after the PATH filter began to resolve program links; assertion 5 changed before the run. with_skill only, no baseline.",
+  "assertions": [
+    {
+      "text": "Claude's passes get accepted.md and Codex's passes only accepted.codex.md, in Phase 1 and Phase 2",
+      "type": "functionality",
+      "target": "SKILL.md"
+    },
+    {
+      "text": "With only accepted.md present, Codex gets no accepted-findings file",
+      "type": "functionality",
+      "target": "SKILL.md"
+    },
+    {
+      "text": "The printed 'not briefed to Codex' line is reported in the inspection limits",
+      "type": "functionality",
+      "target": "SKILL.md"
+    },
+    {
+      "text": "Only app.py goes to Codex; config is left out because its diff would show the deleted folder's file",
+      "type": "functionality",
+      "target": "SKILL.md"
+    },
+    {
+      "text": "Both PATH folders are dropped: the one in another worktree, and the outside one whose linked program the review runs",
+      "type": "functionality",
+      "target": "SKILL.md"
+    }
+  ]
+}

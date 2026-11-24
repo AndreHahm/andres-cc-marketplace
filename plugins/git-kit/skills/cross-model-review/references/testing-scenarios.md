@@ -365,6 +365,8 @@ Moved here from SKILL.md's Testing & Validation section, which keeps only the la
   replaced a folder, other worktrees), one plan-only `with_skill` run, no baseline: 5/5. Both were graded by the
   authoring session and ran before the fallback's `$RUN/all_changed.names` and the absolute `/bin/bash` were added.
   Evals 5 and 6 got new expected outputs and were not run again.
+- **2026-11-24, `iteration-29`:** eval 28 again after the PATH filter began to follow program links (its last
+  assertion and expected output changed before the run), one plan-only `with_skill` run, no baseline: 5/5.
 
 Every eval run listed above is a dry run of the committed text, not a live dispatch (the live checks that
 some entries name are separate from their evals), and none is a live run of the scoped flow (one ran

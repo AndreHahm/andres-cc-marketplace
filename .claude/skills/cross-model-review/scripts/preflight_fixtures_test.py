@@ -20,6 +20,7 @@ than silently testing stale logic.
 
 import pathlib
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -491,6 +492,28 @@ def test_a_program_in_the_checkout_is_never_run():
         (sibling / "git").write_text(f'#!/bin/sh\ntouch "{planted}/sib.ran"\n', encoding="utf-8")
         (sibling / "git").chmod(0o755)
         entries = [planted, base / "link", base / "link" / ".." / "bin dir", repo / "out", sibling]
+        for name, target in (("direct", planted / "git"), ("sib", sibling / "git")):
+            (base / name).mkdir()
+            (base / name / "git").symlink_to(target)
+            entries.append(base / name)
+        (base / "hop").mkdir()
+        (base / "hop" / "git").symlink_to(pathlib.Path("..") / "direct" / "git")
+        entries.append(base / "hop")
+        (base / "touch").mkdir()
+        (planted / "touch").write_text('#!/bin/sh\n: > "$0.ran"\n', encoding="utf-8")
+        (planted / "touch").chmod(0o755)
+        (base / "touch" / "touch").symlink_to(planted / "touch")
+        entries.append(base / "touch")
+        (base / "through").mkdir()
+        (base / "through" / "git").symlink_to(repo / "through_git")
+        (repo / "through_git").symlink_to(outside / "git")
+        entries.append(base / "through")
+        harmless = base / "harmless"
+        harmless.mkdir()
+        (harmless / "git").symlink_to(shutil.which("git") or "/usr/bin/git")
+        kept = run_bash(repo, f'PATH="{harmless}:$PATH"\n' + diff_build_chain(extra=echo))
+        if f"PATH={harmless}:" not in kept.stdout:
+            return False, f"an outside link to an outside program was dropped: {kept.stdout}"
         for entry in entries:
             for cwd in (repo, repo / "sub", linked):
                 script = f'PATH="{entry}:$PATH"\n' + diff_build_chain(extra=echo)

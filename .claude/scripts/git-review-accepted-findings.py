@@ -639,9 +639,13 @@ def _run_dir_problem(target: Path) -> str | None:
         return f"{target} does not exist"
     if not stat.S_ISDIR(info.st_mode) or not re.fullmatch(r"tmp\.[A-Za-z0-9]{8,12}", resolved.name):
         return "the run directory must be a mktemp -d directory"
-    # Ownership, mode bits and /tmp mean nothing on Windows; there the run directory's own helpers
-    # (git-review-run-dir.sh) already required it inside the user's profile.
-    if hasattr(os, "getuid"):
+    # Ownership, mode bits and /tmp mean nothing on Windows; there the directory must be inside the
+    # user's profile, as git-review-run-dir.sh requires.
+    if not hasattr(os, "getuid"):
+        profile = Path(os.environ.get("USERPROFILE") or os.sep).resolve()
+        if profile == profile.parent or not resolved.is_relative_to(profile):
+            return "the run directory must be inside the user profile"
+    else:
         if info.st_uid != os.getuid() or stat.S_IMODE(info.st_mode) != 0o700:
             return "the run directory is not private"
         if resolved.parent not in temp:
