@@ -124,9 +124,9 @@ to a status and label it an estimate, not a measurement:
   tool output) → MONITOR
 - Only Healthy indicators otherwise → HEALTHY
 
-Always report the estimated status and a recommendation right away; don't hold the report back waiting
-for `/context`. Below CRITICAL, though, an estimate never says to run `/compact` or `/clear` now: for
-HEALTHY the recommendation is "no action needed", for MONITOR "keep going and plan a `/compact` at a
+Always report the status and a recommendation right away; don't hold the report back waiting for
+`/context`. With `/context` output, report the measured status with the table's action. Below CRITICAL,
+an estimate never says to run `/compact` or `/clear` now: for HEALTHY the recommendation is "no action needed", for MONITOR "keep going and plan a `/compact` at a
 natural break", and for WARNING "run `/context`, and compact only if the measured percentage is 80% or more".
 
 Observable signals:
@@ -158,7 +158,7 @@ to read it.
 
 ## Notes
 
-- This skill provides estimates - exact token counts are internal
+- Without `/context` output, this skill provides estimates - exact token counts are internal
 - Observable signals are good proxies for context health
 - When in doubt, ask for `/context` output before recommending `/compact` or `/clear`
 - Sub-agents help by isolating context-heavy operations
@@ -183,7 +183,8 @@ evals 5 and 6 after unrelated failures stopped counting as an indicator, and ite
 evals 4, 5 and 6 after the Observable signals list was aligned with Step 2. Iteration-11 (2/2) added
 eval 7, repeated auto-compact messages without a Critical sign, and iteration-12 (2/2) re-ran it after
 the WARNING advice named the 80% threshold. Iteration-13 (6/6) re-ran evals 4 and 7 with assertions that
-require that threshold and no immediate action on further slowdown. The remaining 2 scenarios
+require that threshold and no immediate action on further slowdown. Iteration-14 (6/6) added eval 8, a
+shared `/context` percentage, and re-ran eval 7. The remaining 2 scenarios
 ("should I compact now", and a direct request for the automatic hook-driven behavior itself) are named
 in `evals.json`'s own `uncovered` list, not yet exercised. The structural claims
 this section documents (the examples-reference link, Option 4's real session-kit reference, no

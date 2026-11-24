@@ -23,7 +23,7 @@ it as an independent second source of that guidance.
 Context Window Analysis
 =======================
 
-Estimated Status: {HEALTHY | MONITOR | WARNING | CRITICAL}
+{Estimated Status, or Measured Status with /context output}: {HEALTHY | MONITOR | WARNING | CRITICAL}
 
 Observable Indicators:
   Conversation turns: {count}

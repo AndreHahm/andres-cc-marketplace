@@ -51,6 +51,13 @@
       "prompt": "Situation: a long session (about 90 turns). An auto-compact message has appeared three times. Responses are normal speed, earlier decisions are still recalled correctly, the conversation is not truncated and no operation has failed. The user has not shared /context output.\nUser message: auto-compact keeps triggering, how full is my context?",
       "expected_output": "Reports a WARNING estimate right away, labelled an estimate, not CRITICAL: auto-compact messages alone map to WARNING. Recommends running /context and compacting only if the measured percentage is 80% or more (so a measured 90% or more also compacts), not running /compact or /clear now.",
       "files": []
+    },
+    {
+      "id": 8,
+      "name": "Shared /context percentage (measured WARNING)",
+      "prompt": "Situation: a long session. Responses are normal speed, earlier decisions are recalled correctly and there is no auto-compact message. The user has shared /context output: 168k of 200k tokens used (84%).\nUser message: here is my /context output, how full is my context?",
+      "expected_output": "Reports WARNING as a measured status at 84%, not labelled an estimate, even though every indicator is Healthy. Recommends running /compact or /clear, and does not ask for /context again before doing so.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {
@@ -60,6 +67,6 @@
       "\"should I compact now\"",
       "A request for the automatic hook-driven compaction-timing behavior itself -- defers to strategic-compact"
     ],
-    "coverage_note": "Eval 3 (2026-11-20) covers the declared 'responses feel slow' scenario. Evals 4 and 5 (2026-11-20) are extra: they cover Step 2's estimate mapping for two Warning signs and for an unrelated failure. Evals 6 and 7 (2026-11-24) are extra: very slow responses as the only sign, and repeated auto-compact messages without a Critical sign."
+    "coverage_note": "Eval 3 (2026-11-20) covers the declared 'responses feel slow' scenario. Evals 4 and 5 (2026-11-20) are extra: they cover Step 2's estimate mapping for two Warning signs and for an unrelated failure. Evals 6 and 7 (2026-11-24) are extra: very slow responses as the only sign, and repeated auto-compact messages without a Critical sign. Eval 8 (2026-11-24) is extra: a shared /context percentage decides the status."
   }
 }
