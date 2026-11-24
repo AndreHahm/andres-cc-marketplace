@@ -127,7 +127,7 @@ to a status and label it an estimate, not a measurement:
 Always report the estimated status and a recommendation right away; don't hold the report back waiting
 for `/context`. Below CRITICAL, though, an estimate never says to run `/compact` or `/clear` now: for
 HEALTHY the recommendation is "no action needed", for MONITOR "keep going and plan a `/compact` at a
-natural break", and for WARNING "run `/context`, and compact only if the measured percentage confirms it".
+natural break", and for WARNING "run `/context`, and compact only if the measured percentage is 80% or more".
 
 Observable signals:
 
@@ -181,7 +181,8 @@ Step 2's estimate mapping. Iteration-8 (2026-11-24, same method, 13/13) re-ran e
 added eval 6, very slow responses as the only sign. Iteration-9 (2026-11-24, same method, 5/5) re-ran
 evals 5 and 6 after unrelated failures stopped counting as an indicator, and iteration-10 (7/7) re-ran
 evals 4, 5 and 6 after the Observable signals list was aligned with Step 2. Iteration-11 (2/2) added
-eval 7, repeated auto-compact messages without a Critical sign. The remaining 2 scenarios
+eval 7, repeated auto-compact messages without a Critical sign, and iteration-12 (2/2) re-ran it after
+the WARNING advice named the 80% threshold. The remaining 2 scenarios
 ("should I compact now", and a direct request for the automatic hook-driven behavior itself) are named
 in `evals.json`'s own `uncovered` list, not yet exercised. The structural claims
 this section documents (the examples-reference link, Option 4's real session-kit reference, no
