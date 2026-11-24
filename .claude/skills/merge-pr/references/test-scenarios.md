@@ -62,12 +62,11 @@ PR #364, 2026-09-21 — `commit`'s sibling step 16.5(b) had the identical exposu
 - Reason contains neither category → step 4(a) passes it through to (b) unchanged
 
 **Verify step 2's four-state CI classification never collapses a state into another:**
-- A required context has no entry anywhere in `statusCheckRollup` (never ran for the current head SHA) → classified **missing**, reported distinctly from "pending" (e.g. "1 required context missing: Fork PR (unsupported) — never ran for the current head commit"), never silently folded into a "still running" message
-- A required `StatusContext` entry has `state: EXPECTED` → classified **missing**, same as an absent entry
+- A required context has no entry anywhere on the head (never ran for the current head SHA) → classified **missing**, reported distinctly from "pending" (e.g. "1 required context missing: Fork PR (unsupported) — never ran for the current head commit"), never silently folded into a "still running" message
 - A required `CheckRun` entry has `status: COMPLETED`, `conclusion: SKIPPED` → classified **passing**, not failing (a required check can legitimately resolve to an intentional no-op, e.g. this repo's own "Fork PR (unsupported)" context on a non-fork PR)
 - A required `CheckRun` entry has `status: IN_PROGRESS` → classified **pending**, never reported as failing or missing
-- The branch-protection required-check list and `statusCheckRollup` disagree in count (a context required by branch protection has zero matching rollup entries) → the context is still individually classified **missing**, not silently dropped from the readiness report
-- The branch-protection REST call itself fails (no protection configured, insufficient permission, transient API error) → stop and report that the required-check list could not be resolved; never fall back to `gh pr checks`'s bare output to satisfy the gate
+- A context required by branch protection has zero matching entries → the context is still individually classified **missing**, not silently dropped from the readiness report
+- `git-required-checks.py` exits `2` (a failed protection, ruleset, check-run or job request, or no required check found) → stop and report that the required-check list could not be resolved; never fall back to `gh pr checks`'s bare output to satisfy the gate
 
 **Verify step 2's no-merge-conflicts and not-behind-base checks are required, blocking gates:**
 - `mergeable` resolves to `MERGEABLE` → the check passes silently, no interruption
@@ -279,8 +278,19 @@ a fresh `gh repo view` (skill-reviewer M1, 2026-08-31):**
   those two count
 - Either call fails any other way, or the union is empty → stop, the required-check list could not be
   resolved
-- `Python quality` has a cancelled entry from a superseded run and a later passing one → only the later
-  `CheckRun` (latest `startedAt`) is classified: passing
+- `Python quality` has a cancelled entry from a superseded run and a later passing one of the same
+  workflow and event → only the later `CheckRun` is classified: passing
+
+**Verify step 2's check sources (issue #858):**
+- A required context fails in its real workflow, and a second workflow with the same `name:` and job name
+  passes later → **failing**
+- A check run created through the API names an older run of the real workflow in its `detailsUrl` and
+  passes → it is its own source, and the real failure still makes the context **failing**
+- The base branch's rules name an app and only another app reports the context → **missing**
+- A newer run of the required workflow is still running and has not created the job yet → **pending**,
+  not the older run's success
+- Only a token-created check run carries the required name → **missing**
+- The PR changes `git-required-checks.py` → the run is disclosed and needs the user's approval first
 
 **Verify step 2's review-outcomes check (issue #640):**
 - `.claude/review-outcomes` is absent on the base branch (`404`) → the check passes as not applicable

@@ -89,8 +89,8 @@ to keep SKILL.md under R13's line budget (R30). SKILL.md keeps the key gates inl
 - [ ] `--bypass-codex-review`'s reason text is always checked for a literal bot-trigger mention before
       step 5d posts it — rejected the same way as an empty reason if one is found, never posted verbatim
 - [ ] The attestation comment body is always built with the reason written to a scratchpad file via
-      `Write` and read back via `jq -n --rawfile` — never by interpolating the reason text directly into
-      a shell string, even as a quoted `jq --arg` value
+      `Write` and read back via `git-bypass-attestation-marker.py` — never by interpolating the reason text directly into
+      a shell string
 - [ ] A failed attestation attempt (insufficient permission, missing label) is always reported as a
       failure — never presented as if the bypass succeeded
 - [ ] The `s: codex review bypassed` label is only applied if it already exists in the repo — this skill
