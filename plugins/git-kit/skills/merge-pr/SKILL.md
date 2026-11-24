@@ -328,9 +328,9 @@ them.
   "matches any text, including spaces" and only the words before the first `*` limit a rule. The actual
   bound is the documented step that uses each one (all four are only ever invoked with a bare GET in this
   skill's own instructions), not the grant itself. `Bash(gh api -X GET repos/*/contents/*:*)` (step 2's
-  review-outcomes check) puts the method first, so it matches only a command that starts with `-X GET`; a later `-X` flag
+  review-outcomes check and script comparison) puts the method first, so it matches only a command that starts with `-X GET`; a later `-X` flag
   in the same command very likely overrides it (`gh` keeps the last value of a repeated string flag; not
-  run here), so the grant does not bound the method: this step never adds a second `-X`, and the
+  run here), so the grant does not bound the method: these steps never add a second `-X`, and the
   instructions, not the grant, are the bound.
 - `git-required-checks.py` and `git-bypass-attestation-marker.py` replace the branch-protection, ruleset and `jq -n` grants. Each runs a fixed program: the first only GET requests, with a validated repository, branch and SHA; the second no request at all, but it reads the file it is given (any readable text file up to 16 KiB), which this skill only ever points at the reason file. The `.claude/scripts/` copy of each is never pre-approved, since it is whatever the checkout holds: it prompts unless the user's own settings or permission mode already allow it. At that permission prompt, approve each run once, and do not add a persistent allow rule for it; step 2's `AskUserQuestion` is separate.
 - **`gh api -X PATCH repos/{owner}/{repo}/pulls/<number> -F body=@<scratchpad-path>` is deliberately not
