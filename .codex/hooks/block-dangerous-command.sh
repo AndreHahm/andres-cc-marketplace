@@ -498,7 +498,16 @@ if [[ "${CMD_WORDS_CLOSED}" != "${CMD_WORDS}" ]]; then
     CMD_CODE+=$'\n'"${CMD_WORDS_CLOSED}"
 fi
 [[ "${FLAGS_WORDS_CLOSED}" != "${FLAGS_WORDS}" ]] && CMD_FLAGS+=$'\n'"${FLAGS_WORDS_CLOSED}"
-
+# The same copies with the & of a redirection removed: the checks take & for a separator, so
+# `git push 2>&1 -f` would end at it. An extra copy again, so it can only block more.
+open_ampersands() {
+    awk -v BINMODE=3 '{ gsub(/&>/, ">"); gsub(/>&/, ">"); gsub(/<&/, "<"); print }'
+}
+CMD_AMP=$(printf '%s\n' "${CMD_WORDS_CLOSED}" "${CMD_ARITH}" | open_ampersands) || block "Could not read the command."
+FLAGS_AMP=$(printf '%s\n' "${FLAGS_WORDS_CLOSED}" "${FLAGS_ARITH}" | open_ampersands) || block "Could not read the command."
+CMD+=$'\n'"${CMD_AMP}"
+CMD_CODE+=$'\n'"${CMD_AMP}"
+CMD_FLAGS+=$'\n'"${FLAGS_AMP}"
 # Here-strings, not `printf | grep -q`: under pipefail, grep -q exiting early
 # can kill printf with SIGPIPE on a long command and turn a match into a miss.
 # Every check also reads two copies for backslashes. bash removes an unquoted one before an
@@ -623,7 +632,7 @@ ABBREV_GIT_RE+="|branch([^;&|]*[[:space:]])?-[a-zA-Z]*[dD][a-zA-Z]*${GIT_SUB_END
 # that option's value (`tag -mdone`, `tag -Fd`), and the match ignores case, so f would match F.
 ABBREV_GIT_RE+="|tag([^;&|]*[[:space:]])?-i*d[a-zA-Z]*${GIT_SUB_END}"
 ABBREV_GIT_RE+="|pull([^;&|]*[[:space:]])?-[a-zA-Z]*r${GIT_SUB_END}"
-ABBREV_GIT_RE+="|submodule(--helper)?([[:space:]]+(-q|--quiet|${REDIR_WORD}))*(${GIT_ASSIGN})*[[:space:]]+update([^;&|]*[[:space:]])?"
+ABBREV_GIT_RE+="|submodule(--helper)?([[:space:]]+(-q|--quiet|${REDIR_WORD})|${GIT_ASSIGN})*[[:space:]]+update([^;&|]*[[:space:]])?"
 ABBREV_GIT_RE+="(--reb(a(s(e)?)?)?|--m(e(r(g(e)?)?)?)?|-[a-zA-Z]*[rm])${GIT_SUB_END}"
 # A setting given for one command only (`git -c ...`, `--config-env`, GIT_CONFIG_* variables)
 # that turns off clean's force check, makes pull rebase or merge (branch.autoSetupRebase does
@@ -750,12 +759,46 @@ PUSH_FORCE_RE+="|${GIT_PUSH}([^;&|]*)[[:space:]]--m(i(r(r(o(r)?)?)?)?)?([\"'\`]|
 # A leading `+` on a refspec (`git push origin +main`) is also a force push.
 PUSH_FORCE_RE+="|${GIT_PUSH}([^;&|]*)[[:space:]][+]"
 DIRECT_MAIN_RE="${GIT_PUSH}([^;&|]*[[:space:]])?"
-DIRECT_MAIN_RE+="(origin[[:space:]]+)?[+]?(main|master)${PUSH_END}"
-DIRECT_MAIN_RE+="|${GIT_PUSH}[^;&|]*:(refs/heads/)?(main|master)${PUSH_END}"
+DIRECT_MAIN_RE+="(origin[[:space:]]+)?[+]?((refs/)?heads/)?(main|master)${PUSH_END}"
+DIRECT_MAIN_RE+="|${GIT_PUSH}[^;&|]*:((refs/)?heads/)?(main|master)${PUSH_END}"
 # `(git push origin main)`, only where a command starts: a message may end a parenthesis there.
-DIRECT_MAIN_GROUP_RE="${GIT_AT_START}push([^;&|]*[[:space:]])?([^[:space:];&|]*:(refs/heads/)?|[+])?(main|master)[)]"
+DIRECT_MAIN_GROUP_RE="${GIT_AT_START}push([^;&|]*[[:space:]])?([^[:space:];&|]*:|[+])?((refs/)?heads/)?(main|master)[)]"
+# A push at the start of a command or of a shell string, so text that only mentions one is not
+# read: every branch (`--all`, `--branches`, `:`, a wildcard), a delete of a remote branch, and a
+# force flag in a cluster.
+GIT_START_RE="(${GIT_AT_START}|${SHELL_STRING_START}git${GIT_OPT}*[[:space:]]+)"
+PUSH_REFS_END="([\"'\`]|${WORD_END})"
+PUSH_REFS_RE="${GIT_START_RE}push([^;&|]*)[[:space:]]((--al(l)?|--b(r(a(n(c(h(e(s)?)?)?)?)?)?)?"
+PUSH_REFS_RE+="|--de(l(e(t(e)?)?)?)?|-[vqnfu46]*d[a-zA-Z46]*)${PUSH_REFS_END}"
+PUSH_REFS_RE+="|[+]?:([^;&|[:space:]]|${WORD_END})|[^-;&|[:space:]][^;&|[:space:]]*[*])"
+PUSH_CLUSTER_RE="${GIT_START_RE}push([^;&|]*)[[:space:]]-[vqndu46]*f[a-zA-Z46]*${PUSH_REFS_END}"
 FETCH_TO_SHELL_RE='(curl|wget|iwr|irm|invoke-webrequest|invoke-restmethod)[^|]*[|][[:space:]]*'
 FETCH_TO_SHELL_RE+="(bash|sh|zsh|iex|invoke-expression)${WORD_END}"
+
+# What `git submodule foreach` runs, as command lines of their own with and without quotes.
+# Only for a command or shell string that runs git submodule, not for text that mentions it.
+foreach_tail() {
+    awk -v BINMODE=3 '
+BEGIN {
+    r = "[0-9]*[<>&]+[ \t]*[^ \t;&|]+"
+    a = "[A-Za-z_][A-Za-z0-9_]*=[^ \t;&|]*"
+    re = "submodule(--helper)?([ \t]+(-[^ \t;&|]*|" r "|" a "))*[ \t]+[\"\047]?foreach[\"\047]?"
+    re = re "([ \t]+(-[^ \t;&|]*|" r "|" a "))*[ \t]+[\"\047]?"
+}
+{
+    while (match($0, re)) {
+        $0 = substr($0, RSTART + RLENGTH); print
+        t = $0; gsub(/["\047]/, "", t); print t
+    }
+}'
+}
+FOREACH_TEXT=""
+if matches_flags "${GIT_START_RE}submodule"; then
+    FOREACH_TEXT=$(foreach_tail <<<"${FLAGS_TEXT}") || block "Could not read the command."
+    MATCH_TEXT+=$'\n'"${FOREACH_TEXT}"
+    CODE_TEXT+=$'\n'"${FOREACH_TEXT}"
+    FLAGS_TEXT+=$'\n'"${FOREACH_TEXT}"
+fi
 
 # Check the flags of each rm invocation only, so `rm x && cp -rf a b` passes.
 # An rm behind a common wrapper (`xargs rm -rf`, `command rm`) or given by path
@@ -789,7 +832,11 @@ if matches "${FETCH_TO_SHELL_RE}"; then
     block "Do not pipe downloaded scripts directly into a shell."
 fi
 
-if matches "${PUSH_FORCE_RE}"; then
+if matches_code "${PUSH_REFS_RE}"; then
+    block "Do not push all branches or delete a remote branch unless the user explicitly requested it."
+fi
+
+if matches "${PUSH_FORCE_RE}" || matches_code "${PUSH_CLUSTER_RE}"; then
     block "Do not force-push unless the user explicitly requested it."
 fi
 
@@ -847,6 +894,10 @@ other_key_only() {
 if { matches "${GIT_CONFIG_ENV}" || matches_code "${GIT_CONFIG_ENV}" ||
     matches_flags "${GIT_CONFIG_ENV}"; } && ! search_only_command && ! other_key_only; then
     block "Do not set clean.requireForce or a shell alias for one git command; ask the user."
+fi
+
+if grep -qiE "${INNER_GIT_RE}" <<<"${FOREACH_TEXT}"; then
+    block "This git command is forbidden by the exec-policy rules, also in git submodule foreach."
 fi
 
 if ((INNER)) && { matches_flags "${INNER_GIT_RE}" || matches_flags "${GIT_AT_START}(${FORBIDDEN_GIT_RE})"; }; then
