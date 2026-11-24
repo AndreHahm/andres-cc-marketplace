@@ -119,7 +119,8 @@ to a status and label it an estimate, not a measurement:
 
 - A Critical indicator tied to the context itself (truncation of the conversation, context rot, or an
   operation failing on the context limit) → CRITICAL. A failure or a truncated tool result with no link
-  to the context, such as a mistyped command, counts as one Warning indicator instead.
+  to the context, such as a mistyped command, counts as one Warning indicator instead, and so do very slow
+  responses (together with "Slower responses", still one).
 - Two or more Warning indicators, or an auto-compact message → WARNING
 - One Warning indicator, or only Healthy indicators in a long session (many turns, large file reads or
   tool output) → MONITOR
@@ -162,7 +163,7 @@ to read it.
 
 - This skill provides estimates - exact token counts are internal
 - Observable signals are good proxies for context health
-- When in doubt, /compact is safer than continuing
+- When in doubt, ask for `/context` output before recommending `/compact` or `/clear`
 - Sub-agents help by isolating context-heavy operations
 
 ## Reference Guide
@@ -179,8 +180,10 @@ run (iteration-1, 2026-09-17) covered 2 of the 5 declared scenarios (a direct "h
 context" health question, and a broader footprint-audit request correctly declined in favor of
 `context-audit`), 1.0 with_skill pass rate vs. 0.0 baseline. Iteration-7 (2026-11-20, plan-only,
 with-skill-only, 7/7 assertions) added a third, responses feeling slow, plus two extra evals for
-Step 2's estimate mapping. The remaining 2 scenarios ("should I compact now", and a direct request
-for the automatic hook-driven behavior itself) are named in `evals.json`'s own `uncovered` list, not yet exercised. The structural claims
+Step 2's estimate mapping. Iteration-8 (2026-11-24, same method, 13/13) re-ran evals 1, 3, 4 and 5 and
+added eval 6, very slow responses as the only sign. The remaining 2 scenarios ("should I compact now", and a direct request
+for the automatic hook-driven behavior itself) are named in `evals.json`'s own `uncovered` list, not yet
+exercised. The structural claims
 this section documents (the examples-reference link, Option 4's real session-kit reference, no
 oversized blocks) are separately covered by the persisted `scripts/smoke_test.py`.
 
