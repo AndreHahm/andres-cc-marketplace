@@ -91,6 +91,16 @@
       "rule": "plugin-rulebook:R18"
     },
     {
+      "disposition": "false_positive",
+      "finding": "ci-codex-delta-plugin-rulebook-checker-R37-r7-pf154",
+      "line": 154,
+      "note": "Illustrative path in an example command, not a script this plugin ships; waived as refuted in the PR body.",
+      "path": "plugins/plugin-devkit/skills/command-development/references/plugin-features-reference.md",
+      "pr": 856,
+      "recorded_at": "2026-11-24T07:00:04+00:00",
+      "rule": "plugin-rulebook:R37"
+    },
+    {
       "disposition": "declined",
       "finding": "ci-codex-delta-plugin-rulebook-checker-R6-r1",
       "line": 403,
@@ -169,6 +179,25 @@
       "pr": 856,
       "recorded_at": "2026-11-23T16:30:59+00:00",
       "rule": "plugin-rulebook:R6"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-codex-delta-plugin-rulebook-checker-R6-r7-fr415",
+      "line": 415,
+      "note": "Added the caveat that each call prompts unless the settings or permission mode already allow it. Verifier self-review exit 0.",
+      "path": "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md",
+      "pr": 856,
+      "recorded_at": "2026-11-24T07:00:04+00:00",
+      "rule": "plugin-rulebook:R6"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-codex-delta-plugin-rulebook-checker-minor-r7-fr404",
+      "line": 404,
+      "note": "The example now says the placeholder id is the validated argument. Replaces an earlier note that cited the severity gate, which is off.",
+      "path": "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md",
+      "pr": 856,
+      "recorded_at": "2026-11-24T07:01:14+00:00"
     },
     {
       "disposition": "fixed",
@@ -279,6 +308,16 @@
       "pr": 856,
       "recorded_at": "2026-11-23T16:30:59+00:00",
       "rule": "security & permissions"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "ci-codex-delta-skill-reviewer-security-r7-pc37",
+      "line": 37,
+      "note": "Examples check existence in the repository, characters and parent segments but not path resolution; accepted as residual by the maintainer.",
+      "path": "plugins/plugin-devkit/skills/command-development/examples/plugin-commands.md",
+      "pr": 856,
+      "recorded_at": "2026-11-24T07:00:04+00:00",
+      "rule": "security-permissions"
     }
   ]
 }
