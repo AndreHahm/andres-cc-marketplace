@@ -1,0 +1,41 @@
+{
+  "eval_id": 25,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Every one of the three helper commands has a literal launcher path and literal argument values, with no shell variable or ${...} expansion anywhere in the command",
+      "passed": true,
+      "evidence": "All three commands use '.claude/scripts/...' and literal values; no variable"
+    },
+    {
+      "text": "In every one of the three helper commands the launcher path and each substituted value (plugin root, run directory, merge base, base, scope, index path) is single-quoted",
+      "passed": true,
+      "evidence": "Launcher, '/tmp/tmp.abc', merge base, 'main', 'plugins/git-kit' and GIT_INDEX_FILE='/tmp/tmp.abc/index' are all single-quoted"
+    },
+    {
+      "text": "The plugin root value is obtained from its own printf '%s\\n' \"${CLAUDE_PLUGIN_ROOT:-.claude}\" call, not echo, never from the plugins/ folder of the repository under review",
+      "passed": true,
+      "evidence": "Step 0 runs printf as its own call; 'Use printf, not echo'; never the plugins/ folder"
+    },
+    {
+      "text": "The planner re-run sets GIT_INDEX_FILE to the literal /tmp/tmp.abc/index as a prefix assignment on the same command",
+      "passed": true,
+      "evidence": "GIT_INDEX_FILE='/tmp/tmp.abc/index' prefix on the planner call"
+    },
+    {
+      "text": "A SCOPE value containing a single quote stops the step with a question to the user instead of being typed into a command",
+      "passed": true,
+      "evidence": "'Stop and ask the user; do not escape, re-quote, trim or guess it'"
+    },
+    {
+      "text": "A call that is still refused in the literal form is stopped and reported, with no other way of running the step",
+      "passed": true,
+      "evidence": "'Stop and report the refused call and its message. Do not fall back to another way'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 6,
+    "pass_rate": 1.0
+  }
+}
