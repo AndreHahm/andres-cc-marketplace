@@ -1,0 +1,31 @@
+{
+  "eval_id": 25,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {
+      "text": "Every one of the three helper commands has a literal launcher path and literal argument values, with no shell variable or ${...} expansion anywhere in the command",
+      "type": "functionality",
+      "target": "references/codex-pass-assembly.md"
+    },
+    {
+      "text": "The plugin root value is obtained from its own echo of \"${CLAUDE_PLUGIN_ROOT:-.claude}\", never from the plugins/ folder of the repository under review",
+      "type": "functionality",
+      "target": "references/codex-pass-assembly.md"
+    },
+    {
+      "text": "The planner re-run sets GIT_INDEX_FILE to the literal /tmp/tmp.abc/index as a prefix assignment on the same command",
+      "type": "functionality",
+      "target": "references/codex-pass-assembly.md"
+    },
+    {
+      "text": "A SCOPE value containing a single quote stops the step with a question to the user instead of being typed into a command",
+      "type": "functionality",
+      "target": "references/codex-pass-assembly.md"
+    },
+    {
+      "text": "A call that is still refused in the literal form is stopped and reported, with no other way of running the step",
+      "type": "functionality",
+      "target": "references/codex-pass-assembly.md"
+    }
+  ]
+}

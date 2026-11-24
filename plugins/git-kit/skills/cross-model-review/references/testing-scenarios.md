@@ -166,7 +166,9 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
     attempts Step 1 itself: one model-written note never sends the rest of the run to
     `danger-full-access`.
 38. In a session that used `EnterWorktree`, the chained Preflight call, a write-helper heredoc whose text
-    names git, or a JSON heredoc is refused by the worktree-isolation check (issue #723) → the Inputs block
+    names git, a JSON heredoc, or a helper call containing a shell variable is refused by the
+    worktree-isolation check (issues #723, #866) → a helper call typed directly carries only single-quoted
+    literal values (plugin root from its own `echo "${CLAUDE_PLUGIN_ROOT:-.claude}"` call); the Inputs block
     and steps 1-6 go verbatim into `<scratchpad>/preflight.sh` (only `BASE`/`SCOPE`/`PLANNER_APPROVED`
     filled in, never text from the diff, a run file or Codex output; `BASE`/`SCOPE` only as single-quoted
     assignments before the Inputs block, and a value with a single quote, a newline or a leading `-`
@@ -322,6 +324,14 @@ Moved here from SKILL.md's Testing & Validation section, which keeps only the la
   flagged the values as written into script text unquoted. Full Pipeline, baseline arm reading the text
   before the fix, both arms `claude-haiku-5-5`: `with_skill` 3/3, baseline 1/3 (+66.7 points). The
   baseline also stopped on the hostile value; it double-quoted the clean one inside the Inputs block.
+- **2026-11-24, `iteration-23`:** adds eval 25 for scenario 38's literal-value form (issue #866; ids 19-24
+  and iterations 18-22 are left free for a parallel branch). Full Pipeline, baseline arm reading `main`'s text,
+  both arms `claude-opus-5-5`: `with_skill` 5/5, baseline 4/5 (+20 points). Weakly discriminating: the prompt
+  states the refusal, and the baseline inferred the literal form from SKILL.md's "substitute the concrete
+  string" and a loaded repository rule; it missed only the plugin-root `echo`. The stronger evidence is a live
+  `EnterWorktree` check the same day in a mirror session: calls with `${CLAUDE_PLUGIN_ROOT:-.claude}`,
+  `${CLAUDE_PLUGIN_ROOT}`, `"$RUN"` or `${SCOPE:+...}` were refused, and the literal write-helper, prompt-copy,
+  planner and accepted-findings calls ran. Not run live: a Codex dispatch and an installed plugin.
 
 All of these are dry runs of the committed text, not live dispatches, and include no live run of the
 scoped flow (one ran 2026-10-14 for PR #567, see the #568 report).
