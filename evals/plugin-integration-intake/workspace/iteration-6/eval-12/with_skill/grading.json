@@ -1,0 +1,42 @@
+{
+  "eval_id": 12,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "A: the before snapshot holds the current title, pr_link null (the unrelated pull/9 attachment is ignored) and due_date null",
+      "passed": true,
+      "evidence": "'holds only .../pull/9, not .../pull/12, so before.pr_link is null. The other attachment is ignored'; file shows pr_link null, due_date null and the title"
+    },
+    {
+      "text": "A: the approval preview states in bold that the link cannot be removed and may trigger Linear's GitHub automation or a status change",
+      "passed": true,
+      "evidence": "Preview: '**The PR link cannot be removed through the connector. It may trigger Linear's GitHub automation, including a status change (unverified).**'"
+    },
+    {
+      "text": "A: one approval bound to the script's hash is asked before any write, and the write is delegated to linear-work-management",
+      "passed": true,
+      "evidence": "One AskUserQuestion naming the full hash, before Skill(linear-work-management) is handed hash, file path and range"
+    },
+    {
+      "text": "A: treats Acme/Widgets as the same repository as acme/widgets (not refused for letter case)",
+      "passed": true,
+      "evidence": "'Acme/Widgets equals acme/widgets case-insensitively'"
+    },
+    {
+      "text": "B: refuses the link to other/widgets without writing or asking for approval of it",
+      "passed": true,
+      "evidence": "Stops before reading ISS-2, writing a file or asking anything"
+    },
+    {
+      "text": "C: stops with a structured handoff instead of treating the missing attachments field as null",
+      "passed": true,
+      "evidence": "'A missing field is not an empty list ... I stop: no submission file, no hash, no preview, no question, no write'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 6,
+    "pass_rate": 1.0
+  },
+  "notes": "Simulated dry run, single run, no baseline, graded by the orchestrator (2026-11-25). No live connector was called. Imprecision not covered by an assertion: one purge call is described as removing both the submission and the progress file, while the script purges one file per call."
+}
