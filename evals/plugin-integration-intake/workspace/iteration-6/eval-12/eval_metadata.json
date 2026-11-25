@@ -1,0 +1,36 @@
+{
+  "eval_id": 12,
+  "skill_path": "plugins/workmanagement-kit/skills/plugin-integration-intake/SKILL.md",
+  "assertions": [
+    {
+      "text": "A: the before snapshot holds the current title, pr_link null (the unrelated pull/9 attachment is ignored) and due_date null",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "A: the approval preview states in bold that the link cannot be removed and may trigger Linear's GitHub automation or a status change",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "A: one approval bound to the script's hash is asked before any write, and the write is delegated to linear-work-management",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "A: treats Acme/Widgets as the same repository as acme/widgets (not refused for letter case)",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "B: refuses the link to other/widgets without writing or asking for approval of it",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "C: stops with a structured handoff instead of treating the missing attachments field as null",
+      "type": "functionality",
+      "target": "outputs/"
+    }
+  ]
+}

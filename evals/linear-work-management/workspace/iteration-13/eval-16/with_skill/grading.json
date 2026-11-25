@@ -1,0 +1,42 @@
+{
+  "eval_id": 16,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Record 0 is a conflict and is skipped entirely: the due date is not written either",
+      "passed": true,
+      "evidence": "'The mismatch skips the whole record, including due_date'; no save_issue call"
+    },
+    {
+      "text": "Record 1 makes no write call and is reported as written (the URL matched case-insensitively)",
+      "passed": true,
+      "evidence": "No save_issue call; URLs match case-insensitively; reported written by no-op after a read-back"
+    },
+    {
+      "text": "Record 2 is written with one links entry titled acme/widgets#3 and, after the timeout, is read back and counted as written with no second write call",
+      "passed": true,
+      "evidence": "save_issue links title acme/widgets#3; times out; get_issue shows PR3; 'no second send'"
+    },
+    {
+      "text": "Record 3 is reported as written and the unrequested change to Done is reported as possible GitHub automation",
+      "passed": true,
+      "evidence": "Written as requested; Todo to Done reported as 'possible GitHub automation (not proven)'"
+    },
+    {
+      "text": "The batch stops after record 3, so record 4 is not written",
+      "passed": true,
+      "evidence": "'Not attempted, not written. The stop comes before this record'"
+    },
+    {
+      "text": "No per-record approval prompt is asked",
+      "passed": true,
+      "evidence": "'Questions I would ask: none'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 6,
+    "pass_rate": 1.0
+  },
+  "notes": "Simulated dry run, single run, no baseline, graded by the orchestrator (2026-11-25). No live connector was called."
+}

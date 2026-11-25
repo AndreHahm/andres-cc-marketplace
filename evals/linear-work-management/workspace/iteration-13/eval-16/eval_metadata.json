@@ -1,0 +1,36 @@
+{
+  "eval_id": 16,
+  "skill_path": "plugins/workmanagement-kit/skills/linear-work-management/SKILL.md",
+  "assertions": [
+    {
+      "text": "Record 0 is a conflict and is skipped entirely: the due date is not written either",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Record 1 makes no write call and is reported as written (the URL matched case-insensitively)",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Record 2 is written with one links entry titled acme/widgets#3 and, after the timeout, is read back and counted as written with no second write call",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Record 3 is reported as written and the unrequested change to Done is reported as possible GitHub automation",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "The batch stops after record 3, so record 4 is not written",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "No per-record approval prompt is asked",
+      "type": "functionality",
+      "target": "outputs/"
+    }
+  ]
+}
