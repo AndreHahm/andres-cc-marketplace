@@ -206,7 +206,7 @@ requested and why it was blocked.
   `plugin-integration-intake` invocation, named the same environment, team and record count, was answered by
   selecting the "approve all" option (free text is a reject) and is still in force (covers every chunk, each
   index once; a reject, changed hash, stopped or finished batch ends it); (4) for an update, you re-read each
-  Issue just before writing it and it still belongs to that team with the submission's `before` values, else
+  Issue just before writing it and it still belongs to that team with the submission's `before` values (`pr_link`: field reference), else
   report a conflict and skip it; (5) every label in a record names exactly one existing label of that team
   (`list_issue_labels`, passed by ID) and each create status or update `set.status` is, at write time, an open
   (not completed or canceled) state of that team, else stop and report, never create a label. A hash, approval
@@ -279,7 +279,7 @@ updated risks a duplicate or conflicting change.
 - a plugin-originated request, envelope or not (host-mediated, not typed) → `plugin-integration-intake`
 - "repair the drift between this Linear issue and its GitHub PR" → `linear-github-reconciliation`; "fix the Notion link" → `work-linking`
 
-**Last dated run record:** evals/linear-work-management/workspace/iteration-12/ (2026-10-12, eval 15 rebased on the current rule that any answer other than approve all is a reject that cancels the batch: 4/4, simulated, single run, graded by the orchestrator); iteration-10 (2026-10-09, evals 12-13, 6/6) and iteration-11 (2026-10-09, evals 14-15, 6/7; its eval 15 is superseded) cover the batch-approval exception and slug resolution added by Wave 3a work package 3. The label condition and the stopped-batch rule are not yet covered by an eval. Earlier runs are under evals/linear-work-management/workspace/: iteration-1 (evals 1-3, with_skill against baseline, with timing and a benchmark) and iterations 2-9 (the trigger-phrase check, the Initiative-read gate evals and the final-gate baseline comparison; simulated single runs graded by the orchestrator).
+**Last dated run record:** evals/linear-work-management/workspace/iteration-13/ (2026-11-25, eval 16, PR link and due date on update: 6/6, simulated, single run, no baseline, live connector unverified); iteration-12 (2026-10-12, eval 15 rebased on the current rule that any answer other than approve all is a reject that cancels the batch: 4/4, simulated, single run, graded by the orchestrator); iteration-10 (2026-10-09, evals 12-13, 6/6) and iteration-11 (2026-10-09, evals 14-15, 6/7; its eval 15 is superseded) cover the batch-approval exception and slug resolution added by Wave 3a work package 3. The label condition and the stopped-batch rule are not yet covered by an eval. Earlier runs are under evals/linear-work-management/workspace/: iteration-1 (evals 1-3, with_skill against baseline, with timing and a benchmark) and iterations 2-9 (the trigger-phrase check, the Initiative-read gate evals and the final-gate baseline comparison; simulated single runs graded by the orchestrator).
 
 **Quality gates:**
 - [ ] Every material change is preceded by a preview and live approval.

@@ -40,12 +40,13 @@ line of `description`) and `ambiguous` fields are **not** sent, because intake r
 
 ## Fields the current intake accepts versus what this plugin needs
 
-Intake today accepts a Linear **Issue-level** object only (`title`, `description`, `status` required; `owner`,
-`priority`, `labels`, `dependencies`, `cycle` optional) and rejects unrecognized fields as malformed content.
-The authoritative list of what is missing and the flags that gate each item is `wlgr-kit-dependencies.md`; in short,
-intake does not yet support batches, queries, updates, native PR links, a due date for the completed date,
-Report page-content blocks, caller-reachable classification, or multi-team resolution. Until then the PR URL
-and `merged_at`/`closed_at` live in the issue's tracking block, which is canonical.
+A single Linear submission is an **Issue-level** object (`title`, `description`, `status` required; `owner`,
+`priority`, `labels`, `dependencies`, `cycle` optional); unrecognized fields are malformed content. Intake also
+accepts Issue batches, dedup-key queries, `owner/repo` targets, and updates that may set a pull request link and a
+due date (which may hold the completed date). `wlgr-kit-dependencies.md` is authoritative for what is missing and
+for the flags that gate each item; in short, intake does not yet support Report page-content blocks or
+caller-reachable classification. The PR URL and `merged_at`/`closed_at` stay in the issue's tracking block, which
+is canonical: a due date can be changed by hand, and no skill step here writes either field yet.
 
 ## Working-folder files
 

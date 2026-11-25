@@ -85,8 +85,8 @@ more than 1000 records, any top-level key outside `operation`, `environment`, `t
 `source_plugin`, `source_skill` and `records`, and any record outside the per-operation field allowlist: a create record
 may hold only `title`, `description`, `status`, `priority`, `labels` (so a batch create can never assign an owner, add
 dependency relations or set a cycle); an update record may hold only `id`, `set` (limited to `title`, `status`,
-`labels`, `priority`, `owner`) and `before`. Values are typed: strings for `title`, `description`, `status`,
-`priority` and `owner` (`title` at most 256 characters, `status` and `owner` at most 100, `priority` at most 32, an update `id` at most 100), and an array of at most 20 non-empty strings of at most 100 characters each for `labels` (every label must already exist on the resolved team, checked in the flow's pre-hash step and again at write time (condition 5), because a batch approval never covers creating a label); an update's `before` must hold
+`labels`, `priority`, `owner`, `due_date`, `pr_link`) and `before`. Values are typed: strings for `title`, `description`, `status`,
+`priority` and `owner` (`title` at most 256 characters, `status` and `owner` at most 100, `priority` at most 32, an update `id` at most 100), and an array of at most 20 non-empty strings of at most 100 characters each for `labels` (every label must already exist on the resolved team, checked in the flow's pre-hash step and again at write time (condition 5), because a batch approval never covers creating a label); `due_date` must be a `YYYY-MM-DD` calendar date and `pr_link` a GitHub pull request URL in the `linear_target` repository (its `before` is null or the same link); an update's `before` must hold
 the current `title` (a non-blank string) and every field named in `set`. A record carrying `team`, `project`, `parent` or anything else is
 refused mechanically, and so is a record too large to write or preview: every record must fit a one-record chunk and a one-row preview (at most 20000 bytes of output each), so one oversized description is refused at `hash` and can never strand a batch half-written or be impossible to show. The hash covers the whole submission object: every field above and every record in order. `team_id` must match `^[A-Za-z0-9_-]{1,64}$`, and the file may not exceed 8 MiB. The `linear_target` stored in the file is the normalized slug from the resolution (lowercase, one trailing `.git` removed, at most 100 characters on each side of the `/`), never the caller's raw value; `source_plugin` and `source_skill` are lowercase kebab-case of at most 64 characters.
 
@@ -119,6 +119,7 @@ the write uses the exact text in the hashed file, which the person may open firs
 - the record count and a table of **every** record (title, status, labels, priority, and a 120-character description excerpt; for an update, the ID, the title, and the before and after of each changed field);
 - the full description of the first three records and the path of the hashed file, which holds every record's full text, with a statement that the approval covers that file and the person may open it first;
 - any credential, token or personal data noticed (a best-effort scan; the person's own review of the file is the real control for a large batch);
+- when any record sets `pr_link`, in bold: the links cannot be removed through the connector, and they may trigger Linear's GitHub automation, including a status change;
 - the full hash and the batch id.
 
 Options are approve all N records, or reject. There is no "approve most". Any other answer (free text, a dismissed or
@@ -160,7 +161,7 @@ never satisfies any of this. A calling plugin's own earlier approval never count
    ID in the preview; if every record is dropped, report completion with the matched IDs, purge the superseded submission and progress files if known (otherwise say they may remain, as for a failed purge), and ask no approval. A
    record with no `dedup_key` cannot be checked this way, so a resume can create a duplicate for it; the preview says
    so. An `update` needs no dedup step: a resume re-snapshots each Issue, so an update that was already applied shows as a
-   no-op (before equal to after) and rewrites the same value harmlessly. Then continue with the flow's pre-hash checks, a new submission file, `hash` and the full approval preview.
+   no-op (before equal to after) and rewrites the same value harmlessly (an already attached `pr_link` is left out, not rewritten). Then continue with the flow's pre-hash checks, a new submission file, `hash` and the full approval preview.
    Chunk indexes refer to the new file.
 5. When the batch completes, is rejected, or a stopped batch (step 1 or step 3) is superseded or abandoned, remove the submission file and the progress file (if one exists; a reject happens before any write) with `wmgt_batch_hash.py purge <scratchpad> <file>` (it refuses anything not directly inside `<scratchpad>/wmgt-intake/` or not named as intake names them). They hold full descriptions and a real team ID. If purge fails, say so in the result; do not claim the files are gone.
 
@@ -174,6 +175,7 @@ never satisfies any of this. A calling plugin's own earlier approval never count
 - A resume can run up to about 1000 exact-key searches (20 groups of 50 keys, one search per key); each hit enters the shared model context.
 - Whether the connector's `save_issue` would create an unknown label by name, and whether it accepts a string `priority`, has not been verified against the live connector; the label rule above avoids depending on the first, and the second is left to a follow-up check.
 - Linear has no conditional write, so a re-read before an update leaves a short race.
+- Whether a `pr_link` triggers Linear's GitHub automation is unverified. The status comparison at read-back catches only a change that has already landed; one that lands later (for example when the pull request merges) is not caught, so a link could lead to a status change the closed-state rule refuses as a direct update.
 - Symlink and hard-link refusal in the script is best effort on Windows.
 - `purge` deletes only a file an earlier `hash` registered. `hash` records each submission it hashes inside `<scratch-root>/wmgt-intake` in `manifest.wmgt` (name, hash, batch id; the newest 500 are kept), and a progress file is purgeable only when its hash and batch id match a registered submission, so an intake-named file that merely sits in the folder is not deleted. This is not authentication: anyone who can write to that folder can also write the manifest.
 - `purge` deletes relative to an open directory descriptor on POSIX, so swapping the file itself after the check cannot redirect the delete. A parent folder of the scratch root swapped between path resolution and opening it still can, and Windows has no descriptor-relative delete in Python at all, so there it checks the path and then removes it by name. Either way the worst case is deleting a regular file with an intake-generated name in another folder, and it needs a concurrent actor with write access to a parent of the scratch root.

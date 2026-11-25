@@ -37,7 +37,9 @@ update), "environment" (production or test), a non-empty string "team_id", a nor
 nonce (intake generates a fresh one for every submission, including a resume, so the same
 records never hash the same twice), and a non-empty "records" array. Records are checked
 against a per-operation field allowlist and typed (strings; labels as a bounded array of
-strings; title, status, priority, owner and id are length-capped, labels bounded), and a create
+strings; title, status, priority, owner and id are length-capped, labels bounded;
+due_date is a calendar date and pr_link a pull request URL in the linear_target repository),
+and a create
 record must carry a non-blank title, description and status.
 Duplicate JSON keys and non-finite numbers (NaN, Infinity) anywhere are refused, and the
 source_plugin, source_skill and linear_target fields are pattern-checked. Every record must also
@@ -56,6 +58,7 @@ its type name only).
 """
 
 import argparse
+import datetime
 import hashlib
 import json
 import os
@@ -77,6 +80,10 @@ _BATCH_ID_RE = re.compile(r"^[A-Za-z0-9._-]{8,64}$")
 _TEAM_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 _KEBAB_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}$")
 _SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,99}/[a-z0-9][a-z0-9._-]{0,99}$")
+_DATE_RE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
+_PR_URL_RE = re.compile(
+    r"https://github\.com/([A-Za-z0-9._-]{1,100}/[A-Za-z0-9._-]{1,100})/pull/[1-9][0-9]{0,9}"
+)
 _CREATE_REQUIRED = ("title", "description", "status")
 _PURGE_NAME_RE = re.compile(
     r"^(?:[A-Za-z0-9._-]{8,64}\.json|[0-9a-f]{64}-[A-Za-z0-9._-]{8,64}\.progress\.json)$"
@@ -88,7 +95,7 @@ _PROGRESS_NAME_RE = re.compile(r"^([0-9a-f]{64})-([A-Za-z0-9._-]{8,64})\.progres
 _OPERATIONS = {"create", "update"}
 _ENVIRONMENTS = {"production", "test"}
 _CREATE_FIELDS = {"title", "description", "status", "priority", "labels"}
-_UPDATE_SET_FIELDS = {"title", "status", "labels", "priority", "owner"}
+_UPDATE_SET_FIELDS = {"title", "status", "labels", "priority", "owner", "due_date", "pr_link"}
 _UPDATE_RECORD_KEYS = {"id", "set", "before"}
 _TOP_LEVEL_KEYS = {
     "operation",
@@ -128,7 +135,9 @@ def _no_duplicate_keys(pairs):
     return seen
 
 
-def _check_value(where: str, field: str, value, allow_none: bool = False) -> None:
+def _check_value(
+    where: str, field: str, value, linear_target: str = "", allow_none: bool = False
+) -> None:
     """Check one record field's type; ``allow_none`` lets an unset ``before`` field be null."""
     if value is None and allow_none:
         return
@@ -147,9 +156,23 @@ def _check_value(where: str, field: str, value, allow_none: bool = False) -> Non
                 f"{where}: 'labels' must be an array of at most {MAX_LABELS} non-empty strings"
                 f" of at most {MAX_LABEL_CHARS} characters"
             )
+    elif field == "due_date":
+        if not isinstance(value, str) or not _DATE_RE.fullmatch(value):
+            raise HashError(f"{where}: 'due_date' must be a YYYY-MM-DD date")
+        try:
+            datetime.date.fromisoformat(value)
+        except ValueError as exc:
+            raise HashError(f"{where}: 'due_date' is not a calendar date") from exc
+    elif field == "pr_link":
+        match = _PR_URL_RE.fullmatch(value) if isinstance(value, str) else None
+        if not match or match.group(1).lower() != linear_target:
+            raise HashError(
+                f"{where}: 'pr_link' must be a GitHub pull request URL in the linear_target"
+                " repository"
+            )
 
 
-def _check_records(operation: str, records: list) -> None:
+def _check_records(operation: str, records: list, linear_target: str) -> None:
     """Check every record against the per-operation field allowlist and value types."""
     for index, record in enumerate(records):
         where = f"record {index}"
@@ -181,7 +204,7 @@ def _check_records(operation: str, records: list) -> None:
                 allowed = sorted(_UPDATE_SET_FIELDS)
                 raise HashError(f'{where} "set" must be a non-empty object limited to {allowed}')
             for field, value in changes.items():
-                _check_value(where + " set", field, value)
+                _check_value(where + " set", field, value, linear_target)
             before = record.get("before")
             if (
                 not isinstance(before, dict)
@@ -195,7 +218,10 @@ def _check_records(operation: str, records: list) -> None:
             if not isinstance(before["title"], str) or not before["title"].strip():
                 raise HashError(f'{where} "before" needs a non-blank string title')
             for field, value in before.items():
-                _check_value(where + " before", field, value, allow_none=True)
+                _check_value(where + " before", field, value, linear_target, allow_none=True)
+            link = before.get("pr_link")
+            if link is not None and link.lower() != changes.get("pr_link", "").lower():
+                raise HashError(f'{where} "before" pr_link must be null or the link in "set"')
 
 
 def _check_records_fit_a_chunk(data: dict) -> None:
@@ -295,7 +321,7 @@ def load_submission(path_str: str) -> dict:
         raise HashError('"records" must be a non-empty array')
     if len(records) > MAX_RECORDS:
         raise HashError(f'"records" exceeds {MAX_RECORDS} entries')
-    _check_records(data["operation"], records)
+    _check_records(data["operation"], records, data["linear_target"])
     _check_records_fit_a_chunk(data)
     return data
 

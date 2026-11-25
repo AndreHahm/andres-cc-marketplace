@@ -896,6 +896,125 @@ def main() -> int:
             not hashed.get("ok") and "too large" in hashed.get("error", ""),
         )
 
+        # due_date and pr_link on update
+        pr = "https://github.com/Acme/Widgets/pull/12"
+
+        def linked(value, before=None, op="update"):
+            """Hash an update that sets pr_link to ``value``."""
+            fields = {"title": "T", "pr_link": before}
+            text = submission([update_record(set={"pr_link": value}, before=fields)], operation=op)
+            return run("hash", write("link.json", text))
+
+        def dated(value, before=None):
+            """Hash an update that sets due_date to ``value``."""
+            fields = {"title": "T", "due_date": before}
+            text = submission(
+                [update_record(set={"due_date": value}, before=fields)], operation="update"
+            )
+            return run("hash", write("due.json", text))
+
+        check("pr_link in the target repository is accepted", linked(pr)[0] == 0)
+        check("pr_link already attached is accepted", linked(pr, pr.lower())[0] == 0)
+        for bad in (
+            "https://github.com/other/widgets/pull/12",
+            "https://github.com/acme/widgets2/pull/12",
+            "http://github.com/acme/widgets/pull/12",
+            "https://github.com.evil.test/acme/widgets/pull/12",
+            "https://evil.test@github.com/acme/widgets/pull/12",
+            "https://github.com/acme/widgets/issues/12",
+            "https://github.com/acme/widgets/pull/0",
+            "https://github.com/acme/widgets/pull/012",
+            "https://github.com/acme/widgets/pull/12/files",
+            "https://github.com/acme/widgets/pull/12?x=1",
+            "https://github.com/acme/widgets/pull/12#x",
+            pr + "\n",
+            " " + pr,
+            "",
+            None,
+            12,
+            [pr],
+            {"url": pr, "title": "x"},
+        ):
+            check(
+                f"pr_link {bad!r} is refused", "must be a GitHub" in linked(bad)[1].get("error", "")
+            )
+        check(
+            "pr_link before naming another PR is refused",
+            linked(pr, "https://github.com/acme/widgets/pull/13")[0] == 1,
+        )
+        for bad in (12, "https://github.com/other/widgets/pull/12"):
+            check(
+                f"pr_link before {bad!r} is refused",
+                "must be a GitHub" in linked(pr, bad)[1].get("error", ""),
+            )
+        extra = update_record(before={"title": "T", "status": "Backlog", "pr_link": pr})
+        check(
+            "pr_link in before but not in set is refused",
+            run("hash", write("extra.json", submission([extra], operation="update")))[0] == 1,
+        )
+        check("due_date as a calendar date is accepted", dated("2026-02-28")[0] == 0)
+        check("due_date before may hold a date", dated("2026-02-28", "2026-01-01")[0] == 0)
+        for bad in (
+            "2026-02-30",
+            "0000-01-01",
+            "2026-2-3",
+            "20260228",
+            "2026-02-28T00:00:00Z",
+            "2026-02-28\n",
+            "\u0662026-02-28",
+            "",
+            None,
+            20260228,
+        ):
+            check(f"due_date {bad!r} is refused", "'due_date'" in dated(bad)[1].get("error", ""))
+        check("due_date before must be a date or null", dated("2026-02-28", "soon")[0] == 1)
+        check(
+            "due_date and pr_link are refused on create",
+            all(
+                run("hash", write("c.json", submission([rec(**{k: v})])))[0] == 1
+                for k, v in (("due_date", "2026-02-28"), ("pr_link", pr))
+            ),
+        )
+        check(
+            "set pr_link without a before value is refused",
+            run(
+                "hash",
+                write(
+                    "nb.json",
+                    submission(
+                        [update_record(set={"pr_link": pr}, before={"title": "T"})],
+                        operation="update",
+                    ),
+                ),
+            )[0]
+            == 1,
+        )
+        both = write(
+            "both.json",
+            submission(
+                [
+                    update_record(
+                        set={"pr_link": pr, "due_date": "2026-02-28"},
+                        before={"title": "T", "pr_link": None, "due_date": None},
+                    )
+                ],
+                operation="update",
+            ),
+        )
+        digest = run("hash", both)[1].get("sha256", "")
+        shown = run("preview", both, digest, "0", "1")[1]
+        check(
+            "preview shows both new fields",
+            shown.get("ok")
+            and shown["rows"][0]["set"] == {"pr_link": pr, "due_date": "2026-02-28"},
+        )
+        written = run("chunk", both, digest, "0", "1")[1]
+        check(
+            "chunk prints the exact link and date",
+            written.get("ok")
+            and written["records"][0]["set"] == {"pr_link": pr, "due_date": "2026-02-28"},
+        )
+
         rc, out = run("bogus")
         check("invalid arguments give a typed failure", rc == 1 and not out["ok"])
 
