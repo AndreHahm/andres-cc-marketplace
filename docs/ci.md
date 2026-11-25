@@ -644,7 +644,7 @@ review` is the gate after the PR exists and reviews only the delta, to cut OpenA
   a maintainer's confirmation. The list travels as the
   `prior-findings` artifact, apart from `carried-findings`, whose readers fail closed on its shape.
   `codex-review` downloads it only when `compute-scope` uploaded it (`prior_written`) and passes it to `run-codex-review
-  --prior-findings`; `dispatch_reviewers` gives every reviewer except `security-reviewer` a
+  --prior-findings`; a file left by a failed download is removed first. `dispatch_reviewers` gives every reviewer except `security-reviewer` a
   `[prior review findings]` briefing of those on its own reviewed paths, at most 40
   (`render_prior_findings_briefing`, which validates every record again). The file is deleted once read. A step that fails, or a missing or
   unreadable list, means no briefing and a note in the log. Nothing else reads the list. The local parity

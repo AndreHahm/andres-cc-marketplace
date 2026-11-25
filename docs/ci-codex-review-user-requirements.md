@@ -522,6 +522,11 @@ follows the previous run's own remediation. Each reviewer is therefore briefed w
   not redacted. The anchor's result artifact holds the same text.
 - **Accepted residual:** one round misses a finding last raised two or more reviews ago, and a list holds no
   disposition, so a refuted finding is briefed like a fixed one.
+- **Accepted residual:** findings are matched by path, so a file the pull request added and renamed since the
+  anchor loses its findings from the briefing.
+- **Accepted residual:** an assignment value (`API_KEY=...`) split by a non-printable character is redacted
+  only up to it, and text that only looks like a split token (`Authorization: Bearer <api-token>`) drops its
+  finding from the briefing.
 
 Status: approved (maintainer, 2026-11-25, issue #862; the gate-critical exclusion and
 the widened residuals added after the security review, maintainer's choice the same day)
