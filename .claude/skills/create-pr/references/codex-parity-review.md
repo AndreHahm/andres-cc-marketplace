@@ -53,9 +53,9 @@ by a 60 s timeout, so a stalled network falls through to a warning or exit 2.
 A completed result carries two fields that say what a clean result does not cover. Neither changes the exit
 code, so read them on every exit 0:
 
-- `coverage.complete: false`: no dispatched reviewer checks general correctness, and `coverage.uncovered_paths`
-  lists the code (every non-Markdown file, plugin scripts and hooks included) nobody reviewed for logic
-  errors. No CI reviewer is marked for it today, so a diff with any code always gets this.
+- `coverage.complete: false`: `coverage.uncovered_paths` lists the code (every non-Markdown file, plugin scripts
+  and hooks included) no dispatched reviewer checked for logic errors. Only `correctness-reviewer` does, and
+  only under `scripts/` and `.github/`, so a diff with any other code always gets this.
 - `advisory.advisory: true`: the branch changes the review-dispatch code, adds a file that can shadow it,
   or changes a reviewer-steering file or a dispatched reviewer's own definition (`advisory.reasons`,
   `advisory.paths`), so the reviewers judged a change to what runs or steers them.

@@ -71,7 +71,7 @@ BLOCKING = _envelope(
 @pytest.fixture
 def review_repo(git_repo):
     """A repo with a base commit and one changed file; returns (root, base_sha)."""
-    for name in ROSTER:
+    for name in (*ROSTER, "correctness-reviewer"):
         git_repo.write(f".codex/agents/{name}.toml", 'developer_instructions = """\ncheck\n"""\n')
     git_repo.write("README.md", "original")
     subprocess.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
@@ -484,21 +484,21 @@ def test_a_coverage_failure_is_could_not_run(monkeypatch, review_repo, tmp_path)
     assert "coverage/advisory failed" in payload["error"]
 
 
-def test_a_clean_review_of_ci_code_says_it_was_not_checked_for_correctness(
+def test_a_clean_review_says_which_code_was_not_checked_for_correctness(
     monkeypatch, review_repo, tmp_path
 ):
-    """Issue #713: CI and script changes came back clean with no reviewer able to judge them."""
+    """Issue #713: correctness-reviewer covers CI and script changes, but not a plugin hook."""
     root, _ = review_repo
     _commit_on(root, {".github/workflows/ci.yml": "on: push\n", "scripts/tool.py": "x = 1\n"})
     rc, payload = _run(monkeypatch, review_repo, tmp_path, _answers(CLEAN))
     # Fields only: the gate, the status and the exit code are unchanged.
     assert rc == 0 and payload["status"] == "clean" and payload["blocking"] is False
-    assert payload["coverage"]["complete"] is False
-    assert payload["coverage"]["uncovered_paths"] == [
-        ".github/workflows/ci.yml",
-        CHANGED,
-        "scripts/tool.py",
-    ]
+    assert payload["reviewer_results"]["correctness-reviewer"]["status"] == "clean"
+    assert payload["coverage"] == {
+        "general_correctness_reviewers": ["correctness-reviewer"],
+        "uncovered_paths": [CHANGED],
+        "complete": False,
+    }
 
 
 def test_advisory_keeps_a_mirror_the_reviewer_dispatch_collapses(

@@ -178,6 +178,14 @@ _SCRIPTS_REVIEWER_PATH_PREFIX = "scripts/marketplace_ci/"
 _RULES_MIRROR_SOURCE_PREFIX = "scripts/marketplace_ci/rules/"
 _HOOKS_MIRROR_SOURCE_PREFIX = "scripts/marketplace_ci/hooks/"
 
+# What correctness-reviewer judges (issue #713): code under scripts/ and .github/. Dispatch, the
+# reviewer's own path list and `coverage` all use this one check.
+_CORRECTNESS_PATH_PREFIXES = ("scripts/", ".github/")
+
+
+def _is_correctness_path(path: str) -> bool:
+    return path.startswith(_CORRECTNESS_PATH_PREFIXES) and _is_code(path)
+
 
 def _audit_types_for(paths: Iterable[str]) -> set[str]:
     paths = list(paths)  # `any(...)` below would otherwise silently exhaust a
@@ -193,6 +201,8 @@ def _audit_types_for(paths: Iterable[str]) -> set[str]:
         audit_types.add("rule-reviewer")
     if any(p.startswith(_HOOKS_MIRROR_SOURCE_PREFIX) and p.endswith(".json") for p in paths):
         audit_types.add("hook-reviewer")
+    if any(_is_correctness_path(p) for p in paths):
+        audit_types.add("correctness-reviewer")
     return audit_types
 
 
@@ -204,10 +214,9 @@ def _audit_types_for(paths: Iterable[str]) -> set[str]:
 
 
 # Classified by file type, not location: Markdown (documentation, and the skill/agent/command/rule
-# files the component reviewers are built for) is the only kind a roster reviewer covers. Every
-# other file -- scripts and hooks inside plugins/ and .claude/ as much as scripts/, tests/,
-# .github/ and root config -- is code no roster reviewer checks for general correctness
-# (scripts-reviewer checks a closed list of named patterns only).
+# files the component reviewers are built for) is not code. Every other file is, wherever it lives.
+# Only correctness-reviewer checks code for general correctness, and only under scripts/ and
+# .github/; scripts-reviewer checks a closed list of named patterns only.
 def _is_code(path: str) -> bool:
     return not path.lower().endswith(".md")
 
@@ -219,12 +228,15 @@ def general_correctness_coverage(
     general_reviewers: Iterable[str] | None = None,
 ) -> dict:
     """The result's `coverage`: whether a dispatched reviewer checks the reviewed code (every
-    non-Markdown path) for general correctness. `uncovered_paths` lists that code when none does."""
+    non-Markdown path) for general correctness. A reviewer covers only the paths it is dispatched
+    on; `uncovered_paths` lists the rest of that code."""
+    paths = tuple(paths)
     general = (
         general_correctness_reviewers() if general_reviewers is None else set(general_reviewers)
     )
     covering = sorted(set(reviewers) & set(general))
-    uncovered = [] if covering else sorted({p for p in paths if _is_code(p)})
+    covered = {p for name in covering for p in _reviewer_scope(name, paths)}
+    uncovered = sorted({p for p in paths if _is_code(p)} - covered)
     return {
         "general_correctness_reviewers": covering,
         "uncovered_paths": uncovered,
@@ -4538,8 +4550,8 @@ def _is_isolation_unavailable(stderr: str) -> bool:
     return isinstance(parsed, dict) and parsed.get("category") == "isolation_profile_unavailable"
 
 
-def _reviewer_scope(name: str, scope: ReviewScope) -> tuple[str, ...]:
-    """The paths one reviewer is dispatched on."""
+def _reviewer_scope(name: str, paths: Sequence[str]) -> tuple[str, ...]:
+    """The paths one reviewer is dispatched on, out of the scope's `paths`."""
     if name == "plugin-rulebook-checker":
         # Narrow to only what R1-R27 actually reviews -- see
         # _is_rulebook_scoped_path's own comment for why. Fall back to
@@ -4548,9 +4560,12 @@ def _reviewer_scope(name: str, scope: ReviewScope) -> tuple[str, ...]:
         # baseline regardless of whether any in-scope file happens to
         # remain, and an empty paths list is worse than a widened
         # (but real) one.
-        scoped = tuple(p for p in scope.paths if _is_rulebook_scoped_path(p))
-        return scoped or tuple(scope.paths)
-    return tuple(scope.paths)
+        scoped = tuple(p for p in paths if _is_rulebook_scoped_path(p))
+        return scoped or tuple(paths)
+    if name == "correctness-reviewer":
+        # No fallback: it is only dispatched when such a path is in scope.
+        return tuple(p for p in paths if _is_correctness_path(p))
+    return tuple(paths)
 
 
 def _dispatch_one(
@@ -4574,7 +4589,7 @@ def _dispatch_one(
     sandbox_probe: Callable[[], str | None] | None = None,
     unsandboxed_allowed: Callable[[], bool] | None = None,
 ) -> ReviewerReport:
-    reviewer_scope = _reviewer_scope(name, scope)
+    reviewer_scope = _reviewer_scope(name, scope.paths)
 
     # Checked whether or not line ranges exist: the paths reach the bridge one per line in a file,
     # so a newline inside a name would split into two valid-looking entries and the real file would
@@ -4915,7 +4930,7 @@ def dispatch_reviewers(
         name
         for name in names
         if guardrails_script is not None
-        and not _fits_guarded_command_line(_reviewer_scope(name, scope))
+        and not _fits_guarded_command_line(_reviewer_scope(name, scope.paths))
     )
     start_unsandboxed = False
     # One latched verdict for the whole run (see SandboxVerdict): the pre-dispatch probe and every
@@ -4977,7 +4992,9 @@ def dispatch_reviewers(
         # the previous run reported (R20).
         if name == _SECURITY_REVIEWER:
             return shared_briefing
-        prior_briefing = render_prior_findings_briefing(prior_records, _reviewer_scope(name, scope))
+        prior_briefing = render_prior_findings_briefing(
+            prior_records, _reviewer_scope(name, scope.paths)
+        )
         parts = (shared_briefing, accepted_briefing, tracked_briefing, prior_briefing)
         return "\n\n".join(p for p in parts if p)
 

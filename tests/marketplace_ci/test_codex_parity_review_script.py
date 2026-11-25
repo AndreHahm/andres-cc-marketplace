@@ -702,7 +702,7 @@ def test_incomplete_coverage_is_disclosed_but_still_exits_clean(repo, tmp_path):
     }
     result, _, _ = _run(repo, tmp_path, result_json=_result(coverage=coverage))
     assert result.returncode == 0
-    assert "no dispatched reviewer checks general correctness" in result.stdout
+    assert "no dispatched reviewer checked this code for general correctness" in result.stdout
     assert '"scripts/marketplace_ci/review.py", ".github/workflows/ci.yml"' in result.stdout
     assert "ADVISORY" in result.stdout
 

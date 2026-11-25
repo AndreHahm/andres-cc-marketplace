@@ -107,7 +107,7 @@ def test_scripts_marketplace_ci_python_change_selects_scripts_reviewer_audit(
     scope = derive_review_scope([change("scripts/marketplace_ci/sync.py")], dependency_index())
     assert scope.mode == "delta"
     assert scope.validate == ("plugin-rulebook-checker", "dependency-reviewer", "security-reviewer")
-    assert scope.audit == ("scripts-reviewer",)
+    assert scope.audit == ("correctness-reviewer", "scripts-reviewer")
 
 
 def test_scripts_marketplace_ci_non_python_non_mirror_change_has_no_type_specific_audit(
@@ -116,13 +116,14 @@ def test_scripts_marketplace_ci_non_python_non_mirror_change_has_no_type_specifi
     """A scripts/marketplace_ci/ file that's neither a .py script nor
     rules/hooks mirror-source data (e.g. requirements.txt) still forces the
     baseline three via BYPASS_INELIGIBLE_PREFIXES, but doesn't match any of
-    the three type-specific audit mappings."""
+    the three type-specific audit mappings. It is still code for
+    correctness-reviewer (issue #713)."""
     scope = derive_review_scope(
         [change("scripts/marketplace_ci/requirements.txt")], dependency_index()
     )
     assert scope.mode == "delta"
     assert scope.validate == ("plugin-rulebook-checker", "dependency-reviewer", "security-reviewer")
-    assert scope.audit == ()
+    assert scope.audit == ("correctness-reviewer",)
 
 
 def test_scripts_marketplace_ci_rules_mirror_source_change_selects_rule_reviewer_audit(
@@ -149,7 +150,7 @@ def test_scripts_marketplace_ci_hooks_mirror_source_change_selects_hook_reviewer
         [change("scripts/marketplace_ci/hooks/hooks.json")], dependency_index()
     )
     assert scope.mode == "delta"
-    assert scope.audit == ("hook-reviewer",)
+    assert scope.audit == ("correctness-reviewer", "hook-reviewer")
 
 
 def test_hook_change_has_no_launch_time_audit_reviewer(change, dependency_index):
@@ -609,7 +610,7 @@ def test_unbounded_dependency_closure_includes_scripts_reviewer_audit(change):
     huge_index: dict[str, tuple[str, ...]] = {"plugins/demo-kit/skills/x/SKILL.md": tuple(deps)}
     scope = derive_review_scope(changes, huge_index, dependency_closure_limit=50)
     assert scope.mode == "full"
-    assert scope.audit == ("scripts-reviewer", "skill-reviewer")
+    assert scope.audit == ("correctness-reviewer", "scripts-reviewer", "skill-reviewer")
 
 
 def _envelope(reviewer="security-reviewer", findings=None):

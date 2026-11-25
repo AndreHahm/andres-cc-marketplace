@@ -156,6 +156,7 @@ ROSTER = (
     Reviewer("skill-reviewer", "audit:skills"),
     Reviewer("subagent-reviewer", "audit:agents"),
     Reviewer("scripts-reviewer", "audit:scripts"),
+    Reviewer("correctness-reviewer", "audit:correctness", checks_general_correctness=True),
     Reviewer("rule-reviewer", "audit:rules"),
     Reviewer("hook-reviewer", "audit:hooks"),
     Reviewer("consistency-reviewer", "governance"),

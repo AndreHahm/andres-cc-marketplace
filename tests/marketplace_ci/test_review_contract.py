@@ -227,7 +227,7 @@ def test_the_roster_covers_every_reviewer_review_py_can_dispatch():
     dispatched = set(DELTA_VALIDATE) | set(LAUNCH_AUDIT_BY_COMPONENT_TYPE.values())
     for names in FULL_MODE_GOVERNANCE_REVIEWERS.values():
         dispatched |= set(names)
-    dispatched |= {"scripts-reviewer", "rule-reviewer", "hook-reviewer"}
+    dispatched |= {"scripts-reviewer", "rule-reviewer", "hook-reviewer", "correctness-reviewer"}
     assert dispatched <= {r.name for r in rc.ROSTER}
 
 

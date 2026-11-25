@@ -1396,11 +1396,13 @@ alike but cannot guarantee they agree, because the model is still non-determinis
 - on a completed review, `coverage` and `advisory` (issue #713). They say what a clean result does not cover
   and change neither the gate, `status`, `blocking` nor the exit code:
   - `coverage` is `{general_correctness_reviewers, uncovered_paths, complete}`. `uncovered_paths` lists every
-    reviewed path that is not Markdown, wherever it lives (scripts and hooks inside `plugins/` and `.claude/`
-    as much as `scripts/`, tests, workflows and root config), when no dispatched reviewer is marked
-    `checks_general_correctness` in `review_contract.ROSTER`. No roster reviewer is marked today: the
-    rulebook, dependency, security and component reviewers do not check arbitrary code for logic errors, and
-    `scripts-reviewer` checks a closed list of named patterns.
+    reviewed path that is not Markdown, wherever it lives, that no dispatched reviewer marked
+    `checks_general_correctness` in `review_contract.ROSTER` was given. Only `correctness-reviewer` is
+    marked. It is dispatched for, and given only, the non-Markdown paths under `scripts/` and `.github/`
+    (`_is_correctness_path`), so tests, root config and code inside `plugins/` and `.claude/` stay
+    uncovered. "Given" does not prove the reviewer read a path, and a `.md` file counts as documentation even
+    if something executes it. The rulebook, dependency, security and component reviewers do not check
+    arbitrary code for logic errors, and `scripts-reviewer` checks a closed list of named patterns.
   - `advisory` is `{advisory, reasons, paths}` over the whole PR delta. A path counts when it is a Tier-1 file
     (`review-dispatch-critical`; `review.py` keeps a copy of `TIER1_FILES` that a test holds equal), an added
     or changed file matching one of the two name patterns of the "adds an importable top-level shadow" step
@@ -1662,8 +1664,9 @@ protocol below, depends on which part of `scripts/marketplace_ci/` changed (issu
   connector review). `_audit_types_for` (`review.py`) dispatches `scripts-reviewer` for a `.py` change
   under `scripts/marketplace_ci/`, `rule-reviewer` for a `.md` change under
   `scripts/marketplace_ci/rules/`, and `hook-reviewer` for a `.json` change under
-  `scripts/marketplace_ci/hooks/` — the same `LAUNCH_AUDIT_BY_COMPONENT_TYPE` mechanism `skills/`/
-  `agents/` changes already get, extended to these three Tier 2 surfaces since none of them are a
+  `scripts/marketplace_ci/hooks/`, and `correctness-reviewer` for any non-Markdown change under `scripts/` or
+  `.github/` (issue #713) — the same `LAUNCH_AUDIT_BY_COMPONENT_TYPE` mechanism `skills/`/
+  `agents/` changes already get, extended to these surfaces since none of them are a
   `plugins/<name>/<type>/` path that mechanism's own component-type keying can match.
 
 This closes the friction issue #351 opened to track: previously *any* `scripts/marketplace_ci/` change —
