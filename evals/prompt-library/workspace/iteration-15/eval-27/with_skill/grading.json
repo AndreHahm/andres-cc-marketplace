@@ -1,0 +1,34 @@
+{
+  "eval_id": 27,
+  "date": "2026-11-25",
+  "configuration": "with_skill",
+  "setup": "real fixture project, the real validator called without the uv wrapper, scripted answers, one run, no baseline, graded by the author from the agent's report and the fixture end state; model not recorded; transcripts not kept (local paths)",
+  "expectations": [
+    {
+      "text": "The activate request is refused because the prompt was retired",
+      "passed": true,
+      "evidence": "Says version 1 is retired and the draft cannot be activated"
+    },
+    {
+      "text": "No question, review or recorded verification in the refused request",
+      "passed": true,
+      "evidence": "Only validate ran"
+    },
+    {
+      "text": "The discard shows version, text and hash and asks once",
+      "passed": true,
+      "evidence": "One Discard/Keep question with all three"
+    },
+    {
+      "text": "After Discard only the historical version 1 is left and the catalog is ok",
+      "passed": true,
+      "evidence": "p000000000001.md historical, catalog ok (checked)"
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "failed": 0,
+    "total": 4,
+    "pass_rate": 1.0
+  }
+}

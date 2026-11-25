@@ -16,7 +16,7 @@ asked for any other status, as well or only.
 `Verified` is `yes` only when the validator reports `verified: true`: every required hash is present and
 matches the current text. It means "unchanged since a hash was recorded", not "reviewed". Sort by area,
 then name. A record in `blocked` has `verified: no` and the note "changed since its approval" with its
-reasons. A record with `retired: true` has the status `retired`. For a search, add a `Matched in` column: `label` when `matched_in` names any field other than
+reasons. A record with `retired: true` keeps its status `historical`; show `historical (retired)` in the Status column. For a search, add a `Matched in` column: `label` when `matched_in` names any field other than
 `text`, `text` when it names `text`, or both.
 
 ## Detail layout

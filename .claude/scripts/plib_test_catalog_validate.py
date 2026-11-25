@@ -242,6 +242,7 @@ class TextAndYaml(unittest.TestCase):
             sec.lower() + "_key: " + word,
             "--db-pass" + "word=" + word,
             "redis://:" + word + "@host:6379",
+            "HTTPS://user:" + word + "@example.com",
             "-----BEGIN PGP PRIVATE " + "KEY BLOCK-----",
         ):
             self.assertTrue(V.screen_text(text), text)
@@ -1678,6 +1679,22 @@ class BlockedPrompts(Base):
         self.assertEqual((code, res["errors"]), (0, []))
         self.assertEqual(res["blocked"][0]["reasons"], ["verification is missing"])
 
+    def test_a_malformed_approval_blocks_one_prompt_and_can_be_retired(self):
+        self.two_active()
+        path = self.root / SLUG / "active.md"
+        for bad in ([], "x"):
+            meta = V.read_record(path)
+            meta["verification"] = bad
+            V.write_record(path, meta)
+            code, res = self.run_cli("validate")
+            self.assertEqual((code, res["errors"]), (0, []), bad)
+            self.assertEqual(res["blocked"][0]["reasons"], ["verification is missing"])
+            self.assertEqual(self.run_cli("show", self.OTHER)[0], 0)
+        code, res = self.run_cli("retire", self.A, "--expect-sha256", self.blocked_hash())
+        self.assertEqual(code, 0, res)
+        code, res = self.run_cli("validate")
+        self.assertEqual((code, res["errors"], res["blocked"]), (0, [], []))
+
     def test_structural_problems_still_stop_the_whole_catalog(self):
         self.two_active()
         self.edit("\nchanged\n")
@@ -1772,6 +1789,8 @@ class BlockedPrompts(Base):
         self.assertEqual(
             self.run_cli("retire", self.A, "--expect-sha256", self.blocked_hash())[0], 0
         )
+        flags = {r["status"]: r["retired"] for r in self.run_cli("validate")[1]["records"]}
+        self.assertEqual(flags, {"historical": True, "draft": False})  # the draft stays visible
         code, res = self.run_cli("discard-draft", self.B, "--expect-sha256", self.hash_of(self.B))
         self.assertEqual(code, 0, res)
         self.assertEqual(self.run_cli("validate")[0], 0)

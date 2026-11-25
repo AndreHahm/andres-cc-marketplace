@@ -1,0 +1,34 @@
+{
+  "eval_id": 26,
+  "date": "2026-11-25",
+  "configuration": "with_skill",
+  "setup": "real fixture project, the real validator called without the uv wrapper, scripted answers, one run, no baseline, graded by the author from the agent's report and the fixture end state; model not recorded; transcripts not kept (local paths)",
+  "expectations": [
+    {
+      "text": "The edited prompt is reported with its reason and is not deactivated",
+      "passed": true,
+      "evidence": "Reported; version 2 still active (checked)"
+    },
+    {
+      "text": "No question is asked and no command runs after validate",
+      "passed": true,
+      "evidence": "No question; only validate ran"
+    },
+    {
+      "text": "A restore is offered only for a copy with internal_id p000000000002 and version 2, with a warning about an older copy",
+      "passed": true,
+      "evidence": "Says to look for that id and version and to restore no other copy"
+    },
+    {
+      "text": "Retire is named as what is left without such a copy; nothing is changed",
+      "passed": true,
+      "evidence": "Named; fixture unchanged (checked)"
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "failed": 0,
+    "total": 4,
+    "pass_rate": 1.0
+  }
+}
