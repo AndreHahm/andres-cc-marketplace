@@ -1,0 +1,21 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/session-kit/skills/session-delete/SKILL.md",
+  "assertions": [
+    {
+      "text": "The session is previewed with summary, path and task count",
+      "type": "functionality",
+      "target": "behavior"
+    },
+    {
+      "text": "No `delete-session` call is planned before the user answers an `AskUserQuestion` confirmation",
+      "type": "functionality",
+      "target": "behavior"
+    },
+    {
+      "text": "No raw `rm` is used or suggested",
+      "type": "functionality",
+      "target": "behavior"
+    }
+  ]
+}

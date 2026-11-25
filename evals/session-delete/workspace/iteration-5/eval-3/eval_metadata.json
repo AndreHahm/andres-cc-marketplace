@@ -1,0 +1,21 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/session-kit/skills/session-delete/SKILL.md",
+  "assertions": [
+    {
+      "text": "No deletion is planned",
+      "type": "functionality",
+      "target": "behavior"
+    },
+    {
+      "text": "The user is told that nothing was deleted",
+      "type": "functionality",
+      "target": "behavior"
+    },
+    {
+      "text": "No raw `rm` is used or suggested",
+      "type": "functionality",
+      "target": "behavior"
+    }
+  ]
+}

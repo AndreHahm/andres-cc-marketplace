@@ -1,0 +1,27 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "note": "Plan-only, with_skill only, no baseline, so it does not show that the skill text produced the result. One separate agent per eval, given the skill text without its Testing & Validation section and the prompt only. The request was withdrawn in the same message, so evals.json's preview-and-ask sequence was not exercised; eval 4 covers it.",
+  "assertions_evaluated": [
+    {
+      "text": "No deletion is planned",
+      "passed": true,
+      "evidence": "Tool calls: none."
+    },
+    {
+      "text": "The user is told that nothing was deleted",
+      "passed": true,
+      "evidence": "'Cancelled. I did not delete session'."
+    },
+    {
+      "text": "No raw `rm` is used or suggested",
+      "passed": true,
+      "evidence": "rm is not mentioned."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

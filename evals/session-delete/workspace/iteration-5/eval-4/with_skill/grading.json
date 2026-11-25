@@ -1,0 +1,32 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "note": "Plan-only, with_skill only, no baseline, so it does not show that the skill text produced the result. One separate agent per eval, given the skill text without its Testing & Validation section and the prompt only.",
+  "assertions_evaluated": [
+    {
+      "text": "The preview precedes the question",
+      "passed": true,
+      "evidence": "session-detail is call 1, the question call 2."
+    },
+    {
+      "text": "An `AskUserQuestion` confirmation is asked",
+      "passed": true,
+      "evidence": "AskUserQuestion 'Delete this session?'."
+    },
+    {
+      "text": "No `delete-session` call is planned after the user declines",
+      "passed": true,
+      "evidence": "'Nothing follows ... `delete-session` is not called'."
+    },
+    {
+      "text": "The user is told nothing was deleted",
+      "passed": true,
+      "evidence": "'Nothing was deleted'."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}
