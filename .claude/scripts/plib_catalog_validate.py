@@ -1039,9 +1039,12 @@ def _stray_temp_files(root: Path) -> list[str]:
     """Temp files a killed write left behind (not records, so validation never lists them)."""
     if not root.is_dir():
         return []
-    patterns = ("catalog.yaml.*.tmp", "*/*.md.*.tmp")  # the shapes _write_atomic creates
-    found = {p for pat in patterns for p in root.glob(pat) if p.is_symlink() or p.is_file()}
-    return sorted(p.relative_to(root).as_posix() for p in found)
+    # The shapes _write_atomic creates. A linked folder is never listed (check_lineages reports it).
+    found = set(root.glob("catalog.yaml.*.tmp"))
+    for entry in root.iterdir():
+        if entry.is_dir() and contained(entry, root):
+            found.update(entry.glob("*.md.*.tmp"))
+    return sorted(p.relative_to(root).as_posix() for p in found if p.is_symlink() or p.is_file())
 
 
 def search_words(text: str) -> str:

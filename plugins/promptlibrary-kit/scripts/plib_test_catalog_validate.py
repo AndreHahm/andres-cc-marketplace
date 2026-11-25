@@ -1879,6 +1879,7 @@ class LinkedCatalogContent(Base):
         self.make_active()
         target = self.outside()
         (target / "private-notes.md").write_text("x\n", encoding="utf-8")
+        (target / "private-notes.md.x.tmp").write_text("x\n", encoding="utf-8")
         self.link(self.root / "review__linked", target, True)
         code, res = self.run_cli("validate")
         self.assertEqual(code, 1)
