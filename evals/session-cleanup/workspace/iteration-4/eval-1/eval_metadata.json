@@ -1,0 +1,31 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/session-kit/skills/session-cleanup/SKILL.md",
+  "assertions": [
+    {
+      "text": "Uses the `cleanup` command to list candidates",
+      "type": "presence",
+      "target": "candidate search"
+    },
+    {
+      "text": "Plans no deletion before an `AskUserQuestion` confirmation",
+      "type": "functionality",
+      "target": "confirmation gate"
+    },
+    {
+      "text": "Presents the total reclaimable space",
+      "type": "quality",
+      "target": "report"
+    },
+    {
+      "text": "A short or empty session outside the age gets its own question",
+      "type": "functionality",
+      "target": "age scope"
+    },
+    {
+      "text": "No raw `rm` is used or suggested at any point",
+      "type": "structure",
+      "target": "deletion mechanism"
+    }
+  ]
+}

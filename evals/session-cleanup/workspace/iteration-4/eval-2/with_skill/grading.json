@@ -1,0 +1,22 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "note": "Plan-only, with_skill only, no baseline; script results and answers simulated. Same agent handled all three scenarios. Eval 3's candidate list and answers were given in the prompt.",
+  "assertions_evaluated": [
+    {
+      "text": "Declines and points to session-delete for the single named session",
+      "passed": true,
+      "evidence": "Hands abc123 to session-delete."
+    },
+    {
+      "text": "No raw `rm` is used or suggested at any point",
+      "passed": true,
+      "evidence": "rm appears only as 'Never `rm`' or not at all."
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 2,
+    "pass_rate": 1.0
+  }
+}
