@@ -15,7 +15,7 @@ workflow step, checkable only at the moment it should have happened — not some
 inspection can verify after the fact.
 
 **In scope — 22 agents:**
-- All 18 `*-reviewer` agents: `activation-reviewer`, `authority-reviewer`, `claudemd-reviewer`,
+- 18 of the `*-reviewer` agents (`correctness-reviewer` is excluded below): `activation-reviewer`, `authority-reviewer`, `claudemd-reviewer`,
   `command-reviewer`, `completeness-reviewer`, `consistency-reviewer`, `dependency-reviewer`,
   `external-references-reviewer`, `hook-reviewer`, `human-doc-reviewer`, `language-reviewer`,
   `permission-reviewer`, `rule-reviewer`, `scripts-reviewer`, `security-reviewer`, `skill-reviewer`,
@@ -79,6 +79,9 @@ named claim targets and canonical-source claims against real on-disk files) — 
   (`skill-development`, `hook-development`, `agent-development`, `command-development`,
   `rule-development`) — these already have their own `scripts/smoke_test.py` convention rather than an
   `example-plugin`-dry-run shape.
+- `correctness-reviewer` (added 2026-11-25) — named `*-reviewer`, but it reviews code under a repository's
+  root `scripts/` and `.github/` and reports every other file, a plugin's included, as out of scope, so it
+  inspects no plugin structure and `example-plugin` holds nothing for it to review.
 - `build-handoff-writer` — reads prior run records/commits to write a summary; doesn't itself inspect
   plugin structure.
 - `enhancement-suggestor` — `Read`-only, consumes findings JSON another component already produced;

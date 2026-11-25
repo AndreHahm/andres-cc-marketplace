@@ -14,8 +14,11 @@ from pathlib import Path
 import pytest
 
 from scripts.marketplace_ci import review_contract
+from scripts.marketplace_ci.git_state import ChangedPath
 from scripts.marketplace_ci.review import (
     ADVISORY_DISPATCH_FILES,
+    _reviewer_scope,
+    derive_review_scope,
     general_correctness_coverage,
     review_advisory,
 )
@@ -94,9 +97,82 @@ def test_a_general_reviewer_that_was_not_dispatched_covers_nothing():
     assert coverage["complete"] is False
 
 
-def test_no_reviewer_checks_general_correctness_yet():
-    # Issue #713 fix 1 (a separate PR) adds the first one; it must flip this flag in ROSTER.
-    assert review_contract.general_correctness_reviewers() == frozenset()
+def test_correctness_reviewer_is_the_general_correctness_reviewer():
+    assert review_contract.general_correctness_reviewers() == {"correctness-reviewer"}
+
+
+# Dispatch, the reviewer's path list and coverage must agree on what correctness-reviewer judges,
+# or a clean result would claim code it never saw.
+IN_CORRECTNESS_SCOPE = (
+    "scripts/marketplace_ci/sync.py",
+    "scripts/__init__.py",
+    "scripts/reviewer_eval/data.json",
+    ".github/workflows/marketplace-ci.yml",
+    ".github/scripts/x.sh",
+    ".github/CODEOWNERS",
+)
+OUT_OF_CORRECTNESS_SCOPE = (
+    "tests/marketplace_ci/test_cli.py",
+    "pyproject.toml",
+    "plugins/git-kit/scripts/git-codex-parity-review.py",
+    ".claude/scripts/git-codex-parity-review.py",
+    "scripts/marketplace_ci/rules/some-rule.md",
+    ".github/pull_request_template.md",
+    "scripts_old/x.py",
+    "Scripts/x.py",
+)
+
+
+def _scope(change, *paths):
+    return derive_review_scope([change(p) for p in paths], {})
+
+
+@pytest.mark.parametrize("path", IN_CORRECTNESS_SCOPE)
+def test_scripts_and_github_code_is_dispatched_and_covered(change, path):
+    scope = _scope(change, path)
+    assert "correctness-reviewer" in scope.audit
+    assert _reviewer_scope("correctness-reviewer", scope.paths) == (path,)
+    assert general_correctness_coverage(scope.paths, scope.audit)["complete"] is True
+
+
+@pytest.mark.parametrize("path", OUT_OF_CORRECTNESS_SCOPE)
+def test_other_paths_do_not_dispatch_correctness_reviewer(change, path):
+    assert "correctness-reviewer" not in _scope(change, path).audit
+
+
+def test_a_mixed_diff_is_covered_per_path_and_narrows_the_reviewer(change):
+    inside, outside = "scripts/marketplace_ci/sync.py", "tests/marketplace_ci/test_cli.py"
+    scope = _scope(change, inside, outside, "plugins/git-kit/skills/commit/SKILL.md")
+    assert _reviewer_scope("correctness-reviewer", scope.paths) == (inside,)
+    assert _reviewer_scope("security-reviewer", scope.paths) == scope.paths
+    assert general_correctness_coverage(scope.paths, scope.audit) == {
+        "general_correctness_reviewers": ["correctness-reviewer"],
+        "uncovered_paths": [outside],
+        "complete": False,
+    }
+
+
+def test_a_rename_out_of_scope_still_dispatches_for_the_old_path():
+    renamed = ChangedPath(status="R", old_path="scripts/x.py", new_path="tests/x.py")
+    scope = derive_review_scope([renamed], {})
+    assert "correctness-reviewer" in scope.audit
+    assert _reviewer_scope("correctness-reviewer", scope.paths) == ("scripts/x.py",)
+
+
+def test_closure_overflow_narrows_correctness_reviewer_too(change):
+    script = "scripts/marketplace_ci/sync.py"
+    deps = (*(f"dep-{i}" for i in range(99)), script)
+    skill = "plugins/demo-kit/skills/x/SKILL.md"
+    scope = derive_review_scope([change(skill)], {skill: deps}, dependency_closure_limit=50)
+    assert scope.mode == "full"
+    assert "correctness-reviewer" in scope.audit
+    assert _reviewer_scope("correctness-reviewer", scope.paths) == (script,)
+
+
+def test_correctness_reviewer_never_falls_back_to_the_full_path_list():
+    paths = ("tests/x.py",)
+    assert _reviewer_scope("correctness-reviewer", paths) == ()
+    assert general_correctness_coverage(paths, ("correctness-reviewer",))["complete"] is False
 
 
 def test_the_default_general_reviewers_come_from_the_roster(monkeypatch):

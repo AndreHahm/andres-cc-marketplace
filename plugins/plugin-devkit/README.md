@@ -4,7 +4,7 @@ A comprehensive toolkit for developing Claude Code plugins — skills for buildi
 
 ## Overview
 
-`plugin-devkit` ships **41 skills**, **25 agents**, **19 commands**, and `PreToolUse`/`Stop`/`PostToolUse`/`PostToolUseFailure` hooks. Skills fall into six broad groups:
+`plugin-devkit` ships **41 skills**, **26 agents**, **19 commands**, and `PreToolUse`/`Stop`/`PostToolUse`/`PostToolUseFailure` hooks. Skills fall into six broad groups:
 
 | Group | Skills |
 |---|---|
@@ -103,7 +103,7 @@ cc --plugin-dir /path/to/plugin-devkit
 
 ## Agents
 
-Twenty-five specialized agents, eighteen of which are quality-gate reviewers cross-checked by `plugin-validator`:
+Twenty-six specialized agents, nineteen of which are quality-gate reviewers cross-checked by `plugin-validator`:
 
 | Agent | Purpose |
 |---|---|
@@ -121,6 +121,7 @@ Twenty-five specialized agents, eighteen of which are quality-gate reviewers cro
 | `consistency-reviewer` | Reviews data, governance, functionality, and capability consistency across related components |
 | `completeness-reviewer` | Finds open items, missing documentation, missing test/eval evidence, and stale claims |
 | `scripts-reviewer` | Reviews shell/Python scripts for correctness bugs and code smells |
+| `correctness-reviewer` | Reviews code under a repository's `scripts/` and `.github/` for logic errors, unsound design decisions and claims the code does not bear out |
 | `activation-reviewer` | Reviews activation-description quality and detects overlapping/ambiguous triggers between skills/agents |
 | `skilldir-reviewer` | Deep-audits a skill's non-SKILL.md files (references/scripts/assets/workflows/examples) for staleness and duplication |
 | `dependency-reviewer` | Reviews the Skill()/Agent() call graph across components for circular/bidirectional dependencies and required-vs-optional classification |

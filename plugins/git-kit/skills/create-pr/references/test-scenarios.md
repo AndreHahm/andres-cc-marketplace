@@ -107,7 +107,7 @@ line-budget threshold. See `SKILL.md`'s own "Verify this skill activates on/does
 - Draft flipped to ready later → the references file's "Before flipping" section re-runs the same script
 - Egress question declined → treated as a bypass: reported, and "egress declined" recorded under the PR
   body's "Open Items"; never a quiet skip
-- Exit 0 with `coverage.complete: false` (for example a diff of `scripts/` or `.github/` files, issue #713) →
+- Exit 0 with `coverage.complete: false` (for example a diff with a `tests/` or plugin script file, issue #713) →
   session output calls the parity round advisory and names the uncovered paths, one "Open Items" line is added,
   no question is asked and the push continues; never reported as a clean pass
 - Exit 0 with `advisory.advisory: true` (a Tier-1, import-shadow, `.codex/`, `AGENTS*.md`, root `REVIEW.md` or

@@ -381,7 +381,7 @@ def test_every_routing_table_reviewer_has_extractable_instructions():
     reviewer_names: set[str] = (
         set(DELTA_VALIDATE)
         | set(LAUNCH_AUDIT_BY_COMPONENT_TYPE.values())
-        | {"scripts-reviewer", "rule-reviewer", "hook-reviewer"}
+        | {"scripts-reviewer", "rule-reviewer", "hook-reviewer", "correctness-reviewer"}
         | {name for names in FULL_MODE_GOVERNANCE_REVIEWERS.values() for name in names}
     )
     assert reviewer_names, "the routing tables themselves must not be empty"

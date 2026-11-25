@@ -918,8 +918,9 @@ def coverage_and_advisory(data: dict, expected: list[str] | None) -> tuple[list[
         )
     if not coverage["complete"]:
         lines.append(
-            "PARITY WARNING: no dispatched reviewer checks general correctness, so this code was "
-            f"not reviewed for logic errors: {_render_paths(coverage['uncovered_paths'])}."
+            "PARITY WARNING: no dispatched reviewer checked this code for general correctness, so "
+            "it was not reviewed for logic errors: "
+            f"{_render_paths(coverage['uncovered_paths'])}."
         )
     if advisory["advisory"]:
         lines.append(

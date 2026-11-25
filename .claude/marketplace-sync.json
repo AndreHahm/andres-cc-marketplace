@@ -22,7 +22,8 @@
       "activation-reviewer",
       "command-reviewer",
       "permission-reviewer",
-      "authority-reviewer"
+      "authority-reviewer",
+      "correctness-reviewer"
     ]
   },
   "divergence_exceptions": [

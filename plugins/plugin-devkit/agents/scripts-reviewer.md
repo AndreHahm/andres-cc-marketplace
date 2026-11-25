@@ -15,7 +15,9 @@ description: >-
   proactively after scripts are added or modified. For a script's
   staleness, duplication, or documentation-example accuracy within a
   skill's directory (not code-logic correctness), skilldir-reviewer covers
-  that same event from a different axis.
+  that same event from a different axis. For a general review of logic,
+  design and claims in a repository's own scripts/ or .github/ code, rather
+  than this agent's named bug patterns, use correctness-reviewer.
 model: sonnet
 color: green
 tools: ["Read", "Grep", "Glob"]
