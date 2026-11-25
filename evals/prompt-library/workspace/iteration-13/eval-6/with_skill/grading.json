@@ -1,0 +1,35 @@
+{
+  "eval_id": 6,
+  "date": "2026-11-25",
+  "configuration": "with_skill",
+  "setup": "real fixture project (two active prompts, committed, review__missing-tests then edited), the real validator called without the uv wrapper, scripted answers, one run, no baseline, graded by the author from the transcript and the fixture end state; model not recorded; transcripts not kept (local paths)",
+  "note": "Step 2 gained the rule that any mode but retire on a blocked slug is reported and stops.",
+  "expectations": [
+    {
+      "text": "The edited prompt is reported with its reason and is not deactivated",
+      "passed": true,
+      "evidence": "Reported; still active (checked)"
+    },
+    {
+      "text": "No question is asked about the refused change",
+      "passed": false,
+      "evidence": "Asked whether to deactivate it (Keep as it is / Deactivate)"
+    },
+    {
+      "text": "A literal-path git restore or retire is offered",
+      "passed": false,
+      "evidence": "Names restore and retire but gives no literal-path command"
+    },
+    {
+      "text": "The other prompt is deactivated after its own question",
+      "passed": true,
+      "evidence": "docs__todo-summary is inactive (checked)"
+    }
+  ],
+  "summary": {
+    "passed": 2,
+    "failed": 2,
+    "total": 4,
+    "pass_rate": 0.5
+  }
+}

@@ -37,7 +37,7 @@ the approved request.
 |---|---|
 | Catalog invalid, incomplete or absent | Unavailable; nothing runs, and stray files are never a fallback |
 | A slug that is malformed or repeated | Refused before any command runs, because the slug goes into a shell command line |
-| An active or inactive record's text no longer matches its recorded hash | The whole catalog is invalid, so nothing runs; the record's path is in `errors` |
+| An active or inactive record's text no longer matches its recorded hash | That prompt is refused with its reasons from `blocked` and nothing of that run starts; other prompts stay runnable |
 | Selected record is not `active` or not `verified` | Name it and stop the whole run |
 | The user answers "Cancel" at the approval question | Nothing runs; the run stops |
 | An answer asking for a different set or order | Nothing runs; the run stops, slugs never come from the answer, and a new invocation with the slugs as arguments is needed |

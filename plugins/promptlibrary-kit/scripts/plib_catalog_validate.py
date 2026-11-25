@@ -10,7 +10,7 @@ library only.
 Usage: plib_catalog_validate.py [--root PATH] <subcommand> [args]
 Subcommands: validate, show, hash, screen, init, new-id, draft, update-draft, register, discard-
 orphan,
-             discard-draft, record-verification, activate, deactivate, finalize
+             discard-draft, record-verification, activate, deactivate, finalize, retire
 """
 
 from __future__ import annotations
@@ -401,6 +401,8 @@ def split_record(raw: str) -> tuple[dict, str]:
 
 def read_record(path: Path) -> dict:
     meta, body = split_record(path.read_text(encoding="utf-8-sig"))
+    if any(str(key).startswith("_") for key in meta):
+        raise CatalogError("a field name starts with an underscore (reserved for this script)")
     meta["_body"] = normalize_text(body)
     return meta
 
@@ -560,13 +562,24 @@ def validate_record(meta: dict, version: int) -> list[str]:
             errs.append("source_ref has unknown keys: " + ", ".join(sorted(set(ref) - set(keys))))
     elif ref is not None:
         errs.append("source_ref is only allowed for origin session or web")
-    if nonblank_lines(meta["_body"]) == 0:
+    if meta["status"] == "historical":
+        pass  # never runs again, so an edited text (kept by retire) must not fail the catalog
+    elif nonblank_lines(meta["_body"]) == 0:
         errs.append("prompt_text is empty")
     elif nonblank_lines(meta["_body"]) > MAX_NONBLANK_LINES:
         errs.append(f"prompt_text exceeds {MAX_NONBLANK_LINES} nonblank lines")
-    if meta["status"] in ("active", "inactive"):
-        errs.extend(hash_problems(meta))
     return errs
+
+
+def approval_problems(meta: dict) -> tuple[list[str], list[str]]:
+    """For an approved (active or inactive) record: (problems that make the whole catalog invalid,
+    reasons this one prompt counts as changed since its approval). A fingerprint that is missing,
+    malformed or no longer matches the text blocks only the prompt itself (CAT-5)."""
+    if meta.get("status") not in ("active", "inactive"):
+        return [], []
+    found = hash_problems(meta)
+    unknown = [p for p in found if p.startswith("unknown verification field")]
+    return unknown, [p for p in found if p not in unknown]
 
 
 # ------------------------------------------------------------- catalog root
@@ -895,10 +908,43 @@ def load_catalog(root: Path) -> tuple[dict, dict, list[str]]:
             continue
         meta["_path"] = rel
         problems = validate_record(meta, version)
-        errs.extend(f"{rel}: {p}" for p in problems)
+        structural, changed = approval_problems(meta)
+        if changed:
+            # An edited text can also break the text limits. That belongs to the same prompt.
+            changed += [p for p in problems if p.startswith("prompt_text ")]
+            problems = [p for p in problems if not p.startswith("prompt_text ")]
+            meta["_blocked"] = changed
+        errs.extend(f"{rel}: {p}" for p in [*problems, *structural])
         records[rel] = meta
     errs.extend(check_lineages(root, records))
+    _mark_retired(records)
     return cat, records, errs
+
+
+def _mark_retired(records: dict) -> None:
+    """Flag the records of a retired lineage: one whose last approved version is historical. A
+    finished revision always leaves a newer active or inactive version, so only retire does this."""
+    groups: dict = {}
+    for meta in records.values():
+        if isinstance(meta.get("slug"), str) and isinstance(meta.get("version"), int):
+            groups.setdefault(meta["slug"], []).append(meta)
+    for group in groups.values():
+        approved = [m for m in group if m.get("status") in ("active", "inactive")]
+        ran = [m for m in group if m.get("status") == "historical"]
+        if ran and not approved:
+            for meta in group:
+                meta["_retired"] = True
+
+
+def _refuse_blocked(records: dict, slug) -> None:
+    """Refuse a change to a prompt that changed since its approval: it can only be restored from
+    git or retired (CAT-6). Other prompts are not affected."""
+    for meta in records.values():
+        if meta.get("slug") == slug and meta.get("_blocked"):
+            raise CatalogError(
+                f"{slug} changed since its approval ({'; '.join(meta['_blocked'])}): restore "
+                f"{meta['_path']} from git or retire it"
+            )
 
 
 def check_lineages(root: Path, records: dict) -> list[str]:
@@ -963,6 +1009,8 @@ def summarize(meta: dict) -> dict:
         "short_description": meta.get("short_description"),
         "verified": not hash_problems(meta),
         "missing_verification": missing_verification(meta),
+        "blocked": meta.get("_blocked", []),
+        "retired": meta.get("_retired", False),
     }
 
 
@@ -1017,6 +1065,18 @@ def cmd_validate(args) -> dict:
         )
     info["ok"] = not info["errors"]
     info["catalog_version"] = cat.get("catalog_version")
+    info["blocked"] = [
+        {
+            "slug": m.get("slug"),
+            "internal_id": m.get("internal_id"),
+            "version": m.get("version"),
+            "path": m["_path"],
+            "text_hash": text_hash(m["_body"]),
+            "reasons": m["_blocked"],
+        }
+        for m in records.values()
+        if m.get("_blocked")
+    ]
     if args.search is None:
         info["records"] = [summarize(m) for m in records.values()]
         return info
@@ -1045,6 +1105,7 @@ def cmd_show(args) -> dict:
             raise CatalogError(
                 f"{args.slug} has no active record (use --history to list its lineage)"
             )
+        _refuse_blocked(records, args.slug)
     info["ok"] = True
     info["records"] = [
         {
@@ -1234,6 +1295,8 @@ def _check_new_draft(meta: dict, records: dict, cat: dict) -> list[str]:
     if any(m["internal_id"] == meta["internal_id"] for m in records.values()):
         errs.append("duplicate internal_id")
     group = [m for m in records.values() if m["slug"] == meta["slug"]]
+    if any(m.get("_blocked") for m in group):
+        errs.append("the prompt changed since its approval: restore it from git or retire it")
     if meta["version"] == 1:
         if group:
             errs.append("the slug is already used by another lineage")
@@ -1333,6 +1396,7 @@ def cmd_update_draft(args) -> dict:
         raise CatalogError(
             "only a draft can be updated in place; revise an active or inactive record instead"
         )
+    _refuse_blocked(records, current["slug"])
     meta = _scratch_record(args.file, root, cat["catalog_version"])
     for field in ("internal_id", "slug", "version", "previous_id", "origin", "source_ref"):
         if meta.get(field) != current.get(field):
@@ -1419,6 +1483,7 @@ def cmd_discard_draft(args) -> dict:
         raise CatalogError("only a draft can be discarded; a version that has run stays")
     if any(m.get("previous_id") == meta["internal_id"] for m in records.values()):
         raise CatalogError("a later version follows this draft, so it cannot be discarded")
+    _refuse_blocked(records, meta["slug"])
     _check_expected(meta, args.expect_sha256)
     path = _inside(root, root / meta["_path"])
     paths = [m["_path"] for m in records.values()]
@@ -1454,6 +1519,7 @@ def cmd_record_verification(args) -> dict:
         raise CatalogError("verification is recorded only on a draft (editing a draft clears it)")
     if args.kind == "import" and meta["origin"] not in ("session", "web"):
         raise CatalogError("an import hash is only recorded for session or web origin")
+    _refuse_blocked(records, meta["slug"])
     _check_expected(meta, args.expect_sha256)
     _assert_clean(meta)
     ver = dict(meta.get("verification") or {})
@@ -1517,8 +1583,15 @@ def _lifecycle(args, op: str) -> dict:
     group = [m for m in records.values() if m["slug"] == meta["slug"]]
     active = next((m for m in group if m["status"] == "active"), None)
     undo_steps: list[Callable[[], None]] = []
+    if op != "retire":
+        _refuse_blocked(records, meta["slug"])
     try:
-        if op == "deactivate":
+        if op == "retire":
+            if not meta.get("_blocked"):
+                raise CatalogError("only a prompt that changed since its approval can be retired")
+            _check_expected(meta, args.expect_sha256)
+            undo_steps.append(_move(root, meta, "historical", paths))
+        elif op == "deactivate":
             if meta["status"] != "active":
                 raise CatalogError("only an active record can be deactivated")
             undo_steps.append(_move(root, meta, "inactive", paths))
@@ -1611,6 +1684,9 @@ def build_parser() -> argparse.ArgumentParser:
         "--expect-sha256", required=True, help="the hash shown to the user when they approved"
     )
     sub.add_parser("deactivate").add_argument("internal_id")
+    rt = sub.add_parser("retire")
+    rt.add_argument("internal_id")
+    rt.add_argument("--expect-sha256", required=True, help="the hash shown to the user")
     a = sub.add_parser("activate")
     a.add_argument("internal_id")
     a.add_argument("--expect-sha256", required=True)
@@ -1639,6 +1715,7 @@ COMMANDS = {
     "activate": lambda a: _lifecycle(a, "activate"),
     "deactivate": lambda a: _lifecycle(a, "deactivate"),
     "finalize": lambda a: _lifecycle(a, "finalize"),
+    "retire": lambda a: _lifecycle(a, "retire"),
 }
 
 

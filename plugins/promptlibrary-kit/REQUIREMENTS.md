@@ -287,7 +287,7 @@ handled differently:
 This narrows that to structural problems. Management follows the same split (CAT-6).
 
 Source: V4 §Layout, §Interrupted updates; owner decision 2026-11-16. State: **partial** (structural case
-met; per-prompt isolation not met). Confirmed: yes (2026-11-16).
+and isolation of a changed text: met; a changed attachment, CAT-2, or origin, SEC-4: not met). Confirmed: yes (2026-11-16).
 
 ### CAT-6: An interrupted change never leaves a silently broken catalog
 
@@ -334,8 +334,8 @@ changed as well, the stricter rule wins: restore from git or retire. Found by th
 before the requirements PR.
 
 Source: V4 §Interrupted updates; code (atomic writes, rollback, orphan removal); owner decision
-2026-11-16. State: **partial** (structural handling met; per-prompt blocking, retire and attachment
-review not met).
+2026-11-16. State: **partial** (structural handling, per-prompt blocking and retire for a changed
+text: met; origin, SEC-4, and attachment review: not met).
 Confirmed: yes (2026-11-16; amended 2026-11-17).
 
 ### CAT-7: A stored prompt can never become a standing instruction
@@ -952,7 +952,7 @@ plugin, not Claude's own file reading, supplies the attachment content to the se
 cross-model review before the requirements PR was marked ready.
 
 Source: V4 §Execution 2. State: **partial** (refusal and no partial run: met; a changed prompt blocking
-only itself: not met, today it makes the whole catalog unavailable; single-read attachment binding: not
+only itself: met for its text; single-read attachment binding: not
 met, CAT-2). Confirmed: yes (2026-11-17; amended 2026-11-17).
 
 ### EXE-3: What you see before a prompt runs
@@ -1147,8 +1147,8 @@ and the headless refusal (EXE-7).
 original gates is new (V5 H7 found them unverified).
 
 Source: V4 §Plugin Conventions; V5 H7; `.claude/rules/require-security-review-before-new-gate.md`; owner
-decision 2026-11-17. State: **not met** (original gates unverified; new gates not built yet). Confirmed: yes
-(2026-11-17).
+decision 2026-11-17. State: **partial** (catch-up review of the original gates done 2026-11-25, two Major
+findings fixed; the new gates are not built yet). Confirmed: yes (2026-11-17).
 
 ## 10. Configuration and paths (CFG)
 

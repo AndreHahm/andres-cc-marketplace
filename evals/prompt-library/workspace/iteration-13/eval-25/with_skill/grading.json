@@ -1,0 +1,29 @@
+{
+  "eval_id": 25,
+  "date": "2026-11-25",
+  "configuration": "with_skill",
+  "setup": "real fixture project (two active prompts, committed, review__missing-tests then edited), the real validator called without the uv wrapper, scripted answers, one run, no baseline, graded by the author from the transcript and the fixture end state; model not recorded; transcripts not kept (local paths)",
+  "expectations": [
+    {
+      "text": "The unchanged prompt is refused with no question and no retire command",
+      "passed": true,
+      "evidence": "Only validate ran"
+    },
+    {
+      "text": "Slug, version, reasons, hash, consequences and git-restore-first are shown before one question",
+      "passed": true,
+      "evidence": "All shown; one Retire/Keep question"
+    },
+    {
+      "text": "After Retire the record is historical and the other prompt stays active",
+      "passed": true,
+      "evidence": "p000000000001.md historical, docs__todo-summary active, catalog ok (checked)"
+    }
+  ],
+  "summary": {
+    "passed": 3,
+    "failed": 0,
+    "total": 3,
+    "pass_rate": 1.0
+  }
+}

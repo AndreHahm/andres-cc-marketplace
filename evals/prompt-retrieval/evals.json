@@ -19,9 +19,9 @@
     },
     {
       "id": 3,
-      "name": "tampered-catalog-is-unavailable",
-      "prompt": "List my stored prompts, then run the missing-tests review one.",
-      "expected_output": "Reports the catalog as invalid or unavailable because a prompt was edited after its hash was recorded, lists no prompts from it, runs nothing, and points to prompt-execution for running.",
+      "name": "edited-prompt-is-listed-as-changed",
+      "prompt": "List my stored prompts, then show me the missing-tests review one. (review__missing-tests was edited after its approval.)",
+      "expected_output": "Both prompts are listed; review__missing-tests carries the note that it changed since its approval, with the reason. The plain show refusal is reported, its text is not printed, --history is not used to work around it, and /prompt-library is named for retiring or restoring it.",
       "files": []
     },
     {
@@ -61,13 +61,13 @@
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 7,
+    "declared_scenarios_total": 8,
     "declared_scenarios_covered": 7,
-    "uncovered": [],
+    "uncovered": [
+      "An invalid or missing catalog is reported as unavailable and nothing is listed from it, including when the failure carries only an error key."
+    ],
     "gate_to_scenarios": {
-      "An invalid or missing catalog is reported as unavailable and nothing is listed from it, including when the failure carries only an error key.": [
-        3
-      ],
+      "An invalid or missing catalog is reported as unavailable and nothing is listed from it, including when the failure carries only an error key.": [],
       "A valid catalog lists only active records by default, and mentions root_source when it is not default or project_root_source when it is not git.": [
         1
       ],
@@ -85,8 +85,11 @@
       ],
       "A slug that does not match the slug pattern is refused before show runs.": [
         5
+      ],
+      "A blocked prompt is listed with its reasons and its plain show refusal is reported, not worked around.": [
+        3
       ]
     },
-    "notes": "The error-key-only case of the first gate and the grant shape of the fifth are checked by scripts/smoke_test.py, not by an eval; eval 1 only checks that read commands alone were used."
+    "notes": "The error-key-only case of the first gate and the grant shape of the fifth are checked by scripts/smoke_test.py, not by an eval; eval 1 only checks that read commands alone were used. The first gate lost its scenario on 2026-11-25, when an edited prompt stopped failing the catalog."
   }
 }
