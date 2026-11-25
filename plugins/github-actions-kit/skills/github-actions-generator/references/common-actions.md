@@ -520,8 +520,8 @@ workflows that need to save on every run rather than only on a cache miss — pa
 
 ### dorny/paths-filter
 
-**Pinned Version:** v3 (v3.0.2)
-**SHA:** `de90cc6fb38fc0963ad72b210f1f284cd68cea36`
+**Pinned Version:** v3 (v3.0.4)
+**SHA:** `0e4a8c6effa4802afeda77dc8d303f8176d7dfad`
 
 **Description:** Detect which paths changed, for conditionally running jobs in a monorepo
 
@@ -534,7 +534,7 @@ come from the REST API
 **Example:**
 ```yaml
 - name: Detect changed paths
-  uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+  uses: dorny/paths-filter@0e4a8c6effa4802afeda77dc8d303f8176d7dfad # v3.0.4
   id: filter
   with:
     filters: |
@@ -765,8 +765,8 @@ permissions:
 
 ### aquasecurity/trivy-action
 
-**Pinned Version:** v0.33 (v0.33.1)
-**SHA:** `b6643a29fecd7f34b3597bc6acb0a98b03d33ff8`
+**Pinned Version:** v0.35 (v0.35.0)
+**SHA:** `57a97c7e7821a5776cebc9bb87c984fa69cba8f1`
 
 **Description:** Scan container images, filesystems, or repos for vulnerabilities with Trivy
 
@@ -779,7 +779,7 @@ permissions:
 **Example:**
 ```yaml
 - name: Scan image for vulnerabilities with Trivy
-  uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # v0.33.1
+  uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
   with:
     image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}
     format: sarif

@@ -21,6 +21,26 @@
       "rule": "grading-missing-npm-steps"
     },
     {
+      "disposition": "false_positive",
+      "finding": "4692247649",
+      "line": 479,
+      "note": "The SHA is the peeled v2.1.1 tag commit of azure/login, confirmed with git ls-remote",
+      "path": "plugins/github-actions-kit/skills/github-actions-generator/references/common-actions.md",
+      "pr": 886,
+      "recorded_at": "2026-11-25T08:42:54+00:00",
+      "rule": "azure-login-pin"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "4692247829",
+      "line": 647,
+      "note": "The SHA is the peeled v2.0.4 tag commit; v2.0.2 is d99959ed, so the old label was wrong and the new one is right (git ls-remote)",
+      "path": "plugins/github-actions-kit/skills/github-actions-generator/references/common-actions.md",
+      "pr": 886,
+      "recorded_at": "2026-11-25T08:42:54+00:00",
+      "rule": "action-gh-release-pin"
+    },
+    {
       "disposition": "fixed",
       "finding": "codex-073afda57e56c1fb",
       "line": 524,
@@ -69,6 +89,16 @@
       "pr": 886,
       "recorded_at": "2026-11-25T08:28:00+00:00",
       "rule": "correctness"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-6c37430e2f184889d56890951d3d9a75",
+      "line": 523,
+      "note": "paths-filter moved to v3.0.4 (GHSA-7hc6-8hq5-9q2m) in catalog, example workflow and test; nothing here uses list-files",
+      "path": "plugins/github-actions-kit/skills/github-actions-generator/references/common-actions.md",
+      "pr": 886,
+      "recorded_at": "2026-11-25T08:42:54+00:00",
+      "rule": "security"
     },
     {
       "disposition": "fixed",

@@ -138,9 +138,9 @@ def main() -> int:
         ),
         "docker/metadata-action": ("8e5442c4ef9f78752691e2d8f8d19755c6f78e81", "v5.5.1"),
         "anchore/sbom-action": ("fbfd9c6c189226748411491745178e0c2017392d", "v0.20.10"),
-        "aquasecurity/trivy-action": ("b6643a29fecd7f34b3597bc6acb0a98b03d33ff8", "v0.33.1"),
+        "aquasecurity/trivy-action": ("57a97c7e7821a5776cebc9bb87c984fa69cba8f1", "v0.35.0"),
         "hashicorp/setup-terraform": ("b9cd54a3c349d3f38e8881555d616ced269862dd", "v3.1.2"),
-        "dorny/paths-filter": ("de90cc6fb38fc0963ad72b210f1f284cd68cea36", "v3.0.2"),
+        "dorny/paths-filter": ("0e4a8c6effa4802afeda77dc8d303f8176d7dfad", "v3.0.4"),
         "golangci/golangci-lint-action": ("e7fa5ac41e1cf5b7d48e45e42232ce7ada589601", "v9.1.0"),
         "actions/cache/save": ("0c45773b623bea8c8e75f6c82b208c3cf94ea4f9", "v4.0.2"),
     }
