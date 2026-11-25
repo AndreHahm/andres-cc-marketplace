@@ -140,7 +140,7 @@ def main() -> int:
         "anchore/sbom-action": ("fbfd9c6c189226748411491745178e0c2017392d", "v0.20.10"),
         "aquasecurity/trivy-action": ("b6643a29fecd7f34b3597bc6acb0a98b03d33ff8", "v0.33.1"),
         "hashicorp/setup-terraform": ("b9cd54a3c349d3f38e8881555d616ced269862dd", "v3.1.2"),
-        "dorny/paths-filter": ("de90cc6551a0c30ca4af50ac82dafbf57eb22fab", "v3.0.2"),
+        "dorny/paths-filter": ("de90cc6fb38fc0963ad72b210f1f284cd68cea36", "v3.0.2"),
         "golangci/golangci-lint-action": ("e7fa5ac41e1cf5b7d48e45e42232ce7ada589601", "v9.1.0"),
         "actions/cache/save": ("0c45773b623bea8c8e75f6c82b208c3cf94ea4f9", "v4.0.2"),
     }
