@@ -228,6 +228,36 @@ class TextAndYaml(unittest.TestCase):
         ):
             self.assertTrue(V.screen_text(text), text)
 
+    def test_credential_names_are_screened_anywhere_in_a_line(self):
+        # Pieces are joined so no assignment-shaped literal sits in this source file.
+        word = "hunter2" + "abcdef"
+        pw, sec = "_PASS" + "WORD", "SEC" + "RET"
+        for text in (
+            "- DB" + pw + "=" + word,
+            "`DB" + pw + "=" + word + "`",
+            "docker run -e POSTGRES" + pw + "=" + word + " img",
+            "$env:DB" + pw + ' = "' + word + '"',
+            '{"client_' + sec.lower() + '": "' + word + '"}',
+            "AWS_" + sec + "_ACCESS_" + "KEY: " + word,
+            sec.lower() + "_key: " + word,
+            "--db-pass" + "word=" + word,
+            "redis://:" + word + "@host:6379",
+            "-----BEGIN PGP PRIVATE " + "KEY BLOCK-----",
+        ):
+            self.assertTrue(V.screen_text(text), text)
+
+    def test_ordinary_colon_lines_are_not_screened(self):
+        for text in (
+            "token: the unit a model reads",
+            "primary_key: customer_id",
+            "- max_tokens: 100000",
+            "key-value: pairs of settings",
+            "the secret ingredient: patience",
+            "see https://example.com:8443/path",
+            "-----BEGIN PGP PUBLIC KEY BLOCK-----",
+        ):
+            self.assertEqual(V.screen_text(text), [], text)
+
     def test_a_long_variable_name_does_not_hide_the_credential_word(self):
         word = "hunter2" + "abcdef"
         for pad in (63, 64, 65, 200, 5000):
@@ -251,7 +281,13 @@ class TextAndYaml(unittest.TestCase):
 
     def test_screening_a_long_pathological_line_stays_fast(self):
         # The old pattern backtracked quadratically: a 24k line of repeated "key" took seconds.
-        for line in ("key" * 90000, "a" * 270000, "\n" * 200000 + "token"):
+        for line in (
+            "key" * 90000,
+            "a" * 270000,
+            "\n" * 200000 + "token",
+            "a_" * 90000,
+            "-token" * 40000,
+        ):
             started = time.perf_counter()
             V.screen_text(line)
             self.assertLess(time.perf_counter() - started, 5.0)
@@ -543,6 +579,24 @@ class FileReadLimits(Base):
             code, res = self.run_cli(command, outside)
             self.assertEqual(code, 1, command)
             self.assertIn("inside the catalog root or the system temp directory", res["error"])
+
+    def test_unc_input_is_refused_before_any_filesystem_call(self):
+        for bad in (
+            "\\\\srv\\s\\x",
+            "//srv/s/x",
+            "/\\srv\\x",
+            " //srv/s/x",
+            "\\\\?\\C:\\x",
+            "\\??\\UNC\\srv\\s\\x",
+            "/??/UNC/srv/s/x",
+            "a\x00b",
+        ):
+            with (
+                mock.patch.object(V.Path, "is_file", side_effect=AssertionError("touched")),
+                mock.patch.object(V.os.path, "realpath", side_effect=AssertionError("touched")),
+                self.assertRaisesRegex(V.CatalogError, "UNC"),
+            ):
+                V._readable_candidate(bad, self.proj)
 
     def test_hash_and_screen_accept_scratch_files(self):
         path = self.scratch()

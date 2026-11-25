@@ -179,13 +179,24 @@ SECRET_PATTERNS = (
         ),
     ),
     *_TOKEN_SHAPES,
-    ("pem_private_key_block", re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----")),
+    ("pem_private_key_block", re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY(?: BLOCK)?-----")),
     # Shapes beyond the analysis-kit list: this list diverges on purpose, see the R20 note above.
-    ("url_embedded_credentials", re.compile(r"\b[a-z][a-z0-9+.-]*://[^/\s:@]+:[^/\s@]+@")),
+    ("url_embedded_credentials", re.compile(r"\b[a-z][a-z0-9+.-]{0,30}://[^/\s:@]*:[^/\s@]+@")),
     (
         "key_value_secret",
         re.compile(
             r"(?i)[\"']?\b(?:password|passwd|secret|api[_-]?key|access[_-]?token|auth[_-]?token)[\"']?\s*[:=]\s*[\"']?[^\s\"',]{6,}"
+        ),
+    ),
+    (
+        # A credential name anywhere in a line, in either = or : form: DB_PASSWORD, client_secret,
+        # AWS_SECRET_ACCESS_KEY. A bare "token:" or "primary_key:" is ordinary prose and stays out.
+        # The lookbehind starts one attempt per identifier run, so a long run stays linear.
+        "prefixed_credential",
+        re.compile(
+            r"(?i)(?<![a-z0-9_-])(?:[a-z0-9_-]*[_-](?:password|passwd|pwd|secret|token)"
+            r"|(?:[a-z0-9_-]*[_-])?(?:api|access|account|auth|encryption|private|secret|signing)"
+            r"[_-]key)[\"']?[^\S\r\n]*(?::=|[:=])[^\S\r\n]*[\"']?[^\s\"',]{6,}"
         ),
     ),
     (
@@ -697,6 +708,12 @@ def contained(child: Path, parent: Path) -> bool:
         return False
 
 
+def _is_unc(text: str) -> bool:
+    """True for a UNC or device path in any separator mix. Check it before any filesystem call:
+    resolving such a path on Windows can open a network connection."""
+    return text.strip().replace("/", "\\").startswith(("\\\\", "\\??\\"))
+
+
 def check_catalog_path(value, project_root: Path) -> tuple[Path | None, str | None]:
     """Return (resolved catalog root, None) or (None, reason) for a candidate path value."""
     if not isinstance(value, str) or not value.strip():
@@ -708,7 +725,7 @@ def check_catalog_path(value, project_root: Path) -> tuple[Path | None, str | No
     # not start
     # with a doubled backslash, and resolving them can open a network connection before
     # containment fails.
-    if text.replace("/", "\\").startswith("\\\\"):
+    if _is_unc(text):
         return None, "UNC paths are not allowed"
     # Windows drops a trailing dot or space from a folder name and reads ':' as a stream marker, so
     # ".claude./rules" can create the real .claude folder while escaping the name match below.
@@ -1064,6 +1081,8 @@ def _inside(root: Path, path: Path) -> Path:
 def _readable_candidate(path_text: str, root: Path) -> Path:
     """A file the hash/screen/draft commands may read: inside the catalog root or the system temp
     directory."""
+    if "\x00" in path_text or _is_unc(path_text):
+        raise CatalogError("the path is a UNC path or contains a NUL byte")
     path = Path(path_text)
     if not path.is_file():
         raise CatalogError(f"not a file: {path_text}")
