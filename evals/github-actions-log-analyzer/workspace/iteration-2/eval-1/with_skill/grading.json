@@ -15,7 +15,7 @@
     {
       "text": "The agent stated the dispatch-scope AskUserQuestion with an accurate computed count instead of silently proceeding to dispatch subagents",
       "passed": true,
-      "evidence": "From the agent's returned text (no report.md saved): 'Step 4 would dispatch 3 subagents (1 run, 3 detected steps: ...). Proceed as planned, reduce scope, or cancel?'; 3 matches script-output.json, and the agent reports dispatching none"
+      "evidence": "agent-report.md (the agent's returned text, saved by the grader): 'Step 4 would dispatch 3 subagents (1 run, 3 detected steps: ...). Proceed as planned, reduce scope, or cancel?'; 3 matches script-output.json, and the agent reports dispatching none"
     }
   ],
   "summary": {
