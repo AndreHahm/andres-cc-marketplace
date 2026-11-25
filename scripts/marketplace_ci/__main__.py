@@ -1219,7 +1219,7 @@ def _handle_list_prior_findings(args: argparse.Namespace) -> int:
 def _load_prior_findings(path: str) -> list:
     """The records `list-prior-findings` wrote, or none, with a note, when there is no readable
     list: the briefing only adds context, so a review without it is the review without R20. The
-    file is removed once read, so no reviewer (security-reviewer is not briefed) can open it."""
+    file is removed once read; a briefed reviewer's instruction file still holds its part (R20)."""
     try:
         text = Path(path).read_text(encoding="utf-8")
         Path(path).unlink()

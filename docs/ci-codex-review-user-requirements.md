@@ -516,6 +516,8 @@ follows the previous run's own remediation. Each reviewer is therefore briefed w
   once its file changes, and only a reviewer reporting it again makes it block. The wording and the bounds
   above limit the risk; `security-reviewer` and the deterministic checks are not briefed, and gate-critical
   paths are left out.
+- **Accepted residual:** `security-reviewer` is never passed the briefing, but the other reviewers'
+  instruction files, which hold it, are on the same runner while it runs.
 - **Accepted residual:** a token split by ordinary spaces, or of a shape the shared list does not hold, is
   not redacted. The anchor's result artifact holds the same text.
 - **Accepted residual:** one round misses a finding last raised two or more reviews ago, and a list holds no

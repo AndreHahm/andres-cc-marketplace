@@ -195,7 +195,7 @@ def test_the_list_command_round_trips(tmp_path, capsys):
     assert main(_list_args(anchor, out)) == 0
     assert _load_prior_findings(str(out)) == [_record()]
     assert "findings read: 1" in capsys.readouterr().err
-    assert not out.exists()  # no reviewer can open it
+    assert not out.exists()  # removed once read
 
 
 @pytest.mark.parametrize(
