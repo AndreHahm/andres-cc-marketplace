@@ -1,0 +1,10 @@
+{
+  "databaseId": 1002,
+  "workflowName": "CI",
+  "headBranch": "main",
+  "conclusion": "failure",
+  "createdAt": "2026-11-11T09:00:00Z",
+  "updatedAt": "2026-11-11T09:05:00Z",
+  "url": "https://github.com/example-org/example-repo/actions/runs/1002",
+  "repository": "example-org/example-repo"
+}

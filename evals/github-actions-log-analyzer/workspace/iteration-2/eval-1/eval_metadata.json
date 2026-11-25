@@ -1,0 +1,9 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/github-actions-kit/skills/github-actions-log-analyzer/SKILL.md",
+  "assertions": [
+    {"text": "A synthetic log file with at least 2 step markers was created", "type": "presence", "target": "outputs/ directory"},
+    {"text": "scripts/find_step_boundaries.py was run (or its logic correctly followed) and detected the step boundaries", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "The agent stated the dispatch-scope AskUserQuestion with an accurate computed count instead of silently proceeding to dispatch subagents", "type": "functionality", "target": "outputs/ directory"}
+  ]
+}

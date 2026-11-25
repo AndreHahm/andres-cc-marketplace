@@ -1,0 +1,26 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The agent actually runs scripts/validate_workflow.py against the target file (not just eyeballs it)",
+      "passed": true,
+      "evidence": "script-output-lint-only.txt: '=== GitHub Actions Validator ===' run against examples/with-errors.yml with 4 actionlint errors; act was not run (file outside .github/workflows/)"
+    },
+    {
+      "text": "Each reported error is mapped to a specific reference file/section, not left generic",
+      "passed": true,
+      "evidence": "From the agent's returned text (no report.md saved): CRON -> common-errors.md Schedule Errors; runner label -> common-errors.md Job Configuration Errors and runners.md; injection -> common-errors.md Expression Errors; needs -> common-errors.md Job Configuration Errors"
+    },
+    {
+      "text": "Corrected workflow code is shown for at least one identified error",
+      "passed": true,
+      "evidence": "with-errors.corrected.yml fixes all 4 errors; script-output-rerun-corrected-lint-only.txt: 'actionlint validation passed'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

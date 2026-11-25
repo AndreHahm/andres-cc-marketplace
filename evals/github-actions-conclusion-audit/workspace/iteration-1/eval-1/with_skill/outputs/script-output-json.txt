@@ -1,4 +1,4 @@
-=== JSON OUTPUT + FAIL_ON_CRITICAL=1 (RUN_GLOB=/home/andre-hahm/Repos/andres-cc-marketplace/.claude/worktrees/devops-kit/evals/github-actions-conclusion-audit/workspace/iteration-1/eval-1/with_skill/outputs/synthetic-runs/*.json) ===
+=== JSON OUTPUT + FAIL_ON_CRITICAL=1 (RUN_GLOB=/home/<user>/Repos/andres-cc-marketplace/.claude/worktrees/devops-kit/evals/github-actions-conclusion-audit/workspace/iteration-1/eval-1/with_skill/outputs/synthetic-runs/*.json) ===
 {
   "all_groups": [
     {

@@ -1,0 +1,26 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Synthetic run JSON files matching the documented schema were created",
+      "passed": true,
+      "evidence": "outputs/github-actions/run-1001.json to run-1006.json exist; run-1001.json carries all eight documented keys (databaseId, workflowName, headBranch, conclusion, createdAt, updatedAt, url, repository)"
+    },
+    {
+      "text": "The agent actually runs scripts/conclusion_volatility_audit.py against them",
+      "passed": true,
+      "evidence": "script-output-text.txt: 'SUMMARY: files=6 runs=6 ... groups=1 warn_groups=0 critical_groups=1'; script-output-json.txt holds the JSON run (the agent reports exit 0 for text and exit 1 with FAIL_ON_CRITICAL=1)"
+    },
+    {
+      "text": "The alternating-conclusion group is correctly flagged as warn/critical instability, not ok",
+      "passed": true,
+      "evidence": "script-output-text.txt: '[critical] example-org/example-repo :: CI :: main instability_pct=100.0 ... transitions=5'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

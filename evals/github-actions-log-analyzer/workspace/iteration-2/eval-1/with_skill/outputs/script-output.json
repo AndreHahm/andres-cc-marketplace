@@ -1,0 +1,24 @@
+{
+  "steps": [
+    {
+      "name": "triage-issue",
+      "start_line": 2,
+      "end_line": 4,
+      "source": "flue"
+    },
+    {
+      "name": "Run build step",
+      "start_line": 5,
+      "end_line": 8,
+      "source": "group"
+    },
+    {
+      "name": "custom@9",
+      "start_line": 9,
+      "end_line": 11,
+      "source": "custom"
+    }
+  ],
+  "result_markers": [],
+  "total_lines": 12
+}

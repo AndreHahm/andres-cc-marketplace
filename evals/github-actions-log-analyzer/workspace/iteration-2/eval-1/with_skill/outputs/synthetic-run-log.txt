@@ -1,0 +1,12 @@
+2026-11-24T10:00:00Z Run started: synthetic-workflow (synthetic run 1001)
+2026-11-24T10:00:01Z [flue] skill("triage-issue"): starting
+2026-11-24T10:00:05Z Triaging issue #42 with label heuristics
+2026-11-24T10:00:09Z [flue] skill("triage-issue"): completed
+2026-11-24T10:00:10Z ##[group]Run build step
+2026-11-24T10:00:11Z compiling 12 modules
+2026-11-24T10:00:20Z build finished with 0 warnings
+2026-11-24T10:00:21Z ##[endgroup]
+2026-11-24T10:00:22Z START lint
+2026-11-24T10:00:25Z lint: 0 errors
+2026-11-24T10:00:27Z END lint
+2026-11-24T10:00:28Z Run finished: success

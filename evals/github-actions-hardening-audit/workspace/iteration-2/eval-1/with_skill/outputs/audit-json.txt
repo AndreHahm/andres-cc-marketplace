@@ -1,0 +1,183 @@
+{
+  "all_workflows": [
+    {
+      "events": [
+        "pull_request_target",
+        "push"
+      ],
+      "floating_refs": [
+        {
+          "line": 8,
+          "reason": "branch-like",
+          "uses": "actions/checkout@main"
+        },
+        {
+          "line": 9,
+          "reason": "major-tag",
+          "uses": "actions/setup-node@v4"
+        }
+      ],
+      "missing_concurrency_jobs": [
+        "deploy"
+      ],
+      "missing_permission_jobs": [
+        "deploy"
+      ],
+      "missing_timeout_jobs": [
+        "deploy"
+      ],
+      "score": 10,
+      "severity": "critical",
+      "total_jobs": 1,
+      "workflow_file": "plugins/github-actions-kit/skills/github-actions-hardening-audit/fixtures/risky.yml"
+    },
+    {
+      "events": [
+        "push"
+      ],
+      "floating_refs": [],
+      "missing_concurrency_jobs": [
+        "build"
+      ],
+      "missing_permission_jobs": [],
+      "missing_timeout_jobs": [],
+      "score": 1,
+      "severity": "ok",
+      "total_jobs": 1,
+      "workflow_file": "plugins/github-actions-kit/skills/github-actions-hardening-audit/fixtures/clean.yml"
+    },
+    {
+      "events": [
+        "push"
+      ],
+      "floating_refs": [],
+      "missing_concurrency_jobs": [
+        "call-shared-ci"
+      ],
+      "missing_permission_jobs": [],
+      "missing_timeout_jobs": [],
+      "score": 1,
+      "severity": "ok",
+      "total_jobs": 1,
+      "workflow_file": "plugins/github-actions-kit/skills/github-actions-hardening-audit/fixtures/reusable-caller.yml"
+    }
+  ],
+  "critical_workflows": [
+    {
+      "events": [
+        "pull_request_target",
+        "push"
+      ],
+      "floating_refs": [
+        {
+          "line": 8,
+          "reason": "branch-like",
+          "uses": "actions/checkout@main"
+        },
+        {
+          "line": 9,
+          "reason": "major-tag",
+          "uses": "actions/setup-node@v4"
+        }
+      ],
+      "missing_concurrency_jobs": [
+        "deploy"
+      ],
+      "missing_permission_jobs": [
+        "deploy"
+      ],
+      "missing_timeout_jobs": [
+        "deploy"
+      ],
+      "score": 10,
+      "severity": "critical",
+      "total_jobs": 1,
+      "workflow_file": "plugins/github-actions-kit/skills/github-actions-hardening-audit/fixtures/risky.yml"
+    }
+  ],
+  "summary": {
+    "checks": {
+      "allow_ref_regex": null,
+      "event_exclude": null,
+      "event_match": null,
+      "flag_floating_refs": true,
+      "require_concurrency": true,
+      "require_permissions": true,
+      "require_timeout": true,
+      "workflow_file_exclude": null,
+      "workflow_file_match": null
+    },
+    "critical_score": 7,
+    "critical_workflows": 1,
+    "files_evaluated": 3,
+    "files_scanned": 3,
+    "files_skipped_by_event_filter": 0,
+    "ok_workflows": 2,
+    "parse_errors": [],
+    "warn_score": 3,
+    "warn_workflows": 0
+  },
+  "workflows": [
+    {
+      "events": [
+        "pull_request_target",
+        "push"
+      ],
+      "floating_refs": [
+        {
+          "line": 8,
+          "reason": "branch-like",
+          "uses": "actions/checkout@main"
+        },
+        {
+          "line": 9,
+          "reason": "major-tag",
+          "uses": "actions/setup-node@v4"
+        }
+      ],
+      "missing_concurrency_jobs": [
+        "deploy"
+      ],
+      "missing_permission_jobs": [
+        "deploy"
+      ],
+      "missing_timeout_jobs": [
+        "deploy"
+      ],
+      "score": 10,
+      "severity": "critical",
+      "total_jobs": 1,
+      "workflow_file": "plugins/github-actions-kit/skills/github-actions-hardening-audit/fixtures/risky.yml"
+    },
+    {
+      "events": [
+        "push"
+      ],
+      "floating_refs": [],
+      "missing_concurrency_jobs": [
+        "build"
+      ],
+      "missing_permission_jobs": [],
+      "missing_timeout_jobs": [],
+      "score": 1,
+      "severity": "ok",
+      "total_jobs": 1,
+      "workflow_file": "plugins/github-actions-kit/skills/github-actions-hardening-audit/fixtures/clean.yml"
+    },
+    {
+      "events": [
+        "push"
+      ],
+      "floating_refs": [],
+      "missing_concurrency_jobs": [
+        "call-shared-ci"
+      ],
+      "missing_permission_jobs": [],
+      "missing_timeout_jobs": [],
+      "score": 1,
+      "severity": "ok",
+      "total_jobs": 1,
+      "workflow_file": "plugins/github-actions-kit/skills/github-actions-hardening-audit/fixtures/reusable-caller.yml"
+    }
+  ]
+}

@@ -224,7 +224,7 @@ worked demonstration of Steps 1-8 applied together, rather than in-lining it her
 | CI passes locally but fails in a clean run (cache/monorepo/service-container shaped) | `references/common-pitfalls.md` | Check the matching pitfall and its fix |
 | `--policy-checks` security warnings (SHA pinning, permissions, injection, OIDC) | `references/common-pitfalls.md` | See "Security Policy Checks (Advisory)" section |
 
-## Reference Files Summary
+## Reference Guide
 
 | File | Content |
 |------|---------|
@@ -235,6 +235,7 @@ worked demonstration of Steps 1-8 applied together, rather than in-lining it her
 | `references/modern-features.md` | Reusable workflows, SBOM, OIDC, environments, containers |
 | `references/common-pitfalls.md` | Cache config, monorepo build order, npm ci, service containers, `--policy-checks` security checks |
 | `references/runners.md` | GitHub-hosted runners (ARM64, GPU, M2 Pro, deprecations) |
+| `references/worked-example.md` | End-to-end walkthrough of Steps 1-8 on a multi-error workflow |
 
 ## Troubleshooting
 
@@ -309,6 +310,8 @@ uncovered scenarios remain open.
 
 **Last dated run record:** 2026-09-19 -- eval-1 baseline-comparison, with_skill 3/3 (1.0) vs baseline 1/3
 (0.333), +66.7pp; `tests/test_validate_workflow.py` passing.
+2026-11-25: eval-1 re-run with the skill only (no baseline), 3/3, author-graded, `act` not run — see
+`evals/github-actions-validator/workspace/iteration-2/`.
 
 ## Summary
 

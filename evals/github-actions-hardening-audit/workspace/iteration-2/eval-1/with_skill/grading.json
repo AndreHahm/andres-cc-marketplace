@@ -1,0 +1,26 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The agent actually runs scripts/workflow_hardening_audit.py against the fixtures directory",
+      "passed": true,
+      "evidence": "audit-text.txt: 'SUMMARY: files=3 evaluated=3 filtered=0 critical=1 warn=0 ok=2' over the fixtures directory"
+    },
+    {
+      "text": "clean.yml is correctly reported as ok/score 0",
+      "passed": true,
+      "evidence": "audit-text.txt: '[ok] file=.../fixtures/clean.yml score=0'"
+    },
+    {
+      "text": "risky.yml is correctly reported as critical/score 9",
+      "passed": true,
+      "evidence": "audit-text.txt: '[critical] file=.../fixtures/risky.yml score=9'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}
