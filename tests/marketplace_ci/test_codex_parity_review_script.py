@@ -702,7 +702,7 @@ def test_incomplete_coverage_is_disclosed_but_still_exits_clean(repo, tmp_path):
     }
     result, _, _ = _run(repo, tmp_path, result_json=_result(coverage=coverage))
     assert result.returncode == 0
-    assert "no dispatched reviewer checked this code for general correctness" in result.stdout
+    assert "this code has no credited general-correctness coverage" in result.stdout
     assert '"scripts/marketplace_ci/review.py", ".github/workflows/ci.yml"' in result.stdout
     assert "ADVISORY" in result.stdout
 
@@ -711,7 +711,7 @@ def test_complete_coverage_prints_no_disclosure(repo, tmp_path):
     _make_base(repo)  # both base-anchored checks can run, so nothing is unverified
     result, _, _ = _run(repo, tmp_path)
     assert result.returncode == 0
-    assert "general correctness" not in result.stdout
+    assert "general-correctness" not in result.stdout
     assert "ADVISORY" not in result.stdout
 
 
