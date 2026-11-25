@@ -1891,7 +1891,7 @@ class LinkedCatalogContent(Base):
         self.link(self.root / "catalog.yaml", target, False)
         code, res = self.run_cli("validate")
         self.assertEqual(code, 1)
-        self.assertEqual(res["errors"], ["catalog.yaml is a link that leaves the catalog root"])
+        self.assertEqual(res["errors"], ["catalog.yaml is reached through a link"])
         self.assertNotIn("private_field", json.dumps(res))
 
     def test_a_linked_folder_is_refused_unlisted(self):
@@ -1904,6 +1904,162 @@ class LinkedCatalogContent(Base):
         self.assertEqual(code, 1)
         self.assertTrue(any("review__linked" in e for e in res["errors"]))
         self.assertNotIn("private-notes", json.dumps(res))
+
+    def linked_dir(self, link, target):
+        """A folder link that also works where Windows does not permit symlinks: a junction."""
+        if sys.platform == "win32":
+            import _winapi
+
+            _winapi.CreateJunction(str(target), str(link))
+        else:
+            self.link(link, target, True)
+
+    @contextlib.contextmanager
+    def never_followed(self, *paths):
+        """Fail when one of these paths, or one below it, is resolved or tested for existence."""
+        watched = [os.path.normcase(str(p)) for p in paths]
+        touched = []
+
+        def spy(real):
+            def call(path, *args, **kwargs):
+                text = os.path.normcase(os.path.abspath(os.fsdecode(path)))
+                if any(text == w or text.startswith(w + os.sep) for w in watched):
+                    touched.append(text)
+                return real(path, *args, **kwargs)
+
+            return call
+
+        with (
+            mock.patch.object(os.path, "realpath", spy(os.path.realpath)),
+            mock.patch.object(Path, "is_file", spy(Path.is_file)),
+            mock.patch.object(Path, "is_dir", spy(Path.is_dir)),
+            mock.patch.object(Path, "exists", spy(Path.exists)),
+        ):
+            yield
+        self.assertEqual(touched, [])
+
+    def test_a_linked_folder_is_refused_without_following_it(self):
+        self.make_active()
+        link = self.root / "review__linked"
+        self.linked_dir(link, self.outside())
+        with self.never_followed(link):
+            code, res = self.run_cli("validate")
+        self.assertEqual(code, 1)
+        self.assertIn("folder is a link: review__linked", res["errors"])
+
+    def test_a_listed_record_in_a_linked_folder_is_refused_without_following_it(self):
+        self.make_active()
+        real = self.outside()
+        (self.root / SLUG).rename(real / SLUG)
+        self.linked_dir(self.root / SLUG, real / SLUG)
+        with self.never_followed(self.root / SLUG):
+            code, res = self.run_cli("validate")
+        self.assertEqual(code, 1)
+        self.assertTrue(any("through a link" in e for e in res["errors"]), res["errors"])
+
+    def test_a_link_that_stays_inside_the_catalog_is_refused_too(self):
+        self.make_active()
+        link = self.root / "review__linked"
+        self.linked_dir(link, self.root / SLUG)
+        with self.never_followed(link):
+            code, res = self.run_cli("validate")
+        self.assertEqual(code, 1)
+        self.assertIn("folder is a link: review__linked", res["errors"])
+
+    def test_a_linked_catalog_file_is_refused_without_following_it(self):
+        self.assertEqual(self.run_cli("init")[0], 0)
+        (self.root / "catalog.yaml").unlink()
+        self.link(self.root / "catalog.yaml", self.outside() / "absent.yaml", False)
+        for command in ("validate", "init"):
+            with self.never_followed(self.root / "catalog.yaml"):
+                code, res = self.run_cli(command)
+            self.assertEqual(code, 1, command)
+            self.assertIn("through a link", json.dumps(res), command)
+
+    def test_a_read_argument_through_a_link_is_refused_without_following_it(self):
+        self.assertEqual(self.run_cli("init")[0], 0)
+        target = self.outside()
+        (target / "note.md").write_text("hello\n", encoding="utf-8")
+        # draft loads the catalog first, so it is only tried while the catalog itself is valid
+        for link, commands in (
+            (self.proj / "linked", ("hash", "screen", "draft")),
+            (self.root / "review__linked", ("hash", "screen")),
+        ):
+            self.linked_dir(link, target)
+            for command in commands:
+                with self.never_followed(link):
+                    code, res = self.run_cli(command, str(link / "note.md"))
+                self.assertEqual(code, 1, (command, link))
+                self.assertIn("through a link", res["error"])
+
+    def test_a_read_argument_outside_the_allowed_folders_is_never_touched(self):
+        self.assertEqual(self.run_cli("init")[0], 0)
+        elsewhere = self.proj.parent.parent / "plib-not-allowed" / "note.md"
+        with (
+            mock.patch.object(tempfile, "gettempdir", return_value=str(self.proj / "tmp")),
+            self.never_followed(elsewhere),
+        ):
+            code, res = self.run_cli("hash", str(elsewhere))
+        self.assertEqual(code, 1)
+        self.assertIn("inside the catalog root", res["error"])
+
+    def test_a_link_is_checked_under_its_own_name_not_a_case_folded_one(self):
+        # Case folding turns the sharp s into "ss", a name that does not exist on disk.
+        self.assertEqual(self.run_cli("init")[0], 0)
+        target = self.outside()
+        (target / "note.md").write_text("outside\n", encoding="utf-8")
+        link = self.root / "stra\u00dfe"
+        self.linked_dir(link, target)
+        with self.never_followed(link):
+            code, res = self.run_cli("hash", str(link / "note.md"))
+        self.assertEqual(code, 1, res)
+        self.assertIn("through a link", res["error"])
+
+    def test_a_look_alike_of_the_catalog_folder_is_not_followed(self):
+        # U+017F folds to "s", so this sibling compares equal to the catalog folder when folded.
+        self.assertEqual(self.run_cli("init")[0], 0)
+        target = self.outside()
+        (target / "note.md").write_text("outside\n", encoding="utf-8")
+        link = self.root.with_name("prompt\u017f")
+        self.linked_dir(link, target)
+        with self.never_followed(link):
+            code, res = self.run_cli("hash", str(link / "note.md"))
+        self.assertEqual(code, 1, res)
+        self.assertNotIn("sha256", res)
+
+    def test_a_linked_folder_named_like_a_temp_file_is_not_followed(self):
+        self.make_active()
+        links = [self.root / "catalog.yaml.x.tmp", self.root / SLUG / "active.md.x.tmp"]
+        for link in links:
+            self.linked_dir(link, self.outside())
+        with self.never_followed(*links):
+            code, res = self.run_cli("validate")
+        self.assertEqual(code, 0, res)
+        for link in links:
+            self.assertIn(link.relative_to(self.root).as_posix(), json.dumps(res))
+
+    def test_parent_steps_after_a_link_never_read_the_link_targets_parent(self):
+        # The system resolves <link>/.. to the parent of the link's target, not of the link.
+        self.assertEqual(self.run_cli("init")[0], 0)
+        target = self.outside()
+        (target / "sub").mkdir()
+        (target / "note.md").write_text("outside\n", encoding="utf-8")
+        self.linked_dir(self.root / "review__linked", target / "sub")
+        # Only the catalog counts as readable here, so the target itself is not allowed either.
+        with mock.patch.object(tempfile, "gettempdir", return_value=str(self.proj / "tmp")):
+            argument = str(self.root / "review__linked") + os.sep + ".." + os.sep + "note.md"
+            code, res = self.run_cli("hash", argument)
+        self.assertEqual(code, 1, res)
+        self.assertNotIn("sha256", res)
+
+    def test_a_read_argument_with_parent_steps_still_works(self):
+        self.assertEqual(self.run_cli("init")[0], 0)
+        note = self.root / "note.md"
+        note.write_text("hello\n", encoding="utf-8")
+        (self.root / "x").mkdir()
+        code, res = self.run_cli("hash", str(self.root / "x" / ".." / "note.md"))
+        self.assertEqual(code, 0, res)
+        self.assertEqual(self.run_cli("hash", os.path.relpath(note))[0], 0)
 
 
 class Search(Base):
