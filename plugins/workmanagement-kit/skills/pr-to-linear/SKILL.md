@@ -29,6 +29,9 @@ triage/fix round, or marking the PR ready once requirements are met.
 
 ## When NOT to Use
 
+- Taking an accepted Issue all the way to merge, or resuming an interrupted
+  lifecycle run that spans more than this stage, rather than only its PR review and ready step →
+  `linear-github-lifecycle`. Not when that skill itself dispatched this one for its phase.
 - Publishing the initial draft PR → `development-to-pr`.
 - Merging → `merge-to-completion`.
 - Repairing drift between Linear's recorded evidence and GitHub's actual state (not a review-loop
