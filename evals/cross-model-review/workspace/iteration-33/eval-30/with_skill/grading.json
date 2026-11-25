@@ -1,0 +1,52 @@
+{
+  "eval_id": 30,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Locator call: begins with the export PATH statement and uses the literal plugin root with no default",
+      "passed": true,
+      "evidence": "Quotes export PATH='/usr/local/bin:/usr/bin:/bin' and /opt/plugins/git-kit/scripts/git-review-locate-rva.py"
+    },
+    {
+      "text": "Dry run: export PATH statement, the /usr/bin/env -u NODE_OPTIONS prefix, then the literal node and dispatcher paths",
+      "passed": true,
+      "evidence": "Quotes the full env -u prefix, then \"/usr/bin/node\" and the literal dispatcher path"
+    },
+    {
+      "text": "Only app.py reaches pi; deploy-credentials.txt through no channel",
+      "passed": true,
+      "evidence": "'Only app.py'; 'deploy-credentials.txt reaches pi nowhere'"
+    },
+    {
+      "text": "The egress question names deploy-credentials.txt as not sent and discloses the failed index copy",
+      "passed": true,
+      "evidence": "'names deploy-credentials.txt as a sensitive path not sent, and says the index copy failed so the diff may be incomplete'"
+    },
+    {
+      "text": "F1, M1 and M2 are dropped; F2 stays without its tracked mark",
+      "passed": true,
+      "evidence": "'Only F2 ... with [tracked #12] removed'; F1, M1 and M2 dropped"
+    },
+    {
+      "text": "pi gets neither accepted-findings file",
+      "passed": true,
+      "evidence": "'Neither accepted.md nor accepted.codex.md, in either phase'"
+    },
+    {
+      "text": "The locator is run before the first real dispatch and before the first Phase 2 dispatch; a different node drops every optional vendor still to dispatch",
+      "passed": true,
+      "evidence": "'immediately before pi's first real dispatch and again before its first Phase 2 dispatch'; 'drops every optional vendor still to dispatch'"
+    },
+    {
+      "text": "The egress question says that Phase 2 also sends the other reviewers' findings",
+      "passed": true,
+      "evidence": "'Phase 2 also sends the other reviewers' findings, which may quote code outside the diff'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 8,
+    "assertions_passed": 8,
+    "pass_rate": 1.0
+  },
+  "notes": "One run. Assertions written before the run. Evidence is quoted from the agent's returned summary; the full answer is outputs/response.md."
+}

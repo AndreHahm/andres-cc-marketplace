@@ -251,6 +251,76 @@
       "rule": "option-label"
     },
     {
+      "disposition": "accepted",
+      "finding": "codex-delta-acdede0b-1",
+      "line": 129,
+      "note": "J1: residual by owner decision; same private-group rule as reviewadapters-kit; now disclosed in section 6",
+      "path": "plugins/git-kit/scripts/git-review-locate-rva.py",
+      "pr": 804,
+      "recorded_at": "2026-11-25T11:58:59+00:00",
+      "rule": "security"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "codex-delta-acdede0b-2",
+      "line": 150,
+      "note": "J2: residual by owner decision; other accounts cannot replace node, the window before the call stays either way; section 6",
+      "path": "plugins/git-kit/skills/cross-model-review/references/optional-models.md",
+      "pr": 804,
+      "recorded_at": "2026-11-25T11:58:59+00:00",
+      "rule": "security"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-delta-acdede0b-3",
+      "line": 329,
+      "note": "J3: fixed in the next commit: scripts/ and assets/ are checked at any depth",
+      "path": "plugins/git-kit/scripts/git-review-locate-rva.py",
+      "pr": 804,
+      "recorded_at": "2026-11-25T11:58:59+00:00",
+      "rule": "filesystem-trust-validation"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-delta-acdede0b-4",
+      "line": 540,
+      "note": "J4: fixed in the next commit: only a native program named node is accepted and its resolved path is printed; m4 reopened by the owner",
+      "path": "plugins/git-kit/scripts/git-review-locate-rva.py",
+      "pr": 804,
+      "recorded_at": "2026-11-25T11:58:59+00:00",
+      "rule": "security"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "codex-delta-acdede0b-5",
+      "line": 81,
+      "note": "repeat of codex-delta-b2095d98-3: one-way pointer, codex-pass-assembly.md does not link back",
+      "path": "plugins/git-kit/skills/cross-model-review/references/optional-models.md",
+      "pr": 804,
+      "recorded_at": "2026-11-25T11:58:59+00:00",
+      "rule": "plugin-rulebook:R14"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "codex-delta-acdede0b-6",
+      "line": 160,
+      "note": "repeat of codex-delta-b2095d98-3",
+      "path": "plugins/git-kit/skills/cross-model-review/references/optional-models.md",
+      "pr": 804,
+      "recorded_at": "2026-11-25T11:58:59+00:00",
+      "rule": "self-containment"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "codex-delta-acdede0b-7",
+      "line": 80,
+      "note": "repeat of codex-delta-b2095d98-3",
+      "path": "plugins/git-kit/skills/cross-model-review/references/optional-models.md",
+      "pr": 804,
+      "recorded_at": "2026-11-25T11:58:59+00:00",
+      "rule": "self-containment"
+    },
+    {
       "disposition": "fixed",
       "finding": "codex-delta-b2095d98-1",
       "line": 101,

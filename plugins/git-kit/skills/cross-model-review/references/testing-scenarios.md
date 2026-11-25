@@ -441,6 +441,9 @@ Moved here from SKILL.md's Testing & Validation section, which keeps only the la
   29 were not run again. The locator's program lookup is covered by `tests/marketplace_ci/test_git_review_locate_rva.py`.
 - **2026-11-25, `iteration-32`:** eval 30 again after the port's security review (prompt and expected output changed
   first), one plan-only `with_skill` run, no baseline: 8/8. Evals 26 and 28 were not run again for the wider drop rule.
+- **2026-11-25, `iteration-33`:** adds eval 31 (a `node` shim refused, the resolved `node` path, the disclosed limits) and
+  re-runs evals 29 and 30, one plan-only `with_skill` run each, no baseline: 6/6, 3/3 and 8/8. Evals 20-24, 26 and 28
+  were not run again.
 
 Every eval run listed above is a dry run of the committed text, not a live dispatch (the live checks that
 some entries name are separate from their evals), and none is a live run of the scoped flow (one ran

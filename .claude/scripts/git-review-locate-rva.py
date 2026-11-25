@@ -22,19 +22,21 @@ when:
     it nor a directory above it is this repository or any of its worktrees (by device and inode);
   - every directory above it belongs to the current user or root and, if others can write it, has
     the sticky bit, so nobody else can swap the root after the check;
-  - the root, `scripts/`, `assets/`, and every entry in both (Node imports the dispatcher's
-    siblings from `scripts/`; the Devin adapter copies the config that denies Devin every tool from
-    `assets/`) and the root's `reviewadapters-kit.settings.json` (the vendors' default models) are
-    owned by the current user, writable by nobody else, not symbolic links, and no regular file
-    there has a second hard link; `scripts/rva-dispatch.mjs` exists as a regular file.
+  - the root, `scripts/`, `assets/`, and every entry below both, at any depth (Node imports the
+    dispatcher's siblings from `scripts/`; the Devin adapter copies the config that denies Devin
+    every tool from `assets/`) and the root's `reviewadapters-kit.settings.json` (the vendors'
+    default models) are owned by the current user, writable by nobody else, not symbolic links, and
+    no regular file there has a second hard link; `scripts/rva-dispatch.mjs` exists as a
+    regular file.
 
 Group write is accepted only for the user's own private group, on Linux, with no extended ACL
 (reviewadapters-kit's rule; see `private_group_gid`), since every plugin installed under umask 002
 is group-writable. Where ownership cannot be read (Windows), every candidate is refused. git runs
 without the caller's GIT_* variables. `git`, and the `node` the caller runs the dispatcher with, are
 looked up in absolute PATH entries only and refused inside the repository or its worktrees
-(`git_review_common.tool`); node's path must also be made of the characters above, and no other
-account may be able to replace it (`program_problem`). The config file is trusted only when it is a
+(`git_review_common.tool`); node's resolved path, the one printed, must also be made of the
+characters above, no other account may be able to replace it (`program_problem`), and it must not
+look like a version manager's shim (`resolve_node`). The config file is trusted only when it is a
 plain file (no symlink component), owned by the current user, writable by nobody else, and neither
 it nor a case variant of its name is tracked in the index or HEAD. A git failure counts as tracked.
 
@@ -83,7 +85,8 @@ PLUGIN_NAME = "reviewadapters-kit"
 LOCAL_PATH = ".claude/git-kit.local.json"
 CONFIG_KEY = "cross_model_review_rva_root"
 DISPATCHER = ("scripts", "rva-dispatch.mjs")
-# Directories whose every entry is checked: the dispatcher's modules and the files it copies.
+# Directories whose every entry, at any depth, is checked: the dispatcher's modules and the files
+# it copies.
 CHECKED_DIRS = ("scripts", "assets")
 # The settings file the dispatcher's loadConfig reads from the root.
 SETTINGS_FILE = "reviewadapters-kit.settings.json"
@@ -94,6 +97,8 @@ MAX_CONFIG_BYTES = 1_000_000
 _SAFE_PATH_RE = re.compile(r"/[A-Za-z0-9._/-]+\Z")
 _GIT_TIMEOUT_SECONDS = 30
 _MAX_LINKS = 40
+# ELF, Mach-O (64-bit) and universal Mach-O.
+_NATIVE_MAGIC = (b"\x7fELF", b"\xcf\xfa\xed\xfe", b"\xca\xfe\xba\xbe")
 
 
 def _inside(path: Path, root: Path) -> bool:
@@ -238,12 +243,14 @@ def _swappable_problem(directory: Path, label: str) -> str | None:
     return None
 
 
-def program_problem(program: Path) -> str | None:
-    """Why another account could replace `program`, or None.
+def program_problem(program: Path, forbidden: Sequence[Path] = ()) -> str | None:
+    """Why another account, or the checkout, could replace `program`, or None.
 
     Follows the path one name at a time, through every link: each directory on the way must pass
     the ancestor rule, and each link and the program itself must belong to the current user or
-    root. The program must be a regular file that others cannot write.
+    root. No step may lie inside `forbidden`, the repository and its worktrees: a link kept there
+    could be pointed elsewhere by the branch. The program must be a regular file that others
+    cannot write.
     """
     current, pending, links = Path("/"), list(program.parts[1:]), 0
     st = current.lstat()
@@ -256,6 +263,8 @@ def program_problem(program: Path) -> str | None:
         if problem:
             return problem
         entry = current / name
+        if _same_file_inside(current, forbidden):
+            return f"{entry} (node) lies inside the repository under review or one of its worktrees"
         try:
             st = entry.lstat()
             target = Path(os.readlink(entry)) if stat.S_ISLNK(st.st_mode) else None
@@ -279,8 +288,35 @@ def program_problem(program: Path) -> str | None:
     return None
 
 
+def resolve_node(node: str) -> tuple[str | None, str | None]:
+    """(node's real path, None), or (None, why) when it looks like a version manager's shim.
+
+    A shim (asdf, mise, Volta) may pick the program it starts from files in the working directory,
+    which is the checkout under review. Such a shim is a script, or a link to a program with
+    another name, so only a native program named `node` is accepted. A heuristic: a native program
+    of that name that does the same is not seen.
+    """
+    real = os.path.realpath(node)
+    if os.path.basename(real) != "node":
+        return None, f"{node} (node) leads to {real}, which looks like a version manager's shim"
+    try:
+        with open(real, "rb") as handle:
+            native = handle.read(4) in _NATIVE_MAGIC
+    except OSError:
+        return None, f"{real} (node) could not be read"
+    if not native:
+        return (
+            None,
+            f"{real} (node) is not a native program, which looks like a version manager's shim",
+        )
+    return real, None
+
+
 def _same_file_inside(real: Path, roots: Sequence[Path]) -> bool:
-    """Whether `real` or a directory above it is one of `roots` (by device and inode)."""
+    """Whether `real` or a directory above it is one of `roots` (by device and inode), or a
+    worktree of a repository in them that git no longer lists there (a moved one)."""
+    if common.inside(real, roots):
+        return True
     ids = set()
     for root in roots:
         try:
@@ -313,7 +349,7 @@ def check_root(
         return None, f"{candidate} does not exist"
     if not _SAFE_PATH_RE.match(str(real)):
         return None, f"{candidate} has characters outside [A-Za-z0-9._/-]"
-    if _inside(real, repo) or _same_file_inside(real, [repo, *worktrees]):
+    if _inside(real, repo) or _same_file_inside(real, [*common.checkout_root(repo), *worktrees]):
         return None, f"{candidate} lies inside the repository under review or one of its worktrees"
     problem = _ancestor_problem(real) or _dir_problem(real)
     if problem:
@@ -325,16 +361,11 @@ def check_root(
         problem = _dir_problem(directory)
         if problem:
             return None, problem
-        try:
-            entries = list(os.scandir(directory))
-        except OSError:
-            return None, f"{directory} could not be listed"
-        if name == DISPATCHER[0] and not any(e.name == DISPATCHER[-1] for e in entries):
-            return None, f"{real.joinpath(*DISPATCHER)} is missing"
-        for entry in entries:
-            problem = _entry_problem(Path(entry.path))
-            if problem:
-                return None, problem
+        problem = _tree_problem(directory)
+        if problem:
+            return None, problem
+    if not os.path.lexists(real.joinpath(*DISPATCHER)):
+        return None, f"{real.joinpath(*DISPATCHER)} is missing"
     if not real.joinpath(*DISPATCHER).is_file():
         return None, f"{real.joinpath(*DISPATCHER)} is not a regular file"
     # loadConfig reads the vendors' default models (pi's names the recipient) from the root itself.
@@ -358,6 +389,24 @@ def _dir_problem(directory: Path) -> str | None:
     if not stat.S_ISDIR(st.st_mode):
         return f"{directory} is not a directory"
     return _owner_problem(st, str(directory), directory)
+
+
+def _tree_problem(top: Path) -> str | None:
+    """The first problem of any entry below `top`, at any depth, or None."""
+    pending = [top]
+    while pending:
+        directory = pending.pop()
+        try:
+            entries = list(os.scandir(directory))
+        except OSError:
+            return f"{directory} could not be listed"
+        for entry in entries:
+            problem = _entry_problem(Path(entry.path))
+            if problem:
+                return problem
+            if entry.is_dir(follow_symlinks=False):
+                pending.append(Path(entry.path))
+    return None
 
 
 def _entry_problem(path: Path) -> str | None:
@@ -532,14 +581,18 @@ def locate(repo: Path, plugin_root: Path) -> dict:
     if worktrees is None:
         return {"ok": False, "reasons": ["could not list this repository's worktrees"]}
     try:
-        node = common.tool("node", [*common.checkout_root(repo), *worktrees])
+        forbidden = [*common.checkout_root(repo), *worktrees]
+        node = common.tool("node", forbidden)
     except FileNotFoundError as err:
         return {"ok": False, "reasons": [str(err)]}
-    if not _SAFE_PATH_RE.match(node):
-        return {"ok": False, "reasons": ["the node on PATH has characters outside [A-Za-z0-9._/-]"]}
-    problem = program_problem(Path(node))
+    problem = program_problem(Path(node), forbidden)
     if problem:
         return {"ok": False, "reasons": [problem]}
+    node, problem = resolve_node(node)
+    if node is None:
+        return {"ok": False, "reasons": [problem]}
+    if not _SAFE_PATH_RE.match(node):
+        return {"ok": False, "reasons": [f"{node} (node) has characters outside [A-Za-z0-9._/-]"]}
     reasons: list[str] = []
     candidate, why = sibling_candidate(plugin_root)
     if candidate is not None:

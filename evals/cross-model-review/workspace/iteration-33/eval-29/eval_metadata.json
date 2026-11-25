@@ -1,0 +1,21 @@
+{
+  "eval_id": 29,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {
+      "text": "A: no optional model is offered and the locator's reasons are mentioned in one line",
+      "type": "functionality",
+      "target": "references/optional-models.md"
+    },
+    {
+      "text": "A: nothing searches further and no copy inside the checkout is run; the run goes on with Claude and Codex",
+      "type": "functionality",
+      "target": "references/optional-models.md"
+    },
+    {
+      "text": "B: no optional model is offered, the locator is not run, and the reason is recorded in inspection_limits",
+      "type": "functionality",
+      "target": "references/optional-models.md"
+    }
+  ]
+}

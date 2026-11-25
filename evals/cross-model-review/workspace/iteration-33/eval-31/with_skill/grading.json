@@ -1,0 +1,42 @@
+{
+  "eval_id": 31,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "A: no optional model is offered and the reason is mentioned in one line; Claude and Codex go on",
+      "passed": true,
+      "evidence": "'Offer no optional model; mention the reason in one line'; 'Continue with Claude and Codex'"
+    },
+    {
+      "text": "A: the shim is not used even at the user's request, because it may pick the real program from files in the checkout",
+      "passed": true,
+      "evidence": "'Not used, no override'; 'a shim may pick the real program from files in the checkout'"
+    },
+    {
+      "text": "B: the dry-run command uses /opt/node-22.1/bin/node literally, as the locator printed it",
+      "passed": true,
+      "evidence": "'/opt/node-22.1/bin/node, literally'"
+    },
+    {
+      "text": "B: says the locator prints node with links resolved",
+      "passed": true,
+      "evidence": "'the locator prints the path with links resolved'"
+    },
+    {
+      "text": "C: pi and devin are both dropped with the reason recorded and nothing is dispatched on the old result",
+      "passed": true,
+      "evidence": "'so both pi and devin, for the run'; 'Record the reason for each'; 'No dispatch on the old path'"
+    },
+    {
+      "text": "D: says the LDAP member is not noticed, as a disclosed residual risk",
+      "passed": true,
+      "evidence": "'No. ... reads only /etc/passwd and /etc/group'; 'Documented residual risk'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 6,
+    "pass_rate": 1.0
+  },
+  "notes": "One run. Assertions written before the run. Evidence is quoted from the agent's returned summary; the full answer is outputs/response.md."
+}
