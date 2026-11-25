@@ -1,0 +1,52 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4699646097",
+      "note": "fc7beacc: re-read after triage added",
+      "path": "plugins/workmanagement-kit/skills/pr-to-linear/SKILL.md",
+      "pr": 903,
+      "recorded_at": "2026-11-25T19:49:57+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4699646323",
+      "note": "fc7beacc: only phases that name a skill are delegated",
+      "path": "plugins/workmanagement-kit/skills/linear-github-lifecycle/SKILL.md",
+      "pr": 903,
+      "recorded_at": "2026-11-25T19:49:57+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4699646517",
+      "note": "fc7beacc: routing evals 5-14 added, no effect measured",
+      "path": "plugins/workmanagement-kit/skills/linear-github-lifecycle/SKILL.md",
+      "pr": 903,
+      "recorded_at": "2026-11-25T19:49:58+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4699646667",
+      "note": "fc7beacc: changed base added",
+      "path": "plugins/workmanagement-kit/skills/repository-gates/SKILL.md",
+      "pr": 903,
+      "recorded_at": "2026-11-25T19:49:58+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4699646848",
+      "note": "fc7beacc: native status change check added",
+      "path": "plugins/workmanagement-kit/skills/merge-to-completion/SKILL.md",
+      "pr": 903,
+      "recorded_at": "2026-11-25T19:49:58+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4699647046",
+      "note": "fc7beacc: note added, graded text kept",
+      "path": "evals/merge-to-completion/workspace/iteration-5/eval-2/eval_metadata.json",
+      "pr": 903,
+      "recorded_at": "2026-11-25T19:49:59+00:00"
+    }
+  ]
+}
