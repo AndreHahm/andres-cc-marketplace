@@ -1,0 +1,27 @@
+{
+  "eval_id": 6,
+  "configuration": "with_skill",
+  "note": "Plan-only, with_skill only, no baseline, so it does not show that the skill text produced the result. One separate agent per eval, given the skill text without its Testing & Validation section and the prompt only.",
+  "assertions_evaluated": [
+    {
+      "text": "The reply says the file already exists",
+      "passed": true,
+      "evidence": "'`/home/jane/out.md` already exists'."
+    },
+    {
+      "text": "An `AskUserQuestion` offers replacing it or using another path",
+      "passed": true,
+      "evidence": "Options 'Use another path' and 'Replace it'."
+    },
+    {
+      "text": "No `--overwrite` call is planned before an answer",
+      "passed": true,
+      "evidence": "'do not pass `--overwrite`'; it appears only as conditional, after agreement."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

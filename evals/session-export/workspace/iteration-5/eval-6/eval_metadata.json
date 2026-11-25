@@ -1,0 +1,21 @@
+{
+  "eval_id": 6,
+  "skill_path": "plugins/session-kit/skills/session-export/SKILL.md",
+  "assertions": [
+    {
+      "text": "The reply says the file already exists",
+      "type": "functionality",
+      "target": "behavior"
+    },
+    {
+      "text": "An `AskUserQuestion` offers replacing it or using another path",
+      "type": "functionality",
+      "target": "behavior"
+    },
+    {
+      "text": "No `--overwrite` call is planned before an answer",
+      "type": "functionality",
+      "target": "behavior"
+    }
+  ]
+}
