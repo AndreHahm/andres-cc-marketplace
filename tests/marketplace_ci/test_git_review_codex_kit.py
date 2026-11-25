@@ -348,7 +348,13 @@ def test_the_real_windows_profile_ignores_the_environment(monkeypatch, tmp_path)
 
 
 @pytest.mark.parametrize(
-    "name", ["git-review-codex-kit", "git-review-scope", "git-review-accepted-findings"]
+    "name",
+    [
+        "git-review-codex-kit",
+        "git-review-scope",
+        "git-review-accepted-findings",
+        "git-review-locate-rva",
+    ],
 )
 def test_a_planted_pycache_of_the_shared_file_never_runs(tmp_path, name):
     script = Path(shutil.copy(SCRIPT.with_name(f"{name}.py"), tmp_path))

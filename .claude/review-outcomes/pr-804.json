@@ -111,6 +111,36 @@
       "rule": "version-pin"
     },
     {
+      "disposition": "false_positive",
+      "finding": "codex-delta-069f4f19-1",
+      "line": 15,
+      "note": "G1: repeat of codex-delta-a1ebe589-2; not raised on dd686618",
+      "path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+      "pr": 804,
+      "recorded_at": "2026-11-25T11:32:30+00:00",
+      "rule": "tool-scoping"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-delta-069f4f19-2",
+      "line": 194,
+      "note": "G2: fixed in dd686618: single-model only if no optional model returned a valid envelope",
+      "path": "plugins/git-kit/skills/create-pr/SKILL.md",
+      "pr": 804,
+      "recorded_at": "2026-11-25T11:32:30+00:00",
+      "rule": "single-model-wording"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-delta-069f4f19-3",
+      "line": 215,
+      "note": "G3: fixed in dd686618: a changed dispatcher drops every vendor still to dispatch",
+      "path": "plugins/git-kit/skills/cross-model-review/references/testing-scenarios.md",
+      "pr": 804,
+      "recorded_at": "2026-11-25T11:32:30+00:00",
+      "rule": "stale-scenario"
+    },
+    {
       "disposition": "fixed",
       "finding": "codex-delta-298bfe15-1",
       "line": 238,
@@ -259,6 +289,26 @@
       "pr": 804,
       "recorded_at": "2026-11-20T18:31:09+00:00",
       "rule": "skill-size"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-delta-dd686618-1",
+      "line": 487,
+      "note": "fixed in the next commit: node, its links and every directory on its path must not be replaceable by another account",
+      "path": "plugins/git-kit/scripts/git-review-locate-rva.py",
+      "pr": 804,
+      "recorded_at": "2026-11-25T11:32:31+00:00",
+      "rule": "security"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "codex-delta-dd686618-2",
+      "line": 159,
+      "note": "repeat of codex-delta-b2095d98-3: one-way pointer to codex-pass-assembly.md, no cycle",
+      "path": "plugins/git-kit/skills/cross-model-review/references/optional-models.md",
+      "pr": 804,
+      "recorded_at": "2026-11-25T11:32:31+00:00",
+      "rule": "self-containment"
     },
     {
       "disposition": "fixed",

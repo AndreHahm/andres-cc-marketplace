@@ -33,10 +33,10 @@ Group write is accepted only for the user's own private group, on Linux, with no
 is group-writable. Where ownership cannot be read (Windows), every candidate is refused. git runs
 without the caller's GIT_* variables. `git`, and the `node` the caller runs the dispatcher with, are
 looked up in absolute PATH entries only and refused inside the repository or its worktrees
-(`git_review_common.tool`); node's path must also be made of the characters above. The config file
-is trusted only when it is a plain file (no symlink component), owned by the current user,
-writable by nobody else, and neither it nor a case variant of its name is tracked in the index or
-HEAD. A git failure counts as tracked.
+(`git_review_common.tool`); node's path must also be made of the characters above, and no other
+account may be able to replace it (`program_problem`). The config file is trusted only when it is a
+plain file (no symlink component), owned by the current user, writable by nobody else, and neither
+it nor a case variant of its name is tracked in the index or HEAD. A git failure counts as tracked.
 
 The result can go stale while the user answers questions, so the caller runs this again right
 before each vendor's first dispatch of each phase and sends nothing more if `dispatcher` or `node`
@@ -64,21 +64,20 @@ from pathlib import Path
 from types import CodeType, ModuleType
 
 
-class _SourceOnlyLoader(SourceFileLoader):
-    """Compiles the source itself: a plain import would also run a planted __pycache__ file."""
+def _import_sibling(name: str) -> ModuleType:
+    """Load `<name>.py` beside this script from its source, never from a __pycache__ file."""
+    path = str(Path(__file__).resolve().parent / f"{name}.py")
 
-    def get_code(self, fullname: str) -> CodeType:
-        return self.source_to_code(self.get_data(self.path), self.path)
+    class FromSource(SourceFileLoader):
+        def get_code(self, fullname: str) -> CodeType:
+            return self.source_to_code(self.get_data(path), path)
+
+    loaded = ModuleType(name)
+    FromSource(name, path).exec_module(loaded)
+    return loaded
 
 
-def _load_common() -> ModuleType:
-    path = Path(__file__).resolve().with_name("git_review_common.py")
-    module = ModuleType("git_review_common")
-    _SourceOnlyLoader(module.__name__, str(path)).exec_module(module)
-    return module
-
-
-common = _load_common()
+common = _import_sibling("git_review_common")
 
 PLUGIN_NAME = "reviewadapters-kit"
 LOCAL_PATH = ".claude/git-kit.local.json"
@@ -94,6 +93,7 @@ MAX_CONFIG_BYTES = 1_000_000
 # The printed path is pasted into shell commands, so it may hold no shell syntax.
 _SAFE_PATH_RE = re.compile(r"/[A-Za-z0-9._/-]+\Z")
 _GIT_TIMEOUT_SECONDS = 30
+_MAX_LINKS = 40
 
 
 def _inside(path: Path, root: Path) -> bool:
@@ -220,14 +220,62 @@ def _ancestor_problem(real: Path) -> str | None:
     (the same rule as reviewadapters-kit's `unsafeDirStat`).
     """
     for directory in real.parents:
+        problem = _swappable_problem(directory, "above the root")
+        if problem:
+            return problem
+    return None
+
+
+def _swappable_problem(directory: Path, label: str) -> str | None:
+    try:
+        st = directory.lstat()
+    except OSError:
+        return f"{directory} could not be checked"
+    if hasattr(os, "getuid") and st.st_uid not in (os.getuid(), 0):
+        return f"{directory} ({label}) is not owned by the current user or root"
+    if _others_can_write(st, directory) and not st.st_mode & stat.S_ISVTX:
+        return f"{directory} ({label}) is writable by others without the sticky bit"
+    return None
+
+
+def program_problem(program: Path) -> str | None:
+    """Why another account could replace `program`, or None.
+
+    Follows the path one name at a time, through every link: each directory on the way must pass
+    the ancestor rule, and each link and the program itself must belong to the current user or
+    root. The program must be a regular file that others cannot write.
+    """
+    current, pending, links = Path("/"), list(program.parts[1:]), 0
+    st = current.lstat()
+    while pending:
+        name = pending.pop(0)
+        if name == "..":
+            current = current.parent
+            continue
+        problem = _swappable_problem(current, "above node")
+        if problem:
+            return problem
+        entry = current / name
         try:
-            st = directory.lstat()
+            st = entry.lstat()
+            target = Path(os.readlink(entry)) if stat.S_ISLNK(st.st_mode) else None
         except OSError:
-            return f"{directory} could not be checked"
+            return f"{entry} could not be checked"
         if hasattr(os, "getuid") and st.st_uid not in (os.getuid(), 0):
-            return f"{directory} (above the root) is not owned by the current user or root"
-        if _others_can_write(st, directory) and not st.st_mode & stat.S_ISVTX:
-            return f"{directory} (above the root) is writable by others without the sticky bit"
+            return f"{entry} (node) is not owned by the current user or root"
+        if target is None:
+            current = entry
+            continue
+        links += 1
+        if links > _MAX_LINKS:
+            return f"{program} has too many links"
+        if target.is_absolute():
+            current, target = Path("/"), Path(*target.parts[1:])
+        pending = [*target.parts, *pending]
+    if not stat.S_ISREG(st.st_mode):
+        return f"{current} (node) is not a regular file"
+    if _others_can_write(st, current):
+        return f"{current} (node) is writable by others"
     return None
 
 
@@ -489,6 +537,9 @@ def locate(repo: Path, plugin_root: Path) -> dict:
         return {"ok": False, "reasons": [str(err)]}
     if not _SAFE_PATH_RE.match(node):
         return {"ok": False, "reasons": ["the node on PATH has characters outside [A-Za-z0-9._/-]"]}
+    problem = program_problem(Path(node))
+    if problem:
+        return {"ok": False, "reasons": [problem]}
     reasons: list[str] = []
     candidate, why = sibling_candidate(plugin_root)
     if candidate is not None:

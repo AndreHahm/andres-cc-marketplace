@@ -43,7 +43,9 @@ that denies Devin every tool from there) or as the root's `reviewadapters-kit.se
 vendors' default models), a file or directory not owned by you or writable by others (group write only
 for your own private group, on Linux, with no extended ACL), and a tracked config file. It writes
 nothing and runs only `git` and `ls`, never the dispatcher. It takes `git`, and the `node` it prints, from
-absolute PATH entries only, and refuses one inside this repository or its worktrees. On Windows it refuses every candidate.
+absolute PATH entries only, and refuses one inside this repository or its worktrees. It also refuses a `node`
+that another account could replace: every directory and link on its path, and the program itself, must belong to
+you or root, and neither those directories (unless sticky) nor the program may be writable by others. On Windows it refuses every candidate.
 
 - **Exit 0:** `{"ok": true, "dispatcher", "node", "source", "notes"}`. Take `dispatcher` as `$RVA` and
   `node` as `$NODE`, literal absolute paths; check that `$NODE` is absolute, lies outside `$REPO_ROOT` and has
@@ -214,9 +216,9 @@ or the re-check, declined, failed per batch.
 - The `env` prefix clears the listed NODE_* variables only. Other loader variables (`OPENSSL_CONF`, `LD_PRELOAD`)
   are inherited, as on the Codex path.
 - The drop rule for quoted findings is followed by Claude, not enforced by code.
-- `node` gets fewer checks than the dispatcher: its location and characters, not its owner, its mode or every
-  link on the way. Another account that can write its folder could replace it, and the re-check compares only
-  the path. The Codex launcher has the same limit.
+- `node` may belong to root as well as to you, and the re-check compares its path, not its content. The Codex
+  launcher checks only its location. A group-writable folder (Homebrew's `/opt/homebrew/bin`, `/usr/local/bin` on some systems) is
+  refused, so a `node` there offers no optional model. The locator's own `git` gets the location check only.
 - A version manager's `node` shim (asdf, mise, Volta) may pick the real program from files in the checkout.
 - A `node` path with `@` or `+` (Homebrew `node@22`) is refused, and one that changes per Bash call (fnm)
   drops every vendor at the re-check.
