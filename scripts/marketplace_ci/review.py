@@ -3176,12 +3176,10 @@ def _contradicted_by_script(finding: Finding, coverage: ScriptCoverage | None) -
     # Never a symlink, only plain paths. For R18, a rule about one file, every cited component must
     # be covered too; an R35 or R37 finding cites files its coverage never lists (the references,
     # the script).
-    claimed = _claimed_rule_ids(finding)
-    paths = _cap_paths(finding) if "R18" in claimed else (finding.path,)
     return not finding.via_symlink and all(
         _PLAIN_PATH.fullmatch(p) and coverage.covers(rule, posixpath.normpath(p))
-        for p in paths
-        for rule in claimed
+        for rule in _claimed_rule_ids(finding)
+        for p in (_cap_paths(finding) if rule == "R18" else (finding.path,))
     )
 
 
