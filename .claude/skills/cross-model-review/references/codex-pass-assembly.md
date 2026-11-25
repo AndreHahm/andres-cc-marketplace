@@ -39,7 +39,7 @@ enter single-model mode as in Phase 3, with the reason "zero Codex-eligible path
 This skill has no `Write` grant, so every file the model itself authors or assembles goes through one
 helper, which writes exactly one file directly under `$RUN`. The only other writes are the Preflight
 chain's own shell redirects (`git show` and `git diff` output, to fixed names under `$RUN`) and, with an
-optional model, each `node "$RVA"` dispatch's stdout redirect to `$RUN/<V>_fresh_eyes.<N>.json` or
+optional model, each `"$NODE" "$RVA"` dispatch's stdout redirect to `$RUN/<V>_fresh_eyes.<N>.json` or
 `$RUN/<V>_challenger.<N>.json`, which the helper does not mediate:
 
 ```bash
@@ -153,9 +153,11 @@ finding/citation since issues #236/#111), and filtering on `location` alone stil
 `components` cite an excluded file through. A finding dropped here stays in the report as Claude-only
 (Medium), **unless another batch contains its `location`**: then it is cross-examined in that batch.
 
-**Never quote a sensitive file.** Claude's own pass reads `sensitive_paths` files, so no envelope may
-repeat a value from one, and any finding whose `finding`, `evidence` or `fix` text names or quotes one is
-dropped here too and stays in the report as Claude-only (Medium). The same holds for a finding whose text
+**Never quote a sensitive file** (whoever raised the finding, an optional model included). Claude's own pass
+reads `sensitive_paths` files, and Claude and Codex can read files outside the diff, so no envelope may repeat a
+value from one. Drop any finding whose `finding`, `evidence` or `fix` text names or quotes a file with a sensitive
+name (the "Eligible paths" patterns, changed or not), quotes a changed file that is not `codex_eligible`, or holds a
+credential-shaped value. It stays in the report under the model that raised it (Medium). The same holds for a finding whose text
 repeats or paraphrases a tracked issue from `accepted.md`: issue text never goes to Codex. From every other
 finding, remove a leading `[tracked #<issue>]` mark in the embedded copy only; `claude_fresh_eyes.json` keeps it
 for `match`.

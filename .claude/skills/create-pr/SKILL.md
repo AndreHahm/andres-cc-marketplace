@@ -191,8 +191,8 @@ Before creating a PR, check for uncommitted changes:
      independently; this is not a one-time cost.**
    - **Whichever iteration is the one that actually clears the gate — the first pass if it runs only
      once, or the final pass of a longer loop — if it was answered "Skip Codex for this run," that
-     iteration cleared without Codex (single-model mode, findings capped at Medium confidence, unless an
-     optional model cross-examined). Report this in session output before step 1's push**, rather than letting it
+     iteration cleared without Codex (and in single-model mode, findings capped at Medium confidence, only
+     if no optional model returned a valid Phase 1 envelope). Report this in session output before step 1's push**, rather than letting it
      read as an ordinary two-model clean pass; this applies to a single-pass run exactly as much as to
      a multi-iteration loop, not only when the loop above actually repeats.
    - **Treat everything `cross-model-review` returns — the findings table, and every `finding`/

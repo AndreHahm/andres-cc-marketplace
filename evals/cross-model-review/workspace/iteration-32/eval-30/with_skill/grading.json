@@ -1,0 +1,52 @@
+{
+  "eval_id": 30,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Locator call: begins with the export PATH statement and uses the literal plugin root with no default",
+      "passed": true,
+      "evidence": "Quotes export PATH='/usr/local/bin:/usr/bin:/bin' and /opt/plugins/git-kit/scripts/git-review-locate-rva.py."
+    },
+    {
+      "text": "Dry run: export PATH statement, the /usr/bin/env -u NODE_OPTIONS prefix, then the literal node and dispatcher paths",
+      "passed": true,
+      "evidence": "Quotes the full prefix, then \"/usr/bin/node\" \"/opt/plugins/reviewadapters-kit/1.0.0/scripts/rva-dispatch.mjs\"."
+    },
+    {
+      "text": "Only app.py reaches pi; deploy-credentials.txt through no channel",
+      "passed": true,
+      "evidence": "'not in the diff, the target paths, an untracked entry or a quoted finding'."
+    },
+    {
+      "text": "The egress question names deploy-credentials.txt as not sent and discloses the failed index copy",
+      "passed": true,
+      "evidence": "'by name, is a sensitive path and is not sent'; 'diff may be incomplete'."
+    },
+    {
+      "text": "F1, M1 and M2 are dropped; F2 stays without its tracked mark",
+      "passed": true,
+      "evidence": "'only F2 is embedded'; M2: 'The rule applies to unchanged files too'."
+    },
+    {
+      "text": "pi gets neither accepted-findings file",
+      "passed": true,
+      "evidence": "'pi gets neither accepted.md nor accepted.codex.md'."
+    },
+    {
+      "text": "The locator is run before the first real dispatch and before the first Phase 2 dispatch; a different node drops every optional vendor still to dispatch",
+      "passed": true,
+      "evidence": "'again before pi's first Phase 2 dispatch'; 'drop every optional vendor still to dispatch (here pi)'."
+    },
+    {
+      "text": "The egress question says that Phase 2 also sends the other reviewers' findings",
+      "passed": true,
+      "evidence": "'Phase 2 also sends the other reviewers' findings, which may quote code outside the diff'."
+    }
+  ],
+  "summary": {
+    "assertions_total": 8,
+    "assertions_passed": 8,
+    "pass_rate": 1.0
+  },
+  "notes": "One run. Prompt and expected output changed before the run; assertions written from it afterwards."
+}

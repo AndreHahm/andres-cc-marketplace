@@ -1,0 +1,46 @@
+{
+  "eval_id": 30,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {
+      "text": "Locator call: begins with the export PATH statement and uses the literal plugin root with no default",
+      "type": "functionality",
+      "target": "references/optional-models.md"
+    },
+    {
+      "text": "Dry run: export PATH statement, the /usr/bin/env -u NODE_OPTIONS prefix, then the literal node and dispatcher paths",
+      "type": "functionality",
+      "target": "references/optional-models.md"
+    },
+    {
+      "text": "Only app.py reaches pi; deploy-credentials.txt through no channel",
+      "type": "functionality",
+      "target": "references/optional-models.md"
+    },
+    {
+      "text": "The egress question names deploy-credentials.txt as not sent and discloses the failed index copy",
+      "type": "functionality",
+      "target": "references/optional-models.md"
+    },
+    {
+      "text": "F1, M1 and M2 are dropped; F2 stays without its tracked mark",
+      "type": "functionality",
+      "target": "references/optional-models.md"
+    },
+    {
+      "text": "pi gets neither accepted-findings file",
+      "type": "functionality",
+      "target": "references/optional-models.md"
+    },
+    {
+      "text": "The locator is run before the first real dispatch and before the first Phase 2 dispatch; a different node drops every optional vendor still to dispatch",
+      "type": "functionality",
+      "target": "references/optional-models.md"
+    },
+    {
+      "text": "The egress question says that Phase 2 also sends the other reviewers' findings",
+      "type": "functionality",
+      "target": "references/optional-models.md"
+    }
+  ]
+}
