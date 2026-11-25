@@ -2028,6 +2028,8 @@ def _reviewer_results(reports: Sequence, failed: Sequence[str] = ()) -> dict:
         else:
             status = "findings" if findings else "clean"
         results[report.reviewer] = {"status": status, "attempts": report.attempts}
+        if report.seconds is not None:
+            results[report.reviewer]["seconds"] = report.seconds
         if getattr(report, "unsandboxed", False):
             results[report.reviewer]["unsandboxed"] = True
         if getattr(report, "fallback_over_cap", False):
@@ -2414,6 +2416,15 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
                 json.dumps(failure_payload, indent=2) + "\n", encoding="utf-8"
             )
         return 2
+
+    _append_step_summary(
+        "Reviewer run time",
+        [
+            f"{r.reviewer}: {r.seconds} s, {r.attempts} call(s)"
+            for r in reports
+            if r.seconds is not None
+        ],
+    )
 
     validated = []
     top_level = Path(_git_out(repo, "rev-parse", "--show-toplevel") or repo)

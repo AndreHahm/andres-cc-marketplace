@@ -3112,23 +3112,26 @@ GATE_NOTICE = "notice"
 GATE_SUPPRESSED = "suppressed"
 
 
-# Rulebook rules a script judges beside the model review (issues #613, #615, #525). A model finding
-# from the rulebook checker that claims only such rules, at a location the script covered, is a
-# notice: for R33 and R37 the script found it compliant, for R35 no worse than the base (the gap
-# predates the PR). Never decided from prose alone: the coverage comes from this run's own scripts,
-# and a finding elsewhere (a hook command, an uncovered file, a new skill) stays blocking.
-_SCRIPT_OWNED_RULES = frozenset({"R33", "R35", "R37"})
+# Rulebook rules a script judges beside the model review (issues #613, #615, #525, #862). A model
+# finding from the rulebook checker that claims only such rules, at a location the script covered,
+# is a notice: for R33 and R37 the script found it compliant, for R35 no worse than the base (the
+# gap predates the PR), for R18 without a new Critical block. Never decided from prose alone: the
+# coverage comes from this run's own scripts, and a finding elsewhere (a hook command, an uncovered
+# file, a new skill for R35) stays blocking.
+_SCRIPT_OWNED_RULES = frozenset({"R18", "R33", "R35", "R37"})
 _RULEBOOK_CHECKER = "plugin-rulebook-checker"
 _RULEBOOK_ID = re.compile(r"\bR\d{1,2}\b", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
 class ScriptCoverage:
-    """What this run's scripts checked and found compliant, or for R35 no worse than the base.
+    """What this run's scripts checked and found compliant, or for R35 no worse than the base, or
+    for R18 without a new Critical block.
 
     `clean` holds (rule id, repo path) pairs: R37 for each grant document the verifier read that
     has no `r37-executable-bit` finding, R35 for each changed skill whose `##` headings and
-    `references/` directory are no worse than the base's. `clean_everywhere` holds rule ids a
+    `references/` directory are no worse than the base's, R18 for each changed skill, command or
+    agent file without a new Critical block. `clean_everywhere` holds rule ids a
     script found no violation of anywhere (R33, when `find_prefix_violations` returns none).
     Empty by default, so a caller that passes no coverage downgrades nothing."""
 
@@ -3170,8 +3173,18 @@ def _contradicted_by_script(finding: Finding, coverage: ScriptCoverage | None) -
     # names the same file. An absolute location still present here (`relative_citations` has made an
     # in-checkout one relative) never matches: this pure gate has no repository root to resolve it
     # against, and an unmatched path only keeps blocking.
+    claimed = _claimed_rule_ids(finding)
     path = posixpath.normpath(finding.path)
-    return all(coverage.covers(rule, path) for rule in _claimed_rule_ids(finding))
+    if not all(coverage.covers(rule, path) for rule in claimed):
+        return False
+    # R18 is guarded like `_is_capped_size_finding`: every named path measured, none a symlink.
+    return "R18" not in claimed or (
+        not finding.via_symlink
+        and all(
+            _PLAIN_PATH.fullmatch(p) and coverage.covers("R18", posixpath.normpath(p))
+            for p in _cap_paths(finding)
+        )
+    )
 
 
 # A skill's reference and example documents. R18 (block size) is only a suggestion there (issue
@@ -3266,8 +3279,8 @@ def gate_decision(
       scope; accepted residual: a PR that deletes a guard on one line and leaves the exposed use
       elsewhere is not caught here).
     - A rulebook-checker MODEL finding that claims only script-owned rules, at a location this
-      run's scripts covered (`coverage`: compliant, or for R35 no worse than the base), is a
-      notice.
+      run's scripts covered (`coverage`: compliant, for R35 no worse than the base, or for R18
+      without a new Critical block), is a notice.
     - A MODEL finding labelled an `allowed-tools` grant, in skill or command documents, is a
       notice (`_is_capped_grant_finding`, issue #862), and so is an R18 size finding in a skill's
       references or examples (`_is_capped_size_finding`).
@@ -3539,6 +3552,15 @@ class ReviewerReport:
     # The fallback was consented but cannot take this reviewer's path list (issue #816), so the
     # reviewer ran sandboxed only.
     fallback_over_cap: bool = False
+    seconds: float | None = None  # wall time of all its calls; None when none was made
+
+
+def _timed_dispatch(*args, **kwargs) -> ReviewerReport:
+    started = time.monotonic()
+    report = _dispatch_one(*args, **kwargs)
+    if report.attempts == 0:
+        return report
+    return replace(report, seconds=round(time.monotonic() - started, 1))
 
 
 # At most this many reviewers run at once. Two keeps the burst on the Codex
@@ -4861,7 +4883,7 @@ def dispatch_reviewers(
                 )
         futures = [
             pool.submit(
-                _dispatch_one,
+                _timed_dispatch,
                 name,
                 scope,
                 base_sha=base_sha,

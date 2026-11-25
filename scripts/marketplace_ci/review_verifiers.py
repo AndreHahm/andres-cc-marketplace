@@ -124,7 +124,7 @@ DESCRIPTION_HIGH_WARNING = 1018
 DESCRIPTION_HIGH_CRITICAL = 1024
 WHEN_TO_USE_WARNING = 506
 WHEN_TO_USE_CRITICAL = 512
-R18_WARNING = 20
+R18_WARNING = 20  # above this is Minor, never blocking: the rulebook's tier (issue #862)
 R18_CRITICAL = 30
 MAX_FLOW_DEPTH = 100
 MAX_CONTEXT_LINES = 200
@@ -696,7 +696,7 @@ class _Fence:
 
 
 def block_tier(lines: int) -> int:
-    """0 = fine, 1 = Warning (Major), 2 = Critical, for a fenced block of `lines` lines (R18)."""
+    """0 = fine, 1 = Warning (Minor), 2 = Critical, for a fenced block of `lines` lines (R18)."""
     return _above(lines, R18_WARNING, R18_CRITICAL)
 
 
@@ -902,22 +902,8 @@ def _counted_blocks(text: str) -> list[FencedBlock]:
     return [b for b in fenced_blocks(text) if block_tier(b.size) > 0]
 
 
-def check_code_blocks(path: str, text: str, base_text: str | None) -> tuple[Finding, ...]:
-    """R18 for one skill, command or agent file, or a skill's reference or example document (there
-    Minor, so it never blocks): at most one finding, with no line. A block counts
-    when it is in the Warning tier or worse and is not an identical block already in the base; the
-    file is reported when the PR raised the number of blocks at some tier or worse (so editing a
-    block without crossing a threshold, or moving it, is not reported). A finding only exists when
-    the PR made the file worse against the real base, so it is the PR's by construction and carries
-    no line: a line would let an edit that leaves the fences alone (filling a block in the middle)
-    fall outside the diff."""
-    minor = component_kind(path) not in _R18_KINDS
-    if minor and not is_size_document(path):
-        return ()
-    head = _counted_blocks(text)
-    base = _counted_blocks(base_text) if base_text is not None else []
-    head_at = [sum(block_tier(b.size) >= rank for b in head) for rank in (1, 2)]
-    base_at = [sum(block_tier(b.size) >= rank for b in base) for rank in (1, 2)]
+def _new_blocks(head: list[FencedBlock], base: list[FencedBlock]) -> list[FencedBlock]:
+    """The blocks of `head` that are not an identical block of `base` (each base block once)."""
     unmatched: dict[tuple[str, ...], int] = {}
     for block in base:
         unmatched[block.content] = unmatched.get(block.content, 0) + 1
@@ -927,6 +913,34 @@ def check_code_blocks(path: str, text: str, base_text: str | None) -> tuple[Find
             unmatched[block.content] -= 1
         else:
             new.append(block)
+    return new
+
+
+def has_new_critical_block(text: str, base_text: str | None) -> bool:
+    """Whether a Critical-tier block is not an identical block of the base. Stricter than the
+    finding's count, which a block grown or replaced in place leaves unchanged."""
+    base = _counted_blocks(base_text) if base_text is not None else []
+    return any(block_tier(b.size) == 2 for b in _new_blocks(_counted_blocks(text), base))
+
+
+def check_code_blocks(path: str, text: str, base_text: str | None) -> tuple[Finding, ...]:
+    """R18 for one skill, command or agent file, or a skill's reference or example document (there
+    always Minor, so it never blocks): at most one finding, with no line, Critical when a reported
+    block is in the Critical tier and Minor when none is (issue #862). A block counts
+    when it is in the Warning tier or worse and is not an identical block already in the base; the
+    file is reported when the PR raised the number of blocks at some tier or worse (so editing a
+    block without crossing a threshold, or moving it, is not reported). A finding only exists when
+    the PR made the file worse against the real base, so it is the PR's by construction and carries
+    no line: a line would let an edit that leaves the fences alone (filling a block in the middle)
+    fall outside the diff."""
+    document = component_kind(path) not in _R18_KINDS
+    if document and not is_size_document(path):
+        return ()
+    head = _counted_blocks(text)
+    base = _counted_blocks(base_text) if base_text is not None else []
+    head_at = [sum(block_tier(b.size) >= rank for b in head) for rank in (1, 2)]
+    base_at = [sum(block_tier(b.size) >= rank for b in base) for rank in (1, 2)]
+    new = _new_blocks(head, base)
     budget = [head_at[0] - base_at[0], head_at[1] - base_at[1]]
     chosen: set[int] = set()
     for tier in (2, 1):  # the count rose by `budget[tier - 1]` at this tier: name that many blocks
@@ -940,16 +954,17 @@ def check_code_blocks(path: str, text: str, base_text: str | None) -> tuple[Find
     rank = max(block_tier(b.size) for b in reported)
     listed = ", ".join(f"line {b.start} ({b.size} lines)" for b in reported[:_MAX_LISTED_BLOCKS])
     more = len(reported) - _MAX_LISTED_BLOCKS
-    tier = _SEVERITY_BY_RANK[rank]
+    tier = "critical" if rank == 2 else "warning"
+    minor = document or rank < 2
     return (
         Finding(
             reviewer=VERIFIER_REVIEWER,
-            severity="Minor" if minor else tier,
+            severity="Minor" if minor else "Critical",
             rule=RULE_CODE_BLOCK_LINES,
             path=path,
             evidence=(
                 f"{len(reported)} fenced code block(s) past the threshold, the worst in the "
-                f"{tier.lower()} tier: {listed}" + (f" and {more} more" if more > 0 else "")
+                f"{tier} tier: {listed}" + (f" and {more} more" if more > 0 else "")
             ),
             remediation=(
                 "Consider splitting the block or moving runnable code to scripts/."
@@ -1820,11 +1835,13 @@ def script_coverage(repo, outcomes: Sequence[VerifierOutcome]) -> ScriptCoverage
     `check-prefixes` gate reports the violation itself).
     R35: every changed skill the `measurement` verifier found no worse than its base
     (`r35_no_worse`), from the outcome's `covered` pairs. This is "no worse than the base", not
-    "compliant": a section the base already lacked stays missing, and the PR did not cause it."""
+    "compliant": a section the base already lacked stays missing, and the PR did not cause it.
+    R18: every changed skill, command or agent file the `measurement` verifier read and found no
+    new Critical block in (issue #862), from the same pairs."""
     clean: set[tuple[str, str]] = set()
     for outcome in outcomes:
-        if outcome.name == MEASUREMENT:  # the one producer, and only of R35 (no other route in)
-            clean.update(pair for pair in outcome.covered if pair[0] == "R35")
+        if outcome.name == MEASUREMENT:  # the one producer, and only of R18 and R35
+            clean.update(pair for pair in outcome.covered if pair[0] in ("R18", "R35"))
         if outcome.name != STRUCTURE:
             continue
         bad = {f.path for f in outcome.findings if f.rule == RULE_EXECUTABLE_BIT}
@@ -2423,7 +2440,8 @@ class VerifierOutcome:
     checked: tuple[str, ...]  # the files read and judged; every other candidate has a finding
     partial: tuple[str, ...] = ()  # in `checked`, but an item was unresolved or held back
     # (rule id, path) pairs the verifier found no worse than the base without reporting anything
-    # (R35, see `r35_no_worse`); `script_coverage` adds them to the gate's coverage.
+    # (R35, see `r35_no_worse`) or without a blocking finding (R18); `script_coverage` adds them to
+    # the gate's coverage.
     covered: tuple[tuple[str, str], ...] = ()
 
 
@@ -2542,6 +2560,7 @@ def run_verifiers(
     grant_checked: list[str] = []
     measure_findings: list[Finding] = []
     measure_checked: list[str] = []
+    measure_covered: list[tuple[str, str]] = []  # R18 and R35 pairs for `script_coverage`
     unreadable_frontmatter: set[str] = set()  # got an unverifiable finding: never R35-covered
     for path in candidates:
         is_skill = component_kind(path) == "skill"
@@ -2563,6 +2582,8 @@ def run_verifiers(
                 measure_findings.append(grant_findings[-1])  # the same; the aggregate keeps one
         base_text = base_texts.get(path) if base_sha is not None else None
         measure_findings.extend(check_code_blocks(path, texts[path], base_text))
+        if not has_new_critical_block(texts[path], base_text):
+            measure_covered.append(("R18", path))
         if not is_skill:
             measure_checked.append(path)
             continue
@@ -2602,7 +2623,6 @@ def run_verifiers(
     # R35 coverage: only a skill modified in place, read on both sides with readable frontmatter.
     # A new skill, or one renamed from any path (a renamed skill is a new identity, and R35 applies
     # to new skills), has no base to be no worse than.
-    measure_covered: list[tuple[str, str]] = []
     compared = [
         path
         for path in candidates

@@ -236,6 +236,19 @@ def test_dispatch_reports_completed_on_valid_json_output(
     reports = dispatch_reviewers(scope, base_sha="deadbeef", repo=repo)
     assert all(r.status == "completed" for r in reports)
     assert all(r.output == {"ok": True} for r in reports)
+    assert all(r.seconds is not None and r.seconds >= 0 for r in reports)
+
+
+def test_a_reviewer_that_made_no_call_has_no_run_time(monkeypatch, repo, change, dependency_index):
+    monkeypatch.setattr(review, "_executable_outside_checkout", lambda name: None)
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        lambda argv, **kw: subprocess.CompletedProcess(argv, 0, _FAKE_TOML_CONTENT, b""),
+    )
+    scope = derive_review_scope([change("plugins/demo-kit/skills/x/SKILL.md")], dependency_index())
+    reports = dispatch_reviewers(scope, base_sha="deadbeef", repo=repo)
+    assert reports and all(r.attempts == 0 and r.seconds is None for r in reports)
 
 
 def test_instruction_extraction_never_reads_pr_working_tree(git_repo):
