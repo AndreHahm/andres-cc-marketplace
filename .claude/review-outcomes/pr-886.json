@@ -22,6 +22,16 @@
     },
     {
       "disposition": "fixed",
+      "finding": "codex-073afda57e56c1fb",
+      "line": 524,
+      "note": "Label renamed to Pinned Version on all 28 entries; version updates stay in issue 885",
+      "path": "plugins/github-actions-kit/skills/github-actions-generator/references/common-actions.md",
+      "pr": 886,
+      "recorded_at": "2026-11-25T08:28:00+00:00",
+      "rule": "correctness"
+    },
+    {
+      "disposition": "fixed",
       "finding": "codex-3332e10c82fafde2",
       "line": 531,
       "note": "The permission note names pull_request and pull_request_target",
@@ -42,6 +52,26 @@
     },
     {
       "disposition": "fixed",
+      "finding": "codex-43d4c465c37d921e",
+      "line": 570,
+      "note": "Label renamed to Pinned Version on all 28 entries; version updates stay in issue 885",
+      "path": "plugins/github-actions-kit/skills/github-actions-generator/references/common-actions.md",
+      "pr": 886,
+      "recorded_at": "2026-11-25T08:28:01+00:00",
+      "rule": "correctness"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-53d37a327158a7ce",
+      "line": 478,
+      "note": "Label renamed to Pinned Version on all 28 entries; version updates stay in issue 885",
+      "path": "plugins/github-actions-kit/skills/github-actions-generator/references/common-actions.md",
+      "pr": 886,
+      "recorded_at": "2026-11-25T08:28:00+00:00",
+      "rule": "correctness"
+    },
+    {
+      "disposition": "fixed",
       "finding": "codex-7a749f7e93749",
       "line": 492,
       "note": "The four action repositories are whitelisted; super-linter under its new owner name",
@@ -59,6 +89,16 @@
       "pr": 886,
       "recorded_at": "2026-11-25T08:13:01+00:00",
       "rule": "accuracy"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-b5669db2e9d09041",
+      "line": 631,
+      "note": "Label renamed to Pinned Version on all 28 entries; version updates stay in issue 885",
+      "path": "plugins/github-actions-kit/skills/github-actions-generator/references/common-actions.md",
+      "pr": 886,
+      "recorded_at": "2026-11-25T08:28:01+00:00",
+      "rule": "correctness"
     },
     {
       "disposition": "fixed",
