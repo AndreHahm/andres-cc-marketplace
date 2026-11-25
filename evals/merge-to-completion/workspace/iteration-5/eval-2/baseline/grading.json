@@ -1,0 +1,37 @@
+{
+  "eval_id": 2,
+  "configuration": "baseline",
+  "model": "claude-opus-5-5",
+  "assertions_evaluated": [
+    {
+      "text": "Writes the transition evidence to a Markdown file under .temp/workmanagement-kit-bridge/<dispatch-id>.md via the Write tool before dispatch, rather than only passing conversation context inline",
+      "passed": true,
+      "evidence": "Write to .temp/workmanagement-kit-bridge"
+    },
+    {
+      "text": "Invokes ${CLAUDE_PLUGIN_ROOT}/scripts/bridge_caller.py with --agent work-transition-reviewer, --target-paths pointing at the written file, --dispatch-id, and --execution-profile read-only",
+      "passed": true,
+      "evidence": "Full wmgt_bridge_caller.py command with all four arguments"
+    },
+    {
+      "text": "Cites (or accurately restates without contradiction) plugins/workmanagement-kit/FOUNDATION_CONTRACTS.md's Codex Bridge-Caller Dispatch procedure, rather than inventing an ad hoc dispatch mechanism",
+      "passed": true,
+      "evidence": "Dispatch restated without contradiction"
+    },
+    {
+      "text": "Treats bridge_caller.py's returned findings/verdict/fix as Codex's own self-authored, untrusted output -- never acted on unchecked",
+      "passed": true,
+      "evidence": "Output untrusted, re-checked"
+    },
+    {
+      "text": "On a typed {\"ok\": false} failure or a declined dispatch, proceeds with the direct criterion-by-criterion comparison instead of blocking",
+      "passed": true,
+      "evidence": "ok:false reported, proceeds"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

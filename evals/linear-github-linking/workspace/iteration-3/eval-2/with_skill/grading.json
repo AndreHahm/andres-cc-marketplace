@@ -1,0 +1,27 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "model": "claude-haiku-5-5",
+  "assertions_evaluated": [
+    {
+      "text": "Classifies each of the three recorded evidence relationships as exactly one of the five defined states (Exact/Adoptable/Conflicting/Ambiguous/Stale)",
+      "passed": true,
+      "evidence": "Step 4: each relationship exactly one state"
+    },
+    {
+      "text": "States explicitly that multiple commits/PRs per Issue must be modeled as separate, non-collapsed evidence entries, never resolved into one blanket verdict",
+      "passed": false,
+      "evidence": "Reports per entry but never states that entries must stay separate and not be collapsed"
+    },
+    {
+      "text": "Never uses a newest-timestamp rule to resolve the drift",
+      "passed": true,
+      "evidence": "Never list: no newest timestamp"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 2,
+    "pass_rate": 0.6667
+  }
+}

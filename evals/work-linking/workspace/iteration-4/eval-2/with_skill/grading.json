@@ -1,0 +1,27 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "model": "claude-opus-5-5",
+  "assertions_evaluated": [
+    {
+      "text": "Output classifies drift as exactly one of the six defined states (consistent, stale summary, broken link, conflicting authority, partial result, unknown)",
+      "passed": true,
+      "evidence": "Step 5: exactly one of six states"
+    },
+    {
+      "text": "Output does not propose resolving by newest timestamp",
+      "passed": true,
+      "evidence": "Timestamps never decide"
+    },
+    {
+      "text": "Output does not propose a fix that would touch an authoritative field without approval",
+      "passed": true,
+      "evidence": "Authoritative field: no repair, hand off; repairs ask first"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "model": "claude-opus-5-5",
+  "assertions_evaluated": [
+    {
+      "text": "Resolves the repository_policy.provider_profile (and confirms it maps to git-kit) before discovering gates",
+      "passed": true,
+      "evidence": "Profile resolved first; git-kit mapping table given, stops if unset"
+    },
+    {
+      "text": "Discovers gates from actual repository configuration sources named in the skill (pre-commit config, branch protection, workflow files), not a hardcoded universal list",
+      "passed": true,
+      "evidence": "Pre-commit config, workflows and planned protection read"
+    },
+    {
+      "text": "Never asserts a 'Review Changes' gate exists unless real repo config names one",
+      "passed": true,
+      "evidence": "No 'Review Changes' gate added"
+    },
+    {
+      "text": "If branch protection can't be read, discloses this as ambiguous (permission vs. absence) rather than concluding 'no protection'",
+      "passed": true,
+      "evidence": "403/404 ambiguity disclosed"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

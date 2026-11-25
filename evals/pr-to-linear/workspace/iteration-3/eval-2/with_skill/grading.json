@@ -1,0 +1,27 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "model": "claude-haiku-5-5",
+  "assertions_evaluated": [
+    {
+      "text": "Explicitly resolves request intent as a pure summarize/reflect ask (not triage/fix) and on that basis skips delegating to git-kit:handling-review-findings entirely",
+      "passed": true,
+      "evidence": "Pure summarize ask; step 2 skipped"
+    },
+    {
+      "text": "Discloses the unresolved-thread-state limitation explicitly (no gh api graphql grant; this skill cannot independently verify thread status) rather than fabricating an independently-confirmed answer",
+      "passed": true,
+      "evidence": "Step 3 reports thread state as not independently knowable"
+    },
+    {
+      "text": "Writes only a concise, deliberate implication-level summary to Linear \u2014 never a verbatim reviewer comment quote or full transcript",
+      "passed": true,
+      "evidence": "Step 4 concise comment, no pasted text"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

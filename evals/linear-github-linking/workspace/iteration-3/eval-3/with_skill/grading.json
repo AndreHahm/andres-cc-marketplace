@@ -1,0 +1,27 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "model": "claude-haiku-5-5",
+  "assertions_evaluated": [
+    {
+      "text": "Repair is modeled as appending a NEW evidence entry whose own `supersedes` field names the earlier entry's evidence_id, never editing or deleting the earlier entry itself",
+      "passed": true,
+      "evidence": "Step 9 appends; supersedes names the old evidence_id; old entry untouched"
+    },
+    {
+      "text": "Repair never touches GitHub state directly \u2014 GitHub is read only to verify the current state, never mutated",
+      "passed": true,
+      "evidence": "Never list: no GitHub change"
+    },
+    {
+      "text": "Never resolves the stale entry by newest-timestamp comparison; correction is toward GitHub's actual current state, since GitHub is authoritative over Git/GitHub facts",
+      "passed": true,
+      "evidence": "Corrects toward GitHub's read-back state, not timestamp"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

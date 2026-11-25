@@ -1,0 +1,27 @@
+{
+  "eval_id": 2,
+  "configuration": "baseline",
+  "model": "claude-opus-5-5",
+  "assertions_evaluated": [
+    {
+      "text": "Classifies each of the three recorded evidence relationships as exactly one of the five defined states (Exact/Adoptable/Conflicting/Ambiguous/Stale)",
+      "passed": true,
+      "evidence": "Step 4: exactly one classification"
+    },
+    {
+      "text": "States explicitly that multiple commits/PRs per Issue must be modeled as separate, non-collapsed evidence entries, never resolved into one blanket verdict",
+      "passed": false,
+      "evidence": "One row per entry, but no explicit statement that entries must not be collapsed"
+    },
+    {
+      "text": "Never uses a newest-timestamp rule to resolve the drift",
+      "passed": true,
+      "evidence": "Never by newest timestamp"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 2,
+    "pass_rate": 0.6667
+  }
+}

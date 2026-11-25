@@ -1,0 +1,21 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/workmanagement-kit/skills/linear-github-linking/SKILL.md",
+  "assertions": [
+    {
+      "text": "Classifies each of the three recorded evidence relationships as exactly one of the five defined states (Exact/Adoptable/Conflicting/Ambiguous/Stale)",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "States explicitly that multiple commits/PRs per Issue must be modeled as separate, non-collapsed evidence entries, never resolved into one blanket verdict",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Never uses a newest-timestamp rule to resolve the drift",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}

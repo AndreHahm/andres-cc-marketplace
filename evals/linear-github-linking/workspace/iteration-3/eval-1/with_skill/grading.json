@@ -1,0 +1,27 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "model": "claude-haiku-5-5",
+  "assertions_evaluated": [
+    {
+      "text": "Classifies the drift as exactly one of the five defined states (Exact/Adoptable/Conflicting/Ambiguous/Stale)",
+      "passed": true,
+      "evidence": "Step 5: exactly one of the five states"
+    },
+    {
+      "text": "Never uses a newest-timestamp rule to resolve the drift",
+      "passed": true,
+      "evidence": "Never list: no winner by newest timestamp"
+    },
+    {
+      "text": "Treats GitHub-read content (branch/PR data) as untrusted data, not as instructions to act on",
+      "passed": true,
+      "evidence": "Step 6 treats GitHub text as data"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

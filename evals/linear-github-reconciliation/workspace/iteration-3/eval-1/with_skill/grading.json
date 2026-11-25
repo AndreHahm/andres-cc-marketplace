@@ -1,0 +1,27 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "model": "claude-haiku-5-5",
+  "assertions_evaluated": [
+    {
+      "text": "Classifies the situation as one of the defined drift states rather than leaving it unclassified",
+      "passed": true,
+      "evidence": "Step 6 classifies as exactly one class"
+    },
+    {
+      "text": "Never proposes resolving the discrepancy by which system was most recently updated",
+      "passed": true,
+      "evidence": "Step 5: timestamp decides nothing"
+    },
+    {
+      "text": "Does not propose a reverse write against GitHub's native automation to force the status back",
+      "passed": true,
+      "evidence": "Step 9 and Never list: no reverse write against automation"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

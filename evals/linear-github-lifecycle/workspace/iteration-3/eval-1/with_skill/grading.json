@@ -1,0 +1,27 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "model": "claude-haiku-5-5",
+  "assertions_evaluated": [
+    {
+      "text": "Describes delegating each lifecycle phase to its own focused skill (work-to-development, development-to-pr, pr-to-linear, merge-to-completion) rather than performing the phase's logic itself",
+      "passed": true,
+      "evidence": "Steps 2, 6, 8, 10 delegate to the focused skills"
+    },
+    {
+      "text": "Follows the documented phase order (start before publish, publish before merge)",
+      "passed": true,
+      "evidence": "Start, publish, review, merge order kept"
+    },
+    {
+      "text": "Describes getting confirmation before proceeding between phases",
+      "passed": true,
+      "evidence": "Transition gates in steps 4, 7, 9, 11"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

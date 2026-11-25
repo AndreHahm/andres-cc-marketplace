@@ -1,0 +1,32 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "model": "claude-haiku-5-5",
+  "assertions_evaluated": [
+    {
+      "text": "Delegates the commit to git-kit:commit rather than staging/committing directly",
+      "passed": true,
+      "evidence": "Step 4 invokes git-kit:commit"
+    },
+    {
+      "text": "Explicitly invokes and relies on linear-work-management's own resolution rules when determining which Linear issue is meant, rather than treating a bare keyword/name match as sufficient",
+      "passed": false,
+      "evidence": "Treats the Issue as 'identifiable from session context'; does not rely on linear-work-management's resolution rules"
+    },
+    {
+      "text": "Searches for an existing PR before proposing to create a new one",
+      "passed": true,
+      "evidence": "Step 2 searches before the commit"
+    },
+    {
+      "text": "Would get explicit AskUserQuestion confirmation before publishing the PR, never a silent guess-and-publish path",
+      "passed": true,
+      "evidence": "Step 9 asks before publishing"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 3,
+    "pass_rate": 0.75
+  }
+}
