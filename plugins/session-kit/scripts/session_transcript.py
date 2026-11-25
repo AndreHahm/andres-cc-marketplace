@@ -7,7 +7,8 @@ Usage as CLI:
   python3 session_transcript.py stats <session.jsonl>
   python3 session_transcript.py tasks <session.jsonl>
   python3 session_transcript.py export <session.jsonl> [--format md|txt] [--include-tools]
-                                        [--output FILE]
+                                        [--include-tasks all|pending]
+                                        [--output FILE [--overwrite]]
   python3 session_transcript.py resume <session.jsonl>
   python3 session_transcript.py diff <session-a.jsonl> <session-b.jsonl>
   python3 session_transcript.py messages <session.jsonl> [--offset N] [--limit N] [--include-tools]
@@ -18,6 +19,7 @@ Usage as CLI:
 from __future__ import annotations
 
 import argparse
+import io
 import json
 import sys
 from pathlib import Path
@@ -698,6 +700,22 @@ def get_diff_data(path: str) -> dict:
 # ---------------------------------------------------------------------------
 
 
+def format_tasks_section(path: str, which: str) -> str:
+    """Render the session's fused task list as a labeled section ("all" or "pending")."""
+    tasks = merge_task_events(get_tasks(path), Path(path).stem, default_status="pending")
+    lines = ["## Tasks\n"]
+    for t in tasks:
+        if which == "pending" and t.get("status") != "pending":
+            continue
+        line = f"- [{t.get('status')}] {t.get('subject') or ''}"
+        if t.get("description"):
+            line += f": {t['description']}"
+        lines.append(" ".join(line.split()))
+    if len(lines) == 1:
+        lines.append("No matching tasks.")
+    return "\n".join(lines) + "\n"
+
+
 def _exit_with_error(err: Any, code: int) -> NoReturn:
     sys.stderr.write(to_json({"error": str(err), "code": code}) + "\n")
     sys.exit(code)
@@ -715,8 +733,9 @@ def _handle_os_error(err: OSError, path_hint: str) -> None:
 def main() -> None:
     # Windows' default console codepage can't encode arbitrary Unicode (e.g. non-ASCII
     # characters in a user's message text); force UTF-8 so print()/stderr never crash on it.
-    sys.stdout.reconfigure(encoding="utf-8")  # ty: ignore[unresolved-attribute]
-    sys.stderr.reconfigure(encoding="utf-8")  # ty: ignore[unresolved-attribute]
+    for stream in (sys.stdout, sys.stderr):
+        if isinstance(stream, io.TextIOWrapper):
+            stream.reconfigure(encoding="utf-8")
 
     args = sys.argv[1:]
     command = args[0] if args else None
@@ -751,19 +770,34 @@ def main() -> None:
             if not session_path:
                 _exit_with_error("Missing session path", 2)
 
-            parser = argparse.ArgumentParser(add_help=False)
+            parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
             parser.add_argument("--format", choices=["md", "txt"], default="md")
             parser.add_argument(
                 "--include-tools", dest="include_tools", action="store_true", default=True
             )
             parser.add_argument("--no-include-tools", dest="include_tools", action="store_false")
             parser.add_argument("--output", default=None)
-            opts, _ = parser.parse_known_args(args[2:])
+            parser.add_argument("--overwrite", action="store_true", default=False)
+            parser.add_argument("--include-tasks", choices=["all", "pending"], default=None)
+            opts = parser.parse_args(args[2:])
 
             transcript = export_transcript(session_path, opts.format, opts.include_tools)
+            if opts.include_tasks:
+                transcript += "\n" + format_tasks_section(session_path, opts.include_tasks)
             if opts.output:
-                with open(opts.output, "w", encoding="utf-8") as f:
-                    f.write(transcript)
+                transcript.encode("utf-8")  # fail before the file is created or truncated
+                if Path(opts.output).exists() and Path(opts.output).samefile(session_path):
+                    _exit_with_error("Output file is the session file itself", 2)
+                # Mode "x" refuses an existing path atomically: no gap between check and write.
+                try:
+                    with open(opts.output, "w" if opts.overwrite else "x", encoding="utf-8") as f:
+                        f.write(transcript)
+                except FileExistsError:
+                    _exit_with_error(
+                        f"Output file already exists: {opts.output} "
+                        "(pass --overwrite to replace it)",
+                        2,
+                    )
                 print(
                     json.dumps(
                         {

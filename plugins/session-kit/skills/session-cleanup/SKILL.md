@@ -68,7 +68,7 @@ Show the total reclaimable space.
 If the user asked for old sessions, there are two groups, because the list also holds short (`tiny`) and `empty`
 sessions of any age:
 
-1. **Old:** every candidate whose `ageDays` is strictly greater than the requested age in days, including a `tiny` or
+1. **Old:** every candidate whose `age_days` is strictly greater than the requested age in days, including a `tiny` or
    `empty` one (the script reports only one reason per session). This is the script's own `old` check: a session
    exactly at the cutoff is not old.
 2. **Short or empty:** every other candidate. Delete these only if the user agrees to this group's own question.
@@ -131,7 +131,8 @@ passed. Eval 3 verified the `--delete-tasks` variant is gated by the same real `
 confirmation as session deletion, with no raw `rm` used. Eval 4 covers a short session exactly at the cutoff, eval 5
 instruction-like candidate text; both prompts forbid commands, so they test the plan only.
 
-**Last dated run record:** `evals/session-cleanup/workspace/iteration-5/` (evals 1-5 after the strict cutoff, the split
+**Last dated run record:** `evals/session-cleanup/workspace/iteration-6/` (evals 4-5 with the real `age_days` key, plan-only, no
+baseline, 8/8), 2026-11-25; earlier, with a wrong key in the prompts of evals 4-5: `evals/session-cleanup/workspace/iteration-5/` (evals 1-5 after the strict cutoff, the split
 questions and the boundary, one agent per eval, plan-only, no baseline, 17/17 assertions), 2026-11-25; earlier: `iteration-4/` (evals 1-3 after the age filter and the
 separate question for short or empty sessions, plan-only, no baseline, 13/13 assertions), 2026-11-25; `iteration-3/`
 (after the Quick Start was added, 10/10), 2026-11-25; earlier: `evals/session-cleanup/workspace/iteration-2/eval-{1,2,3}/with_skill/grading.json`,

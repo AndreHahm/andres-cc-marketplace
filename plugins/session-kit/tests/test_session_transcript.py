@@ -1,8 +1,12 @@
+import json
+import sys
 from pathlib import Path
 
+import pytest
 from session_transcript import (
     export_transcript,
     extract_user_text,
+    format_tasks_section,
     get_diff_data,
     get_errors,
     get_irritation_signals,
@@ -12,6 +16,7 @@ from session_transcript import (
     get_stats,
     get_tasks,
     is_system_message,
+    main,
     merge_task_events,
     parse_session,
     read_lines,
@@ -411,3 +416,116 @@ class TestIsSystemMessage:
 
     def test_returns_false_for_normal_text(self):
         assert is_system_message("hello world") is False
+
+
+class TestExportOutput:
+    @staticmethod
+    def _export(monkeypatch, *flags: str) -> None:
+        monkeypatch.setattr(sys, "argv", ["session_transcript.py", "export", FIXTURE, *flags])
+        main()
+
+    def test_writes_a_new_file(self, monkeypatch, tmp_path):
+        out = tmp_path / "out.md"
+        self._export(monkeypatch, "--output", str(out))
+        assert out.read_text(encoding="utf-8") == export_transcript(FIXTURE, "md", True)
+
+    def test_refuses_an_existing_file_and_keeps_it(self, monkeypatch, tmp_path, capsys):
+        out = tmp_path / "out.md"
+        out.write_text("keep me", encoding="utf-8")
+        with pytest.raises(SystemExit) as exc:
+            self._export(monkeypatch, "--output", str(out))
+        assert exc.value.code == 2
+        captured = capsys.readouterr()
+        assert "already exists" in json.loads(captured.err)["error"]
+        assert captured.out == ""
+        assert out.read_text(encoding="utf-8") == "keep me"
+
+    def test_refuses_a_dangling_symlink(self, monkeypatch, tmp_path):
+        target = tmp_path / "target.md"
+        out = tmp_path / "out.md"
+        out.symlink_to(target)
+        with pytest.raises(SystemExit) as exc:
+            self._export(monkeypatch, "--output", str(out))
+        assert exc.value.code == 2
+        assert not target.exists()
+
+    def test_overwrite_replaces_the_file(self, monkeypatch, tmp_path):
+        out = tmp_path / "out.md"
+        out.write_text("old", encoding="utf-8")
+        self._export(monkeypatch, "--output", str(out), "--overwrite")
+        assert out.read_text(encoding="utf-8") == export_transcript(FIXTURE, "md", True)
+
+    def test_refuses_a_symlink_to_an_existing_file(self, monkeypatch, tmp_path):
+        target = tmp_path / "target.md"
+        target.write_text("keep me", encoding="utf-8")
+        out = tmp_path / "out.md"
+        out.symlink_to(target)
+        with pytest.raises(SystemExit) as exc:
+            self._export(monkeypatch, "--output", str(out))
+        assert exc.value.code == 2
+        assert target.read_text(encoding="utf-8") == "keep me"
+
+    @pytest.mark.parametrize("overwrite", [False, True])
+    def test_unencodable_text_leaves_no_file_behind(self, monkeypatch, tmp_path, overwrite):
+        src = tmp_path / "s.jsonl"
+        src.write_text(
+            json.dumps({"type": "user", "message": {"content": "bad " + chr(0xD800)}}) + "\n",
+            encoding="utf-8",
+        )
+        out = tmp_path / "out.md"
+        if overwrite:
+            out.write_text("keep me", encoding="utf-8")
+        flags = ["--output", str(out)] + (["--overwrite"] if overwrite else [])
+        monkeypatch.setattr(sys, "argv", ["session_transcript.py", "export", str(src), *flags])
+        with pytest.raises(SystemExit) as exc:
+            main()
+        assert exc.value.code == 3
+        assert out.exists() is overwrite
+        if overwrite:
+            assert out.read_text(encoding="utf-8") == "keep me"
+
+    @pytest.mark.parametrize("link", [False, True])
+    def test_never_overwrites_the_session_itself(self, monkeypatch, tmp_path, link):
+        src = tmp_path / "s.jsonl"
+        content = Path(FIXTURE).read_bytes()
+        src.write_bytes(content)
+        out = src
+        if link:
+            out = tmp_path / "out.md"
+            out.symlink_to(src)
+        argv = ["session_transcript.py", "export", str(src), "--output", str(out), "--overwrite"]
+        monkeypatch.setattr(sys, "argv", argv)
+        with pytest.raises(SystemExit) as exc:
+            main()
+        assert exc.value.code == 2
+        assert src.read_bytes() == content
+
+    @pytest.mark.parametrize("flag", ["--over", "--overwite"])
+    def test_abbreviated_or_mistyped_overwrite_is_rejected(self, monkeypatch, tmp_path, flag):
+        out = tmp_path / "out.md"
+        out.write_text("keep me", encoding="utf-8")
+        with pytest.raises(SystemExit) as exc:
+            self._export(monkeypatch, "--output", str(out), flag)
+        assert exc.value.code == 2
+        assert out.read_text(encoding="utf-8") == "keep me"
+
+    def test_include_tasks_writes_a_tasks_section(self, monkeypatch, tmp_path):
+        out = tmp_path / "out.md"
+        self._export(monkeypatch, "--output", str(out), "--include-tasks", "pending")
+        text = out.read_text(encoding="utf-8")
+        assert text.startswith(export_transcript(FIXTURE, "md", True))
+        expected = "- [pending] CLI validation: Add input validation to CLI parser"
+        assert text.endswith(f"## Tasks\n\n{expected}\n")
+
+    def test_include_tasks_pending_leaves_out_other_tasks(self, monkeypatch):
+        tasks = [
+            {"status": "completed", "subject": "done"},
+            {"status": "pending", "subject": "open\nnext"},
+        ]
+        monkeypatch.setattr("session_transcript.merge_task_events", lambda *a, **k: tasks)
+        assert format_tasks_section(FIXTURE, "pending") == "## Tasks\n\n- [pending] open next\n"
+        assert "- [completed] done" in format_tasks_section(FIXTURE, "all")
+
+    def test_tasks_section_without_matches_says_so(self, monkeypatch):
+        monkeypatch.setattr("session_transcript.merge_task_events", lambda *a, **k: [])
+        assert "No matching tasks." in format_tasks_section(FIXTURE, "all")
