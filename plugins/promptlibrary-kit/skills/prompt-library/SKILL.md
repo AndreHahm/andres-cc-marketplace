@@ -234,8 +234,8 @@ maintainer command; this skill does not run it).
 A persisted smoke test, `scripts/smoke_test.py`, checks this skill's frontmatter, referenced files and
 grants (no pre-approved Read, Write, Edit or WebFetch), and runs the validator end to end: a web-origin
 draft carrying a fake key is refused with nothing filed, and a clean draft goes through activation and
-deactivation. It also checks that the triage step is its own `AskUserQuestion` with skill options. Run it
-directly; last run 2026-11-25, 7 of 7 checks passed. It failed on a copy with a pre-approved Write
+deactivation. It also checks that the triage step is its own `AskUserQuestion` with skill options.
+Maintainers run it directly; this skill does not run it; last run 2026-11-25, 7 of 7 checks passed. It failed on a copy with a pre-approved Write
 (2026-10-03) and on a copy with the pre-fix triage step (2026-10-14).
 
 **Verify this skill activates on:** (explicit invocation only; it cannot be model-triggered)
