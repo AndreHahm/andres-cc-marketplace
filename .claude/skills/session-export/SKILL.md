@@ -89,7 +89,7 @@ satisfy it.
 
 If written to file, confirm the path and line count. If inline, present the transcript directly.
 
-The exported transcript contains verbatim user messages, file paths, and (if included) tool call summaries from the original session — review before sharing outside the immediate context.
+The exported transcript contains verbatim user messages, file paths, and (if included) tool call summaries and task subjects and descriptions from the original session. These can hold sensitive information: review and redact it before sharing outside the immediate context.
 
 ## Testing & Validation
 
