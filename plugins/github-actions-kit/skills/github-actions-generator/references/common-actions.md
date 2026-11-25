@@ -3,7 +3,7 @@
 **Last Updated:** February 2026
 **Source:** Official GitHub Actions repositories
 
-This document catalogs frequently used GitHub Actions with current versions, inputs, outputs, and usage examples.
+This document catalogs frequently used GitHub Actions with pinned versions, inputs, outputs, and usage examples.
 
 **Important Notes for 2026:**
 - All actions should be pinned to full 40-character SHA for security
@@ -27,7 +27,7 @@ This document catalogs frequently used GitHub Actions with current versions, inp
 
 ### actions/checkout
 
-**Latest Version:** v6 (v6.0.2)
+**Pinned Version:** v6 (v6.0.2)
 **SHA:** `de0fac2e4500dabe0009e67214ff5f5447ce83dd`
 **Minimum Runner:** v2.327.1+
 
@@ -95,7 +95,7 @@ permissions:
 
 ### actions/setup-node
 
-**Latest Version:** v6 (v6.2.0)
+**Pinned Version:** v6 (v6.2.0)
 **SHA:** `6044e13b5dc448c55e2357c09f80417699197238`
 **Minimum Runner:** v2.328.0+ (for Node 24 support)
 
@@ -146,7 +146,7 @@ permissions:
 
 ### actions/setup-python
 
-**Latest Version:** v6 (v6.2.0)
+**Pinned Version:** v6 (v6.2.0)
 **SHA:** `a309ff8b426b58ec0e2a45f0f869d46889d02405`
 
 **Description:** Setup Python environment
@@ -168,7 +168,7 @@ permissions:
 
 ### actions/setup-java
 
-**Latest Version:** v4 (v4.0.0)
+**Pinned Version:** v4 (v4.0.0)
 **SHA:** `387ac29b308b003ca37ba93a6cab5eb57c8f5f93`
 
 **Description:** Setup Java environment
@@ -190,7 +190,7 @@ permissions:
 
 ### actions/setup-go
 
-**Latest Version:** v5 (v5.0.0)
+**Pinned Version:** v5 (v5.0.0)
 **SHA:** `0c52d547c9bc32b1aa3301fd7a9cb496313a4491`
 
 **Description:** Setup Go environment
@@ -211,7 +211,7 @@ permissions:
 
 ### hashicorp/setup-terraform
 
-**Latest Version:** v3 (v3.1.2)
+**Pinned Version:** v3 (v3.1.2)
 **SHA:** `b9cd54a3c349d3f38e8881555d616ced269862dd`
 
 **Description:** Setup Terraform CLI
@@ -232,7 +232,7 @@ permissions:
 
 ### actions/cache
 
-**Latest Version:** v5 (v5.0.3)
+**Pinned Version:** v5 (v5.0.3)
 **SHA:** `cdf6c1fa76f9f475f3d7449005a359c84ca0f306`
 
 **Description:** Cache dependencies and build outputs with Node 24 runtime support
@@ -262,7 +262,7 @@ permissions:
 
 ### actions/cache/save
 
-**Latest Version:** v4 (v4.0.2)
+**Pinned Version:** v4 (v4.0.2)
 **SHA:** `0c45773b623bea8c8e75f6c82b208c3cf94ea4f9`
 
 **Description:** Save a cache entry unconditionally (the write half of `actions/cache`, for
@@ -288,7 +288,7 @@ workflows that need to save on every run rather than only on a cache miss — pa
 
 ### actions/upload-artifact
 
-**Latest Version:** v7 (v7.0.1)
+**Pinned Version:** v7 (v7.0.1)
 **SHA:** `043fb46d1a93c77aae656e7c1c64a875d1fc6a0a`
 
 **Description:** Upload build artifacts
@@ -314,7 +314,7 @@ workflows that need to save on every run rather than only on a cache miss — pa
 
 ### actions/download-artifact
 
-**Latest Version:** v4 (v4.1.4)
+**Pinned Version:** v4 (v4.1.4)
 **SHA:** `c850b930e6ba138125429b7e5c93fc707a7f8427`
 
 **Description:** Download artifacts from previous jobs
@@ -336,7 +336,7 @@ workflows that need to save on every run rather than only on a cache miss — pa
 
 ### docker/setup-buildx-action
 
-**Latest Version:** v3 (v3.3.0)
+**Pinned Version:** v3 (v3.3.0)
 **SHA:** `d70bba72b1f3fd22344832f00baa16ece964efeb`
 
 **Description:** Setup Docker Buildx for advanced builds
@@ -349,7 +349,7 @@ workflows that need to save on every run rather than only on a cache miss — pa
 
 ### docker/login-action
 
-**Latest Version:** v3 (v3.1.0)
+**Pinned Version:** v3 (v3.1.0)
 **SHA:** `e92390c5fb421da1463c202d546fed0ec5c39f20`
 
 **Description:** Login to Docker registry
@@ -379,7 +379,7 @@ workflows that need to save on every run rather than only on a cache miss — pa
 
 ### docker/build-push-action
 
-**Latest Version:** v5 (v5.3.0)
+**Pinned Version:** v5 (v5.3.0)
 **SHA:** `2cdde995de11925a030ce8070c3d77a52ffcf1c0`
 
 **Description:** Build and push Docker images
@@ -415,7 +415,7 @@ workflows that need to save on every run rather than only on a cache miss — pa
 
 ### docker/metadata-action
 
-**Latest Version:** v5 (v5.5.1)
+**Pinned Version:** v5 (v5.5.1)
 **SHA:** `8e5442c4ef9f78752691e2d8f8d19755c6f78e81`
 
 **Description:** Derive Docker image tags and labels from Git ref, branch, semver, and SHA
@@ -441,7 +441,7 @@ workflows that need to save on every run rather than only on a cache miss — pa
 
 ### aws-actions/configure-aws-credentials
 
-**Latest Version:** v5 (v5.1.1)
+**Pinned Version:** v5 (v5.1.1)
 **SHA:** `61815dcd50bd041e203e49132bacad1fd04d2708`
 
 **Description:** Configure AWS credentials for GitHub Actions
@@ -475,7 +475,7 @@ workflows that need to save on every run rather than only on a cache miss — pa
 
 ### azure/login
 
-**Latest Version:** v2 (v2.1.1)
+**Pinned Version:** v2 (v2.1.1)
 **SHA:** `6c251865b4e6290e7b78be643ea2d005bc51f69a`
 
 **Description:** Login to Azure
@@ -498,7 +498,7 @@ workflows that need to save on every run rather than only on a cache miss — pa
 
 ### codecov/codecov-action
 
-**Latest Version:** v4 (v4.0.1)
+**Pinned Version:** v4 (v4.0.1)
 **SHA:** `e0b68c6749509c5f83f984dd99a76a1c1a231044`
 
 **Description:** Upload code coverage to Codecov
@@ -520,7 +520,7 @@ workflows that need to save on every run rather than only on a cache miss — pa
 
 ### dorny/paths-filter
 
-**Latest Version:** v3 (v3.0.2)
+**Pinned Version:** v3 (v3.0.2)
 **SHA:** `de90cc6fb38fc0963ad72b210f1f284cd68cea36`
 
 **Description:** Detect which paths changed, for conditionally running jobs in a monorepo
@@ -546,7 +546,7 @@ come from the REST API
 
 ### golangci/golangci-lint-action
 
-**Latest Version:** v9 (v9.1.0)
+**Pinned Version:** v9 (v9.1.0)
 **SHA:** `e7fa5ac41e1cf5b7d48e45e42232ce7ada589601`
 
 **Description:** Run golangci-lint (Go static analysis/linting)
@@ -566,7 +566,7 @@ come from the REST API
 
 ### super-linter/super-linter
 
-**Latest Version:** v5 (v5.7.2)
+**Pinned Version:** v5 (v5.7.2)
 **SHA:** `a8150b40c89574adb5f68bf9502b890a236a06b3`
 
 **Description:** Run multiple linters in one action
@@ -590,7 +590,7 @@ come from the REST API
 
 ### slackapi/slack-github-action
 
-**Latest Version:** v1 (v1.25.0)
+**Pinned Version:** v1 (v1.25.0)
 **SHA:** `6c661ce58804a1a20f6dc5fbee7f0381b469e001`
 
 **Description:** Send Slack notifications
@@ -628,7 +628,7 @@ come from the REST API
 
 ### softprops/action-gh-release
 
-**Latest Version:** v2 (v2.0.4)
+**Pinned Version:** v2 (v2.0.4)
 **SHA:** `9d7c94cfd0a1f3ed45544c887983e9fa900f0564`
 
 **Description:** Create GitHub releases
@@ -660,7 +660,7 @@ come from the REST API
 
 ### actions/github-script
 
-**Latest Version:** v7 (v7.0.1)
+**Pinned Version:** v7 (v7.0.1)
 **SHA:** `60a0d83039c74a4aee543508d2ffcb1c3799cdea`
 
 **Description:** Run JavaScript with GitHub API access
@@ -688,7 +688,7 @@ come from the REST API
 
 ### actions/dependency-review-action
 
-**Latest Version:** v4 (v4.8.3)
+**Pinned Version:** v4 (v4.8.3)
 **SHA:** `05fe4576374b728f0c523d6a13d64c25081e0803`
 **Description:** Scans pull requests for vulnerable dependency versions
 
@@ -714,7 +714,7 @@ permissions:
 
 ### actions/attest-sbom
 
-**Latest Version:** v2 (v2.4.0)
+**Pinned Version:** v2 (v2.4.0)
 **SHA:** `bd218ad0dbcb3e146bd073d1d9c6d78e08aa8a0b`
 **Description:** Generate SBOM attestations for artifacts
 
@@ -740,7 +740,7 @@ permissions:
 
 ### actions/attest-build-provenance
 
-**Latest Version:** v2 (v2.4.0)
+**Pinned Version:** v2 (v2.4.0)
 **SHA:** `e8998f949152b193b063cb0ec769d69d929409be`
 **Description:** Generate build provenance attestations for build artifacts
 
@@ -765,7 +765,7 @@ permissions:
 
 ### aquasecurity/trivy-action
 
-**Latest Version:** v0.33 (v0.33.1)
+**Pinned Version:** v0.33 (v0.33.1)
 **SHA:** `b6643a29fecd7f34b3597bc6acb0a98b03d33ff8`
 
 **Description:** Scan container images, filesystems, or repos for vulnerabilities with Trivy
@@ -789,7 +789,7 @@ permissions:
 
 ### github/codeql-action
 
-**Latest Version:** v3 (v3.32.5)
+**Pinned Version:** v3 (v3.32.5)
 **SHA:** `ae9ef3a1d2e3413523c3741725c30064970cc0d4`
 **Description:** GitHub CodeQL scanning actions (`init`, `analyze`, `upload-sarif`)
 
