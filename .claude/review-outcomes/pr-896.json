@@ -110,6 +110,16 @@
       "rule": "R30"
     },
     {
+      "disposition": "accepted",
+      "finding": "codex-a91fa7958e5b",
+      "line": 1189,
+      "note": "R1: swap between check and use, residual, waived and confirmed in the PR",
+      "path": "plugins/promptlibrary-kit/scripts/plib_catalog_validate.py",
+      "pr": 896,
+      "recorded_at": "2026-11-25T20:52:06+00:00",
+      "rule": "path-containment"
+    },
+    {
       "disposition": "fixed",
       "finding": "codex-aa17024ba439",
       "line": 92,
