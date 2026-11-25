@@ -4,7 +4,7 @@
 Guards the properties this read-only skill depends on: frontmatter validity, referenced-file
 existence, a tool grant that reaches ONLY the validator's read commands (the Critical a security
 review once found: a wider grant let stored prompt text trigger writes), a body that names no other
-subcommand, and live behavior against a throwaway catalog (show works; a tampered catalog is
+subcommand, and live behavior against a throwaway catalog (show works; a changed prompt is
 refused). Exit code 0 means every check passed.
 """
 
@@ -97,13 +97,13 @@ def check_live_show_and_tampered_catalog():
         )
         code, _ = fx.run("show", C.SLUG)
         if code == 0:
-            return False, "show returned a prompt from a tampered catalog"
+            return False, "show returned a changed prompt"
         code, out = fx.run("validate")
-        if out.get("ok") is not False:
-            return False, "validate still reports a tampered catalog as ok"
+        if not out.get("blocked"):
+            return False, "validate does not report the changed prompt as blocked"
     finally:
         fx.close()
-    return True, "show returns the prompt; a tampered catalog is refused"
+    return True, "show returns the prompt; a changed prompt is refused and reported"
 
 
 def main() -> int:

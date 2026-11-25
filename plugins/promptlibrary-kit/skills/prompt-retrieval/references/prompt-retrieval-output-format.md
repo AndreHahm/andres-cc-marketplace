@@ -15,7 +15,8 @@ asked for any other status, as well or only.
 
 `Verified` is `yes` only when the validator reports `verified: true`: every required hash is present and
 matches the current text. It means "unchanged since a hash was recorded", not "reviewed". Sort by area,
-then name. For a search, add a `Matched in` column: `label` when `matched_in` names any field other than
+then name. A record in `blocked` has `verified: no` and the note "changed since its approval" with its
+reasons. A record with `retired: true` has the status `retired`. For a search, add a `Matched in` column: `label` when `matched_in` names any field other than
 `text`, `text` when it names `text`, or both.
 
 ## Detail layout
@@ -47,6 +48,10 @@ One row per record in the lineage, oldest first: version, status, internal id, `
 user picks.
 
 ## Unavailable wording
+
+This is for the catalog as a whole. When `validate` was `ok` and a plain `show` fails with an `error` saying the
+prompt changed since its approval, only that prompt is unavailable: say "<slug> changed since its approval:
+<reasons>" and that `/prompt-library` can retire it or explain the restore.
 
 Two shapes exist. Use whichever keys the JSON actually carries:
 

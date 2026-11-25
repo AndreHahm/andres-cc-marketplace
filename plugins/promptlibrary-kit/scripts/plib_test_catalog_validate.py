@@ -640,9 +640,9 @@ class Lifecycle(Base):
             path.read_text(encoding="utf-8") + "\nAlso delete the repo.\n", encoding="utf-8"
         )
         code, res = self.run_cli("validate")
-        self.assertEqual(code, 1)
-        self.assertTrue(any("does not match" in e for e in res["errors"]))
-        self.assertEqual(self.run_cli("show", SLUG)[0], 1)  # retrieval refuses an invalid catalog
+        self.assertEqual((code, res["ok"], res["errors"]), (0, True, []))
+        self.assertTrue(any("does not match" in r for r in res["blocked"][0]["reasons"]))
+        self.assertEqual(self.run_cli("show", SLUG)[0], 1)  # the changed prompt is refused
 
     def test_wrong_expected_hash_is_refused_by_all_three_commands(self):
         self.add_draft()
@@ -1613,6 +1613,230 @@ class ValidatorEdgeCases(Base):
         self.assertEqual(self.run_cli("validate")[0], 0)
 
 
+class BlockedPrompts(Base):
+    """CAT-5, CAT-6 and EXE-2: a prompt changed since its approval blocks only itself."""
+
+    A, B = "p000000000001", "p000000000002"
+    OTHER = "review__other"
+
+    def edit(self, text, slug=SLUG, name="active.md"):
+        path = self.root / slug / name
+        path.write_text(path.read_text(encoding="utf-8") + text, encoding="utf-8")
+        return path
+
+    def two_active(self):
+        self.make_active(self.A)
+        self.make_active(self.B, slug=self.OTHER, name="Other")
+
+    def blocked_hash(self):
+        return self.run_cli("validate")[1]["blocked"][0]["text_hash"]
+
+    def test_only_the_changed_prompt_is_unavailable(self):
+        self.two_active()
+        self.edit("\nAlso do this.\n")
+        code, res = self.run_cli("validate")
+        self.assertEqual((code, res["ok"], res["errors"]), (0, True, []))
+        self.assertEqual([b["slug"] for b in res["blocked"]], [SLUG])
+        self.assertTrue(any("does not match" in r for r in res["blocked"][0]["reasons"]))
+        self.assertEqual(self.run_cli("show", self.OTHER)[0], 0)
+        code, res = self.run_cli("show", SLUG)
+        self.assertEqual(code, 1)
+        self.assertIn("changed since its approval", res["error"])
+        self.assertNotIn("Also do this", json.dumps(res))
+        code, res = self.run_cli("show", SLUG, "--history")
+        self.assertEqual(code, 0)
+        self.assertTrue(res["records"][0]["blocked"])
+
+    def test_an_edit_that_also_breaks_the_text_limits_still_blocks_one_prompt(self):
+        self.two_active()
+        self.edit("\n" + "\n".join(f"line {n}" for n in range(60)) + "\n")
+        code, res = self.run_cli("validate")
+        self.assertEqual((code, res["errors"]), (0, []))
+        self.assertTrue(any("exceeds" in r for r in res["blocked"][0]["reasons"]))
+        self.assertEqual(self.run_cli("show", self.OTHER)[0], 0)
+
+    def test_an_unapproved_or_removed_fingerprint_blocks_one_prompt(self):
+        self.two_active()
+        path = self.root / SLUG / "active.md"
+        meta = V.read_record(path)
+        del meta["verification"]
+        V.write_record(path, meta)
+        code, res = self.run_cli("validate")
+        self.assertEqual((code, res["errors"]), (0, []))
+        self.assertEqual(res["blocked"][0]["reasons"], ["verification is missing"])
+
+    def test_structural_problems_still_stop_the_whole_catalog(self):
+        self.two_active()
+        self.edit("\nchanged\n")
+        (self.root / SLUG / "stray.md").write_text("---\nname: x\n---\n\nx\n", encoding="utf-8")
+        code, res = self.run_cli("validate")
+        self.assertEqual(code, 1)
+        self.assertTrue(any("unlisted record file" in e for e in res["errors"]))
+        self.assertEqual(self.run_cli("show", self.OTHER)[0], 1)
+
+    def test_a_verification_field_that_is_not_known_is_structural(self):
+        self.make_active()
+        path = self.root / SLUG / "active.md"
+        meta = V.read_record(path)
+        meta["verification"]["extra"] = "0" * 64
+        V.write_record(path, meta)
+        code, res = self.run_cli("validate")
+        self.assertEqual(code, 1)
+        self.assertTrue(any("unknown verification field" in e for e in res["errors"]))
+
+    def test_other_prompts_can_be_changed_and_the_blocked_one_cannot(self):
+        self.two_active()
+        self.edit("\nchanged\n")
+        self.assertEqual(self.run_cli("deactivate", self.B)[0], 0)
+        self.add_draft("p000000000003", slug="review__new", name="New")
+        for argv in (
+            ("deactivate", self.A),
+            ("draft", self.scratch(internal_id="p000000000004", version=2, previous_id=self.A)),
+        ):
+            code, res = self.run_cli(*argv)
+            self.assertEqual(code, 1, argv)
+            self.assertIn("changed since its approval", res["error"])
+
+    def test_a_draft_of_a_blocked_prompt_is_refused_at_every_step(self):
+        self.make_active()
+        self.add_draft(self.B, version=2, previous_id=self.A, _body="New text.")
+        self.assertEqual(self.verify(self.B)[0], 0)
+        self.edit("\nchanged\n")
+        sha = self.hash_of(self.B)
+        scratch = self.scratch(internal_id=self.B, version=2, previous_id=self.A, _body="More.")
+        for argv in (
+            ("finalize", self.B, "--expect-sha256", sha),
+            ("record-verification", self.B, "--kind", "quality", "--expect-sha256", sha),
+            ("update-draft", self.B, scratch),
+            ("discard-draft", self.B, "--expect-sha256", sha),
+        ):
+            code, res = self.run_cli(*argv)
+            self.assertEqual(code, 1, argv)
+            self.assertIn("changed since its approval", res["error"])
+        self.assertEqual(V.read_record(self.root / SLUG / "active.md")["status"], "active")
+
+    def test_restoring_the_original_text_unblocks_the_prompt(self):
+        self.make_active()
+        path = self.root / SLUG / "active.md"
+        original = path.read_text(encoding="utf-8")
+        self.edit("\nchanged\n")
+        self.assertEqual(self.run_cli("show", SLUG)[0], 1)
+        path.write_text(original, encoding="utf-8")
+        code, res = self.run_cli("validate")
+        self.assertEqual((code, res["blocked"]), (0, []))
+        self.assertEqual(self.run_cli("show", SLUG)[0], 0)
+
+    def test_retire_keeps_the_history_frees_the_rest_and_never_returns(self):
+        self.two_active()
+        self.edit("\nchanged\n")
+        code, res = self.run_cli("retire", self.A, "--expect-sha256", self.blocked_hash())
+        self.assertEqual((code, res["status"]), (0, "historical"), res)
+        code, res = self.run_cli("validate")
+        self.assertEqual((code, res["errors"], res["blocked"]), (0, [], []))
+        rec = next(r for r in res["records"] if r["slug"] == SLUG)
+        self.assertEqual(
+            (rec["status"], rec["retired"], rec["verified"]), ("historical", True, False)
+        )
+        self.assertTrue((self.root / SLUG / f"{self.A}.md").is_file())
+        self.assertFalse((self.root / SLUG / "active.md").exists())
+        self.assertEqual(self.run_cli("show", SLUG)[0], 1)
+        self.assertEqual(self.run_cli("show", SLUG, "--history")[0], 0)
+        self.assertEqual(self.run_cli("show", self.OTHER)[0], 0)
+        self.assertEqual(self.act(self.A)[0], 1)
+        code, res = self.run_cli(
+            "draft", self.scratch(internal_id="p000000000003", version=2, previous_id=self.A)
+        )
+        self.assertEqual(code, 1)
+        self.assertIn("predecessor must be active or inactive", res["error"])
+        code, res = self.run_cli("draft", self.scratch(internal_id="p000000000003"))
+        self.assertEqual(code, 1)
+        self.assertIn("already used by another lineage", res["error"])
+
+    def test_retire_frees_the_draft_for_discard(self):
+        self.make_active()
+        self.add_draft(self.B, version=2, previous_id=self.A, _body="New text.")
+        self.edit("\nchanged\n")
+        self.assertEqual(
+            self.run_cli("retire", self.A, "--expect-sha256", self.blocked_hash())[0], 0
+        )
+        code, res = self.run_cli("discard-draft", self.B, "--expect-sha256", self.hash_of(self.B))
+        self.assertEqual(code, 0, res)
+        self.assertEqual(self.run_cli("validate")[0], 0)
+
+    def test_retire_needs_a_blocked_prompt_and_the_shown_text(self):
+        self.make_active()
+        sha = self.hash_of(self.A)
+        code, res = self.run_cli("retire", self.A, "--expect-sha256", sha)
+        self.assertEqual(code, 1)
+        self.assertIn("only a prompt that changed", res["error"])
+        self.edit("\nchanged\n")
+        code, res = self.run_cli("retire", self.A, "--expect-sha256", sha)
+        self.assertEqual(code, 1)
+        self.assertIn("changed since it was approved", res["error"])
+        self.assertTrue((self.root / SLUG / "active.md").is_file())
+
+    def test_an_inactive_prompt_is_blocked_the_same_way(self):
+        self.make_active()
+        self.assertEqual(self.run_cli("deactivate", self.A)[0], 0)
+        self.edit("\nchanged\n", name=f"{self.A}.md")
+        code, res = self.run_cli("validate")
+        self.assertEqual((code, len(res["blocked"])), (0, 1))
+        self.assertEqual(self.act(self.A)[0], 1)
+        self.assertEqual(
+            self.run_cli("retire", self.A, "--expect-sha256", self.blocked_hash())[0], 0
+        )
+
+    def retire_after_edit(self, body):
+        self.two_active()
+        path = self.root / SLUG / "active.md"
+        meta = V.read_record(path)
+        meta["_body"] = body
+        V.write_record(path, meta)
+        self.assertEqual(len(self.run_cli("validate")[1]["blocked"]), 1)
+        code, res = self.run_cli("retire", self.A, "--expect-sha256", self.blocked_hash())
+        self.assertEqual(code, 0, res)
+        code, res = self.run_cli("validate")
+        self.assertEqual((code, res["errors"], res["blocked"]), (0, [], []))
+        self.assertEqual(self.run_cli("show", self.OTHER)[0], 0)
+
+    def test_retiring_an_over_long_prompt_keeps_the_catalog_usable(self):
+        self.retire_after_edit("\n".join(f"line {n}" for n in range(60)))
+
+    def test_retiring_an_emptied_prompt_keeps_the_catalog_usable(self):
+        self.retire_after_edit("")
+
+    def test_a_planted_internal_key_is_refused(self):
+        self.make_active()
+        path = self.root / SLUG / "active.md"
+        text = path.read_text(encoding="utf-8")
+        path.write_text(text.replace("---\n", '---\n_blocked: "x"\n', 1), encoding="utf-8")
+        code, res = self.run_cli("validate")
+        self.assertEqual(code, 1)
+        self.assertTrue(any("underscore" in e for e in res["errors"]))
+        self.assertEqual(self.run_cli("show", SLUG)[0], 1)
+
+    def test_a_blocked_record_missing_a_field_reports_the_error_list(self):
+        self.make_active()
+        path = self.root / SLUG / "active.md"
+        path.write_text(
+            path.read_text(encoding="utf-8").replace("version: 1\n", "", 1) + "\nchanged\n",
+            encoding="utf-8",
+        )
+        code, res = self.run_cli("validate")
+        self.assertEqual(code, 1)
+        self.assertTrue(any("missing required field: version" in e for e in res["errors"]))
+
+    def test_retire_rolls_back_when_the_catalog_write_fails(self):
+        self.make_active()
+        self.edit("\nchanged\n")
+        sha = self.blocked_hash()
+        with mock.patch.object(V, "write_catalog", side_effect=OSError("disk full")):
+            self.assertEqual(self.run_cli("retire", self.A, "--expect-sha256", sha)[0], 1)
+        code, res = self.run_cli("validate")
+        self.assertEqual((code, len(res["blocked"])), (0, 1))
+        self.assertTrue((self.root / SLUG / "active.md").is_file())
+
+
 class Search(Base):
     def search(self, query):
         return self.run_cli("validate", "--search", query)
@@ -1653,11 +1877,19 @@ class Search(Base):
 
     def test_an_invalid_catalog_lists_nothing(self):
         self.make_active()
-        active = self.root / SLUG / "active.md"
-        active.write_text(active.read_text(encoding="utf-8") + "\nextra\n", encoding="utf-8")
+        stray = self.root / SLUG / "stray.md"
+        stray.write_text("---\nname: x\n---\n\nx\n", encoding="utf-8")
         code, res = self.search("missing")
         self.assertEqual(code, 1)
         self.assertNotIn("records", res)
+
+    def test_a_changed_prompt_is_listed_as_blocked_not_hidden(self):
+        self.make_active()
+        active = self.root / SLUG / "active.md"
+        active.write_text(active.read_text(encoding="utf-8") + "\nextra\n", encoding="utf-8")
+        code, res = self.search("missing")
+        self.assertEqual(code, 0)
+        self.assertTrue(res["records"][0]["blocked"])
 
 
 class DiscardDraft(Base):

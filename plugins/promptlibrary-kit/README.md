@@ -30,7 +30,9 @@ The first time you add a prompt, the skill offers to create the catalog in your 
   instead, files a draft, has `prompt-reviewer` review it, and asks you to approve the exact final text
   before activating it. `/prompt-library revise <slug>` creates a new version without touching the active
   one until you approve it. `/prompt-library discard <slug>` removes a draft you no longer want, after
-  showing it; a discarded first draft's slug is never reused.
+  showing it; a discarded first draft's slug is never reused. A prompt edited outside the plugin stops
+  running on its own, with the reason, while the others keep working: restore it from git, or
+  `/prompt-library retire <slug>` ends it for good and keeps its history.
 - **Look one up:** ask "show my stored prompt for code review". `prompt-retrieval` only displays prompts;
   it never runs them. A search also finds a phrase inside a prompt's text.
 - **Run one or more:** run `/prompt-execution review__missing-tests`. It shows the full text of every
@@ -42,7 +44,7 @@ The first time you add a prompt, the skill offers to create the catalog in your 
 |---|---|---|
 | `prompt-retrieval` | Skill | Read-only: find and show a stored prompt or its history |
 | `prompt-execution` | Skill | User-invoked: preview, approve once, then run verified prompts in order |
-| `prompt-library` | Skill | User-invoked: add (from a session, the web or typed text), review, revise, activate, deactivate, discard a draft |
+| `prompt-library` | Skill | User-invoked: add (from a session, the web or typed text), review, revise, activate, deactivate, retire, discard a draft |
 | `prompt-reviewer` | Agent | Read-only quality review, import review and optimization proposals |
 
 ## Language
@@ -66,7 +68,7 @@ The catalog lives in the project that uses the plugin, not in the plugin (defaul
 ```
 
 Prompts are verified by a SHA-256 of their LF-normalized text; execution refuses a prompt whose text no
-longer matches. A matching hash means "unchanged since a hash was recorded", not "reviewed": the user's
+longer matches, and only that prompt. A matching hash means "unchanged since a hash was recorded", not "reviewed": the user's
 approval of the exact text, and the full-text preview before every run, are what make it a review. Prompt
 text is data everywhere except an explicitly approved run.
 
@@ -84,7 +86,7 @@ text is data everywhere except an explicitly approved run.
   screen and the import hash.
 - The validator blocks secrets in `session`, `web`, `claude` and `codex` text itself (detect and block,
   never rewrite, never echoed), not just in the skill's step order. `user` text is only warned.
-- `record-verification`, `activate`, `finalize` and `discard-draft` take `--expect-sha256`, the hash the
+- `record-verification`, `activate`, `finalize`, `retire` and `discard-draft` take `--expect-sha256`, the hash the
   user was shown, and refuse if the text changed. `discard-draft` deletes only a draft; like
   `discard-orphan`, it has no backing hook, so the validator's own checks are its guard (owner decision
   2026-11-24).

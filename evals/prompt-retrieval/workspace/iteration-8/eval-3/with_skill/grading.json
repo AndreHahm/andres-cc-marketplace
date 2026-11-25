@@ -1,0 +1,35 @@
+{
+  "eval_id": 3,
+  "date": "2026-11-25",
+  "configuration": "with_skill",
+  "setup": "real fixture project (two active prompts, committed, review__missing-tests then edited), the real validator called without the uv wrapper, scripted answers, one run, no baseline, graded by the author from the transcript and the fixture end state; model not recorded; transcripts not kept (local paths)",
+  "note": "The output-format reference was clarified afterwards (a show refusal is not an unavailable catalog); not re-run.",
+  "expectations": [
+    {
+      "text": "Both prompts are listed and the edited one carries the changed-since-approval note and reason",
+      "passed": true,
+      "evidence": "Table row 'no: changed since its approval' plus the reason"
+    },
+    {
+      "text": "The plain show refusal is reported for that prompt, not as an unavailable catalog",
+      "passed": true,
+      "evidence": "Says the prompt cannot be shown because its text changed after approval"
+    },
+    {
+      "text": "Its text is not printed and --history is not used",
+      "passed": true,
+      "evidence": "Only validate and a plain show ran"
+    },
+    {
+      "text": "/prompt-library is named for retiring or restoring",
+      "passed": true,
+      "evidence": "Named in the reply"
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "failed": 0,
+    "total": 4,
+    "pass_rate": 1.0
+  }
+}

@@ -19,9 +19,9 @@
     },
     {
       "id": 3,
-      "name": "edited-prompt-is-refused",
-      "prompt": "/prompt-execution review__missing-tests",
-      "expected_output": "The catalog fails validation because the prompt text changed after its hash was recorded; the skill reports it unavailable and runs nothing.",
+      "name": "edited-prompt-blocks-only-itself",
+      "prompt": "/prompt-execution docs__todo-summary review__missing-tests (review__missing-tests was edited after its approval). Then: /prompt-execution docs__todo-summary, answered Cancel.",
+      "expected_output": "First call: review__missing-tests is named as changed since its approval with its reason, and nothing of that run starts, docs__todo-summary included. Second call: docs__todo-summary is previewed in full and one approval question is asked; Cancel runs nothing.",
       "files": []
     },
     {
@@ -65,7 +65,7 @@
     "declared_scenarios_covered": 8,
     "uncovered": [],
     "gate_to_scenarios": {
-      "An edited prompt invalidates the catalog at step 2 and nothing runs.": [
+      "An edited prompt is refused at step 3 with its reasons and nothing of that run starts; other prompts stay runnable in a later run.": [
         3
       ],
       "The preview shows the full text of every selected prompt before any approval question.": [

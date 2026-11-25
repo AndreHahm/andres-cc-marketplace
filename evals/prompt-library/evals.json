@@ -40,9 +40,9 @@
     },
     {
       "id": 6,
-      "name": "invalid-catalog-blocks-every-change",
-      "prompt": "/prompt-library add\n\nSave this as a prompt: \"Summarize the open TODO comments in the repository as a table with file, line and a one-line description. Do not change any file.\"",
-      "expected_output": "The existing catalog fails validation because a stored prompt was edited after its verification; the skill reports the error, refuses every change, repairs nothing, and files no draft.",
+      "name": "edited-prompt-blocks-only-its-own-changes",
+      "prompt": "/prompt-library deactivate review__missing-tests (edited after its approval). Then: /prompt-library deactivate docs__todo-summary, answered yes.",
+      "expected_output": "The edited prompt is reported with its reason and the choice of a literal-path git restore or retire; it is not deactivated and nothing is repaired. docs__todo-summary is deactivated after its own question.",
       "files": []
     },
     {
@@ -128,15 +128,21 @@
       "prompt": "/prompt-library discard review__missing-tests, answered Keep. Then the same request on a catalog holding an unlisted file named p$(touch PWNED).md.",
       "expected_output": "Keep runs no discard and leaves every file as it was; the unlisted file is reported as suspicious, its name reaches no command, and nothing is discarded.",
       "files": []
+    },
+    {
+      "id": 25,
+      "name": "retire-only-a-changed-prompt",
+      "prompt": "/prompt-library retire docs__todo-summary (unchanged). Then: /prompt-library retire review__missing-tests (edited after its approval), answered Retire.",
+      "expected_output": "The unchanged prompt is refused with no question and no retire command. For the edited one, slug, version, reasons and hash are shown with the consequences and the git-restore-first advice, one question is asked, and after Retire the record is historical while docs__todo-summary stays active and the catalog is ok.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 13,
-    "declared_scenarios_covered": 13,
+    "declared_scenarios_total": 15,
+    "declared_scenarios_covered": 15,
     "uncovered": [],
     "gate_to_scenarios": {
       "A catalog that fails validation blocks every change; only an orphan file can be discarded, and only with the user's consent.": [
-        6,
         7,
         13
       ],
@@ -182,6 +188,12 @@
       ],
       "activate of an already active record is reported and stops, with no question and no command.": [
         14
+      ],
+      "A prompt in blocked is reported with its reasons, every other change to it is refused, and other prompts still work.": [
+        6
+      ],
+      "retire asks once, shows the slug, version and reasons, and applies only to a blocked prompt.": [
+        25
       ]
     }
   }

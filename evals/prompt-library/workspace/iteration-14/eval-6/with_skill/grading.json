@@ -1,0 +1,35 @@
+{
+  "eval_id": 6,
+  "date": "2026-11-25",
+  "configuration": "with_skill",
+  "setup": "real fixture project (two active prompts, committed, review__missing-tests then edited), the real validator called without the uv wrapper, scripted answers, one run, no baseline, graded by the author from the transcript and the fixture end state; model not recorded; transcripts not kept (local paths)",
+  "note": "Re-run of iteration-13. Step 1's restorable-path wording was corrected afterwards to include active.md; not re-run.",
+  "expectations": [
+    {
+      "text": "The edited prompt is reported with its reason and is not deactivated",
+      "passed": true,
+      "evidence": "Reported; still active (checked)"
+    },
+    {
+      "text": "No question is asked about the refused change",
+      "passed": true,
+      "evidence": "No question, no command after validate"
+    },
+    {
+      "text": "A literal-path git restore or retire is offered",
+      "passed": true,
+      "evidence": "Both given; the restore form with a Windows catalog_root was run separately and unblocked the prompt"
+    },
+    {
+      "text": "The other prompt is deactivated after its own question",
+      "passed": true,
+      "evidence": "docs__todo-summary is inactive (checked)"
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "failed": 0,
+    "total": 4,
+    "pass_rate": 1.0
+  }
+}

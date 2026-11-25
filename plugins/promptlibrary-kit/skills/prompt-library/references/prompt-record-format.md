@@ -67,7 +67,9 @@ For `session` origin use `session_id` and `turns` (one text value such as `3-5, 
 `verification.quality` (and `import`) is the SHA-256 of the prompt text after normalizing line endings to
 LF and dropping leading and trailing newline characters (a line holding only spaces or tabs is kept and
 hashed). A Windows and a Linux checkout therefore agree, and any edit to the text makes an earlier hash
-stop matching. `... hash <file>` prints it.
+stop matching. `... hash <file>` prints it. An `active` or `inactive` record whose text no longer matches is
+blocked on its own: `validate` lists it under `blocked` and stays `ok` while the other prompts work; every
+change to that prompt except `retire` is refused.
 
 A recorded hash means "unchanged since the hash was recorded". It does not prove the text was reviewed: a
 change that rewrites both the text and the hash would still match. Review is the user's approval of the
@@ -100,6 +102,7 @@ initial draft --verify (+import review)--> activate --> active <--> inactive
 active or inactive --revise--> draft successor (unverified)
 draft (never active) --discard--> removed; a version 1 draft's slug stays reserved
 finalize successor --> successor active or inactive; predecessor historical
+prompt changed since its approval --retire--> historical (never runs again; slug stays taken)
 ```
 
 A draft, initial or successor, can be edited in place (`update-draft`) until it is activated or finalized.

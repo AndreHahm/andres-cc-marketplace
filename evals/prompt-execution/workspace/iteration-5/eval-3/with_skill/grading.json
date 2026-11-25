@@ -1,0 +1,35 @@
+{
+  "eval_id": 3,
+  "date": "2026-11-25",
+  "configuration": "with_skill",
+  "setup": "real fixture project (two active prompts, committed, review__missing-tests then edited), the real validator called without the uv wrapper, scripted answers, one run, no baseline, graded by the author from the transcript and the fixture end state; model not recorded; transcripts not kept (local paths)",
+  "note": "The second validate output was discarded and only its exit code read. Step 3's wording was tightened afterwards.",
+  "expectations": [
+    {
+      "text": "The mixed run starts nothing: no preview, no question",
+      "passed": true,
+      "evidence": "Stopped at step 3; no show command"
+    },
+    {
+      "text": "The reply says the prompt changed since its approval, with the reason",
+      "passed": false,
+      "evidence": "Says its text no longer matches its verification and gives the reason, but not the required wording"
+    },
+    {
+      "text": "The unchanged prompt alone is previewed in full and one question is asked",
+      "passed": true,
+      "evidence": "Full text and one Run/Cancel question with the hash prefix"
+    },
+    {
+      "text": "Cancel runs nothing",
+      "passed": true,
+      "evidence": "Nothing ran; fixture unchanged (checked)"
+    }
+  ],
+  "summary": {
+    "passed": 3,
+    "failed": 1,
+    "total": 4,
+    "pass_rate": 0.75
+  }
+}
