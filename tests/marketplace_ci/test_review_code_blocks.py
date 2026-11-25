@@ -1,4 +1,4 @@
-"""The R18 verifier (issue #576, #568 Phase 2): fenced code blocks over 20 lines (Major) or 30
+"""The R18 verifier (issue #576, #568 Phase 2): fenced code blocks over 20 lines (Minor) or 30
 (Critical) in a skill, command or agent file, reported only when the PR adds or worsens one. The
 repo already holds hundreds of blocks over 20 lines, so the comparison with the base is what keeps
 the check from blocking PRs that never wrote them. Weak-warning blocks (11 to 20 lines) are not
@@ -160,11 +160,20 @@ def test_the_parser_stays_linear_on_hostile_input():
 # --- findings ---------------------------------------------------------------------------------
 
 
-def test_a_new_block_over_20_lines_is_a_major_measurement_finding():
-    (finding,) = rv.check_code_blocks(SKILL, _doc(_block(25)), None)
-    assert finding.rule == "r18-code-block-line-count" and finding.severity == "Major"
+@pytest.mark.parametrize("path", [SKILL, COMMAND, AGENT])
+@pytest.mark.parametrize("lines", [21, 30])
+def test_a_warning_tier_block_never_blocks(path, lines):
+    """The rulebook calls this tier "do not block" (issue #862)."""
+    (finding,) = rv.check_code_blocks(path, _doc(_block(lines)), None)
+    assert finding.severity == "Minor" and "warning tier" in finding.evidence
+    assert gate_decision(finding, in_diff=True).outcome == "notice"
+
+
+def test_a_new_block_over_30_lines_is_a_blocking_measurement_finding():
+    (finding,) = rv.check_code_blocks(SKILL, _doc(_block(35)), None)
+    assert finding.rule == "r18-code-block-line-count" and finding.severity == "Critical"
     assert finding.rule_class == "measurement" and finding.source == "script"
-    assert finding.line is None and "line 3" in finding.evidence and "25" in finding.evidence
+    assert finding.line is None and "line 3" in finding.evidence and "35" in finding.evidence
     assert gate_decision(finding, in_diff=True).outcome == "block"
 
 
@@ -262,6 +271,51 @@ def test_the_remediation_points_at_the_registry_not_at_a_note():
     assert "review_exceptions.yaml" in finding.remediation
 
 
+# --- R18 coverage: what the gate may weigh a model R18 claim against (issue #862) --------------
+
+
+def _r18_covered(git_repo, path, before, after):
+    base = None
+    if before is not None:
+        git_repo.write(path, before)
+        base = _commit(git_repo.root, "base")
+    git_repo.write(path, after)
+    _commit(git_repo.root, "change")
+    change = ChangedPath("A" if before is None else "M", None, path)
+    outcomes = rv.run_verifiers(git_repo.root, (change,), base)
+    return rv.script_coverage(git_repo.root, outcomes).covers("R18", path)
+
+
+@pytest.mark.parametrize("path", [COMMAND, AGENT])
+def test_a_measured_file_without_a_new_critical_block_is_r18_covered(git_repo, path):
+    assert _r18_covered(git_repo, path, None, _doc(_block(25)))
+
+
+def test_a_file_with_a_new_critical_block_is_not_r18_covered(git_repo):
+    assert not _r18_covered(git_repo, COMMAND, None, _doc(_block(31)))
+
+
+def test_a_critical_block_the_base_already_had_is_r18_covered(git_repo):
+    before = _doc(_block(40))
+    assert _r18_covered(git_repo, COMMAND, before, before + "\nmore text\n")
+
+
+def test_a_critical_block_replaced_in_place_is_not_r18_covered(git_repo):
+    """The count is unchanged, so the script reports nothing; the model's finding must stand."""
+    before, after = _doc(_block(35)), _doc(_block(500, tag="y"))
+    assert rv.check_code_blocks(COMMAND, after, before) == ()
+    assert not _r18_covered(git_repo, COMMAND, before, after)
+
+
+def test_a_file_that_cannot_be_read_is_not_r18_covered(git_repo):
+    git_repo.write("plain.md", "x\n")
+    (git_repo.root / COMMAND).parent.mkdir(parents=True, exist_ok=True)
+    (git_repo.root / COMMAND).symlink_to("../../../plain.md")
+    _commit(git_repo.root, "link")
+    outcomes = rv.run_verifiers(git_repo.root, (ChangedPath("A", None, COMMAND),))
+    assert not rv.script_coverage(git_repo.root, outcomes).covers("R18", COMMAND)
+
+
 # --- scope ------------------------------------------------------------------------------------
 
 
@@ -274,7 +328,7 @@ EXAMPLE = "plugins/demo-kit/skills/demo/examples/deep/notes.md"
 
 
 @pytest.mark.parametrize("path", [REFERENCE, EXAMPLE, ".claude/skills/demo/references/notes.md"])
-@pytest.mark.parametrize("lines,tier", [(25, "major"), (40, "critical")])
+@pytest.mark.parametrize("lines,tier", [(25, "warning"), (40, "critical")])
 def test_references_and_examples_are_reported_as_minor_and_never_block(path, lines, tier):
     (finding,) = rv.check_code_blocks(path, _doc(_block(lines)), None)
     assert finding.severity == "Minor" and f"{tier} tier" in finding.evidence

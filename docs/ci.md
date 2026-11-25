@@ -337,7 +337,10 @@ The whole dispatch has a 40-minute budget (`DISPATCH_BUDGET_SECONDS`), kept unde
 (`CODEX_KIT_REVIEW_TIMEOUT_MS`) plus 60 seconds of process slack still fits in what is left. A reviewer that cannot start or retry within the
 budget is reported as failed with a `dispatch budget exhausted` error, so the job exits with a clear result
 instead of being killed mid-call. `codex-review-result.json` carries a `reviewer_attempts` map (reviewer name
-to bridge calls made) so a reviewer that needed retries stays visible even when the run passes. When a
+to bridge calls made) so a reviewer that needed retries stays visible even when the run passes. Each entry of
+its `reviewer_results` map holds that reviewer's wall time in `seconds` (retries included, left out when no call
+was made), and the job summary of a run whose reviewers all
+answered lists it. When a
 reviewer fails, the file is still written, with a `dispatch_failed` list (reviewer, attempts, error) and
 `blocking: true`, so the uploaded `codex-review-result` artifact holds a machine-readable copy of the error
 (the same text the log line carries); the job still exits 2. Every other exit-2 path of `run-codex-review`
@@ -779,7 +782,7 @@ the reviewer is). Every vocabulary in use maps onto it:
 | review envelope, `*-reviewer` agents | `critical` / `major` / `minor` | unchanged |
 | `plugin-validator` | `critical` / `warning` | `critical` / `major` |
 | `plugin-rulebook-checker` | `fail` / `advisory` | `critical` / `minor` |
-| R13/R18 size tiers | `Critical` / `Warning` | `critical` / `major` |
+| R13/R18 size tiers | `Critical` / `Warning` | `critical` / `major` (CI's own R18 check reports `Warning` as Minor) |
 | R13/R18 size tiers | `Soft Warning` / `Weak Warning` | `minor` |
 
 A test keeps the rulebook rows equal to `plugin-rulebook/references/evidence-schema.md`.
@@ -834,8 +837,8 @@ Not covered: the advisory Claude review's own severity check (`claude_review.py`
 
 A model finding is also a notice when a script contradicts it (`_SCRIPT_OWNED_RULES`, `ScriptCoverage`). All
 of these must hold: only `plugin-rulebook-checker` reported it; its `rule` field (the axis) itself names exactly
-one of R33, R35 or R37 (`plugin-rulebook-checker` splits a finding per rule); every rulebook rule id its whole text names (axis, evidence, fix; read case-insensitively) is
-one of those three; and this run's scripts covered the
+one of R18, R33, R35 or R37 (`plugin-rulebook-checker` splits a finding per rule); every rulebook rule id its whole text names (axis, evidence, fix; read case-insensitively) is
+one of those four; and this run's scripts covered the
 finding's own location. An id found only in the evidence or fix never qualifies a finding, because those
 often quote the PR's own lines: a PR could plant "per R35" beside a real defect (issue #525 security review).
 R37 coverage is each grant document the `structure` verifier read in full without an
@@ -870,7 +873,12 @@ was neither added nor removed nor closed by `...` (other readers run on to the n
 gain a `references/` directory (in any letter case; a plain file of that name is not one, a symlink or submodule is), and both sides are
 small enough and shallow enough to parse (a parser error covers nothing). So a model R35 claim about a section the
 base already lacked is a notice, and a new skill, a removed or renamed heading or a new `references/` directory
-still gets the model's verdict. The finding's location is compared after lexical normalization (`./x` and `a//b`
+still gets the model's verdict. R18 coverage (issue #862) is each changed skill, command or agent file the
+`measurement` verifier read and found no new Critical block in: none past 30 lines that is not an identical block
+of the base. It also needs every component the finding cites to be covered, plain path characters and no symlink.
+Accepted residuals: a checker finding that names only R18 (or R18 with another covered rule of the four) for
+another defect in such a file is a notice, agent files included, so R18 reaches more files than R35; and where the
+script's fence reading is mistaken (see `r18-code-block-line-count`), no model finding backs it up. The finding's location is compared after lexical normalization (`./x` and `a//b`
 name `x` and `a/b`), an absolute one under the checkout root without a `..` segment after it is made relative; any other absolute location
 never matches, so it keeps blocking.
 Without coverage nothing is downgraded, and
@@ -989,11 +997,13 @@ finding (a waiver line can, R7).
   new file; a lone carriage return counts as a line break; and a repeated or non-string `description` or
   `when_to_use` is an unverifiable finding, not a clean pass.
 - **`r18-code-block-line-count`** (rule class `measurement`). A fenced code block of more than 20 lines is
-  Major and of more than 30 is Critical, in a skill, command or agent file. In a skill's `references/` and
+  Minor and never blocks (the rulebook's Warning tier, issue #862), and of more than 30 is Critical, in a skill,
+  command or agent file. A model's R18 finding on such a file is a notice when script coverage (above) holds
+  for it: the script read the file and found no new Critical block. In a skill's `references/` and
   `examples/`, where the rulebook itself sends large blocks, the same finding is Minor and never blocks
   (issue #862; a file there that cannot be read, or is left after 30 seconds, is skipped). A model's R18 finding there is a notice too,
   when only `plugin-rulebook-checker` reported it, its rule, evidence and fix name no rule but R18, and every
-  component is such a document; unlike R33, R35 and R37 it needs no script coverage. Accepted residual: a
+  component is such a document; unlike R33, R35, R37 and R18 on a component file it needs no script coverage. Accepted residual: a
   model that names only R18 for another defect there is capped. Blocks are read as CommonMark does: a fence of three or more backticks
   or tildes, after any blockquote and list markers (nested ones too); closed at the same blockquote depth by a
   fence of the same character at least as long, with no other text and not indented more than three columns
@@ -1006,8 +1016,7 @@ finding (a waiver line can, R7).
   file with no line**, naming up to five blocks in its evidence. A finding exists only when the PR made the
   file worse against the real base, so it is the PR's by construction; a line would let an edit that leaves
   the fences alone (filling a block in the middle) fall outside the diff. Splitting a Critical block into a
-  Critical and a Major one raises the count at the Major tier and is reported; split into blocks of 20 lines
-  or fewer instead. The rulebook's in-file `R18 exception` note is **not** honored by the script: a PR could
+  Critical and a Warning one raises the count at the Warning tier and is reported as Minor. The rulebook's in-file `R18 exception` note is **not** honored by the script: a PR could
   type one above its own block and waive its own finding, so a waiver is an entry for
   `r18-code-block-line-count` in the Tier-1 exceptions registry (the note still tells model reviewers and
   humans why). R18 is a size heuristic, not a security boundary: blocks of 20 lines or fewer are never

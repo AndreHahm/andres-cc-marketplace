@@ -226,15 +226,21 @@ def test_a_failure_after_dispatch_keeps_the_reviewers_that_ran(monkeypatch, revi
     good = json.loads(CLEAN)
     reports = [
         ReviewerReport(reviewer="security-reviewer", status="completed", output=None, attempts=2),
-        ReviewerReport(reviewer="dependency-reviewer", status="completed", output=good, attempts=1),
+        ReviewerReport(
+            reviewer="dependency-reviewer", status="completed", output=good, attempts=1, seconds=7.5
+        ),
     ]
+    summary = tmp_path / "summary.md"
+    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(summary))
     rc, payload, base_sha = _run_with_reports(monkeypatch, review_repo, tmp_path, reports)
     assert rc == 2
     assert payload["status"] == "could_not_run"
     assert payload["reviewer_results"] == {
         "security-reviewer": {"status": "could_not_run", "attempts": 2},
-        "dependency-reviewer": {"status": "clean", "attempts": 1},
+        "dependency-reviewer": {"status": "clean", "attempts": 1, "seconds": 7.5},
     }
+    assert "dependency-reviewer: 7.5 s, 1 call(s)" in summary.read_text(encoding="utf-8")
+    assert "security-reviewer:" not in summary.read_text(encoding="utf-8")
     assert payload["provenance"]["base_sha"] == base_sha
     assert payload["provenance"]["model"] == "test-model"  # reported by the reviewer that answered
 

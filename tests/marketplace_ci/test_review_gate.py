@@ -396,6 +396,32 @@ def test_a_checker_r35_claim_on_a_skill_no_worse_than_its_base_is_a_notice():
     assert _outcome(other, R35_NO_WORSE) == "block"
 
 
+def test_a_checker_r18_claim_on_a_file_without_a_new_critical_block_is_a_notice():
+    """Issue #862: the script measures block sizes, so a model's own count does not block."""
+    covered = ScriptCoverage(clean=frozenset({("R18", SKILL)}))
+    finding = _claim("25-line block", rule="plugin-rulebook:R18")
+    assert _outcome(finding, covered) == "notice"
+    assert _outcome(finding, ScriptCoverage()) == "block"
+    mixed = _claim("R18 and R6 broken", rule="plugin-rulebook:R18")
+    assert _outcome(mixed, covered) == "block"
+    other = _claim("25-line block", rule="plugin-rulebook:R18", reviewer="skill-reviewer")
+    assert _outcome(other, covered) == "block"
+    elsewhere = _claim("big", rule="R18", path="plugins/demo-kit/skills/other/SKILL.md")
+    assert _outcome(elsewhere, covered) == "block"
+
+
+def test_an_r18_claim_naming_an_uncovered_component_or_a_symlink_blocks():
+    covered = ScriptCoverage(clean=frozenset({("R18", SKILL)}))
+    claim = "plugin-rulebook:R18"
+    inside = _claim("25-line block", rule=claim, components=(f"{SKILL}:12",))
+    assert _outcome(inside, covered) == "notice"
+    script = _claim("x", rule=claim, components=("plugins/demo-kit/scripts/run.sh:12",))
+    assert _outcome(script, covered) == "block"
+    assert _outcome(_claim("x", rule=claim, via_symlink=True), covered) == "block"
+    odd = _claim("x", rule=claim, components=(SKILL.replace("/", "\\"),))
+    assert _outcome(odd, covered) == "block"
+
+
 # The blocking fixtures below name their rule in `rule`, as the checker does, so each one blocks
 # on the condition it is about rather than on a generic axis (PR #855 review).
 R37_AXIS = "plugin-rulebook:R37"

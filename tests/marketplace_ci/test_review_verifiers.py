@@ -1063,7 +1063,7 @@ def test_r35_a_file_too_large_to_parse_is_not_no_worse():
 
 def _covered(outcomes):
     (measurement,) = [o for o in outcomes if o.name == "measurement"]
-    return measurement.covered
+    return tuple(pair for pair in measurement.covered if pair[0] == "R35")
 
 
 def test_run_verifiers_covers_r35_for_a_modified_skill_whose_sections_are_unchanged(git_repo):
