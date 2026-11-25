@@ -25,8 +25,8 @@
     },
     "operation": {
       "type": "string",
-      "enum": ["create", "query", "update"],
-      "description": "Absent means create, so every single-record caller is unchanged. See references/wmgt-intake-batch-contract.md and references/wmgt-intake-query-update-contract.md."
+      "enum": ["create", "query", "update", "classify"],
+      "description": "Absent means create, so every single-record caller is unchanged. See references/wmgt-intake-batch-contract.md, references/wmgt-intake-query-update-contract.md and references/wmgt-intake-classify-contract.md."
     },
     "content": {
       "type": "object",
@@ -46,6 +46,21 @@
       "maxItems": 50,
       "items": {"type": "string", "maxLength": 367, "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}/[A-Za-z0-9][A-Za-z0-9._-]{0,99}\\|[^|\\r\\n]{1,100}\\|[A-Za-z0-9._-]{8,64}$"},
       "description": "Query form: exact dedup keys, never search phrases."
+    },
+    "items": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 50,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ref", "text"],
+        "properties": {
+          "ref": {"type": "string", "minLength": 1, "maxLength": 100, "not": {"pattern": "[\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029]"}},
+          "text": {"type": "string", "minLength": 1, "maxLength": 500}
+        }
+      },
+      "description": "Classify form (Linear only). ref must also be unique in the array, and neither field may hold invisible format characters; this schema does not express either rule."
     },
     "suggested_mapping": {
       "type": "object",
@@ -70,15 +85,19 @@
     },
     {
       "if": {"properties": {"target_system": {"const": "notion"}}, "required": ["target_system"]},
-      "then": {"required": ["content"], "not": {"anyOf": [{"required": ["records"]}, {"required": ["keys"]}]}}
+      "then": {"required": ["content"], "not": {"anyOf": [{"required": ["records"]}, {"required": ["keys"]}, {"required": ["items"]}]}}
     },
     {
       "if": {"properties": {"operation": {"const": "query"}}, "required": ["operation"]},
-      "then": {"required": ["keys"], "not": {"anyOf": [{"required": ["content"]}, {"required": ["records"]}]}},
+      "then": {"required": ["keys"], "not": {"anyOf": [{"required": ["content"]}, {"required": ["records"]}, {"required": ["items"]}]}},
       "else": {
         "if": {"properties": {"operation": {"const": "update"}}, "required": ["operation"]},
-        "then": {"required": ["records"], "not": {"anyOf": [{"required": ["content"]}, {"required": ["keys"]}]}},
-        "else": {"oneOf": [{"required": ["content"]}, {"required": ["records"]}], "not": {"required": ["keys"]}}
+        "then": {"required": ["records"], "not": {"anyOf": [{"required": ["content"]}, {"required": ["keys"]}, {"required": ["items"]}]}},
+        "else": {
+          "if": {"properties": {"operation": {"const": "classify"}}, "required": ["operation"]},
+          "then": {"required": ["items"], "not": {"anyOf": [{"required": ["content"]}, {"required": ["records"]}, {"required": ["keys"]}]}},
+          "else": {"oneOf": [{"required": ["content"]}, {"required": ["records"]}], "not": {"anyOf": [{"required": ["keys"]}, {"required": ["items"]}]}}
+        }
       }
     }
   ]

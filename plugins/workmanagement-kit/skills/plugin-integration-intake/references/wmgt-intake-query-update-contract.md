@@ -48,5 +48,5 @@ A caller asks to change existing Issues. It is a write, so it takes the full app
 
 ## Not in this contract
 
-Clearing a due date, links other than a pull request in the resolved repository, due dates or PR links on create, description edits, Report page-content blocks, classification requests and Notion
+Clearing a due date, links other than a pull request in the resolved repository, due dates or PR links on create, description edits, Report page-content blocks and Notion
 batches. Callers needing them keep their plan-mode fallback (see workledger-kit's dependency notes).
