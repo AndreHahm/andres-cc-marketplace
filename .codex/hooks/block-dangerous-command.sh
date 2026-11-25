@@ -6,9 +6,16 @@ set -euo pipefail
 # execution. This is a guardrail, not a security boundary; keep sandboxing on.
 
 block() {
-    printf 'BLOCKED: %s\n' "$1" >&2
+    printf 'BLOCKED: %s\n' "$1" >&2 || true
     exit 2
 }
+
+# Codex blocks only on exit 2, so any other error of this hook (set -e) becomes a block.
+end_status() {
+    local rc=$?
+    ((rc == 0 || rc == 2)) || { printf 'BLOCKED: %s\n' "The command-policy hook failed (exit ${rc})." >&2 || true; exit 2; }
+}
+trap end_status EXIT
 
 # --inner: this run checks the decoded string of an outer `bash -c '...'` (see the shell-string
 # check at the end). Such a run never recurses again and also blocks the plain forbidden git
@@ -203,7 +210,7 @@ function runs_params(    t) {
     if (!index(t, "$")) return 0
     if (t ~ /(^|[^A-Za-z0-9_.-])(eval|bash|sh|zsh|dash|ksh|su|ssh|source|trap|foreach|bisect)([^A-Za-z0-9_.-]|$)/) return 1
     if (t ~ /(^|[;&|({!`\n])[ \t]*[.][ \t]/) return 1
-    return t ~ /(^|[;&|(){!`\n]|(^|[ \t;&|(){])(if|then|do|else|elif|while|until|((xargs|command|builtin|env|nice|nohup|time|exec|timeout|doas|setsid|stdbuf|flock|find)([ \t][^;&|\n]*)?))[ \t])[ \t]*(([A-Za-z_][A-Za-z0-9_]*=|[0-9]*[<>]+)[^ \t]*[ \t]+)*"?[$][{]?[A-Za-z0-9_@*]/
+    return t ~ /(^|[;&|(){!`\n]|(^|[ \t;&|(){])(if|then|do|else|elif|while|until|((xargs|command|builtin|env|nice|nohup|time|exec|timeout|doas|setsid|stdbuf|flock|find)([ \t][^;&|\n]*)?))[ \t])[ \t]*(([A-Za-z_][A-Za-z0-9_]*=|[0-9]*[<>]+[&|]?[ \t]*)[^ \t]*[ \t]+)*"?[$][{]?[A-Za-z0-9_@*]/
 }
 # Whether the word that ends at i is one argument as written: not an option, assignment (`set -k` takes
 # it away) or fd number, and nothing in it expands.
@@ -218,8 +225,14 @@ function plain_word(    t) {
 # blocks the command.
 function attached(w) {
     if (wc) exit 1
-    printf "%s\036", substr(w, RLENGTH + 1)
+    w = substr(w, RLENGTH + 1)
+    printf "%s\036", w
+    shell_text(w)
     trig = 1
+}
+# A shell that reads its stdin, named in text that another command runs.
+function shell_text(w) {
+    if (w ~ /(^|[^A-Za-z0-9_.-])(bash|sh|zsh|dash|ksh)([ \t]+-[^;&|]*)?[ \t]*$/) shin = 1
 }
 # Whether the words after w are shell text: after eval, su, ssh and submodule foreach, and after the
 # -c of a shell. Only for a command word, found past assignments, keywords and wrappers (with their
@@ -228,7 +241,7 @@ function attached(w) {
 # or commit subcommand right after `git` (or `git --no-pager`) runs none of its words.
 function runs(w,    b) {
     if (trig) {
-        if (remote && w ~ /(^|[^A-Za-z0-9_.-])(bash|sh|zsh|dash|ksh)([ \t]+-[^;&|]*)?[ \t]*$/) shin = 1
+        if (remote) shell_text(w)
         if (once && plain_word() && !runs_params()) { trig = 0; kind = "other" }
         once = 0
         return
@@ -242,12 +255,12 @@ function runs(w,    b) {
         if (fnd == 1 || kind != "git") { kind = ""; wrap = 1; opt = (fnd == 2); return }
     }
     if (envw && kind == "") {
-        if (w ~ /^-[iv0]*S$/ || w ~ /^--s[a-z-]*$/) { trig = 1; return }
+        if (w ~ /^-[iv0]*S$/ || w ~ /^--s[a-z-]*$/) { trig = remote = 1; return }
         # `env -S` with its text in the same word.
         if (match(w, /^(-[iv0]*S|--s[a-z-]*=)/)) { attached(w); return }
     }
     if (flk && kind == "") {
-        if (w ~ /^(-c|--c[a-z]*)$/) { trig = 1; return }
+        if (w ~ /^(-c|--c[a-z]*)$/) { trig = remote = 1; return }
         if (match(w, /^(-c|--c[a-z]*=)/)) { attached(w); return }
     }
     if (kind == "") {
