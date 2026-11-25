@@ -1245,7 +1245,7 @@ CASES
 
 # A grep that fails (exit 2) in a check must block, not read as "no match". Each pass fails one kind of
 # call and leaves the others to the real grep.
-WORK=$(mktemp -d)
+WORK=$(mktemp -d) || { echo "FAIL: mktemp failed" >&2; exit 1; }
 trap 'rm -r "${WORK}"' EXIT
 REAL_GREP=$(command -v grep)
 for flags in -m1 -oiE; do

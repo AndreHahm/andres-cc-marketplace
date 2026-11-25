@@ -12,7 +12,7 @@ set -uo pipefail
 SUITE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/test-block-dangerous-command.sh"
 command -v jq >/dev/null 2>&1 || { echo "FAIL: jq is required" >&2; exit 1; }
 
-WORK=$(mktemp -d)
+WORK=$(mktemp -d) || { echo "FAIL: mktemp failed" >&2; exit 1; }
 trap 'rm -r "${WORK}"' EXIT
 
 # wrapper <dir> <name> <command...>: writes <dir>/<name> that runs <command...> "$@".

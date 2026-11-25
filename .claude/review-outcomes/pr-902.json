@@ -1,0 +1,76 @@
+{
+  "entries": [
+    {
+      "disposition": "accepted",
+      "finding": "4699550777",
+      "line": 1324,
+      "note": "False block, fails closed. security-reviewer rejected an exemption twice: it opened bypasses. In Open Items.",
+      "path": ".codex/hooks/block-dangerous-command.sh",
+      "pr": 902,
+      "recorded_at": "2026-11-25T20:01:59+00:00"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "4699550784",
+      "line": 300,
+      "note": "False block, fails closed. security-reviewer rejected an exemption twice: it opened bypasses. In Open Items.",
+      "path": ".codex/hooks/block-dangerous-command.sh",
+      "pr": 902,
+      "recorded_at": "2026-11-25T20:02:00+00:00"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "4699565904",
+      "line": 300,
+      "note": "Same defect as 4699550784. In Open Items.",
+      "path": ".codex/hooks/block-dangerous-command.sh",
+      "pr": 902,
+      "recorded_at": "2026-11-25T20:02:00+00:00"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "4699566079",
+      "line": 939,
+      "note": "False block, fails closed. security-reviewer rejected an exemption twice: it opened bypasses. In Open Items.",
+      "path": ".codex/hooks/block-dangerous-command.sh",
+      "pr": 902,
+      "recorded_at": "2026-11-25T20:02:01+00:00"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "4699566236",
+      "line": 930,
+      "note": "Same defect as 4699550777. In Open Items.",
+      "path": ".codex/hooks/block-dangerous-command.sh",
+      "pr": 902,
+      "recorded_at": "2026-11-25T20:01:59+00:00"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "4699566424",
+      "line": 215,
+      "note": "False block, fails closed. security-reviewer rejected an exemption twice: it opened bypasses. In Open Items.",
+      "path": ".codex/hooks/block-dangerous-command.sh",
+      "pr": 902,
+      "recorded_at": "2026-11-25T20:02:01+00:00"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "4699566671",
+      "line": 229,
+      "note": "Deliberate fail-closed cap; reading long env -S text opened bypasses in security review. In Open Items.",
+      "path": ".codex/hooks/block-dangerous-command.sh",
+      "pr": 902,
+      "recorded_at": "2026-11-25T20:02:02+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4699567293",
+      "line": 1248,
+      "note": "Both test scripts now stop when mktemp fails.",
+      "path": ".codex/hooks/tests/test-block-dangerous-command.sh",
+      "pr": 902,
+      "recorded_at": "2026-11-25T20:02:02+00:00"
+    }
+  ]
+}
