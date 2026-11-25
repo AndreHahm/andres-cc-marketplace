@@ -140,22 +140,22 @@
       "rule": "tool-reconciliation"
     },
     {
-      "disposition": "accepted",
+      "disposition": "fixed",
       "finding": "codex-c4c9ce63f8ab",
       "line": 1157,
-      "note": "N1: waived as residual in the PR body",
+      "note": "N1: links are refused before anything resolves the path",
       "path": "plugins/promptlibrary-kit/scripts/plib_catalog_validate.py",
       "pr": 896,
-      "recorded_at": "2026-11-25T19:11:29+00:00",
+      "recorded_at": "2026-11-25T20:25:46+00:00",
       "rule": "security"
     },
     {
-      "disposition": "accepted",
+      "disposition": "fixed",
       "finding": "e922fe21625e9df3dd7f4f4519efa7e4",
-      "note": "residual, waiver line in PR body",
+      "note": "C2: a link in the catalog is refused before it is resolved",
       "path": "plugins/promptlibrary-kit/scripts/plib_catalog_validate.py",
       "pr": 896,
-      "recorded_at": "2026-11-25T12:09:12+00:00",
+      "recorded_at": "2026-11-25T20:25:47+00:00",
       "rule": "security"
     }
   ]

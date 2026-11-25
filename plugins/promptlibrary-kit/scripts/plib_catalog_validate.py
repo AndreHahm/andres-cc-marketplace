@@ -724,6 +724,44 @@ def contained(child: Path, parent: Path) -> bool:
         return False
 
 
+_JUNCTION_TAG = 0xA0000003  # stat.IO_REPARSE_TAG_MOUNT_POINT, which only Windows defines
+
+
+def _is_link(path) -> bool:
+    """True for a symlink or a Windows junction. Reads the entry itself and never follows it."""
+    try:
+        info = os.lstat(path)
+    except (OSError, ValueError):
+        return False
+    return stat.S_ISLNK(info.st_mode) or getattr(info, "st_reparse_tag", 0) == _JUNCTION_TAG
+
+
+def _parts_below(path: Path, base: Path) -> list[str] | None:
+    """The parts of path below base, compared as written (no link is followed), or None. The
+    parts keep their own spelling: folding can produce a name that is not the one on disk."""
+    fold = _case_insensitive(base)
+    below, top = _norm_lexical(path, fold), _norm_lexical(base, fold)
+    prefix = top.rstrip(os.sep) + os.sep
+    if not below.startswith(prefix):
+        return None
+    count = len(below[len(prefix) :].split(os.sep))
+    return os.path.abspath(str(path)).split(os.sep)[-count:]
+
+
+def _linked_below(path: Path, base: Path) -> bool:
+    """True when path is not below base as written, or a part of it below base is a link. Resolving
+    a link can open a network connection on Windows, so this runs before any other look at path."""
+    parts = _parts_below(path, base)
+    if parts is None:
+        return True
+    current = str(base)
+    for part in parts:
+        current = os.path.join(current, part)
+        if _is_link(current):
+            return True
+    return False
+
+
 def _is_unc(text: str) -> bool:
     """True for a UNC or device path in any separator mix. Check it before any filesystem call:
     resolving such a path on Windows can open a network connection."""
@@ -858,8 +896,8 @@ def load_catalog(root: Path) -> tuple[dict, dict, list[str]]:
     """Return (catalog meta, {relpath: record}, errors). Never raises for content problems."""
     errs: list[str] = []
     cat_path = root / "catalog.yaml"
-    if not contained(cat_path, root):
-        return {}, {}, ["catalog.yaml is a link that leaves the catalog root"]
+    if _linked_below(cat_path, root):
+        return {}, {}, ["catalog.yaml is reached through a link"]
     if not cat_path.is_file():
         return {}, {}, ["catalog.yaml is missing"]
     try:
@@ -900,8 +938,8 @@ def load_catalog(root: Path) -> tuple[dict, dict, list[str]]:
             errs.append(f"record listed twice: {rel}")
             continue
         path = root / parts[0] / parts[1]
-        if not contained(path, root):
-            errs.append(f"record path escapes the catalog root: {rel}")
+        if _linked_below(path, root):
+            errs.append(f"record path goes through a link or leaves the catalog root: {rel}")
             continue
         if not path.is_file():
             errs.append(f"listed record is missing: {rel}")
@@ -995,10 +1033,12 @@ def check_lineages(root: Path, records: dict) -> list[str]:
                     )
     listed = set(records)
     for entry in sorted(root.iterdir()) if root.is_dir() else []:
-        if entry.is_dir():
-            if not contained(entry, root):
-                errs.append(f"folder is a link that leaves the catalog root: {entry.name}")
-                continue
+        if _is_link(entry):
+            # Whether a link points at a folder cannot be told without following it. A name ending
+            # in .tmp is never a catalog folder, so a link under one stays unused and unread.
+            if not entry.name.endswith(".tmp"):
+                errs.append(f"folder is a link: {entry.name}")
+        elif entry.is_dir():
             for f in sorted(entry.glob("*.md")):
                 rel = f"{entry.name}/{f.name}"
                 if rel not in listed:
@@ -1046,9 +1086,9 @@ def _stray_temp_files(root: Path) -> list[str]:
     # The shapes _write_atomic creates. A linked folder is never listed (check_lineages reports it).
     found = set(root.glob("catalog.yaml.*.tmp"))
     for entry in root.iterdir():
-        if entry.is_dir() and contained(entry, root):
+        if not _is_link(entry) and entry.is_dir():
             found.update(entry.glob("*.md.*.tmp"))
-    return sorted(p.relative_to(root).as_posix() for p in found if p.is_symlink() or p.is_file())
+    return sorted(p.relative_to(root).as_posix() for p in found if _is_link(p) or p.is_file())
 
 
 def search_words(text: str) -> str:
@@ -1146,7 +1186,7 @@ MAX_INPUT_BYTES = 262144
 def _inside(root: Path, path: Path) -> Path:
     """Re-check containment right before a write: a directory can be swapped for a link after load
     time."""
-    if not contained(path, root):
+    if _linked_below(path, root) or not contained(path, root):
         raise CatalogError(f"path escapes the catalog root: {path.name}")
     return path
 
@@ -1156,12 +1196,25 @@ def _readable_candidate(path_text: str, root: Path) -> Path:
     directory."""
     if "\x00" in path_text or _is_unc(path_text):
         raise CatalogError("the path is a UNC path or contains a NUL byte")
-    path = Path(path_text)
-    if not path.is_file():
-        raise CatalogError(f"not a file: {path_text}")
-    allowed = [a for a in (root, Path(tempfile.gettempdir())) if a.exists()]
+    # Remove ".." as written and use only that form from here on: the system would resolve a ".."
+    # behind a link to the parent of the link's target, which is not the path checked below.
+    path = Path(os.path.abspath(path_text))
+    temp = Path(tempfile.gettempdir())
+    # The temp directory counts in both spellings: as configured and with its own links resolved.
+    allowed = [a for a in (root, temp, Path(os.path.realpath(str(temp)))) if a.exists()]
+    below = [(a, parts) for a in allowed if (parts := _parts_below(path, a)) is not None]
+    if not below:
+        raise CatalogError("the file must be inside the catalog root or the system temp directory")
+    # Checked below the innermost match, so a catalog reached through the temp directory's own
+    # location is not refused for a part above it.
+    base, parts = max(below, key=lambda b: len(str(b[0])))
+    path = Path(base, *parts)  # a look-alike of base compares equal when folded: never open that
+    if _linked_below(path, base):
+        raise CatalogError("the file is reached through a link")
     if not any(contained(path, a) for a in allowed):
         raise CatalogError("the file must be inside the catalog root or the system temp directory")
+    if not path.is_file():
+        raise CatalogError(f"not a file: {path_text}")
     resolved = Path(os.path.realpath(str(path)))
     if resolved.stat().st_size > MAX_INPUT_BYTES:
         raise CatalogError("the file is too large")
@@ -1284,6 +1337,8 @@ def write_catalog(root: Path, cat: dict, record_paths: list[str]) -> None:
 def cmd_init(args) -> dict:
     info = resolve_root(getattr(args, "root", None))
     root = Path(info["catalog_root"])
+    if _is_link(root / "catalog.yaml"):
+        raise CatalogError("catalog.yaml is reached through a link")
     if (root / "catalog.yaml").exists():
         raise CatalogError("catalog.yaml already exists")
     root.mkdir(parents=True, exist_ok=True)
