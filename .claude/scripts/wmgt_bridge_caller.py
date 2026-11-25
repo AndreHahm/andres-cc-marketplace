@@ -41,6 +41,7 @@ import tempfile
 import uuid
 from collections.abc import Sequence
 from pathlib import Path
+from typing import NoReturn
 
 AGENTS = {"work-transition-reviewer", "work-intake-classifier"}
 
@@ -447,6 +448,13 @@ def dispatch(
             pass
 
 
+class _Parser(argparse.ArgumentParser):
+    """Python before 3.13 still exits for a missing or unknown option with exit_on_error=False."""
+
+    def error(self, message: str) -> NoReturn:
+        raise argparse.ArgumentError(None, message)
+
+
 def main() -> None:
     # exit_on_error=False: without it, an invalid --agent choice or a missing
     # required option makes parse_args() print a raw argparse usage message
@@ -458,7 +466,7 @@ def main() -> None:
     # is unaffected -- argparse's help action still calls sys.exit(0)
     # directly regardless of this flag, which is the correct, expected
     # behavior for --help, not a failure to convert.
-    parser = argparse.ArgumentParser(description=__doc__, exit_on_error=False)
+    parser = _Parser(description=__doc__, exit_on_error=False)
     parser.add_argument("--agent", required=True, choices=sorted(AGENTS))
     parser.add_argument("--target-paths", required=True, help="comma-separated evidence paths")
     parser.add_argument("--dispatch-id", required=True)
