@@ -2210,6 +2210,20 @@ _MAX_PRIOR_RAW_TEXT = 2000
 _PRIOR_BRACKETS = str.maketrans("[]<>", "()()")
 
 
+def _hides_token(text: str) -> bool:
+    """Whether a token match runs across a non-printable character or a bracket that is taken out.
+    Each piece between them is the start of the text once, so a character taken out right before a
+    token does not cost it its word boundary."""
+    pieces = "".join(c if c.isprintable() and c not in "[]<>" else "\0" for c in text).split("\0")
+    for i, piece in enumerate(pieces):
+        rest = "".join(pieces[i:])
+        for start in range(len(piece)):
+            match = _SECRET_TOKEN_PATTERNS.match(rest, start)
+            if match and match.end() > len(piece):
+                return True
+    return False
+
+
 def _prior_text(text: object, limit: int) -> str:
     """Reviewer-written text for the prior-round briefing (R20): one printable line, tokens
     redacted before the cut (a cut token may no longer look like one), square and angle brackets
@@ -2218,8 +2232,9 @@ def _prior_text(text: object, limit: int) -> str:
     if not isinstance(text, str) or len(text) > _MAX_PRIOR_RAW_TEXT:
         return ""
     line = _sanitize_log_text(text)
-    joined = "".join(c for c in text if c.isprintable() and c not in "[]<>")
-    if len(_SECRET_TOKEN_PATTERNS.findall(joined)) > len(_SECRET_TOKEN_PATTERNS.findall(line)):
+    # The second form keeps a line break as a space, which a bearer token needs before its value.
+    spaced = "".join(" " if c.isspace() else c for c in text)
+    if _hides_token(text) or _hides_token(spaced):
         return ""
     return _redact_tokens(line).translate(_PRIOR_BRACKETS)[:limit].rstrip()
 

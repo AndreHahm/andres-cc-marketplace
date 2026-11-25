@@ -68,6 +68,18 @@ def test_a_record_holds_only_the_briefed_fields():
         {"remediation": "ghp_" + "a" * 20 + chr(0x200B) + "a" * 20},
         {"remediation": "ghp_" + "a" * 20 + "\n" + "a" * 20},
         {"remediation": "ghp_" + "a" * 20 + "[" + "a" * 20},
+        # an intact match that loses its word boundary when the text is joined
+        {"remediation": f"x{chr(0x200B)}Bearer {'b' * 20} [ghp_{'a' * 20}<{'a' * 20}]"},
+        {"remediation": f"x{chr(0x200B)}ghp_{'a' * 40} ghp_{'a' * 20}<{'a' * 20}"},
+        # already token-shaped before the bracket: redacting it would leave the rest
+        {"remediation": f"sk-{'a' * 24}<{'b' * 24}"},
+        {"remediation": f"x<sk-{'a' * 24}<{'b' * 24}"},
+        {"remediation": f"sk-{'a' * 24}{'b' * 24} sk-{'a' * 24}<{'b' * 24}"},
+        # the character taken out was also the token's left boundary
+        {"remediation": f"Revoke this token\nghp_{'a' * 20}\n{'a' * 20}"},
+        {"remediation": f"key<ghp_{'a' * 20}<{'a' * 20}>"},
+        {"remediation": "Bearer\nabcdefghij<KLMNOP1234"},
+        {"remediation": f"Bearer\nabcdefghij{chr(0x200B)}KLMNOP1234"},
         {"path": "scripts/marketplace_ci/review.py"},
         {"path": ".github/workflows/marketplace-ci.yml"},
         {"path": "plugins/x/../x/SKILL.md"},
@@ -97,6 +109,15 @@ def test_text_is_one_bounded_line_without_tokens_or_delimiters():
     for value in (record["remediation"], record["rule"]):
         assert value.isprintable() and not set(value) & set("[]<>")
     assert token not in record["remediation"] and "(REDACTED)" in record["remediation"]
+
+
+def test_an_intact_token_in_brackets_is_redacted_not_dropped():
+    assert _record(remediation=f"Use [ghp_{'a' * 36}].")["remediation"] == "Use ((REDACTED))."
+
+
+@pytest.mark.parametrize("text", ["task-oriented-development<-flow>", "a [b] <c>\nd"])
+def test_text_without_a_token_is_kept(text):
+    assert _record(remediation=text)
 
 
 def test_a_token_across_the_cut_is_redacted_before_it():
@@ -236,13 +257,17 @@ def test_the_workflow_passes_the_list_and_never_fails_on_it():
     download = _step("Download the last review's findings for the briefing (R20)")
     assert "if: needs.compute-scope.outputs.prior_written == 'true'" in download
     assert "continue-on-error: true" in download and "name: prior-findings" in download
+    assert "id: prior_download" in download and "timeout-minutes: 2" in download
+    drop = _step("Drop the last review's findings after a failed download (R20)")
+    assert "if: steps.prior_download.outcome != 'success'" in drop
+    assert 'rm -rf "$RUNNER_TEMP/prior-in"' in drop
     dispatch = _step("Dispatch reviewers directly, validate output, aggregate findings")
     assert '--prior-findings "$RUNNER_TEMP/prior-in/prior-findings.json"' in dispatch
     text = WORKFLOW.read_text(encoding="utf-8")
     assert "prior_written: ${{ steps.prior_upload.outcome == 'success' }}" in text
     assert "id: prior_upload" in upload
     login = _step("Authenticate and smoke-check the Codex CLI")  # the first step with the API key
-    assert text.index(download) < text.index(login) < text.index(dispatch)
+    assert text.index(download) < text.index(drop) < text.index(login) < text.index(dispatch)
 
 
 def test_the_gate_carry_and_aggregation_code_does_not_read_the_records():

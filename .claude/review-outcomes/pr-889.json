@@ -1,0 +1,31 @@
+{
+  "entries": [
+    {
+      "disposition": "accepted",
+      "finding": "4693020644",
+      "line": 2287,
+      "note": "Valid, context only, no gate effect; recorded as an R20 residual (maintainer decision).",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 889,
+      "recorded_at": "2026-11-25T09:58:50+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4693020966",
+      "line": 1962,
+      "note": "The list is removed when the download did not succeed; the download step has a timeout.",
+      "path": ".github/workflows/marketplace-ci.yml",
+      "pr": 889,
+      "recorded_at": "2026-11-25T09:58:49+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4693103915",
+      "line": 2222,
+      "note": "Split tokens no longer hide behind an intact match; replaced the count comparison by a check for a match that crosses a removed character.",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 889,
+      "recorded_at": "2026-11-25T09:58:49+00:00"
+    }
+  ]
+}
