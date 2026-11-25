@@ -1,0 +1,162 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4694047522",
+      "note": "restore advice matches id and version",
+      "path": "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md",
+      "pr": 896,
+      "recorded_at": "2026-11-25T12:09:09+00:00",
+      "rule": "devin"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4694047717",
+      "note": "malformed verification blocks one prompt",
+      "path": "plugins/promptlibrary-kit/scripts/plib_catalog_validate.py",
+      "pr": 896,
+      "recorded_at": "2026-11-25T12:09:10+00:00",
+      "rule": "devin"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4694047892",
+      "note": "draft not flagged retired",
+      "path": "plugins/promptlibrary-kit/scripts/plib_catalog_validate.py",
+      "pr": 896,
+      "recorded_at": "2026-11-25T12:09:10+00:00",
+      "rule": "devin"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4694048080",
+      "note": "draft of retired prompt only discardable",
+      "path": "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md",
+      "pr": 896,
+      "recorded_at": "2026-11-25T12:09:10+00:00",
+      "rule": "devin"
+    },
+    {
+      "disposition": "declined",
+      "finding": "4694048352",
+      "note": "deferred to PR 2 catalog_version bump",
+      "path": "plugins/promptlibrary-kit/scripts/plib_catalog_validate.py",
+      "pr": 896,
+      "recorded_at": "2026-11-25T12:09:11+00:00",
+      "rule": "devin"
+    },
+    {
+      "disposition": "declined",
+      "finding": "4694048565",
+      "note": "owner chose with-skill evals without baselines",
+      "path": "plugins/promptlibrary-kit/skills/prompt-execution/SKILL.md",
+      "pr": 896,
+      "recorded_at": "2026-11-25T12:09:12+00:00",
+      "rule": "devin"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4694168112",
+      "note": "case-insensitive scheme",
+      "path": "plugins/promptlibrary-kit/scripts/plib_catalog_validate.py",
+      "pr": 896,
+      "recorded_at": "2026-11-25T12:09:11+00:00",
+      "rule": "coderabbit"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4694168150",
+      "note": "smoke test requires ok",
+      "path": "plugins/promptlibrary-kit/skills/prompt-retrieval/scripts/smoke_test.py",
+      "pr": 896,
+      "recorded_at": "2026-11-25T12:09:11+00:00",
+      "rule": "coderabbit"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "158e333b4a9558cf5eec5094fe91db20",
+      "note": "historical (retired) wording",
+      "path": "plugins/promptlibrary-kit/skills/prompt-retrieval/references/prompt-retrieval-output-format.md",
+      "pr": 896,
+      "recorded_at": "2026-11-25T12:09:12+00:00",
+      "rule": "plugin-rulebook:R20"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "9903410f896ded117e68406d7509935e",
+      "note": "history text by design, waiver line",
+      "path": "plugins/promptlibrary-kit/scripts/plib_catalog_validate.py",
+      "pr": 896,
+      "recorded_at": "2026-11-25T12:09:13+00:00",
+      "rule": "claude-general"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "codex-32ac3b97363f",
+      "line": 38,
+      "note": "D2: text pointer, not a call; waived as refuted in the PR body",
+      "path": "plugins/promptlibrary-kit/skills/prompt-retrieval/SKILL.md",
+      "pr": 896,
+      "recorded_at": "2026-11-25T19:11:30+00:00",
+      "rule": "dependency-graph"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-N2-N4-R30",
+      "note": "N2 to N4: eval history moved to references in 22ceaafc; gone in the next Codex run",
+      "path": "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md",
+      "pr": 896,
+      "recorded_at": "2026-11-25T19:11:29+00:00",
+      "rule": "R30"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-aa17024ba439",
+      "line": 92,
+      "note": "S1: quoting sentence added in bafe128b, eval 28 passed",
+      "path": "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md",
+      "pr": 896,
+      "recorded_at": "2026-11-25T19:11:30+00:00",
+      "rule": "security"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "codex-b8ea690c8b89",
+      "line": 35,
+      "note": "D1: text pointer, not a call; waived as refuted in the PR body",
+      "path": "plugins/promptlibrary-kit/skills/prompt-execution/SKILL.md",
+      "pr": 896,
+      "recorded_at": "2026-11-25T19:11:30+00:00",
+      "rule": "dependency-graph"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-bafe128b-smoke-grant",
+      "line": 238,
+      "note": "Minor: wording says maintainers run the smoke test; no grant added",
+      "path": "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md",
+      "pr": 896,
+      "recorded_at": "2026-11-25T19:48:34+00:00",
+      "rule": "tool-reconciliation"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "codex-c4c9ce63f8ab",
+      "line": 1157,
+      "note": "N1: waived as residual in the PR body",
+      "path": "plugins/promptlibrary-kit/scripts/plib_catalog_validate.py",
+      "pr": 896,
+      "recorded_at": "2026-11-25T19:11:29+00:00",
+      "rule": "security"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "e922fe21625e9df3dd7f4f4519efa7e4",
+      "note": "residual, waiver line in PR body",
+      "path": "plugins/promptlibrary-kit/scripts/plib_catalog_validate.py",
+      "pr": 896,
+      "recorded_at": "2026-11-25T12:09:12+00:00",
+      "rule": "security"
+    }
+  ]
+}
