@@ -16,6 +16,8 @@ end_status() {
     ((rc == 0 || rc == 2)) || { printf 'BLOCKED: %s\n' "The command-policy hook failed (exit ${rc})." >&2 || true; exit 2; }
 }
 trap end_status EXIT
+# A message to a closed pipe is a failed write, not a signal that ends the hook without exit 2.
+trap '' PIPE
 
 # --inner: this run checks the decoded string of an outer `bash -c '...'` (see the shell-string
 # check at the end). Such a run never recurses again and also blocks the plain forbidden git
@@ -210,7 +212,7 @@ function runs_params(    t) {
     if (!index(t, "$")) return 0
     if (t ~ /(^|[^A-Za-z0-9_.-])(eval|bash|sh|zsh|dash|ksh|su|ssh|source|trap|foreach|bisect)([^A-Za-z0-9_.-]|$)/) return 1
     if (t ~ /(^|[;&|({!`\n])[ \t]*[.][ \t]/) return 1
-    return t ~ /(^|[;&|(){!`\n]|(^|[ \t;&|(){])(if|then|do|else|elif|while|until|((xargs|command|builtin|env|nice|nohup|time|exec|timeout|doas|setsid|stdbuf|flock|find)([ \t][^;&|\n]*)?))[ \t])[ \t]*(([A-Za-z_][A-Za-z0-9_]*=|[0-9]*[<>]+[&|]?[ \t]*)[^ \t]*[ \t]+)*"?[$][{]?[A-Za-z0-9_@*]/
+    return t ~ /(^|[;&|(){!`\n]|(^|[ \t;&|(){])(if|then|do|else|elif|while|until|((xargs|command|builtin|env|nice|nohup|time|exec|timeout|doas|coproc|setsid|stdbuf|flock|find)([ \t][^;&|\n]*)?))[ \t])[ \t]*(([A-Za-z_][A-Za-z0-9_]*=|[0-9]*[<>]+[&|]?[ \t]*)[^ \t]*[ \t]+)*"?[$][{]?[A-Za-z0-9_@*]/
 }
 # Whether the word that ends at i is one argument as written: not an option, assignment (`set -k` takes
 # it away) or fd number, and nothing in it expands.
@@ -925,7 +927,7 @@ WORD_START="[^-[:space:];&|\"']|\"[^\"]*\"|'[^']*'"
 REDIR="${REDIR_WORD}[[:space:]]+"
 SEGMENT_START='(^|[;&|{]|[$<][(]|=`)([[:space:]]|[(!]|(if|then|do|else|elif|while|until)[[:space:]])*'
 SEGMENT_START+="([A-Za-z_][A-Za-z0-9_]*=(${WORD_PART})*[[:space:]]+|${REDIR})*"
-WRAPPERS='((xargs|command|builtin|env|nice|nohup|time|exec|timeout|doas|eval|setsid|stdbuf)'
+WRAPPERS='((xargs|command|builtin|env|nice|nohup|time|exec|timeout|doas|eval|coproc|setsid|stdbuf)'
 WRAPPERS+="([[:space:]]+(-(${WORD_PART})*([[:space:]]+(${WORD_START})(${WORD_PART})*)?"
 WRAPPERS+="|[0-9](${WORD_PART})*|[A-Za-z_][A-Za-z0-9_]*=(${WORD_PART})*))*"
 WRAPPERS+="[[:space:]]+"
@@ -1261,7 +1263,7 @@ fi
 # Check the flags of each rm invocation only, so `rm x && cp -rf a b` passes.
 # An rm behind a common wrapper (`xargs rm -rf`, `command rm`) or given by path
 # (`/bin/rm`) counts too; the wrapper's own options are checked with it.
-RM_WRAPPER='(xargs|command|builtin|env|nice|nohup|time|exec|timeout|doas|eval|setsid|stdbuf|flock)'
+RM_WRAPPER='(xargs|command|builtin|env|nice|nohup|time|exec|timeout|doas|eval|coproc|setsid|stdbuf|flock)'
 RM_RE="${COMMAND_PREFIX}(${RM_WRAPPER}[[:space:]]([^;&|]*[[:space:]])?)?"
 RM_RE+="([^[:space:];&|]*/)?[\"']?rm[\"']?[[:space:]][^;&|]*"
 # Also read with backslashes removed, like `matches`: `\rm -rf` and `rm -r\f` are rm -rf.

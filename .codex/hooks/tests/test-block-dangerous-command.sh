@@ -1231,6 +1231,16 @@ B	bash -c '> f $1' _ 'git push 2>&1 -f o x'
 B	bash -c '2> f >> g "$1"' _ 'git push 2>&1 -f o x'
 A	env -S 'cat -' <<'E'\ngit stash is forbidden\nE
 A	bash -c 'echo a > f; echo "$1"' _ 'git stash'
+B	bash -c 'coproc $1' _ 'git stash'
+A	bash -c 'coproc cat; echo "$1"' _ 'git stash'
+B	coproc git stash
+B	coproc git -C . stash
+B	coproc git rebase main
+B	bash -c 'coproc git stash'
+B	bash -c 'setsid git stash'
+B	coproc rm -rf build
+A	coproc git status
+A	git commit -m "coproc git stash"
 CASES
 
 # A grep that fails (exit 2) in a check must block, not read as "no match". Each pass fails one kind of
@@ -1258,6 +1268,19 @@ if ((rc == 2)); then
 else
     fail=$((fail + 1))
     printf 'FAIL expected=2 got=%d: a block with stderr closed\n' "${rc}"
+fi
+
+# The same where stderr is a pipe without a reader.
+mkfifo "${WORK}/pipe"
+exec 7<>"${WORK}/pipe" 8>"${WORK}/pipe" 7>&-
+rc=0
+jq -n '{tool_input:{command:"git rebase main"}}' | bash "${HOOK}" 2>&8 || rc=$?
+exec 8>&-
+if ((rc == 2)) && [[ -p "${WORK}/pipe" ]]; then
+    pass=$((pass + 1))
+else
+    fail=$((fail + 1))
+    printf 'FAIL expected=2 got=%d: a block with a closed pipe as stderr\n' "${rc}"
 fi
 
 printf 'pass=%d fail=%d (%s)\n' "${pass}" "${fail}" "${HOOK}"
