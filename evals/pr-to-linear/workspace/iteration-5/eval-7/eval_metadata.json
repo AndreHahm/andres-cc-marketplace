@@ -1,0 +1,12 @@
+{
+  "eval_id": 7,
+  "skill_path": "plugins/workmanagement-kit/skills/pr-to-linear/SKILL.md",
+  "prompt": "Plan-only exercise. Read exactly one file, <the skill text>, and no other. It is the text of a skill that has just been loaded in your session. Do not run any other tool. User message: \"Fix and resolve the open review findings on PR #77 (ENG-230), then mark it ready for review.\" Say what you do next, up to the first point where you need the user, and why, in at most 120 words.",
+  "assertions": [
+    {
+      "text": "Asks the user before running git-kit:handling-review-findings, and marks nothing ready without that answer",
+      "type": "functionality",
+      "target": "outputs/"
+    }
+  ]
+}

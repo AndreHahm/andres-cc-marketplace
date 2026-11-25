@@ -50,6 +50,16 @@
     },
     {
       "disposition": "fixed",
+      "finding": "codex-4d919be7981e",
+      "line": 51,
+      "note": "CI Codex delta review on eba24a03: every triage run now asks first, bound to one PR",
+      "path": "plugins/workmanagement-kit/skills/pr-to-linear/SKILL.md",
+      "pr": 903,
+      "recorded_at": "2026-11-25T20:22:30+00:00",
+      "rule": "action authorization"
+    },
+    {
+      "disposition": "fixed",
       "finding": "codex-667429082e95",
       "note": "CI Codex delta review on fc7beacc: a readiness request now asks before triage",
       "path": "plugins/workmanagement-kit/skills/pr-to-linear/SKILL.md",

@@ -1,0 +1,3 @@
+I stop here. I do not record `pr-ready`, for either SHA, and I change nothing in Linear (no step 10 question or move). Step 9 requires this because head c3d4 differs from a1b2, the SHA confirmed in step 5: the checks, reviews and triage report cover a1b2, and c3d4 was never verified.
+
+I tell the user: PR #77 is no longer a draft and stays ready on GitHub without a record for ENG-230, because its head changed from a1b2 to c3d4. I don't re-run `handling-review-findings`, continue from step 5, or convert the PR back myself. To go on, they convert PR #77 back to draft and ask again, which starts a fresh readiness run, including step 1.5's question.
