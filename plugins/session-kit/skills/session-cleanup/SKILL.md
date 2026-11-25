@@ -22,8 +22,9 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" cleanup --older-than 30
 ```
 
 This lists sessions older than 30 days, and short ones of any age; adjust the age if the user named one (Step 1).
-Show every candidate with the total size, then ask via `AskUserQuestion` before deleting any (Step 3), and check
-for orphan task lists afterwards (Step 4).
+Show every candidate with its reason and the total size, then ask via `AskUserQuestion` before deleting any; short or
+empty sessions outside the requested age only with the user's explicit agreement (Step 3). Check for orphan task
+lists afterwards (Step 4).
 
 ## When to Use
 
@@ -57,6 +58,11 @@ Show the total reclaimable space.
 ## Step 3: Confirm before deleting
 
 **NEVER delete without an explicit `AskUserQuestion` confirmation — never a printed "(yes/no)" prompt.** Present the list and ask via `AskUserQuestion`: "Delete these N sessions ([total size])?" — with a follow-up on whether to also delete each session's associated tasks (default: do **not** delete tasks unless the user opts in, matching `session-delete`'s own convention).
+
+If the user asked for old sessions, the list also holds short (`tiny`) and `empty` ones of any age. State how many
+candidates are `old` and how many are only `tiny` or `empty`, ask about the two groups separately, and delete the
+second group only if the user agrees to it. A `tiny` or `empty` candidate whose age meets the requested threshold
+belongs to the first group (the script reports only one reason per session).
 
 If confirmed, delete each session one at a time using the same command `session-delete` uses:
 ```bash
@@ -110,8 +116,9 @@ Eval suite: `evals/session-cleanup/` — 3 scenarios, `skill-tester` Quick Workf
 passed. Eval 3 verified the `--delete-tasks` variant is gated by the same real `AskUserQuestion`
 confirmation as session deletion, with no raw `rm` used.
 
-**Last dated run record:** `evals/session-cleanup/workspace/iteration-3/` (evals 1-3 re-run after the Quick Start was
-added and before it gained `--older-than`, plan-only, no baseline, 10/10 assertions), 2026-11-25; earlier: `evals/session-cleanup/workspace/iteration-2/eval-{1,2,3}/with_skill/grading.json`,
+**Last dated run record:** `evals/session-cleanup/workspace/iteration-4/` (evals 1-3 after the age filter and the
+separate question for short or empty sessions, plan-only, no baseline, 13/13 assertions), 2026-11-25; `iteration-3/`
+(after the Quick Start was added, 10/10), 2026-11-25; earlier: `evals/session-cleanup/workspace/iteration-2/eval-{1,2,3}/with_skill/grading.json`,
 2026-09-03. `scripts/smoke_test.py` structural self-check also passing as of the same date.
 
 **Verify this skill activates on:**
@@ -125,4 +132,5 @@ added and before it gained `--older-than`, plan-only, no baseline, 10/10 asserti
 **Quality gates:**
 - [ ] Deletion is always gated by a real `AskUserQuestion` call, never a printed "(yes/no)" prompt
 - [ ] No raw `rm`/`rm -r` shortcut is offered as a deletion path
+- [ ] After an age-limited request, short or empty sessions outside that age are never deleted without their own agreement
 - [ ] The Safety section's claim about what `cleanup` does matches what Step 3 actually does

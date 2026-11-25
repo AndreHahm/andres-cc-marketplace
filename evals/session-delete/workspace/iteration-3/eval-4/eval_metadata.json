@@ -3,7 +3,7 @@
   "skill_path": "plugins/session-kit/skills/session-delete/SKILL.md",
   "assertions": [
     {
-      "text": "An `AskUserQuestion` confirmation is actually reached, after the preview",
+      "text": "An `AskUserQuestion` confirmation is planned after the preview",
       "type": "functionality",
       "target": "confirmation gate"
     },

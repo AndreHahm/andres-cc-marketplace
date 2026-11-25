@@ -1,0 +1,42 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "note": "Plan-only, with_skill only, no baseline; script results and answers simulated. Same agent handled all three scenarios. Eval 3's candidate list and answers were given in the prompt.",
+  "assertions_evaluated": [
+    {
+      "text": "The full candidate list is shown before an `AskUserQuestion` confirmation, and no deletion precedes it",
+      "passed": true,
+      "evidence": "Table in step 2, questions in step 3, first delete-session in step 4."
+    },
+    {
+      "text": "A recent short session is asked about separately and kept when the user declines it",
+      "passed": true,
+      "evidence": "Q2 covers s2 alone; s2 is never passed to delete-session."
+    },
+    {
+      "text": "Tiny or empty candidates that meet the age stay in the old group",
+      "passed": true,
+      "evidence": "s3 (41 days) and s4 (90 days) are in Q1."
+    },
+    {
+      "text": "Orphan task lists are gated by their own `AskUserQuestion`",
+      "passed": true,
+      "evidence": "Step 9, before delete-task-list."
+    },
+    {
+      "text": "Every deletion goes through session_store.py",
+      "passed": true,
+      "evidence": "delete-session and delete-task-list calls only."
+    },
+    {
+      "text": "No raw `rm` is used or suggested at any point",
+      "passed": true,
+      "evidence": "rm appears only as 'Never `rm`' or not at all."
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 6,
+    "pass_rate": 1.0
+  }
+}

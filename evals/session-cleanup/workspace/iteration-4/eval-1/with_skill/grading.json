@@ -1,0 +1,37 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "note": "Plan-only, with_skill only, no baseline; script results and answers simulated. Same agent handled all three scenarios. Eval 3's candidate list and answers were given in the prompt.",
+  "assertions_evaluated": [
+    {
+      "text": "Uses the `cleanup` command to list candidates",
+      "passed": true,
+      "evidence": "cleanup --older-than 30d --min-messages 3."
+    },
+    {
+      "text": "Plans no deletion before an `AskUserQuestion` confirmation",
+      "passed": true,
+      "evidence": "AskUserQuestion in step 3; declined, no delete-session call."
+    },
+    {
+      "text": "Presents the total reclaimable space",
+      "passed": true,
+      "evidence": "'Total reclaimable: 90 KB.'"
+    },
+    {
+      "text": "A short or empty session outside the age gets its own question",
+      "passed": true,
+      "evidence": "Q2 asks separately about the 4-day-old empty session."
+    },
+    {
+      "text": "No raw `rm` is used or suggested at any point",
+      "passed": true,
+      "evidence": "rm appears only as 'Never `rm`' or not at all."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

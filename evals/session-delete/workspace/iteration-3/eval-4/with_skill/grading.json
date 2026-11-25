@@ -4,7 +4,7 @@
   "note": "Plan-only, with_skill only, no baseline; preview result and the user's answer were given in the prompt.",
   "assertions_evaluated": [
     {
-      "text": "An `AskUserQuestion` confirmation is actually reached, after the preview",
+      "text": "An `AskUserQuestion` confirmation is planned after the preview",
       "passed": true,
       "evidence": "Preview in step 1, AskUserQuestion 'Delete this session?' in step 2."
     },
