@@ -34,6 +34,7 @@ run_case() {
     esac
     # A shell-string block whose recursive check failed is not a policy block.
     [[ "${got}" == B && "${err}" == *"the check of the string failed"* ]] && got="B (inner check failed)"
+    [[ "${got}" == B && "${err}" == *"command-policy hook failed"* ]] && got="B (hook failed)"
     if [[ "${got}" == "${expected}" ]]; then
         pass=$((pass + 1))
     else
@@ -1222,6 +1223,14 @@ B	ssh host 'cd repo && bash -s' <<'E'\ngit stash\nE
 B	find . -exec git add {} \\; -exec bash -c 'git push 2>&1 -f o x' \\;
 A	find . -exec bash -n {} \\; -exec grep 'git push 2>&1 -f o x' {} \\;
 B	xargs -a find -exec ionice bash -c 'git push 2>&1 -f o x'
+B	flock -n /var/lock/git bash -c 'git push 2>&1 -f o x'
+B	env -S 'bash -s' <<'E'\ngit stash\nE
+B	env -S'bash -s' <<'E'\ngit stash\nE
+B	flock /tmp/l -c 'bash -s' <<'E'\ngit stash\nE
+B	bash -c '> f $1' _ 'git push 2>&1 -f o x'
+B	bash -c '2> f >> g "$1"' _ 'git push 2>&1 -f o x'
+A	env -S 'cat -' <<'E'\ngit stash is forbidden\nE
+A	bash -c 'echo a > f; echo "$1"' _ 'git stash'
 CASES
 
 # A grep that fails (exit 2) in a check must block, not read as "no match". Each pass fails one kind of
@@ -1234,6 +1243,22 @@ for flags in -m1 -oiE; do
     chmod +x "${WORK}/grep"
     PATH="${WORK}:${PATH}" run_case B 'rm -r build'
 done
+
+# An error the hook does not expect (here: cat fails) must block too.
+printf '#!/bin/bash\nexit 1\n' >"${WORK}/cat"
+chmod +x "${WORK}/cat"
+rm "${WORK}/grep"
+PATH="${WORK}:${PATH}" run_case "B (hook failed)" 'git status'
+
+# A block whose message cannot be written is still a block.
+rc=0
+jq -n '{tool_input:{command:"git rebase main"}}' | bash "${HOOK}" 2>&- || rc=$?
+if ((rc == 2)); then
+    pass=$((pass + 1))
+else
+    fail=$((fail + 1))
+    printf 'FAIL expected=2 got=%d: a block with stderr closed\n' "${rc}"
+fi
 
 printf 'pass=%d fail=%d (%s)\n' "${pass}" "${fail}" "${HOOK}"
 [[ "${fail}" -eq 0 ]]
