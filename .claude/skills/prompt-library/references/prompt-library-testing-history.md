@@ -32,4 +32,5 @@ the skill against 25% without. These dry runs are separate from the live
 On 2026-11-24 scenario 23 (discard, with-skill only, `workspace/iteration-9/`) passed 5 of 5 checks, and
 scenario 24 (Keep, and a suspicious orphan name, `workspace/iteration-10/`) passed 3 of 3.
 On 2026-11-25, with-skill only: scenario 6 (rewritten: a changed prompt blocks only itself) passed 2 of 4
-(`iteration-13/`) and, after step 2 was corrected, 4 of 4 (`iteration-14/`); scenario 25 (retire) passed 3 of 3; scenarios 26 and 27 (`iteration-15/`) passed 4 of 4 each.
+(`iteration-13/`) and, after step 2 was corrected, 4 of 4 (`iteration-14/`); scenario 25 (retire) passed 3 of 3; scenarios 26 and 27 (`iteration-15/`) passed 4 of 4 each. Scenario 28 (an apostrophe in
+a recovery command's path, `iteration-16/`) passed 4 of 4; an earlier ungraded run had a fixture that did not exercise it.
