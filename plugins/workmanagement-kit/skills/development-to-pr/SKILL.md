@@ -25,6 +25,9 @@ draft PR, linked back to the Linear Issue.
 
 ## When NOT to Use
 
+- Taking an accepted Issue all the way to merge, or resuming an interrupted
+  lifecycle run that spans more than this stage, rather than only its commit and publish step →
+  `linear-github-lifecycle`. Not when that skill itself dispatched this one for its phase.
 - Starting the branch in the first place → `work-to-development`.
 - Reviewing an already-published PR's checks/reviews and reflecting findings to Linear →
   `pr-to-linear`.

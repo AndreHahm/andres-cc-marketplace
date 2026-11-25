@@ -42,7 +42,8 @@ See Testing & Validation below for the concrete trigger phrases this section sum
 
 Say "what gates apply to this repository", or "is the prior gate evidence still valid".
 
-1. Resolve the repository policy profile; if it is unconfigured, stop with a manual handoff.
+1. Resolve the repository policy profile; if it is unconfigured or names a provider other than `git-kit`,
+   stop with a manual handoff.
 2. Discover the gates this repository actually defines (Discovering Actual Gates).
 3. For a validity check, compare the recorded and the current SHA, both supplied by the calling skill
    (Invalidating Prior Evidence).
