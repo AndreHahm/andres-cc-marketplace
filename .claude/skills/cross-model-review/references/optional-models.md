@@ -38,14 +38,15 @@ plugin cache (only a version Claude Code's `installed_plugins.json` lists, when 
 then for an absolute path in `cross_model_review_rva_root` of the gitignored
 `.claude/git-kit.local.json`. It refuses a path inside this repository or any of its worktrees, a path
 with characters outside `[A-Za-z0-9._/-]`, a directory above the root that another account can swap, a
-symbolic link or hard-linked file anywhere in `scripts/` or `assets/` (Devin's adapter copies the config
+symbolic link or hard-linked file anywhere in `scripts/` or `assets/`, at any depth (Devin's adapter copies the config
 that denies Devin every tool from there) or as the root's `reviewadapters-kit.settings.json` (the
 vendors' default models), a file or directory not owned by you or writable by others (group write only
 for your own private group, on Linux, with no extended ACL), and a tracked config file. It writes
 nothing and runs only `git` and `ls`, never the dispatcher. It takes `git`, and the `node` it prints, from
-absolute PATH entries only, and refuses one inside this repository or its worktrees. It also refuses a `node`
-that another account could replace: every directory and link on its path, and the program itself, must belong to
-you or root, and neither those directories (unless sticky) nor the program may be writable by others. On Windows it refuses every candidate.
+absolute PATH entries only, and refuses one inside this repository or its worktrees. It also refuses a `node` reached
+through a link inside them, and one that another account could replace: every directory and link on its path, and the program itself, must belong to
+you or root, and neither those directories (unless sticky) nor the program may be writable by others. It prints
+the `node` path with links resolved and refuses one that looks like a version manager's shim (anything but a native program named `node`). On Windows it refuses every candidate.
 
 - **Exit 0:** `{"ok": true, "dispatcher", "node", "source", "notes"}`. Take `dispatcher` as `$RVA` and
   `node` as `$NODE`, literal absolute paths; check that `$NODE` is absolute, lies outside `$REPO_ROOT` and has
@@ -207,8 +208,8 @@ or the re-check, declined, failed per batch.
   reviewadapters-kit documents for its own command.
 - The locator trusts the installed copy as far as its file ownership and modes go. A copy installed from
   an unreviewed branch is still that branch's code (reviewadapters-kit README, "Running from a checkout").
-  It checks only the files in `scripts/` and `assets/` and the root's settings file (not other root
-  entries, nor files inside a subdirectory there), not the codex-kit modules the dispatcher loads
+  It checks only the entries below `scripts/` and `assets/` and the root's settings file (not other root
+  entries), not the codex-kit modules the dispatcher loads
   (the dispatcher checks those itself). Without `installed_plugins.json`, the sibling lookup accepts
   any single version folder in the cache, even one Claude Code no longer lists as installed.
 - Between the re-check and the `node` call there is still a short window; the ancestor check makes it
@@ -219,9 +220,13 @@ or the re-check, declined, failed per batch.
 - `node` may belong to root as well as to you, and the re-check compares its path, not its content. The Codex
   launcher checks only its location. A group-writable folder (Homebrew's `/opt/homebrew/bin`, `/usr/local/bin` on some systems) is
   refused, so a `node` there offers no optional model. The locator's own `git` gets the location check only.
-- A version manager's `node` shim (asdf, mise, Volta) may pick the real program from files in the checkout.
-- A `node` path with `@` or `+` (Homebrew `node@22`) is refused, and one that changes per Bash call (fnm)
-  drops every vendor at the re-check.
+- A version manager's `node` shim (asdf, mise, Volta) may pick the real program from files in the checkout, so one is
+  refused by its form alone: a native program named `node` that does the same is not seen, and a distribution's
+  `node` that links to another name (`nodejs`, `node-22`, snap) is refused too.
+- The private-group exception reads `/etc/passwd` and `/etc/group` only: a member that LDAP or SSSD adds to your
+  private group, or an account there with it as primary group, is not seen, as in reviewadapters-kit. Whoever runs that directory service could add either.
+- A resolved `node` path with `@` or `+` (Homebrew `node@22`) is refused, and one that changes between the
+  locator's runs drops every vendor at the re-check.
 - reviewadapters-kit refuses a vendor program only inside the reviewed checkout; one linked into another
   worktree of it passes, since the Preflight PATH filter does not list `agy`, `pi` or `devin`.
 - A macOS ACL that grants write without group-write bits is not seen, as in reviewadapters-kit.

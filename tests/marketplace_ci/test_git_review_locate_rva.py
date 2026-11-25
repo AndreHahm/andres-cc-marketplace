@@ -52,10 +52,12 @@ def _manifest(layout, *versions, raw=None):
     return path
 
 
-def _program(folder, name, body="exit 0"):
+def _program(folder, name, body=None):
     folder.mkdir(parents=True, exist_ok=True)
     path = folder / name
-    path.write_text(f"#!/bin/sh\n{body}\n")
+    # the locator accepts only a native program as node
+    native = name == "node" and body is None
+    path.write_text("\x7fELF fake\n" if native else f"#!/bin/sh\n{body or 'exit 0'}\n")
     path.chmod(0o755)
     return path
 
@@ -160,7 +162,7 @@ def test_node_with_unsafe_characters_refused(layout, monkeypatch):
     monkeypatch.setenv("PATH", f"{folder}{os.pathsep}{os.environ['PATH']}")
     code, out = _run(layout)
     assert code == 3
-    assert any("the node on PATH has characters outside" in r for r in out["reasons"])
+    assert any("(node) has characters outside" in r for r in out["reasons"])
 
 
 def _refused(layout, text):
@@ -233,6 +235,68 @@ def test_group_writable_node_needs_the_private_group(layout, monkeypatch, part):
     assert locator.program_problem(node) is None
     monkeypatch.setattr(locator, "private_group_gid", lambda: None)
     assert "writable by others" in locator.program_problem(node)
+
+
+@pytest.mark.parametrize("head", ["#!/bin/sh\n", ""])
+def test_node_script_shim_refused(layout, head):
+    """env can run a script without `#!` through /bin/sh, so it is refused too."""
+    _rva(layout["cache"] / "reviewadapters-kit" / "0.1.0")
+    (layout["tmp"] / "bin" / "node").write_text(f"{head}exec asdf exec node\n")
+    _refused(layout, "(node) is not a native program")
+
+
+@pytest.mark.parametrize("magic", ["cffaedfe", "cafebabe"])
+def test_mach_o_node_accepted(layout, magic):
+    _rva(layout["cache"] / "reviewadapters-kit" / "0.1.0")
+    (layout["tmp"] / "bin" / "node").write_bytes(bytes.fromhex(magic) + b"x")
+    code, out = _run(layout)
+    assert code == 0, out
+
+
+@pytest.mark.parametrize("place", ["repo", "other-tree", "moved-tree"])
+def test_node_link_through_checkout_refused(layout, place):
+    """The branch could point a link kept in a checkout at another program outside it."""
+    _rva(layout["cache"] / "reviewadapters-kit" / "0.1.0")
+    real = _program(layout["tmp"] / "real", "node")
+    tree = layout["tmp"] / place
+    if place != "repo":
+        added = layout["tmp"] / "added-tree" if place == "moved-tree" else tree
+        _git(layout["repo"], "worktree", "add", "-q", "--detach", str(added))
+        added.rename(tree)
+    (tree / "tools").mkdir()
+    (tree / "tools" / "node").symlink_to(real)
+    link = layout["tmp"] / "bin" / "node"
+    link.unlink()
+    link.symlink_to(tree / "tools" / "node")
+    _refused(layout, "tools (node) lies inside the repository")
+
+
+def test_node_link_to_another_program_refused(layout):
+    """mise and Volta link `node` to their own program."""
+    _rva(layout["cache"] / "reviewadapters-kit" / "0.1.0")
+    shim = layout["tmp"] / "bin" / "node"
+    shim.rename(layout["tmp"] / "volta-shim")
+    shim.symlink_to(layout["tmp"] / "volta-shim")
+    _refused(layout, "volta-shim, which looks like a version manager's shim")
+
+
+def test_printed_node_is_resolved(layout):
+    _rva(layout["cache"] / "reviewadapters-kit" / "0.1.0")
+    real = _program(layout["tmp"] / "real", "node")
+    link = layout["tmp"] / "bin" / "node"
+    link.unlink()
+    link.symlink_to(real)
+    _, out = _run(layout)
+    assert out["node"] == str(real)
+
+
+def test_resolved_node_with_unsafe_characters_refused(layout):
+    _rva(layout["cache"] / "reviewadapters-kit" / "0.1.0")
+    real = _program(layout["tmp"] / "node@22", "node")
+    link = layout["tmp"] / "bin" / "node"
+    link.unlink()
+    link.symlink_to(real)
+    _refused(layout, "(node) has characters outside")
 
 
 def test_node_link_with_two_leading_slashes(layout):
@@ -472,6 +536,29 @@ def test_world_writable_sibling_module_refused(layout):
     assert any("rva-run.mjs is writable by others" in r for r in out["reasons"])
 
 
+@pytest.mark.parametrize("top", ["scripts", "assets"])
+@pytest.mark.parametrize("kind", ["plain", "writable", "symlink", "hard link", "folder"])
+def test_nested_entry_is_checked(layout, top, kind):
+    root = _rva(layout["cache"] / "reviewadapters-kit" / "0.1.0")
+    nested = root / top / "a" / "b"
+    nested.mkdir(parents=True)
+    entry = nested / "x.mjs"
+    entry.write_text("// x\n")
+    if kind == "writable":
+        entry.chmod(0o666)
+    elif kind == "symlink":
+        (nested / "y.mjs").symlink_to(entry)
+    elif kind == "hard link":
+        os.link(entry, layout["tmp"] / "other.mjs")
+    elif kind == "folder":
+        nested.chmod(0o777)
+    if kind == "plain":
+        code, out = _run(layout)
+        assert code == 0, out
+    else:
+        _refused(layout, str(nested))
+
+
 def test_hard_linked_dispatcher_refused(layout):
     root = _rva(layout["cache"] / "reviewadapters-kit" / "0.1.0")
     os.link(root / "scripts" / "rva-dispatch.mjs", layout["tmp"] / "other-link.mjs")
@@ -515,6 +602,14 @@ def test_root_inside_another_worktree_refused(layout):
     code, out = _run(layout)
     assert code == 3
     assert any("one of its worktrees" in r for r in out["reasons"])
+
+
+def test_root_inside_moved_worktree_refused(layout):
+    added, moved = layout["tmp"] / "added-tree", layout["tmp"] / "moved-tree"
+    _git(layout["repo"], "worktree", "add", "-q", "--detach", str(added))
+    added.rename(moved)
+    _config(layout, str(_rva(moved / "rva")))
+    _refused(layout, "lies inside the repository under review or one of its worktrees")
 
 
 def test_unsafe_characters_refused(layout):

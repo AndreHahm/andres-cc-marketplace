@@ -1,0 +1,27 @@
+{
+  "eval_id": 29,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "A: no optional model is offered and the locator's reasons are mentioned in one line",
+      "passed": true,
+      "evidence": "'Optional models not offered: no usable reviewadapters-kit (sibling: ...; config: ...)', one line"
+    },
+    {
+      "text": "A: nothing searches further and no copy inside the checkout is run; the run goes on with Claude and Codex",
+      "passed": true,
+      "evidence": "'Never search further, never run a checkout copy'; 'Go on with Claude and Codex'"
+    },
+    {
+      "text": "B: no optional model is offered, the locator is not run, and the reason is recorded in inspection_limits",
+      "passed": true,
+      "evidence": "'The locator is never run'; inspection_limits: 'the diff changes the review scripts (PLANNER_TOUCHED=1), so the locator was not run'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  },
+  "notes": "One run. Assertions written before the run. Evidence is quoted from the agent's returned summary; the full answer is outputs/response.md."
+}
