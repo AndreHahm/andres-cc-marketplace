@@ -339,8 +339,8 @@ budget is reported as failed with a `dispatch budget exhausted` error, so the jo
 instead of being killed mid-call. `codex-review-result.json` carries a `reviewer_attempts` map (reviewer name
 to bridge calls made) so a reviewer that needed retries stays visible even when the run passes. Each entry of
 its `reviewer_results` map holds that reviewer's wall time in `seconds` (retries included, left out when no call
-was made), and the job summary of a run whose reviewers all
-answered lists it. When a
+was made). The job summary lists it once no reviewer's dispatch has failed, also when an answer turns out
+to be invalid. When a
 reviewer fails, the file is still written, with a `dispatch_failed` list (reviewer, attempts, error) and
 `blocking: true`, so the uploaded `codex-review-result` artifact holds a machine-readable copy of the error
 (the same text the log line carries); the job still exits 2. Every other exit-2 path of `run-codex-review`
@@ -873,13 +873,16 @@ was neither added nor removed nor closed by `...` (other readers run on to the n
 gain a `references/` directory (in any letter case; a plain file of that name is not one, a symlink or submodule is), and both sides are
 small enough and shallow enough to parse (a parser error covers nothing). So a model R35 claim about a section the
 base already lacked is a notice, and a new skill, a removed or renamed heading or a new `references/` directory
-still gets the model's verdict. R18 coverage (issue #862) is each changed skill, command or agent file the
-`measurement` verifier read and found no new Critical block in: none past 30 lines that is not an identical block
-of the base. For all four rules the finding's location must have plain path characters and go through no symlink;
+still gets the model's verdict. R18 coverage (issue #862) is each changed skill, command or agent file that the
+`measurement` verifier read and that has no new Critical block. A Critical block has more than 30 lines, and it is
+new unless the base holds an identical one. For all four rules the finding's location must have plain path characters and go through no symlink;
 for R18 every component it cites must be covered too.
 Accepted residuals: a checker finding that names only R18 (or R18 with another covered rule of the four) for
 another defect in such a file is a notice, agent files included, so R18 reaches more files than R35; and where the
-script's fence reading is mistaken (see `r18-code-block-line-count`), no model finding backs it up. The finding's location is compared after lexical normalization (`./x` and `a//b`
+script's fence reading is mistaken (see `r18-code-block-line-count`), no model finding backs it up. Not covered:
+an R18 finding an earlier run recorded as blocking before this change; it is carried as it was (R7) until its file
+changes or a waiver applies, and `skill-reviewer`'s own size finding (C2), which its prompt rates Minor in the
+Warning tier but no code downgrades. The finding's location is compared after lexical normalization (`./x` and `a//b`
 name `x` and `a/b`), an absolute one under the checkout root without a `..` segment after it is made relative; any other absolute location
 never matches, so it keeps blocking.
 Without coverage nothing is downgraded, and

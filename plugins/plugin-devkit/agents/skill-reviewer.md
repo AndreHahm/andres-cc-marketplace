@@ -100,7 +100,7 @@ Find all fenced code blocks (``` delimiters). Count lines in each. For each bloc
 |--------|----------|--------|
 | Within weak-warning threshold | OK | No finding |
 | Exceeds weak-warning, within warning | ⚪ Weak Warning | Record as informational; do not block scoring |
-| Exceeds warning, within critical | ⚠️ Warning | Flag as Major; do not block scoring |
+| Exceeds warning, within critical | ⚠️ Warning | Flag as Minor; do not block scoring |
 | Exceeds critical | ❌ Critical | Flag as Critical; **blocks scoring** |
 
 ### C3, C4 — Remaining Gatekeepers
@@ -126,9 +126,9 @@ Work through every section of `checklist.md` and `pdk-content-guidelines.md`. Fo
 
 - **Critical** — blocks skill loading or causes runtime failures (broken required fields, invalid YAML, missing linked files), plus Critical-tier C1/C2 violations (see Step 4; these block scoring)
 - **Major** — significantly degrades skill effectiveness (vague triggers, wrong voice, missing required sections, tool scoping violations, self-containment failures)
-- **Minor** — polish items (style preferences, optional enhancements, formatting, Weak Warning–tier and Soft Warning–tier C1/C2 findings)
+- **Minor** — polish items (style preferences, optional enhancements, formatting, Weak Warning–tier and Soft Warning–tier C1/C2 findings, Warning-tier C2 findings)
 
-Warning-tier C1/C2 findings are **Major**. Weak Warning–tier and Soft Warning–tier C1/C2 findings are **Minor**.
+Warning-tier C1 findings are **Major**; Warning-tier C2 findings are **Minor**. Weak Warning–tier and Soft Warning–tier C1/C2 findings are **Minor**.
 
 **Chain-violation check (mandatory, deterministic):** Scan in two passes:
 1. For each `workflows/*.md` file loaded in Step 3, scan for any action step that links to or directs the reader to a `references/` file (e.g., `Read references/foo.md`, `See references/foo.md`, or a markdown link `[...](references/foo.md)` in an imperative instruction). Flag each as **Major** — a workflow delegating to a reference file forces the caller to load unexpected context, violating self-containment.

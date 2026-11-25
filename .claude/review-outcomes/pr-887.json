@@ -1,0 +1,49 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4691525357",
+      "line": 3121,
+      "note": "skill-reviewer rates its C2 Warning tier Minor in its prompt; no code downgrade.",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 887,
+      "recorded_at": "2026-11-25T07:21:25+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4691525464",
+      "line": 962,
+      "note": "Rollout limit of carried findings documented in docs/ci.md; no code change.",
+      "path": "scripts/marketplace_ci/review_verifiers.py",
+      "pr": 887,
+      "recorded_at": "2026-11-25T07:21:26+00:00"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "4691532860",
+      "line": 3121,
+      "note": "Documented residual of the R18 model downgrade; risk accepted by the maintainer.",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 887,
+      "recorded_at": "2026-11-25T07:21:26+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-claude-delta-general-r1-ci342",
+      "line": 342,
+      "note": "Job-summary condition corrected.",
+      "path": "docs/ci.md",
+      "pr": 887,
+      "recorded_at": "2026-11-25T07:21:27+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-claude-delta-general-r1-ci877",
+      "line": 877,
+      "note": "R18 coverage sentence rewritten.",
+      "path": "docs/ci.md",
+      "pr": 887,
+      "recorded_at": "2026-11-25T07:21:27+00:00"
+    }
+  ]
+}
