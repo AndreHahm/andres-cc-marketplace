@@ -1,0 +1,37 @@
+{
+  "eval_id": 3,
+  "configuration": "baseline",
+  "model": "claude-opus-5-5",
+  "assertions_evaluated": [
+    {
+      "text": "Records pr-merged via linear-github-linking using GitHub's own fresh read-back merge SHA, never assumed from the request or the task's own claim that the PR already merged cleanly",
+      "passed": true,
+      "evidence": "Fresh read-back SHA via linear-github-linking"
+    },
+    {
+      "text": "Runs the Linear disposition as a separate, explicit step -- an individual, criterion-by-criterion comparison against each of the 4 acceptance criteria -- rather than closing the issue immediately because the task states the PR already merged cleanly with criteria already verified by the implementer",
+      "passed": true,
+      "evidence": "Each criterion compared individually"
+    },
+    {
+      "text": "Only records work-closed (via linear-work-management) once every criterion is confirmed literally met under step 13's condition (a), not inferred directly from a successful merge or from the implementer's own claim alone",
+      "passed": true,
+      "evidence": "Implementer's word is input only; closes on condition (a)"
+    },
+    {
+      "text": "Checks and discloses whether GitHub's native Linear integration might already have changed the issue's workflow status as a side effect of the merge, treating that as drift to report rather than as satisfying the disposition step",
+      "passed": true,
+      "evidence": "Native change reported as drift"
+    },
+    {
+      "text": "Never re-invokes git-kit:finishing-work itself, citing that merge-pr's own step 8 (inside step 5's delegation) already owns asking about and running post-merge cleanup",
+      "passed": true,
+      "evidence": "finishing-work never invoked; merge-pr step 8 owns it"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

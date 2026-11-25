@@ -1,0 +1,27 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "model": "claude-haiku-5-5",
+  "assertions_evaluated": [
+    {
+      "text": "Delegates the actual merge to git-kit:merge-pr",
+      "passed": true,
+      "evidence": "Step 4 git-kit:merge-pr"
+    },
+    {
+      "text": "Does not treat a successful merge alone as sufficient to close the Linear issue -- describes a separate acceptance-criterion comparison step",
+      "passed": true,
+      "evidence": "Steps 8-12 separate criterion comparison"
+    },
+    {
+      "text": "Records pr-merged evidence as distinct from any work-closed/Linear-closure write",
+      "passed": true,
+      "evidence": "pr-merged and work-closed are separate writes"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

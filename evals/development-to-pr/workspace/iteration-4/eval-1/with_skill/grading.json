@@ -1,0 +1,32 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "model": "claude-haiku-5-5",
+  "assertions_evaluated": [
+    {
+      "text": "Delegates the commit to git-kit:commit rather than staging/committing directly",
+      "passed": true,
+      "evidence": "Step 4 invokes git-kit:commit; Never list bars raw stage/commit/push"
+    },
+    {
+      "text": "References the Git/GitHub Evidence Record / FOUNDATION_CONTRACTS.md when describing what evidence gets recorded",
+      "passed": true,
+      "evidence": "Steps 6 and 14 append git-github-evidence entries (commit-linked, pr-published)"
+    },
+    {
+      "text": "Searches for an existing PR before proposing to create a new one",
+      "passed": true,
+      "evidence": "Step 2 searches before the commit in step 4"
+    },
+    {
+      "text": "Gets explicit confirmation before publishing the PR",
+      "passed": true,
+      "evidence": "Step 9 AskUserQuestion before create-pr"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/workmanagement-kit/skills/repository-gates/SKILL.md",
+  "assertions": [
+    {
+      "text": "Resolves repository_policy.provider_profile via the local-override trust-boundary check (git ls-files --error-unmatch) before reporting a profile, and states the profile maps to git-kit per FOUNDATION_CONTRACTS.md's canonical table",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Enumerates all gate categories from real repo config (pre-commit via .pre-commit-config.yaml, pre-push, PR required checks via a live branch-protection read, Codex delta review via workflow files/gh pr checks display names, review requirements, merge rights/method) rather than a generic checklist",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Never asserts a 'Review Changes' gate exists unless real repo config names one",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "If branch protection can't be read, discloses this as ambiguous (permission vs. absence) rather than concluding 'no protection'",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}

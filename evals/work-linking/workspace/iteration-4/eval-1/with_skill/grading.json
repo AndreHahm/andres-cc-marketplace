@@ -1,0 +1,22 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "model": "claude-opus-5-5",
+  "assertions_evaluated": [
+    {
+      "text": "Output describes a link as stable IDs plus an authority label, not a content mirror",
+      "passed": true,
+      "evidence": "Stable IDs in link fields, authority stated, no content mirror"
+    },
+    {
+      "text": "Output mentions recording the link through the plugin's shared transition contract",
+      "passed": true,
+      "evidence": "Step 6 Transition Contract entry per write"
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 2,
+    "pass_rate": 1.0
+  }
+}

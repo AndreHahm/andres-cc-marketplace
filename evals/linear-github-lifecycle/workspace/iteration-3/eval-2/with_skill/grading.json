@@ -1,0 +1,27 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "model": "claude-haiku-5-5",
+  "assertions_evaluated": [
+    {
+      "text": "Delegates each lifecycle phase to its own named focused skill (work-to-development, development-to-pr, pr-to-linear, merge-to-completion, status-and-learning) rather than performing the phase's logic itself",
+      "passed": true,
+      "evidence": "Steps 3, 5-8 delegate to the five focused skills"
+    },
+    {
+      "text": "Follows the documented phase order (Prepare + Start before Commit+gates+Publish, Publish before Merge, Merge before Notion learning)",
+      "passed": true,
+      "evidence": "Order kept, Notion after merge"
+    },
+    {
+      "text": "Describes an AskUserQuestion confirmation gate at each phase transition, additive to each delegated skill's own internal gate",
+      "passed": true,
+      "evidence": "Confirmation before each transition, on top of focused skills' gates"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

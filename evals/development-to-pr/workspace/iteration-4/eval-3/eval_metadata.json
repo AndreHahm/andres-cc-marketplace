@@ -1,0 +1,26 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/workmanagement-kit/skills/development-to-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "Verifies both the current checkout's repository (via git remote get-url origin) and branch match the selected PR's own headRefName before treating any push as safe -- never assumes a branch-name match alone suffices",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Correctly classifies PR #303 as not a valid, currently-open existing PR (real gh pr view shows MERGED) rather than trusting the task's stated premise at face value",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Explicitly frames the stop as the skill's own 'structured handoff' concept (or references the git-github-evidence / FOUNDATION_CONTRACTS.md record this path would need), not generic reasoning alone",
+      "type": "presence",
+      "target": "outputs/"
+    },
+    {
+      "text": "Never proposes or executes a direct git push / gh pr create / gh pr edit as the resolution -- reports the mismatch instead of silently working around it",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}

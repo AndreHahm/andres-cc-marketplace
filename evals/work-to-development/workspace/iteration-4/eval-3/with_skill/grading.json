@@ -1,0 +1,32 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "model": "claude-opus-5-5",
+  "assertions_evaluated": [
+    {
+      "text": "Reads Linear Issue context before proposing any Git action",
+      "passed": true,
+      "evidence": "Step 1 reads the Issue first"
+    },
+    {
+      "text": "Resolves repository policy (confirms git-kit is the provider) before requesting a branch",
+      "passed": true,
+      "evidence": "Step 3 confirms git-kit:starting-work"
+    },
+    {
+      "text": "Checks for an existing branch/commit/PR for this Issue before proposing a new branch",
+      "passed": true,
+      "evidence": "Step 4 searches artifacts before the branch"
+    },
+    {
+      "text": "Explicitly asks for confirmation before invoking git-kit:starting-work, and never claims to create a branch directly itself",
+      "passed": true,
+      "evidence": "Step 6 asks before starting-work; never creates a branch directly"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

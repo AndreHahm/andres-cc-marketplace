@@ -1,0 +1,26 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/workmanagement-kit/skills/work-to-development/SKILL.md",
+  "assertions": [
+    {
+      "text": "Reads Linear Issue context before proposing any Git action",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Resolves repository policy (confirms git-kit is the provider) before requesting a branch",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Checks for an existing branch/commit/PR for this Issue before proposing a new branch",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Explicitly asks for confirmation before invoking git-kit:starting-work, and never claims to create a branch directly itself",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "model": "claude-opus-5-5",
+  "assertions_evaluated": [
+    {
+      "text": "Before concluding the Notion record was deleted, re-resolves by stable ID within the owning system (Notion), not by substituting a content/title-based search guess",
+      "passed": true,
+      "evidence": "Step 1 resolves the stable ID in Notion; never matches by title alone"
+    },
+    {
+      "text": "Classifies this as a 'Broken link' per the skill's six defined drift states, not a generic or ad-hoc label",
+      "passed": true,
+      "evidence": "Classified Broken link"
+    },
+    {
+      "text": "Does not silently resolve the link by a guessed replacement or by newest timestamp; surfaces the uncertainty to the user instead of writing a repair unprompted",
+      "passed": true,
+      "evidence": "No guessed target; B and C ask, the write itself is previewed"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

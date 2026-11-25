@@ -1,0 +1,27 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "model": "claude-haiku-5-5",
+  "assertions_evaluated": [
+    {
+      "text": "Classifies the discrepancy as exactly one of the nine defined drift states rather than assuming an explanation without evidence",
+      "passed": true,
+      "evidence": "Step 3: Early status primary, conditions for the other classes"
+    },
+    {
+      "text": "Does not treat the more recently changed system (Linear's 'Done' status) as automatically correct via newest-timestamp precedence",
+      "passed": true,
+      "evidence": "Step 2: recency does not decide"
+    },
+    {
+      "text": "Flags the 'Done' status vs. still-open-draft-PR mismatch as requiring investigation and AskUserQuestion confirmation before any repair, rather than silently accepting or silently correcting it",
+      "passed": true,
+      "evidence": "Step 6 gate before any Linear write"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}
