@@ -1,10 +1,11 @@
 # Dependencies on workmanagement-kit (Wave 3a)
 
 "Wave 3a" is the planned `workmanagement-kit` work that extends `plugin-integration-intake`. workledger-kit
-needs capabilities that intake does not have today. Until they ship, every skill that would write runs in
-**plan mode**: it collects, annotates, plans and writes its files into the local working folder, and stops
-before submitting. This file is the canonical list of the intake capabilities workledger-kit needs but intake
-lacks, and of the flags that gate each one; other files point here instead of restating it.
+needs these capabilities. Intake now has Issue batches, dedup-key queries, updates, `classify` and `owner/repo`
+resolution; Report page-content blocks and roadmap reads are still missing. Every flag below ships `false`, and until
+a person sets one, the skills it gates run in **plan mode**: they collect, annotate, plan and write their files into
+the local working folder, and stop before submitting. This file is the canonical list of the intake capabilities
+workledger-kit needs and of the flags that gate each one; other files point here instead of restating it.
 
 ## Capability flags
 
@@ -61,9 +62,8 @@ Recorded here so Wave 3a's own plan can be checked against it. All of it sits be
   (`work-intake-classifier`); the plugin cannot call that classifier directly. Intake's `classify` operation is
   that path: at most 50 items of 500 characters, one live approval per submission because the text goes to
   Codex, advisory results only. Inferred PR links are not part of it.
-- Multi-team configuration in the kit: today its configuration holds one repository and one team, so intake
-  cannot resolve `owner/repo` to a team or reject an unknown repository. Until then a payload's
-  `linear_target` gets an ambiguous-target hand-off.
+- Multi-team configuration in the kit: its `linear.repositories` configuration maps an `owner/repo` slug to a team
+  through `linear-work-management`. A payload whose slug is not mapped gets a structured handoff.
 
 ## Not collected in v1
 

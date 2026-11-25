@@ -44,8 +44,8 @@ A single Linear submission is an **Issue-level** object (`title`, `description`,
 `priority`, `labels`, `dependencies`, `cycle` optional); unrecognized fields are malformed content. Intake also
 accepts Issue batches, dedup-key queries, `owner/repo` targets, and updates that may set a pull request link and a
 due date (which may hold the completed date). `wlgr-kit-dependencies.md` is authoritative for what is missing and
-for the flags that gate each item; in short, intake does not yet support Report page-content blocks or
-caller-reachable classification. The PR URL and `merged_at`/`closed_at` stay in the issue's tracking block, which
+for the flags that gate each item; in short, intake does not yet support Report page-content blocks or reading the
+roadmap, and its `classify` operation is called by no skill step here yet. The PR URL and `merged_at`/`closed_at` stay in the issue's tracking block, which
 is canonical: a due date can be changed by hand, and no skill step here writes either field yet.
 
 ## Working-folder files

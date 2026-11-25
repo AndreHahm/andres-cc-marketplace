@@ -14,7 +14,7 @@ verifies or records an attestation for each.
 | 4 | Linear's automation maps draft PR to Todo, open PR to In Progress, review to In Review, ready to Ready to Merge, and has **no** mapping for merge or close (a person verifies acceptance before Done) | Attested only |
 | 5 | Stale auto-close is off; auto-archive is set to its longest period; the parent and sub-issue auto-close settings are understood (this plugin creates flat issues only) | Attested only |
 | 6 | A master open-item issue and a master PR-record issue exist in the team, each labelled `meta: master`, with a first-line `dedup_key:` and (open item) a `github_labels` line; both are excluded from saved views | Master issues read back (once available) |
-| 7 | `workmanagement-kit`'s configuration maps this repository's `owner/repo` to the Linear team | Open until Wave 3a: the kit's configuration holds one repository and one team today, and the mapping lives there, not in this plugin |
+| 7 | `workmanagement-kit`'s configuration maps this repository's `owner/repo` to the Linear team | Attested only: the mapping lives in the kit's `linear.repositories` configuration, not in this plugin |
 | 8 | Any issue templates that were created are removed; this plugin sets every field itself | Attested only |
 | 9 | The working folder (`digest.output_dir`, default `.temp/workledger-digest`) is gitignored in the repository, for example by adding `.temp/` to `.gitignore` | The config loader checks it and reports a problem if it is not ignored |
 

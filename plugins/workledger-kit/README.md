@@ -6,9 +6,9 @@ Keeps one deduplicated, approved open-item list and a navigable PR history for a
 GET-only wrapper and never written to.
 
 **Status: 1.0.0-alpha.1.** The collectors, dedup core, report assembler and config loader are built and
-tested. Submitting to Linear and Notion is blocked until `workmanagement-kit`'s Wave 3a ships batch
-submission, report page-content blocks, queries, updates and caller-reachable classification, so every
-skill that would write runs in plan mode today (see `references/wlgr-kit-dependencies.md`).
+tested. Every capability flag ships off, so every skill that would write runs in plan mode until a person sets
+a flag. `workmanagement-kit`'s intake now has Issue batches, dedup-key queries, updates and classification; report
+page-content blocks and roadmap reads are still missing (see `references/wlgr-kit-dependencies.md`).
 
 ## Skills
 
