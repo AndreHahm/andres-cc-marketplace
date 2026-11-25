@@ -111,8 +111,9 @@ python3 ${CLAUDE_PLUGIN_ROOT}/skills/github-actions-hardening-audit/scripts/work
   `OUTPUT_FORMAT`, `TOP_N` below `1`, `WARN_SCORE` greater than `CRITICAL_SCORE`, an invalid
   `ALLOW_REF_REGEX`/`WORKFLOW_FILE_MATCH`/`WORKFLOW_FILE_EXCLUDE`/`EVENT_MATCH`/`EVENT_EXCLUDE` regex, or
   `WORKFLOW_GLOB` matching zero files (either initially, or after `WORKFLOW_FILE_MATCH`/
-  `WORKFLOW_FILE_EXCLUDE` filtering removes every match). Check stderr to distinguish a critical-hardening
-  gate failure from a config/input error — both currently exit `1`.
+  `WORKFLOW_FILE_EXCLUDE` filtering removes every match). Both this and a `FAIL_ON_CRITICAL=1` gate failure
+  exit `1`: an input error prints an `ERROR:` line to stderr, while a gate failure prints its report to stdout
+  and nothing to stderr.
 - Text mode prints summary + ranked workflow risks
 - JSON mode prints summary + ranked workflows + critical workflows
 
@@ -142,7 +143,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/skills/github-actions-hardening-audit/scripts/work
 
 **Quality gates (verified against the bundled fixtures this session):**
 - [ ] `fixtures/clean.yml` scores `0` (severity `ok`) — has workflow-level `permissions:`, every job has `timeout-minutes`, and its one `uses:` ref is pinned to a full commit SHA.
-- [ ] `fixtures/risky.yml` scores `9` (severity `critical`) — missing `permissions`, missing `timeout-minutes` on its `deploy` job, two floating refs (`@main`, `@v4`), and a `pull_request_target` trigger (`on: [push, pull_request_target]`, single-line flow-sequence form — exercises the inline `on:` parser, not just the block-style one).
+- [ ] `fixtures/risky.yml` scores `9` (severity `critical`) with the default inputs (`10` with `REQUIRE_CONCURRENCY=1`) — missing `permissions`, missing `timeout-minutes` on its `deploy` job, two floating refs (`@main`, `@v4`), and a `pull_request_target` trigger (`on: [push, pull_request_target]`, single-line flow-sequence form — exercises the inline `on:` parser, not just the block-style one).
 - [ ] `fixtures/reusable-caller.yml` scores `0` (severity `ok`) — its one job calls a reusable workflow via a job-level `uses:` key and has no `timeout-minutes` (not a valid key for that job shape); `missing_timeout_jobs` correctly comes back empty instead of false-positive-flagging the job.
 - [ ] `WORKFLOW_GLOB` resolves to at least one file, or the script exits `1` with a clear `no files matched` error.
 

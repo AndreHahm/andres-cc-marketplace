@@ -476,7 +476,7 @@ workflows that need to save on every run rather than only on a cache miss — pa
 ### azure/login
 
 **Latest Version:** v2 (v2.0.0)
-**SHA:** `6c251865b4e6290e7b78be643ea2d005a6c79ee5`
+**SHA:** `8c334a195cbb38e46038007b304988d888bf676a`
 
 **Description:** Login to Azure
 
@@ -489,7 +489,7 @@ workflows that need to save on every run rather than only on a cache miss — pa
 **Example:**
 ```yaml
 - name: Azure Login
-  uses: azure/login@6c251865b4e6290e7b78be643ea2d005a6c79ee5 # v2.0.0
+  uses: azure/login@8c334a195cbb38e46038007b304988d888bf676a # v2.0.0
   with:
     creds: ${{ secrets.AZURE_CREDENTIALS }}
 ```
@@ -521,7 +521,7 @@ workflows that need to save on every run rather than only on a cache miss — pa
 ### dorny/paths-filter
 
 **Latest Version:** v3 (v3.0.2)
-**SHA:** `de90cc6551a0c30ca4af50ac82dafbf57eb22fab`
+**SHA:** `de90cc6fb38fc0963ad72b210f1f284cd68cea36`
 
 **Description:** Detect which paths changed, for conditionally running jobs in a monorepo
 
@@ -531,7 +531,7 @@ workflows that need to save on every run rather than only on a cache miss — pa
 **Example:**
 ```yaml
 - name: Detect changed paths
-  uses: dorny/paths-filter@de90cc6551a0c30ca4af50ac82dafbf57eb22fab # v3.0.2
+  uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
   id: filter
   with:
     filters: |
@@ -563,7 +563,7 @@ workflows that need to save on every run rather than only on a cache miss — pa
 
 ### github/super-linter
 
-**Latest Version:** v5 (v5.7.2)
+**Latest Version:** v5 (v5.0.0)
 **SHA:** `45fc0d88288beee4701c62761281edfee85655d7`
 
 **Description:** Run multiple linters in one action
@@ -576,7 +576,7 @@ workflows that need to save on every run rather than only on a cache miss — pa
 **Example:**
 ```yaml
 - name: Lint code
-  uses: github/super-linter@45fc0d88288beee4701c62761281edfee85655d7 # v5.7.2
+  uses: github/super-linter@45fc0d88288beee4701c62761281edfee85655d7 # v5.0.0
   env:
     VALIDATE_ALL_CODEBASE: false
     DEFAULT_BRANCH: main
@@ -625,7 +625,7 @@ workflows that need to save on every run rather than only on a cache miss — pa
 
 ### softprops/action-gh-release
 
-**Latest Version:** v2 (v2.0.2)
+**Latest Version:** v2 (v2.0.4)
 **SHA:** `9d7c94cfd0a1f3ed45544c887983e9fa900f0564`
 
 **Description:** Create GitHub releases
@@ -641,7 +641,7 @@ workflows that need to save on every run rather than only on a cache miss — pa
 **Example:**
 ```yaml
 - name: Create Release
-  uses: softprops/action-gh-release@9d7c94cfd0a1f3ed45544c887983e9fa900f0564 # v2.0.2
+  uses: softprops/action-gh-release@9d7c94cfd0a1f3ed45544c887983e9fa900f0564 # v2.0.4
   with:
     tag_name: ${{ github.ref }}
     name: Release ${{ github.ref_name }}

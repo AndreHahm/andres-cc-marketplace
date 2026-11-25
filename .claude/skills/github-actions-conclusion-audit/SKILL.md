@@ -130,8 +130,8 @@ python3 ${CLAUDE_PLUGIN_ROOT}/skills/github-actions-conclusion-audit/scripts/con
 - Exit `1` also on invalid input — invalid `OUTPUT_FORMAT`/`TOP_N`/`MIN_RUNS`/`FAIL_ON_CRITICAL`, a
   non-numeric or out-of-range `WARN_INSTABILITY_PCT`/`CRITICAL_INSTABILITY_PCT`,
   `CRITICAL_INSTABILITY_PCT` below `WARN_INSTABILITY_PCT`, an invalid `*_MATCH`/`*_EXCLUDE` regex, or
-  `RUN_GLOB` matching zero files. Check stderr to distinguish a critical-instability gate failure from a
-  config/input error — both currently exit `1`.
+  `RUN_GLOB` matching zero files. Both this and a `FAIL_ON_CRITICAL=1` gate failure exit `1`: an input error
+  prints an `ERROR:` line to stderr, while a gate failure prints its report to stdout and nothing to stderr.
 - Text output includes summary, thresholds, a `PARSE_ERRORS:` block (only shown if any input file failed
   to parse as JSON), and the top unstable workflow groups
 - JSON output includes `summary`, `groups` (ranked, truncated to `TOP_N`), `all_groups` (the full ranked

@@ -87,7 +87,8 @@ python3 "$SKILL_DIR/scripts/find_step_boundaries.py" <scratchpad-dir>/actions-ru
 
 This prints JSON: a `steps` array of `{name, start_line, end_line, source}` objects (one per
 detected step/skill boundary), a `result_markers` array of `{start_line, end_line}` spans, and a
-`total_lines` count of the log file. Use the `steps` array's line ranges directly as the
+`total_lines` count of the log file. A `START`/`END` step is named by its start line (`custom@9`), not by the
+marker's text. Use the `steps` array's line ranges directly as the
 per-subagent dispatch scope in Step 4 below — no manual `grep`/line-range derivation needed.
 
 If the script finds zero steps (an unrecognized log format), fall back to a direct `grep -n
