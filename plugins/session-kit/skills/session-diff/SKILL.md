@@ -17,8 +17,11 @@ Compare two sessions to see what changed.
 Say "diff sessions <a> and <b>". Resolve each session to its `session.path` (Step 1), then compare:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_transcript.py" diff <session-a.jsonl> <session-b.jsonl>
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_transcript.py" diff '<session-a.jsonl>' '<session-b.jsonl>'
 ```
+
+Keep the single quotes around a substituted value; write a single quote inside it as `'\''`, and never
+switch to double quotes, where the shell would still expand `$(...)` and backticks.
 
 Interpret the raw output as a side-by-side comparison (Step 3).
 
@@ -36,7 +39,7 @@ Interpret the raw output as a side-by-side comparison (Step 3).
 If the user names two session IDs or paths, resolve each directly:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" session-detail <session-id>
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" session-detail '<session-id>'
 ```
 
 Use the `session.path` field from each result.
@@ -58,7 +61,7 @@ nothing to diff yet after trying this.
 ## Step 2: Run the diff
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_transcript.py" diff <session-a.jsonl> <session-b.jsonl>
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_transcript.py" diff '<session-a.jsonl>' '<session-b.jsonl>'
 ```
 
 ## Data-Only Boundary

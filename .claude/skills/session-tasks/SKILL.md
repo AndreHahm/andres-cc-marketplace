@@ -63,13 +63,16 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" tasks --status in_progr
 ## Tasks from a specific task list
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" tasks --task-list <task-list-id> --format json
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" tasks --task-list '<task-list-id>' --format json
 ```
+
+Keep the single quotes around a substituted value; write a single quote inside it as `'\''`, and never
+switch to double quotes, where the shell would still expand `$(...)` and backticks.
 
 ## Fallback: tasks from a session JSONL (legacy)
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_transcript.py" tasks <session-jsonl-path>
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_transcript.py" tasks '<session-jsonl-path>'
 ```
 
 ## Present results
@@ -95,6 +98,7 @@ passed. Eval 3 verified orphaned status is computed by cross-referencing task-li
 never asserted as a raw field, with `--format json` used throughout.
 
 Eval 4 (2026-11-25, plan-only, no baseline) passed 3/3: instruction-like text in the data was reported as suspicious and not followed.
+Its prompt forbids commands, so it tests the reporting, not whether an instruction is declined while tools are available.
 
 **Last dated run record:** `evals/session-tasks/workspace/iteration-2/eval-4/with_skill/grading.json`,
 2026-11-25; earlier: `evals/session-tasks/workspace/iteration-1/eval-{1,2,3}/with_skill/grading.json`,

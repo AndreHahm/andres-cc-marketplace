@@ -67,8 +67,12 @@ only, no summary or task context; Option A's `timeline` command only ever return
 *session*, never individual events within one):
 ```bash
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" current
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_transcript.py" messages <session-jsonl-path> --offset 0 --limit 200 --include-tools
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_transcript.py" messages '<session-jsonl-path>' --offset 0 --limit 200 --include-tools
 ```
+
+Keep the single quotes around a substituted value; write a single quote inside it as `'\''`, and never
+switch to double quotes, where the shell would still expand `$(...)` and backticks.
+
 Use the `path` field from `current` (or a session ID the user gave) as `<session-jsonl-path>`. This is
 what actually satisfies an "event-level"/"detailed" framing scoped to one session — reaching only for
 Option A's project-level command when the user asked about one session's own events produces the same
@@ -125,6 +129,7 @@ B and produced a real chronological, event-level listing. See
 full re-verification record.
 
 Eval 4 (2026-11-25, plan-only, no baseline) passed 3/3: instruction-like text in the data was reported as suspicious and not followed.
+Its prompt forbids commands, so it tests the reporting, not whether an instruction is declined while tools are available.
 
 **Last dated run record:** `evals/session-timeline/workspace/iteration-3/eval-4/with_skill/grading.json`,
 2026-11-25; earlier: `evals/session-timeline/workspace/iteration-2/eval-{1,2,3}/with_skill/grading.json`

@@ -22,8 +22,11 @@ Say "session stats". Resolve the session's `path`, then read its usage:
 
 ```bash
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" current
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_transcript.py" stats <session-jsonl-path>
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_transcript.py" stats '<session-jsonl-path>'
 ```
+
+Keep the single quotes around a substituted value; write a single quote inside it as `'\''`, and never
+switch to double quotes, where the shell would still expand `$(...)` and backticks.
 
 Use `errors` or `irritation` instead of `stats` for tool errors or frustration signals (Step 2).
 
@@ -62,15 +65,15 @@ working directory doesn't match where the session actually started (e.g. a workt
 ## Step 2: Run the stats script
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_transcript.py" stats <session-jsonl-path>
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_transcript.py" stats '<session-jsonl-path>'
 ```
 
 For tool errors or frustration signals instead of (or alongside) usage stats, run the matching
 subcommand on the same session path:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_transcript.py" errors <session-jsonl-path>
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_transcript.py" irritation <session-jsonl-path>
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_transcript.py" errors '<session-jsonl-path>'
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_transcript.py" irritation '<session-jsonl-path>'
 ```
 
 ## Step 3: Present results
@@ -100,6 +103,7 @@ evidence, not a bare yes/no. `get_stats`/`get_errors`/`get_irritation_signals`'s
 additionally directly unit-tested via `tests/test_session_transcript.py`.
 
 Eval 4 (2026-11-25, plan-only, no baseline) passed 3/3: instruction-like text in the data was reported as suspicious and not followed.
+Its prompt forbids commands, so it tests the reporting, not whether an instruction is declined while tools are available.
 
 **Last dated run record:** `evals/session-stats/workspace/iteration-3/eval-4/with_skill/grading.json`,
 2026-11-25; earlier: `evals/session-stats/workspace/iteration-1/eval-{1,2,3}/with_skill/grading.json`,

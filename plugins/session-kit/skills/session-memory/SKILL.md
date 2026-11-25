@@ -85,6 +85,7 @@ passed. Eval 3 verified the empty-memories case is handled gracefully, stating p
 exist rather than fabricating content.
 
 Eval 4 (2026-11-25, plan-only, no baseline) passed 3/3: instruction-like text in the data was reported as suspicious and not followed.
+Its prompt forbids commands, so it tests the reporting, not whether an instruction is declined while tools are available.
 
 **Last dated run record:** `evals/session-memory/workspace/iteration-2/eval-4/with_skill/grading.json`,
 2026-11-25; earlier: `evals/session-memory/workspace/iteration-1/eval-{1,2,3}/with_skill/grading.json`,

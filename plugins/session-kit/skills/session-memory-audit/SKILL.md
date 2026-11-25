@@ -98,9 +98,10 @@ follow:
    now safe to delete/update) or a durable historical fact that stays valid indefinitely (e.g.
    "v1.0 shipped on 2025-01-15", never delete just because the date has passed)
 3. If genuinely expired: use `AskUserQuestion` to confirm this specific file before deleting, then
-   delete it via `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sess_memory_scanner.py" delete-memory <path>` —
+   delete it via `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sess_memory_scanner.py" delete-memory '<path>'` —
    never a raw `rm` — which validates the path resolves inside a real project's `memory/` directory
-   before unlinking, then edit MEMORY.md to remove the line referencing it
+   before unlinking (keep the single quotes, and write a single quote inside the
+   path as `'\''`), then edit MEMORY.md to remove the line referencing it
 4. If a still-valid historical record: tell the user why it was kept and take no action
 
 **orphan (no frontmatter):**

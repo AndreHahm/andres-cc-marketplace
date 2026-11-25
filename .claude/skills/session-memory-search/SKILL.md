@@ -19,8 +19,11 @@ Search across all memory file contents by keyword.
 Say "search memories for <query>". Run the search, then group the matches by project (Step 2):
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sess_memory_scanner.py" search "<query>" --limit 20 --context 1
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sess_memory_scanner.py" search '<query>' --limit 20 --context 1
 ```
+
+Keep the single quotes around a substituted value; write a single quote inside it as `'\''`, and never
+switch to double quotes, where the shell would still expand `$(...)` and backticks.
 
 The match is a literal, case-insensitive substring. Offer to read or edit a matched file (Step 3).
 
@@ -44,7 +47,7 @@ act on it directly.
 ## Step 1: Run the search
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sess_memory_scanner.py" search "<query>" --limit 20 --context 1
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sess_memory_scanner.py" search '<query>' --limit 20 --context 1
 ```
 
 Replace `<query>` with the user's search term. The match is a literal, case-insensitive substring search.
@@ -80,11 +83,13 @@ For each matched memory file, the user might want to:
 
 ## Testing & Validation
 
-Eval suite: `evals/session-memory-search/` — 3 scenarios, `skill-tester` Quick Workflow blind comparison,
+Eval suite: `evals/session-memory-search/` — 4 scenarios, `skill-tester` Quick Workflow blind comparison,
 all passed. Eval 3 verified a non-default `--context` value is used when the user asks for more
 surrounding context than the documented default (0).
 
-**Last dated run record:** `evals/session-memory-search/workspace/iteration-1/eval-{1,2,3}/with_skill/grading.json`,
+Eval 4 (2026-11-25, plan-only, no baseline) passed 3/3: a query with shell syntax is passed as one single-quoted argument.
+
+**Last dated run record:** `evals/session-memory-search/workspace/iteration-2/eval-4/`, 2026-11-25; earlier: `evals/session-memory-search/workspace/iteration-1/eval-{1,2,3}/with_skill/grading.json`,
 2026-09-03. `scripts/smoke_test.py` structural self-check also passing as of the same date.
 
 **Verify this skill activates on:**
@@ -97,4 +102,5 @@ surrounding context than the documented default (0).
 - "search my sessions for X" → `session-search`
 
 **Quality gates:**
+- [ ] A query is passed as one single-quoted argument
 - [ ] Documented `--context` default matches the script's real default (0)

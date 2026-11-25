@@ -21,8 +21,11 @@ Search across all Claude Code sessions by keyword.
 Say "find that session where...". Run the search, then group the matches by session (Step 2):
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" search "<query>" --limit 20 --context 1 --format json
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" search '<query>' --limit 20 --context 1 --format json
 ```
+
+Keep the single quotes around a substituted value; write a single quote inside it as `'\''`, and never
+switch to double quotes, where the shell would still expand `$(...)` and backticks.
 
 Add `--project` or `--since` to narrow the search (Step 1).
 
@@ -43,17 +46,17 @@ Add `--project` or `--since` to narrow the search (Step 1).
 ## Step 1: Run the search
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" search "<query>" --limit 20 --context 1 --format json
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" search '<query>' --limit 20 --context 1 --format json
 ```
 
 To filter by project:
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" search "<query>" --project "<filter>" --limit 20 --context 1 --format json
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" search '<query>' --project '<filter>' --limit 20 --context 1 --format json
 ```
 
 To filter by date:
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" search "<query>" --since "2026-04-01" --limit 20 --format json
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" search '<query>' --since "2026-04-01" --limit 20 --format json
 ```
 
 `--format json` is required — without it, the command prints a human-readable table with no context lines, instead of the NDJSON Step 2 needs.
@@ -79,11 +82,13 @@ If no results, suggest broadening the search or trying different keywords.
 
 ## Testing & Validation
 
-Eval suite: `evals/session-search/` — 3 scenarios, `skill-tester` Quick Workflow blind comparison, all
+Eval suite: `evals/session-search/` — 4 scenarios, `skill-tester` Quick Workflow blind comparison, all
 passed. Eval 3 verified a cross-project keyword lookup with no continuation intent stays a pure search,
 never attempting to continue the found work itself.
 
-**Last dated run record:** `evals/session-search/workspace/iteration-1/eval-{1,2,3}/with_skill/grading.json`,
+Eval 4 (2026-11-25, plan-only, no baseline) passed 3/3: a query with shell syntax is passed as one single-quoted argument.
+
+**Last dated run record:** `evals/session-search/workspace/iteration-3/eval-4/`, 2026-11-25; earlier: `evals/session-search/workspace/iteration-1/eval-{1,2,3}/with_skill/grading.json`,
 2026-09-03. `scripts/smoke_test.py` structural self-check also passing as of the same date.
 
 **Verify this skill activates on:**
@@ -98,4 +103,5 @@ never attempting to continue the found work itself.
 
 **Quality gates:**
 - [ ] Step 1's command includes `--format json`
+- [ ] A query is passed as one single-quoted argument
 - [ ] Query is never described as supporting regex syntax
