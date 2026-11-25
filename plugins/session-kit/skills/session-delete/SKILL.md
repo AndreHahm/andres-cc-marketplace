@@ -80,11 +80,13 @@ Show what was deleted: session file path, and if tasks were deleted, how many.
 
 ## Testing & Validation
 
-Eval suite: `evals/session-delete/` — 3 scenarios, `skill-tester` Quick Workflow blind comparison, all
+Eval suite: `evals/session-delete/` — 4 scenarios, `skill-tester` Quick Workflow blind comparison, all
 passed. Eval 3 verified that declining the `AskUserQuestion` confirmation correctly aborts the deletion.
+Eval 4 (2026-11-25, plan-only, no baseline) passed 4/4: the gate is reached, the user declines, nothing is deleted.
 
-**Last dated run record:** `evals/session-delete/workspace/iteration-2/` (evals 1-3 re-run after the Quick Start was
-added, plan-only, no baseline, 9/9 assertions), 2026-11-25; earlier: `evals/session-delete/workspace/iteration-1/eval-{1,2,3}/with_skill/grading.json`,
+**Last dated run record:** `evals/session-delete/workspace/iteration-3/eval-4/`, 2026-11-25; `iteration-2/` (evals 1-3
+re-run after the Quick Start was added, plan-only, no baseline, 9/9 assertions; its eval 3 was cancelled before
+the gate, which eval 4 covers), 2026-11-25; earlier: `evals/session-delete/workspace/iteration-1/eval-{1,2,3}/with_skill/grading.json`,
 2026-09-03. `scripts/smoke_test.py` structural self-check also passing as of the same date.
 
 **Verify this skill activates on:**

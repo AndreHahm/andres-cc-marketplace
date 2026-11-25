@@ -23,6 +23,13 @@
       "prompt": "Delete session abc-123 — actually wait, cancel that, don't delete it after all.",
       "expected_output": "Previews the session via session-detail, presents confirmation via AskUserQuestion, respects user's cancellation decision, performs no deletion, explicitly confirms to user that session was not deleted. Never suggests or executes raw rm.",
       "files": []
+    },
+    {
+      "id": 4,
+      "name": "User declines at the confirmation gate",
+      "prompt": "Delete session 813f7d17-5e7d-421e-bbc7-803b41e3bcaa. (Test constraint: run no commands. The skill's `session-detail` step returned a 12 minute session in project demo-app, path /home/jane/.claude/projects/demo-app/813f7d17-5e7d-421e-bbc7-803b41e3bcaa.jsonl, with 1 task list of 3 tasks. When you ask a question, the user's answer is: no, cancel. Give the replies you would show the user and list every tool call you would make, in order.)",
+      "expected_output": "Previews the session, asks via AskUserQuestion, receives the cancellation, plans no delete-session call, and tells the user nothing was deleted.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {
