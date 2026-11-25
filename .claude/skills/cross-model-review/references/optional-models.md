@@ -43,12 +43,12 @@ that denies Devin every tool from there) or as the root's `reviewadapters-kit.se
 vendors' default models), a file or directory not owned by you or writable by others (group write only
 for your own private group, on Linux, with no extended ACL), and a tracked config file. It writes
 nothing and runs only `git` and `ls`, never the dispatcher. It takes `git`, and the `node` it prints, from
-absolute PATH entries only, and refuses one inside this repository or its worktrees. It also refuses a `node` reached
-through a link inside them, and one that another account could replace: every directory and link on its path, and the program itself, must belong to
-you or root, and neither those directories (unless sticky) nor the program may be writable by others. It prints
+absolute PATH entries only, and refuses one inside this repository or its worktrees. It also refuses a program
+reached through a link inside them, and one that another account could replace: every directory and link on its path,
+and the program itself, must belong to you or root, and neither those directories (unless sticky) nor the program may be writable by others. It prints
 the `node` path with links resolved and refuses one that looks like a version manager's shim (anything but a native program named `node`). On Windows it refuses every candidate.
 
-- **Exit 0:** `{"ok": true, "dispatcher", "node", "source", "notes"}`. Take `dispatcher` as `$RVA` and
+- **Exit 0:** `{"ok": true, "dispatcher", "node", "identity", "source", "notes"}`. Keep `identity` for section 4's re-check; take `dispatcher` as `$RVA` and
   `node` as `$NODE`, literal absolute paths; check that `$NODE` is absolute, lies outside `$REPO_ROOT` and has
   only `[A-Za-z0-9._/-]`, and for `$RVA` check that it is absolute, ends in `/scripts/rva-dispatch.mjs`, lies outside
   `$REPO_ROOT` and has only `[A-Za-z0-9._/-]`, or offer no optional model. reviewadapters-kit's own hook
@@ -148,8 +148,8 @@ Approve each call once after reading its rendered command, and never add an allo
 **Re-check first.** Minutes may pass between the locator and the first dispatch (the pick and egress
 questions). Immediately before each vendor's first real dispatch, and again before its first
 Phase 2 dispatch, run the locator again. If it fails,
-drop that vendor for the run. If it prints a different `dispatcher` than the one the egress questions
-were asked against, or a different `node`, drop every optional vendor still to dispatch, since they all share them.
+drop that vendor for the run. If it prints a different `dispatcher`, `node` or `identity` than the one the
+egress questions were asked against, drop every optional vendor still to dispatch, since they all share them.
 Record why for each, and never dispatch on the old result. Phase 1 envelopes already returned are kept.
 
 **Phase 1, per vendor and batch:** the dry run's command without `--dry-run`, with `--model <confirmed
@@ -217,16 +217,19 @@ or the re-check, declined, failed per batch.
 - The `env` prefix clears the listed NODE_* variables only. Other loader variables (`OPENSSL_CONF`, `LD_PRELOAD`)
   are inherited, as on the Codex path.
 - The drop rule for quoted findings is followed by Claude, not enforced by code.
-- `node` may belong to root as well as to you, and the re-check compares its path, not its content. The Codex
+- `node` may belong to root as well as to you, and the re-check compares the paths and `identity` (device, inode, size and
+  modification time) of `node` and the dispatcher file, not their content or the dispatcher's other files. The Codex
   launcher checks only its location. A group-writable folder (Homebrew's `/opt/homebrew/bin`, `/usr/local/bin` on some systems) is
-  refused, so a `node` there offers no optional model. The locator's own `git` gets the location check only.
+  refused, so a `node` or `git` there offers no optional model. Programs the locator's `git` starts
+  itself are not checked, nor whether that `git` is a version manager's shim.
 - A version manager's `node` shim (asdf, mise, Volta) may pick the real program from files in the checkout, so one is
   refused by its form alone: a native program named `node` that does the same is not seen, and a distribution's
   `node` that links to another name (`nodejs`, `node-22`, snap) is refused too.
 - The private-group exception reads `/etc/passwd` and `/etc/group` only: a member that LDAP or SSSD adds to your
   private group, or an account there with it as primary group, is not seen, as in reviewadapters-kit. Whoever runs that directory service could add either.
-- A resolved `node` path with `@` or `+` (Homebrew `node@22`) is refused, and one that changes between the
+- A resolved `node` path with `@` or `+` (Homebrew `node@22`) is refused, and one that changes or is upgraded between the
   locator's runs drops every vendor at the re-check.
+- A worktree moved by hand counts as inside only until git prunes its entry.
 - reviewadapters-kit refuses a vendor program only inside the reviewed checkout; one linked into another
   worktree of it passes, since the Preflight PATH filter does not list `agy`, `pi` or `devin`.
 - A macOS ACL that grants write without group-write bits is not seen, as in reviewadapters-kit.

@@ -299,6 +299,61 @@ def test_resolved_node_with_unsafe_characters_refused(layout):
     _refused(layout, "(node) has characters outside")
 
 
+def test_git_replaceable_by_others_refused(layout):
+    """The locator runs git, so another account must not be able to replace it."""
+    _rva(layout["cache"] / "reviewadapters-kit" / "0.1.0")
+    marker = layout["tmp"] / "ran"
+    _program(layout["tmp"] / "bin", "git", f"touch '{marker}'").chmod(0o757)
+    _refused(layout, "(git) is writable by others")
+    assert not marker.exists()
+
+
+@pytest.mark.parametrize("place", ["repo", "other-tree", "moved-tree"])
+def test_git_link_through_checkout_refused(layout, place):
+    _rva(layout["cache"] / "reviewadapters-kit" / "0.1.0")
+    tree = layout["tmp"] / place
+    if place != "repo":
+        added = layout["tmp"] / "added-tree" if place == "moved-tree" else tree
+        _git(layout["repo"], "worktree", "add", "-q", "--detach", str(added))
+        added.rename(tree)
+    (tree / "tools").mkdir()
+    (tree / "tools" / "git").symlink_to(shutil.which("git"))
+    (layout["tmp"] / "bin" / "git").symlink_to(tree / "tools" / "git")
+    _refused(layout, "(git) lies inside the repository")
+
+
+def test_no_git_refused(layout, monkeypatch):
+    _rva(layout["cache"] / "reviewadapters-kit" / "0.1.0")
+    monkeypatch.setenv("PATH", str(layout["tmp"] / "bin"))
+    _refused(layout, "git was not found on PATH")
+
+
+@pytest.mark.parametrize("changed", ["node", "dispatcher"])
+@pytest.mark.parametrize("how", ["inode", "size", "mtime"])
+def test_identity_changes_with_the_file(layout, changed, how):
+    root = _rva(layout["cache"] / "reviewadapters-kit" / "0.1.0")
+    target = {
+        "node": layout["tmp"] / "bin" / "node",
+        "dispatcher": root / "scripts" / "rva-dispatch.mjs",
+    }[changed]
+    before = _run(layout)[1]
+    assert _run(layout)[1]["identity"] == before["identity"]
+    st = target.stat()
+    if how == "inode":
+        replacement = layout["tmp"] / "new"
+        shutil.copy2(target, replacement)
+        replacement.replace(target)
+    elif how == "size":
+        with target.open("ab") as handle:
+            handle.write(b"x")
+        os.utime(target, ns=(st.st_atime_ns, st.st_mtime_ns))
+    else:
+        os.utime(target, ns=(st.st_atime_ns, st.st_mtime_ns + 1_000_000_000))
+    after = _run(layout)[1]
+    assert (after["node"], after["dispatcher"]) == (before["node"], before["dispatcher"])
+    assert after["identity"] != before["identity"]
+
+
 def test_node_link_with_two_leading_slashes(layout):
     real = _program(layout["tmp"] / "real", "node")
     link = layout["tmp"] / "bin" / "node"

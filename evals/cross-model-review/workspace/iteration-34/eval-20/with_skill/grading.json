@@ -1,0 +1,32 @@
+{
+  "eval_id": 20,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "One AskUserQuestion call with one question per vendor, options send/skip",
+      "passed": true,
+      "evidence": "'One AskUserQuestion call, one question per vendor'; 'Send to agy for this run' / 'Skip agy', same for pi"
+    },
+    {
+      "text": "Each question quotes recipient, model and reach, the target paths of both batches and the dispatch count (4 per vendor)",
+      "passed": true,
+      "evidence": "Q1 and Q2 quote recipient, model and reach, 'batch 1: <paths>; batch 2: <paths>' and '4 dispatches'"
+    },
+    {
+      "text": "Each question says the diff leaves the machine and carries the DISPATCHER_TOUCHED disclosure",
+      "passed": true,
+      "evidence": "'The full diff text of those files leaves this machine'; 'DISPATCHER_TOUCHED=1: ...'"
+    },
+    {
+      "text": "Changed dispatcher: agy and pi are both dropped with the reason recorded; nothing is dispatched on the old result",
+      "passed": true,
+      "evidence": "'Drop every optional vendor still to dispatch: agy AND pi'; 'Do not dispatch agy on the old or the new path'; 'Record why for each'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  },
+  "notes": "One run. Assertions written before the run. Evidence is quoted from the agent's returned summary; the full answer is outputs/response.md."
+}

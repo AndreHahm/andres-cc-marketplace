@@ -181,6 +181,76 @@
       "rule": "reference-chains"
     },
     {
+      "disposition": "accepted",
+      "finding": "codex-delta-4e28308d-1",
+      "line": 114,
+      "note": "repeat of J1 (codex-delta-acdede0b-1): residual by owner decision, waived in the PR body",
+      "path": "plugins/git-kit/scripts/git-review-locate-rva.py",
+      "pr": 804,
+      "recorded_at": "2026-11-25T12:16:16+00:00",
+      "rule": "security"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-delta-4e28308d-2",
+      "line": 150,
+      "note": "J2: reopened by the owner; the re-check now compares identity of node and dispatcher",
+      "path": "plugins/git-kit/skills/cross-model-review/references/optional-models.md",
+      "pr": 804,
+      "recorded_at": "2026-11-25T12:16:16+00:00",
+      "rule": "security"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "codex-delta-4e28308d-3",
+      "line": 80,
+      "note": "repeat of codex-delta-b2095d98-3",
+      "path": "plugins/git-kit/skills/cross-model-review/references/optional-models.md",
+      "pr": 804,
+      "recorded_at": "2026-11-25T12:16:16+00:00",
+      "rule": "plugin-rulebook:R14"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-delta-4e28308d-4",
+      "line": 444,
+      "note": "SKILL.md run record extended with iterations 33 and 34",
+      "path": "plugins/git-kit/skills/cross-model-review/references/testing-scenarios.md",
+      "pr": 804,
+      "recorded_at": "2026-11-25T12:16:16+00:00",
+      "rule": "documentation-consistency"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-delta-4e28308d-5",
+      "line": 503,
+      "note": "K3: git gets the owner, write and location checks before it is run",
+      "path": "plugins/git-kit/scripts/git-review-locate-rva.py",
+      "pr": 804,
+      "recorded_at": "2026-11-25T12:16:16+00:00",
+      "rule": "security"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-delta-4e28308d-6",
+      "line": 152,
+      "note": "same as finding 2",
+      "path": "plugins/git-kit/skills/cross-model-review/references/optional-models.md",
+      "pr": 804,
+      "recorded_at": "2026-11-25T12:16:16+00:00",
+      "rule": "security"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "codex-delta-4e28308d-7",
+      "line": 294,
+      "note": "shim detection is a heuristic, disclosed in section 6",
+      "path": "plugins/git-kit/scripts/git-review-locate-rva.py",
+      "pr": 804,
+      "recorded_at": "2026-11-25T12:16:16+00:00",
+      "rule": "security"
+    },
+    {
       "disposition": "fixed",
       "finding": "codex-delta-9d3e0ca2-1",
       "line": 437,
@@ -261,13 +331,13 @@
       "rule": "security"
     },
     {
-      "disposition": "accepted",
+      "disposition": "fixed",
       "finding": "codex-delta-acdede0b-2",
       "line": 150,
-      "note": "J2: residual by owner decision; other accounts cannot replace node, the window before the call stays either way; section 6",
+      "note": "J2: first waived, then fixed: the re-check compares identity",
       "path": "plugins/git-kit/skills/cross-model-review/references/optional-models.md",
       "pr": 804,
-      "recorded_at": "2026-11-25T11:58:59+00:00",
+      "recorded_at": "2026-11-25T12:16:16+00:00",
       "rule": "security"
     },
     {
