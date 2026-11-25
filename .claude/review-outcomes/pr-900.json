@@ -1,0 +1,47 @@
+{
+  "entries": [
+    {
+      "disposition": "accepted",
+      "finding": "4697274056",
+      "line": 204,
+      "note": "maintainer keeps prompt and dispatch in one PR; fails closed until merge",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 900,
+      "recorded_at": "2026-11-25T18:28:12+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4697279554",
+      "line": 13,
+      "note": "fixed in e8a84857",
+      "path": ".codex/agents/correctness-reviewer.toml",
+      "pr": 900,
+      "recorded_at": "2026-11-25T18:28:12+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4697279762",
+      "note": "fixed in e8a84857",
+      "path": "tests/marketplace_ci/test_codex_review_result_status.py",
+      "pr": 900,
+      "recorded_at": "2026-11-25T18:28:12+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4697280001",
+      "note": "fixed in e8a84857 (plugin-marketplace-review SKILL.md)",
+      "path": "docs/ci.md",
+      "pr": 900,
+      "recorded_at": "2026-11-25T18:28:12+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4697367504",
+      "line": 922,
+      "note": "fixed in e8a84857",
+      "path": "plugins/git-kit/scripts/git-codex-parity-review.py",
+      "pr": 900,
+      "recorded_at": "2026-11-25T18:28:12+00:00"
+    }
+  ]
+}
