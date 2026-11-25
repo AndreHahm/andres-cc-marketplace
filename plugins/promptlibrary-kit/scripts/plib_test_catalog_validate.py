@@ -246,6 +246,19 @@ class TextAndYaml(unittest.TestCase):
         ):
             self.assertTrue(V.screen_text(text), text)
 
+    def test_other_line_separators_start_a_new_screened_line(self):
+        word = "hunter2" + "abcdef"
+        for sep in ("\x0b", "\x0c", "\x1c", "\x85", "\u2028", "\u2029"):
+            hits = V.screen_text("intro" + sep + "MYTO" + "KEN=" + word)
+            self.assertEqual([h["line"] for h in hits], [1], repr(sep))
+            spanning = V.screen_text("MYTO" + "KEN=" + sep + word)  # still matched as one line
+            self.assertTrue(spanning, repr(sep))
+
+    def test_a_json_escaped_home_path_is_screened(self):
+        for path in ("C:" + "\\\\Us" + "ers\\\\name", "C:" + "\\\\\\\\Us" + "ers\\\\\\\\name"):
+            hits = [h["pattern"] for h in V.screen_text('{"p": "' + path + '"}')]
+            self.assertEqual(hits, ["home_directory_path"], path)
+
     def test_ordinary_colon_lines_are_not_screened(self):
         for text in (
             "token: the unit a model reads",
@@ -1835,6 +1848,42 @@ class BlockedPrompts(Base):
         code, res = self.run_cli("validate")
         self.assertEqual((code, len(res["blocked"])), (0, 1))
         self.assertTrue((self.root / SLUG / "active.md").is_file())
+
+
+class LinkedCatalogContent(Base):
+    """A link inside the catalog never makes the checker read or list outside it."""
+
+    def outside(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        return Path(tmp.name)
+
+    def link(self, link, target, is_dir):
+        try:
+            os.symlink(target, link, target_is_directory=is_dir)
+        except (OSError, NotImplementedError):
+            self.skipTest("symlinks are not available here")
+
+    def test_a_linked_catalog_file_is_refused_unread(self):
+        self.assertEqual(self.run_cli("init")[0], 0)
+        target = self.outside() / "secret.yaml"
+        target.write_text("private_field: value\n", encoding="utf-8")
+        (self.root / "catalog.yaml").unlink()
+        self.link(self.root / "catalog.yaml", target, False)
+        code, res = self.run_cli("validate")
+        self.assertEqual(code, 1)
+        self.assertEqual(res["errors"], ["catalog.yaml is a link that leaves the catalog root"])
+        self.assertNotIn("private_field", json.dumps(res))
+
+    def test_a_linked_folder_is_refused_unlisted(self):
+        self.make_active()
+        target = self.outside()
+        (target / "private-notes.md").write_text("x\n", encoding="utf-8")
+        self.link(self.root / "review__linked", target, True)
+        code, res = self.run_cli("validate")
+        self.assertEqual(code, 1)
+        self.assertTrue(any("review__linked" in e for e in res["errors"]))
+        self.assertNotIn("private-notes", json.dumps(res))
 
 
 class Search(Base):

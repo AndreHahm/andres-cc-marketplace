@@ -212,7 +212,7 @@ SECRET_PATTERNS = (
     ("npm_token", re.compile(r"\bnpm_[A-Za-z0-9]{30,}", re.ASCII)),
     (
         "home_directory_path",
-        re.compile(r"(?:[A-Za-z]:[\\/]Users[\\/][^\\/\s]+|/home/[^/\s]+|/Users/[^/\s]+)"),
+        re.compile(r"(?:[A-Za-z]:[\\/]{1,4}Users[\\/]{1,4}[^\\/\s]+|/home/[^/\s]+|/Users/[^/\s]+)"),
     ),
 )
 
@@ -855,6 +855,8 @@ def load_catalog(root: Path) -> tuple[dict, dict, list[str]]:
     """Return (catalog meta, {relpath: record}, errors). Never raises for content problems."""
     errs: list[str] = []
     cat_path = root / "catalog.yaml"
+    if not contained(cat_path, root):
+        return {}, {}, ["catalog.yaml is a link that leaves the catalog root"]
     if not cat_path.is_file():
         return {}, {}, ["catalog.yaml is missing"]
     try:
@@ -990,6 +992,9 @@ def check_lineages(root: Path, records: dict) -> list[str]:
     listed = set(records)
     for entry in sorted(root.iterdir()) if root.is_dir() else []:
         if entry.is_dir():
+            if not contained(entry, root):
+                errs.append(f"folder is a link that leaves the catalog root: {entry.name}")
+                continue
             for f in sorted(entry.glob("*.md")):
                 rel = f"{entry.name}/{f.name}"
                 if rel not in listed:
@@ -1177,8 +1182,12 @@ def screen_text(text: str) -> list[dict]:
     # A lone CR ends a line too, or a line-anchored pattern (dotenv_secret_line) would miss an
     # assignment that follows one.
     for lineno, line in enumerate(re.split(r"\r\n|\r|\n", text), start=1):
+        # Other line separators are shown as breaks too, so their parts are screened as lines of
+        # their own, next to the whole line (a match may also span one).
+        parts = re.split(r"[\v\f\x1c-\x1e\x85\u2028\u2029]", line)
+        views = [line] if len(parts) == 1 else [line, *parts]
         for name, pattern in SECRET_PATTERNS:
-            if pattern.search(line):
+            if any(pattern.search(view) for view in views):
                 found.append({"line": lineno, "pattern": name})
     return found
 

@@ -139,7 +139,7 @@ run 2026-11-25, 5 of 5 checks passed; it failed on a copy with a widened grant (
 - [ ] A run started from a subfolder resolves the same catalog as one from the project root.
 - [ ] No write subcommand is pre-approved: the grant names only `validate` and `show`.
 
-**Last dated run record:** validator fixture tests, 172 run (169 passing, 3 POSIX-only skipped on Windows), 2026-11-25
+**Last dated run record:** validator fixture tests, 176 run (173 passing, 3 POSIX-only skipped on Windows), 2026-11-25
 (`scripts/plib_test_catalog_validate.py`). On 2026-10-04 a subagent followed this SKILL.md by hand
 against two throwaway fixtures (a valid catalog and a tampered one) and the assertions above passed,
 except that the `root_source` wording in the second gate was corrected afterward and that corrected
