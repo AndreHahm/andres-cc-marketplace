@@ -18,9 +18,10 @@ Find session files that are candidates for cleanup.
 Say "clean up old sessions". Find the candidates first; this command deletes nothing:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" cleanup --min-messages 3
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" cleanup --older-than 30d --min-messages 3
 ```
 
+This lists sessions older than 30 days, and short ones of any age; adjust the age if the user named one (Step 1).
 Show every candidate with the total size, then ask via `AskUserQuestion` before deleting any (Step 3), and check
 for orphan task lists afterwards (Step 4).
 
@@ -110,7 +111,7 @@ passed. Eval 3 verified the `--delete-tasks` variant is gated by the same real `
 confirmation as session deletion, with no raw `rm` used.
 
 **Last dated run record:** `evals/session-cleanup/workspace/iteration-3/` (evals 1-3 re-run after the Quick Start was
-added, plan-only, no baseline, 10/10 assertions), 2026-11-25; earlier: `evals/session-cleanup/workspace/iteration-2/eval-{1,2,3}/with_skill/grading.json`,
+added and before it gained `--older-than`, plan-only, no baseline, 10/10 assertions), 2026-11-25; earlier: `evals/session-cleanup/workspace/iteration-2/eval-{1,2,3}/with_skill/grading.json`,
 2026-09-03. `scripts/smoke_test.py` structural self-check also passing as of the same date.
 
 **Verify this skill activates on:**

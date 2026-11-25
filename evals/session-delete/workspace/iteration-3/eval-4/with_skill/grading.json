@@ -1,0 +1,32 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "note": "Plan-only, with_skill only, no baseline; preview result and the user's answer were given in the prompt.",
+  "assertions_evaluated": [
+    {
+      "text": "An `AskUserQuestion` confirmation is actually reached, after the preview",
+      "passed": true,
+      "evidence": "Preview in step 1, AskUserQuestion 'Delete this session?' in step 2."
+    },
+    {
+      "text": "No `delete-session` call is planned after the user's cancellation",
+      "passed": true,
+      "evidence": "Two calls in total; delete-session is not called after 'no, cancel'."
+    },
+    {
+      "text": "The user is told that nothing was deleted",
+      "passed": true,
+      "evidence": "'Cancelled. Nothing was deleted'."
+    },
+    {
+      "text": "No raw `rm` is used or suggested at any point",
+      "passed": true,
+      "evidence": "No rm is run or suggested."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}
