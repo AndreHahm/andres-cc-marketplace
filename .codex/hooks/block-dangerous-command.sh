@@ -101,6 +101,12 @@ END {
 # at a heredoc (<<), whose body the other copies still check. It only adds a copy, so
 # it can only block more.
 # mode=arith prints the same copy, but goes on past a << that may be arithmetic (`$((1<<2))`).
+# mode=here prints the same copy, but skips a heredoc body whose end line is found, and goes on
+# after it. mode=strings prints, with its blanks and quotes kept, each word that a command runs as
+# shell text (`bash -c '...'`, `eval`, `git submodule foreach '...'`), one record each, ended by \036
+# (quotes inside a substitution in it are dropped; mode=bodies reads those);
+# mode=bodies prints the text of each outermost $( ), <( ) or backtick pair the same way. rec=1 reads
+# such records, each from a clean state, and skips a record of a single word.
 # mode=blank prints the command unchanged except for the value of a message or pattern
 # option (`commit -m "use --amend"` becomes `-m ""`), for the forbidden-git check only, so
 # text inside a message is not read as a flag. A value is blanked only where the words are
@@ -120,11 +126,15 @@ END {
 # An unclosed quote cancels all blanking.
 # BINMODE=3 keeps CRs on Windows gawk; a CR is an ordinary character in bash, written `_`.
 split_words() {
-    awk -v BINMODE=3 -v mode="$1" -v sq="'" -v dq='"' '
-function nc(c) { return index(SP, c) ? "_" : c }
+    awk -v BINMODE=3 -v mode="$1" -v rec="${2:-0}" -v sq="'" -v dq='"' '
+function nc(c) {
+    if (mode == "strings") return c == "\036" ? "_" : c
+    return index(SP, c) ? "_" : c
+}
 function hexval(d) { return d == "" ? -1 : index("0123456789abcdef", tolower(d)) - 1 }
 function chrv(v) {
     if (v == 0) return "NUL"
+    if (mode == "strings" && (v == 9 || v == 10)) return v == 9 ? "\t" : "\n"
     return (v >= 32 && v < 127) ? nc(chr[v]) : "_"
 }
 # Output is streamed and a word keeps at most 256 characters (only short option names are
@@ -132,10 +142,25 @@ function chrv(v) {
 # A word cut at the cap is marked: blank_cmd stops wherever it would compare one, but may
 # still blank one whole as a value, since the span comes from the raw text.
 function emit(x) {
-    if (mode != "blank") printf "%s", x
+    if (mode == "strings") { if (inword && trig) printf "%s", x }
+    else if (mode == "bodies") ;
+    else if (mode != "blank") printf "%s", x
     if (inword) { if (length(wn) < 256) wn = wn x; else wc = 1 }
 }
-function push(t) { depth++; st[depth] = t; pd[depth] = 0 }
+function push(t) {
+    depth++; st[depth] = t; pd[depth] = 0
+    if (t == "b") ticks++
+    if (mode == "bodies" && t != "d" && t != "r" && !outer) { outer = depth; from = i + (t == "b" ? 1 : 2); tickb = (t == "b") }
+}
+# Prints the body of the outermost substitution when it closes at i (or stays open).
+function body_end(    t) {
+    if (mode != "bodies" || !outer || depth >= outer) return
+    outer = 0
+    t = substr(s, from, i - from)
+    if (tickb) gsub(/\\`/, "`", t)
+    gsub(/\036/, "_", t)
+    printf "%s\036", t
+}
 function startword() {
     if (!depth && !inword) { inword = 1; ws = i; wn = ""; wg = 0; wc = 0 }
     wb = 0
@@ -143,6 +168,10 @@ function startword() {
 function endword() {
     if (depth || !inword) return
     inword = 0
+    if (mode == "strings") {
+        if (trig) printf "\036"
+        if (!redir) runs(wn)
+    }
     if (wn == "[[" || wn == "case" || wn == "alias" || wn == "function" || wn == "coproc" ||
         wn == "select") bail = 1
     if (redir) { redir = 0; return }
@@ -151,8 +180,73 @@ function endword() {
 function endcmd() {
     if (depth) return
     if (mode == "blank" && !bail) blank_cmd()
-    nk = 0; redir = 0
+    nk = 0; redir = 0; trig = 0; kind = ""; wrap = opt = subm = bis = 0
 }
+# Whether the words after w are shell text: after eval, su, ssh and submodule foreach, and after the
+# -c of a shell. Only for a command word, found past assignments, keywords and wrappers (with their
+# options, each of which may take a value).
+function runs(w,    b) {
+    if (trig) return
+    b = w
+    sub(/^.*\//, "", b)
+    if (kind == "") {
+        if (w ~ /^[A-Za-z_][A-Za-z0-9_]*\+?=/ || w ~ /^(if|then|do|else|elif|while|until|!|[{])$/) return
+        if (b ~ /^(bash|sh|zsh|dash|ksh)$/) { kind = "shell"; opt = 0; return }
+        if (b ~ /^(eval|su|ssh)$/) { trig = 1; return }
+        if (b == "git") { kind = "git"; return }
+        if (b ~ /^(xargs|command|builtin|env|nice|nohup|time|exec|timeout|doas|coproc)$/) { wrap = 1; opt = 0; return }
+        if (wrap && w ~ /^-/) { opt = 1; return }
+        if (wrap && (opt || w ~ /^[.]?[0-9]/)) { opt = 0; return }
+        kind = "other"
+    } else if (kind == "shell") {
+        if (w ~ /^-[A-Za-z]*c[A-Za-z]*$/) trig = 1
+        else if (w ~ /^[-+]/) opt = (w ~ /^[-+][A-Za-z]*[oO]$/ || w ~ /^--(rcfile|init-file)$/)
+        else if (opt) opt = 0
+        else kind = "other"
+    } else if (kind == "git") {
+        if (w ~ /^submodule(--helper)?$/) subm = 1
+        else if (subm && w == "foreach") trig = 1
+        else if (w == "bisect") bis = 1
+        else if (bis && w == "run") { kind = ""; wrap = 1; opt = 0 }
+    }
+}
+# Reads the delimiter of the heredoc whose word starts at j, the way bash does.
+function heredoc(j,    d, c, q) {
+    nh++; hdash[nh] = (substr(s, j, 1) == "-")
+    if (hdash[nh]) j++
+    while (substr(s, j, 1) ~ /^[ \t]$/) j++
+    d = ""; q = ""
+    for (; j <= n; j++) {
+        c = substr(s, j, 1)
+        if (q != "") { if (c == q) q = ""; else d = d c }
+        else if (c == sq || c == dq) q = c
+        else if (c == "\\") { j++; d = d substr(s, j, 1) }
+        else if (index(" \t\n;&|<>()", c)) break
+        else d = d c
+    }
+    hd[nh] = d
+}
+# The position after the bodies of the open heredocs, which start at j. Unchanged when an end line
+# is missing: then nothing is skipped.
+function after_bodies(j,    k, l, t) {
+    while (lc <= nl && lp[lc] < j) lc++
+    l = lc
+    for (k = 1; k <= nh; k++) {
+        for (; l <= nl; l++) {
+            # Too many lines read again: fail, which blocks the command.
+            if (++looked > 300000) exit 1
+            t = ol[l]
+            if (hdash[k]) sub(/^\t+/, "", t)
+            if (t == hd[k]) break
+        }
+        if (l > nl) { nh = 0; return j }
+        l++
+    }
+    nh = 0
+    return l <= nl ? lp[l] : n + 1
+}
+# A substitution that never closes: its text is read to the end.
+function body_end_open() { if (outer) { i = n + (depth >= outer); depth = 0; body_end() } }
 function raw(k) { return substr(s, cs[k], ce[k] - cs[k]) }
 function span(a, b) { nb++; sa[nb] = a; sb[nb] = b }
 function blank_cmd(    k, set, v, long, long2, longb, sv, so, lv, lo, o, p, r, re, tag) {
@@ -269,6 +363,15 @@ END {
         for (k = 1; k <= m; k += 2) ln[++h] = (k < m) ? ln[k] "\n" ln[k + 1] : ln[k]
     }
     s = ln[1]
+    eol = (rec && mode == "blank") ? "\036" : "\n"
+    nr = rec ? split(s, rs, "\036") : 1
+    if (!rec) rs[1] = s
+    for (nth = 1; nth <= nr; nth++) {
+        s = rs[nth]
+        if (!rec || s ~ /[ \t\n]/) one()
+    }
+}
+function one(    k, p, t) {
     # A blanked argument may be run again by name: `$_`, an indirect `${!v}`, BASH_COMMAND or
     # BASH_EXECUTION_STRING. Other variables that hold a command are not read (known limit).
     t = s
@@ -277,8 +380,25 @@ END {
     # Not when the whole command is one plain command: then the name is text in single quotes.
     rerun = !plain && (index(t, "$_") || index(t, "${_") || index(t, "${!") ||
         index(t, "BASH_COMMAND") || index(t, "BASH_EXECUTION_STRING"))
+    scan()
+    if (mode == "bodies") { body_end_open(); return }
+    if (mode == "strings") { if (inword && trig) printf "\036"; return }
+    if (mode != "blank") { printf "\n"; return }
+    if (unclean || rerun) { printf "%s%s", s, eol; return }
+    p = 1
+    for (k = 1; k <= nb; k++) { printf "%s", substr(s, p, sa[k] - p) dq dq; p = sb[k] }
+    printf "%s%s", substr(s, p), eol
+}
+function scan(    k, p) {
     n = length(s); i = 1; wb = 1
+    depth = inword = redir = trig = bail = stopped = arith = nk = pd0 = nh = nl = 0
+    kind = ""; outer = wrap = opt = subm = bis = ticks = nb = unclean = 0; lc = 1
+    if (mode == "here" || mode == "strings" || mode == "bodies") {
+        nl = split(s, ol, "\n"); p = 1
+        for (k = 1; k <= nl; k++) { lp[k] = p; p += length(ol[k]) + 1 }
+    }
     while (i <= n) {
+        if (mode == "bodies" && outer && depth < outer) { i--; body_end(); i++ }
         c = substr(s, i, 1); c2 = substr(s, i + 1, 1)
         ctx = depth ? st[depth] : "c"
         if (ctx == "d") {
@@ -286,7 +406,7 @@ END {
             if (c == "\\") {
                 if (c2 == "\n") { i += 2; continue }
                 if (c2 != "" && index("$`\\" dq, c2)) { emit(nc(c2)); i += 2; continue }
-                emit("_"); i++; continue
+                emit(nc("\\")); i++; continue
             }
         } else if (ctx == "r") {
             if (c == "}") { depth--; emit("}"); i++; continue }
@@ -294,7 +414,10 @@ END {
             if (!(c == "$" && (c2 == "{" || c2 == "(")) && c != "`") { emit(nc(c)); i++; continue }
         } else {
             # Code: top level, or inside $( ), backticks or <( ).
-            if (ctx == "b" && c == "`") { depth--; emit("`"); i++; wb = 0; continue }
+            if (ctx == "b" && c == "`") {
+                # In the here copy `_` follows, so text after the pair does not start a command.
+                depth--; ticks--; emit(mode == "here" ? "`_" : "`"); i++; wb = 0; continue
+            }
             if (c == "\\") {
                 if (c2 == "\n") { i += 2; continue }
                 startword()
@@ -341,6 +464,7 @@ END {
                         x = "_"
                     }
                     else if (e == "") { x = "_" }
+                    else if (mode == "strings" && (e == "n" || e == "t")) x = e == "n" ? "\n" : "\t"
                     else if (index("abefnrtvE", e)) x = "_"
                     else if (e == "\\" || e == sq || e == dq || e == "?") x = nc(e)
                     else x = "_" nc(e)
@@ -352,23 +476,33 @@ END {
             }
             if (c == dq) { startword(); push("d"); i++; continue }
             if (c == "#" && wb) {
-                while (i <= n && substr(s, i, 1) != "\n") i++
+                # Inside backticks, the closing one also ends a comment. Only in the added copies, so the
+                # others read as before.
+                tick = (ticks && (mode == "here" || mode == "strings" || mode == "bodies"))
+                for (; i <= n && (c = substr(s, i, 1)) != "\n" && !(tick && c == "`"); i++)
+                    if (tick && c == "\\" && substr(s, i + 1, 1) != "\n") i++
+                while (tick && depth && st[depth] != "b" && c == "`") depth--
                 continue
             }
             if (c == " " || c == "\t") { endword(); emit(c); i++; wb = 1; continue }
-            if (c == "\n") { endword(); endcmd(); emit(c); i++; wb = 1; continue }
+            if (c == "\n") {
+                endword(); endcmd(); emit(c); i++; wb = 1
+                if (nh) i = after_bodies(i)
+                continue
+            }
             if (c == "<" && c2 == "<") {
                 if (substr(s, i + 2, 1) != "<") {
                     # In arithmetic (`$((1<<2))`, `$[1<<2]`, `x[1<<2]=1`, `x=([1<<2]=1)`) this is no
                     # heredoc: after text that may open one, mode=arith goes on. The norm copy
                     # still ends here, since some checks need its line end.
-                    if (!arith) {
+                    if (mode == "arith" && !arith) {
                         t = substr(s, 1, i)
                         gsub(/\\\n/, "", t)
                         arith = (index(t, "((") || index(t, "$[") || index(t, "=(") || t ~ /[A-Za-z0-9_]\[/)
                     }
                     endword(); bail = 1
-                    if (mode != "arith" || !arith) { stopped = 1; break }
+                    if (mode == "here" || mode == "strings" || mode == "bodies") heredoc(i + 2)
+                    else if (mode != "arith" || !arith) { stopped = 1; break }
                     emit("<<"); i += 2; if (!depth) redir = 1; wb = 1; continue
                 }
                 endword(); emit("<<<"); i += 3; if (!depth) redir = 1; wb = 1; continue
@@ -427,11 +561,6 @@ END {
     }
     if (depth) unclean = 1
     if (!stopped) { endword(); endcmd() }
-    if (mode != "blank") { printf "\n"; exit }
-    if (unclean || rerun) { print s; exit }
-    p = 1
-    for (k = 1; k <= nb; k++) { printf "%s", substr(s, p, sa[k] - p) dq dq; p = sb[k] }
-    print substr(s, p)
 }
 function raw_digits() { return substr(s, ws, i - ws) ~ /^[0-9]+$/ }'
 }
@@ -510,6 +639,32 @@ FLAGS_AMP=$(printf '%s\n' "${FLAGS_WORDS_CLOSED}" "${FLAGS_ARITH}" | open_ampers
 CMD+=$'\n'"${CMD_AMP}"
 CMD_CODE+=$'\n'"${CMD_AMP}"
 CMD_FLAGS+=$'\n'"${FLAGS_AMP}"
+# The normalized copies again, going on after each heredoc whose end is found, and with each backtick
+# (and, from a `case` on, each `)`) as a line end: in these copies a quoted one is `_`, so one that is
+# left ends or starts a command (`x) FOO=1 git push`, an assignment after a backtick). Extra lines again.
+split_code() {
+    awk -v BINMODE=3 '{
+        gsub(/`/, "\n")
+        if ($0 ~ /(^|[^A-Za-z0-9_.-])case[ \t]/) word = 1
+        if (word && $0 ~ /(^|[ \t])in([ \t]|$)/) arms = 1
+        if (arms) gsub(/[)]/, "\n")
+        print
+    }'
+}
+# code_lines 0|1: the normalized copies of the text on stdin (1: of records), for the checks.
+code_lines() {
+    local text closed amp
+    text=$(split_words here "$1") || return 1
+    closed=$(close_redirects <<<"${text}") || return 1
+    amp=$(open_ampersands <<<"${closed}") || return 1
+    printf '%s\n' "${text}" "${closed}" "${amp}"
+    printf '%s\n' "${text}" "${closed}" "${amp}" | split_code
+}
+CODE_LINES=$(code_lines 0 <<<"${ORIGINAL_CODE}") || block "Could not read the command."
+FLAGS_LINES=$(code_lines 0 <<<"${ORIGINAL_FLAGS}") || block "Could not read the command."
+CMD+=$'\n'"${CODE_LINES}"
+CMD_CODE+=$'\n'"${CODE_LINES}"
+CMD_FLAGS+=$'\n'"${FLAGS_LINES}"
 # Here-strings, not `printf | grep -q`: under pipefail, grep -q exiting early
 # can kill printf with SIGPIPE on a long command and turn a match into a miss.
 # Every check also reads two copies for backslashes. bash removes an unquoted one before an
@@ -549,6 +704,55 @@ END {
 MATCH_TEXT=$(make_copies 0 <<<"${CMD}") || block "Could not read the command."
 CODE_TEXT=$(make_copies 1 <<<"${CMD_CODE}") || block "Could not read the command."
 FLAGS_TEXT=$(make_copies 1 <<<"${CMD_FLAGS}") || block "Could not read the command."
+# The text that a shell string or `git submodule foreach` runs, as code of its own, up to three
+# strings deep and also inside substitutions, and what `git bisect run` runs. Read with messages
+# blanked, so a message that mentions a command stays text. Lines only added; they hold no quote or
+# backslash that the copies above would change.
+STRING_TEXT=""
+bisect_tail() {
+    awk -v BINMODE=3 '
+BEGIN {
+    r = "([0-9]*|[{][A-Za-z_][A-Za-z0-9_]*[}])[<>&]+[|]?[ \t]*[^ \t;&|]+"
+    re = "(^|[ \t])bisect([ \t]+(" r "|[A-Za-z_][A-Za-z0-9_]*=[^ \t;&|]*))*[ \t]+run[ \t]+"
+}
+{
+    # Too many for the pattern below to stay cheap: fail, which blocks the command.
+    t = $0
+    if (gsub(/(^|[ \t])bisect[ \t]/, "&", t) > 50) exit 1
+    gsub(/[ \t]/, "  ")
+}
+match($0, re) { $0 = substr($0, RSTART + RLENGTH); gsub(re, "\n"); print }'
+}
+RUN_RE='(^|[^A-Za-z0-9_.-])(bash|sh|zsh|dash|ksh|eval|su|ssh|foreach)([^A-Za-z0-9_.-]|$)'
+SEP=$'\036'
+STRINGS=${ORIGINAL_FLAGS//"${SEP}"/_}
+for _ in 1 2 3; do
+    rc=0
+    grep -qE "${RUN_RE}" <<<"${STRINGS}"$'\n'"${FLAGS_LINES}" || rc=$?
+    ((rc > 1)) && block "Could not read the command."
+    ((rc == 0)) || break
+    # Two levels of substitutions; a nested one is read again with the outer one's text.
+    BODIES=${STRINGS}
+    for _ in 1 2; do
+        BODIES=$(split_words bodies 1 <<<"${BODIES}") || block "Could not read the command."
+        [[ -n "${BODIES}" ]] || break
+        BODIES=$(split_words blank 1 <<<"${BODIES}") || block "Could not read the command."
+        STRINGS+=${SEP}${BODIES}
+    done
+    # Nested substitutions repeat their text; a command that grows this far is not read.
+    ((${#STRINGS} > 400000)) && block "The command is too long to check."
+    STRINGS=$(split_words strings 1 <<<"${STRINGS}") || block "Could not read the command."
+    [[ -n "${STRINGS}" ]] || break
+    STRINGS=$(split_words blank 1 <<<"${STRINGS}") || block "Could not read the command."
+    LINES_OF=$(code_lines 1 <<<"${STRINGS}") || block "Could not read the command."
+    STRING_TEXT+=$'\n'"${LINES_OF}"
+done
+if [[ "${FLAGS_LINES}${STRING_TEXT}" == *bisect* ]]; then
+    BISECT_TEXT=$(printf '%s\n' "${FLAGS_LINES}" "${STRING_TEXT}" | bisect_tail) || block "Could not read the command."
+    STRING_TEXT+=$'\n'"${BISECT_TEXT}"
+fi
+CODE_TEXT+=$'\n'"${STRING_TEXT}"
+FLAGS_TEXT+=$'\n'"${STRING_TEXT}"
 matches() {
     grep -qiE "$1" <<<"${MATCH_TEXT}"
 }
@@ -772,7 +976,7 @@ GIT_START_RE="(${GIT_AT_START}|${SHELL_STRING_START}git${GIT_OPT}*[[:space:]]+"
 GIT_START_RE+="|${SEGMENT_START}case[[:space:]]+[^[:space:]]+[[:space:]]+in[[:space:]].*[)][[:space:]]*${GIT_CMD})"
 PUSH_REFS_END="([\"'\`]|${WORD_END})"
 PUSH_REFS="push([^;&|]*)[[:space:]]((--al(l)?|--b(r(a(n(c(h(e(s)?)?)?)?)?)?)?"
-PUSH_REFS+="|--de(l(e(t(e)?)?)?)?|-[vqnfu46]*d[a-zA-Z46]*)${PUSH_REFS_END}"
+PUSH_REFS+="|--de(l(e(t(e)?)?)?)?|--pru(n(e)?)?|-[vqnfu46]*d[a-zA-Z46]*)${PUSH_REFS_END}"
 PUSH_REFS+="|[+]?:([^;&|[:space:]]|${WORD_END})|([^-;&|[:space:]][^;&|[:space:]]*)?[*])"
 PUSH_CLUSTER="push([^;&|]*)[[:space:]]-[vqndu46]*f[a-zA-Z46]*${PUSH_REFS_END}"
 # After a backtick, only in the normalized copies: there a quoted or escaped backtick is `_`, so
@@ -960,6 +1164,10 @@ if matches "${FETCH_TO_SHELL_RE}"; then
     block "Do not pipe downloaded scripts directly into a shell."
 fi
 
+# From here on also what another command runs. The checks above stay with the command as written:
+# `ssh host 'sudo ...'` runs elsewhere.
+MATCH_TEXT+=$'\n'"${STRING_TEXT}"
+
 if matches_start "${PUSH_REFS}" && ! push_text_only; then
     block "Do not push all branches or delete a remote branch unless the user explicitly requested it."
 fi
@@ -1022,6 +1230,10 @@ fi
 
 if grep -qiE "${INNER_GIT_RE}|${SEGMENT_START}(${SHELL_STRING_GIT})" <<<"${FOREACH_TEXT}"; then
     block "This git command is forbidden by the exec-policy rules, also in git submodule foreach."
+fi
+
+if grep -qiE "${INNER_GIT_RE}|${SEGMENT_START}(${SHELL_STRING_GIT})" <<<"${STRING_TEXT}"; then
+    block "This git command is forbidden by the exec-policy rules, also where another command runs it."
 fi
 
 if ((INNER)) && { matches_flags "${INNER_GIT_RE}" || matches_flags "${GIT_AT_START}(${FORBIDDEN_GIT_RE})"; }; then
