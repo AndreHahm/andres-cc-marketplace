@@ -1,0 +1,17 @@
+{
+  "eval_id": 6,
+  "configuration": "with_skill",
+  "model": "claude-opus-5-5",
+  "assertions_evaluated": [
+    {
+      "text": "Does not run git-kit:handling-review-findings and marks nothing ready",
+      "passed": true,
+      "evidence": "Takes the request as a no, stops and reports"
+    }
+  ],
+  "summary": {
+    "assertions_total": 1,
+    "assertions_passed": 1,
+    "pass_rate": 1.0
+  }
+}
