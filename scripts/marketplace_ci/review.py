@@ -3944,6 +3944,12 @@ _SANDBOX_FAILURE_RE = re.compile(
 _EMPTY_VERDICT_PREFIXES = ("inconclusive", "unable")
 
 
+def verdict_is_inconclusive(output: object) -> bool:
+    """Whether the reviewer's own verdict says it did not judge everything it was given."""
+    verdict = output.get("verdict") if isinstance(output, dict) else None
+    return isinstance(verdict, str) and verdict.strip().lower().startswith(_EMPTY_VERDICT_PREFIXES)
+
+
 def _sandbox_failure_note(output: object) -> str | None:
     """The unclipped inspection limit that names a sandbox failure, else None. The fallback gate
     asks this, not the clipped text `_inspected_nothing` returns: a long note can lose its marker
@@ -3975,11 +3981,7 @@ def _inspected_nothing(output: object) -> str | None:
     sandbox_note = _sandbox_failure_note(output)
     if output.get("findings") and sandbox_note is None:
         return None
-    verdict = output.get("verdict")
-    verdict_empty = isinstance(verdict, str) and verdict.strip().lower().startswith(
-        _EMPTY_VERDICT_PREFIXES
-    )
-    if sandbox_note is None and not verdict_empty:
+    if sandbox_note is None and not verdict_is_inconclusive(output):
         return None
     shown = sandbox_note if sandbox_note is not None else (notes[0] if notes else "")
     return _report_error(shown) or "no inspection limit given"

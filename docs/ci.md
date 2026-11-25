@@ -1400,9 +1400,11 @@ alike but cannot guarantee they agree, because the model is still non-determinis
     `checks_general_correctness` in `review_contract.ROSTER` was given. Only `correctness-reviewer` is
     marked. It is dispatched for, and given only, the non-Markdown paths under `scripts/` and `.github/`
     (`_is_correctness_path`), so tests, root config and code inside `plugins/` and `.claude/` stay
-    uncovered. "Given" does not prove the reviewer read a path, and a `.md` file counts as documentation even
-    if something executes it. The rulebook, dependency, security and component reviewers do not check
-    arbitrary code for logic errors, and `scripts-reviewer` checks a closed list of named patterns.
+    uncovered. A review whose verdict starts with `Inconclusive` or `Unable` covers nothing, even when its
+    findings keep it completed for the gate. "Given" does not prove the reviewer read a path, and a `.md` file
+    counts as documentation even if something executes it. The rulebook, dependency, security and component
+    reviewers do not check arbitrary code for logic errors, and `scripts-reviewer` checks a closed list of
+    named patterns.
   - `advisory` is `{advisory, reasons, paths}` over the whole PR delta. A path counts when it is a Tier-1 file
     (`review-dispatch-critical`; `review.py` keeps a copy of `TIER1_FILES` that a test holds equal), an added
     or changed file matching one of the two name patterns of the "adds an importable top-level shadow" step
