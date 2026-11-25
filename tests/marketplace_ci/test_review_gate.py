@@ -410,9 +410,10 @@ def test_a_checker_r18_claim_on_a_file_without_a_new_critical_block_is_a_notice(
     assert _outcome(elsewhere, covered) == "block"
 
 
-def test_an_r18_claim_naming_an_uncovered_component_or_a_symlink_blocks():
-    covered = ScriptCoverage(clean=frozenset({("R18", SKILL)}))
-    claim = "plugin-rulebook:R18"
+@pytest.mark.parametrize("rule", ["R18", "R35", "R37"])
+def test_a_claim_naming_an_uncovered_component_or_a_symlink_blocks(rule):
+    covered = ScriptCoverage(clean=frozenset({(rule, SKILL)}))
+    claim = f"plugin-rulebook:{rule}"
     inside = _claim("25-line block", rule=claim, components=(f"{SKILL}:12",))
     assert _outcome(inside, covered) == "notice"
     script = _claim("x", rule=claim, components=("plugins/demo-kit/scripts/run.sh:12",))
@@ -420,6 +421,12 @@ def test_an_r18_claim_naming_an_uncovered_component_or_a_symlink_blocks():
     assert _outcome(_claim("x", rule=claim, via_symlink=True), covered) == "block"
     odd = _claim("x", rule=claim, components=(SKILL.replace("/", "\\"),))
     assert _outcome(odd, covered) == "block"
+
+
+def test_an_r33_claim_through_a_symlink_or_an_odd_path_blocks():
+    assert _outcome(_claim("x", rule="R33"), R33_CLEAN) == "notice"
+    assert _outcome(_claim("x", rule="R33", via_symlink=True), R33_CLEAN) == "block"
+    assert _outcome(_claim("x", rule="R33", path="a b.md"), R33_CLEAN) == "block"
 
 
 # The blocking fixtures below name their rule in `rule`, as the checker does, so each one blocks

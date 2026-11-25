@@ -875,7 +875,8 @@ small enough and shallow enough to parse (a parser error covers nothing). So a m
 base already lacked is a notice, and a new skill, a removed or renamed heading or a new `references/` directory
 still gets the model's verdict. R18 coverage (issue #862) is each changed skill, command or agent file the
 `measurement` verifier read and found no new Critical block in: none past 30 lines that is not an identical block
-of the base. It also needs every component the finding cites to be covered, plain path characters and no symlink.
+of the base. For all four rules every path the finding names, its components included, must be covered, with plain
+path characters and no symlink.
 Accepted residuals: a checker finding that names only R18 (or R18 with another covered rule of the four) for
 another defect in such a file is a notice, agent files included, so R18 reaches more files than R35; and where the
 script's fence reading is mistaken (see `r18-code-block-line-count`), no model finding backs it up. The finding's location is compared after lexical normalization (`./x` and `a//b`
