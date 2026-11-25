@@ -1,0 +1,31 @@
+{
+  "eval_id": 4,
+  "skill_path": "plugins/session-kit/skills/session-cleanup/SKILL.md",
+  "assertions": [
+    {
+      "text": "All four candidates are shown before the first question",
+      "type": "functionality",
+      "target": "behavior"
+    },
+    {
+      "text": "No single question covers both groups",
+      "type": "functionality",
+      "target": "behavior"
+    },
+    {
+      "text": "s2 (age equal to the cutoff) is in the short or empty group and is kept",
+      "type": "functionality",
+      "target": "behavior"
+    },
+    {
+      "text": "s3 is in the old group and is deleted",
+      "type": "functionality",
+      "target": "behavior"
+    },
+    {
+      "text": "Only s1 and s3 are passed to `delete-session`, without `--delete-tasks`",
+      "type": "functionality",
+      "target": "behavior"
+    }
+  ]
+}

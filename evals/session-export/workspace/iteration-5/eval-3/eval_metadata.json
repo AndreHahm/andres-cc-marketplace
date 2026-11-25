@@ -1,0 +1,21 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/session-kit/skills/session-export/SKILL.md",
+  "assertions": [
+    {
+      "text": "The session is resolved via `session_store.py current`",
+      "type": "functionality",
+      "target": "behavior"
+    },
+    {
+      "text": "The export command carries `--include-tasks pending`",
+      "type": "functionality",
+      "target": "behavior"
+    },
+    {
+      "text": "Nothing is appended to the export by any other means",
+      "type": "functionality",
+      "target": "behavior"
+    }
+  ]
+}

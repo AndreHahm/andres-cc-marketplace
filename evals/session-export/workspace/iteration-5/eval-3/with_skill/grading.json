@@ -1,0 +1,27 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "note": "Plan-only, with_skill only, no baseline, so it does not show that the skill text produced the result. One separate agent per eval, given the skill text without its Testing & Validation section and the prompt only.",
+  "assertions_evaluated": [
+    {
+      "text": "The session is resolved via `session_store.py current`",
+      "passed": true,
+      "evidence": "Tool call 1 is session_store.py current."
+    },
+    {
+      "text": "The export command carries `--include-tasks pending`",
+      "passed": true,
+      "evidence": "Tool call 2 carries --include-tasks pending."
+    },
+    {
+      "text": "Nothing is appended to the export by any other means",
+      "passed": true,
+      "evidence": "'no Write, no Edit, no shell redirect or append'."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}
