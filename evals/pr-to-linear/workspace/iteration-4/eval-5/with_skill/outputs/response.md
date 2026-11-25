@@ -1,0 +1,3 @@
+1. Read PR #77's head SHA, draft state, mergeability, reviews and checks (`gh pr view`, `gh pr checks`), and repository policy via `repository-gates`. Read-only, no approval needed.
+2. Resolve intent: a readiness request isn't a pure summary, and it isn't approval for triage. Marking ready needs `handling-review-findings`' completed report, because this skill can't read unresolved threads itself. "Looks done to me" doesn't replace that report.
+3. Stop and ask via `AskUserQuestion`: run `git-kit:handling-review-findings` on #77? I'd say it can fix and push code, and reply to and resolve threads. On yes, I run it, then continue to Marking ready. On no or no answer, I report readiness can't be confirmed and mark nothing ready.

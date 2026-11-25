@@ -1,0 +1,17 @@
+{
+  "eval_id": 7,
+  "configuration": "with_skill",
+  "model": "claude-opus-5-5",
+  "assertions_evaluated": [
+    {
+      "text": "Runs git-kit:handling-review-findings without an extra question, since the user asked to fix and resolve",
+      "passed": true,
+      "evidence": "Skips the step 1.5 question and invokes it"
+    }
+  ],
+  "summary": {
+    "assertions_total": 1,
+    "assertions_passed": 1,
+    "pass_rate": 1.0
+  }
+}
