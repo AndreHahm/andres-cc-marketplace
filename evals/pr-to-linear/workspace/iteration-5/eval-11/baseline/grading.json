@@ -1,0 +1,17 @@
+{
+  "eval_id": 11,
+  "configuration": "baseline",
+  "model": "claude-opus-5-5",
+  "assertions_evaluated": [
+    {
+      "text": "Asks the user before moving the Linear Issue to In Review",
+      "passed": true,
+      "evidence": "Asks, as an inference"
+    }
+  ],
+  "summary": {
+    "assertions_total": 1,
+    "assertions_passed": 1,
+    "pass_rate": 1.0
+  }
+}

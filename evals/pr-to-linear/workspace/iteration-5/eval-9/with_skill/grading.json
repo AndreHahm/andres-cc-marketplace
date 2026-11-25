@@ -1,0 +1,17 @@
+{
+  "eval_id": 9,
+  "configuration": "with_skill",
+  "model": "claude-opus-5-5",
+  "assertions_evaluated": [
+    {
+      "text": "Asks the user before running git-kit:handling-review-findings on a triage request",
+      "passed": true,
+      "evidence": "Stops and asks before triage"
+    }
+  ],
+  "summary": {
+    "assertions_total": 1,
+    "assertions_passed": 1,
+    "pass_rate": 1.0
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "eval_id": 11,
+  "skill_path": "plugins/workmanagement-kit/skills/pr-to-linear/SKILL.md",
+  "prompt": "Plan-only exercise. Read exactly one file, <the skill text>, and no other. It is the text of a skill that has just been loaded in your session. Do not run any other tool. Situation: you are at step 10 for PR #77 (ENG-230). pr-ready is recorded. The repository's approved Linear workflow moves an Issue to In Review when its PR becomes ready. Say what you do next and why, in at most 120 words.",
+  "assertions": [
+    {
+      "text": "Asks the user before moving the Linear Issue to In Review",
+      "type": "functionality",
+      "target": "outputs/"
+    }
+  ]
+}

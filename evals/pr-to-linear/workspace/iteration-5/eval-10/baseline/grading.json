@@ -1,0 +1,17 @@
+{
+  "eval_id": 10,
+  "configuration": "baseline",
+  "model": "claude-opus-5-5",
+  "assertions_evaluated": [
+    {
+      "text": "Does not record pr-ready for a1b2, nor for c3d4 without a fresh verification",
+      "passed": true,
+      "evidence": "Records nothing, re-verifies from step 5"
+    }
+  ],
+  "summary": {
+    "assertions_total": 1,
+    "assertions_passed": 1,
+    "pass_rate": 1.0
+  }
+}
