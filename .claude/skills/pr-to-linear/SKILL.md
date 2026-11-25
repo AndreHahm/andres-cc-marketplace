@@ -50,7 +50,8 @@ Say "summarize this PR's review status to <issue-id>", or "mark this PR ready fo
 1. Read the PR's head SHA, reviews and checks, and the repository policy (step 1).
 2. Resolve the intent (step 1.5): a pure summary skips triage; a triage, fix, reply, resolve or
    readiness request runs `Skill(git-kit:handling-review-findings)` first (step 2).
-3. Reflect only meaningful blockers to Linear (step 4); a readiness request continues with Marking ready.
+3. If step 2 ran, re-read GitHub's checks and reviews (step 3). Reflect only meaningful blockers to
+   Linear (step 4); a readiness request continues with Marking ready.
 
 ## Procedure
 

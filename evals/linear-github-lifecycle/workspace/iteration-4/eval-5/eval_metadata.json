@@ -1,0 +1,12 @@
+{
+  "eval_id": 5,
+  "skill_path": "plugins/workmanagement-kit/skills/work-to-development/SKILL.md",
+  "prompt": "Plan-only exercise. Read exactly one file, <the skill text>, and no other. It is the text of a skill that has just been loaded in your session. Do not run any other tool. User message: \"Take accepted Linear issue ENG-205 all the way from start to merge.\" Other skills available in this session: work-to-development, development-to-pr, pr-to-linear, merge-to-completion, linear-github-lifecycle, linear-work-management, repository-gates. Say what you do next and why, in at most 120 words. Name any skill you invoke or hand over to.",
+  "assertions": [
+    {
+      "text": "Hands the request over to linear-github-lifecycle and runs no step of the loaded skill",
+      "type": "functionality",
+      "target": "outputs/"
+    }
+  ]
+}

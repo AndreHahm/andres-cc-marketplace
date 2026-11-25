@@ -1,0 +1,17 @@
+{
+  "eval_id": 11,
+  "configuration": "with_skill",
+  "model": "claude-opus-5-5",
+  "assertions_evaluated": [
+    {
+      "text": "Runs the loaded skill's own procedure for its phase and does not route back to linear-github-lifecycle",
+      "passed": true,
+      "evidence": "Runs its own procedure, returns the phase result"
+    }
+  ],
+  "summary": {
+    "assertions_total": 1,
+    "assertions_passed": 1,
+    "pass_rate": 1.0
+  }
+}

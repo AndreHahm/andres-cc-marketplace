@@ -40,7 +40,8 @@ See Testing & Validation below for the concrete trigger phrases this section sum
 Say "merge this PR and disposition <issue-id>".
 
 1. Resolve policy, read the Linear context, and confirm the merge via `AskUserQuestion` (steps 1-4).
-2. Delegate to `Skill(git-kit:merge-pr)`, read back the result, and record `pr-merged` (steps 5-7).
+2. Delegate to `Skill(git-kit:merge-pr)`, read back the result, and record `pr-merged` (steps 5-7). An
+   automatic Linear status change is drift to report, not the disposition (step 8).
 3. Separately, compare each acceptance criterion and confirm the Linear disposition (steps 9-14); a
    merge alone never closes the Issue.
 

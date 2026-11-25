@@ -11,3 +11,5 @@ Quick Workflow, with_skill only, plan-only, one agent per eval, 11 of 13 asserti
 - The skill text tested used ENG-123 as the Quick Start's example ID where one appears. It was replaced by
   `<issue-id>` afterwards, and this iteration was not repeated with the new text.
 - The trigger-phrase eval was not run: the frontmatter is unchanged.
+- eval-2's assertion text names `bridge_caller.py`, copied from iteration-2's metadata. The script is
+  `wmgt_bridge_caller.py`, as `evals.json` says, and the grades credit that name. The graded text is unchanged.
