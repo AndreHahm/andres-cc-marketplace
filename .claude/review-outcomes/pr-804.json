@@ -182,6 +182,46 @@
     },
     {
       "disposition": "accepted",
+      "finding": "codex-delta-2cb26da5-1",
+      "line": 634,
+      "note": "residual window between re-check and launch by path, disclosed in section 6, waived in the PR body",
+      "path": "plugins/git-kit/scripts/git-review-locate-rva.py",
+      "pr": 804,
+      "recorded_at": "2026-11-25T15:29:30+00:00",
+      "rule": "security"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "codex-delta-2cb26da5-2",
+      "line": 151,
+      "note": "same window as codex-delta-2cb26da5-1, waived in the PR body",
+      "path": "plugins/git-kit/skills/cross-model-review/references/optional-models.md",
+      "pr": 804,
+      "recorded_at": "2026-11-25T15:29:30+00:00",
+      "rule": "security"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "codex-delta-2cb26da5-3",
+      "line": 109,
+      "note": "private-group exception reads local files only, same rule as reviewadapters-kit, waived and confirmed by the maintainer",
+      "path": "plugins/git-kit/scripts/git-review-locate-rva.py",
+      "pr": 804,
+      "recorded_at": "2026-11-25T15:29:30+00:00",
+      "rule": "filesystem-trust-validation"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "codex-delta-2cb26da5-4",
+      "line": 80,
+      "note": "repeat of codex-delta-b2095d98-3",
+      "path": "plugins/git-kit/skills/cross-model-review/references/optional-models.md",
+      "pr": 804,
+      "recorded_at": "2026-11-25T15:29:31+00:00",
+      "rule": "R14 reference-chain"
+    },
+    {
+      "disposition": "accepted",
       "finding": "codex-delta-4e28308d-1",
       "line": 114,
       "note": "repeat of J1 (codex-delta-acdede0b-1): residual by owner decision, waived in the PR body",
