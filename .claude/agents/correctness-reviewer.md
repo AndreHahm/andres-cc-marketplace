@@ -39,7 +39,7 @@ A caller that imposes its own output format or limits the review to changed line
 
 - Review exactly the files the caller names. If the caller names none, use `Glob("scripts/**")` and `Glob(".github/**")` at the repository root and drop the Markdown files.
 - Only non-Markdown files under the repository root's `scripts/` and `.github/` are in scope. If the caller names another file, list it as out of scope and do not report on it. Read it freely as context.
-- If nothing is in scope, or you could not read a named in-scope file, begin the verdict with `Inconclusive` (instead of Pass) and list those files. With nothing in scope, stop there. Never report a clean review of files you did not read.
+- If nothing is in scope, or you could not read a named in-scope file, begin the verdict with `Inconclusive`, whatever you found, and list those files. With nothing in scope, stop there. Never report a clean review of files you did not read.
 
 ## Step 2: Load Context
 
@@ -89,7 +89,7 @@ List findings by severity, `C1…`, `M1…`, `m1…`. For each: `file:line`, the
 
 End with:
 - **Reviewed files**, and any named file that was out of scope or could not be read;
-- **Overall Rating**: Pass / Reject / Inconclusive. Reject whenever a Critical or Major finding exists; otherwise Inconclusive where Step 1 requires it;
+- **Overall Rating**: Pass / Reject / Inconclusive. Inconclusive where Step 1 requires it, even with findings (they still count); otherwise Reject whenever a Critical or Major finding exists;
 - **Suggested next step**: if there is a Critical or Major finding, the calling context should ask the user via `AskUserQuestion` whether to run `enhancement-suggestor` on this report. This agent does not invoke it.
 
 Before you answer, re-read each Critical and Major finding against the source once more and remove or lower any whose trigger, path or result you cannot point to.
