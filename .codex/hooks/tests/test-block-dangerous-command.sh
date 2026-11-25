@@ -1035,6 +1035,69 @@ B	coproc bash -c 'git push origin main'
 B	timeout .5 bash -c 'git push origin main'
 A	git bisect run sh -c 'make test'
 A	echo `date` git rebase main
+# The plain word right after `bash -c` is the script; the rest are parameters.
+A	bash -c ':' 'git stash'
+A	bash -c 'git commit -m "$1"' _ 'git rebase main is discouraged'
+A	bash -c "echo hi" _ 'git push --all'
+A	bash -c '' 'git stash'
+B	bash -c -e 'git push 2>&1 -f o x'
+B	bash -c -- 'git push 2>&1 -f o x'
+B	bash -c -o pipefail 'git push 2>&1 -f o x'
+B	bash -co pipefail 'git push 2>&1 -f o x'
+B	bash -c -eo pipefail +o posix 'git push 2>&1 -f o x'
+B	bash -c 2>/dev/null 'git push 2>&1 -f o x'
+B	bash -c >log 'git push 2>&1 -f o x'
+B	bash -c $X 'git push 2>&1 -f o x'
+B	bash -c "$@" 'git push 2>&1 -f o x'
+B	bash -c `true` 'git push 2>&1 -f o x'
+B	bash -c {-e,-x} 'git push 2>&1 -f o x'
+B	bash -c -[e] 'git push 2>&1 -f o x'
+B	bash -c ':'; bash -c 'git push 2>&1 -f o x'
+B	bash -c ':' && eval 'git push 2>&1 -f o x'
+B	bash -c ': "$1"; git push 2>&1 -f o x' _ y
+# A search or commit subcommand right after git runs none of its words. After an option that may take a
+# value (-C), the words are still read (a known false block).
+A	git grep -e submodule -e foreach -e 'git stash' -- .codex/hooks
+A	git log --grep submodule --grep foreach --grep 'git stash'
+A	git --no-pager grep -e submodule -e foreach -e 'git stash'
+B	git -C . -c a.b=c grep -e submodule -e foreach -e 'git stash'
+B	git -C . -c a.b=c submodule --quiet foreach 'echo `git stash`'
+B	git --no-pager submodule foreach 'echo `git stash`'
+B	git --git-dir x submodule foreach 'echo `git stash`'
+B	git --git-dir=$Y x submodule foreach 'echo `git stash`'
+B	git $X submodule foreach 'echo `git stash`'
+B	git "$@" submodule foreach 'echo `git stash`'
+B	git -C . bisect run sh -c 'git push 2>&1 -f o x'
+# A word that may be an option, take one as its value, or go away, turns that off.
+B	bash -c {-e,-o} pipefail 'git push 2>&1 -f o x'
+B	X=-o; bash -c $X pipefail 'git push 2>&1 -f o x'
+B	X=o; bash -c -$X pipefail 'git push 2>&1 -f o x'
+B	X=; bash -c -o $X pipefail 'git push 2>&1 -f o x'
+B	bash -c -o {pipefail,-o} posix 'git push 2>&1 -f o x'
+B	git {-p,-C} . submodule foreach 'echo `git stash`'
+B	X=-C; git $X . submodule foreach 'echo `git stash`'
+B	X=; git -C $X . submodule foreach 'echo `git stash`'
+B	bash -c 0<<<x 'git push 2>&1 -f o x'
+B	bash -c 3<<E 'git push 2>&1 -f o x'\nx\nE
+B	git 0<<<x submodule foreach 'echo `git stash`'
+B	bash -c 2\\\n>/dev/null 'git push 2>&1 -f o x'
+B	git 2\\\n>/dev/null submodule foreach 'echo `git stash`'
+B	set -k; bash -c X=1 'git push 2>&1 -f o x'
+B	set -k; bash -c -o X=1 pipefail 'git push 2>&1 -f o x'
+B	set -k; git X=1 submodule foreach 'echo `git stash`'
+B	set -k; git -C X=1 grep submodule foreach 'echo `git stash`'
+B	git for-each-repo --config=maintenance.repo submodule foreach 'echo `git stash`'
+B	echo -x | xargs -I X bash -c X 'git push 2>&1 -f o x'
+B	echo -p | xargs -I grep git grep submodule foreach 'echo `git stash`'
+B	ksh -c -R f 'git push 2>&1 -f o x'
+B	X='xargs -I Y /bin'; echo -x | $X/bash -c Y 'git push 2>&1 -f o x'
+B	X='xargs -I grep /usr/bin'; echo -p | $X/git grep submodule foreach 'echo `git stash`'
+B	bash -c : 'git push 2>&1 -f o x'; eval "$_"
+B	git log --grep submodule foreach 'git push 2>&1 -f o x'; eval "$_"
+B	x=(bash -c : 'git push 2>&1 -f o x'); eval "${x[3]}"
+B	git() { shift; command git "$@"; }; git grep submodule foreach 'echo `git stash`'
+B	bash() { shift 2; command bash -c "$@"; }; bash -c : 'git push 2>&1 -f o x'
+A	/usr/bin/git grep -e submodule -e foreach -e 'git stash'
 CASES
 
 printf 'pass=%d fail=%d (%s)\n' "${pass}" "${fail}" "${HOOK}"
