@@ -528,6 +528,8 @@ workflows that need to save on every run rather than only on a cache miss — pa
 **Common Inputs:**
 - `filters`: YAML map of filter name to glob pattern(s) to match changed files against
 
+**Permissions:** `pull-requests: read` on `pull_request` events, where the changed files come from the REST API
+
 **Example:**
 ```yaml
 - name: Detect changed paths
