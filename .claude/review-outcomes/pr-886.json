@@ -1,0 +1,74 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4691469667",
+      "line": 41,
+      "note": "Fixed in 84671569: job-level pull-requests read permission",
+      "path": "plugins/github-actions-kit/skills/github-actions-generator/examples/workflows/monorepo-ci.yml",
+      "pr": 886,
+      "recorded_at": "2026-11-25T07:57:34+00:00",
+      "rule": "paths-filter-permission"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4691469796",
+      "line": 28,
+      "note": "Fixed in 84671569: assertion added and graded afterwards on the saved output",
+      "path": "evals/github-actions-generator/workspace/iteration-3/eval-1/with_skill/grading.json",
+      "pr": 886,
+      "recorded_at": "2026-11-25T07:57:35+00:00",
+      "rule": "grading-missing-npm-steps"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-3eb7d5da86743a1c",
+      "line": 20,
+      "note": "Fixed in 84671569: Quick Start states the dispatch gate unconditionally",
+      "path": "plugins/github-actions-kit/skills/github-actions-log-analyzer/SKILL.md",
+      "pr": 886,
+      "recorded_at": "2026-11-25T07:57:35+00:00",
+      "rule": "plugin-rulebook:R26"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-fad2b80d-azure-login",
+      "line": 479,
+      "note": "Pin and label moved to azure/login v2.1.1; the replaced SHA never existed. Newer majors are issue 885",
+      "path": "plugins/github-actions-kit/skills/github-actions-generator/references/common-actions.md",
+      "pr": 886,
+      "recorded_at": "2026-11-25T08:02:10+00:00",
+      "rule": "dependency-accuracy"
+    },
+    {
+      "disposition": "declined",
+      "finding": "codex-fad2b80d-r28-generator",
+      "line": 416,
+      "note": "Advisory. One eval per skill is listed under Open Items; a follow-up under the issue 461 plan",
+      "path": "plugins/github-actions-kit/skills/github-actions-generator/SKILL.md",
+      "pr": 886,
+      "recorded_at": "2026-11-25T08:02:11+00:00",
+      "rule": "plugin-rulebook:R28"
+    },
+    {
+      "disposition": "declined",
+      "finding": "codex-fad2b80d-r28-log-analyzer",
+      "line": 242,
+      "note": "Advisory. One eval per skill is listed under Open Items; a follow-up under the issue 461 plan",
+      "path": "plugins/github-actions-kit/skills/github-actions-log-analyzer/SKILL.md",
+      "pr": 886,
+      "recorded_at": "2026-11-25T08:02:11+00:00",
+      "rule": "plugin-rulebook:R28"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "codex-fad2b80d-super-linter",
+      "line": 581,
+      "note": "The pinned super-linter commit is exactly tag v5.0.0 upstream; tag v5.7.2 does not exist",
+      "path": "plugins/github-actions-kit/skills/github-actions-generator/references/common-actions.md",
+      "pr": 886,
+      "recorded_at": "2026-11-25T08:02:10+00:00",
+      "rule": "action-version-accuracy"
+    }
+  ]
+}

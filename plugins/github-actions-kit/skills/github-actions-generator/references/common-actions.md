@@ -475,8 +475,8 @@ workflows that need to save on every run rather than only on a cache miss — pa
 
 ### azure/login
 
-**Latest Version:** v2 (v2.0.0)
-**SHA:** `8c334a195cbb38e46038007b304988d888bf676a`
+**Latest Version:** v2 (v2.1.1)
+**SHA:** `6c251865b4e6290e7b78be643ea2d005bc51f69a`
 
 **Description:** Login to Azure
 
@@ -489,7 +489,7 @@ workflows that need to save on every run rather than only on a cache miss — pa
 **Example:**
 ```yaml
 - name: Azure Login
-  uses: azure/login@8c334a195cbb38e46038007b304988d888bf676a # v2.0.0
+  uses: azure/login@6c251865b4e6290e7b78be643ea2d005bc51f69a # v2.1.1
   with:
     creds: ${{ secrets.AZURE_CREDENTIALS }}
 ```
