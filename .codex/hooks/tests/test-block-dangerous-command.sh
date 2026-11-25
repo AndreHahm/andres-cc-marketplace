@@ -1272,7 +1272,9 @@ fi
 
 # The same where stderr is a pipe without a reader.
 mkfifo "${WORK}/pipe"
-exec 7<>"${WORK}/pipe" 8>"${WORK}/pipe" 7>&-
+exec 7<>"${WORK}/pipe"
+exec 8>"${WORK}/pipe"
+exec 7>&-
 rc=0
 jq -n '{tool_input:{command:"git rebase main"}}' | bash "${HOOK}" 2>&8 || rc=$?
 exec 8>&-
