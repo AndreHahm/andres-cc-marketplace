@@ -56,7 +56,7 @@ Recorded here so Wave 3a's own plan can be checked against it. All of it sits be
 - Report **page-content blocks**: a way to submit a report longer than 2,000 characters (intake accepts only
   `title`, `summary` and `body` today and rejects other fields).
 - Query and update operations on Linear issues, including the roadmap (Initiatives, Projects, Milestones),
-  plus a way to attach a PR URL as a native link and to set the due date to the completed date.
+  plus a way to attach a PR URL as a native link and to set the due date to the completed date (the link and the due date are available through an update).
 - A caller-reachable classification path, so ambiguous follow-ups and inferred PR links can reach the kit's
   Codex classifier (`work-intake-classifier`). The plugin cannot call that classifier directly.
 - Multi-team configuration in the kit: today its configuration holds one repository and one team, so intake

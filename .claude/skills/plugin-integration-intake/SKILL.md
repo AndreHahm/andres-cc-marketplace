@@ -241,7 +241,8 @@ resolved team; an update `description`; a query key naming another repository; a
 (cancels the batch, nothing written, files purged); and a resume, which never reads the old progress file and flags
 records with no `dedup_key` as possible duplicates.
 
-**Last dated run record:** evals/plugin-integration-intake/workspace/iteration-5/ (2026-10-12) — eval 11 rewritten for
+**Last dated run record:** evals/plugin-integration-intake/workspace/iteration-6/ (2026-11-25, eval 12, PR link and due date on update:
+6/6, simulated, single run, no baseline, live connector unverified); iteration-5 (2026-10-12) — eval 11 rewritten for
 the current resume design (exact-key dedup queries in groups of at most 50, old progress file never read, one new
 approval): 7/7 assertions, a single simulated (dry-run) with_skill run graded by the orchestrator against the text at
 commit 15ae4ff1. Evals 5-10 are from iteration-4 (2026-10-09, 24/24 across evals 5-11 at the time); iteration-4's
@@ -269,7 +270,7 @@ specifically to exercise the fixed Ambiguous-target/classifier-dispatch path); i
       grant) findings from that pass are fixed in this file's Trust Model section and
       `allowed-tools`. Re-run before this gate is wired to a live connector.
 - [x] `scripts/smoke_test.py` passes (structural check: frontmatter, referenced-file existence, Bash-grant usage, step-header sequencing).
-- [x] `scripts/wmgt_test_batch_hash.py` passes (Windows and WSL, 2026-10-12).
+- [x] `scripts/wmgt_test_batch_hash.py` passes (Windows and WSL, 2026-10-12; Windows, 2026-11-25).
 - [ ] The batch, query and update additions pass `security-reviewer` with no open Critical or Major finding before
       they ship. Four passes ran during development (2026-10-09): the first three returned Reject on findings fixed
       afterwards, and the fourth returned Approve with conditions (two Major findings, fixed afterwards). Further
