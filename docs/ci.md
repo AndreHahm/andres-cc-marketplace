@@ -638,6 +638,17 @@ review` is the gate after the PR exists and reviews only the delta, to cut OpenA
   open issues and confirmations both reads hold, before it marks anything waived; a fresh read that fails
   marks nothing waived. Accepted residual: a waiver withdrawn after the publishing step has read it takes
   effect at the next run.
+- **Prior-round briefing (R20, issue #862).** With an anchor, `compute-scope` runs `list-prior-findings` on
+  the anchor result (base-restored code): `prior_findings` drops carried, suppressed and waived entries,
+  sorts blocking ones first and cleans each with `prior_finding_record`, which also drops a path that needs
+  a maintainer's confirmation. The list travels as the
+  `prior-findings` artifact, apart from `carried-findings`, whose readers fail closed on its shape.
+  `codex-review` downloads it only when `compute-scope` uploaded it (`prior_written`) and passes it to `run-codex-review
+  --prior-findings`; `dispatch_reviewers` gives every reviewer except `security-reviewer` a
+  `[prior review findings]` briefing of those on its own reviewed paths, at most 40
+  (`render_prior_findings_briefing`, which validates every record again). The file is deleted once read. A step that fails, or a missing or
+  unreadable list, means no briefing and a note in the log. Nothing else reads the list. The local parity
+  review has no anchor and passes none, so it can differ from CI there. Accepted residuals: R20's.
 - **Every reviewer reads the same list (R17, issue #808).** Before a pull request exists the list is the
   gitignored `.claude/accepted-review-findings.local.md` (same line format, heading optional);
   `create-pr` copies its lines into the body. Where each reviewer reads it:
