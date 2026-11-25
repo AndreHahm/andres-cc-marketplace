@@ -439,6 +439,17 @@ def test_an_r18_claim_naming_an_uncovered_component_blocks():
     assert _outcome(odd, covered) == "block"
 
 
+def test_a_mixed_claim_checks_its_components_for_r18_only():
+    other = "plugins/demo-kit/skills/other/SKILL.md"
+    claim = _claim("R18 and R35", rule="plugin-rulebook:R18", components=(f"{other}:3",))
+    both = {("R18", SKILL), ("R35", SKILL)}
+    covered = ScriptCoverage(clean=frozenset({*both, ("R18", other)}))
+    assert _outcome(claim, covered) == "notice"
+    assert _outcome(claim, ScriptCoverage(clean=frozenset(both))) == "block"
+    no_r35 = ScriptCoverage(clean=frozenset({("R18", SKILL), ("R18", other)}))
+    assert _outcome(claim, no_r35) == "block"
+
+
 def test_an_r33_claim_through_a_symlink_or_an_odd_path_blocks():
     assert _outcome(_claim("x", rule="R33"), R33_CLEAN) == "notice"
     assert _outcome(_claim("x", rule="R33", via_symlink=True), R33_CLEAN) == "block"
