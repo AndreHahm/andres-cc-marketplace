@@ -14,6 +14,16 @@ allowed-tools: Read Edit Bash(python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sess_memory
 
 Search across all memory file contents by keyword.
 
+## Quick Start
+
+Say "search memories for <query>". Run the search, then group the matches by project (Step 2):
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sess_memory_scanner.py" search "<query>" --limit 20 --context 1
+```
+
+The match is a literal, case-insensitive substring. Offer to read or edit a matched file (Step 3).
+
 ## When to Use
 
 - Wants to find a specific memory by content, not just list them

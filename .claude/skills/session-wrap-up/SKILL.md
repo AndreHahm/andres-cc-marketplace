@@ -14,6 +14,18 @@ allowed-tools: Bash(git status:*) Bash(git diff:*)
 
 End your coding session with intention.
 
+## Quick Start
+
+Say "wrap up". Read the git state, informationally only:
+
+```bash
+git status
+git diff --stat
+```
+
+Then capture learnings, next-session context and a one-paragraph summary, and suggest a handoff if warranted
+(Workflow, Steps 2-5).
+
 ## When to Use
 
 - Ending a session, saying "wrap up", "done for now", "finish coding"

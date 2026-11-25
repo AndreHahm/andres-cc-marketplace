@@ -1,0 +1,22 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "note": "Plan-only, with_skill only, no baseline; script results and AskUserQuestion answers simulated. Same agent handled all scenarios of this skill.",
+  "assertions_evaluated": [
+    {
+      "text": "Declines the bulk request and points to session-cleanup",
+      "passed": true,
+      "evidence": "'Finding and deleting old sessions in bulk is handled by `session-cleanup`'."
+    },
+    {
+      "text": "No raw `rm` is used or suggested at any point",
+      "passed": true,
+      "evidence": "No rm call; rm named only as not made."
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 2,
+    "pass_rate": 1.0
+  }
+}

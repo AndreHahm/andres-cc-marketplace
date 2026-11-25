@@ -12,6 +12,16 @@ allowed-tools: Bash(python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py":*) 
 
 Compare two sessions to see what changed.
 
+## Quick Start
+
+Say "diff sessions <a> and <b>". Resolve each session to its `session.path` (Step 1), then compare:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_transcript.py" diff <session-a.jsonl> <session-b.jsonl>
+```
+
+Interpret the raw output as a side-by-side comparison (Step 3).
+
 ## When to Use
 
 - Wants to compare two specific sessions' files, tools, branches, or topics

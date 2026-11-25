@@ -1,0 +1,32 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "note": "Plan-only, with_skill only, no baseline; script results and AskUserQuestion answers simulated. Same agent handled all scenarios of this skill.",
+  "assertions_evaluated": [
+    {
+      "text": "Previews with `session-detail` and shows the file path before asking",
+      "passed": true,
+      "evidence": "session-detail preview with file path is shown in steps 1-2."
+    },
+    {
+      "text": "Deletion waits for an `AskUserQuestion` confirmation, never a printed yes/no",
+      "passed": true,
+      "evidence": "AskUserQuestion in step 3; stopped before deletion."
+    },
+    {
+      "text": "Tasks are not deleted unless the user opts in",
+      "passed": true,
+      "evidence": "Follow-up defaults to 'No, keep tasks'; --delete-tasks only on opt-in."
+    },
+    {
+      "text": "No raw `rm` is used or suggested at any point",
+      "passed": true,
+      "evidence": "No rm in the plan or reply."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

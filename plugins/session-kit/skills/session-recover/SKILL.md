@@ -257,12 +257,13 @@ proportion varies by session and hasn't been formally measured):
 - `sessions-index.json` can be stale (entries pointing to deleted files). The script falls back to
   filesystem-based discovery.
 
-## Resources
+## Reference Guide
 
 | Resource | Purpose |
 |---|---|
 | `scripts/extract_resume_context.py [--session <id>] [--query <topic>] [--list]` | Single-call context extraction: session discovery, compact-boundary parsing, subagent state, git state |
 | `references/file-structure.md` | `~/.claude/` directory layout, JSONL schemas, compaction format |
+| `references/schema-examples.md` | Full-length schema and directory-tree examples, linked from `references/file-structure.md` |
 | `scripts/smoke_test.py` | This skill's own persisted smoke test (frontmatter validity, referenced-file existence, Bash-scope grant consistency) |
 
 ## Testing & Validation

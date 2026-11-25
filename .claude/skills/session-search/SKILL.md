@@ -16,6 +16,16 @@ allowed-tools: Bash(python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py":*)
 
 Search across all Claude Code sessions by keyword.
 
+## Quick Start
+
+Say "find that session where...". Run the search, then group the matches by session (Step 2):
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" search "<query>" --limit 20 --context 1 --format json
+```
+
+Add `--project` or `--since` to narrow the search (Step 1).
+
 ## When to Use
 
 - Wants to find a previous session or locate past work by content

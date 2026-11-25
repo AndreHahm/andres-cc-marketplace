@@ -1,0 +1,22 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "note": "Plan-only, with_skill only, no baseline; script results and AskUserQuestion answers simulated. Same agent handled all scenarios of this skill.",
+  "assertions_evaluated": [
+    {
+      "text": "Declines and points to session-delete for the single named session",
+      "passed": true,
+      "evidence": "'this belongs to `session-delete`'; hands abc123 over."
+    },
+    {
+      "text": "No raw `rm` is used or suggested at any point",
+      "passed": true,
+      "evidence": "No rm in the plan or reply."
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 2,
+    "pass_rate": 1.0
+  }
+}
