@@ -34,6 +34,15 @@ drifted fields discovered together.
 
 See Testing & Validation below for the concrete trigger phrases this section summarizes.
 
+## Quick Start
+
+Say "reconcile Linear and GitHub state for <issue-id>", or "why did <issue-id>'s status change?".
+
+1. Read Linear, the evidence history, GitHub and the repository policy (step 1).
+2. Compare them using the Authority Model and classify each discrepancy (steps 2-3).
+3. Preview the bounded repair, and confirm via `AskUserQuestion` before any consequential change
+   (steps 5-6). On automation drift, stop per Failure and Resume instead of writing against it.
+
 ## Procedure
 
 1. **Read** Linear (via `linear-work-management`), Git/GitHub Evidence Record history (via

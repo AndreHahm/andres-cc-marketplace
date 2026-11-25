@@ -39,6 +39,15 @@ triage/fix round, or marking the PR ready once requirements are met.
 
 See Testing & Validation below for the concrete trigger phrases this section summarizes.
 
+## Quick Start
+
+Say "summarize this PR's review status to <issue-id>", or "mark this PR ready for review".
+
+1. Read the PR's head SHA, reviews and checks, and the repository policy (step 1).
+2. Resolve the intent (step 1.5): a pure summary skips triage; a triage, fix, reply, resolve or
+   readiness request runs `Skill(git-kit:handling-review-findings)` first (step 2).
+3. Reflect only meaningful blockers to Linear (step 4); a readiness request continues with Marking ready.
+
 ## Procedure
 
 ### Review and reflect loop

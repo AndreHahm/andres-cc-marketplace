@@ -34,6 +34,15 @@ Running (or resuming) the whole Wave 2 lifecycle for one accepted Linear Issue, 
 
 See Testing & Validation below for the concrete trigger phrases this section summarizes.
 
+## Quick Start
+
+Say "run the full lifecycle for <issue-id>", or "resume the lifecycle for <issue-id>".
+
+1. Check the Prerequisites; if one is missing, stop with a manual handoff.
+2. New run: start at the first row of Phases and Delegation. Interrupted run: determine the resume
+   point per Resume Behavior and confirm it via `AskUserQuestion`.
+3. Delegate each phase to its focused skill; confirm every phase transition via `AskUserQuestion`.
+
 ## Prerequisites
 
 - An accepted Linear Issue exists (see `linear-work-management`) — this skill never operates on an

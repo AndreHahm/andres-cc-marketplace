@@ -38,6 +38,15 @@ checking whether previously-recorded gate evidence is still valid after new comm
 
 See Testing & Validation below for the concrete trigger phrases this section summarizes.
 
+## Quick Start
+
+Say "what gates apply to this repository", or "is the prior gate evidence still valid".
+
+1. Resolve the repository policy profile; if it is unconfigured, stop with a manual handoff.
+2. Discover the gates this repository actually defines (Discovering Actual Gates).
+3. For a validity check, compare the recorded and the current SHA, both supplied by the calling skill
+   (Invalidating Prior Evidence).
+
 ## Resolving the Repository Policy Profile
 
 1. Read `versioned-configuration.json`'s (schema v2) `repository_policy.provider_profile` and

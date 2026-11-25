@@ -30,6 +30,16 @@ branch/worktree request.
 
 See Testing & Validation below for the concrete trigger phrases this section summarizes.
 
+## Quick Start
+
+Say "start work on <issue-id>".
+
+1. Read the Issue and confirm it is ready; report missing or contradictory criteria (steps 1-2).
+2. Resolve policy and search for an existing branch, commit or PR (steps 3-4).
+3. Confirm the branch request via `AskUserQuestion`, then delegate to `Skill(git-kit:starting-work)`
+   (steps 6-7).
+4. Read back what was created, record `work-started`, then update Linear (steps 8-10).
+
 ## Procedure
 
 1. **Resolve context:** read the Issue's outcome, acceptance criteria, constraints, owner, priority,

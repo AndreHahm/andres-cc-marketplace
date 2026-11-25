@@ -42,6 +42,17 @@ broken/stale link.
 
 See Testing & Validation below for the concrete trigger phrases this section summarizes.
 
+## Quick Start
+
+Say "link this Notion idea to <issue-id>", "check for drift between Notion and Linear", or "repair this
+broken link".
+
+1. Read both records' current state via `notion-knowledge-management` and `linear-work-management`.
+2. Linking: set each side's own link field through the skill that owns that side (Linking).
+3. Drift check: classify the link as exactly one of the six states (Drift Classification).
+4. Repair: only the non-authoritative side (Repair); anything beyond a bare link or reference field
+   needs approval via `AskUserQuestion`.
+
 ## Linking
 
 A link is the reciprocal pair of stable IDs stored directly on each side's own record — the

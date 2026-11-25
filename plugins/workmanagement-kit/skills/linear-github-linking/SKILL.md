@@ -42,6 +42,17 @@ entry.
 
 See Testing & Validation below for the concrete trigger phrases this section summarizes.
 
+## Quick Start
+
+Say "link <issue-id> to its PR", "check <issue-id> for drift between Linear and GitHub", or "repair this
+broken GitHub link".
+
+1. Read the Issue's recorded evidence via `linear-work-management`, and GitHub's current state.
+2. Recording: append a new entry, only for evidence verified by a GitHub read-back (Recording a Link).
+3. Drift check: classify each relationship as exactly one of the five states (Classification).
+4. Repair: only the evidence entry, by appending, never GitHub state (Repair). Confirm the identity of
+   an `Adoptable` candidate via `AskUserQuestion` first.
+
 ## Recording a Link
 
 1. Read the current Git/GitHub Evidence Record array on the target Linear Issue (via
