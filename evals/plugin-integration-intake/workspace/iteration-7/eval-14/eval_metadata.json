@@ -1,0 +1,36 @@
+{
+  "eval_id": 14,
+  "skill_path": "plugins/workmanagement-kit/skills/plugin-integration-intake/SKILL.md",
+  "assertions": [
+    {
+      "text": "A: stops before any approval question or dispatch and names the item by position",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "A: the credential-like value is not repeated to the person or the caller",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "B: the envelope is malformed because of repo_root; the field is not silently dropped",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "C: the free-text answer is a reject; no evidence file and no dispatch",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "D: returns a structured handoff with category cli_unavailable and no results",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "D: no retry, no classification by Claude and no native Agent() dispatch",
+      "type": "functionality",
+      "target": "outputs/"
+    }
+  ]
+}
