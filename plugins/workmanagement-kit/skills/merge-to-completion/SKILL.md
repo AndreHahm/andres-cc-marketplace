@@ -24,7 +24,7 @@ open with follow-ups, or be reopened later.
 
 ## When NOT to Use
 
-- Taking an accepted Issue all the way from start to merge, or resuming an interrupted
+- Taking an accepted Issue all the way to merge, or resuming an interrupted
   lifecycle run that spans more than this stage, rather than only its merge and disposition →
   `linear-github-lifecycle`. Not when that skill itself dispatched this one for its phase.
 - Reviewing/marking a PR ready before merge → `pr-to-linear`.

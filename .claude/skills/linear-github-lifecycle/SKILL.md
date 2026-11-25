@@ -23,9 +23,10 @@ Running (or resuming) the whole Wave 2 lifecycle for one accepted Linear Issue, 
 
 ## When NOT to Use
 
-- Only one stage is needed (e.g. just starting work, or just merging) — invoke the matching focused
-  skill directly; this skill's own overhead (phase-state tracking, full-sequence confirmation) isn't
-  worth it for a single stage.
+- Only one stage is needed, including resuming just that stage — invoke the matching focused skill
+  directly: starting work → `work-to-development`, committing and publishing → `development-to-pr`, PR
+  review and ready → `pr-to-linear`, merging and disposition → `merge-to-completion`. This skill's own
+  overhead (phase-state tracking, full-sequence confirmation) isn't worth it for a single stage.
 - Overlap with `git-kit`'s own lifecycle skills: this skill never replaces `starting-work`/`commit`/
   `create-pr`/`collaborating-on-a-pr`/`merge-pr`/`finishing-work` — it orchestrates Linear/Notion
   context and evidence around them; `git-kit` itself owns the actual mechanics for any raw,
