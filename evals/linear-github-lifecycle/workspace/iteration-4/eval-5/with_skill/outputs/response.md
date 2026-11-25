@@ -1,0 +1,3 @@
+I stop work-to-development here and do none of its procedure: no readiness check, branch request or Linear update. Next I invoke `Skill(linear-github-lifecycle)` for ENG-205, passing on the user's full request (accepted Issue, start to merge).
+
+Why: the loaded skill's "When NOT to Use" sends taking an accepted Issue all the way to merge to `linear-github-lifecycle`. The exception (that skill dispatched this one for its phase) does not apply, since the request came directly from the user. The text says this is routing for the caller, not a call by work-to-development, so I make the switch as the session. I expect the lifecycle skill to run the stages, including work-to-development when its phase comes, with their confirmations intact.

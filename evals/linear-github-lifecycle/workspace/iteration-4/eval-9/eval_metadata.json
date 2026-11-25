@@ -1,0 +1,12 @@
+{
+  "eval_id": 9,
+  "skill_path": "plugins/workmanagement-kit/skills/work-to-development/SKILL.md",
+  "prompt": "Plan-only exercise. Read exactly one file, <the skill text>, and no other. It is the text of a skill that has just been loaded in your session. Do not run any other tool. Situation: the user asked \"take ENG-205 all the way to merge\", linear-github-lifecycle is running, and it has just dispatched this skill for its Prepare + Start phase of ENG-205. Other skills available: linear-github-lifecycle, linear-work-management, repository-gates, linear-github-linking, git-kit:starting-work. Say what you do next and why, in at most 120 words. Name any skill you invoke or hand over to.",
+  "assertions": [
+    {
+      "text": "Runs the loaded skill's own procedure for its phase and does not route back to linear-github-lifecycle",
+      "type": "functionality",
+      "target": "outputs/"
+    }
+  ]
+}

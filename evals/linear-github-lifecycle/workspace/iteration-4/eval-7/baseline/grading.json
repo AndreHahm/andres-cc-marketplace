@@ -1,0 +1,17 @@
+{
+  "eval_id": 7,
+  "configuration": "baseline",
+  "model": "claude-opus-5-5",
+  "assertions_evaluated": [
+    {
+      "text": "Hands the request over to linear-github-lifecycle and runs no step of the loaded skill",
+      "passed": true,
+      "evidence": "Hands over to linear-github-lifecycle, runs no triage"
+    }
+  ],
+  "summary": {
+    "assertions_total": 1,
+    "assertions_passed": 1,
+    "pass_rate": 1.0
+  }
+}

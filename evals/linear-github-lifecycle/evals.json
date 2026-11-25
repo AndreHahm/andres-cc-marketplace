@@ -32,6 +32,96 @@
       "files": [
         "plugins/workmanagement-kit/skills/linear-github-lifecycle/SKILL.md"
       ]
+    },
+    {
+      "id": 5,
+      "name": "routing: whole-lifecycle request with work-to-development loaded",
+      "prompt": "Plan-only exercise. Read exactly one file, <the skill text>, and no other. It is the text of a skill that has just been loaded in your session. Do not run any other tool. User message: \"Take accepted Linear issue ENG-205 all the way from start to merge.\" Other skills available in this session: work-to-development, development-to-pr, pr-to-linear, merge-to-completion, linear-github-lifecycle, linear-work-management, repository-gates. Say what you do next and why, in at most 120 words. Name any skill you invoke or hand over to.",
+      "expected_output": "Hands the request over to linear-github-lifecycle and runs no step of the loaded skill.",
+      "files": [
+        "plugins/workmanagement-kit/skills/work-to-development/SKILL.md"
+      ]
+    },
+    {
+      "id": 6,
+      "name": "routing: whole-lifecycle request with development-to-pr loaded",
+      "prompt": "Plan-only exercise. Read exactly one file, <the skill text>, and no other. It is the text of a skill that has just been loaded in your session. Do not run any other tool. User message: \"Commit my ENG-205 changes and take the issue all the way to merge.\" Other skills available in this session: work-to-development, development-to-pr, pr-to-linear, merge-to-completion, linear-github-lifecycle, linear-work-management, repository-gates. Say what you do next and why, in at most 120 words. Name any skill you invoke or hand over to.",
+      "expected_output": "Hands the request over to linear-github-lifecycle and runs no step of the loaded skill.",
+      "files": [
+        "plugins/workmanagement-kit/skills/development-to-pr/SKILL.md"
+      ]
+    },
+    {
+      "id": 7,
+      "name": "routing: resume of an interrupted run with pr-to-linear loaded",
+      "prompt": "Plan-only exercise. Read exactly one file, <the skill text>, and no other. It is the text of a skill that has just been loaded in your session. Do not run any other tool. User message: \"Resume the interrupted lifecycle run for ENG-205, PR 45 is in review; carry on until it is merged.\" Other skills available in this session: work-to-development, development-to-pr, pr-to-linear, merge-to-completion, linear-github-lifecycle, linear-work-management, repository-gates. Say what you do next and why, in at most 120 words. Name any skill you invoke or hand over to.",
+      "expected_output": "Hands the request over to linear-github-lifecycle and runs no step of the loaded skill.",
+      "files": [
+        "plugins/workmanagement-kit/skills/pr-to-linear/SKILL.md"
+      ]
+    },
+    {
+      "id": 8,
+      "name": "routing: whole-lifecycle request with merge-to-completion loaded",
+      "prompt": "Plan-only exercise. Read exactly one file, <the skill text>, and no other. It is the text of a skill that has just been loaded in your session. Do not run any other tool. User message: \"Take accepted Linear issue ENG-205 all the way from start to merge and close it.\" Other skills available in this session: work-to-development, development-to-pr, pr-to-linear, merge-to-completion, linear-github-lifecycle, linear-work-management, repository-gates. Say what you do next and why, in at most 120 words. Name any skill you invoke or hand over to.",
+      "expected_output": "Hands the request over to linear-github-lifecycle and runs no step of the loaded skill.",
+      "files": [
+        "plugins/workmanagement-kit/skills/merge-to-completion/SKILL.md"
+      ]
+    },
+    {
+      "id": 9,
+      "name": "routing: work-to-development dispatched by the lifecycle skill",
+      "prompt": "Plan-only exercise. Read exactly one file, <the skill text>, and no other. It is the text of a skill that has just been loaded in your session. Do not run any other tool. Situation: the user asked \"take ENG-205 all the way to merge\", linear-github-lifecycle is running, and it has just dispatched this skill for its Prepare + Start phase of ENG-205. Other skills available: linear-github-lifecycle, linear-work-management, repository-gates, linear-github-linking, git-kit:starting-work. Say what you do next and why, in at most 120 words. Name any skill you invoke or hand over to.",
+      "expected_output": "Runs the loaded skill's own procedure for its phase and does not route back to linear-github-lifecycle.",
+      "files": [
+        "plugins/workmanagement-kit/skills/work-to-development/SKILL.md"
+      ]
+    },
+    {
+      "id": 10,
+      "name": "routing: development-to-pr dispatched by the lifecycle skill",
+      "prompt": "Plan-only exercise. Read exactly one file, <the skill text>, and no other. It is the text of a skill that has just been loaded in your session. Do not run any other tool. Situation: the user asked \"take ENG-205 all the way to merge\", linear-github-lifecycle is running, and it has just dispatched this skill for its Commit + gates + Publish phase of ENG-205. Other skills available: linear-github-lifecycle, linear-work-management, repository-gates, linear-github-linking, git-kit:commit, git-kit:create-pr, git-kit:cross-model-review. Say what you do next and why, in at most 120 words. Name any skill you invoke or hand over to.",
+      "expected_output": "Runs the loaded skill's own procedure for its phase and does not route back to linear-github-lifecycle.",
+      "files": [
+        "plugins/workmanagement-kit/skills/development-to-pr/SKILL.md"
+      ]
+    },
+    {
+      "id": 11,
+      "name": "routing: pr-to-linear dispatched by the lifecycle skill",
+      "prompt": "Plan-only exercise. Read exactly one file, <the skill text>, and no other. It is the text of a skill that has just been loaded in your session. Do not run any other tool. Situation: the user asked \"take ENG-205 all the way to merge\", linear-github-lifecycle is running, and it has just dispatched this skill for its Review/fix + Ready phase of ENG-205, PR 45. Other skills available: linear-github-lifecycle, linear-work-management, repository-gates, linear-github-linking, git-kit:handling-review-findings. Say what you do next and why, in at most 120 words. Name any skill you invoke or hand over to.",
+      "expected_output": "Runs the loaded skill's own procedure for its phase and does not route back to linear-github-lifecycle.",
+      "files": [
+        "plugins/workmanagement-kit/skills/pr-to-linear/SKILL.md"
+      ]
+    },
+    {
+      "id": 12,
+      "name": "routing: merge-to-completion dispatched by the lifecycle skill",
+      "prompt": "Plan-only exercise. Read exactly one file, <the skill text>, and no other. It is the text of a skill that has just been loaded in your session. Do not run any other tool. Situation: the user asked \"take ENG-205 all the way to merge\", linear-github-lifecycle is running, and it has just dispatched this skill for its Merge + Linear disposition phase of ENG-205, PR 45. Other skills available: linear-github-lifecycle, linear-work-management, repository-gates, linear-github-linking, git-kit:merge-pr. Say what you do next and why, in at most 120 words. Name any skill you invoke or hand over to.",
+      "expected_output": "Runs the loaded skill's own procedure for its phase and does not route back to linear-github-lifecycle.",
+      "files": [
+        "plugins/workmanagement-kit/skills/merge-to-completion/SKILL.md"
+      ]
+    },
+    {
+      "id": 13,
+      "name": "routing: resume of one stage with merge-to-completion loaded",
+      "prompt": "Plan-only exercise. Read exactly one file, <the skill text>, and no other. It is the text of a skill that has just been loaded in your session. Do not run any other tool. User message: \"Resume the merge of PR 45 for ENG-205 where it stopped: the merge went through and pr-merged is recorded, but the Linear disposition never ran.\" Other skills available in this session: work-to-development, development-to-pr, pr-to-linear, merge-to-completion, linear-github-lifecycle, linear-work-management, repository-gates. Say what you do next and why, in at most 120 words. Name any skill you invoke or hand over to.",
+      "expected_output": "Stays in merge-to-completion and resumes the Linear disposition without merging again.",
+      "files": [
+        "plugins/workmanagement-kit/skills/merge-to-completion/SKILL.md"
+      ]
+    },
+    {
+      "id": 14,
+      "name": "routing: single stage resumed with the lifecycle skill loaded",
+      "prompt": "Plan-only exercise. Read exactly one file, <the skill text>, and no other. It is the text of a skill that has just been loaded in your session. Do not run any other tool. User message: \"Pick up the review stage of PR 45 for ENG-205 again and mark it ready, nothing else.\" Other skills available in this session: work-to-development, development-to-pr, pr-to-linear, merge-to-completion, linear-github-lifecycle, linear-work-management, repository-gates. Say what you do next and why, in at most 120 words. Name any skill you invoke or hand over to.",
+      "expected_output": "Invokes pr-to-linear directly and starts no lifecycle run.",
+      "files": [
+        "plugins/workmanagement-kit/skills/linear-github-lifecycle/SKILL.md"
+      ]
     }
   ],
   "testing_validation_coverage": {
@@ -39,5 +129,6 @@
     "declared_scenarios_covered": 3,
     "uncovered": []
   },
-  "methodology_note_eval_4": "This run's with_skill grading was performed directly by the orchestrating fork (a 'Do NOT spawn subagents' hard rule barred the normal Agent-tool dispatch this pipeline's WITH_SKILL_ONLY template calls for) via description-vs-trigger-phrase textual/semantic consistency checking, not a full agentic task simulation. No SKILL.md content changed as part of this grading run (a later, unrelated commit in the same PR added one documentation checklist line to each skill's SKILL.md) -- this run's purpose was a sanity check that adding scripts/smoke_test.py to each skill didn't coincide with any drift between the skill's own documented trigger claims and its frontmatter, not a search for new behavioral defects."
+  "methodology_note_eval_4": "This run's with_skill grading was performed directly by the orchestrating fork (a 'Do NOT spawn subagents' hard rule barred the normal Agent-tool dispatch this pipeline's WITH_SKILL_ONLY template calls for) via description-vs-trigger-phrase textual/semantic consistency checking, not a full agentic task simulation. No SKILL.md content changed as part of this grading run (a later, unrelated commit in the same PR added one documentation checklist line to each skill's SKILL.md) -- this run's purpose was a sanity check that adding scripts/smoke_test.py to each skill didn't coincide with any drift between the skill's own documented trigger claims and its frontmatter, not a search for new behavioral defects.",
+  "routing_note_evals_5_14": "Evals 5-14 test the routing text between linear-github-lifecycle and its four stage skills (PR #903). They load the skill named in `files`; they do not test which skill is selected, and testing_validation_coverage does not count them."
 }

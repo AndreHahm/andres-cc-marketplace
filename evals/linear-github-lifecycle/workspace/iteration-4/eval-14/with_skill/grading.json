@@ -1,0 +1,17 @@
+{
+  "eval_id": 14,
+  "configuration": "with_skill",
+  "model": "claude-opus-5-5",
+  "assertions_evaluated": [
+    {
+      "text": "Invokes pr-to-linear directly and starts no lifecycle run",
+      "passed": true,
+      "evidence": "Invokes pr-to-linear, skips lifecycle tracking"
+    }
+  ],
+  "summary": {
+    "assertions_total": 1,
+    "assertions_passed": 1,
+    "pass_rate": 1.0
+  }
+}

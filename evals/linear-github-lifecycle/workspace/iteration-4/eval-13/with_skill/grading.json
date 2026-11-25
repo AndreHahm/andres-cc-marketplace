@@ -1,0 +1,17 @@
+{
+  "eval_id": 13,
+  "configuration": "with_skill",
+  "model": "claude-opus-5-5",
+  "assertions_evaluated": [
+    {
+      "text": "Stays in merge-to-completion and resumes the Linear disposition without merging again",
+      "passed": true,
+      "evidence": "Resumes steps 9-14, never re-invokes merge-pr"
+    }
+  ],
+  "summary": {
+    "assertions_total": 1,
+    "assertions_passed": 1,
+    "pass_rate": 1.0
+  }
+}

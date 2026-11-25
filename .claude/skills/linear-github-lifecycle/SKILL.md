@@ -15,7 +15,7 @@ allowed-tools: Read, Skill(linear-work-management), Skill(linear-github-linking)
 Composes Wave 2's seven focused skills into one end-to-end run: an accepted Linear Issue goes in,
 a linked merged PR and a verified Linear/Notion disposition come out. This skill owns sequencing,
 resumable phase state, and inter-phase confirmation — it never implements a phase's own logic
-itself; every phase below is delegated to the focused skill that owns it.
+itself; every phase below that names an owner is delegated to that focused skill.
 
 ## When to Use
 
@@ -42,7 +42,8 @@ Say "run the full lifecycle for <issue-id>", or "resume the lifecycle for <issue
 1. Check the Prerequisites; if one is missing, stop with a manual handoff.
 2. New run: start at the first row of Phases and Delegation. Interrupted run: determine the resume
    point per Resume Behavior and confirm it via `AskUserQuestion`.
-3. Delegate each phase to its focused skill; confirm every phase transition via `AskUserQuestion`.
+3. Delegate each phase that names a skill. Implement is ordinary work in the verified active worktree,
+   and reconciliation runs only on demand. Confirm every phase transition via `AskUserQuestion`.
 
 ## Prerequisites
 
