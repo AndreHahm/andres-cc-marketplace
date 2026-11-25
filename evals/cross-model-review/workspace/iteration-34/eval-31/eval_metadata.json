@@ -1,0 +1,41 @@
+{
+  "eval_id": 31,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {
+      "text": "A: no optional model is offered and the reason is mentioned in one line; Claude and Codex go on",
+      "type": "functionality",
+      "target": "references/optional-models.md"
+    },
+    {
+      "text": "A: the shim is not used even at the user's request, because it may pick the real program from files in the checkout",
+      "type": "functionality",
+      "target": "references/optional-models.md"
+    },
+    {
+      "text": "B: the dry-run command uses /opt/node-22.1/bin/node literally, as the locator printed it",
+      "type": "functionality",
+      "target": "references/optional-models.md"
+    },
+    {
+      "text": "B: says the locator prints node with links resolved",
+      "type": "functionality",
+      "target": "references/optional-models.md"
+    },
+    {
+      "text": "C: pi and devin are both dropped with the reason recorded and nothing is dispatched on the old result",
+      "type": "functionality",
+      "target": "references/optional-models.md"
+    },
+    {
+      "text": "D: says the LDAP member is not noticed, as a disclosed residual risk",
+      "type": "functionality",
+      "target": "references/optional-models.md"
+    },
+    {
+      "text": "E: a different identity with equal paths drops pi and devin with the reason recorded",
+      "type": "functionality",
+      "target": "references/optional-models.md"
+    }
+  ]
+}

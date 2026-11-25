@@ -35,18 +35,19 @@ is group-writable. Where ownership cannot be read (Windows), every candidate is 
 without the caller's GIT_* variables. `git`, and the `node` the caller runs the dispatcher with, are
 looked up in absolute PATH entries only and refused inside the repository or its worktrees
 (`git_review_common.tool`); node's resolved path, the one printed, must also be made of the
-characters above, no other account may be able to replace it (`program_problem`), and it must not
-look like a version manager's shim (`resolve_node`). The config file is trusted only when it is a
-plain file (no symlink component), owned by the current user, writable by nobody else, and neither
-it nor a case variant of its name is tracked in the index or HEAD. A git failure counts as tracked.
+characters above, and it must not look like a version manager's shim (`resolve_node`). No other
+account may be able to replace either program (`program_problem`). The config file is trusted only
+when it is a plain file (no symlink component), owned by the current user, writable by nobody else,
+and neither it nor a case variant of its name is tracked in the index or HEAD. A git failure counts
+as tracked.
 
 The result can go stale while the user answers questions, so the caller runs this again right
-before each vendor's first dispatch of each phase and sends nothing more if `dispatcher` or `node`
-changed.
+before each vendor's first dispatch of each phase and sends nothing more if `dispatcher`, `node` or
+`identity` (device, inode, size and modification time of both files) changed.
 
-Prints one JSON object: `{"ok": true, "root", "dispatcher", "node", "source", "notes"}` (exit 0) or
-`{"ok": false, "reasons": [...]}` (exit 3, no usable copy). Exit 2 is a usage error. It never
-writes anything and never runs the dispatcher.
+Prints one JSON object: `{"ok": true, "root", "dispatcher", "node", "identity", "source", "notes"}`
+(exit 0) or `{"ok": false, "reasons": [...]}` (exit 3, no usable copy). Exit 2 is a usage error. It
+never writes anything and never runs the dispatcher.
 
 This repository's own convention only.
 """
@@ -259,19 +260,20 @@ def program_problem(program: Path, forbidden: Sequence[Path] = ()) -> str | None
         if name == "..":
             current = current.parent
             continue
-        problem = _swappable_problem(current, "above node")
+        problem = _swappable_problem(current, f"above {program.name}")
         if problem:
             return problem
         entry = current / name
         if _same_file_inside(current, forbidden):
-            return f"{entry} (node) lies inside the repository under review or one of its worktrees"
+            where = "the repository under review or one of its worktrees"
+            return f"{entry} ({program.name}) lies inside {where}"
         try:
             st = entry.lstat()
             target = Path(os.readlink(entry)) if stat.S_ISLNK(st.st_mode) else None
         except OSError:
             return f"{entry} could not be checked"
         if hasattr(os, "getuid") and st.st_uid not in (os.getuid(), 0):
-            return f"{entry} (node) is not owned by the current user or root"
+            return f"{entry} ({program.name}) is not owned by the current user or root"
         if target is None:
             current = entry
             continue
@@ -282,9 +284,9 @@ def program_problem(program: Path, forbidden: Sequence[Path] = ()) -> str | None
             current, target = Path("/"), Path(*target.parts[1:])
         pending = [*target.parts, *pending]
     if not stat.S_ISREG(st.st_mode):
-        return f"{current} (node) is not a regular file"
+        return f"{current} ({program.name}) is not a regular file"
     if _others_can_write(st, current):
-        return f"{current} (node) is writable by others"
+        return f"{current} ({program.name}) is writable by others"
     return None
 
 
@@ -314,7 +316,7 @@ def resolve_node(node: str) -> tuple[str | None, str | None]:
 
 def _same_file_inside(real: Path, roots: Sequence[Path]) -> bool:
     """Whether `real` or a directory above it is one of `roots` (by device and inode), or a
-    worktree of a repository in them that git no longer lists there (a moved one)."""
+    worktree of a repository in them that was moved, until git prunes its entry."""
     if common.inside(real, roots):
         return True
     ids = set()
@@ -495,12 +497,12 @@ def installed_versions(marketplace_dir: Path) -> tuple[set[str] | None, str | No
     return listed, None
 
 
-def _git(repo: Path, *args: str) -> bytes | None:
+def _git(git: str, repo: Path, *args: str) -> bytes | None:
     """git's stdout, run without the caller's GIT_* variables (they could point it elsewhere)."""
     env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
     try:
         result = subprocess.run(
-            [common.tool("git", common.checkout_root(repo)), *args],
+            [git, *args],
             cwd=repo,
             env=env,
             capture_output=True,
@@ -512,19 +514,19 @@ def _git(repo: Path, *args: str) -> bytes | None:
     return result.stdout if result.returncode == 0 else None
 
 
-def _git_names(repo: Path) -> list[str] | None:
+def _git_names(git: str, repo: Path) -> list[str] | None:
     names: list[str] = []
     for args in (("ls-files", "-z"), ("ls-tree", "-r", "--name-only", "-z", "HEAD")):
-        out = _git(repo, *args)
+        out = _git(git, repo, *args)
         if out is None:
             return None
         names += out.decode("utf-8", "surrogateescape").split("\0")
     return names
 
 
-def worktree_roots(repo: Path) -> list[Path] | None:
+def worktree_roots(git: str, repo: Path) -> list[Path] | None:
     """Every worktree of this repository (another may have an unreviewed branch checked out)."""
-    out = _git(repo, "worktree", "list", "--porcelain", "-z")
+    out = _git(git, repo, "worktree", "list", "--porcelain", "-z")
     if out is None:
         return None
     return [
@@ -534,7 +536,7 @@ def worktree_roots(repo: Path) -> list[Path] | None:
     ]
 
 
-def config_candidate(repo: Path) -> tuple[Path | None, str | None]:
+def config_candidate(git: str, repo: Path) -> tuple[Path | None, str | None]:
     """The configured root from the local file, or why it is absent or untrusted."""
     path = repo / LOCAL_PATH
     if not os.path.lexists(path):
@@ -544,7 +546,7 @@ def config_candidate(repo: Path) -> tuple[Path | None, str | None]:
         current = current / part
         if current.is_symlink():
             return None, f"{LOCAL_PATH} is reached through a symbolic link"
-    names = _git_names(repo)
+    names = _git_names(git, repo)
     if names is None:
         return None, f"could not check whether {LOCAL_PATH} is tracked"
     if any(n.lower() == LOCAL_PATH.lower() for n in names):
@@ -577,11 +579,19 @@ def config_candidate(repo: Path) -> tuple[Path | None, str | None]:
 
 
 def locate(repo: Path, plugin_root: Path) -> dict:
-    worktrees = worktree_roots(repo)
+    roots = common.checkout_root(repo)
+    try:
+        git = common.tool("git", roots)
+    except FileNotFoundError as err:
+        return {"ok": False, "reasons": [str(err)]}
+    problem = program_problem(Path(git), roots)
+    if problem:
+        return {"ok": False, "reasons": [problem]}
+    worktrees = worktree_roots(git, repo)
     if worktrees is None:
         return {"ok": False, "reasons": ["could not list this repository's worktrees"]}
+    forbidden = [*roots, *worktrees]
     try:
-        forbidden = [*common.checkout_root(repo), *worktrees]
         node = common.tool("node", forbidden)
     except FileNotFoundError as err:
         return {"ok": False, "reasons": [str(err)]}
@@ -600,7 +610,7 @@ def locate(repo: Path, plugin_root: Path) -> dict:
         if root is not None:
             return _found(root, node, "sibling", reasons)
     reasons.append(f"sibling: {why}")
-    candidate, why = config_candidate(repo)
+    candidate, why = config_candidate(git, repo)
     if candidate is not None:
         root, why = check_root(candidate, repo, worktrees)
         if root is not None:
@@ -609,12 +619,19 @@ def locate(repo: Path, plugin_root: Path) -> dict:
     return {"ok": False, "reasons": reasons}
 
 
+def _identity(path: str) -> str:
+    st = os.stat(path)
+    return f"{st.st_dev}:{st.st_ino}:{st.st_size}:{st.st_mtime_ns}"
+
+
 def _found(root: Path, node: str, source: str, notes: list[str]) -> dict:
+    dispatcher = str(root.joinpath(*DISPATCHER))
     return {
         "ok": True,
         "root": str(root),
-        "dispatcher": str(root.joinpath(*DISPATCHER)),
+        "dispatcher": dispatcher,
         "node": node,
+        "identity": f"{_identity(dispatcher)} {_identity(node)}",
         "source": source,
         "notes": notes,
     }

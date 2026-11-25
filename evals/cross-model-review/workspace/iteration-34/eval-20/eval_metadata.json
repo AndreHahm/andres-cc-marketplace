@@ -1,0 +1,26 @@
+{
+  "eval_id": 20,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {
+      "text": "One AskUserQuestion call with one question per vendor, options send/skip",
+      "type": "functionality",
+      "target": "references/optional-models.md"
+    },
+    {
+      "text": "Each question quotes recipient, model and reach, the target paths of both batches and the dispatch count (4 per vendor)",
+      "type": "functionality",
+      "target": "references/optional-models.md"
+    },
+    {
+      "text": "Each question says the diff leaves the machine and carries the DISPATCHER_TOUCHED disclosure",
+      "type": "functionality",
+      "target": "references/optional-models.md"
+    },
+    {
+      "text": "Changed dispatcher: agy and pi are both dropped with the reason recorded; nothing is dispatched on the old result",
+      "type": "functionality",
+      "target": "references/optional-models.md"
+    }
+  ]
+}

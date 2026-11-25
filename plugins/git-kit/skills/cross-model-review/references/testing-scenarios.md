@@ -232,7 +232,7 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
     model is offered, even after the user approved running the working-tree scripts, and the reason is
     in `inspection_limits`.
 50. The locator is run again immediately before a vendor's first real dispatch, or its first Phase 2 one, and now fails, or prints
-    a different `dispatcher` or `node` → a failure drops that vendor; a changed path drops every optional
+    a different `dispatcher`, `node` or `identity` → a failure drops that vendor; a change drops every optional
     vendor still to dispatch, each with the reason; the earlier result is never used for a dispatch.
 51. An optional model runs on a diff with `deploy-credentials.txt` (in `sensitive_paths`) → that file is in no
     vendor diff, paths file or untracked entry, and the egress question names it as not sent; a Claude or Codex
@@ -444,6 +444,8 @@ Moved here from SKILL.md's Testing & Validation section, which keeps only the la
 - **2026-11-25, `iteration-33`:** adds eval 31 (a `node` shim refused, the resolved `node` path, the disclosed limits) and
   re-runs evals 29 and 30, one plan-only `with_skill` run each, no baseline: 6/6, 3/3 and 8/8. Evals 20-24, 26 and 28
   were not run again.
+- **2026-11-25, `iteration-34`:** re-runs evals 20 and 31 (31 with a new Case E) after the re-check gained `identity`, one
+  plan-only `with_skill` run each, no baseline: 4/4 and 7/7.
 
 Every eval run listed above is a dry run of the committed text, not a live dispatch (the live checks that
 some entries name are separate from their evals), and none is a live run of the scoped flow (one ran

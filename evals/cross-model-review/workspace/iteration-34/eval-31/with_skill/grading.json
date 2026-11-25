@@ -1,0 +1,47 @@
+{
+  "eval_id": 31,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "A: no optional model is offered and the reason is mentioned in one line; Claude and Codex go on",
+      "passed": true,
+      "evidence": "'offer no optional model, mention the reason in one line, go on with Claude and Codex'"
+    },
+    {
+      "text": "A: the shim is not used even at the user's request, because it may pick the real program from files in the checkout",
+      "passed": true,
+      "evidence": "'Decline'; 'never run that node'; 'a shim may pick the real program from files in the checkout'"
+    },
+    {
+      "text": "B: the dry-run command uses /opt/node-22.1/bin/node literally, as the locator printed it",
+      "passed": true,
+      "evidence": "'/opt/node-22.1/bin/node goes in literally'"
+    },
+    {
+      "text": "B: says the locator prints node with links resolved",
+      "passed": true,
+      "evidence": "'the locator prints node with links resolved'"
+    },
+    {
+      "text": "C: pi and devin are both dropped with the reason recorded and nothing is dispatched on the old result",
+      "passed": true,
+      "evidence": "'drop both pi and devin'; 'never dispatch on the old result'; 'Record the reason for each'"
+    },
+    {
+      "text": "D: says the LDAP member is not noticed, as a disclosed residual risk",
+      "passed": true,
+      "evidence": "'No. ... reads only /etc/passwd and /etc/group'; 'a disclosed residual risk'"
+    },
+    {
+      "text": "E: a different identity with equal paths drops pi and devin with the reason recorded",
+      "passed": true,
+      "evidence": "'Same as C: dispatcher, node AND identity must match, so both pi and devin are dropped and the reason recorded for each'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 7,
+    "assertions_passed": 7,
+    "pass_rate": 1.0
+  },
+  "notes": "One run. Assertions written before the run. Evidence is quoted from the agent's returned summary; the full answer is outputs/response.md."
+}
