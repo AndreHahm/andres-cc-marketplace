@@ -1098,7 +1098,142 @@ B	x=(bash -c : 'git push 2>&1 -f o x'); eval "${x[3]}"
 B	git() { shift; command git "$@"; }; git grep submodule foreach 'echo `git stash`'
 B	bash() { shift 2; command bash -c "$@"; }; bash -c : 'git push 2>&1 -f o x'
 A	/usr/bin/git grep -e submodule -e foreach -e 'git stash'
+# --- issue 875: text a shell reads from stdin, parameters its script runs, and more wrappers
+B	bash <<'E'\ngit push 2>&1 -f o x\nE
+B	bash <<E\ngit push 2>&1 -f o x\nE
+B	bash -s <<'E'\ngit stash\nE
+B	bash <<<'git push 2>&1 -f o x'
+B	bash <<<"git stash"
+B	bash -s <<< 'git -C . stash'
+B	cat <<'E' | bash\ngit push 2>&1 -f o x\nE
+B	bash -c 'eval "$1"' _ 'git stash'
+B	bash -c '$0' 'git stash'
+B	bash -c 'bash -c "$1"' _ 'git push 2>&1 -f o x'
+B	setsid git rebase main
+B	stdbuf -oL git rebase main
+B	flock /tmp/l git rebase main
+B	flock -n /tmp/l git -C . stash
+B	find . -exec git rebase main \;
+B	find . -name x -exec git -C . stash \;
+B	find . -execdir git push --all \;
+B	env -S 'git rebase main'
+B	env -S'git rebase main'
+B	env --split-string='git -C . stash'
+B	setsid bash -c 'git push 2>&1 -f o x'
+B	flock /tmp/l -c 'git push 2>&1 -f o x'
+B	flock /tmp/l bash -c 'git push 2>&1 -f o x'
+B	find . -exec bash -c 'git push 2>&1 -f o x' \;
+B	stdbuf -oL bash -c 'git push 2>&1 -f o x'
+B	function f { git rebase main; }; f
+B	coproc X { git rebase main; }
+A	cat <<'E'\ngit push 2>&1 -f o x\nE
+A	cat <<<'git push 2>&1 -f o x'
+A	bash <<'E'\necho hello\nE
+A	bash -s <<<'git status'
+A	bash -c 'echo "$1"' _ 'git stash'
+A	bash -c ': "$1"' _ 'git push 2>&1 -f o x'
+A	find . -name git -exec git log {} \;
+A	setsid git status
+A	flock /tmp/l git status
+A	env -S 'git status'
+A	git commit -m "run setsid git rebase main"
+A	git commit -m "find -exec git rebase main"
+A	git commit -m "flock /tmp/l git rebase main"
+A	grep -n 'bash <<E' file
+A	gh pr create --title x --body "bash <<<'git push 2>&1 -f o x'"
+A	echo 'git status' | bash
+A	git commit -m "echo 'git stash' | sh is not read"
+A	bash -c 'grep -q "$1" f' _ 'git stash'
+B	<<<'git push 2>&1 -f o x' bash
+B	bash - <<<'git push 2>&1 -f o x'
+B	bash /dev/stdin <<<'git push 2>&1 -f o x'
+B	bash -s a b <<'E'\ngit stash\nE
+B	(bash <<'E'\ngit stash\nE\n)
+B	x=$(bash <<'E'\ngit push 2>&1 -f o x\nE\n)
+B	cat <<'A' >f; bash <<'B'\nx\nA\ngit stash\nB
+B	bash <<-'E'\n\tgit push 2>&1 -f o x\n\tE
+B	bash -c 'bash <<<"git push 2>&1 -f o x"'
+B	bash <<'E'\nbash -c 'git push 2>&1 -f o x'\nE
+B	echo x\nbash <<<'git push 2>&1 -f o x'
+B	bash -c 'x=1 "$1"' _ 'git push 2>&1 -f o x'
+B	bash -c 'true; $1' _ 'git push 2>&1 -f o x'
+B	bash -c 'exec $1' _ 'git stash'
+B	env FOO=1 -S 'git push 2>&1 -f o x'
+B	env -i -vS'git push 2>&1 -f o x'
+B	flock -w 5 /tmp/l git rebase main
+B	find . -exec echo {} \\; -exec bash -c 'git push 2>&1 -f o x' \\;
+B	setsid rm -rf build
+A	bash script.sh <<'E'\ngit stash\nE
+A	bash <<'E'\ngit commit -m "git stash is bad"\nE
+A	bash <<'E'\necho hi\nE\ncat <<'F'\ngit push 2>&1 -f o x\nF
+A	cat <<<'git stash'\nbash <<<'git status'
+A	bash -c 'printf "%s" "$1" | wc -c' _ 'git stash'
+A	find . -name '*.sh' -exec bash -n {} \\;
+A	flock /tmp/l bash -c 'git status'
+A	setsid echo git rebase main
+B	env -u find bash -c 'git push 2>&1 -f o x'
+B	env -C tools/find bash -c 'git push 2>&1 -f o x'
+B	xargs -a find bash -c 'git push 2>&1 -f o x'
+B	env -S'-u' HOME bash -c 'git push 2>&1 -f o x'
+B	env --split-string=-u HOME bash -c 'git push 2>&1 -f o x'
+B	env -S'bash -c' 'git push 2>&1 -f o x'
+B	bash 0<<<'git push 2>&1 -f o x'
+B	bash 0<<'E'\ngit stash\nE
+B	bash /dev/stdin main <<<'git push 2>&1 -f o x'
+B	ssh host bash <<'E'\ngit stash\nE
+B	ssh host 'bash -s' <<<'git push 2>&1 -f o x'
+B	flock /tmp/l -c'git push 2>&1 -f o x'
+B	flock /tmp/l --command='git push 2>&1 -f o x'
+B	setsid git stash
+B	flock /tmp/l git stash
+B	stdbuf -oL git merge x
+B	find . -exec git stash \\;
+B	nice git stash
+B	bash -c 'flock /tmp/l -c "$1"' _ 'git push 2>&1 -f o x'
+B	bash -c 'find . -maxdepth 0 -exec $1 \\;' _ 'git push 2>&1 -f o x'
+B	bash -c 'timeout -s KILL 5 $1' _ 'git push 2>&1 -f o x'
+B	bash -c 'case x in x) $1;; esac' _ 'git push 2>&1 -f o x'
+B	bash -c '>/dev/null $1' _ 'git push 2>&1 -f o x'
+B	bash -c '. <(echo "$1")' _ 'git push 2>&1 -f o x'
+B	bash <<'E'\ngit stash
+B	flock /var/lock/git bash -c 'git push 2>&1 -f o x'
+A	command -v bash >/dev/null && cat >notes.md <<'E'\ngit stash is forbidden\nE
+A	bash --version; cat <<'E'\ngit stash is forbidden\nE
+A	case x in\nbash) cat <<'E'\ngit stash is forbidden\nE\n;; esac
+A	ssh host 'cat > f' <<'E'\ngit stash is forbidden\nE
+A	setsid git commit -m "git stash"
+A	time git status
+B	nice -a flock git submodule foreach 'git push 2>&1 -f o x'
+B	xargs -0 flock /tmp/l bash -c 'git push 2>&1 -f o x'
+B	env -C find bash -exec 'git push 2>&1 -f o x'
+B	flock -n /tmp/l bash -lc 'git push 2>&1 -f o x'
+B	flock -n /tmp/l bash <<'E'\ngit stash\nE
+B	flock -n /tmp/l ssh host 'git push 2>&1 -f o x'
+B	flock -x /tmp/l git submodule foreach 'git push 2>&1 -f o x'
+B	flock -w 5 /tmp/l bash -lc 'git push 2>&1 -f o x'
+B	flock -n $L bash -lc 'git push 2>&1 -f o x'
+B	flock -w $T /tmp/l bash -lc 'git push 2>&1 -f o x'
+B	flock -n /var/lock/git bash -lc 'git push 2>&1 -f o x'
+B	bash -s -- --version <<'E'\ngit stash\nE
+B	bash -s x --help <<<'git push 2>&1 -f o x'
+B	ssh host 'bash -se' <<'E'\ngit stash\nE
+B	ssh host 'bash -s -- arg' <<'E'\ngit stash\nE
+B	ssh host 'cd repo && bash -s' <<'E'\ngit stash\nE
+B	find . -exec git add {} \\; -exec bash -c 'git push 2>&1 -f o x' \\;
+A	find . -exec bash -n {} \\; -exec grep 'git push 2>&1 -f o x' {} \\;
+B	xargs -a find -exec ionice bash -c 'git push 2>&1 -f o x'
 CASES
+
+# A grep that fails (exit 2) in a check must block, not read as "no match". Each pass fails one kind of
+# call and leaves the others to the real grep.
+WORK=$(mktemp -d)
+trap 'rm -r "${WORK}"' EXIT
+REAL_GREP=$(command -v grep)
+for flags in -m1 -oiE; do
+    printf '#!/bin/bash\n[[ "$1" == %s ]] && exit 2\nexec %q "$@"\n' "${flags}" "${REAL_GREP}" >"${WORK}/grep"
+    chmod +x "${WORK}/grep"
+    PATH="${WORK}:${PATH}" run_case B 'rm -r build'
+done
 
 printf 'pass=%d fail=%d (%s)\n' "${pass}" "${fail}" "${HOOK}"
 [[ "${fail}" -eq 0 ]]

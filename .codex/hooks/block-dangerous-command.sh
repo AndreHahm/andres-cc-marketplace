@@ -142,7 +142,10 @@ function chrv(v) {
 # A word cut at the cap is marked: blank_cmd stops wherever it would compare one, but may
 # still blank one whole as a value, since the span comes from the raw text.
 function emit(x) {
-    if (mode == "strings") { if (inword && trig) printf "%s", x }
+    if (mode == "strings") {
+        if (inword && trig) printf "%s", x
+        else if (inword && hsw) hp[++np] = x
+    }
     else if (mode == "bodies") ;
     else if (mode != "blank") printf "%s", x
     if (inword) { if (length(wn) < 256) wn = wn x; else wc = 1 }
@@ -170,6 +173,8 @@ function endword() {
     inword = 0
     if (mode == "strings") {
         if (trig) printf "\036"
+        else if (hsw) hp[++np] = "\036"
+        hsw = 0
         if (!redir) runs(wn)
     }
     if (wn == "[[" || wn == "case" || wn == "alias" || wn == "function" || wn == "coproc" ||
@@ -180,7 +185,25 @@ function endword() {
 function endcmd() {
     if (depth) return
     if (mode == "blank" && !bail) blank_cmd()
+    if (mode == "strings" && kind == "shell" && (reads || !trig) && !idle) shin = 1
     nk = 0; redir = 0; trig = once = first = 0; kind = ""; wrap = opt = subm = bis = 0
+    envw = cmdw = flk = fnd = reads = idle = remote = 0
+}
+# A shell without a script (`bash`, `bash -s`) runs its stdin. Where a line holds one, the here-strings
+# of that line (and its heredoc bodies, see after_bodies) are shell text.
+function end_line(    k) {
+    if (shin) for (k = 1; k <= np; k++) printf "%s", hp[k]
+    np = shin = 0
+}
+# Whether the script of `bash -c`, the word that ends at i, may run its parameters: a parameter or
+# variable is a command word, or the script names something that runs text.
+function runs_params(    t) {
+    t = substr(s, ws, i - ws)
+    gsub("^" sq "|" sq "$", "", t)
+    if (!index(t, "$")) return 0
+    if (t ~ /(^|[^A-Za-z0-9_.-])(eval|bash|sh|zsh|dash|ksh|su|ssh|source|trap|foreach|bisect)([^A-Za-z0-9_.-]|$)/) return 1
+    if (t ~ /(^|[;&|({!`\n])[ \t]*[.][ \t]/) return 1
+    return t ~ /(^|[;&|(){!`\n]|(^|[ \t;&|(){])(if|then|do|else|elif|while|until|((xargs|command|builtin|env|nice|nohup|time|exec|timeout|doas|setsid|stdbuf|flock|find)([ \t][^;&|\n]*)?))[ \t])[ \t]*(([A-Za-z_][A-Za-z0-9_]*=|[0-9]*[<>]+)[^ \t]*[ \t]+)*"?[$][{]?[A-Za-z0-9_@*]/
 }
 # Whether the word that ends at i is one argument as written: not an option, assignment (`set -k` takes
 # it away) or fd number, and nothing in it expands.
@@ -191,6 +214,13 @@ function plain_word(    t) {
     if (index(t, "$") || index(t, "`")) return 0
     return t ~ ("^" dq "[^" dq "]*" dq "$") || t !~ /[[*?{~(]/
 }
+# Shell text in the same word as its option (RLENGTH long). A word over the cap is cut: fail, which
+# blocks the command.
+function attached(w) {
+    if (wc) exit 1
+    printf "%s\036", substr(w, RLENGTH + 1)
+    trig = 1
+}
 # Whether the words after w are shell text: after eval, su, ssh and submodule foreach, and after the
 # -c of a shell. Only for a command word, found past assignments, keywords and wrappers (with their
 # options, each of which may take a value). Read less only in two exact shapes without a wrapper (and see `narrow`): the
@@ -198,26 +228,61 @@ function plain_word(    t) {
 # or commit subcommand right after `git` (or `git --no-pager`) runs none of its words.
 function runs(w,    b) {
     if (trig) {
-        if (once && plain_word()) { trig = 0; kind = "other" }
+        if (remote && w ~ /(^|[^A-Za-z0-9_.-])(bash|sh|zsh|dash|ksh)([ \t]+-[^;&|]*)?[ \t]*$/) shin = 1
+        if (once && plain_word() && !runs_params()) { trig = 0; kind = "other" }
         once = 0
         return
     }
     b = w
     sub(/^.*\//, "", b)
+    # What `find -exec` runs, also after an earlier -exec.
+    # A find that may be an option value (fnd 2) ends no shell or git command (`bash -exec` is flags).
+    if (fnd && w ~ /^-(exec|execdir|ok|okdir)$/) {
+        if (fnd == 2 && kind == "shell") { trig = 1; return }
+        if (fnd == 1 || kind != "git") { kind = ""; wrap = 1; opt = (fnd == 2); return }
+    }
+    if (envw && kind == "") {
+        if (w ~ /^-[iv0]*S$/ || w ~ /^--s[a-z-]*$/) { trig = 1; return }
+        # `env -S` with its text in the same word.
+        if (match(w, /^(-[iv0]*S|--s[a-z-]*=)/)) { attached(w); return }
+    }
+    if (flk && kind == "") {
+        if (w ~ /^(-c|--c[a-z]*)$/) { trig = 1; return }
+        if (match(w, /^(-c|--c[a-z]*=)/)) { attached(w); return }
+    }
     if (kind == "") {
         if (w ~ /^[A-Za-z_][A-Za-z0-9_]*\+?=/ || w ~ /^(if|then|do|else|elif|while|until|!|[{])$/) return
-        if (b ~ /^(bash|sh|zsh|dash|ksh)$/) { kind = "shell"; opt = 0; first = narrow && !wrap && plain_word(); return }
-        if (b ~ /^(eval|su|ssh)$/) { trig = 1; return }
+        # The lock file of flock comes before its command. Only a number is the value of an option of
+        # flock; after an option a word that expands may be either, so the next one may be a lock file.
+        if (flk == 1 && w !~ /^-/ && !(opt && w ~ /^[.]?[0-9]/)) {
+            flk = 2
+            opt = (opt && w ~ /[$`]/)
+            return
+        }
+        if (b ~ /^(bash|sh|zsh|dash|ksh)$/) { kind = "shell"; opt = shw = 0; first = narrow && !wrap && plain_word(); return }
+        if (b ~ /^(eval|su|ssh)$/) { trig = 1; remote = (b != "eval"); return }
         if (b == "git") { kind = "git"; first = narrow && !wrap && plain_word(); return }
-        if (b ~ /^(xargs|command|builtin|env|nice|nohup|time|exec|timeout|doas|coproc)$/) { wrap = 1; opt = 0; return }
-        if (wrap && w ~ /^-/) { opt = 1; return }
+        if (b ~ /^(xargs|command|builtin|env|nice|nohup|time|exec|timeout|doas|coproc|setsid|stdbuf|flock)$/) {
+            # flock as an option value may be no command: then the next word may be one, not a lock file.
+            flk = (b == "flock") ? (wrap && opt) + 1 : 0
+            opt = (flk == 2); wrap = 1; envw = (b == "env"); cmdw = (b == "command")
+            return
+        }
+        if (b == "find") {
+            fnd = (wrap && opt) + 1
+            if (fnd == 1) { kind = "find"; return }
+        }
+        if (wrap && w ~ /^-/) { opt = 1; if (cmdw && w ~ /^-[vV]$/) idle = 1; return }
         if (wrap && (opt || w ~ /^[.]?[0-9]/)) { opt = 0; return }
         kind = "other"
     } else if (kind == "shell") {
         if (w ~ /^-[A-Za-z]*c[A-Za-z]*$/) { trig = 1; once = (first && w ~ /^-[eilux]*c[eilux]*$/ && !wc) }
         else if (w ~ /^[-+]/) opt = (w ~ /^[-+][A-Za-z]*[oO]$/ || w ~ /^--(rcfile|init-file)$/)
         else if (opt) opt = 0
-        else kind = "other"
+        else if (w ~ /^\/(dev\/stdin|dev\/fd\/0|proc\/self\/fd\/0)$/) reads = 1
+        else if (!reads) kind = "other"
+        if (w ~ /^-[A-Za-z]*s[A-Za-z]*$/) reads = 1
+        if (++shw == 1 && w ~ /^--(version|help)$/) idle = 1
         first = 0
     } else if (kind == "git") {
         if (w ~ /^submodule(--helper)?$/) subm = 1
@@ -244,6 +309,13 @@ function heredoc(j,    d, c, q) {
     }
     hd[nh] = d
 }
+function body_records(    k) {
+    if (nbody && !(inword && trig)) {
+        for (k = 1; k <= nbody; k++) printf "%s\n", body[k]
+        printf "\036"
+    }
+    nbody = 0
+}
 # The position after the bodies of the open heredocs, which start at j. Unchanged when an end line
 # is missing: then nothing is skipped.
 function after_bodies(j,    k, l, t) {
@@ -256,11 +328,13 @@ function after_bodies(j,    k, l, t) {
             t = ol[l]
             if (hdash[k]) sub(/^\t+/, "", t)
             if (t == hd[k]) break
+            if (shin) { t = ol[l]; gsub(/\036/, "_", t); body[++nbody] = t }
         }
-        if (l > nl) { nh = 0; return j }
+        if (l > nl) { body_records(); nh = 0; return j }
         l++
     }
     nh = 0
+    body_records()
     return l <= nl ? lp[l] : n + 1
 }
 # A substitution that never closes: its text is read to the end.
@@ -402,7 +476,7 @@ function one(    k, p, t) {
     narrow = !rerun && t !~ /[(][ \t\n]*[)]|=[(]|function|alias/
     scan()
     if (mode == "bodies") { body_end_open(); return }
-    if (mode == "strings") { if (inword && trig) printf "\036"; return }
+    if (mode == "strings") { if (inword && trig) printf "\036"; end_line(); return }
     if (mode != "blank") { printf "\n"; return }
     if (unclean || rerun) { printf "%s%s", s, eol; return }
     p = 1
@@ -413,6 +487,7 @@ function scan(    k, p) {
     n = length(s); i = 1; wb = 1
     depth = inword = redir = trig = once = first = bail = stopped = arith = nk = pd0 = nh = nl = 0
     kind = ""; outer = wrap = opt = subm = bis = ticks = nb = unclean = 0; lc = 1
+    envw = cmdw = flk = fnd = reads = idle = remote = shin = hsw = np = nbody = 0
     if (mode == "here" || mode == "strings" || mode == "bodies") {
         nl = split(s, ol, "\n"); p = 1
         for (k = 1; k <= nl; k++) { lp[k] = p; p += length(ol[k]) + 1 }
@@ -508,9 +583,16 @@ function scan(    k, p) {
             if (c == "\n") {
                 endword(); endcmd(); emit(c); i++; wb = 1
                 if (nh) i = after_bodies(i)
+                if (!depth) end_line()
                 continue
             }
             if (c == "<" && c2 == "<") {
+                if (mode == "strings" && !depth && inword && raw_digits()) {
+                    inword = 0
+                    if (trig) printf "\036"
+                    else if (hsw) hp[++np] = "\036"
+                    hsw = 0
+                }
                 if (substr(s, i + 2, 1) != "<") {
                     # In arithmetic (`$((1<<2))`, `$[1<<2]`, `x[1<<2]=1`, `x=([1<<2]=1)`) this is no
                     # heredoc: after text that may open one, mode=arith goes on. The norm copy
@@ -525,7 +607,7 @@ function scan(    k, p) {
                     else if (mode != "arith" || !arith) { stopped = 1; break }
                     emit("<<"); i += 2; if (!depth) redir = 1; wb = 1; continue
                 }
-                endword(); emit("<<<"); i += 3; if (!depth) redir = 1; wb = 1; continue
+                endword(); emit("<<<"); i += 3; if (!depth) { redir = 1; hsw = (mode == "strings") }; wb = 1; continue
             }
             if ((c == "<" || c == ">") && c2 == "(") {
                 startword(); bail = 1; push("p"); emit(c "("); i += 2; wb = 1; continue
@@ -556,7 +638,7 @@ function scan(    k, p) {
                     emit(c); i++; continue
                 }
                 endword()
-                if (pd0 > 0) pd0--; else bail = 1
+                if (pd0 > 0) pd0--; else { bail = 1; if (nk == 1) idle = 1 }
                 endcmd(); emit(c); i++; wb = 1; continue
             }
             if (c == ";" || c == "&" || c == "|") { endword(); endcmd(); emit(c); i++; wb = 1; continue }
@@ -729,6 +811,14 @@ FLAGS_TEXT=$(make_copies 1 <<<"${CMD_FLAGS}") || block "Could not read the comma
 # blanked, so a message that mentions a command stays text. Lines only added; they hold no quote or
 # backslash that the copies above would change.
 STRING_TEXT=""
+# found <pattern> <text>: whether a line matches. Fails closed: grep prints no count when it fails, or
+# when bash cannot write the here-string.
+found() {
+    local n rc=0
+    n=$(grep -m1 -ciE -- "$1" <<<"$2") || rc=$?
+    ((rc <= 1)) && [[ "${n}" =~ ^[0-9]+$ ]] || block "Could not read the command."
+    ((n > 0))
+}
 bisect_tail() {
     awk -v BINMODE=3 '
 BEGIN {
@@ -743,14 +833,11 @@ BEGIN {
 }
 match($0, re) { $0 = substr($0, RSTART + RLENGTH); gsub(re, "\n"); print }'
 }
-RUN_RE='(^|[^A-Za-z0-9_.-])(bash|sh|zsh|dash|ksh|eval|su|ssh|foreach)([^A-Za-z0-9_.-]|$)'
+RUN_RE='(^|[^A-Za-z0-9_.-])(bash|sh|zsh|dash|ksh|eval|su|ssh|foreach|env|flock)([^A-Za-z0-9_.-]|$)'
 SEP=$'\036'
 STRINGS=${ORIGINAL_FLAGS//"${SEP}"/_}
 for _ in 1 2 3; do
-    rc=0
-    grep -qE "${RUN_RE}" <<<"${STRINGS}"$'\n'"${FLAGS_LINES}" || rc=$?
-    ((rc > 1)) && block "Could not read the command."
-    ((rc == 0)) || break
+    found "${RUN_RE}" "${STRINGS}"$'\n'"${FLAGS_LINES}" || break
     # Two levels of substitutions; a nested one is read again with the outer one's text.
     BODIES=${STRINGS}
     for _ in 1 2; do
@@ -774,13 +861,13 @@ fi
 CODE_TEXT+=$'\n'"${STRING_TEXT}"
 FLAGS_TEXT+=$'\n'"${STRING_TEXT}"
 matches() {
-    grep -qiE "$1" <<<"${MATCH_TEXT}"
+    found "$1" "${MATCH_TEXT}"
 }
 matches_code() {
-    grep -qiE "$1" <<<"${CODE_TEXT}"
+    found "$1" "${CODE_TEXT}"
 }
 matches_flags() {
-    grep -qiE "$1" <<<"${FLAGS_TEXT}"
+    found "$1" "${FLAGS_TEXT}"
 }
 
 # A word of a check that reads raw text ends at whitespace, the end or an operator written against
@@ -825,10 +912,17 @@ WORD_START="[^-[:space:];&|\"']|\"[^\"]*\"|'[^']*'"
 REDIR="${REDIR_WORD}[[:space:]]+"
 SEGMENT_START='(^|[;&|{]|[$<][(]|=`)([[:space:]]|[(!]|(if|then|do|else|elif|while|until)[[:space:]])*'
 SEGMENT_START+="([A-Za-z_][A-Za-z0-9_]*=(${WORD_PART})*[[:space:]]+|${REDIR})*"
-SEGMENT_START+='((xargs|command|builtin|env|nice|nohup|time|exec|timeout|doas|eval)'
-SEGMENT_START+="([[:space:]]+(-(${WORD_PART})*([[:space:]]+(${WORD_START})(${WORD_PART})*)?"
-SEGMENT_START+="|[0-9](${WORD_PART})*|[A-Za-z_][A-Za-z0-9_]*=(${WORD_PART})*))*"
-SEGMENT_START+="[[:space:]]+)*(${REDIR})*([^[:space:];&|]*/)?"
+WRAPPERS='((xargs|command|builtin|env|nice|nohup|time|exec|timeout|doas|eval|setsid|stdbuf)'
+WRAPPERS+="([[:space:]]+(-(${WORD_PART})*([[:space:]]+(${WORD_START})(${WORD_PART})*)?"
+WRAPPERS+="|[0-9](${WORD_PART})*|[A-Za-z_][A-Za-z0-9_]*=(${WORD_PART})*))*"
+WRAPPERS+="[[:space:]]+"
+# flock has a lock file before its command, and find a command after -exec.
+WRAPPERS+="|flock([[:space:]]+-(${WORD_PART})*([[:space:]]+[0-9.]+)?)*[[:space:]]+(${WORD_START})(${WORD_PART})*[[:space:]]+"
+WRAPPERS+="|find[[:space:]]([^;&|]*[[:space:]])?-(exec|execdir|ok|okdir)[[:space:]]+)"
+SEGMENT_END="(${REDIR})*([^[:space:];&|]*/)?"
+# The same with at least one wrapper: the exec-policy rules do not see the git behind it.
+GIT_WRAPPED="${SEGMENT_START}${WRAPPERS}+${SEGMENT_END}${GIT_CMD}"
+SEGMENT_START+="${WRAPPERS}*${SEGMENT_END}"
 GIT_AT_START="${SEGMENT_START}${GIT_CMD}"
 # The same, but only with at least one global option before the subcommand.
 GIT_WITH_OPTS_AT_START="${SEGMENT_START}git${GIT_OPT}+[[:space:]]+"
@@ -1004,7 +1098,7 @@ PUSH_CLUSTER="push([^;&|]*)[[:space:]]-[vqndu46]*f[a-zA-Z46]*${PUSH_REFS_END}"
 NORM_TEXT=${CMD_WORDS}$'\n'${CMD_AMP}
 TICK_GIT="\`[[:space:]]*${GIT_CMD}"
 matches_start() {
-    matches_code "${GIT_START_RE}($1)" || grep -qiE "${TICK_GIT}($1)" <<<"${NORM_TEXT}"
+    matches_code "${GIT_START_RE}($1)" || found "${TICK_GIT}($1)" "${NORM_TEXT}"
 }
 # A comment after a plain push, the quoted value of its -o or --push-option, and the text arguments of
 # one plain gh command, are not arguments of a push. Only for a whole command on one line where bash
@@ -1012,7 +1106,7 @@ matches_start() {
 PLAIN_WORD='[A-Za-z0-9_./:@,=+-]+'
 PLAIN_QUOTED="(\"[^\"\$\`\\]*\"|'[^']*')"
 push_text_only() {
-    local cmd=${ORIG_CMD} re n=0 rc=0
+    local cmd=${ORIG_CMD} re n=0
     [[ "${cmd}" == *[$'\n\r']* ]] && return 1
     re="^gh (pr|issue) (create|edit|comment)( +(${PLAIN_WORD}|${PLAIN_QUOTED}))*\$"
     [[ "${cmd}" =~ ${re} ]] && return 0
@@ -1028,8 +1122,7 @@ push_text_only() {
     done
     re="^git push( +${PLAIN_WORD})*( +#.*)?\$"
     [[ "${cmd}" =~ ${re} ]] || return 1
-    grep -qiE "${GIT_START_RE}(${PUSH_REFS}|${PUSH_CLUSTER})|${PUSH_MIRROR_RE}" <<<"${cmd%%#*}" || rc=$?
-    ((rc == 1))
+    ! found "${GIT_START_RE}(${PUSH_REFS}|${PUSH_CLUSTER})|${PUSH_MIRROR_RE}" "${cmd%%#*}"
 }
 FETCH_TO_SHELL_RE='(curl|wget|iwr|irm|invoke-webrequest|invoke-restmethod)[^|]*[|][[:space:]]*'
 FETCH_TO_SHELL_RE+="(bash|sh|zsh|iex|invoke-expression)${WORD_END}"
@@ -1144,7 +1237,7 @@ foreach_string_allowed() {
     inner_value_allowed "${BASH_REMATCH[4]}${BASH_REMATCH[5]}"
 }
 FOREACH_TEXT=""
-if { matches_flags "${GIT_START_RE}submodule" || grep -qiE "${TICK_GIT}submodule" <<<"${NORM_TEXT}"; } &&
+if { matches_flags "${GIT_START_RE}submodule" || found "${TICK_GIT}submodule" "${NORM_TEXT}"; } &&
     ! submodule_text_only && ! foreach_string_allowed; then
     FOREACH_TEXT=$(foreach_tail <<<"${FLAGS_TEXT}") || block "Could not read the command."
     MATCH_TEXT+=$'\n'"${FOREACH_TEXT}"
@@ -1155,18 +1248,21 @@ fi
 # Check the flags of each rm invocation only, so `rm x && cp -rf a b` passes.
 # An rm behind a common wrapper (`xargs rm -rf`, `command rm`) or given by path
 # (`/bin/rm`) counts too; the wrapper's own options are checked with it.
-RM_WRAPPER='(xargs|command|builtin|env|nice|nohup|time|exec|timeout|doas|eval)'
+RM_WRAPPER='(xargs|command|builtin|env|nice|nohup|time|exec|timeout|doas|eval|setsid|stdbuf|flock)'
 RM_RE="${COMMAND_PREFIX}(${RM_WRAPPER}[[:space:]]([^;&|]*[[:space:]])?)?"
 RM_RE+="([^[:space:];&|]*/)?[\"']?rm[\"']?[[:space:]][^;&|]*"
 # Also read with backslashes removed, like `matches`: `\rm -rf` and `rm -r\f` are rm -rf.
-RM_SEGMENTS=$(grep -oiE "${RM_RE}" <<<"${MATCH_TEXT}" || true)
+RM_SEGMENTS=""
+if found "${RM_RE}" "${MATCH_TEXT}"; then
+    RM_SEGMENTS=$(grep -oiE "${RM_RE}" <<<"${MATCH_TEXT}") || block "Could not read the command."
+fi
 while IFS= read -r segment; do
     [[ -z "${segment}" ]] && continue
-    if grep -qiE '(^|[[:space:]])-[a-zA-Z]*[rR]|--recursive' <<<"${segment}" &&
-        grep -qiE '(^|[[:space:]])-[a-zA-Z]*[fF]|--force' <<<"${segment}"; then
+    if found '(^|[[:space:]])-[a-zA-Z]*[rR]|--recursive' "${segment}" &&
+        found '(^|[[:space:]])-[a-zA-Z]*[fF]|--force' "${segment}"; then
         block "Use trash instead of rm -rf."
     fi
-done <<<"${RM_SEGMENTS}"
+done <<<"${RM_SEGMENTS}" || block "Could not read the command."
 
 if matches "${COMMAND_PREFIX}sudo${WORD_END}"; then
     block "Do not run sudo from Codex without explicit human approval."
@@ -1209,6 +1305,10 @@ if matches_code "${GIT_AT_START}rebase${GIT_SUB_END}"; then
     block "Do not rebase; propose a follow-up commit or a fresh branch instead."
 fi
 
+if matches_flags "${GIT_WRAPPED}(${FORBIDDEN_GIT_RE})"; then
+    block "This git command is forbidden by the exec-policy rules, also where another command runs it."
+fi
+
 if matches_flags "${GIT_WITH_OPTS_AT_START}(${FORBIDDEN_GIT_RE})"; then
     block "This git command is forbidden by the exec-policy rules, also with git -C or other global options."
 fi
@@ -1220,10 +1320,9 @@ fi
 # A quoted -c value with no blank (`-c push.default='current'`) is read without its quotes. Only for
 # one plain git push, pull or clean, where that is what git gets and no argument is run as a command.
 plain_config_allowed() {
-    local re="^git( +-c +[A-Za-z.]+=(\"[A-Za-z]+\"|'[A-Za-z]+'|[A-Za-z]+))+ +(push|pull|clean)( +${PLAIN_WORD})*\$" rc=0
+    local re="^git( +-c +[A-Za-z.]+=(\"[A-Za-z]+\"|'[A-Za-z]+'|[A-Za-z]+))+ +(push|pull|clean)( +${PLAIN_WORD})*\$"
     [[ "${ORIG_CMD}" != *[$'\n\r']* && "${ORIG_CMD}" =~ ${re} ]] || return 1
-    grep -qiE "${UNSAFE_CONFIG_RE}" <<<"${ORIG_CMD//[\"\']/}" || rc=$?
-    ((rc == 1))
+    ! found "${UNSAFE_CONFIG_RE}" "${ORIG_CMD//[\"\']/}"
 }
 if matches_flags "${UNSAFE_CONFIG_RE}" && ! plain_config_allowed; then
     block "Do not set clean.requireForce or a shell alias for one git command; ask the user."
@@ -1248,11 +1347,11 @@ if { matches "${GIT_CONFIG_ENV}" || matches_code "${GIT_CONFIG_ENV}" ||
     block "Do not set clean.requireForce or a shell alias for one git command; ask the user."
 fi
 
-if grep -qiE "${INNER_GIT_RE}|${SEGMENT_START}(${SHELL_STRING_GIT})" <<<"${FOREACH_TEXT}"; then
+if found "${INNER_GIT_RE}|${SEGMENT_START}(${SHELL_STRING_GIT})" "${FOREACH_TEXT}"; then
     block "This git command is forbidden by the exec-policy rules, also in git submodule foreach."
 fi
 
-if grep -qiE "${INNER_GIT_RE}|${SEGMENT_START}(${SHELL_STRING_GIT})" <<<"${STRING_TEXT}"; then
+if found "${INNER_GIT_RE}|${SEGMENT_START}(${SHELL_STRING_GIT})" "${STRING_TEXT}"; then
     block "This git command is forbidden by the exec-policy rules, also where another command runs it."
 fi
 
