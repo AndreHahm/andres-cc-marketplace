@@ -122,6 +122,16 @@
     },
     {
       "disposition": "fixed",
+      "finding": "codex-9c895f5f80a709e95dbcdcb6fe7f4639",
+      "line": 8,
+      "note": "The eight remaining action repositories in common-actions.md are whitelisted",
+      "path": ".claude/plugin-rulebook.config.json",
+      "pr": 886,
+      "recorded_at": "2026-11-25T08:53:59+00:00",
+      "rule": "plugin-rulebook:R23"
+    },
+    {
+      "disposition": "fixed",
       "finding": "codex-b5669db2e9d09041",
       "line": 631,
       "note": "Label renamed to Pinned Version on all 28 entries; version updates stay in issue 885",
