@@ -180,34 +180,52 @@ function endword() {
 function endcmd() {
     if (depth) return
     if (mode == "blank" && !bail) blank_cmd()
-    nk = 0; redir = 0; trig = 0; kind = ""; wrap = opt = subm = bis = 0
+    nk = 0; redir = 0; trig = once = first = 0; kind = ""; wrap = opt = subm = bis = 0
+}
+# Whether the word that ends at i is one argument as written: not an option, assignment (`set -k` takes
+# it away) or fd number, and nothing in it expands.
+function plain_word(    t) {
+    if (wc || wn ~ /^([-+]|[0-9]+$|[A-Za-z_][A-Za-z0-9_]*\+?=)/) return 0
+    t = substr(s, ws, i - ws)
+    if (t ~ ("^" sq "[^" sq "]*" sq "$")) return 1
+    if (index(t, "$") || index(t, "`")) return 0
+    return t ~ ("^" dq "[^" dq "]*" dq "$") || t !~ /[[*?{~(]/
 }
 # Whether the words after w are shell text: after eval, su, ssh and submodule foreach, and after the
 # -c of a shell. Only for a command word, found past assignments, keywords and wrappers (with their
-# options, each of which may take a value).
+# options, each of which may take a value). Read less only in two exact shapes without a wrapper (and see `narrow`): the
+# plain word right after `bash -c` is the script and the rest are parameters (`once`), and a plain search
+# or commit subcommand right after `git` (or `git --no-pager`) runs none of its words.
 function runs(w,    b) {
-    if (trig) return
+    if (trig) {
+        if (once && plain_word()) { trig = 0; kind = "other" }
+        once = 0
+        return
+    }
     b = w
     sub(/^.*\//, "", b)
     if (kind == "") {
         if (w ~ /^[A-Za-z_][A-Za-z0-9_]*\+?=/ || w ~ /^(if|then|do|else|elif|while|until|!|[{])$/) return
-        if (b ~ /^(bash|sh|zsh|dash|ksh)$/) { kind = "shell"; opt = 0; return }
+        if (b ~ /^(bash|sh|zsh|dash|ksh)$/) { kind = "shell"; opt = 0; first = narrow && !wrap && plain_word(); return }
         if (b ~ /^(eval|su|ssh)$/) { trig = 1; return }
-        if (b == "git") { kind = "git"; return }
+        if (b == "git") { kind = "git"; first = narrow && !wrap && plain_word(); return }
         if (b ~ /^(xargs|command|builtin|env|nice|nohup|time|exec|timeout|doas|coproc)$/) { wrap = 1; opt = 0; return }
         if (wrap && w ~ /^-/) { opt = 1; return }
         if (wrap && (opt || w ~ /^[.]?[0-9]/)) { opt = 0; return }
         kind = "other"
     } else if (kind == "shell") {
-        if (w ~ /^-[A-Za-z]*c[A-Za-z]*$/) trig = 1
+        if (w ~ /^-[A-Za-z]*c[A-Za-z]*$/) { trig = 1; once = (first && w ~ /^-[eilux]*c[eilux]*$/ && !wc) }
         else if (w ~ /^[-+]/) opt = (w ~ /^[-+][A-Za-z]*[oO]$/ || w ~ /^--(rcfile|init-file)$/)
         else if (opt) opt = 0
         else kind = "other"
+        first = 0
     } else if (kind == "git") {
         if (w ~ /^submodule(--helper)?$/) subm = 1
         else if (subm && w == "foreach") trig = 1
         else if (w == "bisect") bis = 1
         else if (bis && w == "run") { kind = ""; wrap = 1; opt = 0 }
+        else if (first && plain_word() && w ~ /^(grep|log|show|diff|commit)$/) kind = "other"
+        first = (first && w == "--no-pager")
     }
 }
 # Reads the delimiter of the heredoc whose word starts at j, the way bash does.
@@ -380,6 +398,8 @@ function one(    k, p, t) {
     # Not when the whole command is one plain command: then the name is text in single quotes.
     rerun = !plain && (index(t, "$_") || index(t, "${_") || index(t, "${!") ||
         index(t, "BASH_COMMAND") || index(t, "BASH_EXECUTION_STRING"))
+    # Nor where a word may be run again by name, or the command word may be redefined.
+    narrow = !rerun && t !~ /[(][ \t\n]*[)]|=[(]|function|alias/
     scan()
     if (mode == "bodies") { body_end_open(); return }
     if (mode == "strings") { if (inword && trig) printf "\036"; return }
@@ -391,7 +411,7 @@ function one(    k, p, t) {
 }
 function scan(    k, p) {
     n = length(s); i = 1; wb = 1
-    depth = inword = redir = trig = bail = stopped = arith = nk = pd0 = nh = nl = 0
+    depth = inword = redir = trig = once = first = bail = stopped = arith = nk = pd0 = nh = nl = 0
     kind = ""; outer = wrap = opt = subm = bis = ticks = nb = unclean = 0; lc = 1
     if (mode == "here" || mode == "strings" || mode == "bodies") {
         nl = split(s, ol, "\n"); p = 1
