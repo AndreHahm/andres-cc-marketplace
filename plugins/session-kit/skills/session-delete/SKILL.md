@@ -13,6 +13,17 @@ allowed-tools: Bash(python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py":*) 
 
 Delete a session and optionally its associated tasks.
 
+## Quick Start
+
+Say "delete session <id>". Preview the session first; this command deletes nothing:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" session-detail <session-id>
+```
+
+Show the summary, file path and associated tasks, then ask via `AskUserQuestion` before deleting (Step 2). Tasks
+are kept unless the user opts in.
+
 ## When to Use
 
 - User has already named or identified one specific session to delete
@@ -72,7 +83,8 @@ Show what was deleted: session file path, and if tasks were deleted, how many.
 Eval suite: `evals/session-delete/` — 3 scenarios, `skill-tester` Quick Workflow blind comparison, all
 passed. Eval 3 verified that declining the `AskUserQuestion` confirmation correctly aborts the deletion.
 
-**Last dated run record:** `evals/session-delete/workspace/iteration-1/eval-{1,2,3}/with_skill/grading.json`,
+**Last dated run record:** `evals/session-delete/workspace/iteration-2/` (evals 1-3 re-run after the Quick Start was
+added, plan-only, no baseline, 9/9 assertions), 2026-11-25; earlier: `evals/session-delete/workspace/iteration-1/eval-{1,2,3}/with_skill/grading.json`,
 2026-09-03. `scripts/smoke_test.py` structural self-check also passing as of the same date.
 
 **Verify this skill activates on:**

@@ -12,6 +12,17 @@ allowed-tools: Read Edit Glob Bash(python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sess_m
 
 # Session Memory Audit
 
+## Quick Start
+
+Say "memory audit". Run the audit, which changes nothing:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sess_memory_scanner.py" audit
+```
+
+Present the summary (Step 2), then the auto-fixable and AI-assisted findings as two separate groups, each behind
+its own `AskUserQuestion` (Step 3). A deletion always needs its own confirmation.
+
 ## When to Use
 
 - Wants to health-check, clean up, or audit stored memory files

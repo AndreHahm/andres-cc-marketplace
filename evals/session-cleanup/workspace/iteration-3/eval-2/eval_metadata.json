@@ -1,0 +1,16 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/session-kit/skills/session-cleanup/SKILL.md",
+  "assertions": [
+    {
+      "text": "Declines and points to session-delete for the single named session",
+      "type": "functionality",
+      "target": "routing"
+    },
+    {
+      "text": "No raw `rm` is used or suggested at any point",
+      "type": "structure",
+      "target": "deletion mechanism"
+    }
+  ]
+}

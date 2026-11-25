@@ -1,0 +1,26 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/session-kit/skills/session-cleanup/SKILL.md",
+  "assertions": [
+    {
+      "text": "The full candidate list is shown before an `AskUserQuestion` confirmation, and no deletion precedes it",
+      "type": "functionality",
+      "target": "confirmation gate"
+    },
+    {
+      "text": "Orphan task lists are gated by their own `AskUserQuestion`",
+      "type": "functionality",
+      "target": "second gate"
+    },
+    {
+      "text": "Every deletion goes through session_store.py",
+      "type": "structure",
+      "target": "deletion mechanism"
+    },
+    {
+      "text": "No raw `rm` is used or suggested at any point",
+      "type": "structure",
+      "target": "deletion mechanism"
+    }
+  ]
+}

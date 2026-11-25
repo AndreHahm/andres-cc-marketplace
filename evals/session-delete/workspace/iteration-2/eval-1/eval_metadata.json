@@ -1,0 +1,26 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/session-kit/skills/session-delete/SKILL.md",
+  "assertions": [
+    {
+      "text": "Previews with `session-detail` and shows the file path before asking",
+      "type": "functionality",
+      "target": "preview"
+    },
+    {
+      "text": "Deletion waits for an `AskUserQuestion` confirmation, never a printed yes/no",
+      "type": "functionality",
+      "target": "confirmation gate"
+    },
+    {
+      "text": "Tasks are not deleted unless the user opts in",
+      "type": "functionality",
+      "target": "task default"
+    },
+    {
+      "text": "No raw `rm` is used or suggested at any point",
+      "type": "structure",
+      "target": "deletion mechanism"
+    }
+  ]
+}

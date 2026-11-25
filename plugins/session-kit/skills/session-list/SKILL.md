@@ -13,6 +13,16 @@ allowed-tools: Bash(python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py":*)
 
 List all sessions, optionally filtered by project and sorted.
 
+## Quick Start
+
+Say "list sessions". Run the listing, then present the JSON as a table (Step 2):
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" list --limit 20 --format json
+```
+
+Add `--project "<filter>"` or `--sort size` as needed (Step 1).
+
 ## When to Use
 
 - "list sessions", "how many sessions do I have", "show recent sessions"

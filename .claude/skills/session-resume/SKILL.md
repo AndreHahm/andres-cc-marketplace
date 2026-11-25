@@ -12,6 +12,16 @@ allowed-tools: Bash(python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py":*) 
 
 Generate a context-recovery document from a past session.
 
+## Quick Start
+
+Say "pick up where I left off". Resolve the session's path (Step 1), then extract its resume data:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_transcript.py" resume <session-jsonl-path>
+```
+
+Synthesize the output into the context recovery template (Step 3).
+
 ## When to Use
 
 - Wants to pick up a past session's work in a new session

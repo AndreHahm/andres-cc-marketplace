@@ -1,0 +1,32 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "note": "Plan-only, with_skill only, no baseline; script results and AskUserQuestion answers simulated. Same agent handled all scenarios of this skill.",
+  "assertions_evaluated": [
+    {
+      "text": "The full candidate list is shown before an `AskUserQuestion` confirmation, and no deletion precedes it",
+      "passed": true,
+      "evidence": "Candidate table shown in step 2, AskUserQuestion in step 3, first delete-session in step 5."
+    },
+    {
+      "text": "Orphan task lists are gated by their own `AskUserQuestion`",
+      "passed": true,
+      "evidence": "Separate AskUserQuestion for the orphan list in step 9, before delete-task-list."
+    },
+    {
+      "text": "Every deletion goes through session_store.py",
+      "passed": true,
+      "evidence": "delete-session and delete-task-list calls all use session_store.py."
+    },
+    {
+      "text": "No raw `rm` is used or suggested at any point",
+      "passed": true,
+      "evidence": "No rm in the plan or reply."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

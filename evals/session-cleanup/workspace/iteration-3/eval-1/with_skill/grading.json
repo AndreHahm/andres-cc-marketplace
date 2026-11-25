@@ -1,0 +1,32 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "note": "Plan-only, with_skill only, no baseline; script results and AskUserQuestion answers simulated. Same agent handled all scenarios of this skill.",
+  "assertions_evaluated": [
+    {
+      "text": "Uses the `cleanup` command to list candidates",
+      "passed": true,
+      "evidence": "Step 1 runs `cleanup --older-than 30d --min-messages 3`."
+    },
+    {
+      "text": "Plans no deletion before an `AskUserQuestion` confirmation",
+      "passed": true,
+      "evidence": "AskUserQuestion precedes any deletion; simulated 'Keep all', no delete-session call."
+    },
+    {
+      "text": "Presents the total reclaimable space",
+      "passed": true,
+      "evidence": "'Total reclaimable: 1.2 MB.'"
+    },
+    {
+      "text": "No raw `rm` is used or suggested at any point",
+      "passed": true,
+      "evidence": "No rm in the plan or reply."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}
