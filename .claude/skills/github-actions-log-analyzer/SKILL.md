@@ -12,6 +12,13 @@ allowed-tools: Bash(gh run list:*) Bash(gh run view:*) Bash(grep -n:*) Bash(pyth
 
 Fetch and analyze recent GitHub Actions runs for a given workflow. Review agent/step performance, identify wasted effort and mistakes, and produce a report with actionable improvements.
 
+## Quick Start
+
+- "analyze workflow logs for `deploy.yml`" or `/github-actions-kit:github-actions-log-analyzer` — give the
+  workflow file name or ID; `repo` and `count` (default `5`) are optional (see Input)
+- Pick runs, fetch their logs to the scratchpad and detect step boundaries (Steps 1-3)
+- Confirm the total subagent dispatch count when asked (Step 4), then read the consolidated report (Step 5)
+
 ## When to Use
 
 - Diagnosing why a specific GitHub Actions workflow is slow, failing intermittently, or wasting
@@ -230,3 +237,5 @@ delimiters, null-byte handling).
 (0.667), +33.3pp — see
 `evals/github-actions-log-analyzer/workspace/iteration-1/eval-1/{with_skill,baseline}/grading.json` and
 `evals/github-actions-log-analyzer/workspace/iteration-1/benchmark.json`.
+2026-11-25: eval-1 re-run with the skill only (no baseline), 3/3, author-graded — see
+`evals/github-actions-log-analyzer/workspace/iteration-2/`.

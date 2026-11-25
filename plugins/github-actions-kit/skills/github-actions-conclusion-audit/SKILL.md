@@ -13,6 +13,13 @@ allowed-tools: Bash(gh run view --json:*) Bash(gh run list:*) Bash(gh repo view:
 
 Use this skill to detect unstable workflows that frequently flip between success and failure-like outcomes.
 
+## Quick Start
+
+- "which workflows are flaky" or `/github-actions-kit:github-actions-conclusion-audit` — starts the audit
+- Export several runs per workflow and branch to `artifacts/github-actions/` (see Collect run JSON), because
+  a group below `MIN_RUNS` (default `5`) is never `warn` or `critical`
+- Run the script for a text or JSON report (see Run), then read the ranked unstable groups
+
 ## What this skill does
 - Reads one or more workflow run JSON exports
 - Groups runs by repository + workflow + branch
@@ -172,3 +179,5 @@ those.
 (0.333), +66.7pp — see
 `evals/github-actions-conclusion-audit/workspace/iteration-1/eval-1/{with_skill,baseline}/grading.json`
 and `evals/github-actions-conclusion-audit/workspace/iteration-1/benchmark.json`.
+2026-11-25: eval-1 re-run with the skill only (no baseline), 3/3, author-graded — see
+`evals/github-actions-conclusion-audit/workspace/iteration-2/`.

@@ -10,7 +10,7 @@ my own general knowledge of GitHub Actions log formatting — not this repositor
 ## Log file created
 
 `synthetic-run.log` (same directory as this report):
-`/home/andre-hahm/Repos/andres-cc-marketplace/.claude/worktrees/devops-kit/evals/github-actions-log-analyzer/workspace/iteration-1/eval-1/baseline/outputs/synthetic-run.log`
+`/home/<user>/Repos/andres-cc-marketplace/.claude/worktrees/devops-kit/evals/github-actions-log-analyzer/workspace/iteration-1/eval-1/baseline/outputs/synthetic-run.log`
 
 It uses the real GitHub Actions runner log convention: each step is wrapped in a
 `##[group]<step name>` / `##[endgroup]` pair, each line prefixed with an ISO-8601 UTC timestamp

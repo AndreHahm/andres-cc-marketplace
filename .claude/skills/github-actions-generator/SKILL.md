@@ -11,6 +11,15 @@ allowed-tools: Read Write Edit WebSearch Skill(github-actions-kit:github-actions
 
 Generate production-ready GitHub Actions workflows and custom actions following current best practices, security standards, and naming conventions. All generated resources are automatically validated using the github-actions-kit:github-actions-validator skill.
 
+## Quick Start
+
+- "create a workflow for..." or `/github-actions-kit:github-actions-generator` — describe the workflow, custom
+  action or reusable workflow you need
+- The request is routed (see Trigger Decision Tree) and only that route's references and templates are loaded
+  (see Progressive Disclosure Route)
+- The generated file is validated with `github-actions-kit:github-actions-validator` before it is presented
+  (see Validation Workflow for the attempt cap and the skip cases)
+
 ## When to Use
 
 Use this skill when asked to create, generate, or scaffold a GitHub Actions workflow
@@ -288,7 +297,7 @@ See `references/best-practices.md` for complete guidelines.
 
 ---
 
-## Resources
+## Reference Guide
 
 ### Reference Documents
 
@@ -404,6 +413,8 @@ activation correctness.
 
 **Last dated run record:** 2026-09-19 -- eval-1 baseline-comparison, with_skill 5/5 (1.0) vs baseline 2/5
 (0.4), +60pp — see `evals/github-actions-generator/workspace/iteration-1/eval-1/{with_skill,baseline}/grading.json`.
+2026-11-25: eval-1 re-run with the skill only (no baseline), 5/5, author-graded — see
+`evals/github-actions-generator/workspace/iteration-3/`.
 
 **Quality gates:**
 - [ ] Every third-party action in generated output is pinned to a commit SHA with a version comment

@@ -1,0 +1,26 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "A synthetic log file with at least 2 step markers was created",
+      "passed": true,
+      "evidence": "synthetic-run-log.txt: 12 lines with a flue skill pair, a ##[group]/##[endgroup] pair and a START/END pair"
+    },
+    {
+      "text": "scripts/find_step_boundaries.py was run (or its logic correctly followed) and detected the step boundaries",
+      "passed": true,
+      "evidence": "script-output.json: triage-issue 2-4 (flue), Run build step 5-8 (group), custom@9 9-11 (custom); ranges match the log"
+    },
+    {
+      "text": "The agent stated the dispatch-scope AskUserQuestion with an accurate computed count instead of silently proceeding to dispatch subagents",
+      "passed": true,
+      "evidence": "From the agent's returned text (no report.md saved): 'Step 4 would dispatch 3 subagents (1 run, 3 detected steps: ...). Proceed as planned, reduce scope, or cancel?'; 3 matches script-output.json, and the agent reports dispatching none"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

@@ -1,0 +1,3 @@
+PASS  check_frontmatter: frontmatter present, closed, and name matches directory
+PASS  check_script_and_fixtures_exist: script and all three documented fixtures exist
+PASS  check_fixture_scores: clean.yml=0, risky.yml=9, reusable-caller.yml=0 -- all match documented scores

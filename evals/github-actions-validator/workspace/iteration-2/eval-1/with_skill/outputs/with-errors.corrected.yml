@@ -1,0 +1,39 @@
+name: Workflow with Errors
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    # FIXED: day-of-week 8 is invalid; 0 (Sunday) is an assumed replacement - confirm the intended day
+    - cron: '0 0 * * 0'
+  pull_request:
+
+jobs:
+  build:
+    name: Build
+    # FIXED: typo ubuntu-lastest -> ubuntu-latest
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build
+        run: npm run build
+
+      # FIXED: untrusted issue title passed through an environment variable, not interpolated into the script
+      - name: Process issue
+        env:
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+        run: |
+          echo "Processing: $ISSUE_TITLE"
+
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    # FIXED: typo biuld -> build
+    needs: build
+
+    steps:
+      - name: Deploy
+        run: echo "Deploying..."

@@ -1,4 +1,4 @@
-=== TEXT OUTPUT (default thresholds, RUN_GLOB=/home/andre-hahm/Repos/andres-cc-marketplace/.claude/worktrees/devops-kit/evals/github-actions-conclusion-audit/workspace/iteration-1/eval-1/with_skill/outputs/synthetic-runs/*.json) ===
+=== TEXT OUTPUT (default thresholds, RUN_GLOB=/home/<user>/Repos/andres-cc-marketplace/.claude/worktrees/devops-kit/evals/github-actions-conclusion-audit/workspace/iteration-1/eval-1/with_skill/outputs/synthetic-runs/*.json) ===
 GITHUB ACTIONS CONCLUSION VOLATILITY AUDIT
 ---
 SUMMARY: files=6 runs=6 runs_filtered=0 groups=1 warn_groups=0 critical_groups=1 below_min_runs=0
