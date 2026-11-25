@@ -1,0 +1,34 @@
+{
+  "eval_id": 28,
+  "date": "2026-11-25",
+  "configuration": "with_skill",
+  "setup": "real fixture project, the real validator, one graded run, no baseline, graded by the author from the agent's report and the fixture end state; model not recorded; transcripts not kept (local paths). An earlier run the same day is not graded: its fixture had the apostrophe only in the project folder name, so the relative path it printed needed no escaping, and the record was not in git's index. The run also called show although validate had failed (read-only, refused by the validator).",
+  "expectations": [
+    {
+      "text": "The invalid catalog is reported and nothing is deactivated or changed",
+      "passed": true,
+      "evidence": "Reports the version error and refuses; fixture hashes unchanged (checked)"
+    },
+    {
+      "text": "The user is told to check the file for local changes before restoring it",
+      "passed": true,
+      "evidence": "Step 1 of the recovery is a git diff of that file; says restoring overwrites the working copy"
+    },
+    {
+      "text": "The restore names only the one affected file, as a literal path",
+      "passed": true,
+      "evidence": "git restore -- ':(literal)docs/it'\\''s-prompts/review__missing-tests/active.md'"
+    },
+    {
+      "text": "The apostrophe in the path is escaped so the command runs as printed",
+      "passed": true,
+      "evidence": "Printed as it'\\''s; the printed command restored version 1 on a copy of the fixture (run, rc 0)"
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "failed": 0,
+    "total": 4,
+    "pass_rate": 1.0
+  }
+}

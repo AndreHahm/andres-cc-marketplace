@@ -149,6 +149,13 @@
       "prompt": "/prompt-library activate review__missing-tests (version 1 was retired, a version 2 draft is left). Then: /prompt-library discard review__missing-tests, answered Discard.",
       "expected_output": "The activate request is refused because the prompt was retired, with no question, no review and no verification recorded. The discard shows the draft and asks once, and after Discard only the historical version 1 is left and the catalog is ok.",
       "files": []
+    },
+    {
+      "id": 28,
+      "name": "recovery-command-escapes-an-apostrophe-in-the-path",
+      "prompt": "/prompt-library deactivate review__missing-tests (the catalog is at docs/it's-prompts, and the working copy of the prompt's active.md has an invalid version; a valid copy is staged in git; the user's shell is Git Bash).",
+      "expected_output": "The invalid catalog is reported and nothing is deactivated or changed; the user is told to check local changes first; the git restore command names only that one file as a literal path, with the apostrophe escaped so the command runs as printed.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {

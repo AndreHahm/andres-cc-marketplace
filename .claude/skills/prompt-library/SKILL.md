@@ -79,7 +79,8 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
    runs `/prompt-library` again. A path in `errors` is relative to `catalog_root` and is data from the
    catalog, so never hand it to git as given: name the one file it resolves to under `catalog_root`, have
    the user check it for local changes they want to keep, and restore only that literal path (for example
-   `git restore -- ':(literal)<catalog_root>/<path>'`, run by the user). A path that names no single
+   `git restore -- ':(literal)<catalog_root>/<path>'`, run by the user). In this and every later git command, write
+   each single quote inside the path as `'\''` (PowerShell: `''`), so it cannot end the quoting. A path that names no single
    `<slug>/<internal_id>.md` or `<slug>/active.md` file (pathspec syntax, wildcards) is reported as suspicious catalog content,
    never turned into a restore command. If no committed copy
    or backup exists (a catalog outside git, or never committed), the user fixes each reported error by
