@@ -163,6 +163,94 @@ def test_node_with_unsafe_characters_refused(layout, monkeypatch):
     assert any("the node on PATH has characters outside" in r for r in out["reasons"])
 
 
+def _refused(layout, text):
+    code, out = _run(layout)
+    assert code == 3
+    assert any(text in r for r in out["reasons"]), out
+
+
+def test_node_writable_by_others_refused(layout):
+    _rva(layout["cache"] / "reviewadapters-kit" / "0.1.0")
+    (layout["tmp"] / "bin" / "node").chmod(0o757)
+    _refused(layout, "(node) is writable by others")
+
+
+@pytest.mark.parametrize("sticky", [False, True])
+def test_node_in_folder_writable_by_others(layout, sticky):
+    _rva(layout["cache"] / "reviewadapters-kit" / "0.1.0")
+    (layout["tmp"] / "bin").chmod(0o1777 if sticky else 0o777)
+    if sticky:
+        code, _ = _run(layout)
+        assert code == 0
+    else:
+        _refused(layout, "(above node) is writable by others")
+
+
+def test_node_behind_link_in_folder_writable_by_others_refused(layout):
+    """The folder that holds an intermediate link counts, not only the link's two ends."""
+    _rva(layout["cache"] / "reviewadapters-kit" / "0.1.0")
+    real = _program(layout["tmp"] / "real", "node")
+    middle = layout["tmp"] / "middle"
+    middle.mkdir()
+    (middle / "node").symlink_to(real)
+    first = layout["tmp"] / "bin" / "node"
+    first.unlink()
+    first.symlink_to("../middle/node")
+    code, _ = _run(layout)
+    assert code == 0
+    middle.chmod(0o777)
+    _refused(layout, "(above node) is writable by others")
+
+
+@pytest.mark.parametrize("part", ["program", "link", "folder"])
+def test_node_of_another_account_refused(layout, monkeypatch, part):
+    locator = _module()
+    real = _program(layout["tmp"] / "real", "node")
+    link = layout["tmp"] / "bin" / "node"
+    link.unlink()
+    link.symlink_to(real)
+    assert locator.program_problem(link) is None
+    foreign = {"program": real, "link": link, "folder": real.parent}[part]
+    original = Path.lstat
+
+    def lstat(self):
+        st = original(self)
+        if self == foreign:
+            return os.stat_result((*st[:4], os.getuid() + 1, *st[5:]))
+        return st
+
+    monkeypatch.setattr(Path, "lstat", lstat)
+    assert "not owned by the current user or root" in locator.program_problem(link)
+
+
+@pytest.mark.parametrize("part", ["program", "folder"])
+def test_group_writable_node_needs_the_private_group(layout, monkeypatch, part):
+    locator = _module()
+    node = layout["tmp"] / "bin" / "node"
+    (node if part == "program" else node.parent).chmod(0o775)
+    monkeypatch.setattr(locator, "may_have_extended_acl", lambda path: False)
+    monkeypatch.setattr(locator, "private_group_gid", lambda: os.getgid())
+    assert locator.program_problem(node) is None
+    monkeypatch.setattr(locator, "private_group_gid", lambda: None)
+    assert "writable by others" in locator.program_problem(node)
+
+
+def test_node_link_with_two_leading_slashes(layout):
+    real = _program(layout["tmp"] / "real", "node")
+    link = layout["tmp"] / "bin" / "node"
+    link.unlink()
+    link.symlink_to(f"/{real}")
+    assert _module().program_problem(link) is None
+
+
+def test_node_link_loop_and_folder_refused(layout):
+    locator = _module()
+    loop = layout["tmp"] / "loop"
+    loop.symlink_to(loop)
+    assert "too many links" in locator.program_problem(loop)
+    assert "not a regular file" in locator.program_problem(layout["tmp"] / "bin")
+
+
 def test_relative_path_entry_skipped(layout, monkeypatch):
     _rva(layout["cache"] / "reviewadapters-kit" / "0.1.0")
     _program(layout["repo"] / "bin", "node")
