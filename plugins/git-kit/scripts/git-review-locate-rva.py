@@ -31,14 +31,18 @@ when:
 Group write is accepted only for the user's own private group, on Linux, with no extended ACL
 (reviewadapters-kit's rule; see `private_group_gid`), since every plugin installed under umask 002
 is group-writable. Where ownership cannot be read (Windows), every candidate is refused. git runs
-without the caller's GIT_* variables. The config file is trusted only when it is a plain file (no
-symlink component), owned by the current user, writable by nobody else, and neither it nor a
-case variant of its name is tracked in the index or HEAD. A git failure counts as tracked.
+without the caller's GIT_* variables. `git`, and the `node` the caller runs the dispatcher with, are
+looked up in absolute PATH entries only and refused inside the repository or its worktrees
+(`git_review_common.tool`); node's path must also be made of the characters above. The config file
+is trusted only when it is a plain file (no symlink component), owned by the current user,
+writable by nobody else, and neither it nor a case variant of its name is tracked in the index or
+HEAD. A git failure counts as tracked.
 
 The result can go stale while the user answers questions, so the caller runs this again right
-before each vendor's first real dispatch and drops the vendor if `dispatcher` changed.
+before each vendor's first dispatch of each phase and sends nothing more if `dispatcher` or `node`
+changed.
 
-Prints one JSON object: `{"ok": true, "root", "dispatcher", "source", "notes"}` (exit 0) or
+Prints one JSON object: `{"ok": true, "root", "dispatcher", "node", "source", "notes"}` (exit 0) or
 `{"ok": false, "reasons": [...]}` (exit 3, no usable copy). Exit 2 is a usage error. It never
 writes anything and never runs the dispatcher.
 
@@ -55,7 +59,26 @@ import stat
 import subprocess
 import sys
 from collections.abc import Sequence
+from importlib.machinery import SourceFileLoader
 from pathlib import Path
+from types import CodeType, ModuleType
+
+
+class _SourceOnlyLoader(SourceFileLoader):
+    """Compiles the source itself: a plain import would also run a planted __pycache__ file."""
+
+    def get_code(self, fullname: str) -> CodeType:
+        return self.source_to_code(self.get_data(self.path), self.path)
+
+
+def _load_common() -> ModuleType:
+    path = Path(__file__).resolve().with_name("git_review_common.py")
+    module = ModuleType("git_review_common")
+    _SourceOnlyLoader(module.__name__, str(path)).exec_module(module)
+    return module
+
+
+common = _load_common()
 
 PLUGIN_NAME = "reviewadapters-kit"
 LOCAL_PATH = ".claude/git-kit.local.json"
@@ -380,7 +403,7 @@ def _git(repo: Path, *args: str) -> bytes | None:
     env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
     try:
         result = subprocess.run(
-            ["git", *args],
+            [common.tool("git", common.checkout_root(repo)), *args],
             cwd=repo,
             env=env,
             capture_output=True,
@@ -460,27 +483,34 @@ def locate(repo: Path, plugin_root: Path) -> dict:
     worktrees = worktree_roots(repo)
     if worktrees is None:
         return {"ok": False, "reasons": ["could not list this repository's worktrees"]}
+    try:
+        node = common.tool("node", [*common.checkout_root(repo), *worktrees])
+    except FileNotFoundError as err:
+        return {"ok": False, "reasons": [str(err)]}
+    if not _SAFE_PATH_RE.match(node):
+        return {"ok": False, "reasons": ["the node on PATH has characters outside [A-Za-z0-9._/-]"]}
     reasons: list[str] = []
     candidate, why = sibling_candidate(plugin_root)
     if candidate is not None:
         root, why = check_root(candidate, repo, worktrees)
         if root is not None:
-            return _found(root, "sibling", reasons)
+            return _found(root, node, "sibling", reasons)
     reasons.append(f"sibling: {why}")
     candidate, why = config_candidate(repo)
     if candidate is not None:
         root, why = check_root(candidate, repo, worktrees)
         if root is not None:
-            return _found(root, "config", reasons)
+            return _found(root, node, "config", reasons)
     reasons.append(f"config: {why}")
     return {"ok": False, "reasons": reasons}
 
 
-def _found(root: Path, source: str, notes: list[str]) -> dict:
+def _found(root: Path, node: str, source: str, notes: list[str]) -> dict:
     return {
         "ok": True,
         "root": str(root),
         "dispatcher": str(root.joinpath(*DISPATCHER)),
+        "node": node,
         "source": source,
         "notes": notes,
     }

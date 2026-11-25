@@ -52,8 +52,26 @@ def _manifest(layout, *versions, raw=None):
     return path
 
 
+def _program(folder, name, body="exit 0"):
+    folder.mkdir(parents=True, exist_ok=True)
+    path = folder / name
+    path.write_text(f"#!/bin/sh\n{body}\n")
+    path.chmod(0o755)
+    return path
+
+
+def _install(scripts):
+    """Copy the script and the module it loads by path, as an installed copy has both."""
+    for source in (SCRIPT, SCRIPT.with_name("git_review_common.py")):
+        if not (scripts / source.name).exists():
+            shutil.copyfile(source, scripts / source.name)
+    return scripts / SCRIPT.name
+
+
 @pytest.fixture
-def layout(tmp_path):
+def layout(tmp_path, monkeypatch):
+    _program(tmp_path / "bin", "node")
+    monkeypatch.setenv("PATH", f"{tmp_path / 'bin'}{os.pathsep}{os.environ['PATH']}")
     cache = tmp_path / "cache" / "mkt"
     git_kit = cache / "git-kit" / "1.0.0"
     git_kit.mkdir(parents=True)
@@ -80,9 +98,7 @@ def _run(layout, plugin_root=None):
     """Run a copy of the script placed in `plugin_root/scripts/`, as an installed copy runs."""
     scripts = (plugin_root or layout["git_kit"]) / "scripts"
     scripts.mkdir(exist_ok=True)
-    copy = scripts / SCRIPT.name
-    if not copy.exists():
-        shutil.copyfile(SCRIPT, copy)
+    copy = _install(scripts)
     result = subprocess.run(
         [sys.executable, str(copy), "--repo", str(layout["repo"])],
         capture_output=True,
@@ -105,6 +121,56 @@ def test_sibling_found(layout):
     assert code == 0
     assert out["source"] == "sibling"
     assert out["dispatcher"] == str(root.resolve() / "scripts" / "rva-dispatch.mjs")
+    assert out["node"] == str(layout["tmp"] / "bin" / "node")
+
+
+@pytest.mark.parametrize("name", ["git", "node"])
+@pytest.mark.parametrize("linked", [False, True])
+def test_program_inside_repo_refused_and_never_run(layout, monkeypatch, name, linked):
+    """A checkout's own bin/ on PATH, directly or through a link, supplies no program (PR #879)."""
+    _rva(layout["cache"] / "reviewadapters-kit" / "0.1.0")
+    marker = layout["tmp"] / "ran"
+    program = _program(layout["repo"] / "bin", name, f"touch '{marker}'")
+    folder = program.parent
+    if linked:
+        folder = layout["tmp"] / "linked"
+        folder.mkdir()
+        (folder / name).symlink_to(program)
+    monkeypatch.setenv("PATH", f"{folder}{os.pathsep}{os.environ['PATH']}")
+    code, out = _run(layout)
+    assert code == 3
+    assert not out["ok"]
+    assert not marker.exists()
+
+
+def test_node_inside_another_worktree_refused(layout, monkeypatch):
+    _rva(layout["cache"] / "reviewadapters-kit" / "0.1.0")
+    other_tree = layout["tmp"] / "other-tree"
+    _git(layout["repo"], "worktree", "add", "-q", "--detach", str(other_tree))
+    folder = _program(other_tree / "bin", "node").parent
+    monkeypatch.setenv("PATH", f"{folder}{os.pathsep}{os.environ['PATH']}")
+    code, out = _run(layout)
+    assert code == 3
+    assert any("the node on PATH lies inside" in r for r in out["reasons"])
+
+
+def test_node_with_unsafe_characters_refused(layout, monkeypatch):
+    _rva(layout["cache"] / "reviewadapters-kit" / "0.1.0")
+    folder = _program(layout["tmp"] / "bin $(id)", "node").parent
+    monkeypatch.setenv("PATH", f"{folder}{os.pathsep}{os.environ['PATH']}")
+    code, out = _run(layout)
+    assert code == 3
+    assert any("the node on PATH has characters outside" in r for r in out["reasons"])
+
+
+def test_relative_path_entry_skipped(layout, monkeypatch):
+    _rva(layout["cache"] / "reviewadapters-kit" / "0.1.0")
+    _program(layout["repo"] / "bin", "node")
+    monkeypatch.setenv("PATH", f"bin{os.pathsep}{os.environ['PATH']}")
+    monkeypatch.chdir(layout["repo"])
+    code, out = _run(layout)
+    assert code == 0
+    assert out["node"] == str(layout["tmp"] / "bin" / "node")
 
 
 def test_two_sibling_versions_fall_back_to_config(layout):
@@ -381,7 +447,7 @@ def test_inherited_git_dir_ignored(layout):
     _git(decoy, "init", "-q")
     scripts = layout["git_kit"] / "scripts"
     scripts.mkdir(exist_ok=True)
-    shutil.copyfile(SCRIPT, scripts / SCRIPT.name)
+    _install(scripts)
     env = {
         **os.environ,
         "GIT_DIR": str(decoy / ".git"),

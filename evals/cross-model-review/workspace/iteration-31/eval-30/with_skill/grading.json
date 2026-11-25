@@ -1,0 +1,47 @@
+{
+  "eval_id": 30,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Locator call: begins with the export PATH statement and uses the literal plugin root with no default",
+      "passed": true,
+      "evidence": "Quotes export PATH='/usr/local/bin:/usr/bin:/bin' and /opt/plugins/git-kit/scripts/git-review-locate-rva.py."
+    },
+    {
+      "text": "Dry run: begins with the export PATH statement and runs the literal node and dispatcher paths",
+      "passed": true,
+      "evidence": "\"/usr/bin/node\" \"/opt/plugins/reviewadapters-kit/1.0.0/scripts/rva-dispatch.mjs\" --vendor pi ... --dry-run."
+    },
+    {
+      "text": "Only app.py reaches pi; deploy-credentials.txt through no channel",
+      "passed": true,
+      "evidence": "'not in the diff, the target paths, an untracked entry or a quoted finding'."
+    },
+    {
+      "text": "The egress question names deploy-credentials.txt as not sent and discloses the failed index copy",
+      "passed": true,
+      "evidence": "'by name, is a sensitive path and is not sent'; 'diff may be incomplete'."
+    },
+    {
+      "text": "F1 and M1 are dropped; F2 stays without its tracked mark",
+      "passed": true,
+      "evidence": "'holds only F2'; 'leading [tracked #12] is removed in the embedded copy only'."
+    },
+    {
+      "text": "pi gets neither accepted-findings file",
+      "passed": true,
+      "evidence": "'pi gets neither accepted.md nor accepted.codex.md'."
+    },
+    {
+      "text": "A different node at the re-check drops every optional vendor still to dispatch",
+      "passed": true,
+      "evidence": "'drop every optional vendor still to dispatch (here pi), even if the dispatcher is unchanged'."
+    }
+  ],
+  "summary": {
+    "assertions_total": 7,
+    "assertions_passed": 7,
+    "pass_rate": 1.0
+  },
+  "notes": "One run. The expected output was fixed before the run; the assertions were written from it afterwards."
+}

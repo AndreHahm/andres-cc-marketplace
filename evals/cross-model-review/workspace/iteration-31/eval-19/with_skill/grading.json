@@ -1,0 +1,32 @@
+{
+  "eval_id": 19,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Three picks: tells the user at most two may be picked and asks again; does not trim the list itself",
+      "passed": true,
+      "evidence": "'You picked three (agy, pi, devin); at most two optional models can be added,' and ask the same multi-select again; 'I do not trim the list'."
+    },
+    {
+      "text": "pi: drops the vendor with vendor_not_allowed recorded, without editing the allow-list, inputs or vendor setup",
+      "passed": true,
+      "evidence": "'Drop pi for the run; record pi: dropped at the dry run (vendor_not_allowed)'; 'Do not edit the allow-list, an input or pi's setup'."
+    },
+    {
+      "text": "devin: dry-runs every batch, and since the dispatcher reports only a count, its egress question names every path of batch 1 (src/app.py and config/hosts.yml) without reading reviewadapters-kit's own skill or references to narrow the list",
+      "passed": true,
+      "evidence": "'The question names every path of batch 1 with the count 1'; 'or look the rule up in reviewadapters-kit's text' is ruled out; every batch is dry-run."
+    },
+    {
+      "text": "devin: --secret-paths-confirmed only after a yes and only on batch 1's dispatches (Phase 1 and Phase 2), never on batch 2's",
+      "passed": true,
+      "evidence": "'--secret-paths-confirmed goes on batch 1 real dispatches only'; Phase 2 'flag on batch 1 only'."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  },
+  "notes": "One run. The assertions are iteration 21's with the new file name."
+}

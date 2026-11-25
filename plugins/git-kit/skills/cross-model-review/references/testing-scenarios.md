@@ -216,8 +216,8 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
     passed only after a yes and only for those batches, in Phase 1 and Phase 2.
 45. Two vendors pass the dry run → one `AskUserQuestion` call with one question per vendor, each quoting
     that dry run's `recipient`, `model` and `reach`, the batches' target paths, the dispatch count, and
-    the same `DISPATCHER_TOUCHED`/`PLANNER_TOUCHED`/`REVIEW_UNVERIFIED`/`REFUTE_UNVERIFIED` disclosures as
-    Codex's confirmation, before that vendor's first real dispatch. A declined vendor is never
+    the same `DISPATCHER_TOUCHED`/`REVIEW_UNVERIFIED`/`REFUTE_UNVERIFIED`/`INDEX_COPY_FAILED` and
+    `sensitive_paths` disclosures as Codex's confirmation, and that Phase 2 sends the other reviewers' findings, before that vendor's first real dispatch. A declined vendor is never
     dispatched and is recorded as "user declined to send to <V>". Every real dispatch passes the
     dry run's model as `--model`.
 46. An optional model's Phase 1 dispatch fails for one batch → that vendor is skipped for that batch
@@ -231,14 +231,19 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
 49. `PLANNER_TOUCHED=1` (the diff changes the review scripts, the locator among them) → no optional
     model is offered, even after the user approved running the working-tree scripts, and the reason is
     in `inspection_limits`.
-50. The locator is run again immediately before a vendor's first real dispatch and now fails, or prints
-    a different `dispatcher` → that vendor is dropped for the run with the reason; the earlier result is
-    never used for a dispatch.
+50. The locator is run again immediately before a vendor's first real dispatch, or its first Phase 2 one, and now fails, or prints
+    a different `dispatcher` or `node` → a failure drops that vendor; a changed path drops every optional
+    vendor still to dispatch, each with the reason; the earlier result is never used for a dispatch.
+51. An optional model runs on a diff with `deploy-credentials.txt` (in `sensitive_paths`) → that file is in no
+    vendor diff, paths file or untracked entry, and the egress question names it as not sent; a Claude or Codex
+    finding that names or quotes it, or an unchanged `.env`, or holds a credential-shaped value, is left out of the
+    vendor's challenger file; every dry run and dispatch starts with the `/usr/bin/env -u NODE_OPTIONS ...` prefix; the vendor gets no accepted-findings
+    file; the locator runs under the literal plugin root, and the dispatcher under the `node` path it printed.
 
 ## Quality gates
 
-- [ ] No file in `sensitive_paths` is embedded, listed as untracked or passed as a target for Codex, in the
-      planned run and the unscoped fallback alike
+- [ ] No file in `sensitive_paths` is embedded, listed as untracked or passed as a target for Codex
+      or an optional model, in the planned run and the unscoped fallback alike
 - [ ] `allowed-tools` never grants a path relative to the working directory, and no command gives
       `${CLAUDE_PLUGIN_ROOT}` a default
 
@@ -338,7 +343,7 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
       `$INTENT_ADD_REFUSED`, which stops the review at Preflight step 1, never as "nothing to review"
 - [ ] The review scope planner is always run through the fixed-shape wrapper named by `allowed-tools`'s exact `bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope-run.sh` grant, spelled out literally in Preflight step 1, never through an array, and always resolved from the installed plugin root through `${CLAUDE_PLUGIN_ROOT}` (this marketplace's own sessions write the `.claude/` mirror root instead, a form deliberately left ungranted so it prompts), never from the `plugins/` folder of the repository under review; the wrapper accepts no `--repo`, `--output` or `--diff-dir`
 - [ ] The throwaway index is seeded only through `git-review-copy-index.sh` (one file to `$RUN/index`, no overwrite), never through a bare `cp` or a `Bash(cp:*)` grant
-- [ ] Every file the model authors or assembles is written through `git-review-write-run-file.sh` (one file directly under `$RUN`, parts only from `$RUN` or the two fixed prompts); the only other writes are Preflight's own `git show`/`git diff` redirects and an optional model's `node "$RVA"` stdout redirects (`<V>_fresh_eyes.<N>.json`, `<V>_challenger.<N>.json`), all to fixed `$RUN` names; `allowed-tools` has no `Write` entry. The one exception, only in an `EnterWorktree` session after an isolation-check refusal, is `Write` to the session's scratchpad directory for the Preflight script or the helper's stdin text, never into the repository or `$RUN`; in that session every call that needs `GIT_INDEX_FILE` or a `CODEX_KIT_REVIEW_*` variable sets it as a prefix assignment on its own command
+- [ ] Every file the model authors or assembles is written through `git-review-write-run-file.sh` (one file directly under `$RUN`, parts only from `$RUN` or the two fixed prompts); the only other writes are Preflight's own `git show`/`git diff` redirects and an optional model's `"$NODE" "$RVA"` stdout redirects (`<V>_fresh_eyes.<N>.json`, `<V>_challenger.<N>.json`), all to fixed `$RUN` names; `allowed-tools` has no `Write` entry. The one exception, only in an `EnterWorktree` session after an isolation-check refusal, is `Write` to the session's scratchpad directory for the Preflight script or the helper's stdin text, never into the repository or `$RUN`; in that session every call that needs `GIT_INDEX_FILE` or a `CODEX_KIT_REVIEW_*` variable sets it as a prefix assignment on its own command
 - [ ] An `<untracked_files>` block always ends with the untrusted-data sentence, and Phase 2's closing boundary names those files' contents too
 - [ ] A failed planner never leaves the run without a defined path: section 7 of `scoped-review.md` builds the unscoped group from the safe-charset changed names
 - [ ] A planner failure is never treated as a pass; the user chooses unscoped or stop
@@ -431,6 +436,11 @@ Moved here from SKILL.md's Testing & Validation section, which keeps only the la
 - **2026-11-20, `iteration-22`:** add eval 24 after PR #804's round-4 fix (the First-Send option is
   "Skip Codex for this run"; declining Codex keeps a confirmed optional model's Phase 2), `with_skill`
   only, claude-opus-5-5: 3/3; see `iteration-22/NOTE.md`.
+- **2026-11-25, `iteration-31`:** adds eval 30 for scenario 51 and re-runs eval 19 (one file name changed) after the
+  rebase onto main and the PR #879 port, one plan-only `with_skill` run each, no baseline: 7/7 and 4/4. Evals 20-24 and
+  29 were not run again. The locator's program lookup is covered by `tests/marketplace_ci/test_git_review_locate_rva.py`.
+- **2026-11-25, `iteration-32`:** eval 30 again after the port's security review (prompt and expected output changed
+  first), one plan-only `with_skill` run, no baseline: 8/8. Evals 26 and 28 were not run again for the wider drop rule.
 
 Every eval run listed above is a dry run of the committed text, not a live dispatch (the live checks that
 some entries name are separate from their evals), and none is a live run of the scoped flow (one ran
