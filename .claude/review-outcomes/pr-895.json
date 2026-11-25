@@ -1,0 +1,99 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4693655014",
+      "note": "strict cutoff and one question per group, fixed in \"quote arguments and split cleanup questions\"",
+      "path": "plugins/session-kit/skills/session-cleanup/SKILL.md",
+      "pr": 895,
+      "recorded_at": "2026-11-25T10:56:46+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4693655273",
+      "note": "boundary limited to shown content, fixed in \"quote arguments and split cleanup questions\"",
+      "path": "plugins/session-kit/skills/session-export/SKILL.md",
+      "pr": 895,
+      "recorded_at": "2026-11-25T10:56:47+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4693655482",
+      "note": "evals re-run with one agent each, fixed in \"record isolated evals for the review fixes\"",
+      "path": "evals/session-cleanup/workspace/iteration-4/eval-3/with_skill/grading.json",
+      "pr": 895,
+      "recorded_at": "2026-11-25T10:56:47+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4693655712",
+      "note": "limit of the boundary evals stated in the skills, not redesigned, fixed in \"quote arguments and split cleanup questions\"",
+      "path": "evals/session-detail/evals.json",
+      "pr": 895,
+      "recorded_at": "2026-11-25T10:56:48+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-3bdff7bf3d142e66cc89eca72842c978",
+      "note": "boundary added, fixed in \"quote arguments and split cleanup questions\"",
+      "path": "plugins/session-kit/skills/session-list/SKILL.md",
+      "pr": 895,
+      "recorded_at": "2026-11-25T10:57:00+00:00",
+      "rule": "plugin-rulebook:R32"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-65fd49b6379d97c888d6923dcb9316ae",
+      "note": "suspicious wording added, fixed in \"quote arguments and split cleanup questions\"",
+      "path": "plugins/session-kit/skills/session-resume/SKILL.md",
+      "pr": 895,
+      "recorded_at": "2026-11-25T10:57:00+00:00",
+      "rule": "plugin-rulebook:R32"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-8b3660c5adf664d3e4a72bec79b433e1",
+      "note": "arguments single-quoted across session-kit, fixed in \"quote arguments and split cleanup questions\"",
+      "path": "plugins/session-kit/skills/session-search/SKILL.md",
+      "pr": 895,
+      "recorded_at": "2026-11-25T10:57:00+00:00",
+      "rule": "shell-injection"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-b2f7f02611b76521f1df79e0b20cb8be",
+      "note": "one question per group, fixed in \"quote arguments and split cleanup questions\"",
+      "path": "plugins/session-kit/skills/session-cleanup/SKILL.md",
+      "pr": 895,
+      "recorded_at": "2026-11-25T10:57:00+00:00",
+      "rule": "workflow-safety"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-b95f2bf1d1e96ca88b7d4764b9ef6221",
+      "note": "age_days key, fixed in \"guard exports and correct the cleanup key\"",
+      "path": "plugins/session-kit/skills/session-cleanup/SKILL.md",
+      "pr": 895,
+      "recorded_at": "2026-11-25T11:15:18+00:00",
+      "rule": "workflow correctness"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-cd952a57efb93d6b2f0028a9e3962ebd",
+      "note": "export refuses an existing file without --overwrite, fixed in \"guard exports and correct the cleanup key\"",
+      "path": "plugins/session-kit/skills/session-export/SKILL.md",
+      "pr": 895,
+      "recorded_at": "2026-11-25T11:15:19+00:00",
+      "rule": "data safety"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-fe8b7ec71df5ce6b67b6de6e6df4924a",
+      "note": "boundary added, fixed in \"quote arguments and split cleanup questions\"",
+      "path": "plugins/session-kit/skills/session-cleanup/SKILL.md",
+      "pr": 895,
+      "recorded_at": "2026-11-25T10:57:00+00:00",
+      "rule": "plugin-rulebook:R32"
+    }
+  ]
+}
