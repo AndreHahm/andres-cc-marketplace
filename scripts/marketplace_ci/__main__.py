@@ -2193,6 +2193,7 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
         snapshot_fallback_files,
         snapshot_intact,
         validate_review_output,
+        verdict_is_inconclusive,
     )
 
     repo = Path.cwd()
@@ -2548,7 +2549,11 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
     # (git_state folds a type change into "M", so added-only would miss a retyped file). It reads
     # the uncollapsed delta: an identical .claude/ mirror is reviewed once, but still changed.
     try:
-        coverage_field = general_correctness_coverage(scope.paths, [r.reviewer for r in reports])
+        # An inconclusive review that raised findings stays completed for the gate, but says itself
+        # that it did not judge everything, so it covers nothing.
+        coverage_field = general_correctness_coverage(
+            scope.paths, [r.reviewer for r in reports if not verdict_is_inconclusive(r.output)]
+        )
         advisory_field = review_advisory(
             _changed_path_set(full_delta),
             [c.new_path for c in full_delta if c.new_path is not None],

@@ -501,6 +501,42 @@ def test_a_clean_review_says_which_code_was_not_checked_for_correctness(
     }
 
 
+MINOR = {
+    "id": "m1",
+    "severity": "minor",
+    "axis": "claims",
+    "location": "scripts/tool.py",
+    "evidence": "e",
+    "finding": "f",
+    "fix": "m",
+    "confidence": "high",
+}
+
+
+@pytest.mark.parametrize("verdict", ["Inconclusive: one file unread", "unable to read it all"])
+def test_an_inconclusive_correctness_review_with_findings_covers_nothing(
+    monkeypatch, review_repo, tmp_path, verdict
+):
+    # The gate keeps such a review (findings were raised); coverage must not count its paths.
+    from scripts.marketplace_ci.review import ReviewerReport
+
+    root, _ = review_repo
+    _commit_on(root, {"scripts/tool.py": "x = 1\n"})
+    output = json.loads(_envelope([MINOR], verdict))
+    reports = [
+        ReviewerReport(
+            reviewer="correctness-reviewer", status="completed", output=output, attempts=1
+        )
+    ]
+    rc, payload, _ = _run_with_reports(monkeypatch, review_repo, tmp_path, reports)
+    assert rc == 0 and payload["blocking"] is False
+    assert payload["coverage"] == {
+        "general_correctness_reviewers": [],
+        "uncovered_paths": [CHANGED, "scripts/tool.py"],
+        "complete": False,
+    }
+
+
 def test_advisory_keeps_a_mirror_the_reviewer_dispatch_collapses(
     monkeypatch, review_repo, tmp_path
 ):
