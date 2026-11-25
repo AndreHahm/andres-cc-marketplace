@@ -19,8 +19,11 @@ Show comprehensive details about a single session.
 Say "show session <id>". With no ID, resolve the live session with `current` first (Step 1):
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" session-detail <session-id>
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" session-detail '<session-id>'
 ```
+
+Keep the single quotes around a substituted value; write a single quote inside it as `'\''`, and never
+switch to double quotes, where the shell would still expand `$(...)` and backticks.
 
 Present the summary (Step 2). Show messages only if the user wants them (Step 3).
 
@@ -61,7 +64,7 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" current
 Otherwise:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" session-detail <session-id>
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" session-detail '<session-id>'
 ```
 
 This returns: session summary (including the `path` field), token usage (input/output/cache), models used, tools called, and associated task lists with their tasks. This command always prints JSON — no `--format` flag needed.
@@ -85,19 +88,19 @@ If `is_resumed` is true in the stats, this session was started via `claude --res
 If the user wants to see the conversation, use the `path` field from Step 1's `session` object:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_transcript.py" messages <session-path> --limit 20
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_transcript.py" messages '<session-path>' --limit 20
 ```
 
 For more messages, increase `--offset` and `--limit`:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_transcript.py" messages <session-path> --offset 20 --limit 20
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_transcript.py" messages '<session-path>' --offset 20 --limit 20
 ```
 
 To include tool call details:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_transcript.py" messages <session-path> --include-tools --limit 20
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_transcript.py" messages '<session-path>' --include-tools --limit 20
 ```
 
 ## Testing & Validation
@@ -107,6 +110,7 @@ passed. Eval 3 verified a cross-session task query correctly redirects to `sessi
 being answered directly.
 
 Eval 4 (2026-11-25, plan-only, no baseline) passed 3/3: instruction-like text in the data was reported as suspicious and not followed.
+Its prompt forbids commands, so it tests the reporting, not whether an instruction is declined while tools are available.
 
 **Last dated run record:** `evals/session-detail/workspace/iteration-3/eval-4/with_skill/grading.json`,
 2026-11-25; earlier: `evals/session-detail/workspace/iteration-2/eval-{1,2,3}/with_skill/grading.json`,

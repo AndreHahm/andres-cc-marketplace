@@ -127,10 +127,10 @@ guidance.
 ### Step 3: Validate the Handoff
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/session-handoff/scripts/validate_handoff.py" <handoff-file>
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/session-handoff/scripts/validate_handoff.py" '<handoff-file>'
 ```
 
-Checks: no `[TODO: ...]` placeholders remaining, required sections present and populated, no
+Keep the single quotes; write a single quote inside the value as `'\''`. Checks: no `[TODO: ...]` placeholders remaining, required sections present and populated, no
 potential secrets (API keys, passwords, tokens), referenced files exist, quality score (0-100). For a
 handoff with frontmatter it also checks that every frontmatter key is present, that `state` and
 `context_mode` hold non-empty values from the closed sets above, and that the Resume Card follows the
@@ -173,7 +173,7 @@ a handoff with frontmatter.
 Before loading, check how current the handoff is:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/session-handoff/scripts/check_staleness.py" <handoff-file>
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/session-handoff/scripts/check_staleness.py" '<handoff-file>'
 ```
 
 Staleness levels:

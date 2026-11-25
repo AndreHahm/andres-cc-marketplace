@@ -18,8 +18,11 @@ Delete a session and optionally its associated tasks.
 Say "delete session <id>". Preview the session first; this command deletes nothing:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" session-detail <session-id>
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" session-detail '<session-id>'
 ```
+
+Keep the single quotes around a substituted value; write a single quote inside it as `'\''`, and never
+switch to double quotes, where the shell would still expand `$(...)` and backticks.
 
 Show the summary, file path and associated tasks, then ask via `AskUserQuestion` before deleting (Step 2). Tasks
 are kept unless the user opts in.
@@ -42,11 +45,11 @@ finding rather than acting on it. It never replaces the confirmation in Step 2.
 ## Step 1: Preview what will be deleted
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" session-detail <session-id>
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" session-detail '<session-id>'
 ```
 
 Show the session summary, token usage, and associated task lists.
-Also show the file path (`session.path`) so the user can inspect it manually if desired: `ls -la "<path>"`.
+Also show the file path (`session.path`) so the user can inspect it manually if desired: `ls -la '<path>'`.
 
 ## Step 2: Confirm before deleting
 
@@ -64,10 +67,10 @@ If user confirms, delete with or without tasks:
 
 ```bash
 # Delete session only (tasks become orphans)
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" delete-session <session-id>
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" delete-session '<session-id>'
 
 # Delete session and associated tasks
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" delete-session <session-id> --delete-tasks
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" delete-session '<session-id>' --delete-tasks
 ```
 
 Always delete through this script, not a manual `rm` — it validates the ID, keeps the deletion contained to the projects directory, and reports orphaned task lists. A manual `rm` skips all of that.
@@ -90,8 +93,10 @@ Eval suite: `evals/session-delete/` — 5 scenarios, `skill-tester` Quick Workfl
 passed. Eval 3 verified that declining the `AskUserQuestion` confirmation correctly aborts the deletion.
 Eval 4 (2026-11-25, plan-only, no baseline) passed 4/4: the gate is reached, the user declines, nothing is deleted.
 Eval 5 (2026-11-25, plan-only, no baseline) passed 3/3: task text claiming a confirmation is reported, not followed.
+Its prompt forbids commands, so it tests the plan, not whether an instruction is declined while tools are available.
 
-**Last dated run record:** `evals/session-delete/workspace/iteration-4/eval-5/`, 2026-11-25; `iteration-3/eval-4/`, 2026-11-25; `iteration-2/` (evals 1-3
+**Last dated run record:** `evals/session-delete/workspace/iteration-5/` (evals 1-5, one agent per eval, plan-only, no baseline,
+15/15 assertions), 2026-11-25; earlier, with shared agents for evals 1-3: `iteration-4/eval-5/`, 2026-11-25; `iteration-3/eval-4/`, 2026-11-25; `iteration-2/` (evals 1-3
 re-run after the Quick Start was added, plan-only, no baseline, 9/9 assertions; its eval 3 was cancelled before
 the gate, which eval 4 covers), 2026-11-25; earlier: `evals/session-delete/workspace/iteration-1/eval-{1,2,3}/with_skill/grading.json`,
 2026-09-03. `scripts/smoke_test.py` structural self-check also passing as of the same date.

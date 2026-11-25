@@ -87,8 +87,11 @@ For directory layout, JSONL schemas, and compaction block format, see
 Run one script call, check the end reason, then continue the work — that's the 80% case:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/session-recover/scripts/extract_resume_context.py" --session <SESSION_ID>
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/session-recover/scripts/extract_resume_context.py" --session '<SESSION_ID>'
 ```
+
+Keep the single quotes around a substituted value; write a single quote inside it as `'\''`, and never
+switch to double quotes, where the shell would still expand `$(...)` and backticks.
 
 See Step 1 below for the other invocation modes (`--query`, `--list`).
 
@@ -104,10 +107,10 @@ filtering, and workspace state in one call:
 python3 "${CLAUDE_PLUGIN_ROOT}/skills/session-recover/scripts/extract_resume_context.py"
 
 # Specific session by ID
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/session-recover/scripts/extract_resume_context.py" --session <SESSION_ID>
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/session-recover/scripts/extract_resume_context.py" --session '<SESSION_ID>'
 
 # Search by topic
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/session-recover/scripts/extract_resume_context.py" --query "auth feature"
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/session-recover/scripts/extract_resume_context.py" --query 'auth feature'
 
 # List recent sessions
 python3 "${CLAUDE_PLUGIN_ROOT}/skills/session-recover/scripts/extract_resume_context.py" --list
