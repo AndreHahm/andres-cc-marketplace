@@ -16,6 +16,7 @@ Scripts live in `scripts/` and carry the `wlgr_` file prefix. Run them directly 
 python scripts/wlgr_test_core.py
 python scripts/wlgr_test_collect.py
 python scripts/wlgr_test_pr_report.py
+python scripts/wlgr_test_guard.py
 ```
 
 Each skill also has a structural smoke test at `skills/<skill>/scripts/smoke_test.py` (frontmatter, referenced files, Bash grants).

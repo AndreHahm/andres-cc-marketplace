@@ -1,0 +1,19 @@
+{
+  "description": "Asks the person before Write or Edit changes .claude/workledger-kit.local.json, the config file the loader trusts because it is untracked.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "^(Write|Edit|MultiEdit)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/wlgr-guard-local-config.sh",
+            "shell": "bash",
+            "timeout": 20,
+            "onError": "warn"
+          }
+        ]
+      }
+    ]
+  }
+}

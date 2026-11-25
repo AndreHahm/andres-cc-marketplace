@@ -306,6 +306,18 @@
             "onError": "warn"
           }
         ]
+      },
+      {
+        "matcher": "^(Write|Edit|MultiEdit)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/wlgr-guard-local-config.sh",
+            "shell": "bash",
+            "timeout": 20,
+            "onError": "warn"
+          }
+        ]
       }
     ],
     "PreCompact": [
