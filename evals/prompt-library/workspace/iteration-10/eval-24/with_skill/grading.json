@@ -2,7 +2,7 @@
   "eval_id": 24,
   "date": "2026-11-24",
   "configuration": "with_skill",
-  "baseline": "not run",
+  "baseline": "run 2026-11-25, see ../baseline/grading.json",
   "expectations": [
     {
       "text": "One question shows the draft's text, hash and the version that stays active",

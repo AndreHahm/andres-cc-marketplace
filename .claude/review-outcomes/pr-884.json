@@ -31,13 +31,13 @@
       "rule": "correctness"
     },
     {
-      "disposition": "declined",
+      "disposition": "fixed",
       "finding": "4686088150",
       "line": 5,
-      "note": "Keep case run (scenario 24); baseline declined",
+      "note": "Keep case run (scenario 24) and baseline run for scenarios 23 and 24",
       "path": "evals/prompt-library/workspace/iteration-9/eval-23/with_skill/grading.json",
       "pr": 884,
-      "recorded_at": "2026-11-24T21:06:01+00:00",
+      "recorded_at": "2026-11-25T06:57:31+00:00",
       "rule": "testing"
     },
     {
@@ -59,6 +59,16 @@
       "pr": 884,
       "recorded_at": "2026-11-24T21:06:01+00:00",
       "rule": "correctness"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "404ba26a9b98c56c922396e07f0ac1bc",
+      "line": 9,
+      "note": "exclusion text only, no Skill or Agent call; prompt-execution is user-typed",
+      "path": "plugins/promptlibrary-kit/skills/prompt-retrieval/SKILL.md",
+      "pr": 884,
+      "recorded_at": "2026-11-25T06:52:06+00:00",
+      "rule": "dependency-graph"
     },
     {
       "disposition": "fixed",

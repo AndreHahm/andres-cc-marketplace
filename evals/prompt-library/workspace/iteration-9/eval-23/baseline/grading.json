@@ -1,0 +1,39 @@
+{
+  "eval_id": 23,
+  "date": "2026-11-25",
+  "configuration": "baseline",
+  "setup": "fixture project only: no skill, no validator; scripted replies; with_skill run of 2026-11-24 not repeated; graded by the author",
+  "expectations": [
+    {
+      "text": "One question per discard, showing text and hash",
+      "passed": false,
+      "evidence": "One question per discard shows the text, but no hash"
+    },
+    {
+      "text": "The v2 draft is removed and v1 stays active",
+      "passed": true,
+      "evidence": "File and catalog entry gone; active.md hash unchanged (checked)"
+    },
+    {
+      "text": "The v1 draft is removed and the question says the slug can never be reused",
+      "passed": false,
+      "evidence": "Draft removed; the question only says the slug disappears; no reserved_slugs written"
+    },
+    {
+      "text": "A slug with no draft stops with no question and no write",
+      "passed": true,
+      "evidence": "Reply: no draft left; nothing asked or changed"
+    },
+    {
+      "text": "A new draft with the discarded slug is refused",
+      "passed": false,
+      "evidence": "docs__changelog was added again as p000000000004"
+    }
+  ],
+  "summary": {
+    "passed": 2,
+    "failed": 3,
+    "total": 5,
+    "pass_rate": 0.4
+  }
+}
