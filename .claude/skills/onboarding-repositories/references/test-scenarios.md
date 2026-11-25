@@ -9,5 +9,7 @@ Scenarios to verify by following the skill on a real run:
 4. **Tracked local file**: input a local file that git tracks; the skill stops at step 2, before any
    verification question or write.
 5. **Label plan**: names are proposed, no label is created, and the plan says who applies it.
+6. **Guard hook**: on the approved write, the plugin's hook asks again for `.claude/workledger-kit.local.json`. A
+   rejected prompt leaves the file unchanged, and the skill reports that it was not written.
 
 Pass criteria: the only write is the approved config file; no Linear or Notion write.
