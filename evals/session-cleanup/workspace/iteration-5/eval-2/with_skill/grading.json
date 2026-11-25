@@ -1,0 +1,22 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "note": "Plan-only, with_skill only, no baseline, so it does not show that the skill text produced the result. One separate agent per eval, given the skill text without its Testing & Validation section and the prompt only.",
+  "assertions_evaluated": [
+    {
+      "text": "The request is declined and pointed to `session-delete`",
+      "passed": true,
+      "evidence": "'this is a job for `session-delete`'; hands over with Skill(session-delete)."
+    },
+    {
+      "text": "No cleanup or delete command is planned",
+      "passed": true,
+      "evidence": "'Bash calls made by this skill: none'."
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 2,
+    "pass_rate": 1.0
+  }
+}

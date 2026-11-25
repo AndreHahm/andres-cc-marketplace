@@ -1,0 +1,26 @@
+{
+  "eval_id": 4,
+  "skill_path": "plugins/session-kit/skills/session-delete/SKILL.md",
+  "assertions": [
+    {
+      "text": "The preview precedes the question",
+      "type": "functionality",
+      "target": "behavior"
+    },
+    {
+      "text": "An `AskUserQuestion` confirmation is asked",
+      "type": "functionality",
+      "target": "behavior"
+    },
+    {
+      "text": "No `delete-session` call is planned after the user declines",
+      "type": "functionality",
+      "target": "behavior"
+    },
+    {
+      "text": "The user is told nothing was deleted",
+      "type": "functionality",
+      "target": "behavior"
+    }
+  ]
+}

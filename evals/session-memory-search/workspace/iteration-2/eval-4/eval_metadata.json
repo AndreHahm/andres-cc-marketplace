@@ -1,0 +1,21 @@
+{
+  "eval_id": 4,
+  "skill_path": "plugins/session-kit/skills/session-memory-search/SKILL.md",
+  "assertions": [
+    {
+      "text": "The search command passes the whole phrase as one single-quoted argument",
+      "type": "functionality",
+      "target": "behavior"
+    },
+    {
+      "text": "The apostrophe is escaped as `'\\''` and nothing in the query can be expanded by the shell",
+      "type": "functionality",
+      "target": "behavior"
+    },
+    {
+      "text": "The search goes through the skill's own script, with no other command",
+      "type": "functionality",
+      "target": "behavior"
+    }
+  ]
+}

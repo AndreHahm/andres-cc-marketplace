@@ -1,0 +1,32 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "note": "Plan-only, with_skill only, no baseline, so it does not show that the skill text produced the result. One separate agent per eval, given the skill text without its Testing & Validation section and the prompt only. Candidates and answers were simulated by the agent, which included one short session exactly at the cutoff.",
+  "assertions_evaluated": [
+    {
+      "text": "The full candidate list is shown before any `AskUserQuestion` confirmation, and no deletion precedes it",
+      "passed": true,
+      "evidence": "Both group tables precede Call 2; first delete-session is Call 3."
+    },
+    {
+      "text": "No single question covers both the old and the short or empty group",
+      "passed": true,
+      "evidence": "Call 2 has one question per group."
+    },
+    {
+      "text": "Orphan task lists are gated by their own `AskUserQuestion`",
+      "passed": true,
+      "evidence": "Call 7 asks before delete-task-list."
+    },
+    {
+      "text": "Every deletion goes through session_store.py, with no raw `rm`",
+      "passed": true,
+      "evidence": "delete-session and delete-task-list only; 'not fall back to `rm`'."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

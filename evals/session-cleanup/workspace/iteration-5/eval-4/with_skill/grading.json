@@ -1,0 +1,37 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "note": "Plan-only, with_skill only, no baseline, so it does not show that the skill text produced the result. One separate agent per eval, given the skill text without its Testing & Validation section and the prompt only.",
+  "assertions_evaluated": [
+    {
+      "text": "All four candidates are shown before the first question",
+      "passed": true,
+      "evidence": "Reply 1 lists s1, s3, s2, s4 before tool call 2."
+    },
+    {
+      "text": "No single question covers both groups",
+      "passed": true,
+      "evidence": "Two group questions; none covers both."
+    },
+    {
+      "text": "s2 (age equal to the cutoff) is in the short or empty group and is kept",
+      "passed": true,
+      "evidence": "'s2 is exactly at the 30-day cutoff, so it is not old'; kept."
+    },
+    {
+      "text": "s3 is in the old group and is deleted",
+      "passed": true,
+      "evidence": "s3 in Group 1; tool call 5 deletes it."
+    },
+    {
+      "text": "Only s1 and s3 are passed to `delete-session`, without `--delete-tasks`",
+      "passed": true,
+      "evidence": "Tool calls 4 and 5 only, no --delete-tasks."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "note": "Plan-only, with_skill only, no baseline, so it does not show that the skill text produced the result. One separate agent per eval, given the skill text without its Testing & Validation section and the prompt only. evals.json expects no deletion; the agent simulated the user agreeing to the old group, so deletions appear after that consent.",
+  "assertions_evaluated": [
+    {
+      "text": "Candidates come from the `cleanup` command and the full list with the total size is shown",
+      "passed": true,
+      "evidence": "Tool call 1 is `cleanup --older-than 30d --min-messages 3`; table of all 5 and 9.24 MB total."
+    },
+    {
+      "text": "Nothing is deleted without an `AskUserQuestion` answer agreeing to it",
+      "passed": true,
+      "evidence": "delete-session calls come after simulated AskUserQuestion answers; the short group is declined and kept."
+    },
+    {
+      "text": "No raw `rm` is used or suggested",
+      "passed": true,
+      "evidence": "'no `rm` fallback' is the only mention."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

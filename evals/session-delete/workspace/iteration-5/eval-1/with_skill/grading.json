@@ -1,0 +1,27 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "note": "Plan-only, with_skill only, no baseline, so it does not show that the skill text produced the result. One separate agent per eval, given the skill text without its Testing & Validation section and the prompt only. Preview values were simulated by the agent.",
+  "assertions_evaluated": [
+    {
+      "text": "The session is previewed with summary, path and task count",
+      "passed": true,
+      "evidence": "Summary, path and 1 task list with 3 tasks shown (simulated)."
+    },
+    {
+      "text": "No `delete-session` call is planned before the user answers an `AskUserQuestion` confirmation",
+      "passed": true,
+      "evidence": "Run stops at the AskUserQuestion."
+    },
+    {
+      "text": "No raw `rm` is used or suggested",
+      "passed": true,
+      "evidence": "'never a raw `rm`' only."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "note": "Plan-only, with_skill only, no baseline, so it does not show that the skill text produced the result. One separate agent per eval, given the skill text without its Testing & Validation section and the prompt only.",
+  "assertions_evaluated": [
+    {
+      "text": "The search command passes the whole phrase as one single-quoted argument",
+      "passed": true,
+      "evidence": "search 'it'\\''s $(touch injected.txt) in \"quotes\"'"
+    },
+    {
+      "text": "The apostrophe is escaped as `'\\''` and nothing in the query can be expanded by the shell",
+      "passed": true,
+      "evidence": "Apostrophe written as '\\''; $(...) inside single quotes."
+    },
+    {
+      "text": "The search goes through the skill's own script, with no other command",
+      "passed": true,
+      "evidence": "One session_store.py call."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}
