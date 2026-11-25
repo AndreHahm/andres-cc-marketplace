@@ -22,6 +22,16 @@
     },
     {
       "disposition": "fixed",
+      "finding": "codex-3332e10c82fafde2",
+      "line": 531,
+      "note": "The permission note names pull_request and pull_request_target",
+      "path": "plugins/github-actions-kit/skills/github-actions-generator/references/common-actions.md",
+      "pr": 886,
+      "recorded_at": "2026-11-25T08:13:00+00:00",
+      "rule": "correctness"
+    },
+    {
+      "disposition": "fixed",
       "finding": "codex-3eb7d5da86743a1c",
       "line": 20,
       "note": "Fixed in 84671569: Quick Start states the dispatch gate unconditionally",
@@ -29,6 +39,26 @@
       "pr": 886,
       "recorded_at": "2026-11-25T07:57:35+00:00",
       "rule": "plugin-rulebook:R26"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-7a749f7e93749",
+      "line": 492,
+      "note": "The four action repositories are whitelisted; super-linter under its new owner name",
+      "path": "plugins/github-actions-kit/skills/github-actions-generator/references/common-actions.md",
+      "pr": 886,
+      "recorded_at": "2026-11-25T08:13:01+00:00",
+      "rule": "plugin-rulebook:R23"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-94cb7da2f8e5a2cb",
+      "line": 568,
+      "note": "Entry moved to super-linter/super-linter v5.7.2; newer majors are issue 885",
+      "path": "plugins/github-actions-kit/skills/github-actions-generator/references/common-actions.md",
+      "pr": 886,
+      "recorded_at": "2026-11-25T08:13:01+00:00",
+      "rule": "accuracy"
     },
     {
       "disposition": "fixed",
@@ -64,10 +94,10 @@
       "disposition": "false_positive",
       "finding": "codex-fad2b80d-super-linter",
       "line": 581,
-      "note": "The pinned super-linter commit is exactly tag v5.0.0 upstream; tag v5.7.2 does not exist",
+      "note": "The claim that the SHA is v5.7.2 was wrong: it is v5.0.0. The fork github/super-linter has no v5.7.2 tag, but super-linter/super-linter does; a later fix moves the entry there",
       "path": "plugins/github-actions-kit/skills/github-actions-generator/references/common-actions.md",
       "pr": 886,
-      "recorded_at": "2026-11-25T08:02:10+00:00",
+      "recorded_at": "2026-11-25T08:13:00+00:00",
       "rule": "action-version-accuracy"
     }
   ]

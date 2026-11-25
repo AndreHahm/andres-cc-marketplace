@@ -528,7 +528,8 @@ workflows that need to save on every run rather than only on a cache miss — pa
 **Common Inputs:**
 - `filters`: YAML map of filter name to glob pattern(s) to match changed files against
 
-**Permissions:** `pull-requests: read` on `pull_request` events, where the changed files come from the REST API
+**Permissions:** `pull-requests: read` on `pull_request` and `pull_request_target` events, where the changed files
+come from the REST API
 
 **Example:**
 ```yaml
@@ -563,10 +564,10 @@ workflows that need to save on every run rather than only on a cache miss — pa
     args: --timeout=5m
 ```
 
-### github/super-linter
+### super-linter/super-linter
 
-**Latest Version:** v5 (v5.0.0)
-**SHA:** `45fc0d88288beee4701c62761281edfee85655d7`
+**Latest Version:** v5 (v5.7.2)
+**SHA:** `a8150b40c89574adb5f68bf9502b890a236a06b3`
 
 **Description:** Run multiple linters in one action
 
@@ -578,7 +579,7 @@ workflows that need to save on every run rather than only on a cache miss — pa
 **Example:**
 ```yaml
 - name: Lint code
-  uses: github/super-linter@45fc0d88288beee4701c62761281edfee85655d7 # v5.0.0
+  uses: super-linter/super-linter@a8150b40c89574adb5f68bf9502b890a236a06b3 # v5.7.2
   env:
     VALIDATE_ALL_CODEBASE: false
     DEFAULT_BRANCH: main
