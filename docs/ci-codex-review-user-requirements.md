@@ -487,3 +487,39 @@ re-checks them before it lets a waiver decide anything.
 
 Status: approved (maintainer, 2026-11-22, issue #833; the re-check and the carry of briefed waivers added
 after the security review, maintainer's choice the same day)
+
+## R20. Reviewers are told what the last review reported (issue #862)
+
+A reviewer sees one revision and not what the review before it asked for, so it can report a change that
+follows the previous run's own remediation. Each reviewer is therefore briefed with the last review's findings.
+
+- **Source.** The anchor run's result (R5), never the review-outcomes ledger, which the branch can edit and
+  which is not reviewed. One round only: earlier runs are not briefed. The Codex workflow alone uses it: the
+  Claude delta review and the local reviews are not briefed.
+- **Which findings.** That run's own findings of every severity, Minor included, `security-reviewer`'s
+  included, on files reviewed now (R6). A carried, suppressed, waived or tracked finding, and one without a
+  remediation or with an unusable path, is left out. So is one on a path that needs a maintainer's
+  confirmation (R7: gate-critical, or not spelled the canonical way).
+- **What is passed on.** Rule, path, line at the anchor, severity and remediation, as data, never as
+  instructions, one JSON object per line. The remediation and rule are model-written and untrusted (R10): one
+  printable line, token-shaped text redacted, square and angle brackets turned into round ones, cut to 300
+  and 64 characters. At most 40 findings, blocking ones first.
+- **What it asks for.** A change is not reported only because it follows a listed remediation. Every concrete
+  defect is still reported, one that following a remediation introduced included.
+- **Never to `security-reviewer`.** It is not briefed, as for R7 and R18, and the list is deleted from the
+  runner once read.
+- **No gate effect.** CI's code never reads the briefing to decide what blocks, carries or is waived.
+- **Without it, the review as before.** No anchor, or a list that cannot be written, passed on or read: no
+  briefing, noted in the job log. It never fails a job.
+- **Accepted residual:** a pull request can try to make a reviewer write a remediation that talks the next
+  run's reviewers out of a finding. The carry (R7) does not prevent this: it releases a blocking finding
+  once its file changes, and only a reviewer reporting it again makes it block. The wording and the bounds
+  above limit the risk; `security-reviewer` and the deterministic checks are not briefed, and gate-critical
+  paths are left out.
+- **Accepted residual:** a token split by ordinary spaces, or of a shape the shared list does not hold, is
+  not redacted. The anchor's result artifact holds the same text.
+- **Accepted residual:** one round misses a finding last raised two or more reviews ago, and a list holds no
+  disposition, so a refuted finding is briefed like a fixed one.
+
+Status: approved (maintainer, 2026-11-25, issue #862; the gate-critical exclusion and
+the widened residuals added after the security review, maintainer's choice the same day)

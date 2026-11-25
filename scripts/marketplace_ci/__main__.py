@@ -1200,6 +1200,40 @@ def _load_tracked_issues(path: str) -> list[dict]:
     return records
 
 
+def _handle_list_prior_findings(args: argparse.Namespace) -> int:
+    """R20: the anchor run's own findings, cleaned, as the JSON list `run-codex-review
+    --prior-findings` briefs its reviewers with. Exits 2 without writing when the anchor result
+    cannot be read; the caller then goes without the briefing."""
+    from scripts.marketplace_ci.review import prior_findings
+
+    try:
+        records = prior_findings(json.loads(Path(args.anchor_result).read_text(encoding="utf-8")))
+        Path(args.json_output).write_text(json.dumps(records) + "\n", encoding="utf-8")
+    except (OSError, ValueError, RecursionError) as exc:
+        print(f"list-prior-findings: {type(exc).__name__}", file=sys.stderr)
+        return 2
+    print(f"prior-round findings: {len(records)}")
+    return 0
+
+
+def _load_prior_findings(path: str) -> list:
+    """The records `list-prior-findings` wrote, or none, with a note, when there is no readable
+    list: the briefing only adds context, so a review without it is the review without R20. The
+    file is removed once read, so no reviewer (security-reviewer is not briefed) can open it."""
+    try:
+        text = Path(path).read_text(encoding="utf-8")
+        Path(path).unlink()
+        records = json.loads(text)
+    except (OSError, ValueError, RecursionError) as exc:
+        print(f"run-codex-review: no prior-round briefing ({type(exc).__name__})", file=sys.stderr)
+        return []
+    if not isinstance(records, list):
+        print("run-codex-review: no prior-round briefing (not a list)", file=sys.stderr)
+        return []
+    print(f"run-codex-review: prior-round findings read: {len(records)}", file=sys.stderr)
+    return records
+
+
 def _waiver_report(malformed, notes) -> list[str]:
     """Summary lines for waiver lines that were not applied and waivers that matched a finding
     but could not apply (R7: reported, never silently ignored)."""
@@ -2199,6 +2233,8 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
         if n not in applicable_tracked
     ]
 
+    prior_records = _load_prior_findings(args.prior_findings) if args.prior_findings else []
+
     instructions_dir = Path(args.instructions_dir) if args.instructions_dir else None
     if instructions_dir is not None:
         problem = _instructions_dir_problem(instructions_dir, repo, args.output)
@@ -2335,6 +2371,7 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
             exceptions=exceptions,
             accepted_findings=waiver_section.waivers,
             tracked_issues=tracked_issues,
+            prior_records=prior_records,
             allow_guardrails_fallback=allow_fallback,
             fallback_root=fallback_root,
             fallback_refusal=refusal,
@@ -2897,6 +2934,15 @@ def build_parser() -> argparse.ArgumentParser:
     carry_findings.add_argument("--json-output", required=True, metavar="PATH")
     carry_findings.set_defaults(handler=_handle_carry_findings)
 
+    list_prior = subparsers.add_parser(
+        "list-prior-findings",
+        help="CI only (R20): the last reviewed run's own findings, cleaned, for the reviewers' "
+        "prior-round briefing",
+    )
+    list_prior.add_argument("--anchor-result", required=True, metavar="PATH")
+    list_prior.add_argument("--json-output", required=True, metavar="PATH")
+    list_prior.set_defaults(handler=_handle_list_prior_findings)
+
     merge_carried = subparsers.add_parser(
         "merge-carried-findings",
         help="CI only (issue #639, R7): add the carried blocking findings to this run's "
@@ -2953,6 +2999,14 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="PATH",
         help="fetch-accepted-findings' JSON (R7, R17): a blocking finding a waiver matches is "
         "recorded as waived, and the waivers brief the reviewers as data",
+    )
+    run_codex_review.add_argument(
+        "--prior-findings",
+        default="",
+        metavar="PATH",
+        help="list-prior-findings' JSON (R20): the last reviewed run's findings brief the "
+        "reviewers, except security-reviewer, as data; the file is removed "
+        "once read, and an unreadable one means no briefing",
     )
     run_codex_review.set_defaults(handler=_handle_run_codex_review)
 
