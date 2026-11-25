@@ -3173,12 +3173,15 @@ def _contradicted_by_script(finding: Finding, coverage: ScriptCoverage | None) -
     # names the same file. An absolute location still present here (`relative_citations` has made an
     # in-checkout one relative) never matches: this pure gate has no repository root to resolve it
     # against, and an unmatched path only keeps blocking.
-    # Guarded like `_is_capped_size_finding`: every path the finding names, its components
-    # included, is plain and covered, and none is a symlink.
+    # Never a symlink, only plain paths. For R18, a rule about one file, every cited component must
+    # be covered too; an R35 or R37 finding cites files its coverage never lists (the references,
+    # the script).
+    claimed = _claimed_rule_ids(finding)
+    paths = _cap_paths(finding) if "R18" in claimed else (finding.path,)
     return not finding.via_symlink and all(
         _PLAIN_PATH.fullmatch(p) and coverage.covers(rule, posixpath.normpath(p))
-        for p in _cap_paths(finding)
-        for rule in _claimed_rule_ids(finding)
+        for p in paths
+        for rule in claimed
     )
 
 
