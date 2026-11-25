@@ -17,7 +17,8 @@ Fetch and analyze recent GitHub Actions runs for a given workflow. Review agent/
 - "analyze workflow logs for `deploy.yml`" or `/github-actions-kit:github-actions-log-analyzer` — give the
   workflow file name or ID; `repo` and `count` (default `5`) are optional (see Input)
 - Pick runs, fetch their logs to the scratchpad and detect step boundaries (Steps 1-3)
-- Confirm the total subagent dispatch count when asked (Step 4), then read the consolidated report (Step 5)
+- The exact total subagent dispatch count is always presented via `AskUserQuestion`; no subagent runs until
+  you confirm it (Step 4). Then read the consolidated report (Step 5)
 
 ## When to Use
 

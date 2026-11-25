@@ -26,11 +26,16 @@
       "text": "The workflow runs on push and pull_request as requested",
       "passed": true,
       "evidence": "'on:' lists push and pull_request, unfiltered"
+    },
+    {
+      "text": "The workflow installs with npm ci and then runs npm test, after checkout and setup-node",
+      "passed": true,
+      "evidence": "Added and graded after the run, on the saved output: steps in order are checkout, setup-node, 'run: npm ci' (line 44), 'run: npm test' (line 47)"
     }
   ],
   "summary": {
-    "assertions_total": 5,
-    "assertions_passed": 5,
+    "assertions_total": 6,
+    "assertions_passed": 6,
     "pass_rate": 1.0
   }
 }

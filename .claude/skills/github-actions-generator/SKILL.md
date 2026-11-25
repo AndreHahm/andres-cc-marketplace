@@ -413,7 +413,8 @@ activation correctness.
 
 **Last dated run record:** 2026-09-19 -- eval-1 baseline-comparison, with_skill 5/5 (1.0) vs baseline 2/5
 (0.4), +60pp — see `evals/github-actions-generator/workspace/iteration-1/eval-1/{with_skill,baseline}/grading.json`.
-2026-11-25: eval-1 re-run with the skill only (no baseline), 5/5, author-graded — see
+2026-11-25: eval-1 re-run with the skill only (no baseline), 6/6, author-graded (the
+`npm ci`/`npm test` assertion was added and graded afterwards on the saved output) — see
 `evals/github-actions-generator/workspace/iteration-3/`.
 
 **Quality gates:**
