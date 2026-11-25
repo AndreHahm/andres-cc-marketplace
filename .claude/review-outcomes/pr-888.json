@@ -1,0 +1,40 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4691889081",
+      "line": 174,
+      "note": "fixed in 4ca0260f: only the script after -c is read",
+      "path": ".codex/hooks/block-dangerous-command.sh",
+      "pr": 888,
+      "recorded_at": "2026-11-25T08:23:19+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4691889211",
+      "line": 210,
+      "note": "fixed in 4ca0260f for grep, log, show, diff and commit right after git",
+      "path": ".codex/hooks/block-dangerous-command.sh",
+      "pr": 888,
+      "recorded_at": "2026-11-25T08:23:20+00:00"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "4691889361",
+      "line": 979,
+      "note": "accepted false block, same as --all before; widening the exemption opened bypasses",
+      "path": ".codex/hooks/block-dangerous-command.sh",
+      "pr": 888,
+      "recorded_at": "2026-11-25T08:23:20+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4691897738",
+      "line": 189,
+      "note": "same defect as 4691889081, fixed in 4ca0260f",
+      "path": ".codex/hooks/block-dangerous-command.sh",
+      "pr": 888,
+      "recorded_at": "2026-11-25T08:23:19+00:00"
+    }
+  ]
+}
