@@ -75,7 +75,7 @@ plain file names inside the working folder, never paths, and print counts, never
 | `wlgr_smoke_checks.py` | Shared structural smoke checks for the skills |
 
 Tests: `python scripts/wlgr_test_core.py`, `python scripts/wlgr_test_collect.py`,
-`python scripts/wlgr_test_pr_report.py`.
+`python scripts/wlgr_test_pr_report.py`, `python scripts/wlgr_test_guard.py`.
 
 ## Known limits
 
@@ -87,8 +87,9 @@ Tests: `python scripts/wlgr_test_core.py`, `python scripts/wlgr_test_collect.py`
   for the repository being digested, so a repository added later gets the notice too.
 - Creating a repository's Linear labels is a manual step; intake has no label operation.
 - `Write` is pre-approved, without a path scope, in `syncing-open-items`, `reporting-roadmap` and
-  `onboarding-repositories`, so the trusted local config file is not protected against a prompt-injected run;
-  a guard hook is a recorded follow-up (see `references/wlgr-kit-dependencies.md`).
+  `onboarding-repositories`. A `PreToolUse` hook asks the person before `Write` or `Edit` changes the trusted
+  local config file; shell writes do not pass it, and it has other limits (see
+  `references/wlgr-kit-dependencies.md`).
 - A skill's tool grants only pre-approve tools; they do not remove the session's others. The "no connector,
   no GitHub write" rule is backed by the scripts but is not mechanically enforced (see
   `references/wlgr-kit-dependencies.md`).

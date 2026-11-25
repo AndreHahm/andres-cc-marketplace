@@ -80,7 +80,7 @@ the session. The rule that this plugin never calls a Linear or Notion connector 
 therefore a procedure, backed by the scripts (GET-only wrapper, file-name-only CLI), not a mechanical block.
 If the session has Linear or Notion write tools or `gh` write commands auto-allowed, injected text could in
 principle steer the model to call them directly. Mitigations in place: collected text is treated as data,
-no skill grants those tools, and intake re-asks approval. A `disallowed-tools` entry or a `PreToolUse` guard
+no skill grants those tools, and intake re-asks approval. A `disallowed-tools` entry or a `PreToolUse` guard for connectors
 would make it mechanical; neither has been added because the field's matching rules are undocumented and a
 turn-scoped denial might also block intake's own calls. That is a recorded follow-up, not a solved problem.
 
@@ -104,7 +104,23 @@ plugin. The mitigations in place are limited:
 re-runs `wlgr_config.py` just before submitting and stops if `repos` or `intake_capabilities` changed since it
 started, and intake's own live approval remains the gate on every write to Linear or Notion.
 
-**Recorded follow-up (a further Linear issue, requested 2026-10-07):** protect the trusted local config with a
-hook, for example a `PreToolUse` guard that denies `Write` and `Edit` to `.claude/workledger-kit.local.json`
-unless the call comes from `onboarding-repositories` after its approval step. It is a new security gate, so it
-needs its own `security-reviewer` pass before it ships. Until then this risk is accepted, not solved.
+**Guard hook (2026-11-25).** `hooks/wlgr-guard-local-config.sh` is a plugin-level `PreToolUse` hook on `Write`,
+`Edit` and `MultiEdit`. It prints one fixed `ask` when the call's path contains `workledger-kit.local.json` (any ASCII
+letter case) or its usual Windows short-name stem, and nothing otherwise; when the input has no readable path, the
+whole input is searched instead. It never allows, and it does not know which skill
+is calling: a hook cannot see that, and a marker the model wrote itself would prove nothing, so the person's answer is
+the control. `onboarding-repositories` therefore normally raises that prompt on its approved write too. It is a Bash
+script, not Python like the rest of this plugin, on purpose: it runs no interpreter and opens no path from the
+repository being edited.
+
+Not covered, and accepted:
+
+- Shell commands (`Bash`, PowerShell) can write the file without passing the hook.
+- A symlink or hard link with another name, and a Unicode look-alike that a file system treats as the same name: the
+  hook compares text only. The same goes for the hash-form short name Windows uses after several collisions.
+- It is not documented that `ask` always prompts in `bypassPermissions` mode, or for a protected path in `auto` mode
+  (where Claude Code's classifier may decide first). Neither was checked live.
+- The hook fails open if it cannot start, times out, or cannot read its input (`cat` is found through `PATH`). `onError` is `warn`, as in this repository's other hooks, and
+  `onFailure` (Claude Code's hooks reference) is unset, because `block` would stop every `Write` and `Edit` in the
+  project when the hook is broken. Claude Code's own protection of `.claude/` remains.
+- The hook is active in any project that installs this plugin.
