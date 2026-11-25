@@ -80,8 +80,8 @@ Tests: `python scripts/wlgr_test_core.py`, `python scripts/wlgr_test_collect.py`
 ## Known limits
 
 - Unresolved review threads are not collected (GraphQL is a POST; this plugin never writes to GitHub).
-- Inferred PR links and ambiguous follow-ups need intake's classification capability; until then ambiguous
-  follow-ups are shown as "needs your decision" and inferred PR links are not produced.
+- No skill step calls intake's `classify` operation yet, so ambiguous follow-ups are shown as "needs your
+  decision". Inferred PR links are not produced, and `classify` does not cover them.
 - With several repositories, `open-item-digest` writes one digest per repository, and a digest's file name and
   title do not name the repository. Its "first run" notice appears when the shared `seen-keys.json` holds no key
   for the repository being digested, so a repository added later gets the notice too.

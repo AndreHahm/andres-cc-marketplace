@@ -16,7 +16,7 @@ override must list **all four** keys (the loader validates the exact key set and
 | `batch` | Intake accepts a batch with one approval per source batch, and Report page-content blocks | Submitting any source batch or any report |
 | `query` | Intake can read existing Linear issues and the roadmap | Dedup against Linear; the roadmap report; onboarding verification |
 | `update` | Intake can update an existing issue | Reserved: no skill step reads it yet (drift correction and status writes are future work) |
-| `classify` | A caller can request classification of ambiguous source text | Reserved: no skill step reads it yet (ambiguous follow-ups stay "needs your decision"; inferred PR links are not produced) |
+| `classify` | A caller can request an advisory open-item classification of ambiguous source text (intake's `classify` operation) | Reserved: no skill step reads it yet (ambiguous follow-ups stay "needs your decision"; inferred PR links are not produced) |
 
 A person sets a flag in `.claude/workledger-kit.local.json` once the matching Wave 3a work has shipped. The
 config loader refuses `intake_capabilities` from a **tracked** copy of that file (decided case-insensitively,
@@ -57,8 +57,10 @@ Recorded here so Wave 3a's own plan can be checked against it. All of it sits be
   `title`, `summary` and `body` today and rejects other fields).
 - Query and update operations on Linear issues, including the roadmap (Initiatives, Projects, Milestones),
   plus a way to attach a PR URL as a native link and to set the due date to the completed date (the link and the due date are available through an update).
-- A caller-reachable classification path, so ambiguous follow-ups and inferred PR links can reach the kit's
-  Codex classifier (`work-intake-classifier`). The plugin cannot call that classifier directly.
+- A caller-reachable classification path, so ambiguous follow-ups can reach the kit's Codex classifier
+  (`work-intake-classifier`); the plugin cannot call that classifier directly. Intake's `classify` operation is
+  that path: at most 50 items of 500 characters, one live approval per submission because the text goes to
+  Codex, advisory results only. Inferred PR links are not part of it.
 - Multi-team configuration in the kit: today its configuration holds one repository and one team, so intake
   cannot resolve `owner/repo` to a team or reject an unknown repository. Until then a payload's
   `linear_target` gets an ambiguous-target hand-off.

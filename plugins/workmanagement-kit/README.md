@@ -54,7 +54,7 @@ report) routes it through this plugin's `plugin-integration-intake` skill instea
 - **`plugin-integration-intake`** — the sole host-invoked entry point another plugin's own
   workflow uses to submit content for Notion/Linear storage or action, under a live approval
   gate for every write. A single record gets the same preview and approval as a direct user
-  request. Batch, query and update are Linear-only: a batch of create or update records gets
+  request. Batch, query, update and classify are Linear-only: a batch of create or update records gets
   one hash-bound approval for the whole set, shown as a table rather than per record (a reject
   cancels it), and an update cannot edit descriptions or close Issues. The one carve-out is an
   exact dedup-key query: it writes nothing, needs no approval and returns only match counts and
@@ -63,8 +63,10 @@ report) routes it through this plugin's `plugin-integration-intake` skill instea
   personas. The standalone path (via the `.claude/agents` → `.codex/agents` export for direct
   Codex CLI use) is built and live; the live in-session path (via this plugin's own
   `scripts/wmgt_bridge_caller.py`, dispatching through `codex-kit`'s `codex-review-bridge`) is built and
-  confirmed working in this monorepo's own checkout, but currently only in that layout — see Status
-  for the open marketplace-install limitation.
+  confirmed working in this monorepo's own checkout; the marketplace-install lookup is tested with
+  fixtures only (see Status). Through `plugin-integration-intake`, another plugin can ask
+  `work-intake-classifier` whether up to 50 short items are open items: advisory, nothing is
+  written, and a live approval comes first because the text goes to Codex.
 
 Wave 2 additively bridges accepted Linear work to Git/GitHub implementation, orchestrating this
 repository's own `git-kit` lifecycle skills rather than reimplementing any of them:
@@ -103,11 +105,10 @@ Install from this marketplace the same way as any other plugin in this repositor
 repository's own installation instructions). `codex-kit` must also be installed for the live
 Codex review path to function; without it (or on a Codex dispatch failure), `scripts/wmgt_bridge_caller.py`
 returns the bridge's own typed failure rather than silently skipping the review — see Status for
-the script's current known reliability caveat on Windows. **The live Codex review path currently
-only works when both plugins are installed as part of this monorepo's own checkout** —
-`scripts/wmgt_bridge_caller.py` resolves its own repo root and its `codex-kit` dependency by assuming a
-shared monorepo layout, and returns a typed failure rather than dispatching when installed as two
-independent marketplace plugins outside that layout (see Status). `git-kit` must be installed for any Wave 2
+the script's current known reliability caveat on Windows. `scripts/wmgt_bridge_caller.py` takes
+`codex-kit` from Claude Code's `installed_plugins.json`, never from inside the repository under review;
+only when none is registered, and only when the script itself runs from this marketplace's checkout,
+does it use the checkout's own `plugins/codex-kit`. `git-kit` must be installed for any Wave 2
 skill's governed Git/GitHub operations to resolve — without it, `repository-gates` fails closed with
 a manual handoff rather than falling back to a raw `git`/`gh` command. Initiative reads in
 `linear-work-management` additionally need an optional second Linear connector (`mcp-linear`),
@@ -126,13 +127,9 @@ governed operations will resolve (see `repository-gates`'s own Failure and Resum
 repository has not yet activated a local override for that field.
 
 Items still open before Wave 2 is fully live:
-- **The live Codex review path (`scripts/wmgt_bridge_caller.py`) only works inside this monorepo's own
-  checkout layout** — it cannot locate its own repo root or its `codex-kit` dependency when
-  `workmanagement-kit` is installed standalone via the plugin marketplace mechanism into a
-  consumer project. Tracked at
-  `issues/2026-09-01-workmanagement-kit-bridge-caller-marketplace-install-path.md`. Doesn't block
-  this repository's own live use (confirmed working end-to-end), but blocks the "install this
-  plugin as usual" story for any installation outside this monorepo.
+- **The Codex review path (`scripts/wmgt_bridge_caller.py`) has not run live from a real marketplace
+  install.** Its `codex-kit` lookup (issue #279) is covered by fixtures that imitate that layout;
+  the checkout layout is the one that has run live.
 - **`versioned-configuration.json`'s schema-v2 `github`/`repository_policy` fields ship unconfigured
   by design**, same shippable-defaults-plus-local-override model every existing field already uses —
   an installation activates them via `.claude/workmanagement-kit.local.json`, never by editing the
