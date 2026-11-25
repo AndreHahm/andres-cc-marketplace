@@ -32,6 +32,11 @@ draft PR, linked back to the Linear Issue.
 
 See Testing & Validation below for the concrete trigger phrases this section summarizes.
 
+## Quick Start
+
+Say "commit this and open a PR for <issue-id>". Read the Issue's context and search for an existing PR
+(steps 1-2); which path applies, new PR or existing PR, must be settled before anything is committed.
+
 ## Procedure
 
 1. **Resolve context:** read the active Linear Issue's outcome/title (via `linear-work-management`,
