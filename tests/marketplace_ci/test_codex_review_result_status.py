@@ -27,15 +27,15 @@ PROVENANCE_KEYS = {
 }
 
 
-def _envelope(findings, verdict) -> bytes:
+def _envelope(findings, verdict, reviewer="security-reviewer", paths=(CHANGED,)) -> bytes:
     return json.dumps(
         {
             "contract_version": "1",
             "dispatch": {
                 "id": "test-dispatch",
-                "reviewer": "security-reviewer",
+                "reviewer": reviewer,
                 "backend": "codex",
-                "target_paths": [CHANGED],
+                "target_paths": list(paths),
             },
             "provenance": {
                 "provider": "openai",
@@ -104,6 +104,14 @@ def _run(monkeypatch, review_repo, tmp_path, bridge):
 
 def _answers(stdout: bytes):
     return lambda argv: subprocess.CompletedProcess(argv, returncode=0, stdout=stdout, stderr=b"")
+
+
+def _clean_as_dispatched(argv):
+    """A clean answer naming the reviewer and the paths this call was dispatched with."""
+    name = argv[argv.index("--reviewer-type") + 1]
+    listed = Path(argv[argv.index("--target-paths-file") + 1]).read_text(encoding="utf-8")
+    stdout = _envelope([], "pass", name, listed.splitlines())
+    return subprocess.CompletedProcess(argv, returncode=0, stdout=stdout, stderr=b"")
 
 
 def _bridge_fails(argv):
@@ -490,7 +498,7 @@ def test_a_clean_review_says_which_code_was_not_checked_for_correctness(
     """Issue #713: correctness-reviewer covers CI and script changes, but not a plugin hook."""
     root, _ = review_repo
     _commit_on(root, {".github/workflows/ci.yml": "on: push\n", "scripts/tool.py": "x = 1\n"})
-    rc, payload = _run(monkeypatch, review_repo, tmp_path, _answers(CLEAN))
+    rc, payload = _run(monkeypatch, review_repo, tmp_path, _clean_as_dispatched)
     # Fields only: the gate, the status and the exit code are unchanged.
     assert rc == 0 and payload["status"] == "clean" and payload["blocking"] is False
     assert payload["reviewer_results"]["correctness-reviewer"]["status"] == "clean"
