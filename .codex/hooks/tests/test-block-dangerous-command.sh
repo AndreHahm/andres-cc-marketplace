@@ -953,6 +953,88 @@ B	git push --push-option'' -o '--all' origin
 # More than 8 quoted values are not read, so the text in them is.
 B	git push -o 'a --all' -o 'a --all' -o 'a --all' -o 'a --all' -o 'a --all' -o 'a --all' -o 'a --all' -o 'a --all' -o 'a --all' origin x
 A	git push -o 'a --all' -o 'a --all' -o 'a --all' -o 'a --all' -o 'a --all' -o 'a --all' -o 'a --all' -o 'a --all' origin x
+# --- issue #875: a push or git command behind a spelling the older copies did not read
+# A redirection inside a shell string.
+B	bash -c 'git push 2>&1 -f origin x'
+B	bash -c 'git push 2>&1 --mirror'
+A	bash -c 'git push 2>&1 origin x'
+# --prune deletes remote branches.
+B	git push --prune origin
+B	git push --prune origin --tags
+B	git push --prun origin
+A	git push --progress origin x
+A	git push origin x && git fetch --prune
+# A quote or backtick written against the word.
+B	bash -c 'git push origin main'
+B	x=`git push origin main`
+A	bash -c 'git push origin feature'
+A	git commit -m "do not run the push on main"
+A	gh pr create --title x --body 'Never `git push origin main` here'
+# A command after a real heredoc.
+B	cat <<E >/dev/null\nE\ngit $'reb\\x61se' main
+B	cat <<-'E' >/dev/null\n\tx\n\tE\ngit $'reb\\x61se' main
+B	cat <<A <<B >/dev/null\nA\nB\ngit $'reb\\x61se' main
+A	cat > f <<'E'\ngit push --all\nE
+A	git commit -m "$(cat <<'EOF'\nfix: explain git push --all\n\nand `git push --prune`\nEOF\n)"
+# A case arm or backtick followed by an assignment, a path or a wrapper.
+B	case x in x) FOO=1 git push --all;; esac
+B	case x in x) /usr/bin/git push -uf origin x;; esac
+B	case $(uname -s) in Linux) git push --all;; esac
+B	case x in\nx) FOO=1 git push --all;;\nesac
+B	echo `FOO=1 git push --all`
+B	echo `command git push --delete origin x`
+B	echo `FOO=1 git submodule foreach git stash`
+A	case x in x) git push origin x;; esac
+# Inside a foreach string.
+B	git submodule foreach 'echo `git stash`'
+B	git submodule foreach 'case $sm_path in x) git stash;; esac'
+A	git submodule foreach 'echo `git status`'
+# A newline escape that does not directly follow foreach.
+B	git submodule foreach sh -c $'echo a\\ngit stash'
+B	git submodule foreach 'echo a'$'\\ngit stash'
+B	git submodule foreach sh -c \\\n$'echo a\\ngit stash'
+# A comment inside a backtick ends with it.
+B	echo `date # now` `git push --all`
+B	echo `: # x` `git submodule foreach git stash`
+# A backtick inside a shell string.
+B	bash -c 'echo `git push --all`'
+A	bash -c 'git commit -m "explain git push --all"'
+# bisect run runs its arguments.
+B	git -c a.b=c bisect run git -c alias.x=stash x
+B	git bisect run git stash
+A	git bisect run bash test.sh
+A	git commit -m "git bisect run git stash"
+# A string inside a substitution, and a redirection between bisect and run.
+B	x=$(bash -c 'git push 2>&1 -f origin x')
+B	x=$(bash -c 'git push origin main')
+B	x=`bash -c 'git push 2>&1 -f origin x'`
+B	echo "$(bash -c 'echo `git push --all`')"
+B	$(git submodule foreach 'echo `git stash`')
+B	git bisect 2>/dev/null run git stash
+B	git bisect >log run git stash
+B	'/tmp/my dir/bash' -c 'git push 2>&1 -f o x'
+A	x=$(bash -c 'git push origin x')
+A	x=$(bash -c 'git commit -m "explain git push --all"')
+# Only a command word starts a string, and a shell only after -c.
+A	rg -t sh sudo scripts/
+A	apk add bash sudo
+A	command -v bash sudo
+A	bash run-tests.sh dd
+A	ssh host sudo systemctl status x
+A	bash scripts/comment.sh --body 'Never run `git push --all` here'
+A	bash x.sh 'fix (foo) git stash'
+A	git submodule foreach 'git commit -m "--amend"'
+A	bash -c 'git commit -m "--amend"'
+A	echo $(date) git rebase main
+B	env -u HOME timeout -s KILL 5 bash -o pipefail -c 'git push 2>&1 -f origin x'
+B	FOO=1 bash -lc 'git push 2>&1 -f origin x'
+B	echo `: # \\\\` '\ngit $'reb\\x61se' main`
+B	git bisect run sh -c 'git push origin main'
+B	git bisect run git bisect run git stash
+B	coproc bash -c 'git push origin main'
+B	timeout .5 bash -c 'git push origin main'
+A	git bisect run sh -c 'make test'
+A	echo `date` git rebase main
 CASES
 
 printf 'pass=%d fail=%d (%s)\n' "${pass}" "${fail}" "${HOOK}"
