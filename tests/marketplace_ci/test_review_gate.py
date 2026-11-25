@@ -411,14 +411,30 @@ def test_a_checker_r18_claim_on_a_file_without_a_new_critical_block_is_a_notice(
 
 
 @pytest.mark.parametrize("rule", ["R18", "R35", "R37"])
-def test_a_claim_naming_an_uncovered_component_or_a_symlink_blocks(rule):
-    covered = ScriptCoverage(clean=frozenset({(rule, SKILL)}))
+def test_a_claim_through_a_symlink_or_an_odd_path_blocks(rule):
     claim = f"plugin-rulebook:{rule}"
+    covered = ScriptCoverage(clean=frozenset({(rule, SKILL), (rule, "a b.md")}))
+    assert _outcome(_claim("x", rule=claim), covered) == "notice"
+    assert _outcome(_claim("x", rule=claim, via_symlink=True), covered) == "block"
+    assert _outcome(_claim("x", rule=claim, path="a b.md"), covered) == "block"
+
+
+@pytest.mark.parametrize("rule", ["R35", "R37"])
+def test_an_r35_or_r37_claim_may_cite_a_file_its_coverage_does_not_list(rule):
+    """The script an R37 finding is about, or a reference of an R35 one (issues #613, #525)."""
+    covered = ScriptCoverage(clean=frozenset({(rule, SKILL)}))
+    script = ("plugins/demo-kit/scripts/run.sh:12",)
+    claim = _claim("x", rule=f"plugin-rulebook:{rule}", components=script)
+    assert _outcome(claim, covered) == "notice"
+
+
+def test_an_r18_claim_naming_an_uncovered_component_blocks():
+    covered = ScriptCoverage(clean=frozenset({("R18", SKILL)}))
+    claim = "plugin-rulebook:R18"
     inside = _claim("25-line block", rule=claim, components=(f"{SKILL}:12",))
     assert _outcome(inside, covered) == "notice"
     script = _claim("x", rule=claim, components=("plugins/demo-kit/scripts/run.sh:12",))
     assert _outcome(script, covered) == "block"
-    assert _outcome(_claim("x", rule=claim, via_symlink=True), covered) == "block"
     odd = _claim("x", rule=claim, components=(SKILL.replace("/", "\\"),))
     assert _outcome(odd, covered) == "block"
 
