@@ -181,7 +181,7 @@ SECRET_PATTERNS = (
     *_TOKEN_SHAPES,
     ("pem_private_key_block", re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY(?: BLOCK)?-----")),
     # Shapes beyond the analysis-kit list: this list diverges on purpose, see the R20 note above.
-    ("url_embedded_credentials", re.compile(r"\b[a-z][a-z0-9+.-]{0,30}://[^/\s:@]*:[^/\s@]+@")),
+    ("url_embedded_credentials", re.compile(r"(?i)\b[a-z][a-z0-9+.-]{0,30}://[^/\s:@]*:[^/\s@]+@")),
     (
         "key_value_secret",
         re.compile(
@@ -542,7 +542,10 @@ def validate_record(meta: dict, version: int) -> list[str]:
     for f in LIST_FIELDS & set(meta):
         if not isinstance(meta[f], list) or not all(isinstance(x, str) for x in meta[f]):
             errs.append(f"{f} must be a list of text")
-    for f in MAP_FIELDS & set(meta):
+    # A malformed verification of an approved record blocks only that prompt
+    # (approval_problems), and one kept by retire must not fail the catalog.
+    maps = MAP_FIELDS if meta["status"] == "draft" else MAP_FIELDS - {"verification"}
+    for f in maps & set(meta):
         if meta[f] is not None and not isinstance(meta[f], dict):
             errs.append(f"{f} must be a map")
     for f in ("prerequisites", "boundaries"):
@@ -924,8 +927,9 @@ def load_catalog(root: Path) -> tuple[dict, dict, list[str]]:
 
 
 def _mark_retired(records: dict) -> None:
-    """Flag the records of a retired lineage: one whose last approved version is historical. A
-    finished revision always leaves a newer active or inactive version, so only retire does this."""
+    """Flag the historical records of a retired lineage: one whose last approved version is
+    historical. A finished revision always leaves a newer active or inactive version, so only
+    retire does this. A draft left behind is not flagged: it can still be found and discarded."""
     groups: dict = {}
     for meta in records.values():
         if isinstance(meta.get("slug"), str) and isinstance(meta.get("version"), int):
@@ -934,7 +938,7 @@ def _mark_retired(records: dict) -> None:
         approved = [m for m in group if m.get("status") in ("active", "inactive")]
         ran = [m for m in group if m.get("status") == "historical"]
         if ran and not approved:
-            for meta in group:
+            for meta in ran:
                 meta["_retired"] = True
 
 
@@ -1185,6 +1189,8 @@ def screen_text(text: str) -> list[dict]:
     # A lone CR ends a line too, or a line-anchored pattern (dotenv_secret_line) would miss an
     # assignment that follows one.
     for lineno, line in enumerate(re.split(r"\r\n|\r|\n", text), start=1):
+        if not line.strip():
+            continue  # no pattern matches a blank line; many of them must stay cheap
         # Other line separators are shown as breaks too, so their parts are screened as lines of
         # their own, next to the whole line (a match may also span one).
         parts = re.split(r"[\v\f\x1c-\x1e\x85\u2028\u2029]", line)

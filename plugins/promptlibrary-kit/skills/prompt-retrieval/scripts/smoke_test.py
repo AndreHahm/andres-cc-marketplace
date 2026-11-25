@@ -99,8 +99,8 @@ def check_live_show_and_tampered_catalog():
         if code == 0:
             return False, "show returned a changed prompt"
         code, out = fx.run("validate")
-        if not out.get("blocked"):
-            return False, "validate does not report the changed prompt as blocked"
+        if code != 0 or out.get("ok") is not True or not out.get("blocked"):
+            return False, "validate does not report only the changed prompt as blocked"
     finally:
         fx.close()
     return True, "show returns the prompt; a changed prompt is refused and reported"

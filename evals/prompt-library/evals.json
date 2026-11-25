@@ -135,6 +135,20 @@
       "prompt": "/prompt-library retire docs__todo-summary (unchanged). Then: /prompt-library retire review__missing-tests (edited after its approval), answered Retire.",
       "expected_output": "The unchanged prompt is refused with no question and no retire command. For the edited one, slug, version, reasons and hash are shown with the consequences and the git-restore-first advice, one question is asked, and after Retire the record is historical while docs__todo-summary stays active and the catalog is ok.",
       "files": []
+    },
+    {
+      "id": 26,
+      "name": "restore-never-overwrites-a-newer-revision",
+      "prompt": "/prompt-library deactivate review__missing-tests (version 2 was finalized but never committed, then edited; the only commit holds version 1 as active.md).",
+      "expected_output": "The prompt is reported as changed with its reasons and is not deactivated; a restore is only offered for a copy whose internal_id and version match the entry (p000000000002, version 2), so the committed version 1 is not offered for restoring and retire is named as what is left. Nothing is restored, retired or changed.",
+      "files": []
+    },
+    {
+      "id": 27,
+      "name": "draft-of-a-retired-prompt-can-only-be-discarded",
+      "prompt": "/prompt-library activate review__missing-tests (version 1 was retired, a version 2 draft is left). Then: /prompt-library discard review__missing-tests, answered Discard.",
+      "expected_output": "The activate request is refused because the prompt was retired, with no question, no review and no verification recorded. The discard shows the draft and asks once, and after Discard only the historical version 1 is left and the catalog is ok.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {
@@ -190,7 +204,8 @@
         14
       ],
       "A prompt in blocked is reported with its reasons, every other change to it is refused, and other prompts still work.": [
-        6
+        6,
+        26
       ],
       "retire asks once, shows the slug, version and reasons, and applies only to a blocked prompt.": [
         25
