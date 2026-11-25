@@ -26,7 +26,8 @@ branch/worktree request.
 
 - Taking an accepted Issue all the way to merge, or resuming an interrupted
   lifecycle run that spans more than this stage, rather than only starting its work →
-  `linear-github-lifecycle`. Not when that skill itself dispatched this one for its phase.
+  `linear-github-lifecycle`. Not when that skill itself dispatched this one for its phase. This is
+  routing for the caller; this skill never dispatches that one.
 - Committing, publishing a PR, or merging — those are `development-to-pr`/`merge-to-completion`.
 - The Issue isn't accepted yet, or its acceptance criteria are still being defined — that's
   `linear-work-management`'s territory, not this skill's.
