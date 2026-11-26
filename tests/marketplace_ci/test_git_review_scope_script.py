@@ -2219,6 +2219,16 @@ def test_the_skill_path_filter_drops_a_folder_whose_git_directory_ends_in_a_carr
     assert _run_skill_path_filter(plain_repo, (outside, fake / "bin")) == ["1", str(outside)]
 
 
+@pytest.mark.skipif(os.name == "nt", reason="the fixture's gitdir is a POSIX root path")
+def test_the_skill_path_filter_drops_every_entry_when_the_git_directory_is_the_root(tmp_path):
+    """The walk up from an entry stops before `/`, so a git directory at `/` matched nothing."""
+    session, outside = tmp_path / "session", tmp_path / "outside"
+    for folder in (session, outside):
+        folder.mkdir()
+    (session / ".git").write_text("gitdir: /\n")
+    assert _run_skill_path_filter(session, (outside, Path("/usr/bin"))) == ["1", ""]
+
+
 @pytest.mark.skipif(os.name == "nt", reason="Windows cannot remove the current directory")
 def test_the_skill_path_filter_keeps_nothing_when_the_checkout_path_cannot_be_read(tmp_path):
     """With no checkout path there is no checkout check, so an entry inside it would be kept."""

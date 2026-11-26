@@ -78,7 +78,7 @@ inside, so an entry spelled inside that is a link leading out is dropped too. A 
 through the checkout, from an entry outside to a target outside, is not followed. Another worktree of the
 repository, the main checkout included, counts as inside: the folder's own `.git` must name the same common git
 directory, so a worktree whose `.git` is gone, or altered to name another directory, is not recognized; one
-whose `.git` or `commondir` content holds a control character counts as inside. A checkout at `/`, or another worktree of this repository at `/`, keeps no entry, since every folder is inside it: the walk up from an entry never tests `/` itself, so `/.git` is read once on its own. A folder outside is dropped too
+whose `.git` or `commondir` content holds a control character counts as inside. A checkout at `/`, another worktree of this repository at `/`, or a git directory at `/` keeps no entry, since every folder is inside it: stripping the last name from `/usr` leaves an empty string, not `/`, so the walk up from an entry tests `/` and its `.git` as a separate last step. A folder outside is dropped too
 when one of the programs the review runs by name is a link in it that leads inside or passes through.
 Built-ins cannot read a file link, so `/usr/bin/readlink` does, by absolute path and one step at a time. A link
 it cannot read (no such program, as on NixOS) drops the folder, which can leave no PATH and stop the chain.
