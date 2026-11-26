@@ -19,7 +19,8 @@ override must list **all four** keys (the loader validates the exact key set and
 | `update` | Intake can update an existing issue | Reserved: no skill step reads it yet (drift correction and status writes are future work) |
 | `classify` | A caller can request an advisory open-item classification of ambiguous source text (intake's `classify` operation) | Reserved: no skill step reads it yet (ambiguous follow-ups stay "needs your decision"; inferred PR links are not produced) |
 
-A person sets a flag in `.claude/workledger-kit.local.json` once the matching Wave 3a work has shipped. The
+A person sets a flag in `.claude/workledger-kit.local.json` only once everything in its "Meaning when `true`" cell has
+shipped. `batch` and `query` therefore stay `false` for now: Report page-content blocks and roadmap reads are missing. The
 config loader refuses `intake_capabilities` from a **tracked** copy of that file (decided case-insensitively,
 and also when the file sits under a submodule or another work tree), because flipping a flag enables writes
 and a tracked file could have been committed by anyone with repo write access.

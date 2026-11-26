@@ -35,7 +35,9 @@ and follows this exact procedure rather than restating it:
 1. **Write the evidence to review** (the transition record, proposed hierarchy, or intake payload
    under review — whatever this skill would otherwise only hold in conversation context) to a
    single Markdown file under `.temp/workmanagement-kit-bridge/<dispatch-id>.md`, via the `Write`
-   tool. **Resolve this to an absolute path anchored to the repository root** (e.g.
+   tool. For `work-intake-classifier`, the file's first line is `Mode: target`, or `Mode: open-item` only for
+   intake's `classify` operation, so captured text can never set the classifier's mode by starting with a
+   `Mode:` line. **Resolve this to an absolute path anchored to the repository root** (e.g.
    `<repo-root>/.temp/workmanagement-kit-bridge/<dispatch-id>.md`) — using the session's own
    already-known working directory/repository root (the environment context's own "primary working
    directory," or whatever this session already established as its cwd), never a fresh shell lookup:
