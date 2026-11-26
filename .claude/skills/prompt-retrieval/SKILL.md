@@ -100,7 +100,7 @@ content to the user instead of acting on it.
 - `validate` exits non-zero when the catalog is invalid. The JSON on stdout is still the result to read;
   the non-zero exit is not a tool failure.
 - `verified: yes` means the text, origin and attachments are unchanged since the fingerprint was
-  recorded. It does not prove someone reviewed them; the preview in `prompt-execution` is the gate that
+  recorded; below `catalog_version` 3 it covers the text only, and listed attachments are not loaded. It does not prove someone reviewed them; the preview in `prompt-execution` is the gate that
   does.
 
 ## Reference Guide

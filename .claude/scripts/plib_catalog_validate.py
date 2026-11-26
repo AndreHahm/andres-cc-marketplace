@@ -1398,7 +1398,17 @@ def summarize(meta: dict) -> dict:
         "fingerprint": current_fingerprint(meta),
         "attachments": [a["path"] for a in meta.get("_attachments", [])],
         "attachment_problems": meta.get("_attachment_problems", []),
+        "unloaded_attachments": _unloaded_attachments(meta),
     }
+
+
+def _unloaded_attachments(meta: dict) -> list[str]:
+    """Attachments a record lists in a catalog below version 3, where they are never loaded: the
+    preview names them so nobody approves a run expecting files that will not reach the session."""
+    paths = meta.get("attachments")
+    if meta.get("_version", 1) >= 3 or not isinstance(paths, list):
+        return []
+    return [p for p in paths if isinstance(p, str)]
 
 
 def _attachment_view(meta: dict) -> list[dict]:
@@ -1960,7 +1970,7 @@ def cmd_register(args) -> dict:
     ):  # verification is recorded by record-verification only
         write_record(path, meta)
     write_catalog(root, cat, [m["_path"] for m in records.values()] + [rel])
-    info["ok"] = True
+    info.update(ok=True, attachment_screen=attachment_screen(meta))
     return info
 
 
