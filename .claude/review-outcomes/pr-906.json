@@ -21,6 +21,16 @@
     },
     {
       "disposition": "fixed",
+      "finding": "3dac08b2ce614a1f9f05476e832171ee",
+      "line": 27,
+      "note": "CI Codex delta review fingerprint (plugin-rulebook-checker). The walk now tests / and its .git as a last step, so a git directory or worktree at / drops every entry. Fixed in 31e65c0a.",
+      "path": "plugins/git-kit/scripts/git-review-path.sh",
+      "pr": 906,
+      "recorded_at": "2026-11-26T07:36:34+00:00",
+      "rule": "path-filter bypass"
+    },
+    {
+      "disposition": "fixed",
       "finding": "7eba85422e8e9415fb6004ea1b097f5f",
       "line": 17,
       "note": "CI Codex delta review fingerprint. Trailing newlines lost in command substitution let a newline-named folder or link target pass the PATH filter; captures now keep them and control characters fail closed. Fixed in e760f10c.",
@@ -28,6 +38,16 @@
       "pr": 906,
       "recorded_at": "2026-11-26T07:01:30+00:00",
       "rule": "security"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "8588208ffbea6e9181f5e4a19ff86503",
+      "line": 81,
+      "note": "CI Codex delta review fingerprint (skill-reviewer). Partly right: / is tested only when the entry is / itself. The sentence now says the walk tests / as a separate last step. Fixed in 31e65c0a.",
+      "path": "plugins/git-kit/skills/cross-model-review/references/diff-mechanics-rationale.md",
+      "pr": 906,
+      "recorded_at": "2026-11-26T07:36:34+00:00",
+      "rule": "documentation-accuracy"
     },
     {
       "disposition": "fixed",
