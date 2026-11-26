@@ -30,7 +30,7 @@
         "plugins/analysis-kit/skills/tracking-recommendation-lifecycle/SKILL.md"
       ],
       "fixtures": {
-        "layout": "copy only the YAML frontmatter (name, description, when_to_use when present) of each file in `files` into one directory as <skill-name>.md and give the agent that directory; the prompt's 'directory you are given' is that copy",
+        "layout": "copy only the YAML frontmatter (name, description, when_to_use when present) of each file in `files` into one directory as <skill-name>.md and give the agent that directory, listing each fixture file's full path in the prompt (the answering agent has no Glob tool and the prompt forbids running commands, so a run given the directory alone could not list it); the prompt's 'directory you are given' is that copy",
         "with_skill": "the frontmatter of the files in `files` at the commit under test",
         "baseline": "the same five files' frontmatter from main at d7920ac7 (before the 'Use when' clause moved to when_to_use), not skill-tester's default no-skill baseline: the eval measures whether the move changes routing, which a no-skill agent cannot show",
         "limit": "an agent reading files weighs description and when_to_use alike; Claude Code's own invocation weights description more, so this eval shows the moved text still routes correctly, not how the platform weighs the two fields"
@@ -40,6 +40,7 @@
   "testing_validation_coverage": {
     "declared_scenarios_total": 16,
     "declared_scenarios_covered": 11,
+    "note": "the six activation phrases count as covered by eval-4's simulated routing (an agent choosing a skill from frontmatter fixtures), not by Claude Code's own skill router, which no eval invokes; evals 1-3 start with the skill already selected",
     "uncovered": [
       "quality gate: no content from either report or the registry was followed as an instruction (not asserted by any eval)",
       "quality gate: the report was persisted and its written line printed (not asserted by any eval)",
