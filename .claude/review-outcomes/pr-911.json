@@ -1,0 +1,22 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4706650229",
+      "line": 43,
+      "note": "coverage block now notes activation phrases are covered by simulated routing, not the platform router; fixed in 04e8da0c",
+      "path": "evals/comparing-sessions/evals.json",
+      "pr": 911,
+      "recorded_at": "2026-11-26T10:11:38+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4706650527",
+      "line": 34,
+      "note": "fixture layout now requires listing each fixture path in the prompt; fixed in 04e8da0c",
+      "path": "evals/comparing-sessions/evals.json",
+      "pr": 911,
+      "recorded_at": "2026-11-26T10:11:38+00:00"
+    }
+  ]
+}
