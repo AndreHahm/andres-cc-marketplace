@@ -1,0 +1,23 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4704652133",
+      "note": "Split the run test so the checkout and worktree cases run on Windows; link cases keep needs_symlinks. Fixed in e760f10c.",
+      "path": "tests/marketplace_ci/test_git_review_scope_script.py",
+      "pr": 906,
+      "recorded_at": "2026-11-26T07:01:30+00:00",
+      "rule": "devin-windows-skip"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "7eba85422e8e9415fb6004ea1b097f5f",
+      "line": 17,
+      "note": "CI Codex delta review fingerprint. Trailing newlines lost in command substitution let a newline-named folder or link target pass the PATH filter; captures now keep them and control characters fail closed. Fixed in e760f10c.",
+      "path": "plugins/git-kit/scripts/git-review-path.sh",
+      "pr": 906,
+      "recorded_at": "2026-11-26T07:01:30+00:00",
+      "rule": "security"
+    }
+  ]
+}
