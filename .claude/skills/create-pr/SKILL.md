@@ -6,7 +6,7 @@ description: >-
   request", or "push this and make a PR" — for linking an issue at creation time or reviewer actions on
   an existing PR, see `collaborating-on-a-pr` instead.
 argument-hint: (optional) an issue number to close or reference, and/or --bypass-codex-review "<reason>", and/or --bypass-cross-model-review "<reason>" — otherwise an interactive guide
-allowed-tools: Bash(gh pr create:*), Bash(gh pr view:*), Bash(gh pr comment:*), Bash(gh pr edit:*), Bash(gh api user:*), Bash(gh api repos/*/collaborators/*/permission:*), Bash(gh api repos/*/labels/*:*), Bash(gh repo view:*), Bash(git status:*), Bash(git push:*), Bash(git diff --name-only -z:*), Bash(grep -zqxF:*), Bash(python3 -I "${CLAUDE_PLUGIN_ROOT}/scripts/git-bypass-attestation-marker.py":*), Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh:*), Bash(uv run python "${CLAUDE_PLUGIN_ROOT}/scripts/git-check-pr-title.py":*), Bash(uv run python "${CLAUDE_PLUGIN_ROOT}/scripts/git-codex-parity-review.py":*), Bash(uv run python .claude/scripts/git-codex-parity-review.py:*), Bash(python3 -I "${CLAUDE_PLUGIN_ROOT}/scripts/git-review-accepted-findings.py" lines:*), AskUserQuestion, Read, Write, Skill(commit), Skill(collaborating-on-a-pr), Skill(cross-model-review), Skill(github-issue-lifecycle)
+allowed-tools: Bash(gh pr create:*), Bash(gh pr view:*), Bash(gh pr comment:*), Bash(gh pr edit:*), Bash(gh api user:*), Bash(gh api repos/*/collaborators/*/permission:*), Bash(gh api repos/*/labels/*:*), Bash(gh repo view:*), Bash(git status:*), Bash(git push:*), Bash(git diff --name-only -z:*), Bash(grep -zqxF:*), Bash(python3 -I "${CLAUDE_PLUGIN_ROOT}/scripts/git-bypass-attestation-marker.py":*), Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh:*), Bash(uv run python "${CLAUDE_PLUGIN_ROOT}/scripts/git-check-pr-title.py":*), Bash(uv run python "${CLAUDE_PLUGIN_ROOT}/scripts/git-codex-parity-review.py":*), Bash(uv run python .claude/scripts/git-codex-parity-review.py:*), Bash(python3 -I "${CLAUDE_PLUGIN_ROOT}/scripts/git-review-accepted-findings.py" lines:*), AskUserQuestion, Read, Write, Skill(commit), Skill(cross-model-review), Skill(github-issue-lifecycle)
 ---
 
 # How to Create a Pull Request Using GitHub CLI
@@ -29,8 +29,9 @@ This guide explains how to create pull requests using GitHub CLI in our project.
 
 ## When NOT to Use
 
-- **Linking an issue at PR creation time, or reviewer actions on an existing PR** — see
-  `collaborating-on-a-pr` instead; it wraps this skill for the issue-linking case.
+- **A request framed as linking an issue ("create a PR that closes #123"), or reviewer actions on an
+  existing PR** — see `collaborating-on-a-pr` instead; its Path A wraps this skill for the issue-linking
+  case. A direct `/create-pr <N>` run still links the issue itself (step 6).
 - **Deciding whether a review comment gets fixed, filed as an issue, or declined** — that's
   `handling-review-findings`'s job, for a PR that already exists. Pre-flight Checks step 3.5 below is a
   distinct, earlier check: a self-review of this session's own conversation for issues that were never
@@ -358,18 +359,15 @@ Before creating a PR, check for uncommitted changes:
    a. Resolve the current head SHA and `{owner}/{repo}`: `gh pr view <number> --json headRefOid,url`. Derive `{owner}/{repo}` from the `url` field (never a separate `gh repo view` — same discipline `commit`'s step 16.5(b) and `merge-pr`'s step 1 already use); this is the PR this run just created, so `{owner}/{repo}` is always this checkout's own repository, never a fork.
    b. Follow `../../references/git-bypass-attestation-protocol.md`'s protocol steps 1-5 exactly (bot-trigger-mention check on the reason text, actor/permission verification, marker construction and posting, label verification and apply, and outcome report), using this step's own PR number, (a)'s resolved `{owner}/{repo}`, and (a)'s resolved `head_sha`. This skill is not granted the protocol's step 3(b) comparison call, so when that step runs a checkout's `.claude/scripts/` copy it always counts as "could not be compared" and ends in its `AskUserQuestion`. **Step 4's fresh label-read and its remove-then-reapply branch are not skipped for this caller** — they run unconditionally, the same as for `merge-pr`/`commit`. In the overwhelmingly common case this skill is expected to land on the plain-apply branch, since the label is being applied to a PR this run just created moments earlier — but that's an expectation about the typical outcome, not a guarantee this step relies on; if the label were somehow already present (e.g. a race with another actor/workflow between step 4 and this step), step 4's fresh read catches it and the remove-then-reapply branch runs exactly as it would for either other caller. On any failure, state clearly that the PR remains created but the bypass was **not** successfully attested, and why — never report a failed attestation attempt as if it succeeded.
 
-6. **Issue-linking hand-off**: skip this step entirely if `create-pr` was invoked as a nested dependency
-   from `collaborating-on-a-pr`'s own Path A (i.e. **this run's own instructions explicitly say to skip
-   it** — Path A step 1 always passes that instruction alongside its closing-reference request; do not
-   infer the skip from context or caller identity, only from the instruction actually being present) —
-   that flow already verifies the closing/referencing line itself right after this skill returns, so doing
-   it here too would duplicate the same check. Otherwise: if `$ARGUMENTS` or the conversation named a
-   related issue this PR should close or reference, invoke `Skill(collaborating-on-a-pr)` — explicitly instructing it,
-   as part of this invocation, to run only its Path A step 2 (verify the `Closes #<N>`/`Refs #<N>` line
-   landed in the body just created, patching it via `gh pr edit --body-file` if not) and **never to
-   re-invoke `create-pr`**, since the PR already exists. This mirrors the Pre-flight Checks section's own
-   pattern above (an explicit skip-instruction passed at invocation time to break a would-be loop) and
-   reuses `collaborating-on-a-pr`'s verify-and-patch logic instead of re-deriving it here.
+6. **Issue-linking check**: if `$ARGUMENTS`, the conversation, or the instruction a caller passed
+   (`collaborating-on-a-pr`'s Path A passes one) named a related issue this PR should close or reference,
+   verify the line landed: `gh pr view <number> --json body -q .body`. If the `Closes #<N>`/`Refs #<N>`
+   line is missing, compose the updated body (the existing body, a blank line, then that line), `Write` it
+   to a file in the session's scratchpad directory and run `gh pr edit <number> --body-file <that path>`.
+   **Never place the fetched body inside a shell-interpolated string or a heredoc**: PR content is
+   writable by anyone with repo access, and only a `Write` tool parameter keeps it out of shell parsing.
+   This skill never invokes `collaborating-on-a-pr`: that skill's Path A calls this one, never the reverse,
+   so the pair has no loop to break.
 
 ## Best Practices
 
@@ -424,13 +422,12 @@ checkout, ready, reviewers) and how to use a template file for consistent PR des
 
 ## Loop-Breaker Convention
 
-`create-pr` sits at the center of two bidirectional skill pairs: `create-pr` ↔ `commit` (see Pre-flight
-Checks above) and `create-pr` ↔ `collaborating-on-a-pr` (see the Issue-linking hand-off above). Both
-`commit` and `collaborating-on-a-pr` independently guard against re-entering `create-pr` — or being
-re-invoked by it — by passing an explicit skip-instruction at invocation time, rather than relying on
-shared state or caller identity to detect the loop. Any future caller of either pair must preserve this
-pattern rather than silently dropping it, or the two skills involved can end up calling each other in a
-loop.
+`create-pr` and `commit` call each other (see Pre-flight Checks above): this skill tells `commit` to
+skip its Auto-PR step and its push, an explicit instruction passed at invocation time rather than shared
+state or caller identity, so `commit` never re-enters `create-pr`. Any future caller of that pair must
+keep passing it, or the two can call each other in a loop. `collaborating-on-a-pr` calls `create-pr` in
+one direction only (its Path A); step 6 checks the closing line itself, so keep that call one-way and
+never add a `Skill(collaborating-on-a-pr)` call back.
 
 ## Testing & Validation
 
@@ -446,7 +443,7 @@ loop.
 - "summarize this PR's changes" / "update this PR's description" → `explain-pr-changes`
 - "merge this PR" / "is this ready to merge" → `merge-pr`
 
-**Last dated run record:** 2026-11-24, `evals/create-pr/workspace/iteration-6/` — eval 4 re-run after the marker moved from `jq` to `git-bypass-attestation-marker.py` (issue #861), Quick Workflow, `with_skill` only, 4 of 4. Previous record: 2026-11-21, `evals/create-pr/workspace/iteration-5/` — evals 7-8 (accepted findings carried into the body, issue #808), `skill-tester` Quick Workflow dry runs, `with_skill` only, 5/5; 2026-10-08, `scripts/smoke_test.py` (5 checks pass; structural only, no live bypass run) — see `references/verification-log.md`.
+**Last dated run record:** 2026-11-26, `evals/create-pr/workspace/iteration-7/` — eval 3 re-run after step 6 stopped invoking `collaborating-on-a-pr` and checks the closing line itself (PR #925), Quick Workflow, `with_skill` only, 6 of 6, with assertions 2 and 3 rewritten for that design. Previous record: 2026-11-24, `evals/create-pr/workspace/iteration-6/` — eval 4 re-run after the marker moved from `jq` to `git-bypass-attestation-marker.py` (issue #861), Quick Workflow, `with_skill` only, 4 of 4. Previous record: 2026-11-21, `evals/create-pr/workspace/iteration-5/` — evals 7-8 (accepted findings carried into the body, issue #808), `skill-tester` Quick Workflow dry runs, `with_skill` only, 5/5; 2026-10-08, `scripts/smoke_test.py` (5 checks pass; structural only, no live bypass run) — see `references/verification-log.md`.
 See `references/test-scenarios.md` for detailed verification scenarios covering the Pre-flight Checks
 step 4 cross-model-review gate, step 3.5's session open-issues check, and `--bypass-codex-review`
 behavior (R30 extraction — kept out of this file to stay under R13's line budget).

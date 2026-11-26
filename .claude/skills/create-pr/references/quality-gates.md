@@ -74,9 +74,8 @@ to keep SKILL.md under R13's line budget (R30). SKILL.md keeps the key gates inl
 - [ ] Draft-vs-ready-to-merge is always asked via `AskUserQuestion` — never assumed to be draft
 - [ ] The `gh-pr-create` marker is always written immediately before `gh pr create`, never earlier in the
       run
-- [ ] The Issue-linking hand-off step is always skipped when invoked as a nested dependency from
-      `collaborating-on-a-pr`'s Path A (per its own explicit skip-instruction) — never run twice for the
-      same issue reference
+- [ ] Step 6 checks the closing/referencing line itself and never invokes `collaborating-on-a-pr` —
+      that skill's Path A calls this one, never the reverse
 - [ ] PR titles and descriptions are always in English, matching the template's exact section headers —
       never a custom section not in the resolved template
 - [ ] PR titles and descriptions never contain a literal bot-trigger mention (e.g. `@codex review`,
