@@ -115,6 +115,10 @@ run.
 - Every call uses `uv run --isolated --no-project --no-config python`, so a project's own `pyproject.toml`,
   `uv.toml` and `.venv` are not used. Checked against uv 0.9.5: plain `--no-project` was not reliably safe
   (it picked up a repository `.venv` once), and the isolated form always ran in an ephemeral environment.
+  The validator itself runs as `python -I` (Python's isolated mode; checked 2026-11-26 that the flag reaches
+  the interpreter through `uv run`), so `PYTHONPATH` and other `PYTHON*` variables, the user site folder and
+  the script's own folder cannot put a module such as `sitecustomize` in front of it. A `sitecustomize` or
+  `.pth` file in the interpreter's own installation still loads.
 - `git` is looked up outside the working directory. The catalog root must resolve inside the project
   root and never at, under or below (at any depth) `.git`, `.github` or Claude Code's configuration
   folders under `.claude/` (rules, commands, agents, skills, hooks and similar; the full list is
