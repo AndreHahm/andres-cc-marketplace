@@ -4,7 +4,7 @@
       "disposition": "fixed",
       "finding": "4711346829",
       "line": 254,
-      "note": "Test read only the first allowed-tools line; now parses frontmatter as YAML (945a3413).",
+      "note": "Test read only the first allowed-tools line; now parses frontmatter as YAML (60cc6d75).",
       "path": "tests/marketplace_ci/test_git_review_scope_script.py",
       "pr": 924,
       "recorded_at": "2026-11-26T17:01:44+00:00"
