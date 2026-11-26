@@ -8,6 +8,7 @@ import importlib.util
 import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -2109,15 +2110,55 @@ def test_the_skill_chain_carries_the_path_filter_lines_of_the_script():
     assert _skill_path_filter() == block
 
 
-@pytest.mark.skipif(os.name == "nt", reason="the fixture links and paths are POSIX-shaped")
-@needs_symlinks
-def test_the_skill_path_filter_drops_entries_inside_the_repository_and_ends(plain_repo, tmp_path):
+def _bash_path(path: Path) -> str:
+    """The path as Git Bash spells it on Windows (/c/...), unchanged elsewhere."""
+    if os.name != "nt":
+        return str(path)
+    return subprocess.run(
+        ["cygpath", "-u", str(path)], capture_output=True, text=True, check=True
+    ).stdout.strip()
+
+
+def _run_skill_path_filter(cwd: Path, entries, prelude: str = "") -> list[str]:
+    """Run the skill's own filter lines on a PATH of `entries`; return PATH_FILTERED and PATH.
+
+    PATH is set inside the script, so Git Bash never rewrites it as a Windows path list.
+    `prelude` is shell text run first (before PATH is narrowed).
+    """
+    path = ":".join(_bash_path(p) for p in entries)
+    chain = f"{prelude}PATH={shlex.quote(path)}\n{_skill_path_filter()}\n"
+    chain += 'printf "%s\\0%s" "${PATH_FILTERED:-0}" "$PATH"\n'
+    ran = subprocess.run(
+        [BASH, "-c", chain, "bash", "diff"],  # a stray shell positional must not reach the helpers
+        cwd=cwd,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    assert ran.returncode == 0, ran.stderr
+    return ran.stdout.split("\0")
+
+
+def test_the_skill_path_filter_drops_checkout_and_worktree_entries_and_ends(plain_repo, tmp_path):
     _git(plain_repo, "worktree", "add", "-q", str(tmp_path / "wt"))
-    outside, links = tmp_path / "outside", tmp_path / "links"
-    to_worktree, through = tmp_path / "to-worktree", tmp_path / "through"
+    outside, in_repo, in_worktree = tmp_path / "outside", plain_repo / "bin", tmp_path / "wt/bin"
+    for folder in (outside, in_repo, in_worktree):
+        folder.mkdir()
+    out = _run_skill_path_filter(plain_repo, (outside, in_repo, in_worktree))
+    assert out == ["1", _bash_path(outside)]
+
+
+@pytest.mark.skipif(os.name == "nt", reason="links and newline file names are POSIX-only here")
+@needs_symlinks
+def test_the_skill_path_filter_drops_links_that_lead_inside(plain_repo, tmp_path):
+    _git(plain_repo, "worktree", "add", "-q", str(tmp_path / "wt"))
     in_repo, in_worktree = plain_repo / "bin", tmp_path / "wt/bin"
-    entries = (outside, in_repo, in_worktree, links, to_worktree, through)
-    for folder in entries:
+    outside, links, to_worktree = tmp_path / "outside", tmp_path / "links", tmp_path / "to-wt"
+    through, newline_dir = tmp_path / "through", tmp_path / "evil\n"
+    newline_target, hop = tmp_path / "newline-target", tmp_path / "hop"
+    entries = (outside, links, to_worktree, through, newline_dir, newline_target)
+    for folder in (in_repo, in_worktree, hop, *entries):
         folder.mkdir()
     (in_repo / "git").write_text("#!/bin/sh\n")
     (in_worktree / "git").write_text("#!/bin/sh\n")
@@ -2125,15 +2166,80 @@ def test_the_skill_path_filter_drops_entries_inside_the_repository_and_ends(plai
     (to_worktree / "git").symlink_to(in_worktree / "git")  # one that leads into the other worktree
     (tmp_path / "folder-link").symlink_to(in_repo, target_is_directory=True)
     (through / "git").symlink_to(tmp_path / "folder-link/git")  # one that passes a folder link
-    chain = _skill_path_filter() + '\nprintf "%s\\n%s\\n" "${PATH_FILTERED:-0}" "$PATH"\n'
-    ran = subprocess.run(
-        [BASH, "-c", chain, "bash", "diff"],  # a stray shell positional must not reach the helpers
-        cwd=plain_repo,
-        env={**os.environ, "PATH": ":".join(map(str, entries))},
-        capture_output=True,
-        text=True,
-        timeout=30,
-        check=False,
-    )
-    assert ran.returncode == 0, ran.stderr
-    assert ran.stdout.splitlines() == ["1", str(outside)]
+    # A captured name loses its trailing newlines, so these were kept before:
+    (newline_dir / "git").symlink_to(in_repo / "git")  # a folder whose name ends in one
+    (hop / "git\n").symlink_to(in_repo / "git")
+    (newline_target / "git").symlink_to(hop / "git\n")  # a link whose target's name ends in one
+    resolves_to_newline = tmp_path / "plain-name"  # an entry that resolves to such a folder
+    resolves_to_newline.symlink_to(newline_dir, target_is_directory=True)
+    parent_link = tmp_path / "parent-link"  # a link whose target's folder resolves to such a folder
+    parent_link.mkdir()
+    (parent_link / "git").symlink_to(resolves_to_newline / "git")
+    harmless = tmp_path / "harmless\nname"  # a control character alone drops the entry
+    harmless.mkdir()
+    (harmless / "git").write_text("#!/bin/sh\n")
+    extra = (resolves_to_newline, parent_link, harmless)
+    out = _run_skill_path_filter(plain_repo, (*entries, *extra))
+    assert out == ["1", str(outside)]
+
+
+@pytest.mark.skipif(os.name == "nt", reason="Windows does not allow a newline in a file name")
+def test_the_skill_path_filter_keeps_nothing_when_the_git_directory_path_holds_a_newline(
+    tmp_path, monkeypatch
+):
+    """`read` used to stop at the newline, so the common git directory was a different path."""
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", os.devnull)
+    monkeypatch.setenv("GIT_CONFIG_NOSYSTEM", "1")
+    repo = tmp_path / "a\nb" / "repo"
+    repo.parent.mkdir()
+    _git(tmp_path, "init", "-q", "-b", "main", str(repo))
+    (repo / "k").write_text("k")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-q", "-m", "b")
+    _git(repo, "worktree", "add", "-q", str(tmp_path / "wt"))
+    _git(repo, "worktree", "add", "-q", str(tmp_path / "wt2"))
+    sibling, outside = tmp_path / "wt2/bin", tmp_path / "outside"
+    for folder in (sibling, outside):
+        folder.mkdir()
+    assert _run_skill_path_filter(tmp_path / "wt", (outside, sibling)) == ["0", ""]
+
+
+@pytest.mark.skipif(os.name == "nt", reason="Windows cannot remove the current directory")
+def test_the_skill_path_filter_keeps_nothing_when_the_checkout_path_cannot_be_read(tmp_path):
+    """With no checkout path there is no checkout check, so an entry inside it would be kept."""
+    gone, outside = tmp_path / "gone", tmp_path / "outside"
+    for folder in (gone, outside):
+        folder.mkdir()
+    prelude = f"cd {shlex.quote(str(gone))} && rmdir {shlex.quote(str(gone))}\n"
+    assert _run_skill_path_filter(tmp_path, (outside,), prelude) == ["0", ""]
+
+
+@pytest.mark.skipif(
+    os.name == "nt" or os.geteuid() == 0, reason="needs POSIX mode bits that root does not obey"
+)
+def test_the_skill_path_filter_drops_a_worktree_whose_git_file_cannot_be_read(plain_repo, tmp_path):
+    """An unreadable `.git` used to give no git directory, so the other worktree was not found."""
+    worktree = tmp_path / "wt"
+    _git(plain_repo, "worktree", "add", "-q", str(worktree))
+    inside, outside = worktree / "bin", tmp_path / "outside"
+    for folder in (inside, outside):
+        folder.mkdir()
+    (worktree / ".git").chmod(0)
+    try:
+        out = _run_skill_path_filter(plain_repo, (outside, inside))
+    finally:
+        (worktree / ".git").chmod(0o644)
+    assert out == ["1", str(outside)]
+
+
+@pytest.mark.skipif(os.name == "nt", reason="Windows does not allow a newline in a file name")
+def test_the_skill_path_filter_keeps_nothing_when_the_checkout_path_ends_in_a_newline(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", os.devnull)
+    monkeypatch.setenv("GIT_CONFIG_NOSYSTEM", "1")
+    checkout = tmp_path / "repo\n"
+    _git(tmp_path, "init", "-q", str(checkout))
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    assert _run_skill_path_filter(checkout, (outside,)) == ["0", ""]
