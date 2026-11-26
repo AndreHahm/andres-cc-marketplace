@@ -1,0 +1,31 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/git-kit/skills/collaborating-on-a-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "Validates the argument as a bare number (or PR URL) before the first gh call",
+      "type": "functionality",
+      "target": "walkthrough.md"
+    },
+    {
+      "text": "Applies only Tier 2 (CODEOWNERS match) of merge-rights-check.md and explicitly skips Tiers 1 and 3",
+      "type": "functionality",
+      "target": "walkthrough.md"
+    },
+    {
+      "text": "Presents the CODEOWNERS result as informational context that does not block the approval, and notes the team-handle limitation",
+      "type": "functionality",
+      "target": "walkthrough.md"
+    },
+    {
+      "text": "Writes the gh-pr-review marker immediately before `gh pr review 42 --approve`, not earlier in the run",
+      "type": "functionality",
+      "target": "walkthrough.md"
+    },
+    {
+      "text": "Offers at most four AskUserQuestion options for the action (Comment / Approve / Request changes / No action), with Add reviewers reachable through the free-text Other answer rather than a fifth option",
+      "type": "functionality",
+      "target": "walkthrough.md"
+    }
+  ]
+}

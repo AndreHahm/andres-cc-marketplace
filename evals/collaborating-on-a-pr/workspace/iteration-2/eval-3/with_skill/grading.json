@@ -1,0 +1,13 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Validates the argument as a bare number (or PR URL) before the first gh call", "passed": true, "evidence": "Lines 9-10: \"`$ARGUMENTS` is `42`, a bare number. It passes validation ... Only after validation passes, the first `gh` call runs\"."},
+    {"text": "Applies only Tier 2 (CODEOWNERS match) of merge-rights-check.md and explicitly skips Tiers 1 and 3", "passed": true, "evidence": "Lines 16 and 22: applies \"only its Tier 2 steps\"; \"Tiers 1 (repo owner) and 3 (collaborator write permission) are deliberately skipped\"."},
+    {"text": "Presents the CODEOWNERS result as informational context that does not block the approval, and notes the team-handle limitation", "passed": true, "evidence": "Lines 27-29: lists `@AndreHahm`, `@example-org/git-team`, notes octo-reviewer is not a direct entry and team membership still counts; \"Does it block the approval? No.\""},
+    {"text": "Writes the gh-pr-review marker immediately before `gh pr review 42 --approve`, not earlier in the run", "passed": true, "evidence": "Lines 48-54: marker written \"Immediately before the gh command, and not earlier in the run ... not before the question in step 3\", then `gh pr review 42 --approve`."},
+    {"text": "Offers at most four AskUserQuestion options for the action (Comment / Approve / Request changes / No action), with Add reviewers reachable through the free-text Other answer rather than a fifth option", "passed": true, "evidence": "Lines 33-40: \"One question with exactly four options\"; \"Add reviewers is not a listed option, because the tool allows at most four options per question ... through the tool's own \\\"Other\\\" free-text answer\"."}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 5, "pass_rate": 1.0},
+  "notes": "Quick Workflow, with_skill only, plan-only, iteration 2 (2026-11-26), eval 3 only, run against the PR 925 worktree copy after Path B step 3 was narrowed to four options. Assertion 5 is new in this iteration. No baseline arm."
+}

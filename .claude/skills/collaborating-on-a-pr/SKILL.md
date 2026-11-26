@@ -34,8 +34,8 @@ Say "create a PR that closes #123", or "review PR #42".
 - **Linking an issue (Path A):** invoke `create-pr` with the closing line (step 1), then verify the line
   landed in the PR body and patch it if not (step 2).
 - **Reviewing (Path B):** validate the PR number or URL (step 1), read which CODEOWNERS entries match its
-  files, as context only (step 2), then choose Comment, Approve, Request changes, Add reviewers or No
-  action, and run it (steps 3-4).
+  files, as context only (step 2), then choose Comment, Approve, Request changes or No action (Add
+  reviewers through the question's free-text answer), and run it (steps 3-4).
 
 ## When to Use
 
@@ -121,10 +121,12 @@ other's job.
      concern, not this skill's, and repeating it here would misrepresent a review-context lookup as a
      merge gate.
    See `references/reviewer-checklist.md` for the full rationale behind reusing only Tier 2.
-3. **Ask the action**: `AskUserQuestion` — Comment / Approve / Request changes / Add reviewers / No
-   action (just wanted the context). The last option exists because step 2 alone already answers "who
-   can review this" for a user who asked only that — don't force a write action on someone who didn't
-   want one.
+3. **Ask the action**: `AskUserQuestion` — Comment / Approve / Request changes / No action (just wanted
+   the context). The tool takes at most four options per question, so Add reviewers is not a listed
+   option: say in the question that the user can choose it through the tool's own "Other" answer, naming
+   the reviewers, and take it directly when the user's request already asked for it. No action exists
+   because step 2 alone already answers "who can review this" for a user who asked only that — don't
+   force a write action on someone who didn't want one.
 4. **Execute**: immediately before whichever `gh pr review`/`gh pr comment` command below runs, run
    `bash "${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh" gh-pr-review collaborating-on-a-pr` — this
    writes the marker git-kit's reviewer-action guard requires; it must be written right before the
@@ -142,7 +144,8 @@ other's job.
 
 **Last dated run record:** `evals/collaborating-on-a-pr/workspace/iteration-1/` (2026-11-26) — 3
 scenarios, Quick Workflow, plan-only, with_skill only, 12/12 assertions; no baseline arm, so it shows the
-text produces the intended steps, not that it beats having no skill. `scripts/smoke_test.py` (4/4 checks:
+text produces the intended steps, not that it beats having no skill. Iteration 2 (2026-11-26) re-ran
+eval 3 after Path B step 3 was cut to four options: 5/5, with the four-option assertion new. `scripts/smoke_test.py` (4/4 checks:
 frontmatter, referenced-file existence, Bash-scope grant consistency, step-header sequencing) last passed
 2026-11-26.
 

@@ -181,8 +181,7 @@ switching to `--body-file` — added a `Write` requirement to Workflows 2/3 with
 `Write` grant to `allowed-tools`, which the Boundaries section even stated explicitly ("this skill
 itself holds no `Write`/`Edit` grant"). Codex caught this in the very next review round. Fixed by
 adding `Write` to `allowed-tools` and updating the Boundaries section to state the new grant's scope
-and rationale. No fresh eval run; verified by direct inspection of the frontmatter grant list against
-the workflow steps that now require it.
+and rationale; verified against the workflow steps that need it, with no eval run.
 
 **Verified live, 2026-08-31 (sibling incident, PR #257):** no literal reproduction of this issue inside
 `github-issue-lifecycle` itself — the confirmed incident was a commit message and PR title in a
