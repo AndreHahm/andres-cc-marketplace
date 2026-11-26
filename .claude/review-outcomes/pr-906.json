@@ -11,12 +11,32 @@
     },
     {
       "disposition": "fixed",
+      "finding": "3059ea9704cf3e1840f653a827c74b78",
+      "line": 23,
+      "note": "CI Codex delta review fingerprint (plugin-rulebook-checker). A checkout at /, or another worktree of the repository at /, now keeps no entry; untested, needs a real /.git. Fixed in dde4a3ef.",
+      "path": "plugins/git-kit/scripts/git-review-path.sh",
+      "pr": 906,
+      "recorded_at": "2026-11-26T07:24:19+00:00",
+      "rule": "security"
+    },
+    {
+      "disposition": "fixed",
       "finding": "7eba85422e8e9415fb6004ea1b097f5f",
       "line": 17,
       "note": "CI Codex delta review fingerprint. Trailing newlines lost in command substitution let a newline-named folder or link target pass the PATH filter; captures now keep them and control characters fail closed. Fixed in e760f10c.",
       "path": "plugins/git-kit/scripts/git-review-path.sh",
       "pr": 906,
       "recorded_at": "2026-11-26T07:01:30+00:00",
+      "rule": "security"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "dd98ce0dd2f0bd3a703aa6985aaca3b6",
+      "line": 22,
+      "note": "CI Codex delta review fingerprint (dependency-reviewer and security-reviewer). A final CR in a .git or commondir path is now kept, so the control-character check treats it as inside. Fixed in dde4a3ef.",
+      "path": "plugins/git-kit/scripts/git-review-path.sh",
+      "pr": 906,
+      "recorded_at": "2026-11-26T07:24:19+00:00",
       "rule": "security"
     }
   ]
