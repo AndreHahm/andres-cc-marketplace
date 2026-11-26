@@ -1050,6 +1050,18 @@ def check_step2_coverage_tier_disclosure():
         ("never blocks, with or without `--stop-on-review-findings`", "that it never blocks"),
         ("never as green", "that a failed read is not reported as green"),
         ("may describe an earlier head", "the stale-comment disclosure"),
+        (
+            "a `COMPLETED` entry does not prove the comment describes this head",
+            "that a completed check does not prove the comment is current",
+        ),
+        (
+            "`green` or `yellow` with `FAILURE`, `orange` or `red` with `SUCCESS`",
+            "the tier-versus-check disagreement caveat",
+        ),
+        (
+            "neither is the coverage-tier comment the bullet above reads",
+            "that --stop-on-review-findings never treats the coverage comment as a finding",
+        ),
     ):
         if needed not in flat:
             return False, f"step 2's coverage-tier disclosure no longer states {why}"
