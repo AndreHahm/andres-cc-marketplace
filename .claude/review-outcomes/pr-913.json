@@ -1,0 +1,110 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4707132873",
+      "line": 81,
+      "note": "KeyError from pwd becomes a typed ValueError; fixed in eee9ca2d",
+      "path": "plugins/workmanagement-kit/scripts/wmgt_bridge_caller.py",
+      "pr": 913,
+      "recorded_at": "2026-11-26T11:31:16+00:00"
+    },
+    {
+      "disposition": "declined",
+      "finding": "4707133186",
+      "line": 25,
+      "note": "pre-existing intake source check, out of scope; filed as #919",
+      "path": "plugins/workmanagement-kit/skills/plugin-integration-intake/references/wmgt-intake-classify-contract.md",
+      "pr": 913,
+      "recorded_at": "2026-11-26T11:31:18+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4707133492",
+      "line": 148,
+      "note": "registration test finds the guard entry in the merged mirror hooks.json; fixed in eee9ca2d",
+      "path": ".claude/scripts/wlgr_test_guard.py",
+      "pr": 913,
+      "recorded_at": "2026-11-26T11:31:16+00:00"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "4707133723",
+      "line": 252,
+      "note": "the testing rule allows quick evals; a baseline comparison is one option, not required",
+      "path": "plugins/workmanagement-kit/skills/plugin-integration-intake/SKILL.md",
+      "pr": 913,
+      "recorded_at": "2026-11-26T11:31:17+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "037e010375c3b1e19d41f5ceeb120268",
+      "line": 368,
+      "note": "loader and shell start-up variables dropped; endpoint and proxy variables filed as #918",
+      "path": "plugins/workmanagement-kit/scripts/wmgt_bridge_caller.py",
+      "pr": 913,
+      "recorded_at": "2026-11-26T11:31:19+00:00",
+      "rule": "environment-boundary"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "5e18e13569ff6728904376e7dc2eedd6",
+      "line": 365,
+      "note": "CODEX_HOME refused when relative or inside the repository; fixed in eee9ca2d",
+      "path": "plugins/workmanagement-kit/scripts/wmgt_bridge_caller.py",
+      "pr": 913,
+      "recorded_at": "2026-11-26T11:31:19+00:00",
+      "rule": "security"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "85cf6789306d4bcdaad2a13cea1abf9e",
+      "line": 152,
+      "note": "batch contract operation table lists classify; fixed in eee9ca2d",
+      "path": "plugins/workmanagement-kit/skills/plugin-integration-intake/SKILL.md",
+      "pr": 913,
+      "recorded_at": "2026-11-26T11:31:18+00:00",
+      "rule": "plugin-rulebook:R20"
+    },
+    {
+      "disposition": "declined",
+      "finding": "8f1f3ffde3bfd8e4950fa6150685c1e5",
+      "line": 18,
+      "note": "bare Write passes R6; a path-scoped grant's resolution is unverified",
+      "path": "plugins/workledger-kit/skills/onboarding-repositories/SKILL.md",
+      "pr": 913,
+      "recorded_at": "2026-11-26T11:31:23+00:00",
+      "rule": "tool-scoping"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "c8553fc4090a0448dd9c3659f56c71e8",
+      "line": 107,
+      "note": "residual: Codex agent schema has no tools or sandbox field; waiver line in PR body",
+      "path": ".codex/agents/work-intake-classifier.toml",
+      "pr": 913,
+      "recorded_at": "2026-11-26T11:31:20+00:00",
+      "rule": "capability-contradiction"
+    },
+    {
+      "disposition": "declined",
+      "finding": "d838b43874fc6935e3c04e630c9b9a11",
+      "line": 336,
+      "note": "line not in the diff; filed as #918",
+      "path": "plugins/workmanagement-kit/scripts/wmgt_bridge_caller.py",
+      "pr": 913,
+      "recorded_at": "2026-11-26T11:31:22+00:00",
+      "rule": "reliability"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "e161d9623ee46482182c5f9409fb8339",
+      "line": 13,
+      "note": "onError warn is deliberate; block would stop every Write and Edit; waiver line in PR body",
+      "path": "plugins/workledger-kit/hooks/hooks.json",
+      "pr": 913,
+      "recorded_at": "2026-11-26T11:31:21+00:00",
+      "rule": "hook-safety"
+    }
+  ]
+}

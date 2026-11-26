@@ -431,7 +431,10 @@ def dispatch(
         # encoding (cp1252 on a default Windows install, not UTF-8), which
         # silently corrupts any non-ASCII character (e.g. an em dash) the
         # child process writes as UTF-8.
-        result = subprocess.run(
+        # Semgrep's tainted-env-args rule flags node's path, which comes from PATH. Not exploitable:
+        # list arguments and no shell; node and the bridge must be absolute paths outside the
+        # repository under review, agent is a fixed choice and dispatch_id is pattern-checked.
+        result = subprocess.run(  # nosemgrep
             cmd, capture_output=True, text=True, encoding="utf-8", cwd=str(root), env=env
         )
         stdout = result.stdout.strip()
