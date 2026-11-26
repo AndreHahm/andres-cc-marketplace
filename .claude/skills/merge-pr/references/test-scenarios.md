@@ -338,6 +338,11 @@ a fresh `gh repo view` (skill-reviewer M1, 2026-08-31):**
   other than this PR's number → it does not count, and the thread stops as missing
 - A thread's first comment was deleted, so its first comment id changed → stop naming the new id; the user
   records the thread again under that id
+- A page's `pageInfo.endCursor` holds a character outside `[A-Za-z0-9+/=_-]` (for example `$(` or a
+  quote) → no next-page call is made; the thread count, and the review-outcomes check, stop as
+  undetermined
+- `hasNextPage` is `true` but `endCursor` is empty or `null` → refused like any other cursor: no call, the
+  first page's threads are not checked on their own, and both checks stop as undetermined
 
 **Verify step 4(c)'s wait for in-flight runs (issue #850):**
 - A run started by a body edit is still in progress when the bypass path reaches 4(c) → 4(c) waits until

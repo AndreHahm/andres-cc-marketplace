@@ -1087,6 +1087,17 @@ def check_step2_coverage_tier_disclosure():
             "that a FAILURE can come from any failed step of the job (PR #909, Devin)",
         ),
         ("```bash gh api graphql", "the GraphQL example's fence is tagged bash (PR #909, R24)"),
+        (
+            "with no trailing newline, matches `^[A-Za-z0-9+/=_-]+$`",
+            "that the API's endCursor is checked before it is typed into a command"
+            " (PR #909, security)",
+        ),
+        (
+            "counts as a failed query: make no call, never use the pages already fetched,"
+            " and both this count and step 2's"
+            ' "Review outcomes recorded" check stop as undetermined',
+            "that a refused cursor fails the count and the outcomes gate, never a partial pass",
+        ),
     ):
         if needed not in flat:
             return False, f"step 2's coverage-tier disclosure no longer states {why}"
