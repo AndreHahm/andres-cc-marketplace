@@ -1083,8 +1083,10 @@ def test_documented_command_writes_no_bytecode(name, tmp_path):
     project = tmp_path / "project"
     project.mkdir()
     env = {key: value for key, value in os.environ.items() if key != "PYTHONDONTWRITEBYTECODE"}
+    # dck-init.py writes to CLAUDE_PROJECT_DIR before the working directory, so pin it here.
     env.update(
         {
+            "CLAUDE_PROJECT_DIR": str(project),
             "OPENROUTER_API_KEY": dck.PLACEHOLDER_KEY,
             "HTTPS_PROXY": "http://127.0.0.1:1",
             "https_proxy": "http://127.0.0.1:1",
@@ -1092,13 +1094,20 @@ def test_documented_command_writes_no_bytecode(name, tmp_path):
             "no_proxy": "",
         }
     )
-    subprocess.run(
+    done = subprocess.run(
         [sys.executable, *flags, str(scripts / f"{name}.py")],
         capture_output=True,
         cwd=project,
         env=env,
         timeout=30,
     )
+    # The JSON output shows the script ran past its import of dck-decide.py.
+    out = json.loads(done.stdout)
+    if name == "dck-doctor":
+        assert (done.returncode, out["ok"]) == (1, False)
+    else:
+        assert (done.returncode, out["action"]) == (0, "created")
+        assert (project / ".env.example").is_file()
     assert not (scripts / "__pycache__").exists()
 
 
