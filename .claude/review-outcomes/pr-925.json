@@ -1,0 +1,51 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4712068287",
+      "line": 65,
+      "note": "fixed in f81a0290: Quick Start fetches the PR head first, as Pattern 2 does",
+      "path": "plugins/git-kit/skills/git-worktrees/SKILL.md",
+      "pr": 925,
+      "recorded_at": "2026-11-26T18:41:44+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4712068453",
+      "line": 23,
+      "note": "fixed in f81a0290: a plan-only request leaves the index unchanged",
+      "path": "plugins/git-kit/skills/standalone-commits/SKILL.md",
+      "pr": 925,
+      "recorded_at": "2026-11-26T18:41:44+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4712068615",
+      "line": 82,
+      "note": "fixed in the PR body: the orphan-advisory bullet no longer lists explain-pr-changes",
+      "path": "plugins/git-kit/skills/explain-pr-changes/SKILL.md",
+      "pr": 925,
+      "recorded_at": "2026-11-26T18:41:45+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "a6307b65ff6cc885ecbd2261fdcf7bdd",
+      "line": 69,
+      "note": "fixed in f81a0290: guard wording now says the hooks check only a fresh marker; three sibling sentences corrected too",
+      "path": "plugins/git-kit/skills/git-worktrees/SKILL.md",
+      "pr": 925,
+      "recorded_at": "2026-11-26T18:41:44+00:00",
+      "rule": "security"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "f1ea8e8008815690291fe40e6964ac20",
+      "line": 91,
+      "note": "fixed in f81a0290: create-pr step 6 checks the closing line itself and no longer invokes collaborating-on-a-pr",
+      "path": "plugins/git-kit/skills/collaborating-on-a-pr/SKILL.md",
+      "pr": 925,
+      "recorded_at": "2026-11-26T18:41:44+00:00",
+      "rule": "dependency-graph"
+    }
+  ]
+}
