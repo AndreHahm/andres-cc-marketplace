@@ -1,0 +1,31 @@
+{
+  "eval_id": 32,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Shows each prompt's slug, version, status, origin and first 8 characters of text_hash",
+      "passed": true,
+      "evidence": "plan.md 2b/2c: slug, version, status, origin and 8-char text_hash shown per prompt"
+    },
+    {
+      "text": "Says the origin becomes part of the approval, and asks once per prompt with Keep this origin, Wrong origin and Stop",
+      "passed": true,
+      "evidence": "plan.md 2b/2c: origin becomes part of the approval; one AskUserQuestion per prompt with Keep this origin, Wrong origin, Stop"
+    },
+    {
+      "text": "On Stop for the second prompt, ends the upgrade with nothing changed",
+      "passed": true,
+      "evidence": "plan.md 2c: Stop ends the upgrade with nothing changed; catalog stays version 2"
+    },
+    {
+      "text": "Never runs `upgrade --expect-listing` in this run (it runs only after every listed prompt is confirmed)",
+      "passed": true,
+      "evidence": "plan.md commands summary: upgrade --expect-listing not run"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

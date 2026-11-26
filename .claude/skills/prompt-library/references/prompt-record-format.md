@@ -69,8 +69,8 @@ Each entry is a path relative to the project root, written with `/`: no leading 
 backslash, empty, `.` or `..` part, no character Windows refuses or part ending in a dot or space, and no
 Windows device name. It must resolve inside the project, never through a link, junction or hard link, and
 never at or under `.git`, `.github`, a Claude Code or Codex configuration folder (`FORBIDDEN_ROOTS`), the
-catalog root, a file directly in `.claude` (such as `settings.json`), the `CLAUDE.md` or
-`CLAUDE.local.md` at the project root (one in a subfolder is not refused), or a file named `.env` or
+catalog root, a file directly in `.claude` (such as `settings.json`), a file named `CLAUDE.md`,
+`CLAUDE.local.md`, `AGENTS.md`, `AGENTS.override.md`, `GEMINI.md` or `.mcp.json` in any folder (in any letter case), or a file named `.env` or
 `.env.*`. The file must be UTF-8 text without NUL characters,
 and all of one prompt's attachments together must fit `attachment_max_kb` (16, 32 or 64 KB, default 32),
 counted with line endings normalized to LF. A draft that breaks a rule is refused with the reason before

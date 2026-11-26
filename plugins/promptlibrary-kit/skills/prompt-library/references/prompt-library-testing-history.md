@@ -34,3 +34,13 @@ scenario 24 (Keep, and a suspicious orphan name, `workspace/iteration-10/`) pass
 On 2026-11-25, with-skill only: scenario 6 (rewritten: a changed prompt blocks only itself) passed 2 of 4
 (`iteration-13/`) and, after step 2 was corrected, 4 of 4 (`iteration-14/`); scenario 25 (retire) passed 3 of 3; scenarios 26 and 27 (`iteration-15/`) passed 4 of 4 each. Scenario 28 (an apostrophe in
 a recovery command's path, `iteration-16/`) passed 4 of 4; an earlier ungraded run had a fixture that did not exercise it.
+On 2026-11-26, after the upgrade, discard, retire and resume procedures moved to
+`references/prompt-library-lifecycle-modes.md` (R13), scenarios 29 to 32 (the four gates that had none:
+review-bundle inline, attachments in full with the fingerprint, a changed attachment versus changed text, and
+upgrade's per-prompt question) ran with-skill only and plan-only (`iteration-17/`): 16 of 16 checks. No
+baseline arm, so they show the text produces the intended steps, not an effect against no skill.
+The smoke test (`scripts/smoke_test.py`) checks frontmatter, referenced files, grants (no pre-approved Read,
+Write, Edit or WebFetch), that the triage step is its own `AskUserQuestion` with skill options, and runs the
+validator end to end (a web-origin draft with a fake key is refused with nothing filed; a clean draft is
+activated and deactivated). It failed on a copy with a pre-approved Write (2026-10-03) and on a copy with the
+pre-fix triage step (2026-10-14).

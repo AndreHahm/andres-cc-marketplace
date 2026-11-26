@@ -113,40 +113,17 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
      question and no command. The script refuses the change anyway. The exceptions apply when the entry's
      `attachment_change` is true: `revise` (or resuming its draft) reviews the new attachment content
      (step 3), and `discard` removes that draft.
-   - `upgrade` applies to a catalog below version 3. Run `<CLI> upgrade`; it refuses while a prompt is
-     blocked or any record lists attachments, and says why. Otherwise, for each entry in its `records`,
-     show slug, version, status, `origin` and the first 8 characters of `text_hash`, say that from now on
-     this origin is part of the approval, so a later relabel blocks the prompt, and ask with
-     `AskUserQuestion` (Keep this origin, Wrong origin, Stop). Stop, or any other answer, ends the upgrade
-     with nothing changed. Wrong origin: say what retiring means (as for `retire` below), ask once with
-     `AskUserQuestion` (Retire, Keep), and on Retire run
-     `<CLI> retire <internal_id> --expect-sha256 <text_hash> --wrong-origin`; then end this upgrade and
-     start it again from `<CLI> upgrade` (the listing changed). The user can add that text again as a new
-     prompt with the right origin. After every prompt is confirmed, run
-     `<CLI> upgrade --expect-listing <listing_id>` with the `listing_id` from that same listing, then go to
-     step 10.
    - `activate` of a record that is already `active`, or `deactivate` of one that is not, is reported
      ("already active", or its current status) and stops here, with no question and no command.
    - `deactivate`, and `activate` of an inactive record, skip steps 3 to 8: go to step 9.
-   - `discard` applies only to a draft: if the slug has none, say so and stop. Otherwise show the draft's
-     version, text and `text_hash` (not its fingerprint: discard binds the text) from
-     `<CLI> show <slug> --history` (with its `hidden_characters` listed as in step 8), which version stays active (or that none does), and for a version 1 draft that its slug can
-     never be used again. Ask once with `AskUserQuestion` (Discard, Keep), and on Discard run
-     `<CLI> discard-draft <internal_id> --expect-sha256 <that hash>`, then go to step 10.
-   - `retire` applies only to a prompt in `validate`'s `blocked` list; otherwise say it is not changed
-     since its approval and stop. Show slug, version, the `reasons` and the `text_hash` from that entry, and say
-     that a retired prompt never runs again, stays in the history and keeps its slug taken, that the
-     edited text is not approved by retiring it, and that to keep the wording the user adds it as a new
-     prompt with a new slug and full review. Say that restoring from git comes first if git has an
-     approved copy. Ask once with `AskUserQuestion` (Retire, Keep), and on Retire run
-     `<CLI> retire <internal_id> --expect-sha256 <that hash>`, then go to step 10. A draft revision of
-     that prompt stays; any mode but `discard` on a draft whose slug has a `retired: true` record says so and stops.
+   - `upgrade` (a catalog below version 3: `<CLI> upgrade`, then `<CLI> upgrade --expect-listing`),
+     `discard` (a draft only: `<CLI> discard-draft`) and `retire` (a prompt in `blocked` only: `<CLI> retire`):
+     follow `references/prompt-library-lifecycle-modes.md` exactly. Each shows what it changes and asks with
+     `AskUserQuestion` before its command, changes nothing on any other answer, and then goes to step 10.
+   - Retiring a prompt leaves its draft revision; any mode but `discard` on a draft whose slug has a
+     `retired: true` record says so and stops.
    - A draft left by an interrupted add or revise (also when `activate` names a draft) resumes by its
-     state, read from the record's `missing_verification` list in `validate` or `show <slug> --history`:
-     at step 7 if it includes `quality` (no record field shows whether `prompt-reviewer` already ran, so
-     an unverified draft always gets the review again); at step 8 if it holds only `import` (`session` or
-     `web` origin); at step 9 once it is empty. A resume records only the kinds still in
-     `missing_verification`; a kind already bound to the current text is not recorded again.
+     state: follow `references/prompt-library-lifecycle-modes.md`, "Resuming a draft".
    - A successor ends with `finalize`; never start a second successor.
 3. **Intake.** For `add`, follow `references/prompt-intake-sources.md`. The intake path sets `origin`:
    fetched text is always `web`, session text is always `session`; the user cannot label either as
@@ -270,6 +247,7 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
 | `references/prompt-intake-sources.md` | The five origins, how each enters, and what the intake path sets |
 | `references/prompt-optimization-and-review.md` | Quality and import review, optimization rules, how approved rewrites are applied |
 | `assets/prompt-record-template.md` | Starting file for a new draft record |
+| `references/prompt-library-lifecycle-modes.md` | The full upgrade, discard, retire and draft-resume procedures and their quality gates |
 | `references/prompt-library-testing-history.md` | Run history: hand-followed, live and eval runs (not needed to use the skill) |
 
 ## Testing & Validation
@@ -277,12 +255,9 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
 Deterministic logic is tested by direct execution of `scripts/plib_test_catalog_validate.py` (a
 maintainer command; this skill does not run it).
 
-A persisted smoke test, `scripts/smoke_test.py`, checks this skill's frontmatter, referenced files and
-grants (no pre-approved Read, Write, Edit or WebFetch), and runs the validator end to end: a web-origin
-draft carrying a fake key is refused with nothing filed, and a clean draft goes through activation and
-deactivation. It also checks that the triage step is its own `AskUserQuestion` with skill options.
-Maintainers run it directly; this skill does not run it; last run 2026-11-26, 7 of 7 checks passed. It failed on a copy with a pre-approved Write
-(2026-10-03) and on a copy with the pre-fix triage step (2026-10-14).
+A persisted smoke test, `scripts/smoke_test.py`, checks this skill's frontmatter, referenced files, grants
+and triage step, and runs the validator end to end; maintainers run it directly (last run 2026-11-26, 7 of 7
+checks passed). What it checks and the copies it failed on: `references/prompt-library-testing-history.md`.
 
 **Verify this skill activates on:** (explicit invocation only; it cannot be model-triggered)
 - "/prompt-library add" with a pasted instruction
@@ -299,7 +274,6 @@ Maintainers run it directly; this skill does not run it; last run 2026-11-26, 7 
       with the user's consent.
 - [ ] A prompt in `blocked` is reported with its reasons, every other change to it is refused, and other
       prompts still work.
-- [ ] `retire` asks once, shows the slug, version and reasons, and applies only to a blocked prompt.
 - [ ] A secret in `session`, `web`, `claude` or `codex` text blocks the draft and is never auto-redacted
       or echoed.
 - [ ] Every add asks the prompt-or-skill triage question as its own `AskUserQuestion` before filing, with a
@@ -312,23 +286,15 @@ Maintainers run it directly; this skill does not run it; last run 2026-11-26, 7 
 - [ ] A revision produces a successor with `previous_id` and `version` + 1, and the predecessor stays
       untouched until `finalize`.
 - [ ] Every status change and every draft filing was preceded by an `AskUserQuestion` approval.
-- [ ] A resumed draft with no recorded quality verification goes back through `prompt-reviewer` (step 7).
-- [ ] A resume records only the kinds in `missing_verification`, and step 7 runs one review round unless
-      the user asks for another.
 - [ ] A slug that does not match the slug pattern is refused before any command runs with it.
 - [ ] `activate` of an already active record is reported and stops, with no question and no command.
-- [ ] `discard` removes only a draft, after one question that shows its text and what stays active; a version
-      that has run is refused.
 - [ ] `prompt-reviewer` gets the `review-bundle` output inline, never a file path, and attachments are
       reviewed like the text.
 - [ ] Every attachment is shown in full before the approval question, and the approval binds the
       fingerprint (text, origin and attachments), not the bare text hash.
 - [ ] A prompt whose attachment changed offers restore, review the new attachment (a revision with the same
       text and origin) or retire; one whose text or origin changed offers only restore or retire.
-- [ ] `upgrade` asks once per approved prompt with its origin shown, and changes nothing unless every
-      prompt was confirmed.
 
-**Last dated run record:** validator fixture tests, 214 run (211 passing and 3 POSIX-only skipped on Windows; 212 passing and 2 skipped on Linux), 2026-11-26
-(`scripts/plib_test_catalog_validate.py`).
+**Last dated run record:** validator fixture tests (`scripts/plib_test_catalog_validate.py`), 230 run, 227 passing and 3 POSIX-only skipped on Windows, 2026-11-26.
 `evals/prompt-library/` holds the eval scenarios, the quality gates they cover and the saved runs. Earlier
 runs and all eval results: `references/prompt-library-testing-history.md`.

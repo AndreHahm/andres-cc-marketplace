@@ -1,0 +1,31 @@
+{
+  "eval_id": 30,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Shows the prompt text and the full content of both attachments (not a summary) before the approval question",
+      "passed": true,
+      "evidence": "plan.md lines 214-235: prompt text and both attachments shown under '(full content)' before the approval question"
+    },
+    {
+      "text": "States that the approval binds the fingerprint (text, origin and attachments)",
+      "passed": true,
+      "evidence": "plan.md line 240 and 206-207: 'Fingerprint (text + origin + attachments)'; fingerprint used, not text_hash"
+    },
+    {
+      "text": "Uses the `fingerprint` value, not the bare `text_hash`, for record-verification and activate",
+      "passed": true,
+      "evidence": "plan.md lines 256, 294: record-verification and activate pass --expect-sha256 <fingerprint>"
+    },
+    {
+      "text": "Asks with AskUserQuestion before recording verification or activating",
+      "passed": true,
+      "evidence": "plan.md lines 244 and 283: AskUserQuestion before record-verification and before activate"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

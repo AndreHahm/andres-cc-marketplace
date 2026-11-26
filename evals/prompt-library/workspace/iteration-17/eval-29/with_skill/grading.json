@@ -1,0 +1,31 @@
+{
+  "eval_id": 29,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Runs `review-bundle` for the filed draft before dispatching the reviewer",
+      "passed": true,
+      "evidence": "plan.md line 219: review-bundle p7f3c9a1b2d4 runs after the draft is filed"
+    },
+    {
+      "text": "Dispatches `prompt-reviewer` with the review-bundle output inline in the agent prompt, not a file path or an instruction to read a file",
+      "passed": true,
+      "evidence": "plan.md lines 242-248: Agent(prompt-reviewer) prompt embeds the review-bundle JSON verbatim in a fenced data block; no path or read instruction"
+    },
+    {
+      "text": "Treats the attachment content as part of the reviewed material alongside the text",
+      "passed": true,
+      "evidence": "plan.md line 248: 'Review the prompt text AND its attached file the same way'; finding 4 covers the attachment"
+    },
+    {
+      "text": "Shows the reviewer's findings to the user before any verification is recorded",
+      "passed": true,
+      "evidence": "plan.md lines 254-284: findings shown to the user before the rewrite question; record-verification only after step 8 approval"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

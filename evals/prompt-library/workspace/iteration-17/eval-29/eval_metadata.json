@@ -1,0 +1,26 @@
+{
+  "eval_id": 29,
+  "skill_path": "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md",
+  "assertions": [
+    {
+      "text": "Runs `review-bundle` for the filed draft before dispatching the reviewer",
+      "type": "presence",
+      "target": "plan"
+    },
+    {
+      "text": "Dispatches `prompt-reviewer` with the review-bundle output inline in the agent prompt, not a file path or an instruction to read a file",
+      "type": "functionality",
+      "target": "plan"
+    },
+    {
+      "text": "Treats the attachment content as part of the reviewed material alongside the text",
+      "type": "quality",
+      "target": "plan"
+    },
+    {
+      "text": "Shows the reviewer's findings to the user before any verification is recorded",
+      "type": "functionality",
+      "target": "plan"
+    }
+  ]
+}
