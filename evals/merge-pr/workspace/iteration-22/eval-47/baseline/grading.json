@@ -1,0 +1,32 @@
+{
+  "eval_id": 47,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Reads the `coverage-tier` entry (Coverage workflow) as the coverage check",
+      "passed": true,
+      "evidence": "reported the `coverage-tier` CheckRun, but against its own text: 'If the instruction is read literally' it would miss it (flagged as a gap)"
+    },
+    {
+      "text": "Reports the check's COMPLETED/FAILURE state and that no tier comment exists, as expected for a fork PR",
+      "passed": true,
+      "evidence": "'No coverage-tier comment was posted. This is a fork PR'; check COMPLETED/FAILURE"
+    },
+    {
+      "text": "Never says 'no coverage tier was reported' and never invents a tier",
+      "passed": true,
+      "evidence": "rejected the literal 'no coverage tier was reported' reading by its own judgment"
+    },
+    {
+      "text": "The tier does not block; the run proceeds through step 3 to step 5",
+      "passed": true,
+      "evidence": "'informational only and does not block the merge'; step 3 then step 5"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  },
+  "note": "Subject model claude-opus-5-5 (inherited); one general-purpose subject per arm; graded by the author. Read SKILL.md and references/advisory-disclosures.md as committed at 0f443961, before those fixes; it reached the outcome only by departing from that text."
+}

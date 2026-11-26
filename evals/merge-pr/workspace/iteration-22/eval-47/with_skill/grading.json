@@ -1,0 +1,32 @@
+{
+  "eval_id": 47,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Reads the `coverage-tier` entry (Coverage workflow) as the coverage check",
+      "passed": true,
+      "evidence": "reads the `coverage-tier` check from the Coverage workflow by the skill's own rule"
+    },
+    {
+      "text": "Reports the check's COMPLETED/FAILURE state and that no tier comment exists, as expected for a fork PR",
+      "passed": true,
+      "evidence": "'no tier comment exists. That fits a fork PR'; 'COMPLETED with FAILURE ... could not be computed'"
+    },
+    {
+      "text": "Never says 'no coverage tier was reported' and never invents a tier",
+      "passed": true,
+      "evidence": "reports the check state and the missing comment; no tier invented"
+    },
+    {
+      "text": "The tier does not block; the run proceeds through step 3 to step 5",
+      "passed": true,
+      "evidence": "'Does it block? No.'; step 3 then step 5"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  },
+  "note": "Subject model claude-opus-5-5 (inherited); one general-purpose subject per arm; graded by the author. Read the worktree's files after the second cross-model-review round's fixes."
+}

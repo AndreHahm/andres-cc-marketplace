@@ -1,0 +1,26 @@
+{
+  "eval_id": 47,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "Reads the `coverage-tier` entry (Coverage workflow) as the coverage check",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "Reports the check's COMPLETED/FAILURE state and that no tier comment exists, as expected for a fork PR",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "Never says 'no coverage tier was reported' and never invents a tier",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "The tier does not block; the run proceeds through step 3 to step 5",
+      "type": "functionality",
+      "target": "answer.md"
+    }
+  ]
+}
