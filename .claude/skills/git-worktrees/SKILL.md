@@ -13,20 +13,14 @@ Git worktrees enable checking out multiple branches simultaneously in separate d
 
 **Core principle:** One worktree per active branch. Switch contexts by changing directories, not branches.
 
-**Two different defaults, intentionally:** this skill's own examples below use sibling directories
-(`../project-feature`) for manual, ad-hoc worktree management — that default still applies here.
-`starting-work`'s *automated* flow uses a different default, `.claude/worktrees/<description>` (or
-`.codex/worktrees/` for a Codex CLI session), locked to the creating session — see that skill for why.
-Neither supersedes the other; they're two different use cases (manual vs. session-lifecycle-managed).
+**Two different defaults, intentionally:** this skill's examples use sibling directories (`../project-feature`)
+for manual, ad-hoc worktrees; `starting-work`'s automated flow uses `.claude/worktrees/<description>` (or
+`.codex/worktrees/`), locked to the creating session. Neither supersedes the other.
 
-**Hand-offs to `starting-work`/`commit`/`resolving-merge-conflicts` are prose-only, deliberately** —
-unlike `git-cleanup` (excluded via `disable-model-invocation: true`), those three are ordinary,
-dispatchable skills, and this plugin's convention elsewhere pairs a real hand-off with a matching
-`Skill(<name>)` grant. This skill stays prose-only instead: each hand-off happens mid-workflow at
-a point this skill's own guided/manual flow doesn't always reach identically (a full merge, a partial
-patch application, an experiment the user may discard), so the calling agent — not this skill — is better
-placed to decide whether and when to actually dispatch the next skill, rather than this skill always
-auto-continuing into it.
+**Hand-offs to `starting-work`/`commit`/`resolving-merge-conflicts` are prose-only, deliberately:** each
+happens mid-workflow at a point this skill's flow doesn't always reach the same way (a full merge, a partial
+patch, a discarded experiment), so the calling agent, not this skill, decides whether to dispatch the next
+skill. That is why this skill holds no `Skill(<name>)` grant for them.
 
 ## When to Use
 
