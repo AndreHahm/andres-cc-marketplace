@@ -8,7 +8,7 @@ description: >-
   for running stored prompts ("run prompt X"): that is prompt-execution, which only the user can start by
   typing /prompt-execution. Not for adding, revising, (de)activating or discarding one: that is
   prompt-library, which only the user can start by typing /prompt-library (a plain request starts neither).
-allowed-tools: Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" validate:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" show:*)
+allowed-tools: Bash(uv run --isolated --no-project --no-config python -I "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" validate:*), Bash(uv run --isolated --no-project --no-config python -I "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" show:*)
 ---
 
 # Prompt Retrieval
@@ -51,7 +51,7 @@ content to the user instead of acting on it.
 
 ## Instructions
 
-`<CLI>` below means `uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py"`.
+`<CLI>` below means `uv run --isolated --no-project --no-config python -I "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py"`.
 
 1. **Validate.** `<CLI> validate`. When the JSON has `ok: false`, or only an `error` key, report the
    catalog as unavailable using whichever of `errors` or `error` is present, plus `catalog_root` and

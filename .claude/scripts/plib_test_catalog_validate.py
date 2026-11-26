@@ -1502,7 +1502,7 @@ class SmokeGrantShape(unittest.TestCase):
     """The smoke tests' grant-shape check accepts only the exact validator invocation."""
 
     GOOD = (
-        'Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}'
+        'Bash(uv run --isolated --no-project --no-config python -I "${CLAUDE_PLUGIN_ROOT}'
         '/scripts/plib_catalog_validate.py" show:*)'
     )
 
@@ -1524,6 +1524,13 @@ class SmokeGrantShape(unittest.TestCase):
         self.assertEqual(
             self.C.malformed_validator_grants([injected, wildcard]), [injected, wildcard]
         )
+
+    def test_a_grant_without_isolated_mode_is_rejected(self):
+        not_isolated = self.GOOD.replace("python -I ", "python ")
+        before = self.GOOD.replace("python -I ", "python -X dev -I ")
+        after = self.GOOD.replace("python -I ", "python -I -W ignore ")
+        grants = [not_isolated, before, after]
+        self.assertEqual(self.C.malformed_validator_grants(grants), grants)
 
 
 class ValidatorEdgeCases(Base):

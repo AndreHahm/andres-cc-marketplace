@@ -90,7 +90,7 @@ def validator_subcommands_granted(allowed_tools: str) -> list[str]:
 
 
 _VALIDATOR_GRANT_SHAPE = re.compile(
-    r"Bash\(uv run --isolated --no-project --no-config python "
+    r"Bash\(uv run --isolated --no-project --no-config python -I "
     r'"\$\{CLAUDE_PLUGIN_ROOT\}/scripts/plib_catalog_validate\.py" [a-z][a-z-]*:\*\)'
 )
 
