@@ -1,0 +1,68 @@
+{
+  "entries": [
+    {
+      "disposition": "accepted",
+      "finding": "4711534657",
+      "note": "Issue 912's chosen head-cutoff design, maintainer decision; trust limits disclosed; waived in the PR body",
+      "path": "plugins/git-kit/skills/merge-pr/references/advisory-disclosures.md",
+      "pr": 922,
+      "recorded_at": "2026-11-26T18:25:28+00:00"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "4711534801",
+      "note": "Same head-cutoff design decision applied in triaging-dependabot-prs; waived in the PR body",
+      "path": "plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md",
+      "pr": 922,
+      "recorded_at": "2026-11-26T18:25:28+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4711542947",
+      "note": "Fixed in 08e9f39b (df7dfccc after rebase): step 1.5 runs the review-finding stop against step 1's head before pushing; merge-pr eval 52",
+      "path": "plugins/git-kit/skills/merge-pr/references/advisory-disclosures.md",
+      "pr": 922,
+      "recorded_at": "2026-11-26T18:25:28+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4711543191",
+      "note": "Fixed in 08e9f39b (df7dfccc after rebase): a reviewer's latest CHANGES_REQUESTED review is live whatever its commit; triaging eval 27",
+      "path": "plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md",
+      "pr": 922,
+      "recorded_at": "2026-11-26T18:25:28+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4711543408",
+      "note": "Fixed in 08e9f39b (df7dfccc after rebase): the review-finding stop runs before a recreate or ignore and again right before posting",
+      "path": "plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md",
+      "pr": 922,
+      "recorded_at": "2026-11-26T18:25:28+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4711543721",
+      "note": "Addressed in 08e9f39b (df7dfccc after rebase) with merge-pr eval 52, iteration 28",
+      "path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+      "pr": 922,
+      "recorded_at": "2026-11-26T18:25:29+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4711543951",
+      "note": "Addressed in 08e9f39b (df7dfccc after rebase): scenario 81 and triaging eval 27, iteration 31",
+      "path": "plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md",
+      "pr": 922,
+      "recorded_at": "2026-11-26T18:25:29+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4711544192",
+      "note": "Fixed in 08e9f39b (df7dfccc after rebase): the test rationale no longer claims a human previews the table",
+      "path": "plugins/git-kit/skills/explain-pr-changes/SKILL.md",
+      "pr": 922,
+      "recorded_at": "2026-11-26T18:25:29+00:00"
+    }
+  ]
+}
