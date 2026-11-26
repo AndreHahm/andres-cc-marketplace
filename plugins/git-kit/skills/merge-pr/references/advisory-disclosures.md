@@ -87,6 +87,9 @@ silently, the same discipline step 7(c)'s squash-tradeoff disclosure already use
   posted), report the entry's state and that no tier comment exists. When neither exists (a repository
   without the coverage workflow), state that no coverage tier was reported. A failed read is reported
   as undetermined, never as green. A red or orange tier is disclosed at step 5 and never stops the run.
+  Known limit: 7(b)'s and 7(d)'s rechecks recompute the tier but do not show it again, so a tier that
+  changes after step 5's confirmation is not disclosed before the merge; the merge-state value and the
+  thread count behave the same, and so does a head that moves without `--expected-head-sha`.
 - **Review findings (only with `--stop-on-review-findings`; skip this bullet entirely without it)**:
   on every pass of this step — the first one and each rerun (4(e), 7(b), 7(d)) — re-run the
   unresolved-review-threads query above in full (every page, each with its own fresh `gh-pr-review`
