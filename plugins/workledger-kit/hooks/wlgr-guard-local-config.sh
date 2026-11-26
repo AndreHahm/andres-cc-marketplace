@@ -5,12 +5,15 @@
 # skill is calling, so this one never allows or denies: it prints one fixed "ask", or nothing.
 #
 # Shell builtins plus cat: it runs no interpreter and opens no path from the repository being edited.
+# cat is run by absolute path, never looked up on PATH; the builtin read is the slow last resort.
 # Limits: wlgr-kit-dependencies.md, "Guard hook".
 #
 # Signaling: JSON on stdout with exit 0; nothing on stdout means "no opinion".
 LC_ALL=C
-if command -v cat >/dev/null 2>&1; then
-  INPUT="$(cat)"
+if [[ -x /usr/bin/cat ]]; then
+  INPUT="$(/usr/bin/cat)"
+elif [[ -x /bin/cat ]]; then
+  INPUT="$(/bin/cat)"
 else
   IFS= read -r -d '' INPUT
 fi

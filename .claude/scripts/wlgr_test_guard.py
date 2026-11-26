@@ -109,6 +109,17 @@ class GuardTests(unittest.TestCase):
             self.assertEqual(call(tool(FILE), env=env), "ask")
             self.assertEqual(call(tool("/r/src/main.py"), env=env), "")
 
+    def test_a_cat_on_path_is_not_run(self) -> None:
+        with tempfile.TemporaryDirectory() as planted:
+            marker = Path(planted) / "ran"
+            fake = Path(planted) / "cat"
+            fake.write_text(f"#!/bin/sh\ntouch '{marker.as_posix()}'\n", encoding="utf-8")
+            fake.chmod(0o755)
+            env = {**os.environ, "PATH": planted + os.pathsep + os.environ["PATH"]}
+            self.assertEqual(call(tool(FILE), env=env), "ask")
+            self.assertEqual(call(tool("/r/src/main.py"), env=env), "")
+            self.assertFalse(marker.exists())
+
     def test_a_large_write_is_quick(self) -> None:
         started = time.monotonic()
         self.assertEqual(call(tool("/r/big.txt", content="a b " * 1_000_000)), "")
