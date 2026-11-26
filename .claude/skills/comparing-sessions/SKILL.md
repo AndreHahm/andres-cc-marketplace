@@ -96,7 +96,7 @@ realized its expected effect:
    --registry <path>)`. **Determine eligibility from the full history, never from `list`'s current-status
    field alone:** an ID is eligible for this phase if its history contains at least one
    `implemented`/`verified`/`measured`/`closed` event at any point, even if its *current* status has since
-   moved on to `reopened` or `superseded` — per `references/anls-recommendation-lifecycle-schema.md`'s
+   moved on to `reopened` or `superseded` — per `../../references/anls-recommendation-lifecycle-schema.md`'s
    transition diagram, `reopened` is reachable from `closed`, and `superseded` is reachable from every
    non-terminal status, so either can follow a recommendation that genuinely reached "implemented or
    later" and may still carry a real `observed_effect` from that earlier `measured` event (Codex
