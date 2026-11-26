@@ -1,0 +1,51 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4706314469",
+      "line": 78,
+      "note": "Coverage check entry now comes from the rollup step 2 last classified against, in 694d7b30.",
+      "path": "plugins/git-kit/skills/merge-pr/references/advisory-disclosures.md",
+      "pr": 909,
+      "recorded_at": "2026-11-26T09:55:24+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4706314687",
+      "line": 80,
+      "note": "FAILURE now covers any failed step of the coverage job, in 694d7b30.",
+      "path": "plugins/git-kit/skills/merge-pr/references/advisory-disclosures.md",
+      "pr": 909,
+      "recorded_at": "2026-11-26T09:55:24+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4706314884",
+      "line": 354,
+      "note": "Eval 45 requires the unconditional caveat and was re-run as iteration 23 (5 of 5), in 694d7b30.",
+      "path": "evals/merge-pr/evals.json",
+      "pr": 909,
+      "recorded_at": "2026-11-26T09:55:24+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "037ad3abf0f79ff13eac9a82c38b2077",
+      "line": 40,
+      "note": "R24 fixed: the GraphQL example's fence is tagged bash, in 694d7b30. The R18 notice on the same fingerprint (12-line block) was declined by the user: it is the verbatim query the skill sends.",
+      "path": "plugins/git-kit/skills/merge-pr/references/advisory-disclosures.md",
+      "pr": 909,
+      "recorded_at": "2026-11-26T09:55:31+00:00",
+      "rule": "plugin-rulebook:R24"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "9b53964fbefd017c68fbbca84111b471",
+      "line": 142,
+      "note": "The review-outcomes check now needs an entry per thread first comment id, for this PR with a ledger disposition; non-finding threads are recorded as ignored; security-reviewer passed, in 694d7b30.",
+      "path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+      "pr": 909,
+      "recorded_at": "2026-11-26T09:55:25+00:00",
+      "rule": "review-outcome-gate"
+    }
+  ]
+}
