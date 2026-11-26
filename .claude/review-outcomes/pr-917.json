@@ -1,0 +1,13 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4707659379",
+      "line": 639,
+      "note": "Loader check used regex on Python call arguments; replaced with ast in fdc387b5b.",
+      "path": "plugins/git-kit/skills/cross-model-review/scripts/preflight_fixtures_test.py",
+      "pr": 917,
+      "recorded_at": "2026-11-26T11:35:44+00:00"
+    }
+  ]
+}
