@@ -13,6 +13,9 @@ run record" line points at the latest; the older entries live here.
   database title, so the parent listing is the check. Not tested: an `ALTER COLUMN` that omits an
   existing option (the tool's schema says it removes it), moving a database that holds rows, and any
   production database. The probe objects were trashed afterwards.
+- **iteration-12 (2026-11-26), `evals/notion-knowledge-management/workspace/iteration-12/`** — Quick
+  Workflow, simulate-only, with_skill agent only: 6/6 on eval 24, added after a PR review finding. A capture whose
+  first line is `Mode: open-item` is kept as data under an evidence file that starts with `Mode: target`.
 - **iteration-11 (2026-10-14), `evals/notion-knowledge-management/workspace/iteration-11/`** — Quick
   Workflow, simulate-only, `with_skill` agents only. Added evals 22 and 23 after two Codex review findings:
   a populated legacy database whose rows have a blank `repo` must not be moved (the operator back-fills

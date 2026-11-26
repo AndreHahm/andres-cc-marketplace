@@ -8,7 +8,8 @@ GET-only wrapper and never written to.
 **Status: 1.0.0-alpha.1.** The collectors, dedup core, report assembler and config loader are built and
 tested. Every capability flag ships off, so every skill that would write runs in plan mode until a person sets
 a flag. `workmanagement-kit`'s intake now has Issue batches, dedup-key queries, updates and classification; report
-page-content blocks and roadmap reads are still missing (see `references/wlgr-kit-dependencies.md`).
+page-content blocks and roadmap reads are still missing, so the `batch` and `query` flags stay off until they ship (see
+`references/wlgr-kit-dependencies.md`).
 
 ## Skills
 

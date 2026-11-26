@@ -1,0 +1,28 @@
+{
+  "skill_name": "onboarding-repositories",
+  "skill_path": "plugins/workledger-kit/skills/onboarding-repositories/SKILL.md",
+  "description": "Gets one more repository ready for syncing-open-items and the report skills; writes only the repository's local config entry, after approval.",
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 6,
+    "declared_scenarios_covered": 1,
+    "uncovered": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "methodology_note_iteration_1": "Iteration 1 (2026-11-26) covers only scenario 6 of references/test-scenarios.md, after step 6 gained the rejected-hook-prompt stop (review finding 3 on the PR-link classify guard branch). Quick Workflow, simulation only, with_skill agent; trigger phrases are not exercised."
+  },
+  "evals": [
+    {
+      "id": 1,
+      "name": "Rejected guard-hook prompt: report not written and stop",
+      "prompt": "Onboard the repository acme/widgets into the work ledger. This is a simulation: do not call any Linear, Notion, GitHub or Codex tool, do not run any script and do not write any file except your outputs; describe each call you would make and show the reply you would send me. Assume: the config loads with no problems, acme/widgets is not yet in settings.repos, intake_capabilities are all false, and no local file exists yet. I approved the proposed config entry at step 5. When you then call Write for <repo_root>/.claude/workledger-kit.local.json, the plugin's hook asks me again and I reject that prompt, so the Write call returns a denial.",
+      "expected_output": "Treats the denied Write as leaving the file unchanged, reports plainly that the config file was not written, does not re-run wlgr_config.py or claim settings.repos now lists the slug, does not retry the write or write it another way, and stops instead of reporting onboarding as complete.",
+      "files": [
+        "plugins/workledger-kit/skills/onboarding-repositories/SKILL.md"
+      ]
+    }
+  ]
+}

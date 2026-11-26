@@ -48,4 +48,4 @@ nothing was submitted" below.
 ## If nothing was submitted
 
 Say so plainly with the reason (plan mode, missing `query`, or all batches declined), list the proposals files
-written, and say which capability flag to enable once the matching Wave 3a work has shipped.
+written, and say which capability flag to enable once everything that flag covers has shipped.
