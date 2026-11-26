@@ -1244,6 +1244,17 @@ def check_stop_on_review_findings_opt_in():
             False,
             "step 2's review-finding stop no longer reads conversation comments and review bodies",
         )
+    flat2 = " ".join(step2.split())
+    if (
+        "a review is live only when its `commit.oid` equals this pass's `headRefOid`" not in flat2
+        or "is `resolved` or `outdated`" not in flat2
+        or "A comment minimized for any other reason" not in flat2
+    ):
+        return (
+            False,
+            "step 2's review-finding stop no longer limits itself to live bodies: reviews on the "
+            "current head and comments not minimized as resolved/outdated (issue #912)",
+        )
     if "4(e), 7(b), 7(d)" not in step2 or "before the marker write" not in step2:
         return (
             False,
