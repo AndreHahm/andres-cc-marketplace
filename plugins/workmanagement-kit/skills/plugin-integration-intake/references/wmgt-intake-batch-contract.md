@@ -14,7 +14,7 @@ guarantee"), not mechanical guarantees.
 
 | Field | Where | Required | Notes |
 |---|---|---|---|
-| `operation` | envelope | No | `"create"` (default), `"query"` or `"update"`. Absent means `"create"`, so every existing single-record caller is unchanged. Any other value is malformed content |
+| `operation` | envelope | No | `"create"` (default), `"query"`, `"update"` or `"classify"`. Absent means `"create"`, so every existing single-record caller is unchanged. A `classify` envelope carries `items`, not `records`, and follows the classify contract (`wmgt-intake-classify-contract.md`), not this file. Any other value is malformed content |
 | `records` | envelope | For a batch | Array of 1 to 1000 records. Replaces `content`; an envelope with both `content` and `records` is malformed. A create record holds only `title`, `description`, `status`, `priority` and `labels`; an update record is `{id, set}` (see the query and update procedure) |
 | `test_run` | `suggested_mapping` | No | Boolean, default `false`. Caller-asserted like `source_plugin`. When `true`, a mapped repository's work goes to its `test_team_id` instead of its `production_team_id` |
 

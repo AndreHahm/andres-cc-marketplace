@@ -145,10 +145,16 @@ class GuardTests(unittest.TestCase):
 
     def test_registration(self) -> None:
         hooks = json.loads((HOOKS / "hooks.json").read_text(encoding="utf-8"))["hooks"]
-        (entry,) = hooks["PreToolUse"]
+        # The .claude mirror merges every plugin's hooks into one file: find this guard's entry.
+        matches = [
+            (entry, hook)
+            for entry in hooks["PreToolUse"]
+            for hook in entry["hooks"]
+            if hook["command"].endswith(f"/hooks/{SCRIPT.name}")
+        ]
+        self.assertEqual(len(matches), 1, matches)
+        ((entry, _),) = matches
         self.assertEqual(entry["matcher"], "^(Write|Edit|MultiEdit)$")
-        (hook,) = entry["hooks"]
-        self.assertTrue(hook["command"].endswith(f"/hooks/{SCRIPT.name}"))
 
 
 if __name__ == "__main__":
