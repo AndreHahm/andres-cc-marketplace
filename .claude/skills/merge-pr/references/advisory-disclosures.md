@@ -55,9 +55,14 @@ silently, the same discipline step 7(c)'s squash-tradeoff disclosure already use
   because `-f` only ever sends a string parameter (`gh api --help`), so `-f cursor=null` would send the
   literal four-character string `"null"` rather than a real GraphQL `null`; `-F` converts the bare
   literal `null` to the correct JSON type. Sum `nodes` entries where `isResolved` is `false` across
-  every page — on each subsequent call, replace `-F cursor=null` with `-f cursor="<endCursor>"` (the
-  previous page's `pageInfo.endCursor` value, a real string this time, so `-f` is correct there) —
-  looping while `pageInfo.hasNextPage` is `true`; a single `first: 100` page silently
+  every page — on each subsequent call, replace `-F cursor=null` with `-f cursor='<endCursor>'` (the
+  previous page's `pageInfo.endCursor` value, a real string this time, so `-f` is correct there). The
+  cursor is API data typed into a command: use it byte for byte, single-quoted, only when the whole value,
+  with no trailing newline, matches `^[A-Za-z0-9+/=_-]+$` (the characters of GitHub's base64 cursors,
+  `git-review-api.py`'s `--cursor` check); never edit a value to make it match. Any other value, an
+  empty or `null` one included, counts as a failed query: make no call, never use the pages already
+  fetched, and both this count and step 2's "Review outcomes recorded" check stop as undetermined — and loop while
+  `pageInfo.hasNextPage` is `true`; a single `first: 100` page silently
   misses any thread beyond the 100th on a PR with more review threads than that. Each node's
   `comments.nodes[0].databaseId` is the thread's first comment id, which step 2's "Review outcomes recorded"
   check matches against recorded findings; this count does not use it. This is a coarse count, not a triage —
@@ -65,7 +70,7 @@ silently, the same discipline step 7(c)'s squash-tradeoff disclosure already use
   Boundaries for how this differs from `handling-review-findings`'s job. Without
   `--stop-on-review-findings`, a non-zero count never stops
   this skill — it's disclosed at step 5 so the user isn't led to believe "no outstanding
-  `CHANGES_REQUESTED`" means "no open findings." **If any page of this query fails**, state at step 5
+  `CHANGES_REQUESTED`" means "no open findings." **If any page of this query fails, or its cursor is refused**, state at step 5
   that the count could not be determined — never report it as `0`, which would read as "confirmed no
   open threads" rather than "unknown."
 - **Coverage tier** (quality-kit's patch-coverage tier; informational only, never blocks, with or

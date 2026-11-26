@@ -39,12 +39,32 @@
     },
     {
       "disposition": "fixed",
+      "finding": "661e10ad3a73839bc6b47504d8ea1ccb",
+      "line": 58,
+      "note": "The endCursor is used byte for byte, single-quoted, only when the whole value matches the base64 cursor characters; any other value is a failed query for the count and the outcomes check. A second security-reviewer pass found its Major and three Minors fixed.",
+      "path": "plugins/git-kit/skills/merge-pr/references/advisory-disclosures.md",
+      "pr": 909,
+      "recorded_at": "2026-11-26T10:06:52+00:00",
+      "rule": "shell-injection"
+    },
+    {
+      "disposition": "accepted",
       "finding": "9b53964fbefd017c68fbbca84111b471",
       "line": 142,
-      "note": "The review-outcomes check now needs an entry per thread first comment id, for this PR with a ledger disposition; non-finding threads are recorded as ignored; security-reviewer passed, in 694d7b30.",
+      "note": "Round 1 (security-reviewer, one entry passed any number of threads) fixed in 694d7b30. Round 2 (skill-reviewer, classify thread content instead of recording question threads as ignored) accepted and waived in the PR body: the user chose the mechanical per-thread rule.",
       "path": "plugins/git-kit/skills/merge-pr/SKILL.md",
       "pr": 909,
-      "recorded_at": "2026-11-26T09:55:25+00:00",
+      "recorded_at": "2026-11-26T10:06:53+00:00",
+      "rule": "review-outcome-gate"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "f6ac029efc7d02f118713ed614645c6f",
+      "line": 145,
+      "note": "Residual, waived in the PR body: the outcomes check covers threads only; review bodies, conversation comments and later replies are a disclosed limit, the scope the user chose in round 1.",
+      "path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+      "pr": 909,
+      "recorded_at": "2026-11-26T10:06:52+00:00",
       "rule": "review-outcome-gate"
     }
   ]
