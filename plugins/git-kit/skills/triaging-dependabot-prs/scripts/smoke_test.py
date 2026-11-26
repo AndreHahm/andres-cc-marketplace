@@ -543,6 +543,26 @@ def check_advisory_tests_pass():
     return _run_script_tests("test_dependabot_advisory_read.py", "advisory script")
 
 
+def check_live_body_rule():
+    """The review-finding stop keeps merge-pr's live-body rule (issue #912)."""
+    _, body = split_skill()
+    flat = " ".join(body.split())
+    needed = [
+        "`--fields comments,reviews,headRefOid`",
+        "equals 6.1's `headRefOid`",
+        "`CHANGES_REQUESTED` state (that one is live whatever its commit",
+        "`minimizedReason` of `resolved` or `outdated` (case-insensitive)",
+        "a `recreate` moves the head",
+    ]
+    missing = [s for s in needed if s not in flat]
+    if missing:
+        return False, "review-finding stop lost part of the live-body rule: " + "; ".join(missing)
+    return (
+        True,
+        "review-finding stop keeps the live-body rule, change-request rule and recreate stop",
+    )
+
+
 def check_advisory_step_is_wired():
     """Step 3 names the script, the four rules' signals and the unknown-is-never-safe rule."""
     _, body = split_skill()
@@ -593,6 +613,7 @@ def main():
         check_read_tests_pass,
         check_advisory_tests_pass,
         check_advisory_step_is_wired,
+        check_live_body_rule,
     ]
     failed = 0
     for fn in checks:

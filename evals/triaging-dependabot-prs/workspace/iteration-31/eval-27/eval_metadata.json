@@ -1,0 +1,27 @@
+{
+  "eval_id": 27,
+  "skill_path": "plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md",
+  "baseline": "plugins/git-kit/skills/triaging-dependabot-prs at commit b8072bfa (before PR #922's review fixes)",
+  "assertions": [
+    {
+      "text": "PR 501: octocat's latest CHANGES_REQUESTED review on an earlier head is treated as live, the review-finding stop fires before the close question, and nothing is closed or ignored",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "PR 502: the review-finding stop runs before the recreate ask, fires on the live devin review, and no recreate is posted",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "PR 503: after the user's yes, the stop is re-run right before posting the rebase, catches the new coderabbitai review, and no @dependabot rebase is posted",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Each stop offers the hold-for-triage or leave-out-of-batch choice, and no merge, close, recreate or rebase is posted for any of the three PRs",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    }
+  ]
+}

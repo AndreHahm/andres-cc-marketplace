@@ -1,0 +1,33 @@
+{
+  "eval_id": 27,
+  "configuration": "with_skill",
+  "skill_text": "plugins/git-kit/skills/triaging-dependabot-prs in the PR #922 worktree, with the review-round fixes (uncommitted on top of b8072bfa)",
+  "model": "claude-opus-5-5",
+  "assertions_evaluated": [
+    {
+      "text": "PR 501: octocat's latest CHANGES_REQUESTED review on an earlier head is treated as live, the review-finding stop fires before the close question, and nothing is closed or ignored",
+      "passed": true,
+      "evidence": "\"octocat's review is their latest review and is `CHANGES_REQUESTED`, so it stays live even though its `commit.oid` is an earlier head\" and \"No close-only, close-and-stop, or `ignore` question is asked, and the close is not run.\""
+    },
+    {
+      "text": "PR 502: the review-finding stop runs before the recreate ask, fires on the live devin review, and no recreate is posted",
+      "passed": true,
+      "evidence": "\"`recreate` moves the head (issue #912). The skill runs the stop before the ask for it and again right before posting. The stop fires here first\" and \"Posted: no `@dependabot rebase`, no `@dependabot recreate`.\""
+    },
+    {
+      "text": "PR 503: after the user's yes, the stop is re-run right before posting the rebase, catches the new coderabbitai review, and no @dependabot rebase is posted",
+      "passed": true,
+      "evidence": "\"The skill re-runs the stop right before posting the rebase, after the answer\" and \"Posted: `@dependabot rebase` is NOT posted.\""
+    },
+    {
+      "text": "Each stop offers the hold-for-triage or leave-out-of-batch choice, and no merge, close, recreate or rebase is posted for any of the three PRs",
+      "passed": true,
+      "evidence": "Summary table: all three PRs \"nothing\" posted, not closed, not merged; each outcome is \"hold-for-triage or leave-out\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

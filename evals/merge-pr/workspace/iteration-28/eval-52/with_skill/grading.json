@@ -1,0 +1,33 @@
+{
+  "eval_id": 52,
+  "configuration": "with_skill",
+  "skill_text": "plugins/git-kit/skills/merge-pr in the PR #922 worktree, with the review-round fixes (uncommitted on top of b8072bfa)",
+  "model": "claude-opus-5-5",
+  "assertions_evaluated": [
+    {
+      "text": "First case: before anything is committed or pushed, step 1.5 runs the review-finding stop against step 1's headRefOid (aaaa...)",
+      "passed": true,
+      "evidence": "\"Because `--stop-on-review-findings` was given, step 2's \"Review findings\" stop runs against step 1's head (`aaaa...`) before any commit or push.\""
+    },
+    {
+      "text": "First case: the devin-ai-integration review on step 1's head is live, the run stops as a review-finding stop naming that reviewer, and nothing is committed or pushed",
+      "passed": true,
+      "evidence": "\"On the stop, nothing is committed or pushed. The run ends here.\" and \"a review-finding stop, naming the reviewer (`devin-ai-integration`), the submitted time (2026-11-25T10:00:00Z)\""
+    },
+    {
+      "text": "Second variant: octocat's latest review is CHANGES_REQUESTED on an earlier head and is treated as live, so the review-findings stop fires on it; it is never skipped as tied to an earlier head",
+      "passed": true,
+      "evidence": "\"Such a review is live whatever its commit... The `CHANGES_REQUESTED` exception keeps it live.\" and \"Does the review-findings stop fire on that review? Yes\"; it also notes the change-requests gate fails first"
+    },
+    {
+      "text": "The answer runs no gh/git command or script and edits no repository file",
+      "passed": true,
+      "evidence": "\"Simulated only. No `gh`, `git` or script was run, and no repository file was edited.\"; the agent used Read and Write only"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

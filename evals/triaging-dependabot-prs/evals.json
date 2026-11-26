@@ -236,11 +236,20 @@
       "files": [
         "outputs/answer.md"
       ]
+    },
+    {
+      "id": 27,
+      "name": "Combined request: earlier-head CHANGES_REQUESTED on the close path, the recreate stop, and a finding posted while the rebase question is open (scenarios 79-81, PR #922 review)",
+      "prompt": "This is a simulated exercise: there is no real GitHub repository, and you must NOT run any `gh`/`git` command or script -- you are given the data those calls would have returned, as facts. Describe what you would do, step by step, and write your answer to outputs/answer.md. The user asked: \"work through the open dependabot PRs and also handle the reviewer findings on them\". Three PRs, each at its own step 6.1 head (all 40-character lowercase hex; `pr-view <n> --fields comments,reviews,headRefOid` always returns that same head). (a) PR 501, recommendation close (superseded): `pr-threads 501` gives unresolved_count 0; comments = []; reviews = [ {author octocat, state CHANGES_REQUESTED, submittedAt 2026-11-20T09:00:00Z, commit.oid an earlier head, not 6.1's, body \"Pin this to the 2.x line; 3.x breaks our importer.\"} ], octocat's only review. (b) PR 502, `mergeStateStatus` BEHIND; the user, at 6.3, asks for `recreate` instead of a rebase. unresolved_count 0, comments = [], reviews = [ {author devin-ai-integration, state COMMENTED, commit.oid 6.1's head, body \"Major: the lockfile drops the hash for urllib3.\"} ]. (c) PR 503, `mergeStateStatus` BEHIND, unresolved_count 0. The first review-finding read at 6.3 returns comments = [] and reviews = []. You ask the rebase question; while it is open, a reviewer submits {author coderabbitai, state COMMENTED, commit.oid 6.1's head, body \"Bug: the new version drops Python 3.9 support, which CI still tests.\"}. The user then answers yes to the rebase. For each PR: does the review-finding stop fire, at which point, and what is or is not posted or closed?",
+      "expected_output": "(a) The review-finding stop runs before the close question; octocat's latest review is CHANGES_REQUESTED, which stays live whatever its commit (the close path never reaches merge-pr's change-requests check), so the stop fires and the skill asks whether to hold the PR for triage or leave it out of this batch; nothing is closed or ignored. (b) A recreate moves the head, so on this combined request the stop runs before the recreate ask; the devin review on the current head is live and carries a finding, so the stop fires with the hold-or-leave-out question and no recreate is posted. (c) The first read passes; after the user's yes, the stop is re-run right before posting the rebase, sees the new coderabbitai review on the current head, stops with the hold-or-leave-out question, and posts no @dependabot rebase. No merge, close, recreate or rebase is posted for any of the three PRs.",
+      "files": [
+        "outputs/answer.md"
+      ]
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 79,
-    "declared_scenarios_covered": 37,
+    "declared_scenarios_total": 84,
+    "declared_scenarios_covered": 40,
     "uncovered": [
       "Scenario 1: No dependabot PRs open",
       "Scenario 2: List truncation",
@@ -283,8 +292,10 @@
       "Scenario 54: Real write is a separate permission",
       "Scenario 39c: Scoped npm package",
       "Scenario 39d: Path B uv sources check fails",
-      "Scenario 36a: Base retargeted after approval"
+      "Scenario 36a: Base retargeted after approval",
+      "Scenario 77: Combined request with handled or earlier-head findings",
+      "Scenario 78: Rebase needed while a review-body finding is live"
     ],
-    "note": "Scenarios are conversational-procedure checks. The deterministic lockfile classifier is covered separately by scripts/test_check_uv_lock_bump.py, and the live dry run by phase7-dry-run-2026-10-08.md."
+    "note": "Scenarios are conversational-procedure checks. The deterministic lockfile classifier is covered separately by scripts/test_check_uv_lock_bump.py, and the live dry run by phase7-dry-run-2026-10-08.md. RECOUNT (2026-11-26, issue #912 and PR #922's review): scenarios 77-81 were added (declared_scenarios_total 79 -> 84); eval 27 (workspace/iteration-31/) covers 79-81 (declared_scenarios_covered 37 -> 40); 77 and 78 are covered only by merge-pr's eval 51 for the shared rule, so they are listed as uncovered here."
   }
 }
