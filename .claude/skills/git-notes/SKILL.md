@@ -35,13 +35,15 @@ Say "add a note to this commit about the test results".
 
 ## When NOT to Use
 
-- Writing or amending a commit message: use `commit`. Amending rewrites the commit; a note leaves it
+Each line names the skill that owns the task. This skill never invokes any of them.
+
+- Writing or amending a commit message is `commit`'s job. Amending rewrites the commit; a note leaves it
   unchanged.
-- Approving, commenting on or requesting changes on a GitHub PR: use `collaborating-on-a-pr`. A note
+- Approving, commenting on or requesting changes on a GitHub PR is `collaborating-on-a-pr`'s job. A note
   stays in a git ref and is not a PR review.
-- Finding the commit that introduced a regression: use `git-bisect`.
-- Syncing a branch onto the latest main: use `git-rebase-sync`. To keep notes through that rebase, set
-  the rewrite config here first (Preserving Through Rebase).
+- Finding the commit that introduced a regression is `git-bisect`'s job.
+- Syncing a branch onto the latest main is `git-rebase-sync`'s job. To keep notes through that rebase,
+  set the rewrite config here first (Preserving Through Rebase).
 
 ## Core Concepts
 
@@ -91,15 +93,18 @@ git fetch origin refs/notes/reviews:refs/notes/reviews
 ### Preserving Through Rebase
 
 ```bash
-git config notes.rewriteRef 'refs/notes/*'
+git config --add notes.rewriteRef refs/notes/commits
 git config notes.rewrite.rebase true
 git config notes.rewriteMode concatenate
 ```
 
-`notes.rewriteRef` has no default: without it, a rebase copies no notes at all. `notes.rewrite.rebase`
-defaults to `true`; setting it keeps a `false` from another config scope from switching copying off.
-A copied note still describes the commit before the rebase: copy only namespaces whose meaning survives
-a rewrite (such as `refs/notes/audit`), or re-check copied review and test notes.
+`notes.rewriteRef` has no default: without it, a rebase copies no notes at all. Add one entry per notes
+ref to copy with `--add`; a plain `git config notes.rewriteRef <ref>` fails once two entries exist.
+`notes.rewrite.rebase` defaults to `true`; setting it keeps a `false` from another config scope from
+switching copying off. A copied note still describes the commit before the rebase, and a conflict
+resolution can change that commit: leave review, test and audit verdicts (`refs/notes/reviews`,
+`refs/notes/testing`, `refs/notes/audit`) out of `notes.rewriteRef`, or re-check each one on the
+rewritten commit.
 
 ## Common Mistakes
 
@@ -113,7 +118,7 @@ See `references/troubleshooting.md` for common git notes mistakes and their fixe
 | Be explicit about refs | Always specify `--ref` for non-default notes |
 | Push notes explicitly | Document sharing procedures in team guidelines |
 | Use append over add -f | Preserve note history when accumulating |
-| Configure rewrite preservation | Set `notes.rewriteRef` and `notes.rewrite.rebase true` before rebasing |
+| Configure rewrite preservation | Add each ref to copy with `git config --add notes.rewriteRef` and set `notes.rewrite.rebase true` before rebasing |
 
 # Git Notes Command Reference
 
@@ -434,7 +439,9 @@ No dedicated eval suite: this skill is a command reference, so a blind-compariso
 recall of git's own options. `scripts/smoke_test.py` (frontmatter, referenced files, Bash grants, step
 order) is the structural check. The `notes.rewriteRef` requirement was verified live on 2026-11-26 in a
 scratch repository: a note on `refs/notes/testing` was lost on rebase without it and kept with it, and
-with `notes.rewrite.rebase false` also set it was lost until that was set back to `true`.
+with `notes.rewrite.rebase false` also set it was lost until that was set back to `true`. With two
+`notes.rewriteRef` entries already set, a plain `git config notes.rewriteRef` failed (exit 5) and
+`--add` worked.
 
 **Verify this skill activates on:**
 - "add a note to this commit about the test results"
@@ -452,8 +459,9 @@ with `notes.rewrite.rebase false` also set it was lost until that was set back t
       message — non-invasive per Core Concepts
 - [ ] Notes outside the default category always specify `--ref`, never rely on the default
       `refs/notes/commits` namespace, per Best Practices
-- [ ] Notes intended to survive a rebase always set `git config notes.rewriteRef` (for example
-      `'refs/notes/*'`, since it has no default) and `notes.rewrite.rebase true` beforehand —
+- [ ] Notes intended to survive a rebase always add each ref with `git config --add notes.rewriteRef`
+      (it has no default) and set `notes.rewrite.rebase true` beforehand, and never copy review, test
+      or audit verdicts unless they are re-checked on the rewritten commit —
       see `references/notes-configuration.md`
 - [ ] Sharing notes with a team always pushes/fetches the specific `refs/notes/<name>` ref explicitly —
       notes don't sync via a plain `git push`/`git fetch`

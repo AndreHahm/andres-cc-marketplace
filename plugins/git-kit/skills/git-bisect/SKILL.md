@@ -44,12 +44,14 @@ Say "bisect this regression with `--auto npm test`", or give a good and a bad co
 
 ## When NOT to Use
 
-- Rebasing a branch onto a newer main: use `git-rebase-sync`. This skill only moves `HEAD` through
+Each line names the skill that owns the task. This skill never invokes any of them.
+
+- Rebasing a branch onto a newer main is `git-rebase-sync`'s job. This skill only moves `HEAD` through
   history to find a commit; it never rewrites a branch.
-- Adding metadata to a commit, such as a test result: use `git-notes`.
-- Checking out another branch or commit in a separate directory to inspect or compare it: use
-  `git-worktrees`. This skill moves the current checkout's `HEAD` through history to find one commit.
-- Starting a branch to work on the fix: use `starting-work`, after the bad commit is found.
+- Adding metadata to a commit, such as a test result, is `git-notes`' job.
+- Checking out another branch or commit in a separate directory to inspect or compare it is
+  `git-worktrees`' job. This skill moves the current checkout's `HEAD` through history to find one commit.
+- Starting a branch to work on the fix, after the bad commit is found, is `starting-work`'s job.
 
 ## Instructions
 

@@ -31,8 +31,9 @@ Say "list open PRs", "add a `needs-triage` label to issue 456", or "run this Git
 
 1. Check that the request is a raw lookup or edit, not one of the jobs under When NOT to Use.
 2. Find the command under Core Operations, or in Quick Reference for the most common ones.
-3. Use `--json` for output a later step parses (Output Formats). The `references/` files cover larger
-   workflows.
+3. For output a later step parses, use `--json <fields>` on the `gh pr`, `gh issue` and `gh run` list and
+   view commands (Output Formats). `gh api` already returns JSON, and `gh workflow run --json` reads
+   workflow inputs instead. The `references/` files cover larger workflows.
 
 ## When to Use This Skill
 
@@ -63,17 +64,19 @@ the distinguishing criterion is judgment-layer vs. raw-reference, not the underl
 
 ## When NOT to Use
 
-- Creating a PR: use `create-pr` (template and draft-or-ready confirmation), or `collaborating-on-a-pr`
-  when an issue should be linked.
-- Merging a PR: use `merge-pr` (readiness and merge-rights checks first).
-- Approving, commenting on or requesting changes on a PR with CODEOWNERS context: use
-  `collaborating-on-a-pr`.
-- Retrying the "Await Codex review" check after Codex finished on its own dashboard: use
-  `codex-review-recovery`, which asks for a human-confirmed dashboard check first.
-- Drafting a structured issue from raw notes, logs or screenshots: use `github-issue-creator`, which
-  writes a local draft file; this skill has no `Write` access.
+Each line names the skill that owns the task. This skill never invokes any of them.
+
+- Creating a PR is `create-pr`'s job (template and draft-or-ready confirmation), or
+  `collaborating-on-a-pr`'s when an issue should be linked.
+- Merging a PR is `merge-pr`'s job (readiness and merge-rights checks first).
+- Approving, commenting on or requesting changes on a PR with CODEOWNERS context is
+  `collaborating-on-a-pr`'s job.
+- Retrying the "Await Codex review" check after Codex finished on its own dashboard is
+  `codex-review-recovery`'s job; it asks for a human-confirmed dashboard check first.
+- Drafting a structured issue from raw notes, logs or screenshots is `github-issue-creator`'s job; it
+  writes a local draft file, and this skill has no `Write` access.
 - Triaging, relating, verifying, prioritizing or resolving a freestanding issue, that is, deciding what
-  to do with it: use `github-issue-lifecycle`. Applying a label you were told to apply (such as
+  to do with it, is `github-issue-lifecycle`'s job. Applying a label you were told to apply (such as
   `needs-triage`) is a raw edit and stays here.
 
 ## Core Operations

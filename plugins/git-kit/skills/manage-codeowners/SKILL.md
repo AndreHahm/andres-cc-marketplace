@@ -27,12 +27,14 @@ Say "set up a CODEOWNERS file for this repo", or "add a codeowner for the /docs 
 
 ## When NOT to Use
 
-- Checking whether you may merge a PR: use `merge-pr`, which reads this file for its rights check but
+Each line names the skill that owns the task. This skill never invokes any of them.
+
+- Checking whether you may merge a PR is `merge-pr`'s job; it reads this file for its rights check but
   never edits it.
-- Finding who can review a PR, or acting as a reviewer: use `collaborating-on-a-pr`, which reads the
+- Finding who can review a PR, or acting as a reviewer, is `collaborating-on-a-pr`'s job; it reads the
   file for reviewer context but never edits it.
-- Looking up repository settings, collaborators or branch protection through the API: use
-  `gh-operations`. This skill edits only the CODEOWNERS file.
+- Looking up repository settings, collaborators or branch protection through the API is
+  `gh-operations`' job. This skill edits only the CODEOWNERS file.
 
 ## Instructions
 
