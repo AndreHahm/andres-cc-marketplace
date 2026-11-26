@@ -1067,6 +1067,41 @@ def test_doctor_cli_prints_a_report_without_the_key():
     assert json.loads(done.stdout)["ok"] is False
 
 
+@pytest.mark.parametrize("name", ["dck-doctor", "dck-init"])
+def test_documented_command_writes_no_bytecode(name, tmp_path):
+    # Both scripts load dck-decide.py through importlib, which writes __pycache__ beside the
+    # scripts, inside the installed plugin, unless the documented command passes -B.
+    text = (SKILL.parents[1] / "commands" / f"{name}.md").read_text(encoding="utf-8")
+    script = f"${{CLAUDE_PLUGIN_ROOT}}/skills/consulting-decision-model/scripts/{name}.py"
+    run_line = next(line for line in text.splitlines() if line.startswith("python3 "))
+    flags = run_line.split()[1:-1]
+    assert run_line.split()[-1] == script
+    assert f"Bash(python3 {' '.join(flags)} {script}:*)" in text
+    assert f"Bash(python {' '.join(flags)} {script}:*)" in text
+    scripts = tmp_path / "scripts"
+    shutil.copytree(SKILL / "scripts", scripts, ignore=shutil.ignore_patterns("__pycache__"))
+    project = tmp_path / "project"
+    project.mkdir()
+    env = {key: value for key, value in os.environ.items() if key != "PYTHONDONTWRITEBYTECODE"}
+    env.update(
+        {
+            "OPENROUTER_API_KEY": dck.PLACEHOLDER_KEY,
+            "HTTPS_PROXY": "http://127.0.0.1:1",
+            "https_proxy": "http://127.0.0.1:1",
+            "NO_PROXY": "",
+            "no_proxy": "",
+        }
+    )
+    subprocess.run(
+        [sys.executable, *flags, str(scripts / f"{name}.py")],
+        capture_output=True,
+        cwd=project,
+        env=env,
+        timeout=30,
+    )
+    assert not (scripts / "__pycache__").exists()
+
+
 def test_ordinary_kebab_text_is_not_a_token(server, repo):
     server["reply"][PIN] = (200, answer(PIN))
     data = decision(state="see risk-assessment-of-the-migration-plan for details")
