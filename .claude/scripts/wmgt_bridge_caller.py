@@ -434,8 +434,13 @@ def dispatch(
         # Semgrep's tainted-env-args rule flags node's path, which comes from PATH. Not exploitable:
         # list arguments and no shell; node and the bridge must be absolute paths outside the
         # repository under review, agent is a fixed choice and dispatch_id is pattern-checked.
-        result = subprocess.run(  # nosemgrep
-            cmd, capture_output=True, text=True, encoding="utf-8", cwd=str(root), env=env
+        result = subprocess.run(
+            cmd,  # nosemgrep
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            cwd=str(root),
+            env=env,
         )
         stdout = result.stdout.strip()
         stderr = result.stderr.strip()
