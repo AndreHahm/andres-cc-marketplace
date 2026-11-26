@@ -62,12 +62,14 @@ auto-continuing into it.
 
 ## Quick Start
 
-Say "check out PR #42 in its own worktree", then run the task's command from the table below.
+Say "check out PR #42 in its own worktree": fetch the PR head first, as Pattern 2 (PR Review While
+Working) shows, then run the task's command from the table below.
 
 **Guarded actions, not this skill's job:** git-kit's guard hooks block raw `git worktree add -b`/`-B`
 (new-branch creation — that's `starting-work`'s job), raw `git worktree remove --force`/`-f` (discarding
-uncommitted work — that's `git-cleanup`'s job), and raw `git commit` (always `commit`'s job) unless run by
-one of those allowlisted skills. This skill's own commands below are the ones that stay ungated: worktrees
+uncommitted work — that's `git-cleanup`'s job), and raw `git commit` (always `commit`'s job) unless a fresh
+marker is present. The hooks check only the marker, not which skill wrote it, so run the owning skill and
+never write a marker by hand. This skill's own commands below are the ones that stay ungated: worktrees
 for an *existing* branch, and a plain (non-force) `git worktree remove`, which git itself already refuses
 on a dirty or locked worktree.
 
@@ -105,8 +107,8 @@ git worktree add --detach ../experiment HEAD~5
 
 **Need a worktree for a branch that doesn't exist yet** (new feature, hotfix, tracking a remote branch
 for the first time)? That's `starting-work`'s job — it also syncs `main`, validates the branch name, and
-asks worktree-vs-plain-branch. git-kit's `git-guard-raw-branch-create.sh` hook hard-blocks a raw
-`git worktree add -b`/`-B` from any skill not on its allowlist, this skill included.
+asks worktree-vs-plain-branch. git-kit's `git-guard-raw-branch-create.sh` hook blocks a raw
+`git worktree add -b`/`-B` without a fresh marker (it never checks which skill wrote one); this skill never runs it.
 
 ### List Worktrees
 
@@ -139,8 +141,8 @@ git worktree remove ../feature-x
 **Need to discard uncommitted changes to force a removal?** Not this skill's job — `git-cleanup` has
 `disable-model-invocation: true`, so it can't be invoked here even indirectly; tell the user to run
 `/git-cleanup` themselves. It gates `git worktree remove --force`/`-f` behind explicit user confirmation
-before running it. git-kit's `git-guard-raw-destructive-cleanup.sh` hook hard-blocks the raw forced form from
-any skill not on its allowlist, this skill included.
+before running it. git-kit's `git-guard-raw-destructive-cleanup.sh` hook blocks the raw forced form without a
+fresh marker (it never checks which skill wrote one); this skill never runs that command.
 
 ### Move a Worktree
 

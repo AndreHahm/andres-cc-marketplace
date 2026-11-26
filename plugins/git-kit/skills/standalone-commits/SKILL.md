@@ -19,8 +19,9 @@ Say "split this diff into separate commits", or "how should I order these change
    waves (Wave Planning).
 2. With more pending changes than one wave holds, filter and rank them first (Prioritizing And Filtering
    Candidate Changes).
-3. Stage one wave, re-read it against the Acceptance Checks, then compose, confirm and commit it
-   (Staging Workflow, steps 1-6).
+3. If only an ordering plan was asked for, report it and leave the index unchanged. Otherwise stage one
+   wave, re-read it against the Acceptance Checks, then compose, confirm and commit it (Staging Workflow,
+   steps 1-6).
 
 ## When to Use
 
