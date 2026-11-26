@@ -91,7 +91,9 @@ You cannot see whether work was finished elsewhere; do not guess. An honest `amb
 Return the canonical findings envelope `codex-review-bridge` requires of every reviewer it
 dispatches — see that skill's `references/envelope-schema.md` for the full top-level shape
 (`contract_version`, `dispatch`, `provenance`, `findings`, `verdict`, `inspection_limits`); on the
-live bridge path those top-level fields are populated by the bridge itself, not by you. What is
+live bridge path those top-level fields are populated by the bridge itself, not by you. In open-item
+mode, the Open-Item Mode section above sets every finding field and the `verdict` rule, and the field
+values below do not apply. In target mode, what is
 yours to populate is `findings[]`, one entry per classified item: `id`, `severity` (`minor` for a
 confident **clear** classification; `major` for **ambiguous** or **unknown source/malformed**,
 since those need human judgment before anything proceeds), `axis: "classification"`, `location`

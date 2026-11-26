@@ -21,7 +21,9 @@ the account's home from the password database (POSIX) or the profile folder API
 (Windows), never an environment variable a repository's settings could set. It is refused
 when ambiguous, or when it lies inside this repository or one of its worktrees. Only when
 no codex-kit is registered is the sibling plugins/codex-kit used, and only when this very
-script runs from that checkout (plugins/workmanagement-kit or its .claude mirror).
+script runs from that checkout (plugins/workmanagement-kit or its .claude mirror). That
+fallback skips the inside-the-repository refusal on purpose: it runs the checkout's own bridge
+at the trust level of this script, which is the same checkout's code.
 --repo-root bounds the evidence paths; it never selects the code that runs. The location
 logic follows git-kit's git-review-codex-kit.py, copied because an installed plugin
 cannot import a sibling plugin's scripts. Not covered: CODEX_HOME, SystemRoot, LD_* and

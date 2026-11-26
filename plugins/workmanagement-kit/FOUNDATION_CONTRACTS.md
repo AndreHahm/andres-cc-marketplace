@@ -64,7 +64,7 @@ and follows this exact procedure rather than restating it:
    ```
 4. **Parse the returned JSON.** `{"ok": false, ...}` is a typed precondition/invocation failure
    (see the script's own `category`/`detail` fields, e.g. `bridge_caller_precondition_error` when
-   `codex-kit` is not installed, is registered more than once, or lies inside the repository under
+   `codex-kit` is not installed (and the checkout-sibling fallback does not apply), is registered more than once, or lies inside the repository under
    review; the script's docstring says where it looks) — report it
    plainly to the user, then proceed without the review per this skill's own "proceeds without it
    when declined or unavailable" fallback (intake's `classify` has none: it returns a structured

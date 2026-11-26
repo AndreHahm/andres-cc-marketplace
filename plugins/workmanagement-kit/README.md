@@ -108,7 +108,8 @@ returns the bridge's own typed failure rather than silently skipping the review 
 the script's current known reliability caveat on Windows. `scripts/wmgt_bridge_caller.py` takes
 `codex-kit` from Claude Code's `installed_plugins.json`, never from inside the repository under review;
 only when none is registered, and only when the script itself runs from this marketplace's checkout,
-does it use the checkout's own `plugins/codex-kit`. `git-kit` must be installed for any Wave 2
+does it use the checkout's own `plugins/codex-kit`, trusting that bridge exactly as much as the
+script itself, since both are that checkout's code. `git-kit` must be installed for any Wave 2
 skill's governed Git/GitHub operations to resolve — without it, `repository-gates` fails closed with
 a manual handoff rather than falling back to a raw `git`/`gh` command. Initiative reads in
 `linear-work-management` additionally need an optional second Linear connector (`mcp-linear`),
