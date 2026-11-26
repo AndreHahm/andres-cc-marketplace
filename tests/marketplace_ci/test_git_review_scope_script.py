@@ -2085,3 +2085,49 @@ def test_every_shell_helper_sources_the_path_filter_by_either_separator():
         assert line.startswith(r'source "${BASH_SOURCE[0]%[/\\]*}/git-review-path.sh" || exit 2'), (
             name
         )
+
+
+CMR_SKILL = SCRIPT.parents[1] / "skills/cross-model-review/SKILL.md"
+
+
+def _skill_path_filter() -> str:
+    """The PATH filter lines of the skill's inline Preflight chain."""
+    lines = CMR_SKILL.read_text(encoding="utf-8").splitlines()
+    start = next(i for i, s in enumerate(lines) if s.startswith("_rv_common() {"))
+    return "\n".join(lines[start : start + 3])
+
+
+def test_the_skill_text_has_no_argument_placeholders():
+    """Issue #894: a dispatch with arguments rewrote `$1` in the chain; the filter never ended."""
+    text = CMR_SKILL.read_text(encoding="utf-8")
+    assert re.findall(r"\$(?:[0-9]|\{[0-9]|ARGUMENTS)", text) == []
+
+
+def test_the_skill_chain_carries_the_path_filter_lines_of_the_script():
+    text = SCRIPT.with_name("git-review-path.sh").read_text(encoding="utf-8")
+    block = text.split("# >>> path filter\n", 1)[1].split("\n# <<< path filter", 1)[0]
+    assert _skill_path_filter() == block
+
+
+@pytest.mark.skipif(os.name == "nt", reason="the fixture links and paths are POSIX-shaped")
+@needs_symlinks
+def test_the_skill_path_filter_drops_entries_inside_the_repository_and_ends(plain_repo, tmp_path):
+    _git(plain_repo, "worktree", "add", "-q", str(tmp_path / "wt"))
+    outside, links = tmp_path / "outside", tmp_path / "links"
+    in_repo, in_worktree = plain_repo / "bin", tmp_path / "wt/bin"
+    for folder in (outside, in_repo, in_worktree, links):
+        folder.mkdir()
+    (in_repo / "git").write_text("#!/bin/sh\n")
+    (links / "git").symlink_to(in_repo / "git")  # a link from outside that leads inside
+    chain = _skill_path_filter() + '\nprintf "%s\\n%s\\n" "${PATH_FILTERED:-0}" "$PATH"\n'
+    ran = subprocess.run(
+        [BASH, "-c", chain, "bash", "diff"],  # a stray shell positional must not reach the helpers
+        cwd=plain_repo,
+        env={**os.environ, "PATH": ":".join(map(str, (outside, in_repo, in_worktree, links)))},
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    assert ran.returncode == 0, ran.stderr
+    assert ran.stdout.splitlines() == ["1", str(outside)]
