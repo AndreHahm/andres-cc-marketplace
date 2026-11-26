@@ -29,6 +29,23 @@ allowed-tools: ["Bash(node */codex-kit/scripts/codex-companion.mjs:*)", "Bash(gi
 
 Three modes. **Confirm scope and cost with the user via `AskUserQuestion` before launching any mode** — this is not a lightweight command. This confirmation is also this skill's named exception to the session-level first-send gate (`codex-prompt-protocol/references/shared-skill-conventions.md` §3): it runs before any mode's first Codex dispatch, so a separate first-send check would be redundant.
 
+## When to Use
+
+- Only on an explicit request for a complete multi-lens whole-project review, review-until-convergence,
+  a multi-branch comparison (`--branches`), or verify-and-fix across isolated worktrees (`--mode fix`).
+- The scale fits: 3-20 parallel Codex calls per round, for up to 10 rounds. Quick Start step 1
+  confirms scope and cost before any mode runs.
+
+## When NOT to Use
+
+Each pointer below is routing for the caller: this skill stops there and never dispatches the target.
+
+- A single small PR, commit, or uncommitted diff → `/codex-kit:cdx-review`.
+- A single implementation or fix task with no whole-project scope → `codex-rescue`.
+- Planning and implementing new work, including a designed large-scale refactor, with Codex validating
+  the plan before any code changes → `codex-plan-loop`. This skill finds existing defects and (Mode C
+  only) fixes them; it never plans new functionality or structure.
+
 ## Mode A — Multi-lens checkout audit (default)
 
 1. **Explore**: dispatch 1-3 subagents to survey project structure, invariants, high-risk modules.
@@ -75,6 +92,8 @@ Never creates PRs, deploys, or posts comments without explicit authority. Mode A
 
 **Verify it does NOT activate on:**
 - A single small PR, commit, or uncommitted diff → `/codex-kit:cdx-review`
+- A single implementation or fix task with no whole-project scope → `codex-rescue`
+- Planning and implementing new work against a design, with Codex validating the plan first → `codex-plan-loop`
 
 **Concrete scenarios to check:**
 1. Any mode launched → `AskUserQuestion` confirms scope and cost first; never launches silently.

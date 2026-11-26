@@ -134,7 +134,7 @@ of the following hold:
   redacting CI-persisted stderr text, not gating whether documentation content is secret-free), so a
   real secret named that way could otherwise pass `redactSecrets(content) === content` undetected.
   Found live via `cross-model-review` (issue #78): this exact evasion shape was used, for legitimate
-  teaching purposes, in this repo's own `secrets-and-credentials.md` before the additional check
+  teaching purposes, in this repo's own `skill-development/references/secrets-and-credentials.md` before the additional check
   existed. Deliberately NOT fixed by broadening `redactSecrets` itself — that function has its own,
   different caller (CI-log redaction) with its own blast radius. Both checks together are a real, if
   narrow, exception to the "filename-pattern-only" limitation below — but scoped to only the small,
@@ -142,12 +142,12 @@ of the following hold:
   fails to read is treated as NOT exempt (fails closed to the block below) rather than silently
   trusted.
 
-Motivating case: `references/secrets-and-credentials.md` — a documentation file *about* secrets, not
+Motivating case: `skill-development/references/secrets-and-credentials.md` — a documentation file *about* secrets, not
 itself a credential — was permanently blocking this script's whole-repo scan (and therefore the
 entire Windows fallback dispatch path) before this exemption existed. **The exemption's path/
 extension gate alone does not resolve this for a file whose own content contains illustrative
-secret-shaped strings** — confirmed live (2026-08-28, `cross-model-review`): `skill-development`'s
-own `secrets-and-credentials.md` failed `secret_file_in_scope` even though it satisfied the path/
+secret-shaped strings** — confirmed live (2026-08-28, `cross-model-review`):
+`skill-development/references/secrets-and-credentials.md` failed `secret_file_in_scope` even though it satisfied the path/
 extension gate, because a doc that *teaches* what a secret looks like is exactly the kind of file
 most likely to contain realistic example values for illustration, and those match the same
 `redactSecrets` patterns a real credential would. Two of its three identical copies were then
@@ -260,7 +260,7 @@ required to produce, every time.
   known gap rather than silently left unmentioned.
 - **The documentation-about-secrets exemption's content-scan can't tell an illustrative example
   from a real secret, in general.** Confirmed live (2026-08-28) against this exemption's own
-  motivating file (`skill-development`'s `secrets-and-credentials.md`): a reference doc that teaches
+  motivating file (`skill-development/references/secrets-and-credentials.md`): a reference doc that teaches
   what a secret looks like, using realistic example values for illustration, failed
   `secret_file_in_scope` even though it satisfied the path/extension exemption — the content-scan
   (see check 2 above) matched those example values the same way it would match a real credential.

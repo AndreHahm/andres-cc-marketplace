@@ -38,6 +38,26 @@ mkdir -p "${CLAUDE_PLUGIN_DATA}/codex-loop"
 2. **Validate** (Phase 2) — send it to Codex for PASS/FAIL against feasibility/risk; **iterate** (Phase 6) until convergence or the decision gate (Phase 3) says proceed.
 3. **Implement, then review** (Phases 4-5) — Claude implements against the validated plan; Codex reviews the resulting diff against that same plan.
 
+## When to Use
+
+- Complex feature development, code with security or performance concerns, or large-scale refactoring,
+  where Codex validates a plan Claude writes before any code changes.
+- An explicit codex-claude or dual-AI loop request for the full plan-validate-implement-review workflow.
+
+## When NOT to Use
+
+Each pointer below is routing for the caller: this skill stops there and never dispatches the target.
+
+- A simple one-off fix or prototype, or any single implementation task with no up-front plan
+  validation → `codex-rescue`.
+- Validating Claude's own already-formed analysis or design before presenting it → `codex-peer-review`,
+  a lighter on-request comparison.
+- A whole-project defect-audit-then-fix pass with no design plan → `codex-audit-loop --mode fix`. This
+  skill plans and implements new work against a design; it never audits existing code for defects.
+- A single PASS/FAIL check of an already-written document, with no implementation intended →
+  `codex-verify`. Phase 2's validation is one step inside this loop, against a plan Claude writes in
+  Phase 1, not a standalone document check.
+
 ## Phase 1: Plan
 
 Write a detailed implementation plan to `${CLAUDE_PLUGIN_DATA}/codex-loop/plan.md` — overview, steps, assumptions, risks.
@@ -92,6 +112,8 @@ Severity-gated response: Critical → fix immediately. Architectural → discuss
 - A simple one-off fix or prototype → `codex-rescue`
 - A single implementation/fix task with no up-front plan-validation need → `codex-rescue`
 - A single PASS/FAIL check of an already-written document, with no implementation intended → `codex-verify`
+- Validating Claude's own already-formed analysis or design before presenting it → `codex-peer-review`
+- A whole-project defect-audit-then-fix pass with no design plan → `codex-audit-loop --mode fix`
 
 **Concrete scenarios to check:**
 1. Phase 3's decision gate on "revise" → loops back to Phase 1 with feedback incorporated, logs the iteration, never silently proceeds to implementation.

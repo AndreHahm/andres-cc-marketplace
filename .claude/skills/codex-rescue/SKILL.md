@@ -42,6 +42,27 @@ your double-check and wastes turns.
 2. **Invoke, wait** (Phase 2-3) — background the Codex call, poll for completion.
 3. **Double-check + report** (Phase 4-5) — `git diff` the changed files, read only what Codex cited, save the report. Never auto-accept — present and wait for the user.
 
+## When to Use
+
+- "codex rescue", "delegate to codex", "have codex do it": Codex implements or fixes something, then
+  Claude reviews the result.
+- Resuming a prior rescue task (`--resume`, `--resume-last`).
+
+## When NOT to Use
+
+Each pointer below is routing for the caller: this skill stops there and never dispatches the target.
+
+- A multi-phase plan-validate-implement-review workflow on a complex or security- or
+  performance-critical feature → `codex-plan-loop`. This skill is a single delegate-then-review pass,
+  not an iterative validation loop.
+- A whole-project, multi-lens fix pass across many files or subsystems → `codex-audit-loop --mode fix`.
+  This skill delegates one task to one Codex call, not a coordinated multi-worktree fix loop.
+- Open-ended research on a topic or document, synthesized with Claude's own analysis, with no single
+  repository task to carry out → `codex-research`. This skill hands Codex one concrete repository task.
+- Only finding or inspecting a Codex session ID, without continuing the task → `codex-session-lookup`.
+- The same delegated-implementation workflow naming Gemini, Antigravity or agy instead of Codex →
+  antigravity-kit's `antigravity` skill.
+
 ## Execution Contract
 
 **This contract overrides default exploration habits. Read it before Phase 1.**
@@ -450,6 +471,8 @@ For the full shared gotchas list, read
 
 **Verify it does NOT activate on:**
 - A multi-phase plan-validate-implement-review request → `codex-plan-loop`
+- A whole-project, multi-lens fix pass → `codex-audit-loop --mode fix`
+- "codex research this topic", an open-ended deep dive with no single repository task → `codex-research`
 - "verify this plan" / "review this doc" (no implementation task) → `codex-verify`
 - Locating/finding a session ID rather than resuming one → `codex-session-lookup`
 - "delegate this to antigravity/gemini/agy" → antigravity-kit's `antigravity` skill instead

@@ -37,8 +37,8 @@ existing rule that a tracked local override is ignored.
   non-clean-untracked outcome" without stating this discriminator — ambiguous enough that an
   implementer could reasonably read "non-zero → untracked → honor it," the exact inversion of the
   intended fail-closed behavior. Verified live during Self-Review rework: a tracked local override
-  is correctly ignored; the shipped disabled default is used instead.) Identical pattern to `plugin-auditor`'s own
-  `references/codex-backend.md` trust check — cited, not re-derived.
+  is correctly ignored; the shipped disabled default is used instead.) Identical pattern to the trust check in
+  `plugin-auditor/references/codex-backend.md` — cited, not re-derived.
 
 ## Scope: central + local-machine only (v1)
 

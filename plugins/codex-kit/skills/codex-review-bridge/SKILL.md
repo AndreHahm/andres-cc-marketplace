@@ -15,7 +15,7 @@ disable-model-invocation: true
 
 # Generic Codex review bridge
 
-Built on the shared `runCodexExec` primitive (`scripts/lib/codex-exec.mjs`). Implements the canonical findings envelope documented in `references/envelope-schema.md`, so any caller gets the same contract regardless of which reviewer persona is invoked. Live callers today: this plugin's own `plugin-marketplace-review` policy (invoked directly by repository-owned `scripts/marketplace_ci/review.py`, not through this skill), and `plugin-devkit`'s `plugin-auditor` skill (its Codex backend resolver, `references/codex-backend.md`, invokes `scripts/bridge-invoke.mjs` for the `read-only` execution profile).
+Built on the shared `runCodexExec` primitive (`scripts/lib/codex-exec.mjs`). Implements the canonical findings envelope documented in `references/envelope-schema.md`, so any caller gets the same contract regardless of which reviewer persona is invoked. Live callers today: this plugin's own `plugin-marketplace-review` policy (invoked directly by repository-owned `scripts/marketplace_ci/review.py`, not through this skill), and `plugin-devkit`'s `plugin-auditor` skill (its Codex backend resolver, `plugin-auditor/references/codex-backend.md`, invokes `scripts/bridge-invoke.mjs` for the `read-only` execution profile).
 
 **A bare `scripts/` prefix means three different roots across this file, depending on context — disambiguated here once rather than at every occurrence:** `scripts/bridge-invoke.mjs` is this skill's own directory (`${CLAUDE_PLUGIN_ROOT}/skills/codex-review-bridge/scripts/`); `scripts/lib/codex-exec.mjs` and every `scripts/smoke-tests/*.mjs` file — including the `codex-review-bridge-*.mjs` ones — are `codex-kit`'s plugin-level `scripts/` directory (`${CLAUDE_PLUGIN_ROOT}/scripts/`), shared across codex-kit's components; `scripts/marketplace_ci/review.py` is the repository root's own `scripts/` directory, entirely outside `codex-kit`.
 
@@ -113,6 +113,10 @@ If the requested execution profile fails, this skill reports that explicitly in 
 
 **Verify this skill activates on:**
 - Nothing conversational — this skill is invoked by other components (`plugin-marketplace-review` via `scripts/marketplace_ci/review.py`, `plugin-auditor`'s Codex backend resolver), not directly by end users
+
+**Verify it does NOT activate on:**
+- Any conversational request — `disable-model-invocation: true` keeps it out of model selection; callers
+  invoke it by script
 
 **Verify it does NOT run with:**
 - `--execution-profile danger-full-access` — always rejected with an `isolation_profile_unavailable` typed failure
