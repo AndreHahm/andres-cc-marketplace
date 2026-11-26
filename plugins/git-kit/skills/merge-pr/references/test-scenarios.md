@@ -138,6 +138,12 @@ a fresh `gh repo view` (skill-reviewer M1, 2026-08-31):**
 - The comment reads green and the check is `COMPLETED`/`SUCCESS` → step 5 still states "green"
 - A newer push is still running the `Coverage tier` check (`IN_PROGRESS`) → the old comment's tier is
   reported with a note that it may describe an earlier head
+- The comment reads green but the `Coverage tier` check for the head is `COMPLETED`/`FAILURE` (the new
+  head's tier could not be computed, so the workflow left the old comment) → green is reported with the
+  note that the comment may describe an earlier head, and the failure as orange, red or not computed
+- With `--stop-on-review-findings`, the `github-actions` coverage comment reads red → it is a status,
+  not a review finding, and does not stop the run; a comment by another author with the same marker is
+  classified like any other body
 - A comment with the marker but a different author, or a second line naming no tier from the closed set
   → not reported as a tier (wrong author: ignored; unknown value: reported as unrecognized)
 - No comment and no `Coverage tier` check (a repository without the coverage workflow) → step 5 states
