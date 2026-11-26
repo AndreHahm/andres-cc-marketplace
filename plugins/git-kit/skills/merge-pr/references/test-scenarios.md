@@ -131,7 +131,20 @@ a fresh `gh repo view` (skill-reviewer M1, 2026-08-31):**
   unchanged either way, since step 1's resolved value and a fresh `gh repo view` would coincidentally
   agree — this scenario exists only to confirm the fix doesn't regress the common case
 
-**Verify step 2's two advisory disclosures never block readiness and are always surfaced at step 5:**
+**Verify step 2's coverage-tier disclosure never blocks and reports only what the comment shows:**
+- The `github-actions` coverage-tier comment reads `### Coverage tier: red (...)` and the `Coverage tier`
+  check is `COMPLETED`/`FAILURE` while every required check passes → step 5 states the red tier and the
+  failed check; readiness is unaffected, with or without `--stop-on-review-findings`
+- The comment reads green and the check is `COMPLETED`/`SUCCESS` → step 5 still states "green"
+- A newer push is still running the `Coverage tier` check (`IN_PROGRESS`) → the old comment's tier is
+  reported with a note that it may describe an earlier head
+- A comment with the marker but a different author, or a second line naming no tier from the closed set
+  → not reported as a tier (wrong author: ignored; unknown value: reported as unrecognized)
+- No comment and no `Coverage tier` check (a repository without the coverage workflow) → step 5 states
+  that no coverage tier was reported
+- The `gh pr view --json comments` read fails → reported as undetermined, never as green
+
+**Verify step 2's other two advisory disclosures never block readiness and are always surfaced at step 5:**
 - `mergeStateStatus` resolves to `CLEAN` → step 5 still states the raw value explicitly, never omitted
   just because it's clean
 - `mergeStateStatus` resolves to `BLOCKED`, `DIRTY`, `BEHIND`, `UNSTABLE`, or `HAS_HOOKS` while this

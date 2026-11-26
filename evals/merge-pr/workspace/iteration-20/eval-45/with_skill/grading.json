@@ -1,0 +1,32 @@
+{
+  "eval_id": 45,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Reads the tier only from the github-actions comment and ignores mallory's",
+      "passed": true,
+      "evidence": "'`mallory` comment has the same marker, but it fails the author test, so it is ignored'"
+    },
+    {
+      "text": "States the coverage tier does not block readiness or stop the run",
+      "passed": true,
+      "evidence": "'Does the coverage tier block readiness? No.'"
+    },
+    {
+      "text": "Step 5's confirmation is required to state the red tier with the Coverage tier check's COMPLETED/FAILURE",
+      "passed": true,
+      "evidence": "step 5 states the tier as red with the check 'COMPLETED/FAILURE on this head'"
+    },
+    {
+      "text": "Proceeds through step 3 to step 5 as usual",
+      "passed": true,
+      "evidence": "'Step 3, merge rights' then 'Step 5, confirm'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  },
+  "note": "Re-run after step 2's advisory disclosures moved to references/advisory-disclosures.md. Subject model claude-opus-5-5 (inherited), one general-purpose subject; it read SKILL.md and the new reference. Graded by the author."
+}
