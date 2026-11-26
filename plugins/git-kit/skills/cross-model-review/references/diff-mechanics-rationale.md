@@ -78,16 +78,19 @@ inside, so an entry spelled inside that is a link leading out is dropped too. A 
 through the checkout, from an entry outside to a target outside, is not followed. Another worktree of the
 repository, the main checkout included, counts as inside: the folder's own `.git` must name the same common git
 directory, so a worktree whose `.git` is gone, or altered to name another directory, is not recognized; one
-whose `.git` or `commondir` content holds a control character counts as inside. A checkout at `/` is not recognized either. A folder outside is dropped too
+whose `.git` or `commondir` content holds a control character counts as inside. A checkout at `/`, or another worktree of this repository at `/`, keeps no entry, since every folder is inside it: the walk up from an entry never tests `/` itself, so `/.git` is read once on its own. A folder outside is dropped too
 when one of the programs the review runs by name is a link in it that leads inside or passes through.
 Built-ins cannot read a file link, so `/usr/bin/readlink` does, by absolute path and one step at a time. A link
 it cannot read (no such program, as on NixOS) drops the folder, which can leave no PATH and stop the chain.
 A shell's `$(...)` drops trailing newlines, so a folder or link target whose name ends in one would be checked
 under a different name than the one PATH keeps: each capture appends `x` and strips it again, and an entry
 or link step whose path holds a control character is dropped. `.git` and `commondir` are read whole for the
-same reason. A checkout or git directory path holding one keeps no entry, so the chain stops, and a folder whose
+same reason, and only one final line feed is removed. A carriage return is kept on purpose so the control-character
+check treats it as inside; that is stricter than git, which also drops a final CR, so a CRLF `.git` or `commondir`
+in the checkout stops the chain. A checkout or git directory path holding one keeps no entry, so the chain stops, and a folder whose
 git directory path holds one counts as inside. An unreadable or empty `.git` file or `commondir` is treated the
-same way, and so is a working directory whose path cannot be read (`pwd -P` fails, as in a deleted folder). Not
+same way, and so is a working directory whose path cannot be read (`pwd -P` fails, as in a deleted folder); the
+path is read once and reused, so a second call cannot skip the walk. Not
 caught: a link to a program outside that list, and a hard link. Each name is also checked with `.exe`, the
 suffix Git Bash adds; this was run on Linux only (issue #877). `safe_path` covers the other Windows suffixes
 for `codex`, `node` and `git`. If nothing is left, the chain stops: an empty PATH would make the shell look in the current
