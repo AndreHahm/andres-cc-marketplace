@@ -20,6 +20,7 @@ than silently testing stale logic.
 
 import pathlib
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -614,11 +615,15 @@ def test_planner_check_ignores_other_plugins_mirrored_scripts():
         "plugins/git-kit/scripts/git-review-ledger.py": "1",
         ".claude/skills/cross-model-review/SKILL.md": "1",
         ".claude/scripts/plib_a.py\n.claude/scripts/git_review_common.py": "1",
+        ".claude/scripts/git_review_common.py\n.claude/scripts/plib_a.py": "1",
+        ".claude/scripts/plib_a.py\n.claude/scripts/anls-run.sh": "0",
     }
     with tempfile.TemporaryDirectory() as tmp:
         for path, want in cases.items():
+            # shlex.quote keeps a real newline, so the multi-line cases reach grep as two lines.
             script = (
-                f"UNSCOPED_CHANGED_FILES={path!r}\n{line}\necho TOUCHED=${{PLANNER_TOUCHED:-0}}"
+                f"UNSCOPED_CHANGED_FILES={shlex.quote(path)}\n{line}\n"
+                "echo TOUCHED=${PLANNER_TOUCHED:-0}"
             )
             result = run_bash(pathlib.Path(tmp), "set -e\n" + script)
             if f"TOUCHED={want}" not in result.stdout:
@@ -630,20 +635,21 @@ def test_review_scripts_load_only_git_prefixed_siblings():
     """The narrowed check (#710) is safe only while every sibling file loaded is git-/git_ named."""
     loads = re.compile(
         r'source "[^"]*/([^"/]+)"|with_name\("([^"]+)"\)|_import_sibling\("([^"]+)"\)'
-        r'|python3 -I "[^"]*/([^"/]+)"'
+        # Any quoting: scope-run.sh runs the planner as "$(dirname -- "...")/git-review-scope.py".
+        r"|python3 -I [^\n]*?/([A-Za-z0-9_.-]+\.py)\b"
     )
     scripts_dir = SKILL_DIR.parent.parent / "scripts"
     paths = sorted(scripts_dir.glob("git-review-*")) + [scripts_dir / "git_review_common.py"]
-    found = 0
+    found = set()
     for path in paths:
         for match in loads.finditer(path.read_text(encoding="utf-8")):
             name = next(g for g in match.groups() if g)
-            found += 1
+            found.add((path.name, name))
             if not re.match(r"git[-_]", name, re.IGNORECASE):
                 return False, f"{path.name} loads {name!r}, which PLANNER_TOUCHED does not cover"
-    if not found:
-        return False, "no sibling loads found: the pattern no longer matches the scripts"
-    return True, f"all {found} sibling loads in the review scripts are git-/git_ named"
+    if ("git-review-scope-run.sh", "git-review-scope.py") not in found:
+        return False, "the planner launch in git-review-scope-run.sh was not matched"
+    return True, f"all {len(found)} sibling loads in the review scripts are git-/git_ named"
 
 
 def test_planner_check_copies_agree():
