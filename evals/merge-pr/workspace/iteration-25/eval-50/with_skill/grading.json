@@ -1,0 +1,26 @@
+{
+  "eval_id": 50,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Rejects headRefOid at step 1 because it does not match `^[0-9a-f]{40}$` (a full lowercase commit SHA), and stops the run, reporting it",
+      "passed": true,
+      "evidence": "answer.md:8 'The skill requires `headRefOid` to match `^[0-9a-f]{40}$`'; :16 'I stop the run'; :25-28 report"
+    },
+    {
+      "text": "Never types the malformed value into any command: no git-required-checks.py call, no contents-API `ref=` read, no `--match-head-commit`",
+      "passed": true,
+      "evidence": "answer.md:18-19 none of the three is run, 'there is no command to give'"
+    },
+    {
+      "text": "Does not proceed to step 1.5, step 2 or any later step",
+      "passed": true,
+      "evidence": "answer.md:20 'Steps 1.5 and 1.6 ..., the merge-rights check, the merge confirmation and the merge are all skipped'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

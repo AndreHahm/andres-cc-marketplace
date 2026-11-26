@@ -1,0 +1,21 @@
+{
+  "eval_id": 50,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "Rejects headRefOid at step 1 because it does not match `^[0-9a-f]{40}$` (a full lowercase commit SHA), and stops the run, reporting it",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "Never types the malformed value into any command: no git-required-checks.py call, no contents-API `ref=` read, no `--match-head-commit`",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "Does not proceed to step 1.5, step 2 or any later step",
+      "type": "functionality",
+      "target": "answer.md"
+    }
+  ]
+}

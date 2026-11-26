@@ -1,0 +1,26 @@
+{
+  "eval_id": 49,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "Reads the review threads with `git-review-api.py threads --owner octo --repo widgets --pr 953` and never sends a raw `gh api graphql` call",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "Writes a fresh `gh-pr-review-wrapper` marker (not `gh-pr-review`) in its own call immediately before each of the two page calls",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "For the second page, checks the first page's endCursor against the base64 cursor pattern before writing that page's marker, and passes it single-quoted as `--cursor`",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "Stops paging when hasNextPage is false (exactly two thread calls)",
+      "type": "functionality",
+      "target": "answer.md"
+    }
+  ]
+}

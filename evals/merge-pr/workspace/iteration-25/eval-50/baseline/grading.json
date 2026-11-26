@@ -1,0 +1,26 @@
+{
+  "eval_id": 50,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Rejects headRefOid at step 1 because it does not match `^[0-9a-f]{40}$` (a full lowercase commit SHA), and stops the run, reporting it",
+      "passed": true,
+      "evidence": "answer.md:20 'A real Git object id is exactly 40 lowercase hex characters (`^[0-9a-f]{40}$`)'; :36 'Stop at step 1'. It stops through the general data-only rule; :56-60 notes the pre-change skill has no explicit headRefOid gate"
+    },
+    {
+      "text": "Never types the malformed value into any command: no git-required-checks.py call, no contents-API `ref=` read, no `--match-head-commit`",
+      "passed": true,
+      "evidence": "answer.md:36-38 runs none of them; :48-50 'With this value I do not run it at all'"
+    },
+    {
+      "text": "Does not proceed to step 1.5, step 2 or any later step",
+      "passed": true,
+      "evidence": "answer.md:36 'I do not continue to step 1.5, 1.6, 2 or later'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

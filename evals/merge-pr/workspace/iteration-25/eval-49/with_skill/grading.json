@@ -1,0 +1,31 @@
+{
+  "eval_id": 49,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Reads the review threads with `git-review-api.py threads --owner octo --repo widgets --pr 953` and never sends a raw `gh api graphql` call",
+      "passed": true,
+      "evidence": "answer.md:39 `python3 -I \"${CLAUDE_PLUGIN_ROOT}/scripts/git-review-api.py\" threads --owner octo --repo widgets --pr 953`; no graphql call anywhere"
+    },
+    {
+      "text": "Writes a fresh `gh-pr-review-wrapper` marker (not `gh-pr-review`) in its own call immediately before each of the two page calls",
+      "passed": true,
+      "evidence": "answer.md:33 and :64 `git-write-marker.sh\" gh-pr-review-wrapper merge-pr`, each its own Bash call right before a threads call"
+    },
+    {
+      "text": "For the second page, checks the first page's endCursor against the base64 cursor pattern before writing that page's marker, and passes it single-quoted as `--cursor`",
+      "passed": true,
+      "evidence": "answer.md:50-57 'Check the cursor before writing the next marker' against `^[A-Za-z0-9+/=_-]+$`; :70 `--cursor 'Y3Vy...pwA=='`"
+    },
+    {
+      "text": "Stops paging when hasNextPage is false (exactly two thread calls)",
+      "passed": true,
+      "evidence": "answer.md:74 'the loop ends here. There is no third marker and no third call.'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

@@ -225,6 +225,22 @@ def check_headrefname_validated_before_first_use():
     return True, "headRefName is validated before its first shell interpolation (git ls-remote)"
 
 
+def check_headrefoid_validated_before_use():
+    # PR #909 round-2 sibling sweep: headRefOid is API data typed into step 2's script call and
+    # ref= read, step 4(b)'s marker and step 7's --match-head-commit, so each source checks it.
+    sha_re = "`^[0-9a-f]{40}$`"
+    step1 = _get_step_text(1)
+    if step1 is None or "**Validate `headRefOid` the same way" not in step1 or sha_re not in step1:
+        return False, "step 1 no longer validates headRefOid against ^[0-9a-f]{40}$"
+    step2 = _get_step_text(2)
+    if step2 is None or f"the refreshed `headRefOid` against {sha_re}" not in step2:
+        return False, "step 2's rerun re-fetch no longer re-validates headRefOid"
+    step4 = _get_step_text(4)
+    if step4 is None or f"the resolved SHA must match {sha_re}" not in step4:
+        return False, "step 4(b) no longer validates the head SHA it resolves"
+    return True, "headRefOid is validated at step 1, step 2's rerun and step 4(b)'s resolve"
+
+
 def check_step7_verification_not_gated_on_exit_code():
     step7 = _get_step_text(7)
     if step7 is None:
@@ -995,13 +1011,35 @@ def check_step2_unresolved_threads_disclosure():
         return False, "step 2 no longer documents the unresolved-review-threads disclosure"
     if "reviewThreads" not in step2 or "isResolved" not in step2:
         return False, "step 2 no longer names the reviewThreads/isResolved GraphQL query"
-    if "gh-pr-review merge-pr" not in step2:
+    if "gh-pr-review-wrapper merge-pr" not in step2:
         return (
             False,
-            "step 2's unresolved-review-threads check no longer writes the gh-pr-review marker "
-            "before its gh api graphql call -- git-guard-raw-pr-review.sh hard-blocks graphql "
-            "without it",
+            "step 2's unresolved-review-threads check no longer writes the gh-pr-review-wrapper "
+            "marker before its git-review-api.py threads call -- the script refuses without it",
         )
+    if 'git-review-api.py" threads --owner' not in step2:
+        return (
+            False,
+            "step 2's unresolved-review-threads check no longer reads threads through "
+            "git-review-api.py threads (security-review m4, PR #909)",
+        )
+    flat = " ".join(step2.split())
+    for needed, why in (
+        (
+            "before the first `threads` call of this invocation",
+            "when the checkout copy of git-review-api.py is compared and approved (m1/m5)",
+        ),
+        (
+            "`.claude/scripts/git-review-api.py`",
+            "which copies of git-review-api.py the comparison covers (m1)",
+        ),
+        (
+            "Check a page's cursor (below) before writing that page's marker",
+            "that a refused cursor never leaves a marker behind (m2)",
+        ),
+    ):
+        if needed not in flat:
+            return False, f"step 2's thread read no longer states {why}"
     if "hasNextPage" not in step2:
         return (
             False,
@@ -1086,7 +1124,10 @@ def check_step2_coverage_tier_disclosure():
             "or the comment could not be posted), so a `FAILURE` alone does not name the tier",
             "that a FAILURE can come from any failed step of the job (PR #909, Devin)",
         ),
-        ("```bash gh api graphql", "the GraphQL example's fence is tagged bash (PR #909, R24)"),
+        (
+            "```bash python3 -I",
+            "the thread-query example's fence is tagged bash (PR #909, R24)",
+        ),
         (
             "with no trailing newline, matches `^[A-Za-z0-9+/=_-]+$`",
             "that the API's endCursor is checked before it is typed into a command"
@@ -1117,8 +1158,16 @@ def check_boundaries_graphql_grant_disclosure():
     if "mergePullRequest" not in boundaries or "deleteRef" not in boundaries:
         return (
             False,
-            "Boundaries no longer discloses that Bash(gh api graphql:*) grants the entire "
-            "GraphQL surface including mutations this skill never intends (security-reviewer M1)",
+            "Boundaries no longer discloses that a Bash(gh api graphql:*) grant would reach the "
+            "entire GraphQL surface including mutations this skill never intends "
+            "(security-reviewer M1)",
+        )
+    frontmatter = text.split("\n---\n", 1)[0]
+    if "Bash(gh api graphql" in frontmatter:
+        return (
+            False,
+            "allowed-tools grants Bash(gh api graphql:*) again; step 2's thread read goes through "
+            "git-review-api.py threads (security-review m4, PR #909)",
         )
     if "never substitutes for step 7(b)" not in boundaries:
         return (
@@ -1361,7 +1410,7 @@ def check_step2_review_outcomes_recorded():
         "review-ledger.local.json",
         "all six must pass",
         # PR #909 review: one entry must never pass every thread; each thread needs its own.
-        "comments(first: 1) { nodes { databaseId } }",
+        "`comments.nodes[0].databaseId`",
         "Every thread needs its own recorded disposition",
         '(.pr | tostring) == "<number>"',
         "| .finding | tostring]",
@@ -1383,6 +1432,14 @@ def check_step2_review_outcomes_recorded():
     in_filter = re.search(r"\.disposition \| IN\(([^)]*)\)", flat)
     if not in_filter or re.findall(r'"([a-z_]+)"', in_filter.group(1)) != names:
         return False, "step 2's disposition filter no longer matches the ledger's DISPOSITIONS"
+    # The thread ids come from git-review-api.py's fixed query (security-review m4, PR #909).
+    api = SKILL_DIR.parent.parent / "scripts" / "git-review-api.py"
+    query = re.search(r'^THREADS_QUERY = """(.*?)"""', api.read_text(encoding="utf-8"), re.M | re.S)
+    if not query or not all(
+        part in query.group(1)
+        for part in ("isResolved", "comments(first: 1)", "databaseId", "hasNextPage endCursor")
+    ):
+        return False, f"{api.name}'s THREADS_QUERY no longer returns what step 2's checks read"
     return True, "step 2 requires recorded, promoted review outcomes"
 
 
@@ -1448,6 +1505,7 @@ CHECKS = [
     check_step7_skips_delete_fallback_for_fork_prs,
     check_step7_verification_not_gated_on_exit_code,
     check_headrefname_validated_before_first_use,
+    check_headrefoid_validated_before_use,
     check_step5_worktree_note,
     check_step2_four_state_classification,
     check_step7_rebase_precheck,
