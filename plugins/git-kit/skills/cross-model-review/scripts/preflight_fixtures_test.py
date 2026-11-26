@@ -18,6 +18,7 @@ if the skill's actual commands change, these fixtures exercise the new commands 
 than silently testing stale logic.
 """
 
+import ast
 import pathlib
 import re
 import shlex
@@ -631,24 +632,70 @@ def test_planner_check_ignores_other_plugins_mirrored_scripts():
     return True, "only git-kit's own mirrored scripts set PLANNER_TOUCHED, not another plugin's"
 
 
+def _python_sibling_loads(source: str) -> tuple[list[str], list[str]]:
+    """Names passed to with_name()/_import_sibling(), read with ast (REVIEW.md: no regex for
+    Python call arguments), so quoting and line breaks do not matter. Returns (names, problems):
+    a name that is not a string constant cannot be checked, so it is a problem where it can
+    reach a loader."""
+    tree = ast.parse(source)
+    names, problems = [], []
+    loader_funcs = {
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+        and any(
+            isinstance(c, ast.Call)
+            and isinstance(c.func, ast.Attribute)
+            and c.func.attr == "exec_module"
+            for c in ast.walk(node)
+        )
+    }
+    in_loader = {id(n) for f in loader_funcs for n in ast.walk(f)}
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call) or not node.args:
+            continue
+        func = node.func
+        is_with_name = isinstance(func, ast.Attribute) and func.attr == "with_name"
+        is_sibling = isinstance(func, ast.Name) and func.id == "_import_sibling"
+        if not (is_with_name or is_sibling):
+            continue
+        arg = node.args[0]
+        if isinstance(arg, ast.Constant) and isinstance(arg.value, str):
+            names.append(arg.value)
+        elif is_sibling or id(node) in in_loader:
+            problems.append(f"line {node.lineno}: a loaded name that is not a string constant")
+    return names, problems
+
+
 def test_review_scripts_load_only_git_prefixed_siblings():
     """The narrowed check (#710) is safe only while every sibling file loaded is git-/git_ named."""
-    loads = re.compile(
-        r'source "[^"]*/([^"/]+)"|with_name\("([^"]+)"\)|_import_sibling\("([^"]+)"\)'
-        # Any quoting: scope-run.sh runs the planner as "$(dirname -- "...")/git-review-scope.py".
-        r"|python3 -I [^\n]*?/([A-Za-z0-9_.-]+\.py)\b"
+    # Shell has no parser here, so `source` and `python3 -I` launches stay regex; any quoting:
+    # scope-run.sh runs the planner as "$(dirname -- "...")/git-review-scope.py".
+    shell_loads = re.compile(
+        r'source "[^"]*/([^"/]+)"|python3 -I [^\n]*?/([A-Za-z0-9_.-]+\.(?:py|sh))\b'
     )
     scripts_dir = SKILL_DIR.parent.parent / "scripts"
     paths = sorted(scripts_dir.glob("git-review-*")) + [scripts_dir / "git_review_common.py"]
     found = set()
     for path in paths:
-        for match in loads.finditer(path.read_text(encoding="utf-8")):
-            name = next(g for g in match.groups() if g)
+        text = path.read_text(encoding="utf-8")
+        if path.suffix == ".py":
+            names, problems = _python_sibling_loads(text)
+            if problems:
+                return False, f"{path.name}: {problems[0]}, which PLANNER_TOUCHED cannot check"
+        else:
+            names = [next(g for g in m.groups() if g) for m in shell_loads.finditer(text)]
+        for name in names:
             found.add((path.name, name))
             if not re.match(r"git[-_]", name, re.IGNORECASE):
                 return False, f"{path.name} loads {name!r}, which PLANNER_TOUCHED does not cover"
-    if ("git-review-scope-run.sh", "git-review-scope.py") not in found:
-        return False, "the planner launch in git-review-scope-run.sh was not matched"
+    expected = {
+        ("git-review-scope-run.sh", "git-review-scope.py"),
+        ("git-review-scope.py", "git_review_common.py"),
+        ("git-review-locate-rva.py", "git_review_common"),
+    }
+    if not expected <= found:
+        return False, f"known loads not found (the parser no longer sees them): {expected - found}"
     return True, f"all {len(found)} sibling loads in the review scripts are git-/git_ named"
 
 
