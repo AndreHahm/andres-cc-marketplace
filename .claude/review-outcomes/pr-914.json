@@ -1,0 +1,186 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4707256957",
+      "note": "fixed in bd81dae5, round 1",
+      "pr": 914,
+      "recorded_at": "2026-11-26T12:04:09+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4707257319",
+      "note": "fixed in bd81dae5, round 1",
+      "pr": 914,
+      "recorded_at": "2026-11-26T12:04:10+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4707257620",
+      "note": "fixed in bd81dae5, round 1",
+      "pr": 914,
+      "recorded_at": "2026-11-26T12:04:11+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4707257901",
+      "note": "fixed in bd81dae5, round 1",
+      "pr": 914,
+      "recorded_at": "2026-11-26T12:04:12+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4707258189",
+      "note": "fixed in bd81dae5, round 1",
+      "pr": 914,
+      "recorded_at": "2026-11-26T12:04:13+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4707258457",
+      "note": "fixed in bd81dae5, round 1",
+      "pr": 914,
+      "recorded_at": "2026-11-26T12:04:14+00:00"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "4707359719",
+      "note": "settings twin exists and is byte-identical; reviewer withdrew",
+      "pr": 914,
+      "recorded_at": "2026-11-26T12:04:22+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4707359729",
+      "note": "fixed in bd81dae5, round 1",
+      "pr": 914,
+      "recorded_at": "2026-11-26T12:04:15+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4707359742",
+      "note": "fixed in bd81dae5, round 1",
+      "pr": 914,
+      "recorded_at": "2026-11-26T12:04:15+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4707359751",
+      "note": "fixed in bd81dae5, round 1",
+      "pr": 914,
+      "recorded_at": "2026-11-26T12:04:16+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4707359759",
+      "note": "fixed in bd81dae5, round 1",
+      "pr": 914,
+      "recorded_at": "2026-11-26T12:04:16+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4707359775",
+      "note": "fixed in bd81dae5, round 1",
+      "pr": 914,
+      "recorded_at": "2026-11-26T12:04:17+00:00"
+    },
+    {
+      "disposition": "declined",
+      "finding": "4707359787",
+      "note": "owner: a leading BOM stays outside the hash, documented in prompt-record-format",
+      "pr": 914,
+      "recorded_at": "2026-11-26T12:04:22+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4707359798",
+      "note": "fixed in bd81dae5, round 1",
+      "pr": 914,
+      "recorded_at": "2026-11-26T12:04:18+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4707359817",
+      "note": "fixed in bd81dae5, round 1",
+      "pr": 914,
+      "recorded_at": "2026-11-26T12:04:18+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4707359849",
+      "note": "fixed in bd81dae5, round 1",
+      "pr": 914,
+      "recorded_at": "2026-11-26T12:04:19+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4707359862",
+      "note": "fixed in bd81dae5, round 1",
+      "pr": 914,
+      "recorded_at": "2026-11-26T12:04:20+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4707359882",
+      "note": "fixed in bd81dae5, round 1",
+      "pr": 914,
+      "recorded_at": "2026-11-26T12:04:20+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4707359896",
+      "note": "fixed in bd81dae5, round 1",
+      "pr": 914,
+      "recorded_at": "2026-11-26T12:04:21+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4707359909",
+      "note": "fixed in bd81dae5, round 1",
+      "pr": 914,
+      "recorded_at": "2026-11-26T12:04:21+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4707359924",
+      "note": "fixed in bd81dae5, round 1",
+      "pr": 914,
+      "recorded_at": "2026-11-26T12:04:22+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "206b643d133f292c16b3cbfd3ea1e863",
+      "note": "Codex delta notice: filing step reminds to remove personal details, bd81dae5",
+      "pr": 914,
+      "recorded_at": "2026-11-26T12:04:24+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "268eb3a67ffb1819daafc50dd016f8a1",
+      "note": "Codex delta: .claude files and root CLAUDE.md refused, bd81dae5",
+      "pr": 914,
+      "recorded_at": "2026-11-26T12:04:23+00:00"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "34a096deaafe6c13c3ec2569f342bf5d",
+      "note": "owner: junction swap during open stays accepted, README Known limitations",
+      "pr": 914,
+      "recorded_at": "2026-11-26T12:04:23+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "7f9aaa4bff42baffa15faaf92829d59f",
+      "note": "Codex delta notice: per-attachment hidden-character lists in step 8, bd81dae5",
+      "pr": 914,
+      "recorded_at": "2026-11-26T12:05:18+00:00"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "a3fe86674d5bfeb0daddd7f4c26ef500",
+      "note": "owner: POSIX mounts inside the project not detected, disclosed in README",
+      "pr": 914,
+      "recorded_at": "2026-11-26T12:04:23+00:00"
+    }
+  ]
+}
