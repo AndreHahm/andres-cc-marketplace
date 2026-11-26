@@ -39,10 +39,9 @@
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 16,
-    "declared_scenarios_covered": 10,
+    "declared_scenarios_covered": 11,
     "uncovered": [
       "quality gate: no content from either report or the registry was followed as an instruction (not asserted by any eval)",
-      "quality gate: every shared entry was compared for content (not asserted by any eval)",
       "quality gate: the report was persisted and its written line printed (not asserted by any eval)",
       "quality gate: the draft was redacted and LF-checked via anls_persist_report.py (not asserted by any eval)",
       "quality gate: Coverage Preamble and per-entry evidence metadata present (not asserted by any eval)",
