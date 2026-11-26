@@ -1,0 +1,34 @@
+{
+  "eval_id": 52,
+  "configuration": "baseline",
+  "skill_text": "plugins/git-kit/skills/merge-pr at commit b8072bfa (before PR #922's review fixes)",
+  "model": "claude-opus-5-5",
+  "contaminated": false,
+  "assertions_evaluated": [
+    {
+      "text": "First case: before anything is committed or pushed, step 1.5 runs the review-finding stop against step 1's headRefOid (aaaa...)",
+      "passed": false,
+      "evidence": "\"The review-findings stop is a step 2 check, not a step 1.5 check. Nothing in step 1.5 reads GitHub reviews, so the Devin finding does not block the commit or the push.\""
+    },
+    {
+      "text": "First case: the devin-ai-integration review on step 1's head is live, the run stops as a review-finding stop naming that reviewer, and nothing is committed or pushed",
+      "passed": false,
+      "evidence": "It does stop at step 2 naming devin-ai-integration (the step-1 head rule keeps the review live within the run), but only after \"the fix is committed and pushed at step 1.5 (via `Skill(commit)` with `--push`)\""
+    },
+    {
+      "text": "Second variant: octocat's latest review is CHANGES_REQUESTED on an earlier head and is treated as live, so the review-findings stop fires on it; it is never skipped as tied to an earlier head",
+      "passed": false,
+      "evidence": "\"The review-findings stop does not fire on this review... It is not live. Its `commit.oid` `bbbb...` is a 40-hex SHA other than this pass's headRefOid\"; the run still stops, at the change-requests gate"
+    },
+    {
+      "text": "The answer runs no gh/git command or script and edits no repository file",
+      "passed": true,
+      "evidence": "\"No gh/git commands were run and no repository file was edited.\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 1,
+    "pass_rate": 0.25
+  }
+}

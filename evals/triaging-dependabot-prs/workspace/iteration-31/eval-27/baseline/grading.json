@@ -1,0 +1,34 @@
+{
+  "eval_id": 27,
+  "configuration": "baseline",
+  "skill_text": "plugins/git-kit/skills/triaging-dependabot-prs at commit b8072bfa (before PR #922's review fixes)",
+  "model": "claude-opus-5-5",
+  "contaminated": false,
+  "assertions_evaluated": [
+    {
+      "text": "PR 501: octocat's latest CHANGES_REQUESTED review on an earlier head is treated as live, the review-finding stop fires before the close question, and nothing is closed or ignored",
+      "passed": false,
+      "evidence": "\"It is skipped as not live... The stop does not fire.\" and \"Outcome: 501 closed (plain close only, no comment).\""
+    },
+    {
+      "text": "PR 502: the review-finding stop runs before the recreate ask, fires on the live devin review, and no recreate is posted",
+      "passed": true,
+      "evidence": "\"The review-finding stop fires here, before the rebase question. Nothing is posted.\" Passed through 6.3's existing order (the stop runs before any branch-freshness question), not through a recreate rule: the answer itself notes \"The skill's stop text names rebase, close, ignore and merge, but not recreate... This is a gap in the skill's own text\". This assertion did not separate the arms."
+    },
+    {
+      "text": "PR 503: after the user's yes, the stop is re-run right before posting the rebase, catches the new coderabbitai review, and no @dependabot rebase is posted",
+      "passed": true,
+      "evidence": "\"The re-run now sees the live coderabbit review, so the stop fires. The rebase is not posted.\" This re-run was already in the pre-fix text, so the assertion did not separate the arms."
+    },
+    {
+      "text": "Each stop offers the hold-for-triage or leave-out-of-batch choice, and no merge, close, recreate or rebase is posted for any of the three PRs",
+      "passed": false,
+      "evidence": "Summary table, PR 501: \"Closed: yes, on 'close only'\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 2,
+    "pass_rate": 0.5
+  }
+}

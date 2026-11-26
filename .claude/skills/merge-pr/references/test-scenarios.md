@@ -209,6 +209,12 @@ a fresh `gh repo view` (skill-reviewer M1, 2026-08-31):**
 - Flag given, no `--expected-head-sha`, a `COMMENTED` review with a finding is on step 1's head, and
   step 1.5 pushes an approved session fix → the review stays live on step 2's first pass (its
   `commit.oid` is step 1's head) and stops the run; this skill's own push never clears it
+- Flag given, no `--expected-head-sha`, the same review on step 1's head, and step 1.5 has an
+  approved fix to push (Devin, PR #922) → step 1.5 runs the review-finding stop against step 1's
+  head before committing or pushing, stops there and pushes nothing, so a fresh invocation still sees
+  the review on the current head and stops again
+- Flag given, a reviewer's latest review is `CHANGES_REQUESTED` on an earlier head → it stays live
+  whatever its commit (and step 2's no-outstanding-change-requests check also fails)
 - Flag given, a review with a finding has no `commit` (or a malformed `oid`), or a comment with a
   finding is minimized as `off-topic` or `duplicate` → both are live and stop the run
 - Flag given, the `comments,reviews,headRefOid` read returns a `headRefOid` other than the pass's (a

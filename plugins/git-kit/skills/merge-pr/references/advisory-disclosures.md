@@ -122,7 +122,10 @@ silently, the same discipline step 7(c)'s squash-tradeoff disclosure already use
   ones are live (issue #912): a review is not live when its `commit.oid` is 40 lowercase hex
   characters other than this pass's `headRefOid` (step 1's, or the freshly re-fetched and re-validated
   value on a rerun) and other than step 1's `headRefOid`; every other review is live, one whose `commit`
-  is missing or `null` or whose `oid` is malformed included. A review on step 1's head stays live after
+  is missing or `null` or whose `oid` is malformed included. A reviewer's latest review in
+  `CHANGES_REQUESTED` state (the latest-per-reviewer rule of step 2's no-outstanding-change-requests
+  check) is live whatever its commit, so a caller that never reaches that check, such as
+  triaging-dependabot-prs' close path, still stops on it. A review on step 1's head stays live after
   step 1.5's own fix push, which fixes this session's items and never shows that a review's finding was
   handled. GitHub sets `commit.oid` to the commit the review was submitted against, and PR
   content cannot change it. A
@@ -137,7 +140,8 @@ silently, the same discipline step 7(c)'s squash-tradeoff disclosure already use
   clears once a new head is pushed. Both signals are trusted as given: this skill cannot see who hid a
   comment, or whether a pushed head handled anything. A push clears a review-body finding whether or
   not it was handled, and anyone who can push to the head branch can do it (except this skill's own
-  step-1.5 push, which the step-1 head rule above covers), including a
+  step-1.5 push: step 1.5 runs this stop against step 1's head before it pushes, and the step-1 head
+  rule above keeps that head's reviews live for the rest of the run), including a
   `@dependabot rebase` push and, on a fork PR, the fork's owner, who needs no write access to this
   repository; a review can also be submitted against an older commit than the head and is then skipped
   too. A finding that must outlive a push belongs in an inline thread, a conversation comment or a

@@ -1,0 +1,27 @@
+{
+  "eval_id": 52,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "baseline": "plugins/git-kit/skills/merge-pr at commit b8072bfa (before PR #922's review fixes)",
+  "assertions": [
+    {
+      "text": "First case: before anything is committed or pushed, step 1.5 runs the review-finding stop against step 1's headRefOid (aaaa...)",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "First case: the devin-ai-integration review on step 1's head is live, the run stops as a review-finding stop naming that reviewer, and nothing is committed or pushed",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "Second variant: octocat's latest review is CHANGES_REQUESTED on an earlier head and is treated as live, so the review-findings stop fires on it; it is never skipped as tied to an earlier head",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "The answer runs no gh/git command or script and edits no repository file",
+      "type": "presence",
+      "target": "answer.md"
+    }
+  ]
+}
