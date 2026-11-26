@@ -249,6 +249,17 @@ def locator_cases(base, failures):
     home = make_home(base / "worktree", kit)
     check("an installed root in a worktree", script, root, detail="lies inside", home=home)
 
+    # An entry whose gitdir cannot be read: refused, not left out of the forbidden roots.
+    root, script = checkout("unreadable-entry")
+    (root / ".git" / "worktrees" / "bad" / "gitdir").mkdir(parents=True)
+    check("an unreadable worktree entry", script, root, detail="could not read the worktree entry")
+
+    # An entry with no gitdir is not a worktree, for git either: skipped.
+    root, script = checkout("leftover-entry")
+    (root / ".git" / "worktrees" / "leftover").mkdir(parents=True)
+    (root / ".git" / "worktrees" / "notes.bak").write_text("x", encoding="utf-8")
+    check("a leftover entry and a stray file", script, root, verdict="sibling")
+
     root, script = checkout("narrow")
     elsewhere, _ = checkout("elsewhere")
     home = make_home(base / "narrow", root / "plugins" / "codex-kit")

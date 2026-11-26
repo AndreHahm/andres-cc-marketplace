@@ -118,14 +118,23 @@ def repository_roots(root: Path) -> list[Path]:
         roots.append(common.parent)
     try:
         entries = sorted((common / "worktrees").iterdir())
-    except OSError:
+    except FileNotFoundError:
         return roots
+    except OSError as error:
+        # Fail closed, as above: an unlisted worktree could not be refused.
+        raise ValueError(f"could not list the worktrees of {root}") from error
     for entry in entries:
+        if not entry.is_dir():
+            # A stray file (an editor backup, say): git ignores it too.
+            continue
         try:
             # <worktree>/.git, absolute or relative to the entry.
             text = (entry / "gitdir").read_text(encoding="utf-8").strip()
-        except (OSError, ValueError):
+        except FileNotFoundError:
+            # No gitdir: git does not list the entry as a worktree either.
             continue
+        except (OSError, ValueError) as error:
+            raise ValueError(f"could not read the worktree entry {entry.name}") from error
         roots.append((entry / text).parent)
     return roots
 
