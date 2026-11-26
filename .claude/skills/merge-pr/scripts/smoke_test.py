@@ -137,7 +137,29 @@ def _get_step_text(number):
         return None
     next_step = re.search(r"^\d+\. \*\*\b", section[step_start.end() :], re.MULTILINE)
     step_end = step_start.end() + next_step.start() if next_step else len(section)
-    return section[step_start.start() : step_end]
+    step = section[step_start.start() : step_end]
+    if number == 2:
+        # Step 2's advisory disclosures live in a reference file step 2 points at; checks on them
+        # read both, and check_step2_points_at_advisory_disclosures holds the pointer in place.
+        ref = SKILL_DIR / "references" / "advisory-disclosures.md"
+        if ref.is_file():
+            step += "\n" + ref.read_text(encoding="utf-8")
+    return step
+
+
+def check_step2_points_at_advisory_disclosures():
+    text = SKILL_MD.read_text(encoding="utf-8")
+    start = text.find("\n## Instructions\n")
+    step2 = re.search(r"^2\. \*\*.*?(?=^3\. \*\*)", text[start:], re.MULTILINE | re.DOTALL)
+    if step2 is None:
+        return False, "step 2 ('## Instructions') not found"
+    if "`references/advisory-disclosures.md` in full on every pass of this step" not in step2.group(
+        0
+    ):
+        return False, "step 2 no longer points at references/advisory-disclosures.md for every pass"
+    if not (SKILL_DIR / "references" / "advisory-disclosures.md").is_file():
+        return False, "references/advisory-disclosures.md does not exist"
+    return True, "step 2 points at references/advisory-disclosures.md on every pass"
 
 
 def check_step7_remote_delete_fallback():
@@ -1000,15 +1022,41 @@ def check_step5_states_advisory_disclosures():
         return (
             False,
             "step 5's confirmation no longer states it surfaces step 2's advisory disclosures "
-            "(mergeStateStatus, unresolved review threads)",
+            "(mergeStateStatus, unresolved review threads, coverage tier)",
         )
-    if "thread count is zero and the merge-state value is `CLEAN`" not in step5:
+    if (
+        "thread count is zero, the merge-state value is `CLEAN` and the tier is green or not "
+        "reported" not in step5
+    ):
         return (
             False,
             "step 5 no longer states the advisory disclosures are shown even when clean -- a "
             "clean result must never be silently omitted, same discipline as the squash disclosure",
         )
-    return True, "step 5's confirmation states it always surfaces both advisory disclosures"
+    return True, "step 5's confirmation states it always surfaces all three advisory disclosures"
+
+
+def check_step2_coverage_tier_disclosure():
+    step2 = _get_step_text(2)
+    if step2 is None:
+        return False, "step 2 ('## Instructions') not found"
+    if "**Coverage tier**" not in step2:
+        return False, "step 2 no longer documents the coverage-tier advisory disclosure"
+    flat = " ".join(step2.split())
+    for needed, why in (
+        ("<!-- quality-kit:coverage-tier -->", "the comment marker it reads"),
+        ("`github-actions`", "the bot author it trusts the comment from"),
+        ("exactly `green`, `yellow`, `orange` or `red`", "the closed tier set"),
+        ("never blocks, with or without `--stop-on-review-findings`", "that it never blocks"),
+        ("never as green", "that a failed read is not reported as green"),
+        ("may describe an earlier head", "the stale-comment disclosure"),
+    ):
+        if needed not in flat:
+            return False, f"step 2's coverage-tier disclosure no longer states {why}"
+    return (
+        True,
+        "step 2 discloses the coverage tier from the bot comment, closed set, never blocking",
+    )
 
 
 def check_boundaries_graphql_grant_disclosure():
@@ -1111,7 +1159,9 @@ def check_stop_on_review_findings_opt_in():
             "step 2's review-finding stop no longer re-runs the reviewThreads query on every pass "
             "-- a stale count would let 7(b) through (security-reviewer M1, #732)",
         )
-    if "Without\n     `--stop-on-review-findings`, a non-zero count never stops" not in step2:
+    if "Without `--stop-on-review-findings`, a non-zero count never stops" not in " ".join(
+        step2.split()
+    ):
         return (
             False,
             "step 2 no longer states the thread count stays advisory without the flag (#160)",
@@ -1360,6 +1410,8 @@ CHECKS = [
     check_step2_advisory_failure_handling,
     check_r30_scenarios_extracted,
     check_step5_states_advisory_disclosures,
+    check_step2_coverage_tier_disclosure,
+    check_step2_points_at_advisory_disclosures,
     check_stop_on_review_findings_opt_in,
     check_step2_required_checks_include_rulesets,
     check_step2_check_sources,
