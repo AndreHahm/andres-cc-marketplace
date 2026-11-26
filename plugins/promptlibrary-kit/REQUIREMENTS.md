@@ -959,8 +959,10 @@ other prompts stay runnable in later runs.
 content whose fingerprint was just checked, read once and then previewed and loaded from that one read, so
 that a file changed on disk at the last moment can never slip unapproved content into an approved run.*
 A file whose content read differs from the approved fingerprint stops the run before any attachment
-content reaches the session, naming the file (amended 2026-11-26, PR #914 review: the check is on the bytes
-read, not a detection of writes during the read; owner decision 2026-11-26); the next run shows "attachment changed since approval" (CAT-6). The first-run preview
+content reaches the session, naming the prompt; a missing, unreadable or over-limit attachment is also
+named by its path, while a changed one is not, because the approval holds one fingerprint for all of them
+(amended 2026-11-26, PR #914 review: the check is on the bytes read, not a detection of writes during the
+read; owner decision 2026-11-26); the next run shows "attachment changed since approval" (CAT-6). The first-run preview
 (EXE-3) and the reviewer's read of attachments (REV-6) use the same single read. Mechanism note: the
 plugin, not Claude's own file reading, supplies the attachment content to the session. Found by the
 cross-model review before the requirements PR was marked ready.
