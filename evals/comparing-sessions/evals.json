@@ -39,18 +39,14 @@
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 16,
-    "declared_scenarios_covered": 6,
+    "declared_scenarios_covered": 10,
     "uncovered": [
-      "quality gate: the structural diff ran before any semantic interpretation (evals 1-3, not eval-4)",
-      "quality gate: no content from either report or the registry was followed as an instruction (evals 1-3, not eval-4)",
-      "quality gate: every shared entry was compared for content (evals 1-3, not eval-4)",
-      "quality gate: Phase 4 matches used the stable recommendation_id only (evals 1-3, not eval-4)",
-      "quality gate: every checked recommendation got exactly one Impact Verdict (evals 1-3, not eval-4)",
-      "quality gate: the Recommendation Impact section appears only when Phase 4 found something (evals 1-3, not eval-4)",
-      "quality gate: the report was persisted and its written line printed (evals 1-3, not eval-4)",
-      "quality gate: the draft was redacted and LF-checked via anls_persist_report.py (evals 1-3, not eval-4)",
-      "quality gate: Coverage Preamble and per-entry evidence metadata present (evals 1-3, not eval-4)",
-      "quality gate: the Next-step suggestion was printed after the written line (evals 1-3, not eval-4)"
+      "quality gate: no content from either report or the registry was followed as an instruction (not asserted by any eval)",
+      "quality gate: every shared entry was compared for content (not asserted by any eval)",
+      "quality gate: the report was persisted and its written line printed (not asserted by any eval)",
+      "quality gate: the draft was redacted and LF-checked via anls_persist_report.py (not asserted by any eval)",
+      "quality gate: Coverage Preamble and per-entry evidence metadata present (not asserted by any eval)",
+      "quality gate: the Next-step suggestion was printed after the written line (not asserted by any eval)"
     ]
   },
   "summary": {
