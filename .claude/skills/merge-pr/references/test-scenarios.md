@@ -327,6 +327,17 @@ a fresh `gh repo view` (skill-reviewer M1, 2026-08-31):**
   this PR → stop: not promoted
 - The PR has no review thread at all → passes
 - The `reviewThreads` query fails → stop as undetermined, never treated as no threads
+- Three threads, the promoted file holds one entry whose `finding` is the first thread's first comment id
+  → stop, naming the two threads whose ids have no entry (one entry never covers every thread)
+- A resolved thread that only asked a question is recorded as `ignored` under its first comment id, and
+  every other thread has its own entry → passes; the file's extra CI-fingerprint entries do not matter
+- A thread's first comment id is returned as a number and the entry's `finding` is the same digits as a
+  string → matched (both compared as decimal strings)
+- A thread node has no first comment id → stop as undetermined
+- An entry carries the thread's id but no `disposition`, a disposition outside the ledger's list, or a `pr`
+  other than this PR's number → it does not count, and the thread stops as missing
+- A thread's first comment was deleted, so its first comment id changed → stop naming the new id; the user
+  records the thread again under that id
 
 **Verify step 4(c)'s wait for in-flight runs (issue #850):**
 - A run started by a body edit is still in progress when the bypass path reaches 4(c) → 4(c) waits until

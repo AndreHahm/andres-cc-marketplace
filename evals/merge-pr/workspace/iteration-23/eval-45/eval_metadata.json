@@ -1,0 +1,31 @@
+{
+  "eval_id": 45,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "Reads the tier only from the github-actions comment and ignores mallory's",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "Reports red alongside the Coverage tier check's COMPLETED/FAILURE",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "Says the comment may describe an earlier head even though the check completed and agrees with the tier",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "The tier is informational: it does not block readiness or stop the run",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "Step 5's confirmation includes the tier with mergeStateStatus CLEAN and 0 unresolved threads",
+      "type": "functionality",
+      "target": "answer.md"
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "eval_id": 45,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Reads the tier only from the github-actions comment and ignores mallory's",
+      "passed": true,
+      "evidence": "'Mallory's comment ... is not used as the tier source'"
+    },
+    {
+      "text": "Reports red alongside the Coverage tier check's COMPLETED/FAILURE",
+      "passed": true,
+      "evidence": "'red ... The Coverage tier check ... is COMPLETED / FAILURE'"
+    },
+    {
+      "text": "Says the comment may describe an earlier head even though the check completed and agrees with the tier",
+      "passed": true,
+      "evidence": "'none of the \"likely stale\" conditions apply. Even so ... it may describe an earlier head'"
+    },
+    {
+      "text": "The tier is informational: it does not block readiness or stop the run",
+      "passed": true,
+      "evidence": "'Does the coverage tier block readiness? No.'"
+    },
+    {
+      "text": "Step 5's confirmation includes the tier with mergeStateStatus CLEAN and 0 unresolved threads",
+      "passed": true,
+      "evidence": "step 5 lists merge state CLEAN, 0 threads and the red tier with the caveat"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  },
+  "note": "Subject model claude-opus-5-5 (inherited); one general-purpose subject; graded by the author. Read the worktree's files after PR #909's round-1 fixes."
+}

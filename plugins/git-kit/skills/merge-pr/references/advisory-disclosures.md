@@ -36,14 +36,14 @@ silently, the same discipline step 7(c)'s squash-tradeoff disclosure already use
   by the very next `Bash`/`PowerShell` call regardless of match, so a paginated loop needs a fresh
   marker write before every page's call, not just the first (matching `handling-review-findings`'s own
   documented marker-timing discipline for this identical query shape):
-  ```
+  ```bash
   gh api graphql -F owner="{owner}" -F name="{repo}" -F number={number} -F cursor=null -f query='
   query($owner: String!, $name: String!, $number: Int!, $cursor: String) {
     repository(owner: $owner, name: $name) {
       pullRequest(number: $number) {
         reviewThreads(first: 100, after: $cursor) {
           pageInfo { hasNextPage endCursor }
-          nodes { isResolved }
+          nodes { isResolved comments(first: 1) { nodes { databaseId } } }
         }
       }
     }
@@ -58,7 +58,9 @@ silently, the same discipline step 7(c)'s squash-tradeoff disclosure already use
   every page — on each subsequent call, replace `-F cursor=null` with `-f cursor="<endCursor>"` (the
   previous page's `pageInfo.endCursor` value, a real string this time, so `-f` is correct there) —
   looping while `pageInfo.hasNextPage` is `true`; a single `first: 100` page silently
-  misses any thread beyond the 100th on a PR with more review threads than that. This is a coarse count, not a triage —
+  misses any thread beyond the 100th on a PR with more review threads than that. Each node's
+  `comments.nodes[0].databaseId` is the thread's first comment id, which step 2's "Review outcomes recorded"
+  check matches against recorded findings; this count does not use it. This is a coarse count, not a triage —
   it says how many threads remain open, not which findings they contain or how severe they are; see
   Boundaries for how this differs from `handling-review-findings`'s job. Without
   `--stop-on-review-findings`, a non-zero count never stops
@@ -75,9 +77,11 @@ silently, the same discipline step 7(c)'s squash-tradeoff disclosure already use
   otherwise report the line as unrecognized. Also report the latest `statusCheckRollup` entry for the
   head from the `Coverage` workflow named `Coverage tier` (this repository's workflow) or
   `coverage-tier` (quality-kit's template, whose job sets no name), with its `status` and
-  `conclusion`: the job fails on an orange or red tier but is not a required check, so step 2's
-  status-check classification never sees it. A `FAILURE` means orange, red or a tier that could not be
-  computed. The comment carries no head SHA and this call returns no edit time, and the workflow
+  `conclusion`, taken from the `statusCheckRollup` step 2 last classified against (after a wait for this
+  skill's own runs, its last poll; never an earlier fetch): the job fails on an orange or red tier but is
+  not a required check, so step 2's status-check classification never sees it. A `FAILURE` means orange,
+  red, or that another step of the job failed (the tier could not be computed, the tier inputs could not
+  be restored, or the comment could not be posted), so a `FAILURE` alone does not name the tier. The comment carries no head SHA and this call returns no edit time, and the workflow
   leaves it unchanged when the tier could not be computed, for a fork PR, and when it ran the PR's own
   tier script, so the comment can never be tied to this head: always say it may describe an earlier
   head. Say it is likely stale when the entry is missing or not `COMPLETED`, when the entry completed

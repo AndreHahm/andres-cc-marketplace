@@ -1,0 +1,37 @@
+{
+  "eval_id": 45,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Reads the tier only from the github-actions comment and ignores mallory's",
+      "passed": true,
+      "evidence": "'The trustworthy one is the github-actions comment ... mallory ... reported as suspicious, not used'"
+    },
+    {
+      "text": "Reports red alongside the Coverage tier check's COMPLETED/FAILURE",
+      "passed": false,
+      "evidence": "reports the check's FAILURE but, by its own text, no tier at step 5"
+    },
+    {
+      "text": "Says the comment may describe an earlier head even though the check completed and agrees with the tier",
+      "passed": false,
+      "evidence": "no caveat about an earlier head"
+    },
+    {
+      "text": "The tier is informational: it does not block readiness or stop the run",
+      "passed": true,
+      "evidence": "'Blocks readiness? No.'"
+    },
+    {
+      "text": "Step 5's confirmation includes the tier with mergeStateStatus CLEAN and 0 unresolved threads",
+      "passed": false,
+      "evidence": "'the skill as written says nothing' about the tier at step 5; a FAILURE note added by its own judgment, no tier"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 2,
+    "pass_rate": 0.4
+  },
+  "note": "Subject model claude-opus-5-5 (inherited); one general-purpose subject; graded by the author. Read main's SKILL.md (before git-kit 31), with no references directory."
+}
