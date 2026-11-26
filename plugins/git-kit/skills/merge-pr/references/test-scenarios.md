@@ -206,6 +206,9 @@ a fresh `gh repo view` (skill-reviewer M1, 2026-08-31):**
   or `outdated`), and a new comment with a finding was posted on the current head → only the new
   comment stops the run; the report names the review body skipped as tied to an earlier head (author,
   time, state, `commit.oid`) and one comment skipped as minimized. Without the new comment → no review-finding stop
+- Flag given, no `--expected-head-sha`, a `COMMENTED` review with a finding is on step 1's head, and
+  step 1.5 pushes an approved session fix → the review stays live on step 2's first pass (its
+  `commit.oid` is step 1's head) and stops the run; this skill's own push never clears it
 - Flag given, a review with a finding has no `commit` (or a malformed `oid`), or a comment with a
   finding is minimized as `off-topic` or `duplicate` → both are live and stop the run
 - Flag given, the `comments,reviews,headRefOid` read returns a `headRefOid` other than the pass's (a

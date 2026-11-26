@@ -1249,6 +1249,7 @@ def check_stop_on_review_findings_opt_in():
         "a review is not live when its `commit.oid` is 40 lowercase hex characters other than "
         "this pass's `headRefOid`"
         not in flat2
+        or "and other than step 1's `headRefOid`" not in flat2
         or "every other review is live" not in flat2
         or "is `resolved` or `outdated`" not in flat2
         or "A comment minimized for any other reason" not in flat2
