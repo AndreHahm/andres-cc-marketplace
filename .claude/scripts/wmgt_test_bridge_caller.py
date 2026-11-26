@@ -295,11 +295,25 @@ def locator_cases(base, failures):
     root, script = checkout("preload", bridge=None)
     write_bridge(
         root / "plugins" / "codex-kit",
-        "console.log(JSON.stringify({verdict: ['NODE_OPTIONS', 'GIT_DIR']"
+        "console.log(JSON.stringify({verdict: ['NODE_OPTIONS', 'GIT_DIR', 'LD_PRELOAD',"
+        " 'DYLD_INSERT_LIBRARIES', 'GLIBC_TUNABLES', 'BASH_ENV', 'ENV', 'CODEX_HOME']"
         ".filter(k => k in process.env).join()}))",
     )
-    env = {"NODE_OPTIONS": "--no-warnings", "GIT_DIR": "x"}
-    check("NODE_* and GIT_* are dropped", script, root, verdict="", env=env)
+    env = {"NODE_OPTIONS": "--no-warnings", "GIT_DIR": "x", "LD_PRELOAD": "x"}
+    env.update(DYLD_INSERT_LIBRARIES="x", GLIBC_TUNABLES="x", BASH_ENV="x", ENV="x")
+    check("loader and shell start-up variables are dropped", script, root, verdict="", env=env)
+
+    # CODEX_HOME selects Codex's configuration: kept outside the repository, refused inside it.
+    outside = str(base / "codex-home")
+    check(
+        "a CODEX_HOME outside is kept",
+        script,
+        root,
+        verdict="CODEX_HOME",
+        env={"CODEX_HOME": outside},
+    )
+    for name, value in (("inside", str(root / ".codex")), ("relative", "codex-home")):
+        check(f"a CODEX_HOME {name}", script, root, detail="CODEX_HOME", env={"CODEX_HOME": value})
 
     # The real _home(): no variable a repository's settings could set may move it.
     code = (

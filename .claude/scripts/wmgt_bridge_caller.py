@@ -26,9 +26,10 @@ fallback skips the inside-the-repository refusal on purpose: it runs the checkou
 at the trust level of this script, which is the same checkout's code.
 --repo-root bounds the evidence paths; it never selects the code that runs. The location
 logic follows git-kit's git-review-codex-kit.py, copied because an installed plugin
-cannot import a sibling plugin's scripts. Not covered: CODEX_HOME, SystemRoot, LD_* and
-similar variables reach the child, so a project whose settings the user trusts to set
-variables can still influence it.
+cannot import a sibling plugin's scripts. Not covered: SystemRoot, ComSpec, other CODEX_*
+variables, and the endpoint, proxy and certificate variables (OPENAI_BASE_URL, HTTPS_PROXY,
+HTTP_PROXY, ALL_PROXY, SSL_CERT_FILE, SSL_CERT_DIR) reach the child, so a project whose
+settings the user trusts to set variables can still influence it.
 """
 
 import argparse
@@ -78,7 +79,10 @@ def _home() -> Path:
     if os.name == "posix":
         import pwd
 
-        return Path(pwd.getpwuid(os.getuid()).pw_dir)
+        try:
+            return Path(pwd.getpwuid(os.getuid()).pw_dir)
+        except KeyError as exc:
+            raise ValueError("the account's home could not be found") from exc
     folder = ctypes.create_string_buffer(_PROFILE_FOLDER.bytes_le, 16)
     found = ctypes.c_wchar_p()
     get_path = ctypes.windll.shell32.SHGetKnownFolderPath
@@ -361,12 +365,27 @@ def dispatch(
         if not search_path:
             # With an empty PATH the bridge would find codex in the working directory.
             raise ValueError("no PATH entry is usable outside the repository under review")
-        # GIT_* and NODE_* variables can preload code.
+        # GIT_*, NODE_*, the dynamic loader's LD_*/DYLD_*/GLIBC_TUNABLES and the shell's
+        # BASH_ENV/ENV can make the child, or a shell Codex starts, load or run code.
+        dropped = {"PATH", "GLIBC_TUNABLES", "BASH_ENV", "ENV"}
         env = {
             k: v
             for k, v in os.environ.items()
-            if not k.upper().startswith(("GIT_", "NODE_")) and k.upper() != "PATH"
+            if not k.upper().startswith(("GIT_", "NODE_", "LD_", "DYLD_"))
+            and k.upper() not in dropped
         }
+        # CODEX_HOME picks the configuration Codex runs with: never one from the repository.
+        codex_home = os.environ.get("CODEX_HOME")
+        if codex_home is not None:
+            home = Path(codex_home)
+            if (
+                not home.is_absolute()
+                or _inside(home, forbidden)
+                or _inside(home.resolve(), forbidden)
+            ):
+                raise ValueError(
+                    "CODEX_HOME is relative or lies inside the repository under review"
+                )
         env["PATH"] = search_path
         # Otherwise cmd.exe, running an npm codex shim, finds a bare `node` in the working
         # directory, the repository under review, before PATH.
