@@ -33,8 +33,9 @@ Say "split this diff into separate commits", or "how should I order these change
 
 - **A single, already-coherent staged change with no splitting/ordering decision to make** — that's
   `commit` (`Skill(commit)`), which shapes and executes the message for whatever is already staged
-- **Reviewing a PR's diff or resolving review comments** — that's `explain-pr-changes` /
-  `collaborating-on-a-pr`
+- **Reviewing a PR's diff** — that's `explain-pr-changes` / `collaborating-on-a-pr`
+- **Resolving review comments posted on a PR** — that's `handling-review-findings`, which decides
+  whether each finding gets fixed, filed or declined; this skill only shapes the commits a fix lands in
 
 ## Two Halves: Boundary And Order
 

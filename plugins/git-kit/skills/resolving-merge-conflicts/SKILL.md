@@ -27,7 +27,7 @@ Resolve Git merge conflicts by intelligently combining changes from both branche
 3. Resolve delete-related conflicts via the bundled script -- Step 3.
 4. Execute the plan, one resolution pattern per conflict type -- Step 4.
 5. Validate no markers/unmerged paths remain -- Step 5.
-6. Build and test -- Step 6.
+6. Have the user run the project's build and tests, and report the result -- Step 6.
 7. Review the staged diff and hand off to `commit` -- Step 7.
 
 ## When to Use
