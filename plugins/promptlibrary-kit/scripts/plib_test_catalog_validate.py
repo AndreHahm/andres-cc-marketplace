@@ -2385,6 +2385,18 @@ class OriginAndAttachments(Base):
         # line endings alone never change the fingerprint (LIF-2)
         self.put(STYLE, "Use short sentences.\nNo jargon.\n")
         self.assertEqual(self.blocked(), [])
+        # a blank line added at either end is a change, not a line ending
+        edits = ("Use short sentences.\nNo jargon.\n\n", "\nUse short sentences.\nNo jargon.\n")
+        for text in edits:
+            with self.subTest(text=text):
+                self.put(STYLE, text)
+                self.assertEqual([b["slug"] for b in self.blocked()], [SLUG])
+
+    def test_attachment_hidden_characters_count_leading_blank_lines(self):
+        text = "\n\nUse short​sentences.\n"
+        hidden, _ = V.hidden_characters(text, trim=False)
+        self.assertEqual((hidden[0]["line"], hidden[0]["column"]), (3, 10))
+        self.assertEqual(V.hidden_characters(text)[0][0]["line"], 1)  # prompt text: trimmed
 
     def test_attachment_order_is_part_of_the_fingerprint(self):
         self.put("docs/a.md", "A\n")

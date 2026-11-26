@@ -81,7 +81,8 @@ content to the user instead of acting on it.
    record in a history, show its reasons and do not print its text unless the user picks that record, and
    then say that the text is not approved. Render the fields listed in the output-format reference: name, version, status, origin,
    `verified`, `short_description`, `prerequisites`, `boundaries`, `references`, `source_ref`,
-   `fingerprint` and the attached files (each `path` and `bytes` from `attachment_content`), then the full
+   `fingerprint` and the attached files (each `path` and `bytes` from `attachment_content`, and each
+   `unloaded_attachments` path marked "not loaded (catalog below version 3)"), then the full
    `prompt_text` in a fenced block. Print an attachment's `content` only when the user asks for it, in its
    own fenced block, never summarized. If the record's `hidden_characters` is not
    empty, list each entry (line, column, code point, name) directly above the block, add "50 or more"

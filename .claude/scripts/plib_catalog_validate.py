@@ -369,15 +369,17 @@ def _is_hidden(ch: str) -> bool:
     return cp in HIDDEN_EXTRA or category in HIDDEN_CATEGORIES
 
 
-def hidden_characters(text: str) -> tuple[list[dict], bool]:
+def hidden_characters(text: str, trim: bool = True) -> tuple[list[dict], bool]:
     """Characters a rendered preview does not show or shows as something else (format and control
     characters, variation selectors, private-use or unassigned code points, separators, non-ASCII
     spaces, blank-looking letters, invisible combining marks), by 1-based line, 1-based column and
     code point, plus whether the list was cut at MAX_HIDDEN_REPORTED. The user
     may otherwise approve text that reads differently from what runs. Reported, not rejected: an
-    emoji joiner or variation selector is legitimate."""
+    emoji joiner or variation selector is legitimate. trim=False keeps leading blank lines, so line
+    numbers match an attached file's content as shown."""
     found = []
-    for lineno, line in enumerate(normalize_text(text).split("\n"), start=1):
+    lines = normalize_text(text) if trim else text.replace("\r\n", "\n").replace("\r", "\n")
+    for lineno, line in enumerate(lines.split("\n"), start=1):
         for column, ch in enumerate(line, start=1):
             if _is_hidden(ch):
                 if len(found) >= MAX_HIDDEN_REPORTED:
@@ -395,6 +397,13 @@ def hidden_characters(text: str) -> tuple[list[dict], bool]:
 
 def text_hash(text: str) -> str:
     return hashlib.sha256(normalize_text(text).encode("utf-8")).hexdigest()
+
+
+def attachment_hash(content: str) -> str:
+    """An attached file's hash: line endings normalized and nothing else, so an added or removed
+    blank line at either end changes it (LIF-2 exempts line endings only)."""
+    lf = content.replace("\r\n", "\n").replace("\r", "\n")
+    return hashlib.sha256(lf.encode("utf-8")).hexdigest()
 
 
 def _tagged_hash(payload: dict) -> str:
@@ -1069,7 +1078,12 @@ def read_attachments(meta: dict, ctx: AttachContext | None) -> tuple[list[dict],
             problems.append(f"attachment {value}: is not a text file")
             continue
         found.append(
-            {"path": value, "content": content, "sha256": text_hash(content), "bytes": len(raw)}
+            {
+                "path": value,
+                "content": content,
+                "sha256": attachment_hash(content),
+                "bytes": len(raw),
+            }
         )
     return found, problems
 
@@ -1415,7 +1429,7 @@ def _attachment_view(meta: dict) -> list[dict]:
     """Each attached file's full checked content, as read once by load_catalog."""
     out = []
     for a in meta.get("_attachments", []):
-        hidden, truncated = hidden_characters(a["content"])
+        hidden, truncated = hidden_characters(a["content"], trim=False)
         out.append(
             {
                 "path": a["path"],
