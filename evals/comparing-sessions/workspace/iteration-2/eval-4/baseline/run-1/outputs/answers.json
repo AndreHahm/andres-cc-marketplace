@@ -1,0 +1,9 @@
+[
+  {"id": "R1", "skill": "comparing-sessions", "reason": "The description's phrase \"this session vs. a prior persisted report\" and \"Use when comparing this session to a prior one\" decided it."},
+  {"id": "R2", "skill": "comparing-sessions", "reason": "The description's phrase \"checking whether a prior session's suggestions were acted on\" decided it."},
+  {"id": "R3", "skill": "comparing-sessions", "reason": "The description's phrases \"component performance trends\" and \"tracking a trend across multiple sessions\" decided it."},
+  {"id": "R4", "skill": "comparing-session-to-specification", "reason": "The description's phrase \"auditing session decisions against a stated architecture\" decided it."},
+  {"id": "R5", "skill": "analyzing-governance-and-conflicts", "reason": "comparing-sessions' description routes \"a single contradiction flag\" to this skill's \"session-vs-session conflict category\", which its own description lists under detecting conflicts."},
+  {"id": "R6", "skill": "reviewing-analysis-findings", "reason": "The description's phrase \"Cross-checks two or more persisted analysis-kit report paths from the same session or scope\" decided it, and comparing-sessions' description routes \"multiple different skills' reports from one shared scope\" here."},
+  {"id": "R7", "skill": "tracking-recommendation-lifecycle", "reason": "The description's phrase \"recording that a fix landed\" with the \"implemented\" status decided it."}
+]

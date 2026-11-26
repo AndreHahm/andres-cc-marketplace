@@ -12,9 +12,11 @@ description: >-
   skills' reports from one shared scope (for that, see
   `reviewing-analysis-findings`). Also checks whether an implemented
   recommendation's expected effect was actually realized, against the
-  recommendation lifecycle registry. Use when comparing this session to a prior
-  one, checking whether a prior session's suggestions were acted on, or
-  tracking a trend across multiple sessions.
+  recommendation lifecycle registry.
+when_to_use: >-
+  Use when comparing this session to a prior one, checking whether a prior
+  session's suggestions were acted on, or tracking a trend across multiple
+  sessions.
 allowed-tools: Read Glob Write AskUserQuestion Bash(python */analysis-kit/scripts/anls_comparator.py:*) Bash(python */analysis-kit/scripts/anls_recommendation_registry.py list:*) Bash(python */analysis-kit/scripts/anls_recommendation_registry.py show:*) Bash(python */analysis-kit/scripts/anls_persist_report.py:*) Bash(date:*)
 argument-hint: [path to a prior report, or "latest" to use the most recent one found; optionally also a recommendation registry path for realized-impact comparison]
 ---
@@ -174,8 +176,13 @@ After Phase 5, verify before presenting output as final:
 **Eval evidence:** `evals/comparing-sessions/evals.json` -- 3 scenarios, 19/19 assertions passing
 (structural diff + semantic interpretation with no registry, Phase 4 realized-impact comparison against
 a real recommendation registry with a near-miss stable-ID decoy, and the report-format-drift Gotcha).
+Eval 4 is a routing check from frontmatter alone (the activation lists above plus a registry status
+update, across five analysis-kit skills), added when the "Use when" clause moved to `when_to_use`.
 
-**Last dated run record:** 2026-09-11 -- `scripts/smoke_test.py`, all 5 checks passing; eval suite above.
+**Last dated run record:** 2026-11-26 -- eval 4, `evals/comparing-sessions/workspace/iteration-2/`:
+this text vs. main's, 3 runs per arm, both 24/24 (no regression, no gain; an agent reading files weighs
+both fields alike, so the platform's weighting of `description` over `when_to_use` is not measured).
+Earlier: 2026-09-11 -- `scripts/smoke_test.py`, all 5 checks passing; evals 1-3 above.
 
 ## Reference Guide
 

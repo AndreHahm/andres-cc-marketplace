@@ -1,0 +1,9 @@
+[
+  {"id": "R1", "skill": "comparing-sessions", "reason": "The description's \"Compares the same report lineage across two points in time — this session vs. a prior persisted report\" matches the request to compare this session against a prior session's persisted report."},
+  {"id": "R2", "skill": "comparing-sessions", "reason": "The description's \"checking whether a prior session's suggestions were acted on\" phrase matches the request asking whether prior suggestions were acted on."},
+  {"id": "R3", "skill": "comparing-sessions", "reason": "The description's \"tracking a trend across multiple sessions\" phrase matches the request about whether a trend is improving, worsening, or stable across sessions."},
+  {"id": "R4", "skill": "comparing-session-to-specification", "reason": "The description's \"checking whether a session followed its own project's spec... or auditing session decisions against a stated architecture\" matches comparing this session against an architecture document rather than a prior session."},
+  {"id": "R5", "skill": "analyzing-governance-and-conflicts", "reason": "The description's \"detects conflicts — ... session-vs-session\" phrase, and comparing-sessions' own pointer to the session-vs-session conflict category for a narrower contradiction flag, match the request to flag whether two sessions contradict each other."},
+  {"id": "R6", "skill": "reviewing-analysis-findings", "reason": "The description's \"Cross-checks two or more persisted analysis-kit report paths from the same session or scope\" phrase matches cross-checking reports from several different analysis skills for the same scope."},
+  {"id": "R7", "skill": "tracking-recommendation-lifecycle", "reason": "The description's \"recording that a fix landed or was verified\" and \"moving it through ... implemented\" phrases match marking recommendation REC-12 as implemented."}
+]

@@ -1,0 +1,131 @@
+{
+  "eval_id": "eval-4",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "run-1: R1 routed to comparing-sessions",
+      "passed": true,
+      "evidence": "answered comparing-sessions"
+    },
+    {
+      "text": "run-1: R2 routed to comparing-sessions",
+      "passed": true,
+      "evidence": "answered comparing-sessions"
+    },
+    {
+      "text": "run-1: R3 routed to comparing-sessions",
+      "passed": true,
+      "evidence": "answered comparing-sessions"
+    },
+    {
+      "text": "run-1: R4 routed to comparing-session-to-specification",
+      "passed": true,
+      "evidence": "answered comparing-session-to-specification"
+    },
+    {
+      "text": "run-1: R5 routed to analyzing-governance-and-conflicts",
+      "passed": true,
+      "evidence": "answered analyzing-governance-and-conflicts"
+    },
+    {
+      "text": "run-1: R6 routed to reviewing-analysis-findings",
+      "passed": true,
+      "evidence": "answered reviewing-analysis-findings"
+    },
+    {
+      "text": "run-1: R7 routed to tracking-recommendation-lifecycle",
+      "passed": true,
+      "evidence": "answered tracking-recommendation-lifecycle"
+    },
+    {
+      "text": "run-1: an R1-R3 reason cites the trigger text or the prior-session description phrase",
+      "passed": true,
+      "evidence": "prior persisted report"
+    },
+    {
+      "text": "run-2: R1 routed to comparing-sessions",
+      "passed": true,
+      "evidence": "answered comparing-sessions"
+    },
+    {
+      "text": "run-2: R2 routed to comparing-sessions",
+      "passed": true,
+      "evidence": "answered comparing-sessions"
+    },
+    {
+      "text": "run-2: R3 routed to comparing-sessions",
+      "passed": true,
+      "evidence": "answered comparing-sessions"
+    },
+    {
+      "text": "run-2: R4 routed to comparing-session-to-specification",
+      "passed": true,
+      "evidence": "answered comparing-session-to-specification"
+    },
+    {
+      "text": "run-2: R5 routed to analyzing-governance-and-conflicts",
+      "passed": true,
+      "evidence": "answered analyzing-governance-and-conflicts"
+    },
+    {
+      "text": "run-2: R6 routed to reviewing-analysis-findings",
+      "passed": true,
+      "evidence": "answered reviewing-analysis-findings"
+    },
+    {
+      "text": "run-2: R7 routed to tracking-recommendation-lifecycle",
+      "passed": true,
+      "evidence": "answered tracking-recommendation-lifecycle"
+    },
+    {
+      "text": "run-2: an R1-R3 reason cites the trigger text or the prior-session description phrase",
+      "passed": true,
+      "evidence": "prior session"
+    },
+    {
+      "text": "run-3: R1 routed to comparing-sessions",
+      "passed": true,
+      "evidence": "answered comparing-sessions"
+    },
+    {
+      "text": "run-3: R2 routed to comparing-sessions",
+      "passed": true,
+      "evidence": "answered comparing-sessions"
+    },
+    {
+      "text": "run-3: R3 routed to comparing-sessions",
+      "passed": true,
+      "evidence": "answered comparing-sessions"
+    },
+    {
+      "text": "run-3: R4 routed to comparing-session-to-specification",
+      "passed": true,
+      "evidence": "answered comparing-session-to-specification"
+    },
+    {
+      "text": "run-3: R5 routed to analyzing-governance-and-conflicts",
+      "passed": true,
+      "evidence": "answered analyzing-governance-and-conflicts"
+    },
+    {
+      "text": "run-3: R6 routed to reviewing-analysis-findings",
+      "passed": true,
+      "evidence": "answered reviewing-analysis-findings"
+    },
+    {
+      "text": "run-3: R7 routed to tracking-recommendation-lifecycle",
+      "passed": true,
+      "evidence": "answered tracking-recommendation-lifecycle"
+    },
+    {
+      "text": "run-3: an R1-R3 reason cites the trigger text or the prior-session description phrase",
+      "passed": true,
+      "evidence": "prior persisted report"
+    }
+  ],
+  "summary": {
+    "assertions_total": 24,
+    "assertions_passed": 24,
+    "pass_rate": 1.0
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "skill_name": "comparing-sessions",
+  "iteration": 2,
+  "timestamp": "2026-11-26T09:51:01+01:00",
+  "evals": [
+    {
+      "eval_id": 4,
+      "with_skill": {
+        "pass_rate": 1.0,
+        "assertions_passed": 24,
+        "assertions_total": 24,
+        "avg_tokens": 102866,
+        "avg_duration_ms": 19805
+      },
+      "baseline": {
+        "pass_rate": 1.0,
+        "assertions_passed": 24,
+        "assertions_total": 24,
+        "avg_tokens": 101491,
+        "avg_duration_ms": 21879
+      },
+      "delta": {
+        "pass_rate": 0.0,
+        "tokens": 1375,
+        "duration_ms": -2074
+      }
+    }
+  ],
+  "summary": {
+    "with_skill_avg_pass_rate": 1.0,
+    "baseline_avg_pass_rate": 1.0,
+    "improvement": 0.0,
+    "avg_tokens_with_skill": 102866,
+    "avg_tokens_baseline": 101491,
+    "token_cost": 1375,
+    "avg_duration_ms_with_skill": 19805,
+    "avg_duration_ms_baseline": 21879,
+    "duration_cost_ms": -2074
+  }
+}
