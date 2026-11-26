@@ -1,0 +1,44 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4707866188",
+      "line": 102,
+      "note": "Fixed in bf7ea5d9: verdict refs left out of rewriteRef; audit no longer called safe to copy.",
+      "path": "plugins/git-kit/skills/git-notes/SKILL.md",
+      "pr": 920,
+      "recorded_at": "2026-11-26T12:08:42+00:00",
+      "rule": "devin:bug"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4707866342",
+      "line": 94,
+      "note": "Fixed in bf7ea5d9: git config --add notes.rewriteRef; plain assignment verified to fail with two entries.",
+      "path": "plugins/git-kit/skills/git-notes/SKILL.md",
+      "pr": 920,
+      "recorded_at": "2026-11-26T12:08:42+00:00",
+      "rule": "devin:bug"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4707866530",
+      "line": 35,
+      "note": "Fixed in bf7ea5d9: --json advice limited to gh pr/issue/run list and view.",
+      "path": "plugins/git-kit/skills/gh-operations/SKILL.md",
+      "pr": 920,
+      "recorded_at": "2026-11-26T12:08:42+00:00",
+      "rule": "devin:bug"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4707866783",
+      "line": 8,
+      "note": "Fixed in bf7ea5d9: recovery via git log -g and git notes copy, verified live.",
+      "path": "plugins/git-kit/skills/git-notes/references/troubleshooting.md",
+      "pr": 920,
+      "recorded_at": "2026-11-26T12:08:43+00:00",
+      "rule": "devin:analysis"
+    }
+  ]
+}
