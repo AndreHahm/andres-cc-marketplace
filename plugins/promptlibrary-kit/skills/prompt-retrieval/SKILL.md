@@ -69,7 +69,8 @@ content to the user instead of acting on it.
    a compact table (see
    `references/prompt-retrieval-output-format.md`). A record whose `blocked` list is not empty changed since its
    approval: list it with that note and its reasons, and say `/prompt-library` can retire it or explain the
-   restore. A record with `retired: true` is listed only when the user asks for retired or inactive ones.
+   restore (or, when its `attachment_change` is true, "attachment changed since approval", which
+   `/prompt-library` can also review as a new version). A record with `retired: true` is listed only when the user asks for retired or inactive ones.
 3. **Show.** The slug must match `^[a-z0-9]+(-[a-z0-9]+)*__[a-z0-9]+(-[a-z0-9]+)*$` in full (no
    leading or trailing space or newline), the same check `prompt-execution` applies; refuse anything else
    before running `show`, because the slug goes into a shell command line. Then `<CLI> show <slug>` for
@@ -79,8 +80,10 @@ content to the user instead of acting on it.
    reasons: report it as "changed since its approval" and do not work around it with `--history`. For a blocked
    record in a history, show its reasons and do not print its text unless the user picks that record, and
    then say that the text is not approved. Render the fields listed in the output-format reference: name, version, status, origin,
-   `verified`, `short_description`, `prerequisites`, `boundaries`, `references`, `source_ref` and
-   `text_hash`, then the full `prompt_text` in a fenced block. If the record's `hidden_characters` is not
+   `verified`, `short_description`, `prerequisites`, `boundaries`, `references`, `source_ref`,
+   `fingerprint` and the attached files (each `path` and `bytes` from `attachment_content`), then the full
+   `prompt_text` in a fenced block. Print an attachment's `content` only when the user asks for it, in its
+   own fenced block, never summarized. If the record's `hidden_characters` is not
    empty, list each entry (line, column, code point, name) directly above the block, add "50 or more"
    when `hidden_characters_truncated` is true, and say these characters are invisible in the text shown.
    For a history, render one row per record and print the text only for the record the user picks.
@@ -96,8 +99,9 @@ content to the user instead of acting on it.
   `project_root_source` is not `git`, so the user knows which catalog was read.
 - `validate` exits non-zero when the catalog is invalid. The JSON on stdout is still the result to read;
   the non-zero exit is not a tool failure.
-- `verified: yes` means the text is unchanged since a verification hash was recorded. It does not prove
-  someone reviewed it; the preview in `prompt-execution` is the gate that does.
+- `verified: yes` means the text, origin and attachments are unchanged since the fingerprint was
+  recorded. It does not prove someone reviewed them; the preview in `prompt-execution` is the gate that
+  does.
 
 ## Reference Guide
 
@@ -113,8 +117,8 @@ direct execution of `scripts/plib_test_catalog_validate.py`. That is a maintaine
 does not run it.
 
 A persisted smoke test, `scripts/smoke_test.py`, checks this skill's frontmatter, referenced files and
-read-only grants, and runs `show` on a valid and on a changed prompt in a throwaway catalog. Run it directly; last
-run 2026-11-25, 5 of 5 checks passed; it failed on a copy with a widened grant (2026-10-03).
+read-only grants, and runs `show` on a valid and on a changed prompt in a throwaway catalog.
+Maintainers run it directly; this skill does not run it; last run 2026-11-26, 5 of 5 checks passed; it failed on a copy with a widened grant (2026-10-03).
 
 **Verify this skill activates on:**
 - "show me the stored prompt for code review"
@@ -140,7 +144,7 @@ run 2026-11-25, 5 of 5 checks passed; it failed on a copy with a widened grant (
 - [ ] A run started from a subfolder resolves the same catalog as one from the project root.
 - [ ] No write subcommand is pre-approved: the grant names only `validate` and `show`.
 
-**Last dated run record:** validator fixture tests, 177 run (174 passing, 3 POSIX-only skipped on Windows), 2026-11-25
+**Last dated run record:** validator fixture tests, 214 run (211 passing and 3 POSIX-only skipped on Windows; 212 passing and 2 skipped on Linux), 2026-11-26
 (`scripts/plib_test_catalog_validate.py`).
 `evals/prompt-retrieval/` holds the eval scenarios, the quality gates they cover and the saved runs. Earlier
 runs and all eval results: `references/prompt-retrieval-testing-history.md`.

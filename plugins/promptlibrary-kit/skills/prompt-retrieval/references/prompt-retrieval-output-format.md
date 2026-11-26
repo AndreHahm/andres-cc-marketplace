@@ -13,10 +13,11 @@ asked for any other status, as well or only.
 | Slug | Name | Area | Version | Status | Origin | Verified |
 |---|---|---|---|---|---|---|
 
-`Verified` is `yes` only when the validator reports `verified: true`: every required hash is present and
-matches the current text. It means "unchanged since a hash was recorded", not "reviewed". Sort by area,
-then name. A record in `blocked` has `verified: no` and the note "changed since its approval" with its
-reasons. A record with `retired: true` keeps its status `historical`; show `historical (retired)` in the Status column. For a search, add a `Matched in` column: `label` when `matched_in` names any field other than
+`Verified` is `yes` only when the validator reports `verified: true`: every required fingerprint is
+present and matches the current text, origin and attachments. It means "unchanged since it was recorded",
+not "reviewed". Sort by area,
+then name. A record in `blocked` has `verified: no` and the note "changed since its approval" (or
+"attachment changed since approval" when its `attachment_change` is true) with its reasons. A record with `retired: true` keeps its status `historical`; show `historical (retired)` in the Status column. For a search, add a `Matched in` column: `label` when `matched_in` names any field other than
 `text`, `text` when it names `text`, or both.
 
 ## Detail layout
@@ -28,6 +29,7 @@ Prerequisites: <prerequisites or "none stated">
 Boundaries: <boundaries or "none stated">
 References: <references, or "none">
 Source: <source_ref values for session and web origin, or "n/a">
+Attachments: <each path with its size in bytes, or "none">
 ```
 
 When `hidden_characters` is not empty, add one line per entry before the fenced block:
@@ -39,7 +41,9 @@ Hidden character: line <line>, column <column>, <code point> <name> (invisible i
 and, when `hidden_characters_truncated` is true, a final line "50 or more hidden characters; the list
 stops at 50".
 
-Then the full `prompt_text` in a fenced block, and the `text_hash` on its own line for later comparison.
+Then the full `prompt_text` in a fenced block, and the `fingerprint` on its own line for later comparison.
+An attachment's content is printed only on request, each in its own fenced block with its hidden
+characters listed the same way.
 
 ## History layout
 

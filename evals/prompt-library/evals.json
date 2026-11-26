@@ -159,13 +159,19 @@
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 15,
-    "declared_scenarios_covered": 15,
-    "uncovered": [],
+    "declared_scenarios_total": 20,
+    "declared_scenarios_covered": 16,
+    "uncovered": [
+      "prompt-reviewer gets the review-bundle output inline, never a file path, and attachments are reviewed like the text.",
+      "Every attachment is shown in full before the approval question, and the approval binds the fingerprint (text, origin and attachments), not the bare text hash.",
+      "A prompt whose attachment changed offers restore, review the new attachment (a revision with the same text and origin) or retire; one whose text or origin changed offers only restore or retire.",
+      "upgrade asks once per approved prompt with its origin shown, and changes nothing unless every prompt was confirmed."
+    ],
     "gate_to_scenarios": {
       "A catalog that fails validation blocks every change; only an orphan file can be discarded, and only with the user's consent.": [
         7,
-        13
+        13,
+        28
       ],
       "A secret in session, web, claude or codex text blocks the draft and is never auto-redacted or echoed.": [
         1,
@@ -215,7 +221,13 @@
         26
       ],
       "retire asks once, shows the slug, version and reasons, and applies only to a blocked prompt.": [
-        25
+        25,
+        27
+      ],
+      "discard removes only a draft, after one question that shows its text and what stays active; a version that has run is refused.": [
+        23,
+        24,
+        27
       ]
     }
   }

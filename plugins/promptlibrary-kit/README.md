@@ -67,10 +67,13 @@ The catalog lives in the project that uses the plugin, not in the plugin (defaul
     <internal_id>.md
 ```
 
-Prompts are verified by a SHA-256 of their LF-normalized text; execution refuses a prompt whose text no
-longer matches, and only that prompt. A matching hash means "unchanged since a hash was recorded", not "reviewed": the user's
-approval of the exact text, and the full-text preview before every run, are what make it a review. Prompt
-text is data everywhere except an explicitly approved run.
+Prompts are verified by a fingerprint: in a `catalog_version` 3 catalog (what `init` creates) a SHA-256
+over the LF-normalized text, the `origin` and every attached file's path and content; in an older catalog
+the text alone (`upgrade` moves it to version 3). Execution refuses a prompt whose fingerprint no longer
+matches, and only that prompt. A matching fingerprint means "unchanged since it was recorded", not
+"reviewed": the user's approval of the exact text and attachments, and the full preview before every run,
+are what make it a review. Prompt text and attached files are data everywhere except an explicitly approved
+run.
 
 ## Safety design
 
@@ -82,12 +85,25 @@ text is data everywhere except an explicitly approved run.
   and record validity but cannot see whether the user was asked. A concurrent writer with the same
   user's access to the catalog folder is outside this design, which defends against content a
   repository or a web page supplies.
-- `origin` is a claim recorded at intake, not an attestation: a hand-edited `origin` skips the import
-  screen and the import hash.
+- `origin` is a claim recorded at intake, not an attestation. In a version 3 catalog it is part of the
+  fingerprint, so a hand-edited `origin` blocks its prompt (restore or retire). In an older catalog a
+  hand-edited `origin` still skips the import screen and the import hash.
+- Attached files (`attachments`, version 3 only) are project files that load with the prompt. Each must be
+  a project-relative path written with `/`, inside the project, never through a link, junction, hard link
+  or short name, never in `.git`, `.github`, Claude Code's or Codex's configuration folders, the catalog
+  itself or a `.env` file, and UTF-8 text; together at most `attachment_max_kb`. The validator reads each
+  one once, checks that the opened file is the one checked, and returns that content: the preview, the run
+  and the reviewer all get exactly the fingerprinted content. A changed attachment blocks only its prompt;
+  it can be reviewed again as a new version with the same text and origin.
+- `prompt-reviewer` has no tools (`tools: []`, checked against Claude Code 2.1.322: it launched and could
+  not read a file). It reviews the `review-bundle` output passed inline, so a record cannot point it at
+  another file. Claude Code's own agent listing shows such an agent as having all tools; that listing is
+  wrong for this case.
 - The validator blocks secrets in `session`, `web`, `claude` and `codex` text itself (detect and block,
   never rewrite, never echoed), not just in the skill's step order. `user` text is only warned.
-- `record-verification`, `activate`, `finalize`, `retire` and `discard-draft` take `--expect-sha256`, the hash the
-  user was shown, and refuse if the text changed. `discard-draft` deletes only a draft; like
+- `record-verification`, `activate` and `finalize` take `--expect-sha256`, the fingerprint the user was
+  shown, and refuse if the text, origin or an attachment changed; `retire` and `discard-draft` take the
+  text hash, so they still work when an attachment cannot be read. `discard-draft` deletes only a draft; like
   `discard-orphan`, it has no backing hook, so the validator's own checks are its guard (owner decision
   2026-11-24).
 - `hash`, `screen`, `draft` and `update-draft` read their input file only from inside the catalog root
@@ -118,11 +134,15 @@ text is data everywhere except an explicitly approved run.
 
 ## Configuration
 
-One setting, the catalog root path.
+Two settings: the catalog root path and the attachment size limit.
 
-- `promptlibrary-kit.settings.json` (plugin root, git-tracked defaults): `{"catalog_root": ".claude/prompts"}`.
-- `.claude/promptlibrary-kit.local.json` (optional, untracked, per project): overrides `catalog_root`. It is
-  honored only when git does not track it, and the path must resolve inside the project root.
+- `promptlibrary-kit.settings.json` (plugin root, git-tracked defaults):
+  `{"catalog_root": ".claude/prompts", "attachment_max_kb": 32}`.
+- `.claude/promptlibrary-kit.local.json` (optional, untracked, per project): overrides either. The
+  `catalog_root` override is honored only when git does not track the file, and the path must resolve
+  inside the project root. `attachment_max_kb` is the total for all of one prompt's attachments, `16`, `32`
+  or `64`; any other value is ignored with a warning. A copy git tracks, one reached through a link or one
+  outside a git repository may only lower it.
 - This repository keeps a hand-maintained twin of the defaults at `.claude/promptlibrary-kit.settings.json`
   for its own dogfooding. The plugin-root file is canonical; no tooling checks the pair, so copy a change
   to the twin in the same commit and diff them.
@@ -132,11 +152,19 @@ The project root is `git rev-parse --show-toplevel`, else the working directory.
 ## Not included (planned later)
 
 Notion-backed authority and sync, cross-repository (general) prompts, and Codex execution. The catalog
-format keeps them additive: `catalog_version` and `scope` fields, an executor named in every approval, and
-verification hashes that cover prompt text only.
+format keeps them additive: `catalog_version` and `scope` fields and an executor named in every approval.
+Since version 3 the fingerprint also covers origin and attached files, so a prompt moved to another
+project keeps its verification only where its attached files are identical.
 
 ## Known limitations
 
+- Attachment checks fail closed: a file with more than one name (a hard link, as some package stores
+  create), a path under a network drive, a mount without a drive letter, a non-ASCII name that macOS
+  stores in another Unicode form, or a platform where the opened file's path cannot be asked for (other
+  than Windows, Linux and macOS) is refused. A parent folder swapped for a link to a network share during
+  the read still opens that connection before the check refuses the file (review 2026-11-26, accepted).
+- `prerequisites`, `boundaries`, `references` and `name` are not part of the fingerprint: they are shown,
+  never run, and can change without blocking a prompt.
 - The validator tests run on Windows locally and on Linux (Ubuntu) in the repository's CI, which also runs
   the three file-mode tests that Windows skips. macOS behavior is designed for but unverified.
 - Live runs on 2026-10-14 loaded the plugin with `--plugin-dir`, not from a marketplace install. A headless
