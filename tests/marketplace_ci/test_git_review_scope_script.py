@@ -2204,6 +2204,21 @@ def test_the_skill_path_filter_keeps_nothing_when_the_git_directory_path_holds_a
     assert _run_skill_path_filter(tmp_path / "wt", (outside, sibling)) == ["0", ""]
 
 
+@pytest.mark.skipif(os.name == "nt", reason="Windows does not allow a carriage return in a name")
+def test_the_skill_path_filter_drops_a_folder_whose_git_directory_ends_in_a_carriage_return(
+    plain_repo, tmp_path
+):
+    """A trailing CR is part of the path, not a line ending: stripping it named another folder."""
+    gitdir = tmp_path / "gd\r"
+    gitdir.mkdir()
+    (gitdir / "commondir").write_text(f"{plain_repo / '.git'}\n")
+    fake, outside = tmp_path / "fake", tmp_path / "outside"
+    for folder in (fake / "bin", outside):
+        folder.mkdir(parents=True)
+    (fake / ".git").write_text(f"gitdir: {gitdir}\n")
+    assert _run_skill_path_filter(plain_repo, (outside, fake / "bin")) == ["1", str(outside)]
+
+
 @pytest.mark.skipif(os.name == "nt", reason="Windows cannot remove the current directory")
 def test_the_skill_path_filter_keeps_nothing_when_the_checkout_path_cannot_be_read(tmp_path):
     """With no checkout path there is no checkout check, so an entry inside it would be kept."""
