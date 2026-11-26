@@ -91,6 +91,14 @@ class Base(unittest.TestCase):
                 return V.text_hash(meta["_body"])
         raise AssertionError(f"no record {rid}")
 
+    def fp_of(self, rid: str) -> str:
+        """The approval fingerprint the validator reports for a record (text, origin and
+        attachments in a version 3 catalog)."""
+        for rec in self.run_cli("validate")[1].get("records", []):
+            if rec["internal_id"] == rid:
+                return rec["fingerprint"]
+        raise AssertionError(f"no record {rid}")
+
     def add_draft(self, rid="p000000000001", slug=SLUG, **over):
         if not (self.root / "catalog.yaml").exists():
             self.assertEqual(self.run_cli("init")[0], 0)
@@ -100,14 +108,14 @@ class Base(unittest.TestCase):
 
     def verify(self, rid, kind="quality"):
         return self.run_cli(
-            "record-verification", rid, "--kind", kind, "--expect-sha256", self.hash_of(rid)
+            "record-verification", rid, "--kind", kind, "--expect-sha256", self.fp_of(rid)
         )
 
     def act(self, rid):
-        return self.run_cli("activate", rid, "--expect-sha256", self.hash_of(rid))
+        return self.run_cli("activate", rid, "--expect-sha256", self.fp_of(rid))
 
     def fin(self, rid, *flags):
-        return self.run_cli("finalize", rid, "--expect-sha256", self.hash_of(rid), *flags)
+        return self.run_cli("finalize", rid, "--expect-sha256", self.fp_of(rid), *flags)
 
     def make_active(self, rid="p000000000001", **over):
         self.add_draft(rid, **over)
@@ -1470,7 +1478,7 @@ class Interrupted(Base):
         self.assertEqual(self.run_cli("init")[0], 0)
         cat = self.root / "catalog.yaml"
         text = cat.read_text(encoding="utf-8")
-        cat.write_text(text.replace("catalog_version: 1", "catalog_version: 99"), encoding="utf-8")
+        cat.write_text(text.replace("catalog_version: 3", "catalog_version: 99"), encoding="utf-8")
         code, res = self.run_cli("validate")
         self.assertEqual(code, 1)
         self.assertTrue(any("unsupported catalog_version" in e for e in res["errors"]))
@@ -1532,17 +1540,18 @@ class ValidatorEdgeCases(Base):
         self.assertIn("verification must be a map", res["error"])
 
     def test_scratch_drafts_are_checked_against_the_catalogs_own_version(self):
-        # A hypothetical catalog_version 3 that adds one optional record field: a draft using it
-        # is accepted only when the scratch check reads the catalog's version, not a fixed 1.
+        # A hypothetical catalog_version 4 that adds one optional record field: a draft using it
+        # is accepted only when the scratch check reads the catalog's version, not a fixed one.
         self.assertEqual(self.run_cli("init")[0], 0)
         cat = self.root / "catalog.yaml"
         text = cat.read_text(encoding="utf-8")
-        cat.write_bytes(text.replace("catalog_version: 1", "catalog_version: 3").encode("utf-8"))
+        cat.write_bytes(text.replace("catalog_version: 3", "catalog_version: 4").encode("utf-8"))
         with (
-            mock.patch.object(V, "SUPPORTED_CATALOG_VERSIONS", {1, 2, 3}),
-            mock.patch.dict(V.CATALOG_FIELDS, {3: V.CATALOG_FIELDS[1]}),
-            mock.patch.dict(V.RECORD_REQUIRED, {3: V.RECORD_REQUIRED[1]}),
-            mock.patch.dict(V.RECORD_OPTIONAL, {3: (*V.RECORD_OPTIONAL[1], "owner")}),
+            mock.patch.object(V, "SUPPORTED_CATALOG_VERSIONS", {1, 2, 3, 4}),
+            mock.patch.dict(V.CATALOG_FIELDS, {4: V.CATALOG_FIELDS[3]}),
+            mock.patch.dict(V.RECORD_REQUIRED, {4: V.RECORD_REQUIRED[3]}),
+            mock.patch.dict(V.RECORD_OPTIONAL, {4: (*V.RECORD_OPTIONAL[3], "owner")}),
+            mock.patch.dict(V.VERIFICATION_KEYS, {4: V.VERIFICATION_KEYS[3]}),
         ):
             code, res = self.run_cli("draft", self.scratch(owner="platform-team"))
         self.assertEqual(code, 0, res)
@@ -2133,7 +2142,7 @@ class DiscardDraft(Base):
         self.assertTrue(res["slug_reserved"])
         self.assertFalse((self.root / SLUG).exists())
         code, res = self.run_cli("validate")
-        self.assertEqual((code, res["records"], res["catalog_version"]), (0, [], 2))
+        self.assertEqual((code, res["records"], res["catalog_version"]), (0, [], 3))
         code, res = self.run_cli("draft", self.scratch(internal_id=self.NEXT))
         self.assertEqual(code, 1)
         self.assertIn("never reused", res["error"])
@@ -2162,7 +2171,7 @@ class DiscardDraft(Base):
         self.assertEqual(code, 0, res)
         self.assertFalse(res["slug_reserved"])
         self.assertEqual((self.root / SLUG / "active.md").read_bytes(), before)
-        self.assertEqual(self.run_cli("validate")[1]["catalog_version"], 1)
+        self.assertEqual(self.run_cli("validate")[1]["catalog_version"], 3)
         self.add_successor()  # a fresh revise is possible again
 
     def test_anything_that_has_run_is_refused(self):
@@ -2209,7 +2218,7 @@ class DiscardDraft(Base):
             code, _ = self.discard(self.RID, sha)
         self.assertEqual(code, 1)
         code, res = self.run_cli("validate")
-        self.assertEqual((code, len(res["records"]), res["catalog_version"]), (0, 1, 1))
+        self.assertEqual((code, len(res["records"]), res["catalog_version"]), (0, 1, 3))
 
     def test_a_draft_file_that_is_already_gone_counts_as_discarded(self):
         self.add_draft()
@@ -2229,7 +2238,7 @@ class DiscardDraft(Base):
     def test_malformed_or_misplaced_reserved_slugs_are_errors(self):
         self.assertEqual(self.run_cli("init")[0], 0)
         cat = self.root / "catalog.yaml"
-        text = cat.read_text(encoding="utf-8")
+        text = cat.read_text(encoding="utf-8").replace("catalog_version: 3", "catalog_version: 1")
         cat.write_text(text + "reserved_slugs: []\n", encoding="utf-8")
         self.assertIn("unknown field", self.run_cli("validate")[1]["errors"][0])
         text = text.replace("catalog_version: 1", "catalog_version: 2")
@@ -2239,6 +2248,457 @@ class DiscardDraft(Base):
             with self.subTest(lost=lost):
                 cat.write_text(text + lost, encoding="utf-8")
                 self.assertIn("at least one slug", self.run_cli("validate")[1]["errors"][0])
+
+
+class DeferredGaps(Base):
+    """Small gaps left by the link fix (handoff 2026-11-25)."""
+
+    def test_odd_record_path_spellings_are_named_as_invalid_not_missing(self):
+        self.make_active()
+        cat = self.root / "catalog.yaml"
+        text = cat.read_text(encoding="utf-8")
+        backslash = SLUG + chr(92) + "active.md"
+        for odd in ("./active.md", backslash, f"./{SLUG}/active.md", f"{SLUG}/./active.md"):
+            with self.subTest(odd=odd):
+                quoted = odd if odd != backslash else f"'{odd}'"
+                cat.write_text(text.replace(f"{SLUG}/active.md", quoted), encoding="utf-8")
+                errors = self.run_cli("validate")[1]["errors"]
+                self.assertTrue(any("invalid record path" in e for e in errors), errors)
+                self.assertFalse(any("listed record is missing" in e for e in errors), errors)
+
+    def test_a_linked_folder_named_tmp_is_left_unread_and_unreported(self):
+        self.make_active()
+        outside = tempfile.TemporaryDirectory()
+        self.addCleanup(outside.cleanup)
+        try:
+            os.symlink(outside.name, self.root / "x.tmp", target_is_directory=True)
+        except (OSError, NotImplementedError):
+            self.skipTest("symlinks are not available here")
+        code, res = self.run_cli("validate")
+        self.assertEqual((code, res["errors"]), (0, []))
+
+    def test_init_creates_a_missing_catalog_root(self):
+        self.assertFalse(self.root.exists())
+        self.assertEqual(self.run_cli("init")[0], 0)
+        self.assertTrue((self.root / "catalog.yaml").is_file())
+
+
+STYLE = "docs/style.md"
+
+
+class OriginAndAttachments(Base):
+    """Version 3: the fingerprint binds text, origin and attached files (SEC-4, CAT-2, CAT-6,
+    CFG-6, REV-6, EXE-2)."""
+
+    def put(self, rel, text="Use short sentences.\n", data=None):
+        path = self.proj / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if data is not None:
+            path.write_bytes(data)
+        else:
+            path.write_text(text, encoding="utf-8", newline="")
+        return path
+
+    def edit_record(self, rel, **fields):
+        path = self.root / rel
+        meta = V.read_record(path)
+        meta.update(fields)
+        meta = {k: v for k, v in meta.items() if v is not None}
+        V.write_record(path, meta)
+
+    def blocked(self):
+        return self.run_cli("validate")[1]["blocked"]
+
+    def draft_error(self, **over):
+        if not (self.root / "catalog.yaml").exists():
+            self.assertEqual(self.run_cli("init")[0], 0)
+        code, res = self.run_cli("draft", self.scratch(**over))
+        self.assertEqual(code, 1, res)
+        return res["error"]
+
+    def linked_dir(self, link, target):
+        if sys.platform == "win32":
+            import _winapi
+
+            _winapi.CreateJunction(str(target), str(link))
+        else:
+            os.symlink(target, link, target_is_directory=True)
+
+    # ---------------------------------------------------------------- SEC-4: origin
+    def test_init_creates_version_3(self):
+        self.assertEqual(self.run_cli("init")[0], 0)
+        self.assertEqual(self.run_cli("validate")[1]["catalog_version"], 3)
+
+    def test_a_relabelled_origin_blocks_only_that_prompt(self):
+        self.make_active(origin="claude")
+        self.make_active("p000000000002", slug="docs__changelog")
+        self.edit_record(f"{SLUG}/active.md", origin="user")
+        code, res = self.run_cli("validate")
+        self.assertEqual(code, 0, res)
+        self.assertEqual([b["slug"] for b in res["blocked"]], [SLUG])
+        self.assertFalse(res["blocked"][0]["attachment_change"])
+        self.assertIn("text or origin changed", "; ".join(res["blocked"][0]["reasons"]))
+        self.assertEqual(self.run_cli("show", SLUG)[0], 1)
+        self.assertEqual(self.run_cli("show", "docs__changelog")[0], 0)
+        # a relabelled text can only be restored or retired, never revised
+        code, res = self.run_cli(
+            "draft",
+            self.scratch(internal_id="p000000000003", version=2, previous_id="p000000000001"),
+        )
+        self.assertEqual(code, 1)
+        self.assertIn("restore it from git or retire it", res["error"])
+        self.edit_record(f"{SLUG}/active.md", origin="claude")
+        self.assertEqual(self.blocked(), [])
+
+    def test_a_version_1_catalog_still_binds_the_text_only(self):
+        self.assertEqual(self.run_cli("init")[0], 0)
+        cat = self.root / "catalog.yaml"
+        cat.write_text(
+            cat.read_text(encoding="utf-8").replace("catalog_version: 3", "catalog_version: 1"),
+            encoding="utf-8",
+        )
+        self.make_active(origin="claude")
+        self.assertEqual(self.fp_of("p000000000001"), V.text_hash(BODY))
+        self.edit_record(f"{SLUG}/active.md", origin="user")
+        self.assertEqual(self.blocked(), [])
+
+    # ---------------------------------------------------------- CAT-2: attachments
+    def test_an_attachment_is_fingerprinted_shown_and_bound_to_the_approval(self):
+        self.put(STYLE, "Use short sentences.\r\nNo jargon.\r\n")
+        res = self.add_draft(attachments=[STYLE])
+        self.assertEqual(res["attachments"], [STYLE])
+        self.assertNotEqual(res["fingerprint"], res["text_hash"])
+        rid = "p000000000001"
+        code, res = self.run_cli(
+            "record-verification", rid, "--kind", "quality", "--expect-sha256", V.text_hash(BODY)
+        )
+        self.assertEqual(code, 1)
+        self.assertIn("fingerprint", res["error"])
+        self.assertEqual(self.verify(rid)[0], 0)
+        self.assertEqual(self.act(rid)[0], 0)
+        code, res = self.run_cli("show", SLUG)
+        self.assertEqual(code, 0, res)
+        att = res["records"][0]["attachment_content"]
+        self.assertEqual([a["path"] for a in att], [STYLE])
+        self.assertEqual(att[0]["content"], "Use short sentences.\r\nNo jargon.\r\n")
+        self.assertEqual(res["records"][0]["fingerprint"], self.fp_of(rid))
+        # line endings alone never change the fingerprint (LIF-2)
+        self.put(STYLE, "Use short sentences.\nNo jargon.\n")
+        self.assertEqual(self.blocked(), [])
+
+    def test_attachment_order_is_part_of_the_fingerprint(self):
+        self.put("docs/a.md", "A\n")
+        self.put("docs/b.md", "B\n")
+        meta = {"_body": BODY, "origin": "user", "_version": 3}
+        first = [
+            {"path": "docs/a.md", "sha256": "1" * 64},
+            {"path": "docs/b.md", "sha256": "2" * 64},
+        ]
+        self.assertNotEqual(V.fingerprint_of(meta, first), V.fingerprint_of(meta, first[::-1]))
+
+    def test_a_changed_attachment_blocks_only_that_prompt_and_can_be_revised(self):
+        self.put(STYLE)
+        self.make_active(attachments=[STYLE])
+        self.make_active("p000000000002", slug="docs__changelog")
+        self.put(STYLE, "Use long sentences.\n")
+        code, res = self.run_cli("validate")
+        self.assertEqual(code, 0, res)
+        self.assertEqual([b["slug"] for b in res["blocked"]], [SLUG])
+        self.assertTrue(res["blocked"][0]["attachment_change"])
+        code, res = self.run_cli("show", SLUG)
+        self.assertEqual(code, 1)
+        self.assertIn("revise it to review the new content", res["error"])
+        self.assertEqual(self.run_cli("deactivate", "p000000000001")[0], 1)
+        # a revision that also changes the text is refused: only the attachment is re-reviewed
+        changed = self.scratch(
+            internal_id="p000000000003",
+            version=2,
+            previous_id="p000000000001",
+            attachments=[STYLE],
+            _body=BODY + "\nAlso check docs.",
+        )
+        code, res = self.run_cli("draft", changed)
+        self.assertEqual(code, 1)
+        self.assertIn("keeps the approved text and origin", res["error"])
+        res = self.add_draft(
+            "p000000000003", version=2, previous_id="p000000000001", attachments=[STYLE]
+        )
+        code, bundle = self.run_cli("review-bundle", "p000000000003")
+        self.assertEqual(code, 0, bundle)
+        self.assertEqual(bundle["attachment_content"][0]["content"], "Use long sentences.\n")
+        self.assertEqual(self.verify("p000000000003")[0], 0)
+        code, res = self.fin("p000000000003")
+        self.assertEqual(code, 0, res)
+        self.assertEqual(self.blocked(), [])
+        code, res = self.run_cli("show", SLUG)
+        self.assertEqual((code, res["records"][0]["version"]), (0, 2))
+
+    def test_a_missing_or_over_limit_attachment_blocks_as_an_attachment_change(self):
+        self.put(STYLE)
+        self.make_active(attachments=[STYLE])
+        (self.proj / STYLE).unlink()
+        blocked = self.blocked()
+        self.assertTrue(blocked[0]["attachment_change"])
+        self.assertIn("missing", "; ".join(blocked[0]["reasons"]))
+        self.put(STYLE, "x" * (33 * 1024))
+        blocked = self.blocked()
+        self.assertTrue(blocked[0]["attachment_change"])
+        self.assertIn("32 KB limit", "; ".join(blocked[0]["reasons"]))
+        # retire still works with the text hash, the attachment unreadable or not
+        code, res = self.run_cli(
+            "retire", "p000000000001", "--expect-sha256", self.hash_of("p000000000001")
+        )
+        self.assertEqual(code, 0, res)
+
+    def test_attachment_paths_outside_the_rules_are_refused_before_review(self):
+        self.put("docs/ok.md")
+        self.put(".git/info/notes.md")
+        self.put(".claude/rules/x.md")
+        self.put(".github/notes.md")
+        self.put(".env", "A=1\n")
+        self.put("cfg/.env.local", "A=1\n")
+        self.put("docs/latin1.md", data="caf\xe9\n".encode("latin-1"))
+        self.put("docs/zero.md", data=b"a\x00b\n")
+        self.assertEqual(self.run_cli("init")[0], 0)
+        self.put(".claude/prompts/notes.md")
+        cases = {
+            "/etc/passwd": "relative to the project root",
+            "C:/x.md": "relative to the project root",
+            "docs\\ok.md": "relative to the project root",
+            "docs/../docs/ok.md": '"." or ".."',
+            "./docs/ok.md": '"." or ".."',
+            "docs//ok.md": '"." or ".."',
+            "docs/ok.md.": "Windows does not allow",
+            "docs/a:b.md": "Windows does not allow",
+            ".git/info/notes.md": ".git",
+            ".claude/rules/x.md": ".claude/rules",
+            ".github/notes.md": ".github",
+            ".env": ".env file",
+            "cfg/.env.local": ".env file",
+            ".claude/prompts/notes.md": "inside the prompt catalog",
+            "docs/none.md": "missing",
+            "docs/latin1.md": "not UTF-8",
+            "docs/zero.md": "not a text file",
+            "docs": "not a regular file",
+        }
+        for value, reason in cases.items():
+            with self.subTest(value=value):
+                self.assertIn(reason, self.draft_error(attachments=[value]))
+        self.assertIn("listed twice", self.draft_error(attachments=["docs/ok.md", "docs/ok.md"]))
+
+    def test_an_attachment_through_a_linked_folder_is_refused_unread(self):
+        outside = tempfile.TemporaryDirectory()
+        self.addCleanup(outside.cleanup)
+        (Path(outside.name) / "secret.md").write_text("private\n", encoding="utf-8")
+        try:
+            self.linked_dir(self.proj / "docs", Path(outside.name))
+        except (OSError, NotImplementedError):
+            self.skipTest("folder links are not available here")
+        error = self.draft_error(attachments=["docs/secret.md"])
+        self.assertIn("goes through a link", error)
+        self.assertNotIn("private", error)
+
+    def test_the_opened_file_must_be_the_checked_one(self):
+        self.put(STYLE)
+        outside = str(Path(tempfile.gettempdir()) / "elsewhere.md")
+        with mock.patch.object(V, "_opened_path", return_value=outside):
+            self.assertIn("was replaced", self.draft_error(attachments=[STYLE]))
+        with mock.patch.object(V, "_opened_path", return_value=None):
+            self.assertIn("cannot be confirmed", self.draft_error(attachments=[STYLE]))
+
+    def test_the_opened_path_is_reported_by_the_handle(self):
+        path = self.put(STYLE)
+        fd = os.open(path, os.O_RDONLY)
+        try:
+            self.assertEqual(
+                os.path.normcase(V._opened_path(fd)), os.path.normcase(os.path.realpath(path))
+            )
+        finally:
+            os.close(fd)
+
+    def test_a_hard_link_is_refused(self):
+        outside = tempfile.TemporaryDirectory(dir=self.proj.parent)
+        self.addCleanup(outside.cleanup)
+        target = Path(outside.name) / "secret.md"
+        target.write_text("private\n", encoding="utf-8")
+        (self.proj / "docs").mkdir()
+        try:
+            os.link(target, self.proj / "docs" / "ctx.md")
+        except (OSError, NotImplementedError):
+            self.skipTest("hard links are not available here")
+        error = self.draft_error(attachments=["docs/ctx.md"])
+        self.assertIn("hard link", error)
+        self.assertNotIn("private", error)
+
+    def test_a_short_name_or_device_name_is_refused(self):
+        self.put(".env", "A=1\n")
+        self.put("docs/longfilename.md")
+        for value in ("ENV~1", "docs/LONGFI~1.MD"):
+            if not (self.proj / value).exists():
+                continue  # no 8.3 names on this volume
+            with self.subTest(value=value):
+                self.assertIn("different name", self.draft_error(attachments=[value]))
+        for value in ("docs/con", "nul.md", "docs/COM1.txt"):
+            with self.subTest(value=value):
+                self.assertIn("Windows device", self.draft_error(attachments=[value]))
+
+    def test_secrets_in_an_attachment(self):
+        self.put("docs/key.md", f"token = {FAKE_KEY}\n")
+        self.assertIn(
+            "in an attachment", self.draft_error(origin="claude", attachments=["docs/key.md"])
+        )
+        res = self.add_draft(attachments=["docs/key.md"])  # user text: a warning to show
+        self.assertEqual({h["path"] for h in res["attachment_screen"]}, {"docs/key.md"})
+
+    # ------------------------------------------------------------- CFG-6: size limit
+    def write_local(self, data, track=False):
+        local = self.proj / ".claude" / "promptlibrary-kit.local.json"
+        local.parent.mkdir(parents=True, exist_ok=True)
+        local.write_text(json.dumps(data), encoding="utf-8")
+        if track:
+            subprocess.run(  # nosec B603 B607
+                ["git", "add", "-f", str(local)], cwd=self.proj, check=True
+            )
+
+    def test_the_size_limit_defaults_to_32_kb_for_all_attachments_together(self):
+        self.put("docs/a.md", "a" * (20 * 1024))
+        self.put("docs/b.md", "b" * (20 * 1024))
+        info = self.run_cli("validate")[1]
+        self.assertEqual(
+            (info["attachment_max_kb"], info["attachment_limit_source"]), (32, "plugin default")
+        )
+        error = self.draft_error(attachments=["docs/a.md", "docs/b.md"])
+        self.assertIn("32 KB limit", error)
+        self.assertIn("20480 bytes", error)
+
+    def test_an_untracked_local_override_sets_the_limit_and_a_tracked_one_only_lowers_it(self):
+        self.put("docs/a.md", "a" * (40 * 1024))
+        self.write_local({"attachment_max_kb": 64})
+        info = self.run_cli("validate")[1]
+        self.assertEqual(
+            (info["attachment_max_kb"], info["attachment_limit_source"]), (64, "local override")
+        )
+        self.add_draft(attachments=["docs/a.md"])
+        self.write_local({"attachment_max_kb": 64}, track=True)
+        info = self.run_cli("validate")[1]
+        self.assertEqual(info["attachment_max_kb"], 32)
+        self.assertTrue(any("may only lower" in w for w in info["warnings"]))
+        self.write_local({"attachment_max_kb": 16}, track=True)
+        self.assertEqual(self.run_cli("validate")[1]["attachment_max_kb"], 16)
+        for bad in (8, 33, "32", True, 32.0):
+            with self.subTest(bad=bad):
+                self.write_local({"attachment_max_kb": bad})
+                info = self.run_cli("validate")[1]
+                self.assertEqual(info["attachment_max_kb"], 32)
+                self.assertTrue(any("is not 16/32/64" in w for w in info["warnings"]))
+
+    def test_a_lowered_limit_makes_an_approved_prompt_unrunnable(self):
+        self.put(STYLE, "s" * (20 * 1024))
+        self.make_active(attachments=[STYLE])
+        self.write_local({"attachment_max_kb": 16})
+        blocked = self.blocked()
+        self.assertTrue(blocked and blocked[0]["attachment_change"])
+        self.assertIn("16 KB limit", "; ".join(blocked[0]["reasons"]))
+
+    # ---------------------------------------------------------- REV-6: review bundle
+    def test_the_review_bundle_is_for_drafts_only_and_carries_the_content_inline(self):
+        self.put(STYLE, "Line one.\u200b\n")
+        self.add_draft(attachments=[STYLE])
+        code, res = self.run_cli("review-bundle", "p000000000001")
+        self.assertEqual(code, 0, res)
+        self.assertEqual(res["prompt_text"], V.normalize_text(BODY))
+        self.assertEqual(res["record"]["origin"], "user")
+        self.assertEqual(res["attachment_content"][0]["hidden_characters"][0]["line"], 1)
+        self.assertEqual(res["fingerprint"], self.fp_of("p000000000001"))
+        self.assertNotIn("path", res)
+        self.assertEqual(self.verify("p000000000001")[0], 0)
+        self.assertEqual(self.act("p000000000001")[0], 0)
+        code, res = self.run_cli("review-bundle", "p000000000001")
+        self.assertEqual(code, 1)
+        self.assertIn("only a draft", res["error"])
+
+    # ------------------------------------------------------------------- upgrade
+    def legacy_catalog(self, version=1):
+        self.assertEqual(self.run_cli("init")[0], 0)
+        cat = self.root / "catalog.yaml"
+        cat.write_text(
+            cat.read_text(encoding="utf-8").replace(
+                "catalog_version: 3", f"catalog_version: {version}"
+            ),
+            encoding="utf-8",
+        )
+
+    def test_upgrade_lists_then_rebinds_approved_prompts_to_their_origin(self):
+        self.legacy_catalog()
+        self.make_active(origin="claude")
+        code, plan = self.run_cli("upgrade")
+        self.assertEqual((code, plan["applied"]), (0, False), plan)
+        self.assertEqual([r["origin"] for r in plan["records"]], ["claude"])
+        self.assertEqual(self.run_cli("validate")[1]["catalog_version"], 1)
+        code, res = self.run_cli("upgrade", "--expect-listing", "0" * 64)
+        self.assertEqual(code, 1)
+        self.assertIn("listing differs", res["error"])
+        code, res = self.run_cli("upgrade", "--expect-listing", plan["listing_id"])
+        self.assertEqual((code, res["catalog_version"]), (0, 3), res)
+        info = self.run_cli("validate")[1]
+        self.assertEqual((info["catalog_version"], info["blocked"]), (3, []))
+        self.assertTrue(info["records"][0]["verified"])
+        self.edit_record(f"{SLUG}/active.md", origin="user")
+        self.assertEqual([b["slug"] for b in self.blocked()], [SLUG])
+        self.assertIn("already at version 3", self.run_cli("upgrade")[1]["error"])
+
+    def test_an_origin_relabelled_after_the_listing_stops_the_upgrade(self):
+        self.legacy_catalog()
+        self.make_active(origin="claude")
+        listing = self.run_cli("upgrade")[1]["listing_id"]
+        self.edit_record(f"{SLUG}/active.md", origin="user")  # leaves snapshot_id unchanged
+        code, res = self.run_cli("upgrade", "--expect-listing", listing)
+        self.assertEqual(code, 1)
+        self.assertIn("listing differs", res["error"])
+        self.assertEqual(self.run_cli("validate")[1]["catalog_version"], 1)
+
+    def test_upgrade_refuses_listed_attachments_and_blocked_prompts(self):
+        self.legacy_catalog(version=2)
+        cat = self.root / "catalog.yaml"
+        cat.write_text(
+            cat.read_text(encoding="utf-8") + "reserved_slugs:\n  - old__gone\n", encoding="utf-8"
+        )
+        self.make_active()
+        self.add_draft("p000000000002", slug="docs__changelog", attachments=["docs/x.md"])
+        self.assertIn("list attachments", self.run_cli("upgrade")[1]["error"])
+        self.assertEqual(
+            self.run_cli(
+                "discard-draft", "p000000000002", "--expect-sha256", self.hash_of("p000000000002")
+            )[0],
+            0,
+        )
+        self.edit_record(f"{SLUG}/active.md", _body="Edited.")
+        self.assertIn("restore or retire", self.run_cli("upgrade")[1]["error"])
+
+    def test_upgrade_keeps_reserved_slugs_and_rolls_back_a_failed_catalog_write(self):
+        self.legacy_catalog(version=2)
+        cat = self.root / "catalog.yaml"
+        cat.write_text(
+            cat.read_text(encoding="utf-8") + "reserved_slugs:\n  - old__gone\n", encoding="utf-8"
+        )
+        self.make_active()
+        before = (self.root / SLUG / "active.md").read_bytes()
+        snap = self.run_cli("upgrade")[1]["listing_id"]
+        with mock.patch.object(V, "write_catalog", side_effect=OSError("disk full")):
+            self.assertEqual(self.run_cli("upgrade", "--expect-listing", snap)[0], 1)
+        self.assertEqual((self.root / SLUG / "active.md").read_bytes(), before)
+        self.assertEqual(self.run_cli("validate")[1]["catalog_version"], 2)
+        self.assertEqual(self.run_cli("upgrade", "--expect-listing", snap)[0], 0)
+        self.assertIn("old__gone", (self.root / "catalog.yaml").read_text(encoding="utf-8"))
+
+    def test_a_version_1_first_draft_discard_still_moves_to_version_2(self):
+        self.legacy_catalog()
+        self.add_draft()
+        code, res = self.run_cli(
+            "discard-draft", "p000000000001", "--expect-sha256", self.hash_of("p000000000001")
+        )
+        self.assertEqual(code, 0, res)
+        self.assertEqual(self.run_cli("validate")[1]["catalog_version"], 2)
 
 
 if __name__ == "__main__":

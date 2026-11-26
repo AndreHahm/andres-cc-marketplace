@@ -182,7 +182,7 @@ class Fixture:
             code, out = self.run(*step)
             if code != 0:
                 raise RuntimeError(f"{step[0]} failed: {out.get('error')}")
-        draft_hash = V.text_hash(BODY)
+        draft_hash = out["fingerprint"]  # the approval binds the fingerprint, not the bare text
         for step in (
             (
                 "record-verification",

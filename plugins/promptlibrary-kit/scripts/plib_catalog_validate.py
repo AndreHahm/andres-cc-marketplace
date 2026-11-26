@@ -8,9 +8,9 @@ Every subcommand prints one JSON object on stdout and exits 0 (ok) or 1 (not ok)
 library only.
 
 Usage: plib_catalog_validate.py [--root PATH] <subcommand> [args]
-Subcommands: validate, show, hash, screen, init, new-id, draft, update-draft, register, discard-
-orphan,
-             discard-draft, record-verification, activate, deactivate, finalize, retire
+Subcommands: validate, show, review-bundle, hash, screen, init, new-id, draft, update-draft,
+             register, discard-orphan, discard-draft, record-verification, activate,
+             deactivate, finalize, retire, upgrade
 """
 
 from __future__ import annotations
@@ -35,8 +35,13 @@ LOCAL_OVERRIDE = Path(".claude") / "promptlibrary-kit.local.json"
 DEFAULT_ROOT = ".claude/prompts"
 MAX_NONBLANK_LINES = 50
 
-SUPPORTED_CATALOG_VERSIONS = {1, 2}
+SUPPORTED_CATALOG_VERSIONS = {1, 2, 3}
+# Version 3 binds origin and attached files into the approval fingerprint (SEC-4, CAT-2).
+CURRENT_CATALOG_VERSION = 3
 SUPPORTED_SCOPES = {"repo"}
+ATTACHMENT_LIMITS_KB = (16, 32, 64)
+DEFAULT_ATTACHMENT_KB = 32
+FINGERPRINT_TAG = "promptlibrary-kit fingerprint 3"
 STATUSES = ("draft", "active", "inactive", "historical")
 ORIGINS = ("user", "claude", "codex", "session", "web")
 
@@ -47,6 +52,7 @@ CATALOG_FIELDS = {
     1: {"catalog_version", "scope", "snapshot_id", "records"},
     2: {"catalog_version", "scope", "snapshot_id", "records", "reserved_slugs"},
 }
+CATALOG_FIELDS[3] = CATALOG_FIELDS[2]
 RECORD_REQUIRED = {
     1: ("name", "area", "slug", "internal_id", "version", "short_description", "status", "origin")
 }
@@ -62,6 +68,11 @@ RECORD_OPTIONAL = {
     )
 }
 RECORD_REQUIRED[2], RECORD_OPTIONAL[2] = RECORD_REQUIRED[1], RECORD_OPTIONAL[1]
+RECORD_REQUIRED[3], RECORD_OPTIONAL[3] = RECORD_REQUIRED[1], RECORD_OPTIONAL[1]
+# Version 3 adds verification.core: the hash of text and origin alone, so a blocked prompt can tell
+# a changed attachment (revisable, CAT-6) from a changed text or origin (restore or retire only).
+VERIFICATION_KEYS = {1: ("quality", "import"), 2: ("quality", "import")}
+VERIFICATION_KEYS[3] = ("quality", "import", "core")
 FIELD_ORDER = (
     "name",
     "area",
@@ -386,6 +397,32 @@ def text_hash(text: str) -> str:
     return hashlib.sha256(normalize_text(text).encode("utf-8")).hexdigest()
 
 
+def _tagged_hash(payload: dict) -> str:
+    data = json.dumps({"tag": FINGERPRINT_TAG, **payload}, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(data.encode("utf-8")).hexdigest()
+
+
+def core_hash(meta: dict) -> str:
+    """Hash of the prompt text and its origin (version 3)."""
+    return _tagged_hash({"text": text_hash(meta["_body"]), "origin": meta.get("origin")})
+
+
+def fingerprint_of(meta: dict, attachments: list[dict]) -> str:
+    """The approval fingerprint: text only before version 3; text, origin and every attached
+    file's path and content from version 3 on (SEC-4, CAT-2). Attachment order is part of it."""
+    if meta.get("_version", 1) < 3:
+        return text_hash(meta["_body"])
+    files = [[a["path"], a["sha256"]] for a in attachments]
+    return _tagged_hash({"core": core_hash(meta), "attachments": files})
+
+
+def current_fingerprint(meta: dict) -> str | None:
+    """The fingerprint load_catalog computed, or None when an attachment could not be read."""
+    if "_fingerprint" in meta:
+        return meta["_fingerprint"]
+    return fingerprint_of(meta, [])
+
+
 def split_record(raw: str) -> tuple[dict, str]:
     raw = raw.replace("\r\n", "\n").replace("\r", "\n")
     if not raw.startswith("---\n"):
@@ -479,31 +516,51 @@ def hash_problems(meta: dict) -> list[str]:
     ver = meta.get("verification")
     if not isinstance(ver, dict):
         return ["verification is missing"]
-    current = text_hash(meta["_body"])
+    version = meta.get("_version", 1)
+    current = current_fingerprint(meta)
+    what = "prompt, origin or attachments" if version >= 3 else "prompt text"
+    if current is None:
+        problems.extend(meta.get("_attachment_problems", []))
     required = ["quality"] + (["import"] if meta.get("origin") in ("session", "web") else [])
-    for kind in required:
+    expected = {kind: current for kind in required}
+    if version >= 3:
+        expected["core"] = core_hash(meta)
+    for kind, value in expected.items():
         stored = ver.get(kind)
         if not stored:
             problems.append(f"verification.{kind} is missing")
         elif not isinstance(stored, str) or not HASH_RE.fullmatch(stored):
             problems.append(f"verification.{kind} is not a SHA-256 hex digest")
-        elif stored != current:
-            problems.append(f"verification.{kind} does not match the current prompt text")
+        elif kind == "core" and stored != value:
+            problems.append("verification.core: the prompt text or origin changed")
+        elif value is not None and stored != value:
+            problems.append(f"verification.{kind} does not match the current {what}")
     for kind in ver:
-        if kind not in ("quality", "import"):
+        if kind not in VERIFICATION_KEYS[version]:
             problems.append(f"unknown verification field: {kind}")
     return problems
 
 
+def attachment_only_change(meta: dict) -> bool:
+    """True when a blocked version 3 prompt's text and origin still match its approval, so only an
+    attached file changed (CAT-6, attachments amendment: it can be revised to take the new file)."""
+    ver = meta.get("verification")
+    return (
+        meta.get("_version", 1) >= 3
+        and isinstance(ver, dict)
+        and ver.get("core") == core_hash(meta)
+    )
+
+
 def missing_verification(meta: dict) -> list[str]:
-    """Required verification kinds that are absent or do not bind the current text, in step order
-    (quality, then import), so a resumed draft knows whether to restart at the review or the import
-    check."""
+    """Required verification kinds that are absent or do not bind the current fingerprint, in step
+    order (quality, then import), so a resumed draft knows whether to restart at the review or the
+    import check."""
     ver = meta.get("verification")
     ver = ver if isinstance(ver, dict) else {}
-    current = text_hash(meta["_body"])
+    current = current_fingerprint(meta)
     required = ["quality"] + (["import"] if meta.get("origin") in ("session", "web") else [])
-    return [kind for kind in required if ver.get(kind) != current]
+    return [kind for kind in required if current is None or ver.get(kind) != current]
 
 
 def validate_record(meta: dict, version: int) -> list[str]:
@@ -784,18 +841,32 @@ def check_catalog_path(value, project_root: Path) -> tuple[Path | None, str | No
     # Windows drops a trailing dot or space from a folder name and reads ':' as a stream marker, so
     # ".claude./rules" can create the real .claude folder while escaping the name match below.
     for segment in re.split(r"[\\/]", os.path.splitdrive(text)[1]):
-        if segment not in ("", ".", "..") and (segment != segment.rstrip(". ") or ":" in segment):
+        if segment not in ("", ".", "..") and _bad_segment(segment):
             return None, "a path part ends in a dot or space, or contains a colon"
     candidate = Path(text)
     if not candidate.is_absolute():
         candidate = project_root / candidate
+    reason = _placement_problem(candidate, project_root)
+    if reason:
+        return None, reason
+    return Path(os.path.realpath(str(candidate))), None
+
+
+def _bad_segment(segment: str) -> bool:
+    return segment != segment.rstrip(". ") or ":" in segment
+
+
+def _placement_problem(candidate: Path, project_root: Path) -> str | None:
+    """The placement rules a catalog root and an attached file share (m2): strictly inside the
+    project root, and never at, under or containing a folder that holds configuration or
+    instructions."""
     if not contained(candidate, project_root):
-        return None, "resolves outside the project root"
+        return "resolves outside the project root"
     fold = _case_insensitive(project_root)
     for forbidden in FORBIDDEN_ROOTS:
         target = project_root / forbidden
         if _norm(candidate, fold) == _norm(target, fold) or contained(candidate, target):
-            return None, f"resolves inside {forbidden}, which holds configuration or instructions"
+            return f"resolves inside {forbidden}, which holds configuration or instructions"
     # The same folders nested deeper (sub/.claude/rules) can be loaded as instructions too. Match
     # the resolved path and the path as written: a symlink named .claude/rules is read under that
     # name, whatever it points at.
@@ -806,16 +877,210 @@ def check_catalog_path(value, project_root: Path) -> tuple[Path | None, str | No
         try:
             rel = os.path.relpath(norm(candidate, True), norm(project_root, True))
         except ValueError:  # different drives: cannot be placed under the root, so refuse
-            return None, "cannot be compared with the project root"
+            return "cannot be compared with the project root"
         parts = rel.replace("\\", "/").split("/")
         for forbidden in FORBIDDEN_ROOTS:
             seq = forbidden.split("/")
             if any(parts[i : i + len(seq)] == seq for i in range(len(parts) - len(seq) + 1)):
-                return (
-                    None,
-                    f"contains {forbidden} below the project root, which holds instructions",
-                )
-    return Path(os.path.realpath(str(candidate))), None
+                return f"contains {forbidden} below the project root, which holds instructions"
+    return None
+
+
+# A part of an attachment path: no separator, control character or character Windows refuses.
+_DEVICE_NAMES = {"con", "prn", "aux", "nul", "conin$", "conout$"} | {
+    f"{kind}{n}" for kind in ("com", "lpt") for n in range(10)
+}
+_ATTACH_PART = re.compile(r'^[^\x00-\x1f\x7f/\\:*?"<>|]+$')
+
+
+def attachment_text_problem(value) -> str | None:
+    """Why an attachment entry is not a canonical project-relative path, or None. One spelling
+    per file keeps the fingerprint stable: forward slashes, no ".", ".." or empty parts."""
+    if not isinstance(value, str) or not value.strip():
+        return "is empty or not text"
+    if value != value.strip():
+        return "has leading or trailing space"
+    if value.startswith("/") or "\\" in value or re.match(r"^[A-Za-z]:", value):
+        return "must be a path relative to the project root, written with /"
+    parts = value.split("/")
+    for part in parts:
+        if part in ("", ".", ".."):
+            return 'must not contain an empty, "." or ".." part'
+        if not _ATTACH_PART.fullmatch(part) or _bad_segment(part):
+            return "contains a character or part ending that Windows does not allow"
+        if part.split(".")[0].casefold() in _DEVICE_NAMES:
+            return "names a Windows device"
+    name = parts[-1].casefold()
+    if name == ".env" or name.startswith(".env."):
+        return "is a .env file, which holds secrets"
+    return None
+
+
+def attachment_path(
+    value, project_root: Path, catalog_root: Path
+) -> tuple[Path | None, str | None]:
+    """Return (path to open, None) or (None, reason) for one attachment entry. The returned path is
+    the one checked, spelled as written below the project root; open exactly that path."""
+    reason = attachment_text_problem(value)
+    if reason:
+        return None, reason
+    path = Path(project_root, *value.split("/"))
+    if _linked_below(path, project_root):  # before any look that could follow a link
+        return None, "goes through a link"
+    reason = _placement_problem(path, project_root)
+    if reason:
+        return None, reason
+    fold = _case_insensitive(project_root)
+    if _norm(path, fold) == _norm(catalog_root, fold) or contained(path, catalog_root):
+        return None, "is inside the prompt catalog"
+    return path, None
+
+
+class AttachContext:
+    """Where attachments are resolved and how much one prompt may attach (CFG-6)."""
+
+    def __init__(self, project_root: Path, catalog_root: Path, limit_kb: int):
+        self.project_root, self.catalog_root, self.limit_kb = project_root, catalog_root, limit_kb
+
+
+def _opened_path(fd: int) -> str | None:
+    """The path the operating system holds for an open file, or None when it cannot say. Asked of
+    the handle itself, so no swap of a name after the open can change the answer."""
+    try:
+        if sys.platform == "win32":
+            import ctypes
+            import msvcrt
+            from ctypes import wintypes
+
+            final = ctypes.windll.kernel32.GetFinalPathNameByHandleW
+            final.argtypes = [wintypes.HANDLE, wintypes.LPWSTR, wintypes.DWORD, wintypes.DWORD]
+            final.restype = wintypes.DWORD
+            handle, size = msvcrt.get_osfhandle(fd), 1024
+            while True:
+                buf = ctypes.create_unicode_buffer(size)
+                got = final(handle, buf, size, 0)
+                if got == 0:
+                    return None
+                if got < size:
+                    break
+                size = got + 1
+            text = buf.value
+            if text.startswith("\\\\?\\UNC\\"):
+                return None  # a network file is never inside the project
+            return text[4:] if text.startswith("\\\\?\\") else text
+        if sys.platform == "darwin":
+            import fcntl
+
+            raw = fcntl.fcntl(fd, 50, b"\0" * 1024)  # F_GETPATH
+            return os.fsdecode(raw.split(b"\0", 1)[0])
+        target = os.readlink(f"/proc/self/fd/{fd}")
+        return target if target.startswith("/") else None
+    except (OSError, AttributeError, ValueError, ImportError):
+        return None
+
+
+def _read_once(path: Path, project_root: Path, budget: int) -> bytes:
+    """Read a checked attachment exactly once (REV-6, EXE-2), and refuse it unless the opened file
+    is the one checked: the handle's own path must be the project root's real path plus the parts as
+    written (no link, junction, short name or swapped folder on the way), and the file must have one
+    name only (a hard link can name a file outside the project). Returns at most budget + 1 bytes,
+    so the caller can tell the file is over the limit."""
+    flags = os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NOFOLLOW", 0)
+    flags |= getattr(os, "O_NONBLOCK", 0)  # a FIFO must not block the open
+    if not stat.S_ISREG(os.lstat(path).st_mode):  # a folder cannot even be opened on Windows
+        raise CatalogError("is not a regular file")
+    parts = _parts_below(path, project_root)
+    fd = os.open(path, flags)
+    try:
+        opened = os.fstat(fd)
+        if not stat.S_ISREG(opened.st_mode):
+            raise CatalogError("is not a regular file")
+        if opened.st_nlink != 1:
+            raise CatalogError("has more than one name (a hard link)")
+        actual = _opened_path(fd)
+        if actual is None or parts is None:
+            raise CatalogError("its location cannot be confirmed")
+        # normcase only, no casefold: casefold is looser than any filesystem's own case rules.
+        expected = os.path.join(os.path.realpath(str(project_root)), *parts)
+        if _norm_lexical(Path(actual), False) != _norm_lexical(Path(expected), False):
+            raise CatalogError("goes through a link or a different name, or was replaced")
+        chunks, size = [], 0
+        while size <= budget:
+            chunk = os.read(fd, min(65536, budget + 1 - size))
+            if not chunk:
+                break
+            chunks.append(chunk)
+            size += len(chunk)
+    finally:
+        os.close(fd)
+    return b"".join(chunks)
+
+
+def read_attachments(meta: dict, ctx: AttachContext | None) -> tuple[list[dict], list[str]]:
+    """Read every attached file of a version 3 record once: [{path, content, sha256, bytes}] and the
+    problems that make the set unusable. The content returned is the content fingerprinted."""
+    paths = meta.get("attachments") or []
+    if meta.get("_version", 1) < 3 or not paths:
+        return [], []  # before version 3 the field is stored but never loaded
+    if not isinstance(paths, list) or not all(isinstance(p, str) for p in paths):
+        return [], ["attachments must be a list of text"]
+    if ctx is None:
+        return [], ["attachments cannot be checked here"]
+    limit = ctx.limit_kb * 1024
+    found: list[dict] = []
+    problems: list[str] = []
+    used = 0
+    for value in paths:
+        if any(a["path"] == value for a in found):
+            problems.append(f"attachment {value}: listed twice")
+            continue
+        path, reason = attachment_path(value, ctx.project_root, ctx.catalog_root)
+        if reason or path is None:
+            problems.append(f"attachment {value}: {reason}")
+            continue
+        try:
+            raw = _read_once(path, ctx.project_root, max(limit - used, 0))
+        except FileNotFoundError:
+            problems.append(f"attachment {value}: missing")
+            continue
+        except CatalogError as exc:
+            problems.append(f"attachment {value}: {exc}")
+            continue
+        except OSError as exc:
+            problems.append(f"attachment {value}: cannot be read ({exc.strerror or exc})")
+            continue
+        if used + len(raw) > limit:
+            size = None
+            with contextlib.suppress(OSError):
+                size = os.lstat(path).st_size
+            problems.append(
+                f"attachment {value}: {size if size is not None else 'too many'} bytes, with "
+                f"{used} bytes attached before it: over the {ctx.limit_kb} KB limit "
+                f"({limit} bytes for all attachments together)"
+            )
+            continue
+        used += len(raw)
+        try:
+            content = raw.decode("utf-8-sig")
+        except UnicodeDecodeError:
+            problems.append(f"attachment {value}: is not UTF-8 text")
+            continue
+        if "\x00" in content:
+            problems.append(f"attachment {value}: is not a text file")
+            continue
+        found.append(
+            {"path": value, "content": content, "sha256": text_hash(content), "bytes": len(raw)}
+        )
+    return found, problems
+
+
+def _with_attachments(meta: dict, ctx: AttachContext | None) -> dict:
+    """Read meta's attachments and set _attachments, _attachment_problems and _fingerprint (None
+    while an attachment cannot be used)."""
+    found, problems = read_attachments(meta, ctx)
+    meta["_attachments"], meta["_attachment_problems"] = found, problems
+    meta["_fingerprint"] = None if problems else fingerprint_of(meta, found)
+    return meta
 
 
 def _via_link(project_root: Path, local: Path) -> bool:
@@ -839,6 +1104,35 @@ def _read_json(path: Path):
         return None
 
 
+def _limit_value(value) -> bool:
+    return type(value) is int and value in ATTACHMENT_LIMITS_KB
+
+
+def _attachment_limit(defaults, local, trusted: bool, warnings: list[str]) -> dict:
+    """attachment_max_kb (CFG-6): the plugin default, then the local override. A local file that
+    git tracks, that is reached through a link or that git cannot check may only lower it."""
+    kb, source = DEFAULT_ATTACHMENT_KB, "built-in default"
+    allowed = "/".join(str(n) for n in ATTACHMENT_LIMITS_KB)
+    if isinstance(defaults, dict) and "attachment_max_kb" in defaults:
+        if _limit_value(defaults["attachment_max_kb"]):
+            kb, source = defaults["attachment_max_kb"], "plugin default"
+        else:
+            warnings.append(f"plugin default attachment_max_kb is not {allowed}; using {kb}")
+    if isinstance(local, dict) and "attachment_max_kb" in local:
+        value = local["attachment_max_kb"]
+        name = LOCAL_OVERRIDE.as_posix()
+        if not _limit_value(value):
+            warnings.append(f"{name} attachment_max_kb is not {allowed}; using {kb}")
+        elif trusted or value <= kb:
+            kb, source = value, "local override"
+        else:
+            warnings.append(
+                f"{name} may only lower attachment_max_kb here (tracked, linked or outside git); "
+                f"using {kb}"
+            )
+    return {"attachment_max_kb": kb, "attachment_limit_source": source}
+
+
 def resolve_root(cli_root: str | None, cwd: Path | None = None) -> dict:
     cwd = cwd or Path.cwd()
     top = _git_toplevel(cwd)
@@ -860,25 +1154,30 @@ def resolve_root(cli_root: str | None, cwd: Path | None = None) -> dict:
     if cli_root:
         candidates.append(("--root", cli_root))
     local = project_root / LOCAL_OVERRIDE
+    data = None
+    trusted = False
     if local.is_file():
+        linked = _via_link(project_root, local)
+        data = None if linked else _read_json(local)  # a linked file is never read
         if not top:
             info["warnings"].append(
                 f"{LOCAL_OVERRIDE.as_posix()} cannot be checked against git here; its path value "
                 "is ignored"
             )
-        elif _via_link(project_root, local) or _is_tracked(project_root, LOCAL_OVERRIDE):
+        elif linked or _is_tracked(project_root, LOCAL_OVERRIDE):
             info["warnings"].append(
                 f"{LOCAL_OVERRIDE.as_posix()} is tracked by git or reached through a link; "
                 "its path value is ignored"
             )
         else:
-            data = _read_json(local)
+            trusted = True
             if isinstance(data, dict) and "catalog_root" in data:
                 candidates.append(("local override", data["catalog_root"]))
-            else:
+            elif not (isinstance(data, dict) and "attachment_max_kb" in data):
                 info["warnings"].append(
                     f"{LOCAL_OVERRIDE.as_posix()} is unreadable or has no catalog_root"
                 )
+    info.update(_attachment_limit(defaults, data, trusted, info["warnings"]))
     candidates.append(("default", default_value))
     for source, value in candidates:
         resolved, reason = check_catalog_path(value, project_root)
@@ -892,8 +1191,9 @@ def resolve_root(cli_root: str | None, cwd: Path | None = None) -> dict:
 # ------------------------------------------------------------ catalog loading
 
 
-def load_catalog(root: Path) -> tuple[dict, dict, list[str]]:
-    """Return (catalog meta, {relpath: record}, errors). Never raises for content problems."""
+def load_catalog(root: Path, ctx: AttachContext | None = None) -> tuple[dict, dict, list[str]]:
+    """Return (catalog meta, {relpath: record}, errors). Never raises for content problems. An
+    attachment problem is never structural: it blocks only its own prompt (CAT-5)."""
     errs: list[str] = []
     cat_path = root / "catalog.yaml"
     if _linked_below(cat_path, root):
@@ -920,7 +1220,7 @@ def load_catalog(root: Path) -> tuple[dict, dict, list[str]]:
         or not all(isinstance(x, str) and SLUG_RE.fullmatch(x) for x in reserved)
     ):
         errs.append("catalog.yaml: reserved_slugs must be a list of slugs")
-    elif "reserved_slugs" in CATALOG_FIELDS[version] and not reserved:
+    elif version == 2 and not reserved:
         # a catalog only moves to version 2 to reserve a slug, so an empty list was lost
         errs.append("catalog.yaml: version 2 needs at least one slug in reserved_slugs")
     listed = cat.get("records")
@@ -930,9 +1230,16 @@ def load_catalog(root: Path) -> tuple[dict, dict, list[str]]:
         return cat, {}, errs + ["catalog.yaml: records must be a list of paths"]
     records: dict = {}
     for rel in listed:
-        parts = rel.replace("\\", "/").split("/")
-        if rel.startswith("/") or ".." in parts or len(parts) != 2 or not parts[1].endswith(".md"):
-            errs.append(f"invalid record path: {rel}")
+        # One spelling only, the one the validator writes: <slug>/<file>.md with "/". A "." part or
+        # a backslash would otherwise be read as another file, and reported as missing.
+        parts = rel.split("/")
+        if (
+            "\\" in rel
+            or len(parts) != 2
+            or any(p in ("", ".", "..") for p in parts)
+            or not parts[1].endswith(".md")
+        ):
+            errs.append(f"invalid record path: {rel} (expected <slug>/<file>.md, written with /)")
             continue
         if rel in records:
             errs.append(f"record listed twice: {rel}")
@@ -949,14 +1256,16 @@ def load_catalog(root: Path) -> tuple[dict, dict, list[str]]:
         except (CatalogError, OSError, ValueError) as exc:
             errs.append(f"{rel}: {exc}")
             continue
-        meta["_path"] = rel
+        meta["_path"], meta["_version"] = rel, version
         problems = validate_record(meta, version)
+        _with_attachments(meta, ctx)
         structural, changed = approval_problems(meta)
         if changed:
             # An edited text can also break the text limits. That belongs to the same prompt.
             changed += [p for p in problems if p.startswith("prompt_text ")]
             problems = [p for p in problems if not p.startswith("prompt_text ")]
             meta["_blocked"] = changed
+            meta["_attachment_change"] = attachment_only_change(meta)
         errs.extend(f"{rel}: {p}" for p in [*problems, *structural])
         records[rel] = meta
     errs.extend(check_lineages(root, records))
@@ -980,15 +1289,40 @@ def _mark_retired(records: dict) -> None:
                 meta["_retired"] = True
 
 
-def _refuse_blocked(records: dict, slug) -> None:
+def _refuse_blocked(records: dict, slug, allow_attachment: bool = False) -> None:
     """Refuse a change to a prompt that changed since its approval: it can only be restored from
-    git or retired (CAT-6). Other prompts are not affected."""
+    git or retired (CAT-6). When only an attached file changed, allow_attachment lets the revise
+    steps through (a successor with the same text and origin). Other prompts are not affected."""
     for meta in records.values():
-        if meta.get("slug") == slug and meta.get("_blocked"):
+        if meta.get("slug") != slug or not meta.get("_blocked"):
+            continue
+        reasons = "; ".join(meta["_blocked"])
+        if not meta.get("_attachment_change"):
             raise CatalogError(
-                f"{slug} changed since its approval ({'; '.join(meta['_blocked'])}): restore "
-                f"{meta['_path']} from git or retire it"
+                f"{slug} changed since its approval ({reasons}): restore {meta['_path']} from git "
+                "or retire it"
             )
+        if not allow_attachment:
+            raise CatalogError(
+                f"{slug}: an attachment changed since its approval ({reasons}): revise it to "
+                "review the new content, restore the file, or retire the prompt"
+            )
+
+
+def _same_core_as_blocked(meta: dict, records: dict) -> list[str]:
+    """A successor of a prompt whose attachment changed keeps the approved text and origin: only
+    the attached content is reviewed again (CAT-6, attachments amendment)."""
+    for other in records.values():
+        if (
+            other.get("slug") == meta.get("slug")
+            and other.get("_attachment_change")
+            and core_hash(other) != core_hash(meta)
+        ):
+            return [
+                "the prompt's attachment changed since its approval: a revision keeps the "
+                "approved text and origin and only takes the new attachment content"
+            ]
+    return []
 
 
 def check_lineages(root: Path, records: dict) -> list[str]:
@@ -1059,17 +1393,45 @@ def summarize(meta: dict) -> dict:
         "verified": not hash_problems(meta),
         "missing_verification": missing_verification(meta),
         "blocked": meta.get("_blocked", []),
+        "attachment_change": meta.get("_attachment_change", False),
         "retired": meta.get("_retired", False),
+        "fingerprint": current_fingerprint(meta),
+        "attachments": [a["path"] for a in meta.get("_attachments", [])],
+        "attachment_problems": meta.get("_attachment_problems", []),
     }
+
+
+def _attachment_view(meta: dict) -> list[dict]:
+    """Each attached file's full checked content, as read once by load_catalog."""
+    out = []
+    for a in meta.get("_attachments", []):
+        hidden, truncated = hidden_characters(a["content"])
+        out.append(
+            {
+                "path": a["path"],
+                "bytes": a["bytes"],
+                "sha256": a["sha256"],
+                "content": a["content"],
+                "hidden_characters": hidden,
+                "hidden_characters_truncated": truncated,
+            }
+        )
+    return out
 
 
 # ------------------------------------------------------------------ commands
 
 
+def _context(info: dict) -> AttachContext:
+    return AttachContext(
+        Path(info["project_root"]), Path(info["catalog_root"]), info["attachment_max_kb"]
+    )
+
+
 def _load(args) -> tuple[dict, Path, dict, dict]:
     info = resolve_root(getattr(args, "root", None))
     root = Path(info["catalog_root"])
-    cat, records, errs = load_catalog(root)
+    cat, records, errs = load_catalog(root, _context(info))
     info["errors"] = errs
     return info, root, cat, records
 
@@ -1083,7 +1445,8 @@ def _stray_temp_files(root: Path) -> list[str]:
     """Temp files a killed write left behind (not records, so validation never lists them)."""
     if not root.is_dir():
         return []
-    # The shapes _write_atomic creates. A linked folder is never listed (check_lineages reports it).
+    # The shapes _write_atomic creates. A linked folder is never listed: check_lineages reports it,
+    # except one whose name ends in .tmp, which is never a catalog folder and stays unread.
     found = set(root.glob("catalog.yaml.*.tmp"))
     for entry in root.iterdir():
         if not _is_link(entry) and entry.is_dir():
@@ -1125,6 +1488,7 @@ def cmd_validate(args) -> dict:
             "path": m["_path"],
             "text_hash": text_hash(m["_body"]),
             "reasons": m["_blocked"],
+            "attachment_change": m.get("_attachment_change", False),
         }
         for m in records.values()
         if m.get("_blocked")
@@ -1170,6 +1534,7 @@ def cmd_show(args) -> dict:
             "source_ref": m.get("source_ref"),
             "prompt_text": m["_body"],
             "text_hash": text_hash(m["_body"]),
+            "attachment_content": _attachment_view(m),
         }
         for m in shown
     ]
@@ -1177,6 +1542,36 @@ def cmd_show(args) -> dict:
         entry["hidden_characters"], entry["hidden_characters_truncated"] = hidden_characters(
             m["_body"]
         )
+    return info
+
+
+def cmd_review_bundle(args) -> dict:
+    """Everything prompt-reviewer may see for one draft, from one read of the record and each of
+    its attachments (REV-6): the caller passes this inline, so the reviewer opens no path."""
+    info, _, _, records = _load(args)
+    _need_ok(info)
+    meta = _record_by_id(records, args.internal_id)
+    if meta["status"] != "draft":
+        raise CatalogError("only a draft is reviewed; revise an active or inactive record first")
+    _refuse_blocked(records, meta["slug"], allow_attachment=True)
+    if meta["_attachment_problems"]:
+        raise CatalogError("; ".join(meta["_attachment_problems"][:4]))
+    hidden, truncated = hidden_characters(meta["_body"])
+    fields = ("slug", "internal_id", "version", "name", "area", "short_description", "origin")
+    info.update(
+        ok=True,
+        record={f: meta.get(f) for f in fields}
+        | {
+            f: meta.get(f)
+            for f in ("source_ref", "prerequisites", "boundaries", "references", "previous_id")
+        },
+        prompt_text=meta["_body"],
+        hidden_characters=hidden,
+        hidden_characters_truncated=truncated,
+        attachment_content=_attachment_view(meta),
+        fingerprint=meta["_fingerprint"],
+        text_hash=text_hash(meta["_body"]),
+    )
     return info
 
 
@@ -1281,12 +1676,41 @@ def _assert_clean(meta: dict) -> None:
             raise CatalogError(
                 f"possible secret or personal data found ({names}); remove it and try again"
             )
+        found = attachment_screen(meta)
+        if found:
+            names = ", ".join(sorted({h["path"] for h in found}))
+            raise CatalogError(
+                f"possible secret or personal data found in an attachment ({names}); remove it "
+                "and try again"
+            )
 
 
-def _check_expected(meta: dict, expected: str) -> None:
-    if text_hash(meta["_body"]) != (expected or "").strip().lower():
+def attachment_screen(meta: dict) -> list[dict]:
+    """{path, line, pattern} for each secret-screen match in an attached file. For user text these
+    are warnings to show (SCR-2); for the other origins _assert_clean refuses them."""
+    return [
+        {"path": a["path"], **hit}
+        for a in meta.get("_attachments", [])
+        for hit in screen_text(a["content"])
+    ]
+
+
+def _check_expected(meta: dict, expected: str, text_only: bool = False) -> None:
+    """Bind a change to what the user was shown: the approval fingerprint for an approval step, or
+    the text hash for discard and retire, which also apply when an attachment cannot be read."""
+    shown = (expected or "").strip().lower()
+    if text_only:
+        if text_hash(meta["_body"]) != shown:
+            raise CatalogError(
+                "the prompt text changed since it was approved (--expect-sha256 does not match)"
+            )
+        return
+    if meta.get("_attachment_problems"):
+        raise CatalogError("; ".join(meta["_attachment_problems"][:4]))
+    if current_fingerprint(meta) != shown:
         raise CatalogError(
-            "the prompt text changed since it was approved (--expect-sha256 does not match)"
+            "the prompt changed since it was approved (--expect-sha256 does not match its "
+            "fingerprint)"
         )
 
 
@@ -1342,7 +1766,7 @@ def cmd_init(args) -> dict:
     if (root / "catalog.yaml").exists():
         raise CatalogError("catalog.yaml already exists")
     root.mkdir(parents=True, exist_ok=True)
-    write_catalog(root, {}, [])
+    write_catalog(root, {"catalog_version": CURRENT_CATALOG_VERSION}, [])
     info["ok"] = True
     return info
 
@@ -1368,8 +1792,9 @@ def _check_new_draft(meta: dict, records: dict, cat: dict) -> list[str]:
     if any(m["internal_id"] == meta["internal_id"] for m in records.values()):
         errs.append("duplicate internal_id")
     group = [m for m in records.values() if m["slug"] == meta["slug"]]
-    if any(m.get("_blocked") for m in group):
+    if any(m.get("_blocked") and not m.get("_attachment_change") for m in group):
         errs.append("the prompt changed since its approval: restore it from git or retire it")
+    errs.extend(_same_core_as_blocked(meta, records))
     if meta["version"] == 1:
         if group:
             errs.append("the slug is already used by another lineage")
@@ -1389,8 +1814,8 @@ def _check_new_draft(meta: dict, records: dict, cat: dict) -> list[str]:
     return errs
 
 
-def _valid_catalog(root: Path):
-    cat, records, errs = load_catalog(root)
+def _valid_catalog(root: Path, ctx: AttachContext):
+    cat, records, errs = load_catalog(root, ctx)
     if errs:
         raise CatalogError("catalog is not valid: " + "; ".join(errs[:3]))
     return cat, records
@@ -1407,8 +1832,10 @@ def _catalog_committed(root: Path, before: dict) -> bool:
     return now.get("snapshot_id") != before.get("snapshot_id")
 
 
-def _scratch_record(path_text: str, root: Path, version: int) -> dict:
-    """Read and check a scratch draft against the field list of the catalog's own version."""
+def _scratch_record(path_text: str, ctx: AttachContext, version: int) -> dict:
+    """Read and check a scratch draft against the field list of the catalog's own version, with
+    its attachments read and checked (CAT-2, CFG-6: refused before review)."""
+    root = ctx.catalog_root
     path = _readable_candidate(path_text, root)
     try:
         meta = read_record(path)
@@ -1420,8 +1847,22 @@ def _scratch_record(path_text: str, root: Path, version: int) -> dict:
     if errs:
         raise CatalogError("; ".join(errs[:4]))
     meta.pop("verification", None)  # a new or changed draft starts unverified
+    meta["_version"] = version
+    _with_attachments(meta, ctx)
+    if meta["_attachment_problems"]:
+        raise CatalogError("; ".join(meta["_attachment_problems"][:4]))
     _assert_clean(meta)
     return meta
+
+
+def _draft_result(meta: dict) -> dict:
+    return {
+        "internal_id": meta["internal_id"],
+        "text_hash": text_hash(meta["_body"]),
+        "fingerprint": meta["_fingerprint"],
+        "attachments": [a["path"] for a in meta["_attachments"]],
+        "attachment_screen": attachment_screen(meta),
+    }
 
 
 def cmd_draft(args) -> dict:
@@ -1429,8 +1870,9 @@ def cmd_draft(args) -> dict:
     catalog.yaml."""
     info = resolve_root(getattr(args, "root", None))
     root = Path(info["catalog_root"])
-    cat, records = _valid_catalog(root)
-    meta = _scratch_record(args.file, root, cat["catalog_version"])
+    ctx = _context(info)
+    cat, records = _valid_catalog(root, ctx)
+    meta = _scratch_record(args.file, ctx, cat["catalog_version"])
     errs = _check_new_draft(meta, records, cat)
     if errs:
         raise CatalogError("; ".join(errs))
@@ -1452,9 +1894,7 @@ def cmd_draft(args) -> dict:
             if new_dir:
                 target.parent.rmdir()
         raise
-    info.update(
-        ok=True, internal_id=meta["internal_id"], path=rel, text_hash=text_hash(meta["_body"])
-    )
+    info.update(ok=True, path=rel, **_draft_result(meta))
     return info
 
 
@@ -1463,21 +1903,26 @@ def cmd_update_draft(args) -> dict:
     edit)."""
     info = resolve_root(getattr(args, "root", None))
     root = Path(info["catalog_root"])
-    cat, records = _valid_catalog(root)
+    ctx = _context(info)
+    cat, records = _valid_catalog(root, ctx)
     current = _record_by_id(records, args.internal_id)
     if current["status"] != "draft":
         raise CatalogError(
             "only a draft can be updated in place; revise an active or inactive record instead"
         )
-    _refuse_blocked(records, current["slug"])
-    meta = _scratch_record(args.file, root, cat["catalog_version"])
+    _refuse_blocked(records, current["slug"], allow_attachment=True)
+    meta = _scratch_record(args.file, ctx, cat["catalog_version"])
     for field in ("internal_id", "slug", "version", "previous_id", "origin", "source_ref"):
         if meta.get(field) != current.get(field):
             raise CatalogError(f"{field} cannot change when updating a draft")
-    if text_hash(meta["_body"]) == text_hash(current["_body"]) and current.get("verification"):
+    problems = _same_core_as_blocked(meta, records)
+    if problems:
+        raise CatalogError(problems[0])
+    # Keep the verification only for the exact content it bound: text, origin and attachments.
+    if meta["_fingerprint"] == current["_fingerprint"] and current.get("verification"):
         meta["verification"] = current["verification"]
     write_record(_inside(root, root / current["_path"]), meta)
-    info.update(ok=True, internal_id=meta["internal_id"], text_hash=text_hash(meta["_body"]))
+    info.update(ok=True, **_draft_result(meta))
     return info
 
 
@@ -1485,7 +1930,8 @@ def cmd_register(args) -> dict:
     """List an existing, unlisted draft file (path relative to the catalog root) in catalog.yaml."""
     info = resolve_root(getattr(args, "root", None))
     root = Path(info["catalog_root"])
-    cat, records, errs = load_catalog(root)
+    ctx = _context(info)
+    cat, records, errs = load_catalog(root, ctx)
     rel = args.path.replace("\\", "/")
     unlisted = f"unlisted record file on disk: {rel}"
     other = [e for e in errs if e != unlisted]
@@ -1506,6 +1952,8 @@ def cmd_register(args) -> dict:
     problems.extend(_check_new_draft(meta, records, cat))
     if problems:
         raise CatalogError("; ".join(problems[:4]))
+    meta["_version"] = cat.get("catalog_version", 1)
+    _with_attachments(meta, ctx)  # a broken attachment is refused later, at verification
     _assert_clean(meta)
     if (
         meta.pop("verification", None) is not None
@@ -1523,7 +1971,7 @@ def cmd_discard_orphan(args) -> dict:
     """
     info = resolve_root(getattr(args, "root", None))
     root = Path(info["catalog_root"])
-    _, _, errs = load_catalog(root)
+    _, _, errs = load_catalog(root, _context(info))
     rel = args.path.replace("\\", "/")
     if f"unlisted record file on disk: {rel}" not in errs:
         raise CatalogError(f"{rel} is not an unlisted record file")
@@ -1556,8 +2004,8 @@ def cmd_discard_draft(args) -> dict:
         raise CatalogError("only a draft can be discarded; a version that has run stays")
     if any(m.get("previous_id") == meta["internal_id"] for m in records.values()):
         raise CatalogError("a later version follows this draft, so it cannot be discarded")
-    _refuse_blocked(records, meta["slug"])
-    _check_expected(meta, args.expect_sha256)
+    _refuse_blocked(records, meta["slug"], allow_attachment=True)
+    _check_expected(meta, args.expect_sha256, text_only=True)
     path = _inside(root, root / meta["_path"])
     paths = [m["_path"] for m in records.values()]
     new_cat = dict(cat)
@@ -1592,15 +2040,85 @@ def cmd_record_verification(args) -> dict:
         raise CatalogError("verification is recorded only on a draft (editing a draft clears it)")
     if args.kind == "import" and meta["origin"] not in ("session", "web"):
         raise CatalogError("an import hash is only recorded for session or web origin")
-    _refuse_blocked(records, meta["slug"])
+    _refuse_blocked(records, meta["slug"], allow_attachment=True)
     _check_expected(meta, args.expect_sha256)
     _assert_clean(meta)
     ver = dict(meta.get("verification") or {})
-    ver[args.kind] = text_hash(meta["_body"])
+    ver[args.kind] = meta["_fingerprint"]
+    if meta["_version"] >= 3:
+        ver["core"] = core_hash(meta)  # tells a later attachment change from a text change
     meta["verification"] = ver
     write_record(_inside(root, root / meta["_path"]), meta)
     info["ok"] = True
     info["recorded"] = {args.kind: ver[args.kind]}
+    return info
+
+
+def cmd_upgrade(args) -> dict:
+    """Move a version 1 or 2 catalog to version 3 (SEC-4). Without --expect-listing it only lists
+    the approved prompts whose fingerprint would then also bind their origin; with it, it rebinds
+    each one whose text still matches, then writes catalog.yaml last. Refused while any record lists
+    attachments (they were never loaded or reviewed) or any prompt is blocked."""
+    info, root, cat, records = _load(args)
+    _need_ok(info)
+    if cat["catalog_version"] >= CURRENT_CATALOG_VERSION:
+        raise CatalogError(f"the catalog is already at version {cat['catalog_version']}")
+    listing = [m["_path"] for m in records.values() if m.get("attachments")]
+    if listing:
+        raise CatalogError(
+            "records list attachments, which were never loaded or reviewed before version 3: "
+            + ", ".join(sorted(listing)[:5])
+        )
+    blocked = [m["slug"] for m in records.values() if m.get("_blocked")]
+    if blocked:
+        raise CatalogError(
+            "restore or retire the prompts that changed since their approval first: "
+            + ", ".join(sorted(set(blocked)))
+        )
+    approved = [m for m in records.values() if m["status"] in ("active", "inactive")]
+    info["records"] = [
+        {
+            "slug": m["slug"],
+            "internal_id": m["internal_id"],
+            "version": m["version"],
+            "status": m["status"],
+            "origin": m["origin"],
+            "text_hash": text_hash(m["_body"]),
+        }
+        for m in approved
+    ]
+    # The listing id binds the apply step to exactly what the user saw, origins included: a record
+    # edit leaves catalog.yaml's snapshot_id unchanged, and before version 3 a relabelled origin
+    # does not block its prompt.
+    info["listing_id"] = _tagged_hash(
+        {"upgrade": cat.get("snapshot_id"), "records": info["records"]}
+    )
+    if args.expect_listing is None:
+        info.update(ok=True, applied=False)
+        return info
+    if args.expect_listing != info["listing_id"]:
+        raise CatalogError("the catalog changed since the upgrade was shown (listing differs)")
+    undo: list[tuple[Path, str]] = []
+    try:
+        for meta in approved:
+            path = _inside(root, root / meta["_path"])
+            undo.append((path, path.read_bytes().decode("utf-8")))
+            meta["_version"] = CURRENT_CATALOG_VERSION
+            fingerprint = fingerprint_of(meta, [])
+            meta["verification"] = {k: fingerprint for k in meta["verification"]}
+            meta["verification"]["core"] = core_hash(meta)
+            write_record(path, meta)
+        write_catalog(root, {**cat, "catalog_version": CURRENT_CATALOG_VERSION}, list(records))
+    except BaseException:
+        if _catalog_committed(root, cat):
+            raise
+        for path, text in reversed(undo):
+            try:
+                _write_atomic(path, text)
+            except (OSError, ValueError):
+                break  # validate shows what is left; restore the rest from git
+        raise
+    info.update(ok=True, applied=True, catalog_version=CURRENT_CATALOG_VERSION)
     return info
 
 
@@ -1657,12 +2175,12 @@ def _lifecycle(args, op: str) -> dict:
     active = next((m for m in group if m["status"] == "active"), None)
     undo_steps: list[Callable[[], None]] = []
     if op != "retire":
-        _refuse_blocked(records, meta["slug"])
+        _refuse_blocked(records, meta["slug"], allow_attachment=op == "finalize")
     try:
         if op == "retire":
             if not meta.get("_blocked"):
                 raise CatalogError("only a prompt that changed since its approval can be retired")
-            _check_expected(meta, args.expect_sha256)
+            _check_expected(meta, args.expect_sha256, text_only=True)
             undo_steps.append(_move(root, meta, "historical", paths))
         elif op == "deactivate":
             if meta["status"] != "active":
@@ -1690,6 +2208,8 @@ def _lifecycle(args, op: str) -> dict:
             if problems:
                 raise CatalogError("not verified: " + "; ".join(problems))
             pred = _record_by_id(records, meta["previous_id"])
+            if pred.get("_attachment_change") and core_hash(pred) != core_hash(meta):
+                raise CatalogError(_same_core_as_blocked(meta, records)[0])
             if pred["status"] not in ("active", "inactive"):
                 raise CatalogError("the predecessor is neither active nor inactive")
             if pred["status"] == "inactive" and not args.active and not args.inactive:
@@ -1728,6 +2248,9 @@ def build_parser() -> argparse.ArgumentParser:
     s = sub.add_parser("show")
     s.add_argument("slug")
     s.add_argument("--history", action="store_true")
+    sub.add_parser("review-bundle").add_argument("internal_id")
+    up = sub.add_parser("upgrade")
+    up.add_argument("--expect-listing", help="the listing_id shown with the upgrade listing")
     h = sub.add_parser("hash")
     h.add_argument("file", help="a file inside the catalog root or the system temp directory")
     sc = sub.add_parser("screen")
@@ -1775,6 +2298,8 @@ def build_parser() -> argparse.ArgumentParser:
 COMMANDS = {
     "validate": cmd_validate,
     "show": cmd_show,
+    "review-bundle": cmd_review_bundle,
+    "upgrade": cmd_upgrade,
     "hash": cmd_hash,
     "screen": cmd_screen,
     "init": cmd_init,

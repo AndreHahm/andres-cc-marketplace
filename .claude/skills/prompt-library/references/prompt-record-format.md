@@ -4,7 +4,7 @@ Pattern: one markdown file per record, YAML frontmatter plus the prompt text as 
 single home of the record model; the validator (`scripts/plib_catalog_validate.py`) is the authority that
 enforces it, so when the two disagree the validator wins and this file is the one to fix.
 
-## Fields (catalog_version 1 and 2)
+## Fields (catalog_version 1, 2 and 3)
 
 | Field | Required | Rule |
 |---|---|---|
@@ -19,8 +19,9 @@ enforces it, so when the two disagree the validator wins and this file is the on
 | `origin` | yes | `user`, `claude`, `codex`, `session`, `web` |
 | `source_ref` | conditional | Required exactly for `session` (`session_id`, `turns`) and `web` (`url`, `retrieved_on`); no other keys, and not allowed for other origins. `turns` is one text value such as `3-5, 8`, not a list |
 | `prerequisites`, `boundaries` | no | Text |
-| `references`, `attachments` | no | Lists of text; `references` carries any license or attribution note for imported text |
-| `verification` | conditional | Required for `active` and `inactive`: `quality`, plus `import` for `session`/`web`; no other keys; each a 64-character lowercase hex SHA-256 that equals the current text's hash |
+| `references` | no | List of text; carries any license or attribution note for imported text |
+| `attachments` | no | List of project files loaded with the prompt; version 3 only (stored but never loaded before). Rules below |
+| `verification` | conditional | Required for `active` and `inactive`: `quality`, plus `import` for `session`/`web`, plus `core` in version 3; no other keys; each a 64-character lowercase hex SHA-256: `quality` and `import` equal the current fingerprint, `core` the hash of text and origin alone |
 | `prompt_text` | yes | The markdown body; at most 50 nonblank lines |
 
 Unknown fields are rejected. Frontmatter uses a small YAML subset: scalars, one-level maps of scalars, and
@@ -62,18 +63,41 @@ references:
 
 For `session` origin use `session_id` and `turns` (one text value such as `3-5, 8`) under `source_ref`.
 
+## Attachments (catalog_version 3)
+
+Each entry is a path relative to the project root, written with `/`: no leading `/`, drive letter,
+backslash, empty, `.` or `..` part, no character Windows refuses or part ending in a dot or space, and no
+Windows device name. It must resolve inside the project, never through a link, junction or hard link, and
+never at or under `.git`, `.github`, a Claude Code or Codex configuration folder (`FORBIDDEN_ROOTS`), the
+catalog root, or a file named `.env` or `.env.*`. The file must be UTF-8 text without NUL characters, and
+all of one prompt's attachments together must fit `attachment_max_kb` (16, 32 or 64 KB, default 32). A
+draft that breaks a rule is refused with the reason before anything is filed. Order matters: it is the
+order they are shown and loaded in, and it is part of the fingerprint.
+
 ## Hash definition
 
-`verification.quality` (and `import`) is the SHA-256 of the prompt text after normalizing line endings to
-LF and dropping leading and trailing newline characters (a line holding only spaces or tabs is kept and
-hashed). A Windows and a Linux checkout therefore agree, and any edit to the text makes an earlier hash
-stop matching. `... hash <file>` prints it. An `active` or `inactive` record whose text no longer matches is
-blocked on its own: `validate` lists it under `blocked` and stays `ok` while the other prompts work; every
-change to that prompt except `retire` is refused.
+The text hash is the SHA-256 of the prompt text after normalizing line endings to LF and dropping leading
+and trailing newline characters (a line holding only spaces or tabs is kept and hashed). A Windows and a
+Linux checkout therefore agree, and any edit to the text makes an earlier hash stop matching.
+`... hash <file>` prints it.
 
-A recorded hash means "unchanged since the hash was recorded". It does not prove the text was reviewed: a
-change that rewrites both the text and the hash would still match. Review is the user's approval of the
-exact text, collected before the hash is recorded and again in the preview before every run.
+The fingerprint that `verification.quality` (and `import`) holds is the text hash in version 1 and 2. In
+version 3 it is a SHA-256 over a tagged JSON object binding `core` (the hash of the text hash and the
+`origin`) and the list of attachments, each as its path and the text hash of its content. So an edited
+text, a relabelled origin, an edited, added, removed or reordered attachment, or one that is missing,
+unreadable or over the limit, all change it; line endings alone never do. `validate`, `show`, `draft` and
+`update-draft` report it as `fingerprint`.
+
+An `active` or `inactive` record whose fingerprint no longer matches is blocked on its own: `validate`
+lists it under `blocked` and stays `ok` while the other prompts work. When `core` still matches, only an
+attachment changed (`attachment_change: true`): the prompt can be revised into a successor with the same
+text and origin that takes the new attachment content, and the validator refuses a successor that changes
+the text or origin. Otherwise every change to that prompt except `retire` is refused.
+
+A recorded fingerprint means "unchanged since it was recorded". It does not prove the content was
+reviewed: a change that rewrites both the content and the fingerprint would still match. Review is the
+user's approval of the exact text and attachments, collected before the fingerprint is recorded and again
+in the preview before every run.
 
 ## Slug and path rules
 
@@ -112,8 +136,12 @@ user's approval.
 
 ## Extension seams
 
-`catalog.yaml` carries `catalog_version` (`1`, or `2` once a slug is
-reserved; an older plugin version refuses a version 2 catalog) and `scope` (only `repo`). The validator selects its
-field list by `catalog_version`, so an added optional field is an additive change with a version bump, and
-older catalogs stay valid. Verification hashes cover prompt text only, so a record keeps its verification
-if it moves to another catalog.
+`catalog.yaml` carries `catalog_version` and `scope` (only `repo`). `init` creates version 3. Version 1 is
+the original format; a version 1 catalog moves to 2 when a slug is reserved; version 3 binds origin and
+attachments into the fingerprint and accepts `reserved_slugs` as optional. An older plugin version refuses
+a newer catalog. `upgrade` moves a version 1 or 2 catalog to 3: it lists each approved prompt with its
+origin and a `listing_id`, and `upgrade --expect-listing <listing_id>` rebinds every approved record whose
+text still matches; it refuses while a prompt is blocked or any record lists attachments. The validator
+selects its field list by `catalog_version`, so an added optional field is an additive change with a
+version bump, and older catalogs stay valid. A record keeps its verification if it moves to another
+catalog only where its attached files are identical there.

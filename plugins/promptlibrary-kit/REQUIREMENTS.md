@@ -238,9 +238,9 @@ prompt moved to another project keeps its verification only if its attached file
 EXE-6 ("cannot load further prompts") is unaffected: attachments are files, not prompts. The fingerprint
 change and the new file loading are security-relevant: `security-reviewer` before the first commit.
 
-Source: V4 §Record Model; owner decisions 2026-11-16. State: **partial** (record model met; attachment
-loading, path rules for attachments and attachment fingerprints not met; the field is stored but unused
-today). Confirmed: yes (2026-11-16).
+Source: V4 §Record Model; owner decisions 2026-11-16. State: met (catalog_version 3, 2026-11-26:
+attachment loading through the validator's single read, path rules and attachment fingerprints; in a
+version 1 or 2 catalog the field stays stored but unused). Confirmed: yes (2026-11-16).
 
 ### CAT-3: Prompt text is at most 50 non-blank lines
 
@@ -252,7 +252,7 @@ condense it; nothing is truncated silently. The reviewer reports an over-length 
 checker refuses to file it. Attachments (CAT-2) do not count toward the 50 lines; they have their own
 size limit (CFG-6), and are still reviewed, fingerprinted and previewed.
 
-Source: V4 §Record Model, §Intake Sources. State: met (attachment size limit: not met). Confirmed: yes
+Source: V4 §Record Model, §Intake Sources. State: met (attachment size limit: CFG-6). Confirmed: yes
 (2026-11-16).
 
 ### CAT-4: Each prompt has a permanent short name (slug)
@@ -286,8 +286,8 @@ handled differently:
 **Changes to earlier decisions:** V4 §Layout and today's code make any problem disable the whole catalog.
 This narrows that to structural problems. Management follows the same split (CAT-6).
 
-Source: V4 §Layout, §Interrupted updates; owner decision 2026-11-16. State: **partial** (structural case
-and isolation of a changed text: met; a changed attachment, CAT-2, or origin, SEC-4: not met). Confirmed: yes (2026-11-16).
+Source: V4 §Layout, §Interrupted updates; owner decision 2026-11-16. State: met (structural case and isolation
+of a changed text, attachment or origin; catalog_version 3, 2026-11-26). Confirmed: yes (2026-11-16).
 
 ### CAT-6: An interrupted change never leaves a silently broken catalog
 
@@ -333,10 +333,16 @@ that grew past the CFG-6 limit takes the same path once shortened or detached. I
 changed as well, the stricter rule wins: restore from git or retire. Found by the cross-model review
 before the requirements PR.
 
+**Amended 2026-11-26 (CAT-6, attachment diff):** *the approved attachment content is not stored, only its
+fingerprint, so "Review the new attachment" shows the new content of each changed attachment in full, and
+the line-by-line diff comes from git (`git diff -- ':(literal)<path>'`, run by me).* Storing approved copies
+was considered and declined: more files in the catalog and another gate. Owner decision 2026-11-26, during
+the PR 2 build.
+
 Source: V4 §Interrupted updates; code (atomic writes, rollback, orphan removal); owner decision
-2026-11-16. State: **partial** (structural handling, per-prompt blocking and retire for a changed
-text: met; origin, SEC-4, and attachment review: not met).
-Confirmed: yes (2026-11-16; amended 2026-11-17).
+2026-11-16. State: met (structural handling, per-prompt blocking and retire for a changed text or origin;
+attachment review as a new version with the same text and origin, catalog_version 3, 2026-11-26).
+Confirmed: yes (2026-11-16; amended 2026-11-17 and 2026-11-26).
 
 ### CAT-7: A stored prompt can never become a standing instruction
 
@@ -349,8 +355,8 @@ folders under `.claude/` (`rules`, `skills`, `commands`, `agents`, `hooks` and s
 default is used and you are told why. Stored prompts cannot double as rules, commands or skills: a
 standing rule is written as a rule. Attached files (CAT-2) follow the same location rule.
 
-Source: code (`FORBIDDEN_ROOTS` in the validator); not stated in V4. State: met for the catalog;
-attachments not met (CAT-2). Confirmed: yes (2026-11-16).
+Source: code (`FORBIDDEN_ROOTS` in the validator); not stated in V4. State: met for the catalog and for
+attachments (2026-11-26). Confirmed: yes (2026-11-16).
 
 ## 3. Intake (INT)
 
@@ -640,7 +646,8 @@ manipulate the reviewer can at most produce a wrong report, which I see before d
 your approval, never by the reviewer. A prompt that tells the reviewer to approve, activate or change files
 has no effect beyond the reviewer's report.
 
-Source: V4 §Optimization, §Components; code (agent `tools: Read`). State: met. Confirmed: yes (2026-11-16).
+Source: V4 §Optimization, §Components; code (agent `tools: []` since 2026-11-26, checked against Claude
+Code 2.1.322). State: met. Confirmed: yes (2026-11-16).
 
 ### REV-5: The reviewer treats the prompt as data, never as orders
 
@@ -681,9 +688,9 @@ passed too; extending `review-path` to attachments must also close the swap gap,
 read of each attachment that EXE-2's attachments amendment requires for a run. Either way, REV-1 to
 REV-6 and CAT-2 must hold together.
 
-Source: code + branch; owner decision 2026-11-16. State: **partial** (single-record review: met without a
-bound on `main`, bounded on the branch with the swap gap; attachments: not met). Confirmed: yes
-(2026-11-16).
+Source: code + branch; owner decision 2026-11-16. State: met (2026-11-26: the record and its
+attachments are passed inline from the validator's `review-bundle`, one read each with the opened file
+checked against the checked path; the reviewer has no tools). Confirmed: yes (2026-11-16).
 
 ## 6. Verification and lifecycle (LIF)
 
@@ -702,8 +709,8 @@ fingerprint. Activation refuses if any required approval does not match the curr
 **Amended 2026-11-17 (DEF-3):** one exception, once Notion support arrives: accepting a change in a Notion
 sync activates it; the run approval (PUR-3, EXE-3) still shows its full text before its first run.
 
-Source: V4 §Verification record; code. State: **partial** (text: met; attachments in the fingerprint: not
-met, CAT-2). Confirmed: yes (2026-11-16).
+Source: V4 §Verification record; code. State: met (text, origin and attachments in the
+fingerprint, catalog_version 3, 2026-11-26). Confirmed: yes (2026-11-16).
 
 ### LIF-2: Any change to approved content cancels the approval, except line endings
 
@@ -717,8 +724,8 @@ Unix line endings give the same fingerprint, so a checkout on another system kee
 Whitespace and spelling changes are not exempt. Since SEC-4 (2026-11-17), a changed `origin` also
 cancels the approval.
 
-Source: V4 §Verification record. State: **partial** (text: met; attachments: not met, CAT-2). Confirmed:
-yes (2026-11-16).
+Source: V4 §Verification record. State: met (text, origin and attachments, catalog_version 3,
+2026-11-26). Confirmed: yes (2026-11-16).
 
 ### LIF-3: A prompt changes only by new versions, and going back is a new version too
 
@@ -951,9 +958,8 @@ naming the file; the next run shows "attachment changed since approval" (CAT-6).
 plugin, not Claude's own file reading, supplies the attachment content to the session. Found by the
 cross-model review before the requirements PR was marked ready.
 
-Source: V4 §Execution 2. State: **partial** (refusal and no partial run: met; a changed prompt blocking
-only itself: met for its text; single-read attachment binding: not
-met, CAT-2). Confirmed: yes (2026-11-17; amended 2026-11-17).
+Source: V4 §Execution 2. State: met (refusal and no partial run; a changed prompt blocking only
+itself; single-read attachment binding, 2026-11-26). Confirmed: yes (2026-11-17; amended 2026-11-17).
 
 ### EXE-3: What you see before a prompt runs
 
@@ -972,8 +978,8 @@ per RET-4.
 **Changes to earlier decisions:** V4 shows the full text before every run; remembered approvals (PUR-3)
 replace that with the one-line notice, and attachments (CAT-2) join the preview.
 
-Source: V4 §Execution 3; PUR-3, CAT-2, RET-4. State: **partial** (full preview of text: met; attachment
-content and the remembered-run notice: not met). Confirmed: yes (2026-11-17).
+Source: V4 §Execution 3; PUR-3, CAT-2, RET-4. State: **partial** (full preview of text and attachment
+content: met, 2026-11-26; the remembered-run notice: not met, PUR-3). Confirmed: yes (2026-11-17).
 
 ### EXE-4: What one approval covers
 
@@ -1059,7 +1065,7 @@ approved run only the prompt text is your request, with the authority of a typed
 files are context. This is the general rule that RET-2, REV-5 and EXE-6 apply to their own steps, and it
 covers any step added later (for example DEF-3).
 
-Source: V4 §Authority and Trust Model. State: met (attachments: not met, CAT-2). Confirmed: yes
+Source: V4 §Authority and Trust Model. State: met (attachments too, 2026-11-26). Confirmed: yes
 (2026-11-17).
 
 ### SEC-2: Text you didn't type yourself is untrusted from the start
@@ -1114,8 +1120,9 @@ restored or retired (CAT-6), like a hand-edited text (LIF-2). Inside Claude the 
 it is now covered by the fingerprint. LIF-2's "any change cancels the approval" extends to `origin`. The
 fingerprint format changes; ship it with CAT-1's `catalog_version` bump.
 
-Source: V4 §Authority; owner decision 2026-11-17. State: **not met** (the fingerprint covers the text
-only). Confirmed: yes (2026-11-17).
+Source: V4 §Authority; owner decision 2026-11-17. State: met in a catalog_version 3 catalog (2026-11-26);
+a version 1 or 2 catalog binds the text only until `upgrade`, which shows each origin and asks first).
+Confirmed: yes (2026-11-17).
 
 ### SEC-5: The plugin writes only through its own checker; anything else asks you first
 
@@ -1148,7 +1155,8 @@ original gates is new (V5 H7 found them unverified).
 
 Source: V4 §Plugin Conventions; V5 H7; `.claude/rules/require-security-review-before-new-gate.md`; owner
 decision 2026-11-17. State: **partial** (catch-up review of the original gates done 2026-11-25, two Major
-findings fixed; the new gates are not built yet). Confirmed: yes (2026-11-17).
+findings fixed; attachment loading and path rules and the origin fingerprint reviewed 2026-11-26 in two
+rounds, four Major findings fixed; the other new gates are not built yet). Confirmed: yes (2026-11-17).
 
 ## 10. Configuration and paths (CFG)
 
@@ -1199,7 +1207,8 @@ repositories stays DEF-1's job.
 Source: V4 §Path trust boundary; code (`check_catalog_path`, `contained`); owner decision 2026-11-17.
 State: met for the catalog (tests cover `..`, links, case, UNC, the root itself and trailing dots or
 colons; junctions, 8.3 names and other drives are handled by the resolved-path comparison but untested:
-add tests); attachments not met (CAT-2). Confirmed: yes (2026-11-17).
+add tests); met for attachments (2026-11-26: tests cover `..`, links, junctions, hard links and device
+names; a short name is refused by comparing the opened file's own path). Confirmed: yes (2026-11-17).
 
 ### CFG-4: A bad catalog path falls back to the default, and I'm told
 
@@ -1259,8 +1268,9 @@ every run, which is why there is a cap. Setup's status shows the limit and where
 **Changes to earlier decisions:** settles the attachment size limit CAT-2 and CAT-3 left open; the owner
 chose a setting over a fixed limit.
 
-Source: CAT-2, CAT-3; owner decision 2026-11-17. State: **not met** (attachments are not loaded yet, CAT-2).
-Confirmed: yes (2026-11-17).
+Source: CAT-2, CAT-3; owner decision 2026-11-17. State: **partial** (the limit, its settings and the
+checks at attach, review and run: met, 2026-11-26; setup's status display waits on PUR-6). Confirmed:
+yes (2026-11-17).
 
 ### CFG-7: My team's own secret formats are screened too
 

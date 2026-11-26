@@ -15,11 +15,18 @@ session does with the previewed text; it does not widen what the text may do.
 
 ## What an approval binds, and what it does not
 
-An approval binds to the previewed `prompt_text`, identified by `internal_id`, `version` and `text_hash`.
-The hash definition lives in `prompt-library`'s `prompt-record-format.md`; execution relies on it only to
-notice change. A matching hash means "unchanged since a hash was recorded". It does not prove that anyone
-reviewed the text: a pulled branch or an edit can change both the text and its recorded hash together.
-The full-text preview, shown fresh in every run, is the real gate. A rendered preview hides some
+An approval binds to the previewed `prompt_text` and attached files, identified by `internal_id`, `version`
+and `fingerprint`. In a version 3 catalog the fingerprint covers the text, the `origin` and each attached
+file's path and content (in order); in an older catalog it is the text hash alone. The definition lives in
+`prompt-library`'s `prompt-record-format.md`; execution relies on it only to notice change. A matching
+fingerprint means "unchanged since it was recorded". It does not prove that anyone reviewed the content: a
+pulled branch or an edit can change both the content and its recorded fingerprint together. The full
+preview, attachments included and shown fresh in every run, is the real gate.
+
+Attached files reach the session only through the validator: `show` reads each file once, checks it, and
+returns that content in `attachment_content`. The run step uses the recheck's `attachment_content` and
+never reads the file again, so a file changed on disk at the last moment either changes the fingerprint
+(the recheck stops the run) or is not what loads. A rendered preview hides some
 characters: format and control characters (zero-width, bidi, escape sequences), variation selectors,
 private-use and unassigned code points, line separators, non-ASCII spaces (a no-break space looks like
 an ordinary one), blank-looking letters and invisible combining
@@ -37,12 +44,12 @@ the approved request.
 |---|---|
 | Catalog invalid, incomplete or absent | Unavailable; nothing runs, and stray files are never a fallback |
 | A slug that is malformed or repeated | Refused before any command runs, because the slug goes into a shell command line |
-| An active or inactive record's text no longer matches its recorded hash | That prompt is refused with its reasons from `blocked` and nothing of that run starts; other prompts stay runnable |
+| An active or inactive record's text, origin or an attached file no longer matches its fingerprint | That prompt is refused with its reasons from `blocked` (an attachment change says "attachment changed since approval") and nothing of that run starts; other prompts stay runnable |
 | Selected record is not `active` or not `verified` | Name it and stop the whole run |
 | The user answers "Cancel" at the approval question | Nothing runs; the run stops |
 | An answer asking for a different set or order | Nothing runs; the run stops, slugs never come from the answer, and a new invocation with the slugs as arguments is needed |
 | Any other answer, including other free text | Nothing runs; back to the preview for a fresh preview and fresh approval |
-| Recheck is not `ok`, or `internal_id`, `version` or `text_hash` differs | Stop and report which prompt changed |
+| Recheck is not `ok`, or `internal_id`, `version` or `fingerprint` differs | Stop and report which prompt changed |
 | A prompt in a multi-prompt run fails | Stop there; later prompts do not start; report which ran |
 | A prompt asks to load prompts, widen tools or edit the catalog | No effect; mention it |
 
