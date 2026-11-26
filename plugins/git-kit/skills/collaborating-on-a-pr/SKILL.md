@@ -139,13 +139,19 @@ other's job.
 
 ## Testing & Validation
 
-**Last dated run record:** 2026-08-28 — `scripts/smoke_test.py` (4/4 checks passing: frontmatter,
-referenced-file existence, Bash-scope grant consistency, step-header sequencing).
+**Last dated run record:** `evals/collaborating-on-a-pr/workspace/iteration-1/` (2026-11-26) — 3
+scenarios, Quick Workflow, plan-only, with_skill only, 12/12 assertions; no baseline arm, so it shows the
+text produces the intended steps, not that it beats having no skill. `scripts/smoke_test.py` (4/4 checks:
+frontmatter, referenced-file existence, Bash-scope grant consistency, step-header sequencing) last passed
+2026-11-26.
 
-No dedicated eval suite exists for this skill. PR #925 made Path A's call to `create-pr` one-way
-(`create-pr`'s step 6 now checks the closing line itself); the caller's side of that change is tested by
-`create-pr`'s eval 3 (`evals/create-pr/workspace/iteration-7/`), and `scripts/smoke_test.py` checks this
-file's structure. Path A's own verify-and-patch step (step 2) has no eval yet: write one before changing it.
+Eval suite: `evals/collaborating-on-a-pr/evals.json`. Eval 1 covers Path A's one-way call to `create-pr`
+and the verify read after it returns; eval 2 covers step 2's verify-and-patch (a `Refs` line, the
+`Write` plus `--body-file` route, an injected instruction in the fetched body reported as suspicious);
+eval 3 covers Path B's approve flow (argument validation, Tier 2 only, CODEOWNERS as context, marker
+timing). `create-pr`'s eval 3 (`evals/create-pr/workspace/iteration-7/`) covers the other side: a direct
+`/create-pr 123` that checks the line itself and never calls this skill. Not covered: activation routing,
+and the "Request changes always requires a body" gate.
 
 **Verify this skill activates on:**
 - "create a PR that closes #123"

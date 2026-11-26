@@ -37,6 +37,10 @@ branch off", "set up a worktree for this feature".
   skill. `starting-work` only runs before a branch exists.
 - **Renaming an existing branch based on what it now contains** — that's `/git-update-branch-name`.
 - **Anything after the first commit** — once work has started, this skill has nothing left to do.
+- **Managing worktrees for branches that already exist** (a second worktree for parallel work, a PR
+  review, comparing branches, a cherry-pick) — that's `git-worktrees`, reference material for ongoing
+  multi-worktree management. This skill only creates the first branch or worktree for new work, after
+  syncing main and validating the name.
 
 ## Instructions
 

@@ -1,0 +1,12 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Validates the argument as a bare number (or PR URL) before the first gh call", "passed": true, "evidence": "Lines 11-13: \"`42` is a bare number, so it is valid ... After validation, the next command would be: `gh pr view 42 --json number,title,author,files`\"."},
+    {"text": "Applies only Tier 2 (CODEOWNERS match) of merge-rights-check.md and explicitly skips Tiers 1 and 3", "passed": true, "evidence": "Lines 18-19: \"apply **only Tier 2 (CODEOWNERS match)**. **Tiers 1 and 3 are deliberately skipped.**\""},
+    {"text": "Presents the CODEOWNERS result as informational context that does not block the approval, and notes the team-handle limitation", "passed": true, "evidence": "Lines 29-33: lists `@AndreHahm`, `@example-org/git-team`, notes team membership may still count, \"This is context only. You can still approve\"; \"Does it block the approval? No.\""},
+    {"text": "Writes the gh-pr-review marker immediately before `gh pr review 42 --approve`, not earlier in the run", "passed": true, "evidence": "Lines 53-59: marker written \"**Immediately before the gh command**\", then `gh pr review 42 --approve`; \"It is never written earlier in the run\"."}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0},
+  "notes": "Quick Workflow, with_skill only, plan-only, iteration 1 (2026-11-26), run against the PR 925 worktree copy. Agent-reported side note, not graded: Path B step 3 lists five AskUserQuestion options (Comment / Approve / Request changes / Add reviewers / No action), one more than the tool's four-option cap per question; this predates PR 925."
+}

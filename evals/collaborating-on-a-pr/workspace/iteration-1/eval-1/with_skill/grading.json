@@ -1,0 +1,12 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Invokes Skill(create-pr) exactly once, passing an instruction to include `Closes #123` in the drafted PR body", "passed": true, "evidence": "Lines 17-22: \"Skill invoked: `Skill(create-pr)`\" with the instruction \"include the line `Closes #123` in the PR body you draft\"; summary table line 69: \"`create-pr` only\"."},
+    {"text": "States the call is one-way (create-pr never invokes collaborating-on-a-pr back) and passes no skip or loop-breaking instruction", "passed": true, "evidence": "Lines 35-39: \"Can `create-pr` call `collaborating-on-a-pr` back? No. The call is one-way ... So no skip or loop-breaking instruction is passed to `create-pr`.\""},
+    {"text": "After create-pr returns, verifies the line with `gh pr view --json body -q .body` rather than assuming create-pr honored the instruction", "passed": true, "evidence": "Lines 43-46: \"this skill does not assume the instruction was honoured and checks again itself: 1. `gh pr view --json body -q .body`\"."},
+    {"text": "Never describes creating a second PR or invoking create-pr a second time", "passed": true, "evidence": "Only one Skill(create-pr) call appears; the missing-line branch (lines 50-57) patches the existing PR with `gh pr edit --body-file` and never re-invokes create-pr."}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0},
+  "notes": "Quick Workflow, with_skill only, plan-only, iteration 1 (2026-11-26), run against the PR 925 worktree copy of collaborating-on-a-pr (read by absolute path). No baseline arm."
+}
