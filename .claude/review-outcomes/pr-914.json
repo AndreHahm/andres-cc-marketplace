@@ -149,6 +149,16 @@
     },
     {
       "disposition": "fixed",
+      "finding": "1d01a2414e1c080ca5472d48f85fa2db",
+      "line": 11,
+      "note": "fixed in e28d804b, round 2: validator grants run python -I",
+      "path": "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md",
+      "pr": 914,
+      "recorded_at": "2026-11-26T16:55:36+00:00",
+      "rule": "security"
+    },
+    {
+      "disposition": "fixed",
       "finding": "206b643d133f292c16b3cbfd3ea1e863",
       "note": "Codex delta notice: filing step reminds to remove personal details, bd81dae5",
       "pr": 914,
@@ -169,6 +179,16 @@
       "recorded_at": "2026-11-26T12:04:23+00:00"
     },
     {
+      "disposition": "accepted",
+      "finding": "7d53d2cc84ece37171bfbc41d25f64aa",
+      "line": 168,
+      "note": "round 2, carried Codex: same as the 1024 mount waiver; waiver line in PR body",
+      "path": "plugins/promptlibrary-kit/README.md",
+      "pr": 914,
+      "recorded_at": "2026-11-26T16:55:35+00:00",
+      "rule": "security"
+    },
+    {
       "disposition": "fixed",
       "finding": "7f9aaa4bff42baffa15faaf92829d59f",
       "note": "Codex delta notice: per-attachment hidden-character lists in step 8, bd81dae5",
@@ -176,11 +196,31 @@
       "recorded_at": "2026-11-26T12:05:18+00:00"
     },
     {
+      "disposition": "fixed",
+      "finding": "89a072bc87111e974eda6123c46ef580",
+      "line": 201,
+      "note": "fixed in e28d804b, round 2: boundary names attached files as data",
+      "path": "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md",
+      "pr": 914,
+      "recorded_at": "2026-11-26T16:55:35+00:00",
+      "rule": "plugin-rulebook:R32"
+    },
+    {
       "disposition": "accepted",
       "finding": "a3fe86674d5bfeb0daddd7f4c26ef500",
       "note": "owner: POSIX mounts inside the project not detected, disclosed in README",
       "pr": 914,
       "recorded_at": "2026-11-26T12:04:23+00:00"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "ee97efbe7e8400267fd615be8212c64f",
+      "line": 202,
+      "note": "round 2, carried Codex: review per draft is mandatory (REV-1/REV-3); waiver line in PR body",
+      "path": "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md",
+      "pr": 914,
+      "recorded_at": "2026-11-26T16:55:36+00:00",
+      "rule": "plugin-rulebook:R26"
     }
   ]
 }
