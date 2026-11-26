@@ -50,6 +50,16 @@
       "rule": "documentation-accuracy"
     },
     {
+      "disposition": "false_positive",
+      "finding": "codex-ci-bbb06b887866c1872407fef080d12c10",
+      "line": 81,
+      "note": "Refuted: _rv_inside's last step sets G empty, so _rv_common tests \"$G/.git\" = /.git; the doc sentence is accurate. CI Codex delta review on dc2aa18f.",
+      "path": "plugins/git-kit/skills/cross-model-review/references/diff-mechanics-rationale.md",
+      "pr": 906,
+      "recorded_at": "2026-11-26T07:47:18+00:00",
+      "rule": "documentation-accuracy"
+    },
+    {
       "disposition": "fixed",
       "finding": "dd98ce0dd2f0bd3a703aa6985aaca3b6",
       "line": 22,
