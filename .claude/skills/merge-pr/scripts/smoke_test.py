@@ -1078,6 +1078,15 @@ def check_step2_coverage_tier_disclosure():
             "neither is the coverage-tier comment the bullet above reads",
             "that --stop-on-review-findings never treats the coverage comment as a finding",
         ),
+        (
+            "taken from the `statusCheckRollup` step 2 last classified against",
+            "which rollup snapshot the check entry comes from (PR #909, Devin)",
+        ),
+        (
+            "or the comment could not be posted), so a `FAILURE` alone does not name the tier",
+            "that a FAILURE can come from any failed step of the job (PR #909, Devin)",
+        ),
+        ("```bash gh api graphql", "the GraphQL example's fence is tagged bash (PR #909, R24)"),
     ):
         if needed not in flat:
             return False, f"step 2's coverage-tier disclosure no longer states {why}"
@@ -1340,10 +1349,29 @@ def check_step2_review_outcomes_recorded():
         ".claude/review-outcomes/pr-<number>.json",
         "review-ledger.local.json",
         "all six must pass",
+        # PR #909 review: one entry must never pass every thread; each thread needs its own.
+        "comments(first: 1) { nodes { databaseId } }",
+        "Every thread needs its own recorded disposition",
+        '(.pr | tostring) == "<number>"',
+        "| .finding | tostring]",
+        "a thread with no such id stops as undetermined",
+        "this check confirms that an outcome was recorded for every thread,"
+        " not that it is true or approved",
+        "list every thread id with its match result",
     )
-    missing = [n for n in needed if n not in step2]
+    flat = " ".join(step2.split())
+    missing = [n for n in needed if " ".join(n.split()) not in flat]
     if missing:
         return False, "step 2's review-outcomes check is incomplete, missing: " + ", ".join(missing)
+    # The filter's disposition list mirrors the ledger script's DISPOSITIONS (R20): keep them equal.
+    ledger = SKILL_DIR.parent.parent / "scripts" / "git-review-ledger.py"
+    found = re.search(r"^DISPOSITIONS = \(([^)]*)\)", ledger.read_text(encoding="utf-8"), re.M)
+    if not found:
+        return False, f"DISPOSITIONS not found in {ledger.name}"
+    names = re.findall(r'"([a-z_]+)"', found.group(1))
+    in_filter = re.search(r"\.disposition \| IN\(([^)]*)\)", flat)
+    if not in_filter or re.findall(r'"([a-z_]+)"', in_filter.group(1)) != names:
+        return False, "step 2's disposition filter no longer matches the ledger's DISPOSITIONS"
     return True, "step 2 requires recorded, promoted review outcomes"
 
 

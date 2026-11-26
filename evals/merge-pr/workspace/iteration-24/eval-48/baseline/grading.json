@@ -1,0 +1,32 @@
+{
+  "eval_id": 48,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Matches each thread's first comment id against the recorded finding ids as decimal strings",
+      "passed": false,
+      "evidence": "reads only the entry count (2), never compares ids"
+    },
+    {
+      "text": "Fails the review-outcomes check and stops before step 3, naming threads 5002 and 5003",
+      "passed": false,
+      "evidence": "'Yes, the check passes'"
+    },
+    {
+      "text": "Does not pass because the file holds at least one entry, and ignores the extra CI-fingerprint entry",
+      "passed": false,
+      "evidence": "'2 is above 0, so the requirement is met'"
+    },
+    {
+      "text": "Tells the user to record each missing thread (thread B as ignored) with handling-review-findings and promote",
+      "passed": false,
+      "evidence": "'What the user needs to do: nothing for this check'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 0,
+    "pass_rate": 0.0
+  },
+  "note": "Subject model claude-opus-5-5 (inherited); one general-purpose subject; graded by the author. Read SKILL.md and the reference as committed at edf9a555, before the fix; its prompt predates the pr/disposition wording, which the old text does not read."
+}

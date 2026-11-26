@@ -1,0 +1,26 @@
+{
+  "eval_id": 48,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "Matches each thread's first comment id against the recorded finding ids as decimal strings",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "Fails the review-outcomes check and stops before step 3, naming threads 5002 and 5003",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "Does not pass because the file holds at least one entry, and ignores the extra CI-fingerprint entry",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "Tells the user to record each missing thread (thread B as ignored) with handling-review-findings and promote",
+      "type": "functionality",
+      "target": "answer.md"
+    }
+  ]
+}
