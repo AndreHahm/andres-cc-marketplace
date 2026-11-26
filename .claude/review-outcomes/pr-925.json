@@ -28,6 +28,56 @@
       "recorded_at": "2026-11-26T18:41:45+00:00"
     },
     {
+      "disposition": "accepted",
+      "finding": "1399c60cf1713b518bd66515116b503d",
+      "line": 9,
+      "note": "deferred to #927: gated create-pr, github-issue-lifecycle, collaborating-on-a-pr cycle; out of this PR's scope",
+      "path": "plugins/git-kit/skills/create-pr/SKILL.md",
+      "pr": 925,
+      "recorded_at": "2026-11-26T18:54:18+00:00",
+      "rule": "dependency-graph"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "316456ed2face73b2fe3b6f5df60a61c",
+      "line": 65,
+      "note": "fixed in round 2: two overview paragraphs condensed; SKILL.md at 489 lines",
+      "path": "plugins/git-kit/skills/git-worktrees/SKILL.md",
+      "pr": 925,
+      "recorded_at": "2026-11-26T18:54:18+00:00",
+      "rule": "size"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "611b8936a5894d5c46c4712d524fb0b3",
+      "line": 427,
+      "note": "deferred to #926: create-pr and commit call pair predates this PR; too large to redesign here",
+      "path": "plugins/git-kit/skills/create-pr/SKILL.md",
+      "pr": 925,
+      "recorded_at": "2026-11-26T18:54:18+00:00",
+      "rule": "dependency-graph"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "779b4cec4447ac513ff5a5012448a5d6",
+      "line": 367,
+      "note": "fixed in round 2: step 6 now treats the fetched PR body as data and reports directives in it",
+      "path": "plugins/git-kit/skills/create-pr/SKILL.md",
+      "pr": 925,
+      "recorded_at": "2026-11-26T18:54:18+00:00",
+      "rule": "injection-surface"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "899169d5efcd2ef8ea1334ad99cd071d",
+      "line": 82,
+      "note": "fixed in round 2: testing rationale names create-pr eval 3 and the untested Path A step 2",
+      "path": "plugins/git-kit/skills/collaborating-on-a-pr/SKILL.md",
+      "pr": 925,
+      "recorded_at": "2026-11-26T18:54:18+00:00",
+      "rule": "testing-validation"
+    },
+    {
       "disposition": "fixed",
       "finding": "a6307b65ff6cc885ecbd2261fdcf7bdd",
       "line": 69,

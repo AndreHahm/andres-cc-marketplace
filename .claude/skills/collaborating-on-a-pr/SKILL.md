@@ -142,10 +142,10 @@ other's job.
 **Last dated run record:** 2026-08-28 — `scripts/smoke_test.py` (4/4 checks passing: frontmatter,
 referenced-file existence, Bash-scope grant consistency, step-header sequencing).
 
-No dedicated eval suite exists for this skill — not warranted for this skill's recent edits, which were
-a narrow activation-boundary text addition (a reciprocal `github-issue-lifecycle` exclusion) to an
-already-established, structurally-unchanged skill; `scripts/smoke_test.py`'s structural checks are the
-applicable validation for that class of change.
+No dedicated eval suite exists for this skill. PR #925 made Path A's call to `create-pr` one-way
+(`create-pr`'s step 6 now checks the closing line itself); the caller's side of that change is tested by
+`create-pr`'s eval 3 (`evals/create-pr/workspace/iteration-7/`), and `scripts/smoke_test.py` checks this
+file's structure. Path A's own verify-and-patch step (step 2) has no eval yet: write one before changing it.
 
 **Verify this skill activates on:**
 - "create a PR that closes #123"
