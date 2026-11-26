@@ -15,6 +15,7 @@ import sys
 from pathlib import Path
 
 import pytest
+import yaml
 
 # The markers below say which mechanism a skipped test needs, so a Windows skip is a stated gap and
 # not a blanket one (#655).
@@ -248,8 +249,10 @@ def test_every_script_the_chain_launches_or_loads_is_protected():
     """A script added to cross-model-review's allowed-tools needs a NEVER_EXCLUDE entry (#916)."""
     scripts = SCRIPT.parent
     skill = scripts.parent / "skills/cross-model-review/SKILL.md"
-    front = skill.read_text(encoding="utf-8").split("\n---", 1)[0]
-    allowed = next(line for line in front.splitlines() if line.startswith("allowed-tools:"))
+    # Parsed as YAML, so a grant on a continuation line of a block list is read too.
+    front = skill.read_text(encoding="utf-8").split("\n---", 1)[0].removeprefix("---")
+    grants = yaml.safe_load(front)["allowed-tools"]
+    allowed = "\n".join(grants) if isinstance(grants, list) else str(grants)
     launched = set(re.findall(r"scripts/([A-Za-z0-9_.-]+)", allowed))
     assert {"git-review-locate-rva.py", "git-review-scope-run.sh"} <= launched
     unknown = {n for n in launched if Path(n).suffix.lower() not in M._SCRIPT_EXTENSIONS}
