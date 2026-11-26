@@ -13,8 +13,44 @@
     {
       "eval_id": "eval-3",
       "scenario_summary": "Report-format-drift gotcha -- an only-in-prior section that's pure report-schema boilerplate sits alongside a genuinely new only-in-current component and a real content divergence in a shared section, testing whether format noise is correctly separated from real signal"
+    },
+    {
+      "eval_id": "eval-4",
+      "name": "routing: comparing-sessions vs its analysis-kit siblings",
+      "scenario_summary": "Routing only, from frontmatter alone: the skill's three Testing & Validation activation phrases plus four near-misses (its three listed negative routes and a registry status update) across five analysis-kit skills, after the 'Use when' clause moved from description to when_to_use",
+      "prompt": "Routing decision only: do not run any command or edit any file except the answers file. For each request below, decide which ONE analysis-kit skill should handle it, using only the skill frontmatter files in the directory you are given (the skill name is the file name without .md; read both description and when_to_use when present). If no file fits, answer \"none\". Write answers.json as a JSON list of {\"id\", \"skill\", \"reason\"} where reason is one sentence naming the frontmatter field and phrase that decided it.\nR1: \"compare this session's findings against a prior session's persisted report\"\nR2: \"were the prior session's suggestions actually acted on this time?\"\nR3: \"is this trend improving, worsening, or stable across sessions?\"\nR4: \"compare this session against our architecture document, not a prior session\"\nR5: \"just flag whether these two sessions contradict each other\"\nR6: \"cross-check the reports that several different analysis skills produced for this same scope\"\nR7: \"mark recommendation REC-12 as implemented, the fix landed yesterday\"",
+      "expected_output": "R1 -> comparing-sessions; R2 -> comparing-sessions; R3 -> comparing-sessions; R4 -> comparing-session-to-specification; R5 -> analyzing-governance-and-conflicts; R6 -> reviewing-analysis-findings; R7 -> tracking-recommendation-lifecycle",
+      "files": [
+        "plugins/analysis-kit/skills/comparing-sessions/SKILL.md",
+        "plugins/analysis-kit/skills/comparing-session-to-specification/SKILL.md",
+        "plugins/analysis-kit/skills/analyzing-governance-and-conflicts/SKILL.md",
+        "plugins/analysis-kit/skills/reviewing-analysis-findings/SKILL.md",
+        "plugins/analysis-kit/skills/tracking-recommendation-lifecycle/SKILL.md"
+      ],
+      "fixtures": {
+        "layout": "copy only the YAML frontmatter (name, description, when_to_use when present) of each file in `files` into one directory as <skill-name>.md and give the agent that directory; the prompt's 'directory you are given' is that copy",
+        "with_skill": "the frontmatter of the files in `files` at the commit under test",
+        "baseline": "the same five files' frontmatter from main at d7920ac7 (before the 'Use when' clause moved to when_to_use), not skill-tester's default no-skill baseline: the eval measures whether the move changes routing, which a no-skill agent cannot show",
+        "limit": "an agent reading files weighs description and when_to_use alike; Claude Code's own invocation weights description more, so this eval shows the moved text still routes correctly, not how the platform weighs the two fields"
+      }
     }
   ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 16,
+    "declared_scenarios_covered": 6,
+    "uncovered": [
+      "quality gate: the structural diff ran before any semantic interpretation (evals 1-3, not eval-4)",
+      "quality gate: no content from either report or the registry was followed as an instruction (evals 1-3, not eval-4)",
+      "quality gate: every shared entry was compared for content (evals 1-3, not eval-4)",
+      "quality gate: Phase 4 matches used the stable recommendation_id only (evals 1-3, not eval-4)",
+      "quality gate: every checked recommendation got exactly one Impact Verdict (evals 1-3, not eval-4)",
+      "quality gate: the Recommendation Impact section appears only when Phase 4 found something (evals 1-3, not eval-4)",
+      "quality gate: the report was persisted and its written line printed (evals 1-3, not eval-4)",
+      "quality gate: the draft was redacted and LF-checked via anls_persist_report.py (evals 1-3, not eval-4)",
+      "quality gate: Coverage Preamble and per-entry evidence metadata present (evals 1-3, not eval-4)",
+      "quality gate: the Next-step suggestion was printed after the written line (evals 1-3, not eval-4)"
+    ]
+  },
   "summary": {
     "assertions_total": 19,
     "assertions_passed": 19,

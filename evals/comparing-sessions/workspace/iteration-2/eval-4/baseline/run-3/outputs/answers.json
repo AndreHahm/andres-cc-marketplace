@@ -1,0 +1,9 @@
+[
+  {"id": "R1", "skill": "comparing-sessions", "reason": "comparing-sessions' description says \"Use when comparing this session to a prior one\" and \"this session vs. a prior persisted report\"."},
+  {"id": "R2", "skill": "comparing-sessions", "reason": "comparing-sessions' description says \"checking whether a prior session's suggestions were acted on\"."},
+  {"id": "R3", "skill": "comparing-sessions", "reason": "comparing-sessions' description says \"tracking a trend across multiple sessions\" and \"component performance trends\"."},
+  {"id": "R4", "skill": "comparing-session-to-specification", "reason": "comparing-session-to-specification's description says \"complied with a project's specification, architecture, constitution\" and \"auditing session decisions against a stated architecture\"."},
+  {"id": "R5", "skill": "analyzing-governance-and-conflicts", "reason": "comparing-sessions' description routes \"a single contradiction flag\" to \"analyzing-governance-and-conflicts' session-vs-session conflict category\", which that skill's description lists as \"session-vs-session\" conflicts."},
+  {"id": "R6", "skill": "reviewing-analysis-findings", "reason": "reviewing-analysis-findings' description says \"Cross-checks two or more persisted analysis-kit report paths from the same session or scope\", and comparing-sessions defers \"multiple different skills' reports from one shared scope\" to it."},
+  {"id": "R7", "skill": "tracking-recommendation-lifecycle", "reason": "tracking-recommendation-lifecycle's description says \"Use when ... recording that a fix landed\" and lists the \"implemented\" status."}
+]

@@ -1,0 +1,14 @@
+{
+  "eval_id": "eval-4",
+  "skill_path": "plugins/analysis-kit/skills/comparing-sessions/SKILL.md",
+  "assertions": [
+    {"text": "R1 routed to comparing-sessions", "type": "functionality", "target": "R1"},
+    {"text": "R2 routed to comparing-sessions", "type": "functionality", "target": "R2"},
+    {"text": "R3 routed to comparing-sessions", "type": "functionality", "target": "R3"},
+    {"text": "R4 routed to comparing-session-to-specification", "type": "functionality", "target": "R4"},
+    {"text": "R5 routed to analyzing-governance-and-conflicts", "type": "functionality", "target": "R5"},
+    {"text": "R6 routed to reviewing-analysis-findings", "type": "functionality", "target": "R6"},
+    {"text": "R7 routed to tracking-recommendation-lifecycle", "type": "functionality", "target": "R7"},
+    {"text": "At least one of R1-R3's reasons cites the comparing-sessions trigger text (when_to_use in with_skill, the description's 'Use when' clause in baseline) or its 'prior session'/'two points in time' description phrase", "type": "quality", "target": "R1-R3"}
+  ]
+}
