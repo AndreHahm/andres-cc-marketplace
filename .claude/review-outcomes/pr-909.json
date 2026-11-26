@@ -59,6 +59,16 @@
     },
     {
       "disposition": "accepted",
+      "finding": "f29fca888eb82e5075def7b7a6a6973c",
+      "line": 123,
+      "note": "Round 3 (skill-reviewer, a body or comment finding stops every later run with the flag): predates this PR (#732), only moved here; deferred to issue #912 and waived in the PR body, the user's choice.",
+      "path": "plugins/git-kit/skills/merge-pr/references/advisory-disclosures.md",
+      "pr": 909,
+      "recorded_at": "2026-11-26T10:28:16+00:00",
+      "rule": "workflow-correctness"
+    },
+    {
+      "disposition": "accepted",
       "finding": "f6ac029efc7d02f118713ed614645c6f",
       "line": 145,
       "note": "Residual, waived in the PR body: the outcomes check covers threads only; review bodies, conversation comments and later replies are a disclosed limit, the scope the user chose in round 1.",
