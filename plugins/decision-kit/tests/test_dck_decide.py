@@ -647,7 +647,7 @@ def test_bad_listing_is_ignored(server):
 
 def _cli(stdin: bytes, env=None):
     done = subprocess.run(
-        [sys.executable, "-I", str(SKILL / "scripts" / "dck-decide.py")],
+        [sys.executable, "-I", "-B", str(SKILL / "scripts" / "dck-decide.py")],
         input=stdin,
         capture_output=True,
         env=env,
@@ -670,7 +670,11 @@ def test_cli_crash_asks_the_user(tmp_path):
     script.write_bytes((SKILL / "scripts" / "dck-decide.py").read_bytes())
     data = json.dumps(decision()).encode()
     done = subprocess.run(
-        [sys.executable, "-I", str(script)], input=data, capture_output=True, check=True, timeout=30
+        [sys.executable, "-I", "-B", str(script)],
+        input=data,
+        capture_output=True,
+        check=True,
+        timeout=30,
     )
     out = json.loads(done.stdout)
     assert (out["verdict"], out["reason"]) == ("ask_user", "internal_error")
@@ -1054,7 +1058,7 @@ def test_doctor_cli_prints_a_report_without_the_key():
         "no_proxy": "",
     }
     done = subprocess.run(
-        [sys.executable, "-I", str(SKILL / "scripts" / "dck-doctor.py")],
+        [sys.executable, "-I", "-B", str(SKILL / "scripts" / "dck-doctor.py")],
         capture_output=True,
         env=env,
         timeout=30,
