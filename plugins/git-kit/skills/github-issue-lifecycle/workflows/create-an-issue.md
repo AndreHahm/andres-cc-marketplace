@@ -94,12 +94,16 @@ indefinitely between filing and its first re-triage.
 
 ## Step 6: Link to Originating PR (If Applicable)
 
-`collaborating-on-a-pr`'s Path A only covers linking at *PR-creation* time — invoking it against an
-issue whose PR is already open would dispatch `create-pr` and open a second, duplicate PR. So:
+This skill never invokes `collaborating-on-a-pr` itself. `create-pr` can invoke this workflow (its
+Pre-flight step 3.5 files issues it finds), and `collaborating-on-a-pr`'s Path A invokes `create-pr`, so a call
+from here would close a `create-pr` → `github-issue-lifecycle` → `collaborating-on-a-pr` → `create-pr`
+cycle. Path A also only covers linking at *PR-creation* time: run against an issue whose PR is already
+open, it would dispatch `create-pr` and open a second, duplicate PR. So:
 
-- If the PR that will close this issue **hasn't been created yet**, invoke
-  `Skill(collaborating-on-a-pr)` when that PR is created — never re-implement that linking here.
-- If a PR **already exists and is already open**, this skill has no `gh pr` grant, and its only `Edit` grant covers the session scratchpad, to
-  perform that edit itself (see SKILL.md's own Boundaries section) and does not orchestrate it. Ask the
-  user how they want it linked — never invoke `collaborating-on-a-pr` for this case, and never attempt
-  the edit directly.
+- If the PR that will close this issue **hasn't been created yet**, report the issue number and tell
+  the user to open that PR through `collaborating-on-a-pr` ("create a PR that closes #<N>") — never
+  re-implement that linking here.
+- If a PR **already exists and is already open**, this skill cannot edit it: it has no `gh pr` grant,
+  and its only `Edit` grant covers the session scratchpad (see SKILL.md's own Boundaries section). Ask
+  the user how they want it linked — never point them at `collaborating-on-a-pr` for this case, and
+  never attempt the edit directly.

@@ -1,0 +1,26 @@
+{
+  "eval_id": 6,
+  "skill_path": "plugins/git-kit/skills/github-issue-lifecycle/SKILL.md",
+  "assertions": [
+    {
+      "text": "Part A: never invokes Skill(collaborating-on-a-pr) or any other skill for the linking",
+      "type": "functionality",
+      "target": "walkthrough.md"
+    },
+    {
+      "text": "Part A: tells the user to open the PR through collaborating-on-a-pr with a closing reference to #314",
+      "type": "functionality",
+      "target": "walkthrough.md"
+    },
+    {
+      "text": "Part B: neither invokes collaborating-on-a-pr nor directs the user to it, and does not edit PR #77 itself",
+      "type": "functionality",
+      "target": "walkthrough.md"
+    },
+    {
+      "text": "Part B: asks the user how they want PR #77 linked to #314",
+      "type": "functionality",
+      "target": "walkthrough.md"
+    }
+  ]
+}

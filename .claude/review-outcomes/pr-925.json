@@ -28,13 +28,13 @@
       "recorded_at": "2026-11-26T18:41:45+00:00"
     },
     {
-      "disposition": "accepted",
+      "disposition": "fixed",
       "finding": "1399c60cf1713b518bd66515116b503d",
       "line": 9,
-      "note": "deferred to #927: gated create-pr, github-issue-lifecycle, collaborating-on-a-pr cycle; out of this PR's scope",
+      "note": "fixed in round 4 (was deferred to #927): the cycle is removed on the github-issue-lifecycle side; the PR now closes #927",
       "path": "plugins/git-kit/skills/create-pr/SKILL.md",
       "pr": 925,
-      "recorded_at": "2026-11-26T18:54:18+00:00",
+      "recorded_at": "2026-11-26T20:58:02+00:00",
       "rule": "dependency-graph"
     },
     {
@@ -46,6 +46,16 @@
       "pr": 925,
       "recorded_at": "2026-11-26T20:02:34+00:00",
       "rule": "plugin-rulebook:R36"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "2294beccf9d8ff811d5ea24246aebc76",
+      "line": 84,
+      "note": "fixed in round 4: github-issue-lifecycle Workflow 1 Step 6 no longer invokes collaborating-on-a-pr and its grant is removed, so the create-pr, github-issue-lifecycle, collaborating-on-a-pr cycle (#927) is gone",
+      "path": "plugins/git-kit/skills/collaborating-on-a-pr/SKILL.md",
+      "pr": 925,
+      "recorded_at": "2026-11-26T20:58:02+00:00",
+      "rule": "dependency-graph"
     },
     {
       "disposition": "fixed",
