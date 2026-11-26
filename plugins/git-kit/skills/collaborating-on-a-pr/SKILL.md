@@ -68,7 +68,7 @@ Say "create a PR that closes #123", or "review PR #42".
   `manage-codeowners`' job. Path B step 2 only reads the file for one PR's changed files, as reviewer
   context, and never edits it; this skill never invokes `manage-codeowners`.
 - **Attaching a note to a commit** — that's `git-notes`' job. A note stays in a git ref and is not a PR
-  review; this skill only posts review state to GitHub and never invokes `git-notes`.
+  review; this skill acts on GitHub pull requests, never on git notes, and never invokes `git-notes`.
 
 The `gh-operations` and `handling-review-findings` exclusions above (named sibling, stated criterion,
 reciprocal) follow this repo's shared convention in
@@ -88,7 +88,7 @@ specifically to prevent `create-pr` ↔ `collaborating-on-a-pr` from calling eac
 1. When `$ARGUMENTS` or the surrounding conversation names a related issue while creating a new PR, invoke `Skill(create-pr)`,
    explicitly instructing it — as part of this invocation — to (a) include `Closes #<N>` (or `Refs #<N>` if
    the relationship is "relates to" rather than "resolves") in the PR body it drafts, and (b) **skip its
-   own "Issue-linking hand-off" step (step 5)** — this run already owns the issue-linking flow and will do
+   own "Issue-linking hand-off" step (step 6)** — this run already owns the issue-linking flow and will do
    its own verification at step 2 below, so `create-pr` must not call back into `collaborating-on-a-pr`
    itself. This mirrors `create-pr`'s own existing pattern of passing an explicit instruction into a nested
    `Skill()` call (its pre-flight `commit` invocation tells `commit` to skip Auto-PR) — an instruction
@@ -187,7 +187,7 @@ applicable validation for that class of change.
 - [ ] Path A's verify-only mode (invoked from `create-pr`'s hand-off) never re-invokes `create-pr` — the
       loop-breaker instruction is always honored, not just documented
 - [ ] Path A step 1's invocation of `create-pr` always passes BOTH instructions ((a) closing-reference,
-      (b) skip step 5) — never (a) alone, which is what would let the two skills call each other in a loop
+      (b) skip step 6) — never (a) alone, which is what would let the two skills call each other in a loop
 
 ## Reference Guide
 
