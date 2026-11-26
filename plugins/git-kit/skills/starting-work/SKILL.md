@@ -16,6 +16,15 @@ Get from "I'm about to start something new" to a properly named, up-to-date bran
 gated flow — instead of manually remembering to sync main, checking the naming convention, and deciding
 whether a worktree makes sense, separately, every time.
 
+## Quick Start
+
+Say "start a new branch for the auth refactor", or "set up a worktree for this feature".
+
+1. Choose the base branch, sync it and check that the working tree is clean (step 1).
+2. Give or confirm the `<type>/<description>` branch name (step 2).
+3. Choose a worktree or a plain branch, and confirm the worktree path (steps 3-4).
+4. The skill creates the branch, or a locked worktree, and reports where to work (steps 4-5).
+
 ## When to Use
 
 Before writing any code for a new piece of work: syncing local `main` and creating the branch (or

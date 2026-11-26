@@ -336,7 +336,7 @@ When you ask the user to choose between options, track their decision and apply 
 - Apply consistent patterns when conflicts are similar (e.g. "Resolving by keeping current branch's approach, consistent with your earlier choice")
 - Ask again if a new conflict is sufficiently different from previous ones
 
-## Common Patterns Reference
+## Reference Guide
 
 | Resource | Purpose |
 |---|---|

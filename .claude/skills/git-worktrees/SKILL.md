@@ -60,7 +60,9 @@ auto-continuing into it.
 | **Branch lock** | Each branch can only be checked out in ONE worktree at a time |
 | **Worktree metadata** | Administrative files in `.git/worktrees/` tracking linked worktrees |
 
-## Quick Reference
+## Quick Start
+
+Say "check out PR #42 in its own worktree", then run the task's command from the table below.
 
 **Guarded actions, not this skill's job:** git-kit's guard hooks block raw `git worktree add -b`/`-B`
 (new-branch creation — that's `starting-work`'s job), raw `git worktree remove --force`/`-f` (discarding
@@ -481,9 +483,7 @@ routing, new-branch routing, commit routing, read-only comparison) have no eval 
       `git cherry-pick` runs, not just at confirmation time — per
       `.claude/rules/recheck-state-before-side-effecting-action.md`
 
-## Related Workflows
-
-Detailed step-by-step procedures for specific worktree operations are in `references/`:
+## Reference Guide
 
 - `references/create-worktree.md` — create and set up a worktree, with automatic dependency detection and confirmed (not automatic) installation
 - `references/compare-worktrees.md` — compare files/directories between worktrees or branches
