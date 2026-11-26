@@ -597,6 +597,69 @@ def test_dispatcher_check_matches_a_case_variant_path():
         )
 
 
+def test_planner_check_ignores_other_plugins_mirrored_scripts():
+    """Only git-kit's own mirrored scripts (git- or git_ prefix) set PLANNER_TOUCHED (#710)."""
+    line = next(
+        (ln for ln in extract_inputs_block().splitlines() if "PLANNER_TOUCHED=1 ||" in ln), None
+    )
+    if line is None:
+        return False, "could not find the PLANNER_TOUCHED check in the Inputs block"
+    cases = {
+        ".claude/scripts/plib_catalog_validate.py": "0",
+        ".claude/scripts/anls-run.sh": "0",
+        ".claude/scripts/inventory_common/pdk_models.py": "0",
+        ".claude/scripts/git-review-scope.py": "1",
+        ".claude/scripts/git_review_common.py": "1",
+        ".Claude/Scripts/GIT-review-path.sh": "1",
+        "plugins/git-kit/scripts/git-review-ledger.py": "1",
+        ".claude/skills/cross-model-review/SKILL.md": "1",
+        ".claude/scripts/plib_a.py\n.claude/scripts/git_review_common.py": "1",
+    }
+    with tempfile.TemporaryDirectory() as tmp:
+        for path, want in cases.items():
+            script = (
+                f"UNSCOPED_CHANGED_FILES={path!r}\n{line}\necho TOUCHED=${{PLANNER_TOUCHED:-0}}"
+            )
+            result = run_bash(pathlib.Path(tmp), "set -e\n" + script)
+            if f"TOUCHED={want}" not in result.stdout:
+                return False, f"{path}: expected TOUCHED={want}, got {result.stdout!r}"
+    return True, "only git-kit's own mirrored scripts set PLANNER_TOUCHED, not another plugin's"
+
+
+def test_review_scripts_load_only_git_prefixed_siblings():
+    """The narrowed check (#710) is safe only while every sibling file loaded is git-/git_ named."""
+    loads = re.compile(
+        r'source "[^"]*/([^"/]+)"|with_name\("([^"]+)"\)|_import_sibling\("([^"]+)"\)'
+        r'|python3 -I "[^"]*/([^"/]+)"'
+    )
+    scripts_dir = SKILL_DIR.parent.parent / "scripts"
+    paths = sorted(scripts_dir.glob("git-review-*")) + [scripts_dir / "git_review_common.py"]
+    found = 0
+    for path in paths:
+        for match in loads.finditer(path.read_text(encoding="utf-8")):
+            name = next(g for g in match.groups() if g)
+            found += 1
+            if not re.match(r"git[-_]", name, re.IGNORECASE):
+                return False, f"{path.name} loads {name!r}, which PLANNER_TOUCHED does not cover"
+    if not found:
+        return False, "no sibling loads found: the pattern no longer matches the scripts"
+    return True, f"all {found} sibling loads in the review scripts are git-/git_ named"
+
+
+def test_planner_check_copies_agree():
+    """scoped-review.md repeats SKILL.md's PLANNER_TOUCHED line; only SKILL.md's runs."""
+    ref = (SKILL_DIR / "references" / "scoped-review.md").read_text(encoding="utf-8")
+    skill = [
+        ln
+        for ln in SKILL_MD.read_text(encoding="utf-8").splitlines()
+        if "PLANNER_TOUCHED=1 ||" in ln
+    ]
+    copy = [ln for ln in ref.splitlines() if "PLANNER_TOUCHED=1 ||" in ln]
+    if len(skill) != 1 or skill != copy:
+        return False, f"SKILL.md {skill!r} and scoped-review.md {copy!r} differ"
+    return True, "scoped-review.md's PLANNER_TOUCHED line matches SKILL.md's"
+
+
 def test_a_diff_touching_the_review_scripts_stops_the_chain_until_approved():
     with tempfile.TemporaryDirectory() as tmp:
         repo = pathlib.Path(tmp)
@@ -631,6 +694,9 @@ CHECKS = [
     test_planner_sees_untracked_files_and_diff_goes_to_a_file,
     test_planner_failure_sets_a_flag_instead_of_aborting_the_chain,
     test_a_diff_touching_the_review_scripts_stops_the_chain_until_approved,
+    test_planner_check_ignores_other_plugins_mirrored_scripts,
+    test_review_scripts_load_only_git_prefixed_siblings,
+    test_planner_check_copies_agree,
     test_the_planner_block_joined_with_and_and_still_completes,
     test_an_empty_plugin_root_never_runs_the_repositorys_own_scripts,
     test_a_relative_path_entry_stops_the_chain,

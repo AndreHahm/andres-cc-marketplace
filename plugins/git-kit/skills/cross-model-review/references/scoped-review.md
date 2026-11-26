@@ -48,7 +48,7 @@ The check is:
 
 ```bash
 UNSCOPED_CHANGED_FILES=$({ git diff --no-renames --name-only "$MERGE_BASE"; git ls-files --others --exclude-standard; })
-echo "$UNSCOPED_CHANGED_FILES" | grep -qiE 'plugins/git-kit/scripts/|\.claude/scripts/|skills/cross-model-review/' && PLANNER_TOUCHED=1 || true
+echo "$UNSCOPED_CHANGED_FILES" | grep -qiE 'plugins/git-kit/scripts/|\.claude/scripts/git[-_]|skills/cross-model-review/' && PLANNER_TOUCHED=1 || true
 [ -z "$PLANNER_TOUCHED" ] || [ -n "$PLANNER_APPROVED" ] || { echo "PLANNER_TOUCHED=1: ask the user first"; exit 0; }
 ```
 
@@ -62,8 +62,10 @@ if [ -z "$PLANNER_TOUCHED" ] || [ -n "$PLANNER_APPROVED" ]; then bash "${CLAUDE_
 The wrapper command is spelled out literally (not through an array) so the `allowed-tools` grant
 `Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope-run.sh:*)` can match it. The wrapper runs
 the planner as `python3 -I`, which keeps the script's own folder off the import path, so a file such as
-`json.py` added to that folder is not imported. The `grep -i` pattern covers the whole scripts folder and
-is case-insensitive. The tag is `1` for the first plan, and `1b` for the re-run after a folder pick.
+`json.py` added to that folder is not imported. The `grep -i` pattern covers the whole `plugins/git-kit/scripts/`
+folder and is case-insensitive. In the shared `.claude/scripts/` mirror it matches only git-kit's own `git-` and
+`git_` files (`git_review_common.py` is loaded by the planner): another plugin's mirrored script is never
+run by this chain, so changing one does not set the flag (#710). The tag is `1` for the first plan, and `1b` for the re-run after a folder pick.
 
 - `DIFF_STATUS` non-zero is a Preflight failure exactly as before (invalid `$BASE`, no local `main`):
   report the Git error and ask for a valid `$BASE`. Zero with an empty `$RUN/full.diff` is "nothing to
