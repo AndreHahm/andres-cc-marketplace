@@ -27,6 +27,30 @@ invocation shape of these tools are all in scope. Narrowing to a fixed subcomman
 the fixed list, which defeats the reason this mode exists. The Test-command scope note just below already
 documents the *set* of tools covered; this note documents why each one stays unscoped within itself.
 
+## Quick Start
+
+Say "bisect this regression with `--auto npm test`", or give a good and a bad commit for a manual session
+(`v1.2.0 HEAD`).
+
+1. Check for a bisect session already in progress (Instructions step 1).
+2. Before a new session, create a backup branch (Instructions step 2).
+3. Run the selected mode: the test command marks each commit in automatic mode, and you answer good or bad
+   at each commit in manual mode. `--continue` resumes a session; `--reset` ends it.
+
+## When to Use
+
+- Finding the commit that broke a test, a feature or a build, or introduced a performance regression.
+- Resuming or ending a bisect session this skill started (`--continue`, `--reset`).
+
+## When NOT to Use
+
+- Rebasing a branch onto a newer main: use `git-rebase-sync`. This skill only moves `HEAD` through
+  history to find a commit; it never rewrites a branch.
+- Adding metadata to a commit, such as a test result: use `git-notes`.
+- Checking out another branch or commit in a separate directory to inspect or compare it: use
+  `git-worktrees`. This skill moves the current checkout's `HEAD` through history to find one commit.
+- Starting a branch to work on the fix: use `starting-work`, after the bad commit is found.
+
 ## Instructions
 
 1. **Check current state**: run `git status`, `git branch --show-current`, and `git bisect log 2>/dev/null || echo "No active bisect session"` to see if a session is already in progress.
@@ -68,6 +92,10 @@ Once the first bad commit is found, report: the commit hash, author, date, messa
 - If `git bisect` reports the range doesn't reproduce the regression (the given "bad" commit tests good, or vice versa), stop and tell the user rather than continuing with a broken range.
 
 ## Testing & Validation
+
+No dedicated eval suite: the skill's changes so far are grant scoping and documentation, which
+`scripts/smoke_test.py` (frontmatter, referenced files, Bash grants, step order) checks structurally.
+Write evals before changing how a mode marks commits good or bad.
 
 **Verify this skill activates on:**
 - "find the commit that broke the login test"
