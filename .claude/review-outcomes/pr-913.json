@@ -47,6 +47,16 @@
       "rule": "environment-boundary"
     },
     {
+      "disposition": "false_positive",
+      "finding": "355a8928c2d62d627bb2c399a335ff2c",
+      "line": 71,
+      "note": "the repository's own marketplace name is auto-allowed and needs no whitelist entry",
+      "path": "plugins/workmanagement-kit/scripts/wmgt_bridge_caller.py",
+      "pr": 913,
+      "recorded_at": "2026-11-26T14:40:59+00:00",
+      "rule": "plugin-rulebook:R23"
+    },
+    {
       "disposition": "fixed",
       "finding": "5e18e13569ff6728904376e7dc2eedd6",
       "line": 365,
@@ -75,6 +85,16 @@
       "pr": 913,
       "recorded_at": "2026-11-26T11:31:23+00:00",
       "rule": "tool-scoping"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "90eceb3816829fa24a61754c1918778b",
+      "line": 374,
+      "note": "repeat of 037e0103 endpoint/proxy part; deferred to #918, risk accepted by user, waiver line in PR body",
+      "path": "plugins/workmanagement-kit/scripts/wmgt_bridge_caller.py",
+      "pr": 913,
+      "recorded_at": "2026-11-26T14:40:59+00:00",
+      "rule": "credential-pii-leakage"
     },
     {
       "disposition": "accepted",
