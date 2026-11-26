@@ -150,8 +150,9 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
     differ". A changed path with an unusual character (outside the charset) has `codex_eligible: false`:
     its diff is in the slice's `.diff` file for Claude, absent from the `.codex.diff` file and from Codex's
     target paths, and the exclusion is disclosed.
-36. The diff changes anything under `plugins/git-kit/scripts/` or `skills/cross-model-review/` (also in a
-    different letter case, or as an untracked file) → `PLANNER_TOUCHED=1`, the chain stops at the top of
+36. The diff changes anything under `plugins/git-kit/scripts/` or `skills/cross-model-review/`, or a
+    `git-`/`git_` file in `.claude/scripts/` (also in a different letter case, or as an untracked file;
+    another plugin's mirrored script, such as `plib_*.py`, does not count) → `PLANNER_TOUCHED=1`, the chain stops at the top of
     the Inputs block before any working-tree script runs (no scratch directory, no index copy, no planner),
     and the user is asked; only an explicit yes re-runs the whole chain with `PLANNER_APPROVED=1`.
     The manifest is cross-checked against the real changed-file list: a changed path in none of `files`,

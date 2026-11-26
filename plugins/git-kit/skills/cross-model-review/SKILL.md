@@ -106,7 +106,7 @@ while [ -n "$REST" ]; do D=${REST%%:*}; REST=${REST#*:}; P=$D; R=; case $D in /*
 BASE="${BASE:-main}"
 MERGE_BASE=$(git merge-base "$BASE" HEAD)
 UNSCOPED_CHANGED_FILES=$({ git diff --no-renames --name-only "$MERGE_BASE"; git ls-files --others --exclude-standard; })
-echo "$UNSCOPED_CHANGED_FILES" | grep -qiE 'plugins/git-kit/scripts/|\.claude/scripts/|skills/cross-model-review/' && PLANNER_TOUCHED=1 || true
+echo "$UNSCOPED_CHANGED_FILES" | grep -qiE 'plugins/git-kit/scripts/|\.claude/scripts/git[-_]|skills/cross-model-review/' && PLANNER_TOUCHED=1 || true
 [ -z "$PLANNER_TOUCHED" ] || [ -n "$PLANNER_APPROVED" ] || { echo "PLANNER_TOUCHED=1: ask the user first"; exit 0; }
 UNTRACKED_FILES=$(git ls-files --full-name --others --exclude-standard -- "${SCOPE:-.}")
 RUN=$(mktemp -d)
