@@ -1,0 +1,42 @@
+{
+  "eval_id": "eval-2",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "R1 routed to codex-rescue",
+      "passed": true,
+      "evidence": "answered codex-rescue"
+    },
+    {
+      "text": "R2 routed to codex-research",
+      "passed": true,
+      "evidence": "answered codex-research"
+    },
+    {
+      "text": "R3 routed to codex-session-lookup",
+      "passed": true,
+      "evidence": "answered codex-session-lookup"
+    },
+    {
+      "text": "R4 routed to codex-rescue",
+      "passed": true,
+      "evidence": "answered codex-rescue"
+    },
+    {
+      "text": "R1 reason cites a single concrete repository task (not open-ended topic research)",
+      "passed": true,
+      "evidence": "codex-rescue's When to Use section covers Codex investigating one repository task read-only, and codex-research's When NOT to Use section routes one concrete repository investigation to codex-rescue."
+    },
+    {
+      "text": "R2 reason cites open-ended topic research or cross-model synthesis (not a single repo task)",
+      "passed": true,
+      "evidence": "codex-research's When to Use section covers 'investigate this topic (codex)' open-ended research synthesized with Claude's own analysis, which codex-rescue's When NOT to Use section also routes there."
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 6,
+    "pass_rate": 1.0
+  },
+  "run_note": "with_skill-only re-run after the CI-parity fix (codex-rescue names read-only investigation); model claude-opus-5-5; baseline unchanged, see iteration-2"
+}

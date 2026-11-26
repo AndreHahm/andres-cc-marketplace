@@ -3,8 +3,8 @@ name: codex-rescue
 description: >-
   Delegate an implementation task to Codex, then Claude reviews the result.
   Use when asked "codex rescue", "delegate to codex", "have codex do it",
-  wants Codex to implement or fix something, or to resume a prior rescue
-  task. Not for multi-phase plan-validate-implement-review workflows on
+  wants Codex to implement, fix or investigate one repository task, or to
+  resume a prior rescue task. Not for multi-phase plan-validate-implement-review workflows on
   complex or security/performance-critical features — use codex-plan-loop
   for those; codex-rescue is a single delegate-then-review pass, not an
   iterative validation loop. Not for a whole-project, multi-lens fix pass
@@ -44,24 +44,22 @@ your double-check and wastes turns.
 
 ## When to Use
 
-- "codex rescue", "delegate to codex", "have codex do it": Codex implements or fixes something, then
-  Claude reviews the result.
+- "codex rescue", "delegate to codex", "have codex do it": Codex implements, fixes or investigates
+  (read-only, `--write` off) one repository task, then Claude reviews the result.
 - Resuming a prior rescue task (`--resume`, `--resume-last`).
 
 ## When NOT to Use
 
 Each pointer below is routing for the caller: this skill stops there and never dispatches the target.
 
-- A multi-phase plan-validate-implement-review workflow on a complex or security- or
-  performance-critical feature → `codex-plan-loop`. This skill is a single delegate-then-review pass,
-  not an iterative validation loop.
+- A multi-phase plan-validate-implement-review workflow on a complex or security- or performance-critical
+  feature → `codex-plan-loop`. This skill is a single delegate-then-review pass, not an iterative loop.
 - A whole-project, multi-lens fix pass across many files or subsystems → `codex-audit-loop --mode fix`.
   This skill delegates one task to one Codex call, not a coordinated multi-worktree fix loop.
 - Open-ended research on a topic or document, synthesized with Claude's own analysis, with no single
   repository task to carry out → `codex-research`. This skill hands Codex one concrete repository task.
 - Only finding or inspecting a Codex session ID, without continuing the task → `codex-session-lookup`.
-- The same delegated-implementation workflow naming Gemini, Antigravity or agy instead of Codex →
-  antigravity-kit's `antigravity` skill.
+- The same delegated workflow naming Gemini, Antigravity or agy instead of Codex → antigravity-kit's `antigravity`.
 
 ## Execution Contract
 
@@ -433,13 +431,10 @@ mkdir -p "${CLAUDE_PLUGIN_DATA}/reviews"
   than an arbitrary ref, the same disclosed-scoping pattern `codex-audit-loop/SKILL.md`'s
   `Bash(git push origin:*)` grant already uses.
 
-**Failure:** save to
-`${CLAUDE_PLUGIN_DATA}/reviews/rescue-<YYYYMMDD-HHMMSS>-failed.md` with
-the §6 error category and captured stderr, truncated to 500 characters
-(deliberately tighter than `codex-exec.mjs`'s own 4000-char tail, per
-`codex-windows-guardrails/scripts/guarded-dispatch.mjs`'s framing) — stderr
-can echo fragments of repository content, so cap it rather than persisting
-it unbounded.
+**Failure:** save to `${CLAUDE_PLUGIN_DATA}/reviews/rescue-<YYYYMMDD-HHMMSS>-failed.md` with the §6 error
+category and captured stderr, truncated to 500 characters (deliberately tighter than `codex-exec.mjs`'s own
+4000-char tail, per `codex-windows-guardrails/scripts/guarded-dispatch.mjs`'s framing) — stderr can echo
+fragments of repository content, so cap it rather than persisting it unbounded.
 Treat this and the success-path report as sensitive before sharing.
 
 Leave the temp files (`PROMPT_FILE`, `JOB_JSON_FILE`, `JOB_JSON_FILE.stderr`, `pre.list`, `pre.sha`) in
@@ -457,8 +452,7 @@ directory the reviewed repo itself might contain.
 - **`--wait` on task is silent prompt corruption.** It becomes part of the task prompt body. ANALYZE must reject it.
 - **Do NOT explore the repo in Phase 1.** The point of delegation is that Codex builds the context. Exploring biases the double-check.
 
-For the full shared gotchas list, read
-`${CLAUDE_PLUGIN_ROOT}/skills/codex-prompt-protocol/references/invocation-protocol.md §10`.
+For the full shared gotchas list, read `${CLAUDE_PLUGIN_ROOT}/skills/codex-prompt-protocol/references/invocation-protocol.md §10`.
 
 ---
 
@@ -475,8 +469,7 @@ For the full shared gotchas list, read
 - "codex research this topic", an open-ended deep dive with no single repository task → `codex-research`
 - "verify this plan" / "review this doc" (no implementation task) → `codex-verify`
 - Locating/finding a session ID rather than resuming one → `codex-session-lookup`
-- "delegate this to antigravity/gemini/agy" → antigravity-kit's `antigravity` skill instead
-  (Gemini/Antigravity/agy named, not Codex)
+- "delegate this to antigravity/gemini/agy" → antigravity-kit's `antigravity` skill (not Codex)
 
 **Concrete scenarios to check:**
 1. A vague task ("fix it") → `AskUserQuestion` for clarification, never repo exploration to guess intent.
@@ -485,7 +478,7 @@ For the full shared gotchas list, read
 4. Phase 4 double-check: a Codex-cited file/function that doesn't exist in the current tree → classified "False Positive (hallucination)", never presented as a real finding.
 
 **Current test coverage:**
-- `evals/codex-rescue/evals.json` — 1 defined scenario (basic delegation, Phase 0 governance checklist, no repo exploration before Phase 2, no auto-accept). Structurally graded 2026-08-12 (PASS — Phase 0's governance/session gate, the explicit "do NOT explore the repo" instruction, and the "Do NOT auto-accept changes" rule all match the eval's `expected_output`); not a live empirical run.
+- `evals/codex-rescue/evals.json` — 2 defined scenarios: eval-1 (basic delegation, Phase 0 governance checklist, no repo exploration before Phase 2, no auto-accept) and eval-2 (routing between `codex-rescue`, `codex-research` and `codex-session-lookup`, issue #461, `workspace/iteration-2/`). Structurally graded 2026-08-12 (PASS — Phase 0's governance/session gate, the explicit "do NOT explore the repo" instruction, and the "Do NOT auto-accept changes" rule all match the eval's `expected_output`); not a live empirical run.
 - `scripts/smoke-tests/codex-rescue-prompt-assembly.mjs` — mechanically verifies the Phase 2 prompt-assembly template, the bare-stdout `--print-job-id` capture (see `scripts/smoke-tests/cdx-README.md`), and the resume-flag omission logic; does not exercise a real Codex call.
 
 **Quality gates:**
