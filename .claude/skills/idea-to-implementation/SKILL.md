@@ -21,7 +21,7 @@ routing all actual I/O through `notion-knowledge-management` (read the source) a
 
 Promoting Notion knowledge into Linear execution — whenever a Notion record (an Idea, an accepted
 Decision, a proposed Goal) is named as the request's origin, even when the surface phrasing is
-"create a Linear issue." Not when the request is about that record's open questions or follow-ups,
+"create a Linear issue." Not when the request is about a Decision's open questions or follow-ups,
 even phrased as "create follow-up issues": those go to `open-item-management` (see below).
 
 ## When NOT to Use
