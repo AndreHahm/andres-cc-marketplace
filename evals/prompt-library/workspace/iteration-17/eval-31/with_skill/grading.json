@@ -1,0 +1,31 @@
+{
+  "eval_id": 31,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Names both blocked prompts with slug, version and reasons, treating them as data",
+      "passed": true,
+      "evidence": "plan.md: both blocked prompts named with slug, version and reasons, stated as data"
+    },
+    {
+      "text": "For the changed attachment, says 'attachment changed since approval' and offers restore, review the new attachment as a revision with the same text and origin, or retire",
+      "passed": true,
+      "evidence": "plan.md: review__missing-tests 'Attachment changed since approval' with restore, revise (same text and origin) and retire"
+    },
+    {
+      "text": "For the changed text, offers only restore from git or retire, never a revision",
+      "passed": true,
+      "evidence": "plan.md: docs__changelog offers only restore from git or retire; 'offers no revise' for it"
+    },
+    {
+      "text": "Changes nothing without the user's choice",
+      "passed": true,
+      "evidence": "plan.md: no command runs before the AskUserQuestion answer; 'Nothing now' changes nothing"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

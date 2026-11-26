@@ -156,17 +156,40 @@
       "prompt": "/prompt-library deactivate review__missing-tests (the catalog is at docs/it's-prompts, and the working copy of the prompt's active.md has an invalid version; a valid copy is staged in git; the user's shell is Git Bash).",
       "expected_output": "The invalid catalog is reported and nothing is deactivated or changed; the user is told to check local changes first; the git restore command names only that one file as a literal path, with the apostrophe escaped so the command runs as printed.",
       "files": []
+    },
+    {
+      "id": 29,
+      "name": "reviewer-gets-the-review-bundle-inline-with-attachments",
+      "prompt": "/prompt-library add (catalog_version 3). The user pastes: \"Review the diff for missing tests, following our test conventions.\" and asks to attach docs/testing-conventions.md, a 40-line project file. Screening is clean and the user triages it as a prompt.",
+      "expected_output": "After the draft is filed, the skill runs `review-bundle` for the draft and dispatches `prompt-reviewer` with that output inline in the prompt, never a file path or an instruction to read a file; the attachment's content is part of what is reviewed, alongside the text, and the reviewer's findings are shown to the user before any verification is recorded.",
+      "files": []
+    },
+    {
+      "id": 30,
+      "name": "attachments-shown-in-full-and-approval-binds-the-fingerprint",
+      "prompt": "/prompt-library activate review__missing-tests (catalog_version 3; the draft's quality review is done; it lists two attachments, docs/testing-conventions.md and docs/ci-matrix.md; `show review__missing-tests --history` returns its text, `attachment_content` for both files, its `text_hash` and its `fingerprint`).",
+      "expected_output": "Before the approval question the skill shows the prompt text and the full content of both attachments (not a summary or excerpt) and names the fingerprint as what the approval binds (text, origin and attachments); `record-verification` and `activate` use the `fingerprint` value, never the bare `text_hash`.",
+      "files": []
+    },
+    {
+      "id": 31,
+      "name": "changed-attachment-offers-three-fixes-changed-text-offers-two",
+      "prompt": "/prompt-library (catalog_version 3). `validate` is ok but lists two prompts in `blocked`: review__missing-tests with `attachment_change: true` (docs/testing-conventions.md edited since approval), and docs__changelog with `attachment_change: false` (its text changed since approval).",
+      "expected_output": "Both are named with slug, version and reasons, treated as data. For review__missing-tests the skill says the attachment changed since approval and offers three fixes: restore the file, review the new attachment as a revision with the same text and origin, or retire. For docs__changelog it offers only restoring the approved record from git or retiring it, never a revision. Nothing is changed without the user's choice.",
+      "files": []
+    },
+    {
+      "id": 32,
+      "name": "upgrade-asks-per-prompt-and-changes-nothing-until-all-confirmed",
+      "prompt": "/prompt-library upgrade (catalog_version 2, no prompt blocked, no record lists attachments). `upgrade` lists two approved prompts: review__missing-tests (origin user) and docs__changelog (origin web), with a `listing_id`. The user answers Keep this origin for the first and Stop for the second.",
+      "expected_output": "The skill shows each prompt's slug, version, status, origin and the first 8 characters of its text_hash, says the origin becomes part of the approval, and asks once per prompt with Keep this origin, Wrong origin and Stop. On Stop for the second prompt it ends the upgrade with nothing changed and never runs `upgrade --expect-listing`; that command runs only after every listed prompt is confirmed.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 20,
-    "declared_scenarios_covered": 16,
-    "uncovered": [
-      "prompt-reviewer gets the review-bundle output inline, never a file path, and attachments are reviewed like the text.",
-      "Every attachment is shown in full before the approval question, and the approval binds the fingerprint (text, origin and attachments), not the bare text hash.",
-      "A prompt whose attachment changed offers restore, review the new attachment (a revision with the same text and origin) or retire; one whose text or origin changed offers only restore or retire.",
-      "upgrade asks once per approved prompt with its origin shown, and changes nothing unless every prompt was confirmed."
-    ],
+    "declared_scenarios_covered": 20,
+    "uncovered": [],
     "gate_to_scenarios": {
       "A catalog that fails validation blocks every change; only an orphan file can be discarded, and only with the user's consent.": [
         7,
@@ -228,6 +251,18 @@
         23,
         24,
         27
+      ],
+      "prompt-reviewer gets the review-bundle output inline, never a file path, and attachments are reviewed like the text.": [
+        29
+      ],
+      "Every attachment is shown in full before the approval question, and the approval binds the fingerprint (text, origin and attachments), not the bare text hash.": [
+        30
+      ],
+      "A prompt whose attachment changed offers restore, review the new attachment (a revision with the same text and origin) or retire; one whose text or origin changed offers only restore or retire.": [
+        31
+      ],
+      "upgrade asks once per approved prompt with its origin shown, and changes nothing unless every prompt was confirmed.": [
+        32
       ]
     }
   }

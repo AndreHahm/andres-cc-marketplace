@@ -140,7 +140,7 @@ class Fixture:
 
     def run(self, *args: str) -> tuple[int, dict]:
         proc = subprocess.run(  # nosec B603 # nosemgrep
-            [sys.executable, str(VALIDATOR), *args],  # nosemgrep
+            [sys.executable, "-I", str(VALIDATOR), *args],  # nosemgrep
             cwd=self.repo,
             capture_output=True,
             text=True,

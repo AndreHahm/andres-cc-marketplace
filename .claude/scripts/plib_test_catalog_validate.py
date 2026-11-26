@@ -1434,6 +1434,7 @@ class Robustness(Base):
     def test_output_is_utf8_even_when_the_console_encoding_is_not(self):
         self.make_active(_body="Do the → thing")
         env = {**os.environ, "PYTHONIOENCODING": "cp1252"}
+        # No -I here, unlike the skill grants: -I ignores PYTHONIOENCODING, which this test sets.
         proc = subprocess.run(  # nosec B603
             [
                 sys.executable,
@@ -2753,15 +2754,35 @@ class OriginAndAttachments(Base):
             ".claude/settings.local.json",
             ".claude/promptlibrary-kit.local.json",
             ".Claude/Settings.json",
-            "CLAUDE.md",
-            "claude.local.md",
         ):
             with self.subTest(rel=rel):
                 self.put(rel, "{}\n")
                 self.assertIn("Claude Code", self.draft_error(attachments=[rel]))
-        self.put("docs/CLAUDE.md")
+        for rel in ("CLAUDE.md", "claude.local.md"):
+            with self.subTest(rel=rel):
+                self.put(rel, "{}\n")
+                self.assertIn("loads as instructions", self.draft_error(attachments=[rel]))
         self.put(".claude/notes/x.md")
-        self.add_draft(attachments=["docs/CLAUDE.md", ".claude/notes/x.md"])
+        self.add_draft(attachments=[".claude/notes/x.md"])
+
+    def test_instruction_files_are_refused_in_every_folder(self):
+        for rel in (
+            "docs/CLAUDE.md",
+            "docs/deep/Claude.Local.md",
+            "AGENTS.md",
+            "sub/agents.md",
+            "sub/AGENTS.override.md",
+            "GEMINI.md",
+            "sub/Gemini.md",
+            ".mcp.json",
+            "sub/.MCP.json",
+        ):
+            with self.subTest(rel=rel):
+                self.put(rel, "{}\n")
+                self.assertIn("loads as instructions", self.draft_error(attachments=[rel]))
+        self.put("docs/CLAUDE.md.txt")
+        self.put("docs/my-agents.md")
+        self.add_draft(attachments=["docs/CLAUDE.md.txt", "docs/my-agents.md"])
 
     def test_a_deleted_approval_field_is_not_an_attachment_change(self):  # F11
         self.make_active()

@@ -1,0 +1,26 @@
+{
+  "eval_id": 30,
+  "skill_path": "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md",
+  "assertions": [
+    {
+      "text": "Shows the prompt text and the full content of both attachments (not a summary) before the approval question",
+      "type": "presence",
+      "target": "plan"
+    },
+    {
+      "text": "States that the approval binds the fingerprint (text, origin and attachments)",
+      "type": "quality",
+      "target": "plan"
+    },
+    {
+      "text": "Uses the `fingerprint` value, not the bare `text_hash`, for record-verification and activate",
+      "type": "functionality",
+      "target": "plan"
+    },
+    {
+      "text": "Asks with AskUserQuestion before recording verification or activating",
+      "type": "functionality",
+      "target": "plan"
+    }
+  ]
+}

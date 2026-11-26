@@ -133,6 +133,13 @@ FORBIDDEN_ROOTS = (
     ".codex",
     ".agents",
 )
+# Common file names an agent loads as instructions or configuration (not a complete list),
+# refused in every folder: a subfolder's CLAUDE.md, AGENTS.md or GEMINI.md can load too, and
+# refusing .mcp.json below the root as well keeps one rule for all of them. AGENTS.override.md is
+# Codex's override file. Compared case-folded.
+INSTRUCTION_FILE_NAMES = frozenset(
+    {"claude.md", "claude.local.md", "agents.md", "agents.override.md", "gemini.md", ".mcp.json"}
+)
 
 
 def _load_token_shapes(path: Path | None = None) -> list[tuple[str, re.Pattern]]:
@@ -947,8 +954,8 @@ def attachment_path(
     parts = [p.casefold() for p in value.split("/")]
     if len(parts) == 2 and parts[0] == ".claude":
         return None, "is a Claude Code configuration file directly in .claude"
-    if parts in (["claude.md"], ["claude.local.md"]):
-        return None, "is the project's Claude Code instruction file"
+    if parts[-1] in INSTRUCTION_FILE_NAMES:
+        return None, "is a file Claude Code, Codex or Gemini loads as instructions or configuration"
     fold = _case_insensitive(project_root)
     if _norm(path, fold) == _norm(catalog_root, fold) or contained(path, catalog_root):
         return None, "is inside the prompt catalog"

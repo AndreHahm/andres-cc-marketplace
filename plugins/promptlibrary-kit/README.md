@@ -91,7 +91,7 @@ run.
 - Attached files (`attachments`, version 3 only) are project files that load with the prompt. Each must be
   a project-relative path written with `/`, inside the project, never through a link, junction, hard link
   or short name, never in `.git`, `.github`, Claude Code's or Codex's configuration folders, a file directly
-  in `.claude` (such as `settings.json`), the `CLAUDE.md` or `CLAUDE.local.md` at the project root, the catalog
+  in `.claude` (such as `settings.json`), a `CLAUDE.md`, `CLAUDE.local.md`, `AGENTS.md`, `AGENTS.override.md`, `GEMINI.md` or `.mcp.json` in any folder, the catalog
   itself or a `.env` file, and UTF-8 text; together at most `attachment_max_kb`. The validator reads each
   one once, checks that the opened file is the one checked, and returns that content: the preview, the run
   and the reviewer all get exactly the fingerprinted content. A changed attachment blocks only its prompt;
@@ -193,7 +193,7 @@ project keeps its verification only where its attached files are identical.
 
 ```bash
 cd plugins/promptlibrary-kit
-uv run --isolated --no-project --no-config python scripts/plib_test_catalog_validate.py
+uv run --isolated --no-project --no-config python -I scripts/plib_test_catalog_validate.py
 ```
 
 Each skill's smoke test checks that its tool grants stay within what its body uses, that the files it
@@ -202,9 +202,9 @@ temp directory. Each exits 0 when every check passes, and was shown to fail on a
 copy:
 
 ```bash
-uv run --isolated --no-project --no-config python skills/prompt-retrieval/scripts/smoke_test.py
-uv run --isolated --no-project --no-config python skills/prompt-execution/scripts/smoke_test.py
-uv run --isolated --no-project --no-config python skills/prompt-library/scripts/smoke_test.py
+uv run --isolated --no-project --no-config python -I skills/prompt-retrieval/scripts/smoke_test.py
+uv run --isolated --no-project --no-config python -I skills/prompt-execution/scripts/smoke_test.py
+uv run --isolated --no-project --no-config python -I skills/prompt-library/scripts/smoke_test.py
 ```
 
 ## License

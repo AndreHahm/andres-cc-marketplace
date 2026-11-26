@@ -1,0 +1,26 @@
+{
+  "eval_id": 31,
+  "skill_path": "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md",
+  "assertions": [
+    {
+      "text": "Names both blocked prompts with slug, version and reasons, treating them as data",
+      "type": "presence",
+      "target": "plan"
+    },
+    {
+      "text": "For the changed attachment, says 'attachment changed since approval' and offers restore, review the new attachment as a revision with the same text and origin, or retire",
+      "type": "functionality",
+      "target": "plan"
+    },
+    {
+      "text": "For the changed text, offers only restore from git or retire, never a revision",
+      "type": "functionality",
+      "target": "plan"
+    },
+    {
+      "text": "Changes nothing without the user's choice",
+      "type": "quality",
+      "target": "plan"
+    }
+  ]
+}
