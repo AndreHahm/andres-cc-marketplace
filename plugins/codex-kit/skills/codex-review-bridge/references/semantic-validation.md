@@ -40,7 +40,7 @@ field is mechanically verified, per each item's own "why this doesn't block toda
   stays here as a placeholder for if a caller ever does define one, not as a gap in current
   enforcement.
 - **`verdict` following the reviewer's own deterministic pass/fail rule** — `verdict` is dropped,
-  not modeled, by `plugin-auditor`'s Adapter (see `codex-backend.md`'s Adapter table) — the one
+  not modeled, by `plugin-auditor`'s Adapter (see `plugin-auditor/references/codex-backend.md`'s Adapter table) — the one
   known consumer of this envelope shape doesn't currently read `verdict` at all, so this check has
   no live consumer requiring it yet.
 - **Undeclared-inspection-limit detection** — would require comparing `inspection_limits` against
@@ -49,7 +49,7 @@ field is mechanically verified, per each item's own "why this doesn't block toda
 - **`--execution-profile`'s actual passed value threaded into `provenance.execution_profile`** — every
   non-`danger-full-access` value currently behaves identically at dispatch time (see `SKILL.md`'s
   Inputs section for `executionProfile`), so there is no behavioral difference for this field to
-  currently disclose beyond what `provenance.isolation_strength` (`plugin-rulebook`'s
-  `references/evidence-schema.md`) already carries.
+  currently disclose beyond what `provenance.isolation_strength`
+  (`plugin-rulebook/references/evidence-schema.md`) already carries.
 
 This validation does not prove the model's reasoning was correct — even once complete, it only proves the response is internally consistent and grounded in files that actually exist. Paired evaluation (comparing this bridge's output against a Claude-native reviewer on the same target) is what supplies the empirical quality check this deterministic pass cannot.

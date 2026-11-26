@@ -21,6 +21,20 @@ Read-only. Operates on Codex CLI's own local state under `~/.codex/`, not on Cla
 2. **Inspect (optional)** — run `inspect-session-file.py` against that ID to read metadata (truncated at 140 chars unless `--full`).
 3. **Hand off** — give the ID to the user; this skill never resumes anything itself, see the relevant skill's own resume path for that.
 
+## When to Use
+
+- Finding a Codex CLI session by query or recency, or locating a session ID to resume manually.
+- Inspecting a Codex session file's metadata (id, timestamp, cwd).
+
+## When NOT to Use
+
+Each pointer below is routing for the caller: this skill stops there and never dispatches the target.
+
+- Continuing a prior task → that component's own resume path: `codex-rescue` takes
+  `--resume`/`--resume-last`; `codex-verify` and `codex-research` take a bare `resume [follow-up]`
+  argument. This skill never resumes anything itself.
+- Looking up a Claude Code session: this skill reads only Codex CLI's own `~/.codex/` state.
+
 ## Find a session by query or recency
 
 ```bash
@@ -46,10 +60,11 @@ Useful alongside `codex-rescue`/`codex-verify`/`codex-research`'s session-resume
 
 **Verify this skill activates on:**
 - "find my most recent codex session about the login refactor"
-- "resume a specific codex session", "inspect a codex session file's metadata"
+- "find the ID of a codex session so I can resume it manually", "inspect a codex session file's metadata"
 
 **Verify it does NOT activate on:**
 - Looking up a Claude Code session (this operates only on Codex CLI's own `~/.codex/` state)
+- "resume the last codex rescue/verify/research task" → that skill's own resume path; this skill never resumes
 
 **Concrete scenarios to check:**
 1. `find-session-id.py --query "<text>"` against a real `~/.codex/history.jsonl` → tab-separated `session_id`/timestamp/truncated-prompt output, never full untruncated prompt text unless `--full` is passed.

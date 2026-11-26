@@ -16,7 +16,21 @@ This skill has no user-facing trigger. It exists so every other codex-kit compon
 
 ## Quick Start
 
-No Quick Start in the usual sense — `disable-model-invocation: true`, this skill is never itself invoked. The "quick start" for a caller is: `Read` the specific reference row below that matches the question at hand, rather than reading this whole table.
+No Quick Start in the usual sense — `disable-model-invocation: true`, this skill is never itself invoked. The "quick start" for a caller is: `Read` the specific Reference Guide row below that matches the question at hand, rather than reading this whole table.
+
+## When to Use
+
+- A codex-kit component needs prompt-composition vocabulary, companion invocation mechanics, the
+  double-check evaluation vocabulary, or Codex CLI and model details: it `Read`s the matching reference
+  file in the Reference Guide below.
+
+## When NOT to Use
+
+- Any conversational request, by the user or the model: `disable-model-invocation: true` keeps this
+  skill out of model selection, and it has no user-facing trigger.
+- Copying a reference file's content into another component: point at the file instead.
+
+## Reference Guide
 
 | Reference | Covers |
 |---|---|
@@ -36,8 +50,13 @@ Any codex-kit component needing prompt-composition guidance, invocation mechanic
 **Verify this skill activates on:**
 - Nothing conversational — `disable-model-invocation: true`, and it has no user-facing trigger by design. Other codex-kit components `Read` its reference files directly; this skill itself is never invoked.
 
+**Verify it does NOT activate on:**
+- Any conversational request, including a question about Codex prompt tags or companion flags —
+  `disable-model-invocation: true` keeps it out of model selection; a codex-kit component reads the
+  reference files instead.
+
 **Concrete scenarios to check:**
-1. Every reference file listed in the table above actually exists at the stated path.
+1. Every reference file listed in the Reference Guide table actually exists at the stated path.
 2. Each reference file's content matches what the table's "Covers" column claims (no stale description after an edit to the underlying file).
 3. A cited symbol/function name (e.g. `handleReviewCommand`, `readTaskPrompt`) in `invocation-protocol.md` resolves to something that actually exists in `scripts/codex-companion.mjs`/`scripts/lib/*.mjs`.
 

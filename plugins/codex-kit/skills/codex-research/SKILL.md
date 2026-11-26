@@ -31,6 +31,28 @@ For code review use `/codex-kit:cdx-review`. For plan verification, use the
 2. **Invoke, wait** (Phases 2-3) — background the Codex call, poll for completion.
 3. **Double-check + report** (Phases 4-5) — synthesize Codex's findings with your own independent analysis, classify agreement, save the report.
 
+## When to Use
+
+- "codex research", "deep dive with codex", "investigate this topic (codex)": open-ended research on a
+  topic, optionally with a context document, synthesized with Claude's own independent analysis.
+- `resume [follow-up]` on a prior research thread.
+
+## When NOT to Use
+
+Each pointer below is routing for the caller: this skill stops there and never dispatches the target.
+
+- Reviewing code changes or diffs → the `/codex-kit:cdx-review` command.
+- Verifying an existing written plan or document → `codex-verify`.
+- Validating Claude's own already-formed analysis, design or recommendation before presenting it →
+  `codex-peer-review`.
+- One concrete repository task for Codex to carry out (implement, fix, or a read-only investigation of
+  that task) → `codex-rescue`. This skill researches a topic or document and ends in cross-model
+  synthesis.
+- Only finding or inspecting a Codex session ID, without continuing the thread →
+  `codex-session-lookup`.
+- The same deep-research workflow naming Gemini, Antigravity or agy instead of Codex → antigravity-kit's
+  `antigravity` skill.
+
 ## Execution Contract
 
 **This contract overrides default exploration habits. Read it before Phase 1.**
@@ -420,6 +442,8 @@ For the full shared gotchas list, read
 **Verify it does NOT activate on:**
 - Reviewing code changes/diffs → `/codex-kit:cdx-review`
 - Verifying an existing written plan/document → `codex-verify`
+- Validating Claude's own already-formed analysis or design → `codex-peer-review`
+- One concrete repository task for Codex to implement, fix or investigate → `codex-rescue`
 - Locating/finding a session ID rather than resuming one → `codex-session-lookup`
 - "deep research with antigravity/gemini/agy" → antigravity-kit's `antigravity` skill instead
   (Gemini/Antigravity/agy named, not Codex)
