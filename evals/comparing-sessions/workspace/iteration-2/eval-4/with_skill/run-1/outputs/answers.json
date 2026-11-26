@@ -1,9 +1,9 @@
 [
-  {"id": "R1", "skill": "comparing-sessions", "reason": "The description's \"Compares two Claude Code sessions ... against a prior persisted report\" phrase matches comparing this session's findings against a prior session's persisted report."},
-  {"id": "R2", "skill": "comparing-sessions", "reason": "The when_to_use phrase \"checking whether a prior session's suggestions were acted on\" matches the request about whether prior suggestions were acted on."},
-  {"id": "R3", "skill": "comparing-sessions", "reason": "The when_to_use phrase \"tracking a trend across multiple sessions\" matches the request to judge a trend across sessions."},
-  {"id": "R4", "skill": "comparing-session-to-specification", "reason": "The description's \"checks whether a Claude Code session's decisions and actions complied with a project's specification, architecture ... document\" matches comparing against an architecture document rather than a prior session."},
-  {"id": "R5", "skill": "analyzing-governance-and-conflicts", "reason": "The description's \"detects conflicts ... session-vs-session\" matches a pure contradiction flag between two sessions, which comparing-sessions' own description points to this skill for."},
-  {"id": "R6", "skill": "reviewing-analysis-findings", "reason": "The description's \"Cross-checks two or more persisted analysis-kit report paths from the same session or scope\" matches reports from several different analysis skills for one scope."},
-  {"id": "R7", "skill": "tracking-recommendation-lifecycle", "reason": "The description's \"recording that a fix landed or was verified\" and status-change-event wording (moving a recommendation to implemented) matches marking REC-12 as implemented."}
+  {"id": "R1", "skill": "comparing-sessions", "reason": "comparing-sessions' description says it compares 'this session vs. a prior persisted report' over 'two persisted analysis-kit reports'."},
+  {"id": "R2", "skill": "comparing-sessions", "reason": "comparing-sessions' when_to_use names 'checking whether a prior session's suggestions were acted on'."},
+  {"id": "R3", "skill": "comparing-sessions", "reason": "comparing-sessions' when_to_use names 'tracking a trend across multiple sessions' and its description cites 'component performance trends'."},
+  {"id": "R4", "skill": "comparing-session-to-specification", "reason": "comparing-session-to-specification's description covers compliance with 'a project's specification, architecture, constitution, or project-brief document'."},
+  {"id": "R5", "skill": "analyzing-governance-and-conflicts", "reason": "comparing-sessions' description routes 'a single contradiction flag' to analyzing-governance-and-conflicts, whose description lists the 'session-vs-session' conflict category."},
+  {"id": "R6", "skill": "reviewing-analysis-findings", "reason": "reviewing-analysis-findings' description cross-checks 'two or more persisted analysis-kit report paths from the same session or scope', and comparing-sessions' description routes 'multiple different skills' reports from one shared scope' there."},
+  {"id": "R7", "skill": "tracking-recommendation-lifecycle", "reason": "tracking-recommendation-lifecycle's description covers 'recording that a fix landed' by appending a status-change event moving a recommendation to 'implemented'."}
 ]

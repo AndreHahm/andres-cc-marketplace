@@ -9,6 +9,6 @@
     {"text": "R5 routed to analyzing-governance-and-conflicts", "type": "functionality", "target": "R5"},
     {"text": "R6 routed to reviewing-analysis-findings", "type": "functionality", "target": "R6"},
     {"text": "R7 routed to tracking-recommendation-lifecycle", "type": "functionality", "target": "R7"},
-    {"text": "At least one of R1-R3's reasons cites the comparing-sessions trigger text (when_to_use in with_skill, the description's 'Use when' clause in baseline) or its 'prior session'/'two points in time' description phrase", "type": "quality", "target": "R1-R3"}
+    {"text": "R2's or R3's reason names the frontmatter field that holds comparing-sessions' 'Use when' clause in that arm: when_to_use in with_skill, description in baseline (a reason that only repeats the request's own words does not pass)", "type": "quality", "target": "R2-R3"}
   ]
 }
