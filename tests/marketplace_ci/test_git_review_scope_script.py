@@ -222,12 +222,17 @@ def test_run_pick_excludes_a_folder_for_this_run():
     [
         "plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs",
         "plugins/codex-kit/scripts/lib/codex-exec.mjs",
+        "plugins/reviewadapters-kit/scripts/rva-dispatch.mjs",
+        "plugins/reviewadapters-kit/assets/rva-review-instructions.md",
+        "plugins/reviewadapters-kit/reviewadapters-kit.settings.json",
         "plugins/git-kit/git-kit.settings.json",
         ".claude/git-kit.local.json",
         "plugins/git-kit/skills/cross-model-review/prompts/review.md",
         "plugins/git-kit/scripts/git-review-scope.py",
         "plugins/git-kit/scripts/git-review-scope-run.sh",
         ".claude/scripts/git-review-scope-run.sh",
+        "plugins/git-kit/scripts/git-review-locate-rva.py",
+        ".claude/scripts/git-review-locate-rva.py",
         ".claude/marketplace-sync.json",
     ],
 )
@@ -237,6 +242,40 @@ def test_protected_paths_cannot_be_excluded_by_config_pick_or_extension(path):
     assert manifest["excluded"] == []
     assert [f["path"] for f in manifest["files"]] == [path]
     assert any("exclusion refused" in line for line in manifest["inspection_limits"])
+
+
+def test_every_script_the_chain_launches_or_loads_is_protected():
+    """A script added to cross-model-review's allowed-tools needs a NEVER_EXCLUDE entry (#916)."""
+    scripts = SCRIPT.parent
+    skill = scripts.parent / "skills/cross-model-review/SKILL.md"
+    front = skill.read_text(encoding="utf-8").split("\n---", 1)[0]
+    allowed = next(line for line in front.splitlines() if line.startswith("allowed-tools:"))
+    launched = set(re.findall(r"scripts/([A-Za-z0-9_.-]+)", allowed))
+    assert {"git-review-locate-rva.py", "git-review-scope-run.sh"} <= launched
+    unknown = {n for n in launched if Path(n).suffix.lower() not in M._SCRIPT_EXTENSIONS}
+    assert not unknown, f"allowed-tools launches a file of no known script type: {unknown}"
+    # Every load today names its sibling inside a quoted string
+    # (`_import_sibling("git_review_common")`, `source ".../git-review-path.sh"`), so any sibling
+    # named in one counts as loaded. That is wider than the quoted-literal loads, but a name built
+    # at run time or an unquoted shell path is missed; preflight_fixtures_test.py's loader scan
+    # flags the Python forms.
+    exts = "|".join(re.escape(e) for e in sorted(M._SCRIPT_EXTENSIONS))
+    siblings = {p.name for p in scripts.iterdir() if p.is_file()}
+    todo, reached = sorted(launched), set()
+    while todo:
+        name = todo.pop()
+        if name in reached:
+            continue
+        reached.add(name)
+        text = (scripts / name).read_text(encoding="utf-8")
+        for other in siblings - reached:
+            stem = re.escape(other.rsplit(".", 1)[0])
+            if re.search(rf"[\"'][^\"'\n]*(?<![\w-]){stem}({exts})?[\"']", text):
+                todo.append(other)
+    assert {"git-review-path.sh", "git-review-scope.py", "git_review_common.py"} <= reached
+    for name in sorted(reached):
+        for prefix in ("plugins/git-kit/scripts/", ".claude/scripts/"):
+            assert M.classify(prefix + name) == "protected", prefix + name
 
 
 def test_every_exclusion_is_disclosed_in_inspection_limits():

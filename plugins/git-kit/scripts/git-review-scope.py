@@ -116,10 +116,12 @@ NEVER_EXCLUDE = tuple(
     re.compile(p, re.IGNORECASE)
     for p in (
         r"(^|/)codex-kit/(.*/)?(scripts|assets)/",
+        r"(^|/)reviewadapters-kit/(.*/)?(scripts|assets)/",
+        r"(^|/)reviewadapters-kit/reviewadapters-kit\.settings\.json\Z",
         r"(^|/)skills/(codex-review-bridge|codex-windows-guardrails)/",
         r"(^|/)git-kit\.(settings|local)\.json\Z",
         r"(^|/)skills/cross-model-review/",
-        r"(^|/)git-review-(scope(-run\.sh|\.py)|copy-index\.sh|write-run-file\.sh|intent-add\.sh|run-dir\.sh|path\.sh|codex-kit\.py|accepted-findings\.py)\Z|(^|/)git_review_common\.py\Z",
+        r"(^|/)git-review-(scope(-run\.sh|\.py)|copy-index\.sh|write-run-file\.sh|intent-add\.sh|run-dir\.sh|path\.sh|codex-kit\.py|accepted-findings\.py|locate-rva\.py)\Z|(^|/)git_review_common\.py\Z",
         r"(^|/)marketplace-sync\.json\Z",
         r"(^|/)\.gitattributes\Z",
         r"(^|/)\.gitmodules\Z",
