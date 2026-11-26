@@ -6,6 +6,7 @@ description: >-
   covering the whole hierarchy. Use when asked to promote an idea to Linear, turn a decision into
   tracked work, accept a proposed Goal into execution, or create a Linear issue explicitly based on
   a named Notion source. Never runs automatically — Notion never creates Linear work on its own.
+  Not the open questions or follow-ups a Report or Decision leaves (open-item-management).
 allowed-tools: Read, Write, Skill(notion-knowledge-management), Skill(linear-work-management), Skill(work-linking), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/wmgt_bridge_caller.py:*), AskUserQuestion
 ---
 
@@ -20,7 +21,8 @@ routing all actual I/O through `notion-knowledge-management` (read the source) a
 
 Promoting Notion knowledge into Linear execution — whenever a Notion record (an Idea, an accepted
 Decision, a proposed Goal) is named as the request's origin, even when the surface phrasing is
-"create a Linear issue."
+"create a Linear issue." Not when the request is about that record's open questions or follow-ups,
+even phrased as "create follow-up issues": those go to `open-item-management` (see below).
 
 ## When NOT to Use
 
@@ -29,6 +31,9 @@ Decision, a proposed Goal) is named as the request's origin, even when the surfa
 - A request to capture new Notion knowledge → `notion-knowledge-management`.
 - A request to link an *already-promoted* Notion record to its Linear counterpart, with no new
   promotion happening → `work-linking`.
+- Revalidating and dispositioning the open questions and follow-ups surfaced from a Notion Report or
+  Decision, or from a completed Linear Issue → `open-item-management`. This skill promotes the Idea,
+  Decision or Goal itself into a Linear hierarchy, not the loose ends it leaves.
 
 See Testing & Validation below for the concrete trigger phrases this section summarizes.
 
@@ -107,6 +112,8 @@ or removed after preview) needs a fresh approval, not an extension of the old on
 - "capture this as an idea" → `notion-knowledge-management`
 - "link this idea to the Linear issue it became" (the promotion already happened; this is a
   linking/repair request, not a new promotion) → `work-linking`
+- "disposition the follow-ups from this decision" → `open-item-management`
+- "create follow-up issues from this Notion decision" → `open-item-management`
 
 **Last dated run record:** evals/idea-to-implementation/workspace/iteration-3/ (2026-09-12) — closed
 the 2 uncovered trigger phrases ("accept this proposed goal into execution",
