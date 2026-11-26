@@ -54,7 +54,8 @@ a completed Linear Issue (including one Wave 2's `merge-to-completion` just rout
   Report or Decision, or from one completed Linear Issue, never from a report on disk: open items in
   a `.claude/output` report with no Notion record go to `syncing-open-items`, which works by report
   folder and proposes new Linear issues rather than dispositioning one report.
-- Filing, triaging, relating or resolving a GitHub issue → git-kit's `github-issue-lifecycle`. This
+- Filing, triaging, relating or resolving a GitHub issue → git-kit's `github-issue-lifecycle`, when
+  git-kit is installed. This
   skill creates its follow-ups only in Linear and never files a GitHub issue, even for an item from a
   Notion Report or Decision.
 
