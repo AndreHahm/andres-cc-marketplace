@@ -1,0 +1,74 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4706388064",
+      "line": 25,
+      "note": "Fixed in 3e336794: linear-work-management now routes a Decision's own follow-ups to open-item-management",
+      "path": "plugins/workmanagement-kit/skills/idea-to-implementation/SKILL.md",
+      "pr": 910,
+      "recorded_at": "2026-11-26T09:53:22+00:00",
+      "rule": "devin-review"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "claude-delta-open-item-management-116",
+      "line": 116,
+      "note": "Fixed in 3e336794: the GitHub-issue line now says when git-kit is installed",
+      "path": "plugins/workmanagement-kit/skills/open-item-management/SKILL.md",
+      "pr": 910,
+      "recorded_at": "2026-11-26T09:53:23+00:00",
+      "rule": "claude-delta-review"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "codex-ci-33418050aa4203f439790b3a3866c4f5-C1-line-count",
+      "line": 42,
+      "note": "301 lines, one over the R13 soft limit; kept as a disclosed residual",
+      "path": "plugins/git-kit/skills/github-issue-lifecycle/SKILL.md",
+      "pr": 910,
+      "recorded_at": "2026-11-26T09:53:23+00:00",
+      "rule": "C1-line-count"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "codex-ci-33418050aa4203f439790b3a3866c4f5-dependency-graph",
+      "line": 42,
+      "note": "When-NOT-to-Use pointers, not Skill() dispatches; no grant links the two skills; reciprocal exclusions are required by R36",
+      "path": "plugins/git-kit/skills/github-issue-lifecycle/SKILL.md",
+      "pr": 910,
+      "recorded_at": "2026-11-26T09:53:22+00:00",
+      "rule": "dependency-graph"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-ci-8dc76194c588b7d850228b217bc3783f-R36",
+      "line": 49,
+      "note": "Scope sentence now names a Report, Decision or completed Linear Issue (round 2 fix commit)",
+      "path": "plugins/workmanagement-kit/skills/open-item-management/SKILL.md",
+      "pr": 910,
+      "recorded_at": "2026-11-26T09:59:14+00:00",
+      "rule": "plugin-rulebook:R36"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "codex-ci-954e02d589d80a2312f8ac31e5ea9218-bidi",
+      "line": 47,
+      "note": "linear-work-management grants no Skill(); only open-item-management dispatches it. The pointer back is a When NOT to Use line that predates this PR",
+      "path": "plugins/workmanagement-kit/skills/linear-work-management/SKILL.md",
+      "pr": 910,
+      "recorded_at": "2026-11-26T09:59:25+00:00",
+      "rule": "bidirectional-dependency"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "codex-ci-f354e3da816e4035c36244338417ac10-dependency-graph",
+      "line": 25,
+      "note": "When-NOT-to-Use pointers, not Skill() dispatches; idea-to-implementation grants no Skill(open-item-management); reciprocal exclusions are required by R36",
+      "path": "plugins/workmanagement-kit/skills/idea-to-implementation/SKILL.md",
+      "pr": 910,
+      "recorded_at": "2026-11-26T09:53:22+00:00",
+      "rule": "dependency-graph"
+    }
+  ]
+}
