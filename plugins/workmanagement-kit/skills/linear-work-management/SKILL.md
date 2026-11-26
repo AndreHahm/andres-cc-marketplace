@@ -35,14 +35,15 @@ update write, slug resolution, the dedup lookup, update scope and label reads). 
 - "Capture this as an idea" or any Notion-side knowledge request → `notion-knowledge-management`.
 - A request that names a Notion Idea/Decision/Goal as its origin (e.g. "create a Linear issue
   based on this idea/decision") → `idea-to-implementation`, which owns the promotion decision; this
-  skill only executes the resulting creates once that skill approves them.
+  skill only executes the resulting creates once that skill approves them. A request about a
+  Decision's own open questions or follow-ups goes to `open-item-management` instead (below).
 - A request to summarize progress as a dated Notion snapshot, or to capture an outcome or learning
   → `status-and-learning` (this skill only answers a live read in chat).
 - Merging a PR and deciding whether its Issue closes → `merge-to-completion` (this skill only
   executes the approved closure write).
 - Starting implementation on an accepted Issue (readiness check and branch) → `work-to-development`;
   taking an accepted Issue all the way to merge → `linear-github-lifecycle`.
-- Dispositioning open questions or follow-ups from a Report or completed Issue →
+- Dispositioning open questions or follow-ups from a Report, Decision or completed Issue →
   `open-item-management`.
 - A request that originates from another plugin's workflow, envelope or not (batch, query, update) is outside this skill: the host routes it to `plugin-integration-intake` first, and only that gate's already-validated delegation reaches here; a user's own typed request stays. This is host routing, not a callable dependency: this skill never invokes `plugin-integration-intake`, and a delegated write is never re-routed back to it.
 - Repairing Linear/GitHub drift → `linear-github-reconciliation` (a material scope, priority or
