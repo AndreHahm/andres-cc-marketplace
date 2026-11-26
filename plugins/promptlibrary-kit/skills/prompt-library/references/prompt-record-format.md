@@ -83,7 +83,8 @@ Linux checkout therefore agree, and any edit to the text makes an earlier hash s
 
 The fingerprint that `verification.quality` (and `import`) holds is the text hash in version 1 and 2. In
 version 3 it is a SHA-256 over a tagged JSON object binding `core` (the hash of the text hash and the
-`origin`) and the list of attachments, each as its path and the text hash of its content. So an edited
+`origin`) and the list of attachments, each as its path and the SHA-256 of its content with line endings normalized to LF (blank lines at
+its start or end are kept, unlike the text hash). So an edited
 text, a relabelled origin, an edited, added, removed or reordered attachment, or one that is missing,
 unreadable or over the limit, all change it; line endings alone never do. `validate`, `show`, `draft` and
 `update-draft` report it as `fingerprint`.
