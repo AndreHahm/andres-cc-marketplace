@@ -121,7 +121,7 @@ Not covered, and accepted:
   hook compares text only. The same goes for the hash-form short name Windows uses after several collisions.
 - It is not documented that `ask` always prompts in `bypassPermissions` mode, or for a protected path in `auto` mode
   (where Claude Code's classifier may decide first). Neither was checked live.
-- The hook fails open if it cannot start, times out, or cannot read its input (`cat` is found through `PATH`). `onError` is `warn`, as in this repository's other hooks, and
+- The hook fails open if it cannot start, times out, or cannot read its input (`cat` is run by absolute path, never found through `PATH`). `onError` is `warn`, as in this repository's other hooks, and
   `onFailure` (Claude Code's hooks reference) is unset, because `block` would stop every `Write` and `Edit` in the
   project when the hook is broken. Claude Code's own protection of `.claude/` remains.
 - The hook is active in any project that installs this plugin.
