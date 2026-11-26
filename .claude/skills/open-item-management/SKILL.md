@@ -46,7 +46,7 @@ a completed Linear Issue (including one Wave 2's `merge-to-completion` just rout
 - A direct create or refine of a Linear Issue with no Notion page, Report, Decision or completed Issue
   as its source → `linear-work-management`. Promoting a Notion Idea, Decision or Goal itself into
   Linear work → `idea-to-implementation`; this skill handles only the open questions and follow-ups
-  surfaced from a Report or Decision, not the promotion of the Decision itself.
+  surfaced from a Report, Decision or completed Linear Issue, not the promotion of the Decision itself.
 - Bulk or periodic collection of open items from `.claude/output` reports, GitHub issues and PR
   follow-ups, planned as batches and submitted to Linear → workledger-kit's `syncing-open-items`
   (and `open-item-digest` for the digest), when workledger-kit is installed; without it, no installed
