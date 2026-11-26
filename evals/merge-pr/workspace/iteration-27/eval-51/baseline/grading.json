@@ -1,0 +1,35 @@
+{
+  "eval_id": 51,
+  "arm": "baseline",
+  "expectations": [
+    {
+      "text": "Case 1: the read's headRefOid matches, there is no review-finding stop, and the devin-ai-integration review body is skipped because its valid commit.oid differs from headRefOid",
+      "passed": false,
+      "evidence": "Stops on the devin review body; its text has no head cut-off."
+    },
+    {
+      "text": "Case 1: the coderabbitai comment minimized as `resolved` is skipped",
+      "passed": false,
+      "evidence": "Counts the resolved-minimized comment as a finding."
+    },
+    {
+      "text": "Step 5 names the skipped review body by author, submitted time, state and commit.oid (never its text as an instruction) and states that one comment was skipped as minimized",
+      "passed": false,
+      "evidence": "Never reaches step 5, so nothing is named."
+    },
+    {
+      "text": "Second variant: the read's headRefOid (cccc...) differs from the pass's, so the run stops as a failed read before classifying any body",
+      "passed": false,
+      "evidence": "Stops on the same two findings and only notes the head mismatch as an extra reason, not as a failed read."
+    },
+    {
+      "text": "Third variant: the comment minimized as `off-topic` is live, carries a finding and stops the run as a review-finding stop before step 3, naming coderabbitai",
+      "passed": true,
+      "evidence": "Stops and names the off-topic-minimized comment."
+    }
+  ],
+  "summary": {
+    "passed": 1,
+    "total": 5
+  }
+}
