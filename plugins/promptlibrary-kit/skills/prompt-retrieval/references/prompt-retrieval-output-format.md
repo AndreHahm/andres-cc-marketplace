@@ -14,7 +14,8 @@ asked for any other status, as well or only.
 |---|---|---|---|---|---|---|
 
 `Verified` is `yes` only when the validator reports `verified: true`: every required fingerprint is
-present and matches the current text, origin and attachments. It means "unchanged since it was recorded",
+present and matches the current text, origin and attachments (the text only, below `catalog_version` 3).
+It means "unchanged since it was recorded",
 not "reviewed". Sort by area,
 then name. A record in `blocked` has `verified: no` and the note "changed since its approval" (or
 "attachment changed since approval" when its `attachment_change` is true) with its reasons. A record with `retired: true` keeps its status `historical`; show `historical (retired)` in the Status column. For a search, add a `Matched in` column: `label` when `matched_in` names any field other than
@@ -29,7 +30,7 @@ Prerequisites: <prerequisites or "none stated">
 Boundaries: <boundaries or "none stated">
 References: <references, or "none">
 Source: <source_ref values for session and web origin, or "n/a">
-Attachments: <each path with its size in bytes, or "none">
+Attachments: <each path with its size in bytes, or "none"; each `unloaded_attachments` path marked "not loaded (catalog below version 3)">
 ```
 
 When `hidden_characters` is not empty, add one line per entry before the fenced block:

@@ -2550,6 +2550,28 @@ class OriginAndAttachments(Base):
         res = self.add_draft(attachments=["docs/key.md"])  # user text: a warning to show
         self.assertEqual({h["path"] for h in res["attachment_screen"]}, {"docs/key.md"})
 
+    def test_register_warns_about_secrets_in_a_user_attachment(self):
+        self.put("docs/key.md", f"token = {FAKE_KEY}\n")
+        self.assertEqual(self.run_cli("init")[0], 0)
+        (self.root / SLUG).mkdir(parents=True)
+        (self.root / SLUG / "p000000000001.md").write_text(
+            record(attachments=["docs/key.md"]), encoding="utf-8"
+        )
+        code, res = self.run_cli("register", f"{SLUG}/p000000000001.md")
+        self.assertEqual(code, 0, res)
+        self.assertEqual({h["path"] for h in res["attachment_screen"]}, {"docs/key.md"})
+
+    def test_attachments_listed_before_version_3_are_reported_as_not_loaded(self):
+        self.put("docs/x.md")
+        self.legacy_catalog()
+        self.make_active(attachments=["docs/x.md"])
+        rec = self.run_cli("show", SLUG)[1]["records"][0]
+        self.assertEqual(rec["attachment_content"], [])
+        self.assertEqual(rec["unloaded_attachments"], ["docs/x.md"])
+        self.make_active("p000000000002", slug="docs__changelog")
+        rec = self.run_cli("show", "docs__changelog")[1]["records"][0]
+        self.assertEqual(rec["unloaded_attachments"], [])
+
     # ------------------------------------------------------------- CFG-6: size limit
     def write_local(self, data, track=False):
         local = self.proj / ".claude" / "promptlibrary-kit.local.json"
