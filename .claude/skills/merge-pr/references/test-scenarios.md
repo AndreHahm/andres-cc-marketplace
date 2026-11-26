@@ -165,17 +165,26 @@ a fresh `gh repo view` (skill-reviewer M1, 2026-08-31):**
   unaffected (no stop, no bypass needed) — this value is informational only, never a gate on its own
 - PR has zero review threads, or every thread is resolved → the `reviewThreads` count resolves to `0`;
   step 5 still states "0 unresolved review threads" explicitly
-- PR has N unresolved review threads across more than one GraphQL page (> 100 total threads) → the loop
-  continues while `pageInfo.hasNextPage` is `true`, summing `isResolved: false` nodes across every page,
-  not just the first
+- PR has N unresolved review threads across more than one page (> 50 total threads, the page size of
+  `git-review-api.py threads`) → the loop continues while `pageInfo.hasNextPage` is `true`, passing the
+  previous `endCursor` as `--cursor`, summing `isResolved: false` nodes across every page, not just the first
 - Either disclosure is non-zero/non-clean, `--stop-on-review-findings` not given → readiness still
   reaches step 5's confirmation normally; neither disclosure ever causes step 2 to stop the way a
   failing required check does
-- The `reviewThreads` query's own marker write (`gh-pr-review`) is immediately followed by the `gh api
-  graphql` call on every page, including the second and later pages of a paginated result — never reused
-  from an earlier page's marker
-- The `reviewThreads` query fails on any page → step 5 states the disclosure as "could not be
-  determined," never silently as `0`
+- The `reviewThreads` query's own marker write (`gh-pr-review-wrapper`) is immediately followed by the
+  `git-review-api.py threads` call on every page, including the second and later pages of a paginated
+  result — never reused from an earlier page's marker, and never a raw GraphQL call (security-review m4,
+  PR #909)
+- The `reviewThreads` query fails on any page, or the script exits non-zero (no marker, a refused
+  cursor) → step 5 states the disclosure as "could not be determined," never silently as `0`, and step
+  2's "Review outcomes recorded" check stops as undetermined
+- `CLAUDE_PLUGIN_ROOT` is empty and the PR's changed files hold `.claude/scripts/git-review-api.py` (or
+  the checkout's copy differs from the base branch's, or cannot be compared) → say so and wait for an
+  `AskUserQuestion` approval before the first `threads` call; on no approval, the count and the
+  review-outcomes check stop as undetermined; after a push, compare again before the next call
+- A page's `endCursor` fails the cursor pattern → no marker is written for that page and no call is made
+- `headRefOid` from step 1, step 2's rerun re-fetch or step 4(b)'s resolve is not 40 lowercase hex
+  characters → the run stops before that value reaches any command (PR #909 round-2 sibling sweep)
 
 **Verify the opt-in `--stop-on-review-findings` stop (issue #732):**
 - Flag given, first step-2 pass finds 0 unresolved threads and no finding in any conversation comment or

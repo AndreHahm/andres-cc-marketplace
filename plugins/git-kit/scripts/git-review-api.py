@@ -6,6 +6,8 @@ The skill used to hold broad `gh api graphql`, `gh api .../pulls/*/comments`, `g
 `mergePullRequest`, arbitrary comment bodies and, via GNU sed's `e` command, arbitrary commands.
 This script replaces them with fixed subcommands. Each runs exactly one `gh` (or `git`) call built
 from a static argv (no shell), so no caller input can add an argument or swap the GraphQL document.
+merge-pr's step 2 reads review threads through `threads` too, instead of a `gh api graphql` grant
+(PR #909, security-review m4).
 
 A body file is never handed to `gh` as a path: it must not be a symlink, must resolve to a regular
 file you own below a `scratchpad` directory of <temp>/claude-<uid>, is opened without following a
@@ -427,7 +429,7 @@ def _is_wrapper_marker(fields: list[str]) -> bool:
 
 def _missing_marker_message() -> str:
     return (
-        f"no {GUARD} marker. Run `git-write-marker.sh {GUARD} handling-review-findings` in its "
+        f"no {GUARD} marker. Run `git-write-marker.sh {GUARD} <calling-skill>` in its "
         "own Bash call immediately before this one (the marker is single-use, 60 seconds)."
     )
 

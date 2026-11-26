@@ -1,0 +1,31 @@
+{
+  "eval_id": 49,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Reads the review threads with `git-review-api.py threads --owner octo --repo widgets --pr 953` and never sends a raw `gh api graphql` call",
+      "passed": false,
+      "evidence": "answer.md:24 and :48 send raw `gh api graphql ... reviewThreads(first: 100 ...)` calls (the pre-change skill's route)"
+    },
+    {
+      "text": "Writes a fresh `gh-pr-review-wrapper` marker (not `gh-pr-review`) in its own call immediately before each of the two page calls",
+      "passed": false,
+      "evidence": "answer.md:19 and :43 write `gh-pr-review merge-pr`, the non-wrapper type"
+    },
+    {
+      "text": "For the second page, checks the first page's endCursor against the base64 cursor pattern before writing that page's marker, and passes it single-quoted as `--cursor`",
+      "passed": false,
+      "evidence": "answer.md:39 checks the cursor before the next marker, but :48 passes it as `-f cursor='...'`, not `--cursor`"
+    },
+    {
+      "text": "Stops paging when hasNextPage is false (exactly two thread calls)",
+      "passed": true,
+      "evidence": "answer.md:61 'The loop ends. It made two graphql calls'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 1,
+    "pass_rate": 0.25
+  }
+}
