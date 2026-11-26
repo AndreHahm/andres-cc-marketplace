@@ -180,8 +180,9 @@ Eval 4 is a routing check from frontmatter alone (the activation lists above plu
 update, across five analysis-kit skills), added when the "Use when" clause moved to `when_to_use`.
 
 **Last dated run record:** 2026-11-26 -- eval 4, `evals/comparing-sessions/workspace/iteration-2/`:
-this text vs. main's, 3 runs per arm, both 24/24 (no regression, no gain; an agent reading files weighs
-both fields alike, so the platform's weighting of `description` over `when_to_use` is not measured).
+this text vs. main's, 3 runs per arm, both 24/24 (no regression, no gain). Every with_skill run named
+`when_to_use` for the moved triggers, every baseline run `description`. An agent reading files weighs
+both fields alike, so the platform's weighting of `description` over `when_to_use` is not measured.
 Earlier: 2026-09-11 -- `scripts/smoke_test.py`, all 5 checks passing; evals 1-3 above.
 
 ## Reference Guide
