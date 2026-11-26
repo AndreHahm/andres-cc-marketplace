@@ -69,9 +69,12 @@ Each entry is a path relative to the project root, written with `/`: no leading 
 backslash, empty, `.` or `..` part, no character Windows refuses or part ending in a dot or space, and no
 Windows device name. It must resolve inside the project, never through a link, junction or hard link, and
 never at or under `.git`, `.github`, a Claude Code or Codex configuration folder (`FORBIDDEN_ROOTS`), the
-catalog root, or a file named `.env` or `.env.*`. The file must be UTF-8 text without NUL characters, and
-all of one prompt's attachments together must fit `attachment_max_kb` (16, 32 or 64 KB, default 32). A
-draft that breaks a rule is refused with the reason before anything is filed. Order matters: it is the
+catalog root, a file directly in `.claude` (such as `settings.json`), the `CLAUDE.md` or
+`CLAUDE.local.md` at the project root (one in a subfolder is not refused), or a file named `.env` or
+`.env.*`. The file must be UTF-8 text without NUL characters,
+and all of one prompt's attachments together must fit `attachment_max_kb` (16, 32 or 64 KB, default 32),
+counted with line endings normalized to LF. A draft that breaks a rule is refused with the reason before
+anything is filed, by `draft` and by `register` alike. Order matters: it is the
 order they are shown and loaded in, and it is part of the fingerprint.
 
 ## Hash definition
@@ -86,7 +89,8 @@ version 3 it is a SHA-256 over a tagged JSON object binding `core` (the hash of 
 `origin`) and the list of attachments, each as its path and the SHA-256 of its content with line endings normalized to LF (blank lines at
 its start or end are kept, unlike the text hash). So an edited
 text, a relabelled origin, an edited, added, removed or reordered attachment, or one that is missing,
-unreadable or over the limit, all change it; line endings alone never do. `validate`, `show`, `draft` and
+unreadable or over the limit, all change it; line endings alone never do, and neither does a UTF-8 byte
+order mark at the start of a file (it is read as UTF-8 with the mark dropped; PR #914 review, declined). `validate`, `show`, `draft` and
 `update-draft` report it as `fingerprint`.
 
 An `active` or `inactive` record whose fingerprint no longer matches is blocked on its own: `validate`

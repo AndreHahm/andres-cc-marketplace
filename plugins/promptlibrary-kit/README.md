@@ -90,7 +90,8 @@ run.
   hand-edited `origin` still skips the import screen and the import hash.
 - Attached files (`attachments`, version 3 only) are project files that load with the prompt. Each must be
   a project-relative path written with `/`, inside the project, never through a link, junction, hard link
-  or short name, never in `.git`, `.github`, Claude Code's or Codex's configuration folders, the catalog
+  or short name, never in `.git`, `.github`, Claude Code's or Codex's configuration folders, a file directly
+  in `.claude` (such as `settings.json`), the `CLAUDE.md` or `CLAUDE.local.md` at the project root, the catalog
   itself or a `.env` file, and UTF-8 text; together at most `attachment_max_kb`. The validator reads each
   one once, checks that the opened file is the one checked, and returns that content: the preview, the run
   and the reviewer all get exactly the fingerprinted content. A changed attachment blocks only its prompt;
@@ -102,7 +103,8 @@ run.
 - The validator blocks secrets in `session`, `web`, `claude` and `codex` text itself (detect and block,
   never rewrite, never echoed), not just in the skill's step order. `user` text is only warned.
 - `record-verification`, `activate` and `finalize` take `--expect-sha256`, the fingerprint the user was
-  shown, and refuse if the text, origin or an attachment changed; `retire` and `discard-draft` take the
+  shown, and refuse if the text changed, and from catalog version 3 on also the origin or an attachment
+  (an older catalog's fingerprint is the text hash); `retire` and `discard-draft` take the
   text hash, so they still work when an attachment cannot be read. `discard-draft` deletes only a draft; like
   `discard-orphan`, it has no backing hook, so the validator's own checks are its guard (owner decision
   2026-11-24).
@@ -141,8 +143,8 @@ Two settings: the catalog root path and the attachment size limit.
 - `.claude/promptlibrary-kit.local.json` (optional, untracked, per project): overrides either. The
   `catalog_root` override is honored only when git does not track the file, and the path must resolve
   inside the project root. `attachment_max_kb` is the total for all of one prompt's attachments, `16`, `32`
-  or `64`; any other value is ignored with a warning. A copy git tracks, one reached through a link or one
-  outside a git repository may only lower it.
+  or `64`; any other value is ignored with a warning. A copy git tracks, or one outside a git repository,
+  may only lower it. A copy reached through a link is ignored entirely.
 - This repository keeps a hand-maintained twin of the defaults at `.claude/promptlibrary-kit.settings.json`
   for its own dogfooding. The plugin-root file is canonical; no tooling checks the pair, so copy a change
   to the twin in the same commit and diff them.
@@ -159,10 +161,12 @@ project keeps its verification only where its attached files are identical.
 ## Known limitations
 
 - Attachment checks fail closed: a file with more than one name (a hard link, as some package stores
-  create), a path under a network drive, a mount without a drive letter, a non-ASCII name that macOS
+  create), a path under a network drive, a Windows folder mount (no drive letter), a non-ASCII name that macOS
   stores in another Unicode form, or a platform where the opened file's path cannot be asked for (other
   than Windows, Linux and macOS) is refused. A parent folder swapped for a link to a network share during
   the read still opens that connection before the check refuses the file (review 2026-11-26, accepted).
+  On Linux and macOS a mount the user creates inside the project (a bind or network mount) is not a link,
+  so a file under it is read like any other project file (PR #914 review, accepted).
 - `prerequisites`, `boundaries`, `references` and `name` are not part of the fingerprint: they are shown,
   never run, and can change without blocking a prompt.
 - The validator tests run on Windows locally and on Linux (Ubuntu) in the repository's CI, which also runs

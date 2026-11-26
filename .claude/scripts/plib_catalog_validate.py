@@ -552,13 +552,16 @@ def hash_problems(meta: dict) -> list[str]:
 
 def attachment_only_change(meta: dict) -> bool:
     """True when a blocked version 3 prompt's text and origin still match its approval, so only an
-    attached file changed (CAT-6, attachments amendment: it can be revised to take the new file)."""
+    attached file changed (CAT-6, attachments amendment: it can be revised to take the new file).
+    Every approval field must still be present and well formed: a deleted or broken one is a record
+    edit, not an attachment change."""
     ver = meta.get("verification")
-    return (
-        meta.get("_version", 1) >= 3
-        and isinstance(ver, dict)
-        and ver.get("core") == core_hash(meta)
-    )
+    if meta.get("_version", 1) < 3 or not isinstance(ver, dict):
+        return False
+    kinds = ["quality", "core"] + (["import"] if meta.get("origin") in ("session", "web") else [])
+    if not all(isinstance(ver.get(k), str) and HASH_RE.fullmatch(ver[k]) for k in kinds):
+        return False
+    return ver["core"] == core_hash(meta)
 
 
 def missing_verification(meta: dict) -> list[str]:
@@ -623,7 +626,9 @@ def validate_record(meta: dict, version: int) -> list[str]:
         errs.append("version 1 must not have previous_id")
     needs_ref = meta["origin"] in ("session", "web")
     ref = meta.get("source_ref")
-    if needs_ref:
+    if meta["status"] == "historical":
+        pass  # a retired relabel keeps its mismatched source_ref; it never runs again
+    elif needs_ref:
         keys = ("session_id", "turns") if meta["origin"] == "session" else ("url", "retrieved_on")
         if not isinstance(ref, dict) or any(not ref.get(k) for k in keys):
             errs.append(f"source_ref requires {' and '.join(keys)} for origin {meta['origin']}")
@@ -939,6 +944,11 @@ def attachment_path(
     reason = _placement_problem(path, project_root)
     if reason:
         return None, reason
+    parts = [p.casefold() for p in value.split("/")]
+    if len(parts) == 2 and parts[0] == ".claude":
+        return None, "is a Claude Code configuration file directly in .claude"
+    if parts in (["claude.md"], ["claude.local.md"]):
+        return None, "is the project's Claude Code instruction file"
     fold = _case_insensitive(project_root)
     if _norm(path, fold) == _norm(catalog_root, fold) or contained(path, catalog_root):
         return None, "is inside the prompt catalog"
@@ -1048,7 +1058,9 @@ def read_attachments(meta: dict, ctx: AttachContext | None) -> tuple[list[dict],
             problems.append(f"attachment {value}: {reason}")
             continue
         try:
-            raw = _read_once(path, ctx.project_root, max(limit - used, 0))
+            # The limit counts the LF-normalized content, the content hashed (LIF-2): CRLF can at
+            # most double the bytes on disk, so read up to twice the room left.
+            raw = _read_once(path, ctx.project_root, 2 * max(limit - used, 0))
         except FileNotFoundError:
             problems.append(f"attachment {value}: missing")
             continue
@@ -1058,17 +1070,15 @@ def read_attachments(meta: dict, ctx: AttachContext | None) -> tuple[list[dict],
         except OSError as exc:
             problems.append(f"attachment {value}: cannot be read ({exc.strerror or exc})")
             continue
-        if used + len(raw) > limit:
-            size = None
-            with contextlib.suppress(OSError):
-                size = os.lstat(path).st_size
+        counted = len(raw.replace(b"\r\n", b"\n").replace(b"\r", b"\n"))
+        if used + counted > limit:
             problems.append(
-                f"attachment {value}: {size if size is not None else 'too many'} bytes, with "
-                f"{used} bytes attached before it: over the {ctx.limit_kb} KB limit "
+                f"attachment {value}: more than {limit - used} bytes with line endings normalized, "
+                f"with {used} bytes attached before it: over the {ctx.limit_kb} KB limit "
                 f"({limit} bytes for all attachments together)"
             )
             continue
-        used += len(raw)
+        used += counted
         try:
             content = raw.decode("utf-8-sig")
         except UnicodeDecodeError:
@@ -1275,9 +1285,11 @@ def load_catalog(root: Path, ctx: AttachContext | None = None) -> tuple[dict, di
         _with_attachments(meta, ctx)
         structural, changed = approval_problems(meta)
         if changed:
-            # An edited text can also break the text limits. That belongs to the same prompt.
-            changed += [p for p in problems if p.startswith("prompt_text ")]
-            problems = [p for p in problems if not p.startswith("prompt_text ")]
+            # An edited text can also break the text limits, and a relabelled origin can leave a
+            # source_ref that no longer fits it. Both belong to the same prompt.
+            own = ("prompt_text ", "source_ref ")
+            changed += [p for p in problems if p.startswith(own)]
+            problems = [p for p in problems if not p.startswith(own)]
             meta["_blocked"] = changed
             meta["_attachment_change"] = attachment_only_change(meta)
         errs.extend(f"{rel}: {p}" for p in [*problems, *structural])
@@ -1410,19 +1422,22 @@ def summarize(meta: dict) -> dict:
         "attachment_change": meta.get("_attachment_change", False),
         "retired": meta.get("_retired", False),
         "fingerprint": current_fingerprint(meta),
-        "attachments": [a["path"] for a in meta.get("_attachments", [])],
+        # every listed path, loaded or not: a revision copies this list (missing files included)
+        "attachments": _listed_attachments(meta),
         "attachment_problems": meta.get("_attachment_problems", []),
         "unloaded_attachments": _unloaded_attachments(meta),
     }
 
 
+def _listed_attachments(meta: dict) -> list[str]:
+    paths = meta.get("attachments")
+    return [p for p in paths if isinstance(p, str)] if isinstance(paths, list) else []
+
+
 def _unloaded_attachments(meta: dict) -> list[str]:
     """Attachments a record lists in a catalog below version 3, where they are never loaded: the
     preview names them so nobody approves a run expecting files that will not reach the session."""
-    paths = meta.get("attachments")
-    if meta.get("_version", 1) >= 3 or not isinstance(paths, list):
-        return []
-    return [p for p in paths if isinstance(p, str)]
+    return [] if meta.get("_version", 1) >= 3 else _listed_attachments(meta)
 
 
 def _attachment_view(meta: dict) -> list[dict]:
@@ -1547,6 +1562,7 @@ def cmd_show(args) -> dict:
             )
         _refuse_blocked(records, args.slug)
     info["ok"] = True
+    screened = [_screened_attachments(m) for m in shown]
     info["records"] = [
         {
             **summarize(m),
@@ -1558,13 +1574,20 @@ def cmd_show(args) -> dict:
             "source_ref": m.get("source_ref"),
             "prompt_text": m["_body"],
             "text_hash": text_hash(m["_body"]),
-            "attachment_content": _attachment_view(m),
+            **view,
         }
-        for m in shown
+        for m, view in zip(shown, screened, strict=True)
     ]
     for entry, m in zip(info["records"], shown, strict=True):
         entry["hidden_characters"], entry["hidden_characters_truncated"] = hidden_characters(
             m["_body"]
+        )
+    withheld = sorted({h["path"] for m in shown if screened_out(m) for h in attachment_screen(m)})
+    if not args.history and withheld:
+        # a run must never start without the attachments its approval covers
+        raise CatalogError(
+            f"{args.slug}: possible secret or personal data found in an attachment "
+            f"({', '.join(withheld)}); it does not run"
         )
     return info
 
@@ -1580,6 +1603,7 @@ def cmd_review_bundle(args) -> dict:
     _refuse_blocked(records, meta["slug"], allow_attachment=True)
     if meta["_attachment_problems"]:
         raise CatalogError("; ".join(meta["_attachment_problems"][:4]))
+    _assert_clean(meta)  # the files may have changed since the draft was filed
     hidden, truncated = hidden_characters(meta["_body"])
     fields = ("slug", "internal_id", "version", "name", "area", "short_description", "origin")
     info.update(
@@ -1593,6 +1617,9 @@ def cmd_review_bundle(args) -> dict:
         hidden_characters=hidden,
         hidden_characters_truncated=truncated,
         attachment_content=_attachment_view(meta),
+        attachment_screen=attachment_screen(meta),  # warnings for user text (SCR-2)
+        attachments=_listed_attachments(meta),
+        unloaded_attachments=_unloaded_attachments(meta),
         fingerprint=meta["_fingerprint"],
         text_hash=text_hash(meta["_body"]),
     )
@@ -1717,6 +1744,25 @@ def attachment_screen(meta: dict) -> list[dict]:
         for a in meta.get("_attachments", [])
         for hit in screen_text(a["content"])
     ]
+
+
+def screened_out(meta: dict) -> bool:
+    """True when a session, web, claude or codex record's attachment matches the secret screen."""
+    return meta.get("origin") in SCREENED_ORIGINS and bool(attachment_screen(meta))
+
+
+def _screened_attachments(meta: dict) -> dict:
+    """The attachment content `show` returns, after the secret screen: for session, web, claude
+    and codex text a match withholds every attached file's content (only path, line and pattern
+    are reported, as at filing); for user text the matches are warnings shown with it (SCR-2)."""
+    hits = attachment_screen(meta)
+    if screened_out(meta):
+        return {"attachment_content": [], "attachment_screen": hits, "attachment_withheld": True}
+    return {
+        "attachment_content": _attachment_view(meta),
+        "attachment_screen": hits,
+        "attachment_withheld": False,
+    }
 
 
 def _check_expected(meta: dict, expected: str, text_only: bool = False) -> None:
@@ -1977,7 +2023,9 @@ def cmd_register(args) -> dict:
     if problems:
         raise CatalogError("; ".join(problems[:4]))
     meta["_version"] = cat.get("catalog_version", 1)
-    _with_attachments(meta, ctx)  # a broken attachment is refused later, at verification
+    _with_attachments(meta, ctx)
+    if meta["_attachment_problems"]:  # refused before filing, as draft does (CFG-6)
+        raise CatalogError("; ".join(meta["_attachment_problems"][:4]))
     _assert_clean(meta)
     if (
         meta.pop("verification", None) is not None
@@ -2133,14 +2181,23 @@ def cmd_upgrade(args) -> dict:
             meta["verification"]["core"] = core_hash(meta)
             write_record(path, meta)
         write_catalog(root, {**cat, "catalog_version": CURRENT_CATALOG_VERSION}, list(records))
-    except BaseException:
+    except BaseException as exc:
         if _catalog_committed(root, cat):
             raise
+        # Each record is its own file, so one failed restore never stops the others.
+        left = []
         for path, text in reversed(undo):
             try:
                 _write_atomic(path, text)
             except (OSError, ValueError):
-                break  # validate shows what is left; restore the rest from git
+                left.append(path.relative_to(root).as_posix())
+        if left:
+            message = "these records could not be put back; restore them from git: " + ", ".join(
+                sorted(left)
+            )
+            if isinstance(exc, Exception):
+                raise CatalogError(f"upgrade failed ({exc}) and {message}") from exc
+            print(f"upgrade interrupted: {message}", file=sys.stderr)
         raise
     info.update(ok=True, applied=True, catalog_version=CURRENT_CATALOG_VERSION)
     return info
@@ -2202,8 +2259,18 @@ def _lifecycle(args, op: str) -> dict:
         _refuse_blocked(records, meta["slug"], allow_attachment=op == "finalize")
     try:
         if op == "retire":
-            if not meta.get("_blocked"):
-                raise CatalogError("only a prompt that changed since its approval can be retired")
+            # Below version 3 a wrong origin does not block its prompt, so upgrade's origin check
+            # needs its own way out (SEC-4): --wrong-origin retires an approved record there.
+            wrong_origin = (
+                getattr(args, "wrong_origin", False)
+                and cat["catalog_version"] < CURRENT_CATALOG_VERSION
+                and meta["status"] in ("active", "inactive")
+            )
+            if not meta.get("_blocked") and not wrong_origin:
+                raise CatalogError(
+                    "only a prompt that changed since its approval can be retired (below catalog "
+                    "version 3, also an approved one with a wrong origin: --wrong-origin)"
+                )
             _check_expected(meta, args.expect_sha256, text_only=True)
             undo_steps.append(_move(root, meta, "historical", paths))
         elif op == "deactivate":
@@ -2307,6 +2374,11 @@ def build_parser() -> argparse.ArgumentParser:
     rt = sub.add_parser("retire")
     rt.add_argument("internal_id")
     rt.add_argument("--expect-sha256", required=True, help="the hash shown to the user")
+    rt.add_argument(
+        "--wrong-origin",
+        action="store_true",
+        help="below catalog version 3: retire an approved prompt whose origin the user rejected",
+    )
     a = sub.add_parser("activate")
     a.add_argument("internal_id")
     a.add_argument("--expect-sha256", required=True)

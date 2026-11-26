@@ -2734,6 +2734,175 @@ class OriginAndAttachments(Base):
         self.assertEqual(code, 0, res)
         self.assertEqual(self.run_cli("validate")[1]["catalog_version"], 2)
 
+    # ------------------------------------- PR #914 review round 1 (finding named per test)
+    WEB = {
+        "origin": "web",
+        "source_ref": {"url": "https://x.example/a", "retrieved_on": "2026-11-01"},
+    }
+
+    def test_claude_configuration_files_are_refused_as_attachments(self):  # F25
+        for rel in (
+            ".claude/settings.json",
+            ".claude/settings.local.json",
+            ".claude/promptlibrary-kit.local.json",
+            ".Claude/Settings.json",
+            "CLAUDE.md",
+            "claude.local.md",
+        ):
+            with self.subTest(rel=rel):
+                self.put(rel, "{}\n")
+                self.assertIn("Claude Code", self.draft_error(attachments=[rel]))
+        self.put("docs/CLAUDE.md")
+        self.put(".claude/notes/x.md")
+        self.add_draft(attachments=["docs/CLAUDE.md", ".claude/notes/x.md"])
+
+    def test_a_deleted_approval_field_is_not_an_attachment_change(self):  # F11
+        self.make_active()
+        path = self.root / SLUG / "active.md"
+        meta = V.read_record(path)
+        meta["verification"] = {"core": meta["verification"]["core"]}
+        V.write_record(path, meta)
+        blocked = self.blocked()
+        self.assertEqual([b["slug"] for b in blocked], [SLUG])
+        self.assertFalse(blocked[0]["attachment_change"])
+
+    def test_a_relabel_that_leaves_source_ref_blocks_only_that_prompt(self):  # F1
+        self.make_active(**self.WEB)
+        self.make_active("p000000000002", slug="docs__changelog")
+        self.edit_record(f"{SLUG}/active.md", origin="user")  # source_ref stays behind
+        code, res = self.run_cli("validate")
+        self.assertEqual(code, 0, res)
+        self.assertEqual([b["slug"] for b in res["blocked"]], [SLUG])
+        self.assertIn("source_ref", "; ".join(res["blocked"][0]["reasons"]))
+        self.assertEqual(self.run_cli("show", "docs__changelog")[0], 0)
+        code, res = self.run_cli(
+            "retire", "p000000000001", "--expect-sha256", self.hash_of("p000000000001")
+        )
+        self.assertEqual(code, 0, res)
+        self.assertEqual(self.run_cli("validate")[0], 0)
+
+    def test_below_version_3_a_wrong_origin_can_be_retired(self):  # F18
+        self.legacy_catalog()
+        self.make_active(origin="claude")
+        args = ("retire", "p000000000001", "--expect-sha256", self.hash_of("p000000000001"))
+        code, res = self.run_cli(*args)
+        self.assertEqual(code, 1)
+        self.assertIn("--wrong-origin", res["error"])
+        code, res = self.run_cli(*args, "--wrong-origin")
+        self.assertEqual(code, 0, res)
+        self.assertEqual(self.run_cli("upgrade")[1]["records"], [])
+        # from version 3 on a wrong origin is a relabel, which blocks: the flag adds nothing
+        self.make_active("p000000000002", slug="docs__changelog")
+        plan = self.run_cli("upgrade")[1]
+        self.assertEqual(self.run_cli("upgrade", "--expect-listing", plan["listing_id"])[0], 0)
+        code, res = self.run_cli(
+            "retire",
+            "p000000000002",
+            "--expect-sha256",
+            self.hash_of("p000000000002"),
+            "--wrong-origin",
+        )
+        self.assertEqual(code, 1)
+
+    def test_a_missing_attachment_stays_in_the_listed_attachments(self):  # F2
+        self.put(STYLE)
+        self.put("docs/b.md")
+        self.make_active(attachments=[STYLE, "docs/b.md"])
+        (self.proj / STYLE).unlink()
+        rec = self.run_cli("show", SLUG, "--history")[1]["records"][0]
+        self.assertEqual(rec["attachments"], [STYLE, "docs/b.md"])
+
+    def test_the_review_bundle_lists_unloaded_attachments(self):  # F15
+        self.legacy_catalog()
+        self.add_draft(attachments=["docs/x.md"])
+        code, res = self.run_cli("review-bundle", "p000000000001")
+        self.assertEqual(code, 0, res)
+        self.assertEqual((res["attachments"], res["unloaded_attachments"]), (["docs/x.md"],) * 2)
+
+    def test_the_size_limit_counts_normalized_line_endings(self):  # F3
+        self.put(STYLE, "ab\r\n" * 10000)  # 40000 bytes on disk, 30000 hashed
+        self.add_draft(attachments=[STYLE])
+        self.put("docs/big.md", "ab\r\n" * 12000)  # 36000 hashed: over 32 KB
+        self.assertIn(
+            "32 KB limit",
+            self.draft_error(
+                internal_id="p000000000002", slug="docs__big", attachments=["docs/big.md"]
+            ),
+        )
+
+    def test_show_and_the_review_bundle_screen_attachments(self):  # F6, F14
+        self.put(STYLE)
+        self.add_draft(origin="claude", attachments=[STYLE])
+        self.put(STYLE, f"token = {FAKE_KEY}\n")  # edited after filing
+        rec = self.run_cli("show", SLUG, "--history")[1]["records"][0]
+        self.assertTrue(rec["attachment_withheld"])
+        self.assertEqual(rec["attachment_content"], [])
+        self.assertEqual({h["path"] for h in rec["attachment_screen"]}, {STYLE})
+        code, res = self.run_cli("review-bundle", "p000000000001")
+        self.assertEqual(code, 1)
+        self.assertIn("in an attachment", res["error"])
+        # user text: shown, with the matches as warnings
+        self.put("docs/u.md", f"token = {FAKE_KEY}\n")
+        self.add_draft("p000000000002", slug="docs__user", attachments=["docs/u.md"])
+        rec = self.run_cli("show", "docs__user", "--history")[1]["records"][0]
+        self.assertFalse(rec["attachment_withheld"])
+        self.assertEqual(len(rec["attachment_content"]), 1)
+        code, res = self.run_cli("review-bundle", "p000000000002")
+        self.assertEqual(code, 0, res)
+        self.assertEqual({h["path"] for h in res["attachment_screen"]}, {"docs/u.md"})
+
+    def test_a_run_never_starts_without_a_withheld_attachment(self):  # F6 regression guard
+        self.put(STYLE)
+        self.make_active(origin="claude", attachments=[STYLE])
+        hit = [{"path": STYLE, "line": 1, "pattern": "new_shape"}]
+        with mock.patch.object(V, "attachment_screen", return_value=hit):  # a newer pattern
+            code, res = self.run_cli("show", SLUG)
+            self.assertEqual(code, 1, res)
+            self.assertIn("does not run", res["error"])
+            self.assertIn(STYLE, res["error"])
+            self.assertEqual(self.run_cli("show", SLUG, "--history")[0], 0)
+
+    def test_register_refuses_an_unusable_attachment(self):  # F16
+        self.put(STYLE, "x" * (33 * 1024))
+        self.assertEqual(self.run_cli("init")[0], 0)
+        (self.root / SLUG).mkdir(parents=True)
+        (self.root / SLUG / "p000000000001.md").write_text(
+            record(attachments=[STYLE]), encoding="utf-8"
+        )
+        code, res = self.run_cli("register", f"{SLUG}/p000000000001.md")
+        self.assertEqual(code, 1, res)
+        self.assertIn("32 KB limit", res["error"])
+
+    def test_upgrade_rollback_restores_every_record_it_can(self):  # F17
+        self.legacy_catalog()
+        self.make_active(origin="claude")
+        self.make_active("p000000000002", slug="docs__changelog")
+        a, b = self.root / SLUG / "active.md", self.root / "docs__changelog" / "active.md"
+        before = {a: a.read_bytes(), b: b.read_bytes()}
+        plan = self.run_cli("upgrade")[1]
+        first = self.root / plan["records"][0]["slug"] / "active.md"
+        second = b if first == a else a
+        real_write, real_atomic = V.write_record, V._write_atomic
+
+        def write(path, meta):
+            if path == second:
+                raise OSError("read-only folder")
+            real_write(path, meta)
+
+        def atomic(path, text):
+            if path == second:
+                raise OSError("read-only folder")
+            real_atomic(path, text)
+
+        with (
+            mock.patch.object(V, "write_record", write),
+            mock.patch.object(V, "_write_atomic", atomic),
+        ):
+            code, res = self.run_cli("upgrade", "--expect-listing", plan["listing_id"])
+        self.assertEqual(code, 1)
+        self.assertIn(second.relative_to(self.root).as_posix(), res["error"])
+        self.assertEqual(first.read_bytes(), before[first])
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

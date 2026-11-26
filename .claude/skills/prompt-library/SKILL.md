@@ -109,17 +109,21 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
    - The CLI takes an `internal_id`, not a slug: resolve a slug to its record(s) from `validate`'s
      `records` or `<CLI> show <slug> --history`; if more than one fits, ask which.
    - Any mode but `retire` on a slug in `blocked`: report it as in step 1, offer nothing else and stop, with no
-     question and no command. The script refuses the change anyway. The one exception is `revise` (or
-     resuming its draft) when the entry's `attachment_change` is true: that reviews the new attachment
-     content (step 3).
+     question and no command. The script refuses the change anyway. The exceptions apply when the entry's
+     `attachment_change` is true: `revise` (or resuming its draft) reviews the new attachment content
+     (step 3), and `discard` removes that draft.
    - `upgrade` applies to a catalog below version 3. Run `<CLI> upgrade`; it refuses while a prompt is
      blocked or any record lists attachments, and says why. Otherwise, for each entry in its `records`,
      show slug, version, status, `origin` and the first 8 characters of `text_hash`, say that from now on
      this origin is part of the approval, so a later relabel blocks the prompt, and ask with
-     `AskUserQuestion` (Keep this origin, Stop). Any Stop, or any other answer, ends the upgrade with
-     nothing changed; a wrong origin is fixed by retiring the prompt or adding it again with the right one.
-     After every prompt is confirmed, run `<CLI> upgrade --expect-listing <listing_id>` with the
-     `listing_id` from that same listing, then go to step 10.
+     `AskUserQuestion` (Keep this origin, Wrong origin, Stop). Stop, or any other answer, ends the upgrade
+     with nothing changed. Wrong origin: say what retiring means (as for `retire` below), ask once with
+     `AskUserQuestion` (Retire, Keep), and on Retire run
+     `<CLI> retire <internal_id> --expect-sha256 <text_hash> --wrong-origin`; then end this upgrade and
+     start it again from `<CLI> upgrade` (the listing changed). The user can add that text again as a new
+     prompt with the right origin. After every prompt is confirmed, run
+     `<CLI> upgrade --expect-listing <listing_id>` with the `listing_id` from that same listing, then go to
+     step 10.
    - `activate` of a record that is already `active`, or `deactivate` of one that is not, is reported
      ("already active", or its current status) and stops here, with no question and no command.
    - `deactivate`, and `activate` of an inactive record, skip steps 3 to 8: go to step 9.
@@ -152,9 +156,11 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
    `attachments` unless the user changes them, and a fresh id from `<CLI> new-id`. When the predecessor's
    `attachment_change` is true, keep its text and origin exactly: only the attachments may change (keep,
    shorten or detach them), and the validator refuses any other change. Show the new content of each
-   changed attachment in full (from `show <slug> --history`, which reads it once); the approved content is
-   not stored, so for a line-by-line diff the user can run `git diff -- ':(literal)<path>'` themselves, with each
-   single quote in the path written as in step 1 (`'\''`, PowerShell `''`). For `add`, also get the
+   changed attachment in full (from `show <slug> --history`, which reads it once); that full content is
+   what is reviewed. The approved content is not stored. Only when the file is tracked by git and its
+   approved version is committed, the user can run `git diff HEAD -- ':(top,literal)<path>'` themselves as a
+   hint, with each single quote in the path written as in step 1 (`'\''`, PowerShell `''`); it compares
+   with the last commit, which may not be the approved content, and shows nothing for an untracked file. For `add`, also get the
    `internal_id` from `<CLI> new-id`. Build the full record in a scratch file from
    `assets/prompt-record-template.md`, following `references/prompt-record-format.md` (a `session` or
    `web` record also needs `source_ref`, shown with an example there). Attached files are optional and
@@ -183,7 +189,8 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
    or continue. Both are recommendations; the user decides.
 6. **File the draft.** Only once step 4 is clean (or, for `user` text, the user accepted the
    warning), show the user the slug, name, origin, description and `<CLI> hash <scratch-file>` output,
-   and ask with `AskUserQuestion` whether to file this draft. A draft that step 4 blocked never reaches
+   remind them that a filed prompt is shared with everyone who can read the repository (remove personal
+   details first), and ask with `AskUserQuestion` whether to file this draft. A draft that step 4 blocked never reaches
    this question. On yes, `<CLI> draft
    <scratch-file>`; it validates, enforces the secret screen for `session`, `web`, `claude` and `codex` text, writes the record and
    lists it in the catalog together. It also reads and checks every attachment (path rules, text only,
@@ -201,16 +208,22 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
    for another round. See `references/prompt-optimization-and-review.md`; an active or inactive record
    is never edited in place, a revision is a new draft.
 8. **Verify.** Get the final prompt text, its `attachment_content` and its `fingerprint` from the filed
-   record (`<CLI> show <slug> --history`), not from the scratch copy. Show all three to the user, each
-   attachment in full in its own fenced block. If a `hidden_characters` list is not empty, list each entry (line, column, code point, name) above the text, add "50 or more" when
-   `hidden_characters_truncated` is true, and say these characters are invisible in the text shown.
-   Then ask with `AskUserQuestion` whether to approve exactly this text, origin and these attachments, naming
-   the number of attached files and the hidden-character count in the question when there are any. On yes,
+   record (`<CLI> show <slug> --history`), not from the scratch copy. If `attachment_withheld` is true,
+   report the `attachment_screen` matches and stop. When step 7 ran in this session and an attachment's
+   `sha256` differs from its value in that `review-bundle` output, the file changed after the review: say
+   so and go back to step 7. Show all
+   three to the user, each attachment in full in its own fenced block, and name each
+   `unloaded_attachments` path as not loaded. For the text and for each attachment, if its
+   `hidden_characters` list is not empty, list each entry (line, column, code point, name) above that
+   block, add "50 or more" when its `hidden_characters_truncated` is true, and say these characters are
+   invisible in the text shown. Then ask with `AskUserQuestion` whether to approve exactly this text,
+   origin and these attachments, naming the number of attached files and each hidden-character count in
+   the question when there are any. On yes,
    run `<CLI> record-verification <internal_id> --kind quality --expect-sha256 <that fingerprint>` and, for
    `session` or `web` origin, again with `--kind import`
    (for a resumed draft, only the kinds in its `missing_verification`, see step 2).
    The expected fingerprint makes the script refuse if the record or an attached file changed after the
-   user approved it.
+   user approved it; below catalog version 3 it binds the prompt text only.
 9. **Change status.** Take the `fingerprint` from `<CLI> show <slug> --history`. Show the proposed change and ask
    with `AskUserQuestion`, naming the slug, the status change, the first 8 characters of that fingerprint and,
    for `activate` or `finalize`, the hidden-character count if any. Then run one of:

@@ -339,6 +339,12 @@ the line-by-line diff comes from git (`git diff -- ':(literal)<path>'`, run by m
 was considered and declined: more files in the catalog and another gate. Owner decision 2026-11-26, during
 the PR 2 build.
 
+**Amended 2026-11-26 (CAT-6, attachment diff, PR #914 review):** *the full new content shown is what I
+review. A git diff (`git diff HEAD -- ':(top,literal)<path>'`) is only a hint, offered when the file is
+tracked: it compares with the last commit, which need not be the approved content, and an untracked file
+has no baseline.* The earlier command compared with the index, so a staged edit showed no diff. Owner
+decision 2026-11-26.
+
 Source: V4 §Interrupted updates; code (atomic writes, rollback, orphan removal); owner decision
 2026-11-16. State: met (structural handling, per-prompt blocking and retire for a changed text or origin;
 attachment review as a new version with the same text and origin, catalog_version 3, 2026-11-26).
@@ -952,8 +958,9 @@ other prompts stay runnable in later runs.
 **Amended 2026-11-17 (EXE-2, attachments):** *the attached files that load into a run are exactly the
 content whose fingerprint was just checked, read once and then previewed and loaded from that one read, so
 that a file changed on disk at the last moment can never slip unapproved content into an approved run.*
-A file that changes while it is read stops the run before any attachment content reaches the session,
-naming the file; the next run shows "attachment changed since approval" (CAT-6). The first-run preview
+A file whose content read differs from the approved fingerprint stops the run before any attachment
+content reaches the session, naming the file (amended 2026-11-26, PR #914 review: the check is on the bytes
+read, not a detection of writes during the read; owner decision 2026-11-26); the next run shows "attachment changed since approval" (CAT-6). The first-run preview
 (EXE-3) and the reviewer's read of attachments (REV-6) use the same single read. Mechanism note: the
 plugin, not Claude's own file reading, supplies the attachment content to the session. Found by the
 cross-model review before the requirements PR was marked ready.
