@@ -1051,8 +1051,20 @@ def check_step2_coverage_tier_disclosure():
         ("never as green", "that a failed read is not reported as green"),
         ("may describe an earlier head", "the stale-comment disclosure"),
         (
-            "a `COMPLETED` entry does not prove the comment describes this head",
-            "that a completed check does not prove the comment is current",
+            "can never be tied to this head: always say it may describe an earlier head",
+            "the unconditional stale-comment caveat",
+        ),
+        (
+            "(this repository's workflow) or `coverage-tier` (quality-kit's template",
+            "that both check names are matched",
+        ),
+        (
+            "When the entry exists but there is no comment",
+            "the check-without-comment case",
+        ),
+        (
+            "with a conclusion other than `SUCCESS` or `FAILURE`",
+            "that other completed conclusions leave the comment's currency unknown",
         ),
         (
             "`green` or `yellow` with `FAILURE`, `orange` or `red` with `SUCCESS`",

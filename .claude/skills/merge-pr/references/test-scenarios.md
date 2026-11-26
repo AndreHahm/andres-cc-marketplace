@@ -141,6 +141,13 @@ a fresh `gh repo view` (skill-reviewer M1, 2026-08-31):**
 - The comment reads green but the `Coverage tier` check for the head is `COMPLETED`/`FAILURE` (the new
   head's tier could not be computed, so the workflow left the old comment) → green is reported with the
   note that the comment may describe an earlier head, and the failure as orange, red or not computed
+- The comment reads green and the check is `COMPLETED`/`SUCCESS` → green is still reported with the
+  standing note that the comment cannot be tied to this head and may describe an earlier one
+- A repository that copied quality-kit's workflow template has a check named `coverage-tier` (no
+  display name) → it is read the same way as `Coverage tier`
+- A fork PR: the check exists but there is no tier comment → the check's state is reported together
+  with "no tier comment" (never "no coverage tier was reported"); a `COMPLETED`/`CANCELLED` check next
+  to a comment marks the comment as likely stale
 - With `--stop-on-review-findings`, the `github-actions` coverage comment reads red → it is a status,
   not a review finding, and does not stop the run; a comment by another author with the same marker is
   classified like any other body

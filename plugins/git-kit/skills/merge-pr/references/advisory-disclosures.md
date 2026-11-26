@@ -72,18 +72,21 @@ silently, the same discipline step 7(c)'s squash-tradeoff disclosure already use
   `github-actions` (this call drops the REST API's `[bot]` suffix, live-checked on PR #907) and whose
   body starts with `<!-- quality-kit:coverage-tier -->`. Its second line reads `### Coverage tier:
   <tier> (...)`; report `<tier>` only when it is exactly `green`, `yellow`, `orange` or `red`, and
-  otherwise report the line as unrecognized. Also report the latest `statusCheckRollup` entry named
-  `Coverage tier` for the head (its `status` and `conclusion`): the job fails on an orange or red tier
-  but is not a required check, so step 2's status-check classification never sees it. A `FAILURE`
-  means orange, red or a tier that could not be computed. The comment carries no head SHA, and the
-  workflow leaves it unchanged when the tier could not be computed, for a fork PR, and when it ran the
-  PR's own tier script, so a `COMPLETED` entry does not prove the comment describes this head. Say the
-  comment may describe an earlier head when that entry is missing or not `COMPLETED`, and when the
-  comment's tier disagrees with the entry's conclusion (`green` or `yellow` with `FAILURE`, `orange` or
-  `red` with `SUCCESS`). When neither the comment nor the entry exists (a repository without the coverage
-  workflow, or a fork PR, whose comment the workflow skips), state that no coverage tier was
-  reported. A failed read is reported as undetermined, never as green. A red or orange tier is
-  disclosed at step 5 and never stops the run.
+  otherwise report the line as unrecognized. Also report the latest `statusCheckRollup` entry for the
+  head from the `Coverage` workflow named `Coverage tier` (this repository's workflow) or
+  `coverage-tier` (quality-kit's template, whose job sets no name), with its `status` and
+  `conclusion`: the job fails on an orange or red tier but is not a required check, so step 2's
+  status-check classification never sees it. A `FAILURE` means orange, red or a tier that could not be
+  computed. The comment carries no head SHA and this call returns no edit time, and the workflow
+  leaves it unchanged when the tier could not be computed, for a fork PR, and when it ran the PR's own
+  tier script, so the comment can never be tied to this head: always say it may describe an earlier
+  head. Say it is likely stale when the entry is missing or not `COMPLETED`, when the entry completed
+  with a conclusion other than `SUCCESS` or `FAILURE`, or when the comment's tier disagrees with the
+  conclusion (`green` or `yellow` with `FAILURE`, `orange` or `red` with `SUCCESS`). When the entry
+  exists but there is no comment (a fork PR, whose comment the workflow skips, or a tier that never
+  posted), report the entry's state and that no tier comment exists. When neither exists (a repository
+  without the coverage workflow), state that no coverage tier was reported. A failed read is reported
+  as undetermined, never as green. A red or orange tier is disclosed at step 5 and never stops the run.
 - **Review findings (only with `--stop-on-review-findings`; skip this bullet entirely without it)**:
   on every pass of this step — the first one and each rerun (4(e), 7(b), 7(d)) — re-run the
   unresolved-review-threads query above in full (every page, each with its own fresh `gh-pr-review`
