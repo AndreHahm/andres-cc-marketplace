@@ -39,6 +39,26 @@
     },
     {
       "disposition": "fixed",
+      "finding": "1d80f9419f1ea4d7f8564050d3ea287d",
+      "line": 16,
+      "note": "fixed in round 3: starting-work When NOT to Use now names git-worktrees back with the existing-branch criterion",
+      "path": "plugins/git-kit/skills/git-worktrees/SKILL.md",
+      "pr": 925,
+      "recorded_at": "2026-11-26T20:02:34+00:00",
+      "rule": "plugin-rulebook:R36"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "2e3d77d1bb407217a5e3a0657142571a",
+      "line": 146,
+      "note": "fixed in round 3: coverage claim narrowed; create-pr eval 3 credited only for the direct-invocation side, Path A covered by the new evals 1-2",
+      "path": "plugins/git-kit/skills/collaborating-on-a-pr/SKILL.md",
+      "pr": 925,
+      "recorded_at": "2026-11-26T20:02:34+00:00",
+      "rule": "testing-validation"
+    },
+    {
+      "disposition": "fixed",
       "finding": "316456ed2face73b2fe3b6f5df60a61c",
       "line": 65,
       "note": "fixed in round 2: two overview paragraphs condensed; SKILL.md at 489 lines",
@@ -56,6 +76,16 @@
       "pr": 925,
       "recorded_at": "2026-11-26T18:54:18+00:00",
       "rule": "dependency-graph"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "683d0168ac95e78897d636a238ce72da",
+      "line": 148,
+      "note": "fixed in round 3: added evals/collaborating-on-a-pr (3 scenarios, iteration-1 12/12 with_skill) and rewrote Testing & Validation to cite it",
+      "path": "plugins/git-kit/skills/collaborating-on-a-pr/SKILL.md",
+      "pr": 925,
+      "recorded_at": "2026-11-26T20:02:34+00:00",
+      "rule": "plugin-rulebook:R28"
     },
     {
       "disposition": "fixed",

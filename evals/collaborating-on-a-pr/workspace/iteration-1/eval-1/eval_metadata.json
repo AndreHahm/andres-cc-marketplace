@@ -1,0 +1,26 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/git-kit/skills/collaborating-on-a-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "Invokes Skill(create-pr) exactly once, passing an instruction to include `Closes #123` in the drafted PR body",
+      "type": "functionality",
+      "target": "walkthrough.md"
+    },
+    {
+      "text": "States the call is one-way (create-pr never invokes collaborating-on-a-pr back) and passes no skip or loop-breaking instruction",
+      "type": "functionality",
+      "target": "walkthrough.md"
+    },
+    {
+      "text": "After create-pr returns, verifies the line with `gh pr view --json body -q .body` rather than assuming create-pr honored the instruction",
+      "type": "functionality",
+      "target": "walkthrough.md"
+    },
+    {
+      "text": "Never describes creating a second PR or invoking create-pr a second time",
+      "type": "functionality",
+      "target": "walkthrough.md"
+    }
+  ]
+}
