@@ -5,7 +5,7 @@ description: >-
   Report, Decision, or a completed Linear Issue — including one whose Wave 2 merge-to-completion
   has just finished — classify each as resolved, retained knowledge, a Decision still needed, or
   actionable Linear work, then create approved follow-ups in a single batch. Use when asked to
-  revalidate open questions, disposition follow-ups from a report, or process remaining open items
+  revalidate open questions, disposition follow-ups from a Notion report, or process remaining open items
   after a Linear Issue completes — not to capture the outcome/learning itself (see
   status-and-learning for that). Not every open question becomes a Linear Issue. Follow-ups go
   to Linear only, never as GitHub issues (that is github-issue-lifecycle).
@@ -51,7 +51,9 @@ a completed Linear Issue (including one Wave 2's `merge-to-completion` just rout
   follow-ups, planned as batches and submitted to Linear → workledger-kit's `syncing-open-items`
   (and `open-item-digest` for the digest), when workledger-kit is installed; without it, no installed
   skill does that sweep. Either way, this skill dispositions only the open follow-ups from one Notion
-  Report or Decision, or from one completed Linear Issue.
+  Report or Decision, or from one completed Linear Issue, never from a report on disk: open items in
+  a `.claude/output` report with no Notion record go to `syncing-open-items`, which works by report
+  folder and proposes new Linear issues rather than dispositioning one report.
 - Filing, triaging, relating or resolving a GitHub issue → git-kit's `github-issue-lifecycle`. This
   skill creates its follow-ups only in Linear and never files a GitHub issue, even for an item from a
   Notion Report or Decision.
@@ -181,7 +183,7 @@ even under pressure to "just track everything."
 ## Testing & Validation
 
 **Verify this skill activates on:**
-- "revalidate the open questions from this report"
+- "revalidate the open questions from this Notion report"
 - "disposition the follow-ups from this decision"
 - "create follow-up issues from this Notion decision" (the follow-ups go to Linear)
 
