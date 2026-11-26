@@ -1059,6 +1059,10 @@ def check_step2_coverage_tier_disclosure():
             "that both check names are matched",
         ),
         (
+            "Known limit: 7(b)'s and 7(d)'s rechecks recompute the tier but do not show it again",
+            "the known limit that a tier changing after step 5 is not shown again",
+        ),
+        (
             "When the entry exists but there is no comment",
             "the check-without-comment case",
         ),
