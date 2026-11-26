@@ -1,0 +1,14 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4705043218",
+      "line": 1,
+      "note": "Routing evals now name their seven SKILL.md fixtures and record that the baseline is main's text, fixed in 13199779",
+      "path": "evals/codex-rescue/evals.json",
+      "pr": 908,
+      "recorded_at": "2026-11-26T07:36:41+00:00",
+      "rule": "devin-analysis"
+    }
+  ]
+}
