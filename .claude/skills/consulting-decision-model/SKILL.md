@@ -11,7 +11,7 @@ description: >-
   (cross-model-review), a design or recommendation to present (codex-peer-review) or a plan or
   document (codex-verify): this skill judges one action or choice Claude is about to execute. The
   model can only add a stop, never authorize an action.
-allowed-tools: AskUserQuestion Bash(python3 -I -B ${CLAUDE_PLUGIN_ROOT}/skills/consulting-decision-model/scripts/dck-decide.py:*) Bash(python -I -B ${CLAUDE_PLUGIN_ROOT}/skills/consulting-decision-model/scripts/dck-decide.py:*)
+allowed-tools: AskUserQuestion Bash(python3 -I -B "${CLAUDE_PLUGIN_ROOT}/skills/consulting-decision-model/scripts/dck-decide.py":*) Bash(python -I -B "${CLAUDE_PLUGIN_ROOT}/skills/consulting-decision-model/scripts/dck-decide.py":*)
 ---
 
 # Consulting the Decision Model
@@ -79,7 +79,7 @@ the decision, tell the user.
 ## Step 2: Run the Script
 
 ```bash
-python3 -I -B ${CLAUDE_PLUGIN_ROOT}/skills/consulting-decision-model/scripts/dck-decide.py <<'DCK_INPUT'
+python3 -I -B "${CLAUDE_PLUGIN_ROOT}/skills/consulting-decision-model/scripts/dck-decide.py" <<'DCK_INPUT'
 {"trigger": "security", "action": "Add a Bash grant scoped to .temp/ to the skill's allowed-tools.", "state": "The skill only deletes files under .temp/. Rule: grants must be no wider than needed.", "claude_position": "proceed", "claude_risk": "low", "options": {"grant": "Add the broad grant", "scope": "Add a grant scoped to .temp/"}, "claude_choice": "scope"}
 DCK_INPUT
 ```

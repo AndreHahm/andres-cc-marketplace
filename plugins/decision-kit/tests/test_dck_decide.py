@@ -1072,7 +1072,8 @@ def test_documented_command_writes_no_bytecode(name, tmp_path):
     # Both scripts load dck-decide.py through importlib, which writes __pycache__ beside the
     # scripts, inside the installed plugin, unless the documented command passes -B.
     text = (SKILL.parents[1] / "commands" / f"{name}.md").read_text(encoding="utf-8")
-    script = f"${{CLAUDE_PLUGIN_ROOT}}/skills/consulting-decision-model/scripts/{name}.py"
+    # Quoted, so an install path with a space stays one argument.
+    script = f'"${{CLAUDE_PLUGIN_ROOT}}/skills/consulting-decision-model/scripts/{name}.py"'
     run_line = next(line for line in text.splitlines() if line.startswith("python3 "))
     flags = run_line.split()[1:-1]
     assert run_line.split()[-1] == script
