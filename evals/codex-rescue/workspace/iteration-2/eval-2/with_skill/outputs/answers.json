@@ -1,0 +1,6 @@
+[
+  {"id": "R1", "skill": "codex-rescue", "reason": "codex-rescue's Phase 1 'Wrap the task in prompt blocks' covers a read-only investigation of one concrete repository task (--write OFF), and codex-research's 'When NOT to Use' routes such a concrete repository investigation to codex-rescue."},
+  {"id": "R2", "skill": "codex-research", "reason": "codex-research's 'When to Use' covers 'investigate this topic (codex)' for open-ended research on a topic synthesized with Claude's own analysis, and codex-rescue's 'When NOT to Use' routes open-ended topic research there."},
+  {"id": "R3", "skill": "codex-session-lookup", "reason": "codex-session-lookup's 'When to Use' covers finding a Codex CLI session by query and locating a session ID to resume manually."},
+  {"id": "R4", "skill": "codex-rescue", "reason": "codex-rescue's 'When to Use' lists resuming a prior rescue task (--resume, --resume-last), and codex-session-lookup's 'When NOT to Use' routes continuing a prior task to codex-rescue's own resume path."}
+]

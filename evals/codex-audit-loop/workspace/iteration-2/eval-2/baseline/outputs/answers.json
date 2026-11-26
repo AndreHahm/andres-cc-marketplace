@@ -1,0 +1,5 @@
+[
+  {"id": "R5", "skill": "codex-plan-loop", "reason": "codex-plan-loop's description covers complex, security-sensitive feature development with Codex validating the plan before implementation (Phase 2: Validate, --security-focus)."},
+  {"id": "R6", "skill": "codex-rescue", "reason": "codex-rescue's description routes a single 'have codex fix something' implementation task with no plan-validation phase to its delegate-then-review pass."},
+  {"id": "R7", "skill": "codex-audit-loop", "reason": "codex-audit-loop's description and Mode C (Verified fix loop) cover an explicit whole-project multi-lens review with verify-and-fix in isolated worktrees."}
+]

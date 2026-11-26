@@ -1,0 +1,26 @@
+{
+  "eval_id": "eval-2",
+  "skill_path": "plugins/codex-kit/skills/codex-audit-loop/SKILL.md",
+  "assertions": [
+    {
+      "text": "R5 routed to codex-plan-loop",
+      "type": "functionality",
+      "target": "R5"
+    },
+    {
+      "text": "R6 routed to codex-rescue",
+      "type": "functionality",
+      "target": "R6"
+    },
+    {
+      "text": "R7 routed to codex-audit-loop",
+      "type": "functionality",
+      "target": "R7"
+    },
+    {
+      "text": "R7 reason or answer mentions the fix mode (--mode fix / Mode C) or verify-and-fix across worktrees",
+      "type": "quality",
+      "target": "R7"
+    }
+  ]
+}
