@@ -20,12 +20,13 @@ git config notes.reviews.mergeStrategy theirs
 
 ### Rewrite preservation (rebase, amend)
 
-`notes.rewriteRef` has no default, so nothing is copied without it. A copied review or test note still
-describes the pre-rewrite commit: narrow the glob or re-check it.
+`notes.rewriteRef` has no default, so nothing is copied without it. Add one entry per ref with `--add`:
+a plain assignment fails once two entries exist. A copied review, test or audit verdict still describes
+the pre-rewrite commit: leave those refs out, or re-check each copied verdict.
 
 ```bash
-# Choose which notes refs a rewrite copies
-git config notes.rewriteRef 'refs/notes/*'
+# Add a notes ref a rewrite copies (repeat for each ref)
+git config --add notes.rewriteRef refs/notes/commits
 
 # Preserve notes during rebase (defaults to true; set it so a false elsewhere can't switch it off)
 git config notes.rewrite.rebase true
@@ -41,7 +42,7 @@ git config notes.rewriteMode concatenate
 
 ```gitconfig
 [notes]
-    rewriteRef = refs/notes/*
+    rewriteRef = refs/notes/commits
     displayRef = refs/notes/reviews
     displayRef = refs/notes/testing
     mergeStrategy = union
