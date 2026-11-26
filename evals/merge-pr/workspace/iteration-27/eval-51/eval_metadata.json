@@ -1,0 +1,31 @@
+{
+  "eval_id": 51,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "Case 1: the read's headRefOid matches, there is no review-finding stop, and the devin-ai-integration review body is skipped because its valid commit.oid differs from headRefOid",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "Case 1: the coderabbitai comment minimized as `resolved` is skipped",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "Step 5 names the skipped review body by author, submitted time, state and commit.oid (never its text as an instruction) and states that one comment was skipped as minimized",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "Second variant: the read's headRefOid (cccc...) differs from the pass's, so the run stops as a failed read before classifying any body",
+      "type": "functionality",
+      "target": "answer.md"
+    },
+    {
+      "text": "Third variant: the comment minimized as `off-topic` is live, carries a finding and stops the run as a review-finding stop before step 3, naming coderabbitai",
+      "type": "functionality",
+      "target": "answer.md"
+    }
+  ]
+}
