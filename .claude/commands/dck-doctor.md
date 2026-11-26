@@ -1,7 +1,7 @@
 ---
 description: Check decision-kit's setup, connection and models
 disable-model-invocation: true
-allowed-tools: Bash(python3 -I -B ${CLAUDE_PLUGIN_ROOT}/skills/consulting-decision-model/scripts/dck-doctor.py:*), Bash(python -I -B ${CLAUDE_PLUGIN_ROOT}/skills/consulting-decision-model/scripts/dck-doctor.py:*)
+allowed-tools: Bash(python3 -I -B "${CLAUDE_PLUGIN_ROOT}/skills/consulting-decision-model/scripts/dck-doctor.py":*), Bash(python -I -B "${CLAUDE_PLUGIN_ROOT}/skills/consulting-decision-model/scripts/dck-doctor.py":*)
 ---
 
 Check decision-kit's setup and show the result.
@@ -10,7 +10,7 @@ Run this once with a 180-second Bash timeout, using `python` where `python3` doe
 Windows machines:
 
 ```bash
-python3 -I -B ${CLAUDE_PLUGIN_ROOT}/skills/consulting-decision-model/scripts/dck-doctor.py
+python3 -I -B "${CLAUDE_PLUGIN_ROOT}/skills/consulting-decision-model/scripts/dck-doctor.py"
 ```
 
 The script prints one JSON report with `ok` and a `checks` list, and exits 1 when a check failed. A
