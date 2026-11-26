@@ -12,7 +12,8 @@
       4,
       5
     ],
-    "methodology_note_iteration_1": "Iteration 1 (2026-11-26) covers only scenario 6 of references/test-scenarios.md, after step 6 gained the rejected-hook-prompt stop (review finding 3 on the PR-link classify guard branch). Quick Workflow, simulation only, with_skill agent; trigger phrases are not exercised."
+    "methodology_note_iteration_1": "Iteration 1 (2026-11-26) covers only scenario 6 of references/test-scenarios.md, after step 6 gained the rejected-hook-prompt stop (review finding 3 on the PR-link classify guard branch). Quick Workflow, simulation only, with_skill agent; trigger phrases are not exercised.",
+    "methodology_note_iteration_2": "Iteration 2 (2026-11-26) re-runs eval 1 after the Gotchas bullet on the repository-to-team mapping changed (step 7 is attested), with one added assertion for step 7. Quick Workflow, simulation only, with_skill agent."
   },
   "evals": [
     {

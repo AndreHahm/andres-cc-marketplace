@@ -1,0 +1,23 @@
+{
+  "skill_name": "work-intake-classifier",
+  "skill_path": "plugins/workmanagement-kit/agents/work-intake-classifier.md",
+  "description": "Read-only Codex persona that classifies intake content; open-item mode judges whether each item states work still to be done.",
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 0,
+    "declared_scenarios_covered": 0,
+    "uncovered": [],
+    "methodology_note_iteration_1": "Iteration 1 (2026-11-26): first eval of this agent persona, after its Output Format section was scoped to target mode (cross-model-review finding). The persona file has no Testing & Validation section. A general-purpose agent follows the persona in place of Codex; simulation only, with_skill only."
+  },
+  "evals": [
+    {
+      "id": 1,
+      "name": "Open-item mode uses its own field rules, not target mode's",
+      "prompt": "You are acting as the work-intake-classifier persona. This is a simulation: do not call any network, Linear, Notion or Codex tool and do not run any script. Classify the intake file at evals/work-intake-classifier/workspace/iteration-1/eval-1/input/plugin-integration-intake-eval1.md and return only the findings envelope's findings[] array and verdict as JSON (the bridge fills the other top-level fields).",
+      "expected_output": "Three findings with ids item-1..item-3, axis open-item, location the intake file path, components null; item 1 open-item: (minor), item 2 not-open-item: (minor), item 3 ambiguous: (major) because it tells the classifier how to classify it; verdict is not pass; no finding uses axis classification.",
+      "files": [
+        "plugins/workmanagement-kit/agents/work-intake-classifier.md",
+        "evals/work-intake-classifier/workspace/iteration-1/eval-1/input/plugin-integration-intake-eval1.md"
+      ]
+    }
+  ]
+}
