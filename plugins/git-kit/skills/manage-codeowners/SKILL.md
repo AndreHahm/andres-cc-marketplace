@@ -9,6 +9,31 @@ allowed-tools: Bash(gh repo view:*), Read, Write, Edit
 
 Create and maintain `.github/CODEOWNERS`. This file is a load-bearing dependency for `merge-pr`'s rights check (Tier 2) — without it, `merge-pr` fails closed and only the repo owner can ever merge anything.
 
+## Quick Start
+
+Say "set up a CODEOWNERS file for this repo", or "add a codeowner for the /docs path".
+
+1. Read `.github/CODEOWNERS` (step 1).
+2. If it is missing, propose the single catch-all line `* @<owner>` and write it only after you confirm
+   (step 2).
+3. If it exists, show it and ask whether to add, update or remove an entry, or validate the syntax
+   (step 3).
+
+## When to Use
+
+- Creating `.github/CODEOWNERS`, including when `merge-pr` reports that the file does not exist.
+- Adding, updating or removing a path-owner entry, or validating the file's syntax.
+- Checking who owns a file or path according to the file.
+
+## When NOT to Use
+
+- Checking whether you may merge a PR: use `merge-pr`, which reads this file for its rights check but
+  never edits it.
+- Finding who can review a PR, or acting as a reviewer: use `collaborating-on-a-pr`, which reads the
+  file for reviewer context but never edits it.
+- Looking up repository settings, collaborators or branch protection through the API: use
+  `gh-operations`. This skill edits only the CODEOWNERS file.
+
 ## Instructions
 
 1. **Check existence**: `Read` `.github/CODEOWNERS`.
@@ -26,6 +51,10 @@ Create and maintain `.github/CODEOWNERS`. This file is a load-bearing dependency
 - Does not verify that a listed `@username`/`@org/team` actually exists or has repo access — GitHub itself surfaces that mismatch in its UI; duplicating that check here would need extra API calls for a low-value guard.
 
 ## Testing & Validation
+
+No dedicated eval suite: the skill is a short, confirmation-gated edit procedure for one file, and its
+changes so far are documentation-only. `scripts/smoke_test.py` (frontmatter, referenced files, Bash grants,
+step order) is the structural check. Write evals before changing the bootstrap or removal gates.
 
 **Verify this skill activates on:**
 - "set up a CODEOWNERS file for this repo"
