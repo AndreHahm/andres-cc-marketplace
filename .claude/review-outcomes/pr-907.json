@@ -1,0 +1,54 @@
+{
+  "entries": [
+    {
+      "disposition": "false_positive",
+      "finding": "8ae8073a7f6c7a2fc37742abe613a615",
+      "line": 14,
+      "note": "R26 covers per-item nested LLM calls, whole-plugin re-scans or multi-agent fan-out; dck-decide.py is the skill's single designed call per decision, opted into by setting the key. Pre-existing, flagged only because the grant line changed.",
+      "path": "plugins/decision-kit/skills/consulting-decision-model/SKILL.md",
+      "pr": 907,
+      "recorded_at": "2026-11-26T06:59:37+00:00",
+      "rule": "plugin-rulebook:R26"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "a0d6cfb2e383a1bb858fc368c8e1760f",
+      "line": 14,
+      "note": "Dropped the no-op AskUserQuestion entry from allowed-tools in 703f7d3a.",
+      "path": "plugins/decision-kit/skills/consulting-decision-model/SKILL.md",
+      "pr": 907,
+      "recorded_at": "2026-11-26T07:09:38+00:00",
+      "rule": "plugin-rulebook:R5"
+    },
+    {
+      "disposition": "declined",
+      "finding": "d817a343a02c4451789d1c3034caee81",
+      "line": 14,
+      "note": "Declined: R6 rates an interpreter grant pinning one script path as PASS, and the documented heredoc call may not match a grant without the trailing wildcard (unverified), so removing it risks a prompt on every consultation. Non-blocking.",
+      "path": "plugins/decision-kit/skills/consulting-decision-model/SKILL.md",
+      "pr": 907,
+      "recorded_at": "2026-11-26T07:19:03+00:00",
+      "rule": "plugin-rulebook:R6"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "f87f97352aa89af7b945ce3989eaf122",
+      "line": 82,
+      "note": "Repeat of 8ae8073a7f6c7a2fc37742abe613a615 on the changed line; waived as refuted in the PR body for both reporting rules.",
+      "path": "plugins/decision-kit/skills/consulting-decision-model/SKILL.md",
+      "pr": 907,
+      "recorded_at": "2026-11-26T07:09:38+00:00",
+      "rule": "plugin-rulebook:R26"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "fee8767cadca44740d4a71a874d30c40",
+      "line": 82,
+      "note": "Quoted the plugin path in all three run commands and their grants in 718ec6fd; live-tested from a plugin root path containing a space.",
+      "path": "plugins/decision-kit/skills/consulting-decision-model/SKILL.md",
+      "pr": 907,
+      "recorded_at": "2026-11-26T06:59:37+00:00",
+      "rule": "runtime-reliability"
+    }
+  ]
+}
