@@ -167,13 +167,13 @@ Show a stat summary, then diff both `src/` and `tests/` before merging, so the r
 - **File permissions**: The diff will also show changes in file permissions if they differ.
 
 - **No worktrees**: If no other worktrees exist, explain that one can be created (see `SKILL.md`'s
-  "Related Workflows" section) and offer to use `git diff` for branch comparison instead.
+  "Reference Guide" section) and offer to use `git diff` for branch comparison instead.
 
 ## Troubleshooting
 
 **"No other worktrees found"**
 
-- Create a worktree first (`git worktree add <path> <branch>` — SKILL.md's Related Workflows section links to the dedicated creation workflow)
+- Create a worktree first (`git worktree add <path> <branch>` — SKILL.md's Reference Guide section links to the dedicated creation workflow)
 - Or use `git diff` for branch-only comparison without worktrees
 
 **"Worktree for branch not found"**

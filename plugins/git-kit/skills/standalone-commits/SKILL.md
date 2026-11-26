@@ -11,6 +11,17 @@ A standalone commit is a commit a reviewer can audit on its own, at that point i
 
 > **Related Skill**: See git-kit's `commit` skill for conventional commit messages and PR text.
 
+## Quick Start
+
+Say "split this diff into separate commits", or "how should I order these changes into waves".
+
+1. Write the one-sentence claim each commit must answer (The Standard), and order the commits into
+   waves (Wave Planning).
+2. With more pending changes than one wave holds, filter and rank them first (Prioritizing And Filtering
+   Candidate Changes).
+3. Stage one wave, re-read it against the Acceptance Checks, then compose, confirm and commit it
+   (Staging Workflow, steps 1-6).
+
 ## When to Use
 
 - Deciding whether a diff is too broad, too tiny, incomplete, or hard to revert as a single commit
@@ -210,3 +221,9 @@ Add a body when the reason, invariant, or review boundary is not obvious from th
 - [ ] The marker write (6c) always happens after 6b's confirmation, never before it
 - [ ] This flow never silently claims `commit`'s step-9 behavior-change test gate applies here — see step
       6's own stated gap
+
+## Reference Guide
+
+| Resource | Purpose |
+|---|---|
+| `references/splitting-into-ordered-waves.md` | The dependency-ordered wave procedure: how to group a multi-file change into waves and in what order to commit them |
