@@ -45,9 +45,8 @@ Each pointer below is routing for the caller: this skill stops there and never d
 - Verifying an existing written plan or document → `codex-verify`.
 - Validating Claude's own already-formed analysis, design or recommendation before presenting it →
   `codex-peer-review`.
-- One concrete repository task for Codex to carry out (implement, fix, or a read-only investigation of
-  that task) → `codex-rescue`. This skill researches a topic or document and ends in cross-model
-  synthesis.
+- One concrete repository task for Codex to implement or fix → `codex-rescue`. This skill researches a
+  topic or document and ends in cross-model synthesis.
 - Only finding or inspecting a Codex session ID, without continuing the thread →
   `codex-session-lookup`.
 - The same deep-research workflow naming Gemini, Antigravity or agy instead of Codex → antigravity-kit's
@@ -443,7 +442,7 @@ For the full shared gotchas list, read
 - Reviewing code changes/diffs → `/codex-kit:cdx-review`
 - Verifying an existing written plan/document → `codex-verify`
 - Validating Claude's own already-formed analysis or design → `codex-peer-review`
-- One concrete repository task for Codex to implement, fix or investigate → `codex-rescue`
+- One concrete repository task for Codex to implement or fix → `codex-rescue`
 - Locating/finding a session ID rather than resuming one → `codex-session-lookup`
 - "deep research with antigravity/gemini/agy" → antigravity-kit's `antigravity` skill instead
   (Gemini/Antigravity/agy named, not Codex)
