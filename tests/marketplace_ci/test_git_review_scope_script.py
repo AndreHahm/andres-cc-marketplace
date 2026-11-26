@@ -2114,16 +2114,22 @@ def test_the_skill_chain_carries_the_path_filter_lines_of_the_script():
 def test_the_skill_path_filter_drops_entries_inside_the_repository_and_ends(plain_repo, tmp_path):
     _git(plain_repo, "worktree", "add", "-q", str(tmp_path / "wt"))
     outside, links = tmp_path / "outside", tmp_path / "links"
+    to_worktree, through = tmp_path / "to-worktree", tmp_path / "through"
     in_repo, in_worktree = plain_repo / "bin", tmp_path / "wt/bin"
-    for folder in (outside, in_repo, in_worktree, links):
+    entries = (outside, in_repo, in_worktree, links, to_worktree, through)
+    for folder in entries:
         folder.mkdir()
     (in_repo / "git").write_text("#!/bin/sh\n")
+    (in_worktree / "git").write_text("#!/bin/sh\n")
     (links / "git").symlink_to(in_repo / "git")  # a link from outside that leads inside
+    (to_worktree / "git").symlink_to(in_worktree / "git")  # one that leads into the other worktree
+    (tmp_path / "folder-link").symlink_to(in_repo, target_is_directory=True)
+    (through / "git").symlink_to(tmp_path / "folder-link/git")  # one that passes a folder link
     chain = _skill_path_filter() + '\nprintf "%s\\n%s\\n" "${PATH_FILTERED:-0}" "$PATH"\n'
     ran = subprocess.run(
         [BASH, "-c", chain, "bash", "diff"],  # a stray shell positional must not reach the helpers
         cwd=plain_repo,
-        env={**os.environ, "PATH": ":".join(map(str, (outside, in_repo, in_worktree, links)))},
+        env={**os.environ, "PATH": ":".join(map(str, entries))},
         capture_output=True,
         text=True,
         timeout=30,
