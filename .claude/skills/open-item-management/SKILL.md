@@ -7,7 +7,8 @@ description: >-
   actionable Linear work, then create approved follow-ups in a single batch. Use when asked to
   revalidate open questions, disposition follow-ups from a report, or process remaining open items
   after a Linear Issue completes — not to capture the outcome/learning itself (see
-  status-and-learning for that). Not every open question becomes a Linear Issue.
+  status-and-learning for that). Not every open question becomes a Linear Issue. Follow-ups go
+  to Linear only, never as GitHub issues (that is github-issue-lifecycle).
 allowed-tools: Read, Skill(notion-knowledge-management), Skill(linear-work-management), AskUserQuestion
 ---
 
@@ -43,12 +44,17 @@ a completed Linear Issue (including one Wave 2's `merge-to-completion` just rout
   `status-and-learning`.
 - Promoting new Notion knowledge into Linear → `idea-to-implementation`.
 - A direct create or refine of a Linear Issue with no Notion page, Report, Decision or completed Issue
-  as its source → `linear-work-management`. A Notion Idea, Decision or Goal goes to `idea-to-implementation`.
+  as its source → `linear-work-management`. Promoting a Notion Idea, Decision or Goal itself into
+  Linear work → `idea-to-implementation`; this skill handles only the open questions and follow-ups
+  surfaced from a Report or Decision, not the promotion of the Decision itself.
 - Bulk or periodic collection of open items from `.claude/output` reports, GitHub issues and PR
   follow-ups, planned as batches and submitted to Linear → workledger-kit's `syncing-open-items`
   (and `open-item-digest` for the digest), when workledger-kit is installed; without it, no installed
   skill does that sweep. Either way, this skill dispositions only the open follow-ups from one Notion
   Report or Decision, or from one completed Linear Issue.
+- Filing, triaging, relating or resolving a GitHub issue → git-kit's `github-issue-lifecycle`. This
+  skill creates its follow-ups only in Linear and never files a GitHub issue, even for an item from a
+  Notion Report or Decision.
 
 See Testing & Validation below for the concrete trigger phrases this section summarizes.
 
@@ -177,12 +183,14 @@ even under pressure to "just track everything."
 **Verify this skill activates on:**
 - "revalidate the open questions from this report"
 - "disposition the follow-ups from this decision"
+- "create follow-up issues from this Notion decision" (the follow-ups go to Linear)
 
 **Verify it does NOT activate on:**
 - "capture what we learned from this" → `status-and-learning`
 - "promote this idea to Linear" → `idea-to-implementation`
 - "create a Linear issue for X" (no source Report, Decision or completed Issue) → `linear-work-management`
 - "sync all open items from the reports into Linear" → workledger-kit's `syncing-open-items`
+- "file a GitHub issue for this follow-up" → git-kit's `github-issue-lifecycle`
 
 **Last dated run record:** evals/open-item-management/workspace/iteration-1/ (2026-08-30) —
 `evals.json`'s expected_output was updated 2026-08-31 for the Disposition Record redesign (issue

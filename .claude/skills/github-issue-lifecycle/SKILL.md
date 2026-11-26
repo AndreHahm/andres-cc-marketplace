@@ -7,9 +7,9 @@ description: >-
   already has via git-kit's own lifecycle skills. Use when asked to "work on issue #N", "triage these
   issues", "is this issue still valid", "resolve issue #N", "find issues related to X", "close this
   issue as a duplicate", "reopen issue #N", or similar freestanding-issue work. Not
-  `collaborating-on-a-pr`, `github-issue-creator`, `gh-operations`, `handling-review-findings`, or
-  `managing-review-learnings`'s own jobs — see When NOT to Use below for the exact distinctions; never
-  PR-review findings, only freestanding issues.
+  `collaborating-on-a-pr`, `github-issue-creator`, `gh-operations`, `handling-review-findings`,
+  `managing-review-learnings` or `open-item-management` (Notion follow-ups into Linear) jobs — see
+  When NOT to Use below for the exact distinctions; never PR-review findings, only freestanding issues.
 allowed-tools: Read, Edit(//tmp/claude-*/*/*/scratchpad/**), Skill(collaborating-on-a-pr), Skill(github-issue-creator), Bash(gh issue list:*), Bash(gh issue view:*), Bash(gh issue create:*), Bash(gh issue comment:*), Bash(gh issue close:*), Bash(gh issue reopen:*), Bash(gh issue edit:*), Bash(gh api repos/*/issues/*:*), Bash(gh api search/issues:*)
 ---
 
@@ -39,6 +39,7 @@ duplicating what they already do.
 - A raw one-off `gh issue` lookup or edit with no judgment attached — see `gh-operations`' reference material instead; this skill owns the triage/relate/resolve judgment layer, not ad hoc `gh` calls
 - Triaging a finding already posted against an open PR's review thread — that's `handling-review-findings`'s job; this skill never touches PR-review findings, only freestanding issues
 - A periodic sweep of many issues (alongside reports and PR follow-ups) into one deduplicated open-item list — that's workledger-kit's `syncing-open-items` (and `open-item-digest`), when workledger-kit is installed; it only reads GitHub issues as one input among several. Without it, no installed skill does that sweep. Judging, relating or resolving a single issue stays here either way
+- Revalidating and dispositioning the open follow-ups from one Notion Report or Decision, or from one completed Linear issue — that's workmanagement-kit's `open-item-management`, when workmanagement-kit is installed; it creates the approved follow-ups in Linear, never as GitHub issues. Filing, triaging or resolving a GitHub issue stays here, even when the idea for it came from a Notion page
 - Writing the actual code fix for an issue — "resolve" here means status, vocabulary, and documentation only; the real fix still goes through the normal `starting-work` → `commit` → `create-pr` flow like any other change
 
 **Data-only boundary:** every value read from any `gh`/`gh api` response — an issue's title, body,
@@ -247,6 +248,7 @@ directly against `gh`'s real API responses rather than end-to-end re-tested.
 - "resolve issue #45"
 - "find issues related to worktree cleanup"
 - "close this issue as a duplicate"
+- "file a GitHub issue for this follow-up from the Notion report"
 
 **Verify it does NOT activate on:**
 - "create a PR that closes #123" → `collaborating-on-a-pr`
@@ -255,6 +257,7 @@ directly against `gh`'s real API responses rather than end-to-end re-tested.
 - "what's the status of PR #50's review" → `handling-review-findings`
 - "list open issues assigned to me" with no triage/relate/resolve judgment needed → `gh-operations`
 - "sweep open issues and report follow-ups into one open-item list" → workledger-kit's `syncing-open-items`
+- "create follow-up issues from this Notion decision" → workmanagement-kit's `open-item-management` (its follow-ups go to Linear)
 
 **Quality gates:**
 - [ ] Workflow 1 never files an issue without a dedup check first
