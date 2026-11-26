@@ -92,11 +92,14 @@ git fetch origin refs/notes/reviews:refs/notes/reviews
 
 ```bash
 git config notes.rewriteRef 'refs/notes/*'
+git config notes.rewrite.rebase true
 git config notes.rewriteMode concatenate
 ```
 
 `notes.rewriteRef` has no default: without it, a rebase copies no notes at all. `notes.rewrite.rebase`
-already defaults to `true`.
+defaults to `true`; setting it keeps a `false` from another config scope from switching copying off.
+A copied note still describes the commit before the rebase: copy only namespaces whose meaning survives
+a rewrite (such as `refs/notes/audit`), or re-check copied review and test notes.
 
 ## Common Mistakes
 
@@ -110,7 +113,7 @@ See `references/troubleshooting.md` for common git notes mistakes and their fixe
 | Be explicit about refs | Always specify `--ref` for non-default notes |
 | Push notes explicitly | Document sharing procedures in team guidelines |
 | Use append over add -f | Preserve note history when accumulating |
-| Configure rewrite preservation | Run `git config notes.rewriteRef 'refs/notes/*'` before rebasing |
+| Configure rewrite preservation | Set `notes.rewriteRef` and `notes.rewrite.rebase true` before rebasing |
 
 # Git Notes Command Reference
 
@@ -430,7 +433,8 @@ git log --format="%H" HEAD~10..HEAD | xargs git notes remove --ignore-missing
 No dedicated eval suite: this skill is a command reference, so a blind-comparison eval would mostly test
 recall of git's own options. `scripts/smoke_test.py` (frontmatter, referenced files, Bash grants, step
 order) is the structural check. The `notes.rewriteRef` requirement was verified live on 2026-11-26 in a
-scratch repository: a note on `refs/notes/testing` was lost on rebase without it and kept with it.
+scratch repository: a note on `refs/notes/testing` was lost on rebase without it and kept with it, and
+with `notes.rewrite.rebase false` also set it was lost until that was set back to `true`.
 
 **Verify this skill activates on:**
 - "add a note to this commit about the test results"
@@ -449,7 +453,7 @@ scratch repository: a note on `refs/notes/testing` was lost on rebase without it
 - [ ] Notes outside the default category always specify `--ref`, never rely on the default
       `refs/notes/commits` namespace, per Best Practices
 - [ ] Notes intended to survive a rebase always set `git config notes.rewriteRef` (for example
-      `'refs/notes/*'`) beforehand, since it has no default —
+      `'refs/notes/*'`, since it has no default) and `notes.rewrite.rebase true` beforehand —
       see `references/notes-configuration.md`
 - [ ] Sharing notes with a team always pushes/fetches the specific `refs/notes/<name>` ref explicitly —
       notes don't sync via a plain `git push`/`git fetch`

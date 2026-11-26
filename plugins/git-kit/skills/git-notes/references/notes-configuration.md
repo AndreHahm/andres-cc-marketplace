@@ -16,11 +16,18 @@ git config notes.mergeStrategy union
 
 # Set merge strategy for specific namespace
 git config notes.reviews.mergeStrategy theirs
+```
 
-# Choose which notes refs a rewrite copies (required: no default, so nothing is copied without it)
+### Rewrite preservation (rebase, amend)
+
+`notes.rewriteRef` has no default, so nothing is copied without it. A copied review or test note still
+describes the pre-rewrite commit: narrow the glob or re-check it.
+
+```bash
+# Choose which notes refs a rewrite copies
 git config notes.rewriteRef 'refs/notes/*'
 
-# Preserve notes during rebase (defaults to true)
+# Preserve notes during rebase (defaults to true; set it so a false elsewhere can't switch it off)
 git config notes.rewrite.rebase true
 
 # Preserve notes during amend
