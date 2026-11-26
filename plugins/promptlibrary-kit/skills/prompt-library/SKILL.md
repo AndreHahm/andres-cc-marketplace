@@ -153,7 +153,8 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
    `attachment_change` is true, keep its text and origin exactly: only the attachments may change (keep,
    shorten or detach them), and the validator refuses any other change. Show the new content of each
    changed attachment in full (from `show <slug> --history`, which reads it once); the approved content is
-   not stored, so for a line-by-line diff the user can run `git diff -- ':(literal)<path>'` themselves. For `add`, also get the
+   not stored, so for a line-by-line diff the user can run `git diff -- ':(literal)<path>'` themselves, with each
+   single quote in the path written as in step 1 (`'\''`, PowerShell `''`). For `add`, also get the
    `internal_id` from `<CLI> new-id`. Build the full record in a scratch file from
    `assets/prompt-record-template.md`, following `references/prompt-record-format.md` (a `session` or
    `web` record also needs `source_ref`, shown with an example there). Attached files are optional and
@@ -237,7 +238,8 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
 - A draft, initial or successor, is replaced in place (`update-draft`); an active or inactive record gets
   a successor.
 - A revision never replaces the active prompt before `finalize`.
-- If `session-detail` (from session-kit) is not among the listed skills, session-by-reference intake is unavailable; fall
+- `Skill(session-detail)` is an optional dependency outside this plugin: session-kit's
+  `plugins/session-kit/skills/session-detail/SKILL.md`. If it is not among the listed skills, session-by-reference intake is unavailable; fall
   back to the user pasting the chosen turns. Do not install or declare session-kit.
 - Set `origin` from the intake path and never leave a template placeholder. The validator refuses an
   unedited `slug`, `internal_id` or `origin`, but accepts a leftover `name`, `area` or body text, so
