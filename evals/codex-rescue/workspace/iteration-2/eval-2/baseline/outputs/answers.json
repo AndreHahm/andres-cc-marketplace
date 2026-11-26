@@ -1,0 +1,6 @@
+[
+  {"id": "R1", "skill": "codex-rescue", "reason": "codex-rescue's description (\"have codex do it\") and its Phase 1 'Wrap the task in prompt blocks' section, which covers a read-only debug/investigate task in the repo with --write OFF, decided it over codex-research's topic deep dive."},
+  {"id": "R2", "skill": "codex-research", "reason": "codex-research's description and Testing & Validation 'Verify this skill activates on' section list \"investigate this topic (codex)\" for a deep-dive synthesis."},
+  {"id": "R3", "skill": "codex-session-lookup", "reason": "codex-session-lookup's description says to use it to locate a session ID to resume manually, and that it never resumes anything itself."},
+  {"id": "R4", "skill": "codex-rescue", "reason": "codex-rescue's description (\"to resume a prior rescue task\") and its Testing & Validation 'Verify this skill activates on' section (--resume-last against a prior rescue task) decided it."}
+]

@@ -1,0 +1,5 @@
+[
+  {"id": "R5", "skill": "codex-plan-loop", "reason": "codex-plan-loop's When to Use covers security-sensitive feature work where Codex validates a plan Claude writes before any code changes."},
+  {"id": "R6", "skill": "codex-rescue", "reason": "codex-rescue's When to Use covers having Codex implement or fix one concrete thing, and codex-plan-loop's When NOT to Use sends simple one-off fixes there."},
+  {"id": "R7", "skill": "codex-audit-loop", "reason": "codex-audit-loop's When to Use covers an explicit request for a complete multi-lens whole-project review with verify-and-fix across isolated worktrees (Mode C)."}
+]

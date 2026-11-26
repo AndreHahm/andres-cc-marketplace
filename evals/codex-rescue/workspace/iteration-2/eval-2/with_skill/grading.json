@@ -1,0 +1,41 @@
+{
+  "eval_id": "eval-2",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "R1 routed to codex-rescue",
+      "passed": true,
+      "evidence": "answered codex-rescue"
+    },
+    {
+      "text": "R2 routed to codex-research",
+      "passed": true,
+      "evidence": "answered codex-research"
+    },
+    {
+      "text": "R3 routed to codex-session-lookup",
+      "passed": true,
+      "evidence": "answered codex-session-lookup"
+    },
+    {
+      "text": "R4 routed to codex-rescue",
+      "passed": true,
+      "evidence": "answered codex-rescue"
+    },
+    {
+      "text": "R1 reason cites a single concrete repository task (not open-ended topic research)",
+      "passed": true,
+      "evidence": "codex-rescue's Phase 1 'Wrap the task in prompt blocks' covers a read-only investigation of one concrete repository task (--write OFF), and codex-research's 'When NOT to Use' routes such a concrete repository investigation to codex-rescue."
+    },
+    {
+      "text": "R2 reason cites open-ended topic research or cross-model synthesis (not a single repo task)",
+      "passed": true,
+      "evidence": "codex-research's 'When to Use' covers 'investigate this topic (codex)' for open-ended research on a topic synthesized with Claude's own analysis, and codex-rescue's 'When NOT to Use' routes open-ended topic research there."
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 6,
+    "pass_rate": 1.0
+  }
+}

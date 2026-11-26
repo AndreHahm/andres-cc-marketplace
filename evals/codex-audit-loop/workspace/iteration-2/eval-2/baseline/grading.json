@@ -1,0 +1,32 @@
+{
+  "eval_id": "eval-2",
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "R5 routed to codex-plan-loop",
+      "passed": true,
+      "evidence": "answered codex-plan-loop"
+    },
+    {
+      "text": "R6 routed to codex-rescue",
+      "passed": true,
+      "evidence": "answered codex-rescue"
+    },
+    {
+      "text": "R7 routed to codex-audit-loop",
+      "passed": true,
+      "evidence": "answered codex-audit-loop"
+    },
+    {
+      "text": "R7 reason or answer mentions the fix mode (--mode fix / Mode C) or verify-and-fix across worktrees",
+      "passed": true,
+      "evidence": "codex-audit-loop's description and Mode C (Verified fix loop) cover an explicit whole-project multi-lens review with verify-and-fix in isolated worktrees."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  },
+  "baseline_note": "baseline = main's pre-change SKILL.md files, not a no-skill run"
+}

@@ -1,0 +1,40 @@
+{
+  "skill_name": "codex-rescue",
+  "iteration": 2,
+  "timestamp": "2026-11-26T07:29:06+01:00",
+  "evals": [
+    {
+      "eval_id": 2,
+      "with_skill": {
+        "pass_rate": 1.0,
+        "assertions_passed": 6,
+        "assertions_total": 6,
+        "avg_tokens": 151578,
+        "avg_duration_ms": 32067
+      },
+      "baseline": {
+        "pass_rate": 1.0,
+        "assertions_passed": 6,
+        "assertions_total": 6,
+        "avg_tokens": 149220,
+        "avg_duration_ms": 34023
+      },
+      "delta": {
+        "pass_rate": 0.0,
+        "tokens": 2358,
+        "duration_ms": -1956
+      }
+    }
+  ],
+  "summary": {
+    "with_skill_avg_pass_rate": 1.0,
+    "baseline_avg_pass_rate": 1.0,
+    "improvement": 0.0,
+    "avg_tokens_with_skill": 151578,
+    "avg_tokens_baseline": 149220,
+    "token_cost": 2358,
+    "avg_duration_ms_with_skill": 32067,
+    "avg_duration_ms_baseline": 34023,
+    "duration_cost_ms": -1956
+  }
+}
