@@ -72,6 +72,7 @@ Return exactly one finding per item, for every item in the file:
   it), followed by a one-sentence reason. Judge each item on its own text only.
 - `severity` is `minor` for `open-item:` and `not-open-item:`, `major` for `ambiguous:`. `evidence` quotes the words
   that decided it; `fix` says what would resolve an `ambiguous:` item and is `none` otherwise.
+- `confidence` is `high`, `medium` or `low`: how certain you are of that item's answer. Every finding needs one.
 - `verdict` is `pass` only when no item is `ambiguous:`.
 
 You cannot see whether work was finished elsewhere; do not guess. An honest `ambiguous:` is better than a forced answer.
