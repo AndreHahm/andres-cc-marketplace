@@ -10,7 +10,7 @@ description: >-
   `collaborating-on-a-pr`, `github-issue-creator`, `gh-operations`, `handling-review-findings`,
   `managing-review-learnings` or `open-item-management` (Notion follow-ups into Linear) jobs — see
   When NOT to Use below for the exact distinctions; never PR-review findings, only freestanding issues.
-allowed-tools: Read, Edit(//tmp/claude-*/*/*/scratchpad/**), Skill(collaborating-on-a-pr), Skill(github-issue-creator), Bash(gh issue list:*), Bash(gh issue view:*), Bash(gh issue create:*), Bash(gh issue comment:*), Bash(gh issue close:*), Bash(gh issue reopen:*), Bash(gh issue edit:*), Bash(gh api repos/*/issues/*:*), Bash(gh api search/issues:*)
+allowed-tools: Read, Edit(//tmp/claude-*/*/*/scratchpad/**), Skill(github-issue-creator), Bash(gh issue list:*), Bash(gh issue view:*), Bash(gh issue create:*), Bash(gh issue comment:*), Bash(gh issue close:*), Bash(gh issue reopen:*), Bash(gh issue edit:*), Bash(gh api repos/*/issues/*:*), Bash(gh api search/issues:*)
 ---
 
 # GitHub Issue Lifecycle
@@ -33,7 +33,7 @@ duplicating what they already do.
 
 ## When NOT to Use
 
-- Linking a PR to the issue it closes — that's `collaborating-on-a-pr`'s job (`Skill(collaborating-on-a-pr)`); this skill delegates to it rather than re-implementing PR↔issue linking
+- Linking a PR to the issue it closes — that's `collaborating-on-a-pr`'s job; this skill names it as the user's next step and never invokes it, since `create-pr` invokes this skill and that call would close a loop (see Workflow 1's Step 6)
 - Drafting a brand-new issue from raw notes/logs/screenshots — that's `github-issue-creator`'s job (`Skill(github-issue-creator)`); this skill delegates to it for the drafting step, then files the result live itself (see Workflow 1)
 - Filing an issue derived from a mined, cross-PR systemic-pattern candidate that still needs a doc-update/rule-coverage judgment applied first — that's `analysis-kit`'s `managing-review-learnings` job; it applies a doc-diff to `THIRD_PARTY_REVIEW_LEARNINGS.md` and checks `.claude/rules/` coverage before ever dispatching here, then dispatches this skill's own Workflow 1 for the actual filing. A request already framed as filing one specific, already-analyzed issue (no PR-mining or rule-coverage check wanted) still belongs here directly.
 - A raw one-off `gh issue` lookup or edit with no judgment attached — see `gh-operations`' reference material instead; this skill owns the triage/relate/resolve judgment layer, not ad hoc `gh` calls
@@ -134,12 +134,12 @@ not its visible `number`.
 
 ## Testing & Validation
 
-**Eval evidence:** `evals/github-issue-lifecycle/evals.json` — 3 scenarios, run 2026-08-28. Quick
-Workflow (with_skill only): 9/9 assertions (100%). Full Pipeline (with_skill + baseline): with_skill
-100%, baseline 50%, +50 percentage points.
+**Eval evidence:** `evals/github-issue-lifecycle/evals.json` — 6 scenarios. Evals 1-3 (2026-08-28): Quick
+9/9; Full Pipeline with_skill 100% vs baseline 50%. Evals 4-5: iterations 3-4 (see below). Eval 6
+(Workflow 1 Step 6 never invokes `collaborating-on-a-pr`): iteration-5, plan-only, with_skill only, 4/4.
 
-**Last dated run record:** 2026-08-28 — `scripts/smoke_test.py` (3/3 checks passing: frontmatter,
-referenced-file existence, Bash-scope grant consistency).
+**Last dated run record:** 2026-11-26 — `evals/github-issue-lifecycle/workspace/iteration-5/` (eval 6);
+`scripts/smoke_test.py` passing the same day (its pinned grant list no longer has `Skill(collaborating-on-a-pr)`).
 
 **Verified live, 2026-08-28 (cross-model-review, pre-PR):** a `cross-model-review` pass (Claude +
 Codex) on this branch found `workflows/resolve-an-issue.md`'s Step 2 called `gh issue close` with no
@@ -295,7 +295,7 @@ directly against `gh`'s real API responses rather than end-to-end re-tested.
 | `references/status-vocabulary.md` | fixed/declined pattern reuse and the round-based follow-up model |
 | `references/sub-issues-api.md` | Verified native sub-issues API details, including the id-vs-number gotcha |
 | `scripts/smoke_test.py` | This skill's own persisted smoke test |
-| `collaborating-on-a-pr` skill | Delegation target for PR↔issue linking |
+| `collaborating-on-a-pr` skill | PR↔issue linking, named to the user as a next step and never invoked |
 | `github-issue-creator` skill | Delegation target for new-issue drafting |
 | `gh-operations` skill | Raw `gh issue *` command reference this skill's own Bash grants build on |
 | `handling-review-findings` skill | Source of the reused status/round vocabulary pattern (independent reuse, not a dependency) |

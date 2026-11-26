@@ -131,7 +131,6 @@ def check_bash_grants():
 EXPECTED_ALLOWED_TOOLS = (
     "Read",
     "Edit(//tmp/claude-*/*/*/scratchpad/**)",
-    "Skill(collaborating-on-a-pr)",
     "Skill(github-issue-creator)",
     "Bash(gh issue list:*)",
     "Bash(gh issue view:*)",

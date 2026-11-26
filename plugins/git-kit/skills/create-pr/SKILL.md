@@ -429,7 +429,9 @@ skip its Auto-PR step and its push, an explicit instruction passed at invocation
 state or caller identity, so `commit` never re-enters `create-pr`. Any future caller of that pair must
 keep passing it, or the two can call each other in a loop. `collaborating-on-a-pr` calls `create-pr` in
 one direction only (its Path A); step 6 checks the closing line itself, so keep that call one-way and
-never add a `Skill(collaborating-on-a-pr)` call back.
+never add a `Skill(collaborating-on-a-pr)` call back. The same holds one step further: Pre-flight step 3.5 invokes
+`github-issue-lifecycle`, which names `collaborating-on-a-pr` to the user as a next step and never
+invokes it, so that chain also ends without reaching this skill again.
 
 ## Testing & Validation
 

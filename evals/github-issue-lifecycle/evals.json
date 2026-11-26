@@ -40,6 +40,19 @@
       "prompt": "DRY RUN ONLY -- this is a test of your reasoning, not a live task. Do not actually invoke Bash, git, gh, or any Skill/Agent tool.\n\nPretend this is a completely different repository, `acme/widgets`, which has never adopted this marketplace's `docs/github-label-taxonomy.md` `p:` taxonomy -- no such file, no `p:` Priority section exists there. A user reports a straightforward bug and asks to file it as a new GitHub issue in `acme/widgets`. Walk through what github-issue-lifecycle does, specifically around priority labeling -- does the issue end up with a p: label, and does anything about the missing taxonomy block filing the issue?",
       "expected_output": "Step 5.5 checks whether docs/github-label-taxonomy.md defines a p: Priority section, finds none in acme/widgets, and skips the label-update part of the step entirely -- the issue still gets filed normally (Steps 1-4 proceed as usual), just with no p: label applied, and nothing about the missing taxonomy blocks or delays filing.",
       "files": []
+    },
+    {
+      "id": 6,
+      "name": "Workflow 1 Step 6 hands PR linking off in prose, never invoking collaborating-on-a-pr",
+      "prompt": "DRY RUN ONLY -- this is a test of your reasoning, not a live task. Do not actually invoke Bash, git, gh, or any Skill/Agent tool.\n\nPart A: A user asks github-issue-lifecycle to file a new bug as a GitHub issue, and says the fix will come in a PR they have not opened yet. Assume Steps 1-5.5 of Workflow 1 complete and the issue is filed as #314. Walk through Step 6: what exactly do you do about linking the future PR to #314, which skill (if any) do you invoke, and what do you tell the user?\n\nPart B: Same issue #314, but the user says the PR that fixes it is already open as PR #77. What do you do in Step 6 now?",
+      "expected_output": "Part A: does not invoke Skill(collaborating-on-a-pr) (the skill holds no such grant, and a call would close a create-pr -> github-issue-lifecycle -> collaborating-on-a-pr -> create-pr cycle); reports issue #314 and tells the user to open the PR through collaborating-on-a-pr, e.g. \"create a PR that closes #314\"; does not create or edit any PR itself. Part B: does not invoke collaborating-on-a-pr and does not point the user at it (it would open a duplicate PR); has no gh pr grant to edit PR #77, so asks the user how they want it linked and does not attempt the edit.",
+      "assertions": [
+        "Part A: never invokes Skill(collaborating-on-a-pr) or any other skill for the linking",
+        "Part A: tells the user to open the PR through collaborating-on-a-pr with a closing reference to #314",
+        "Part B: neither invokes collaborating-on-a-pr nor directs the user to it, and does not edit PR #77 itself",
+        "Part B: asks the user how they want PR #77 linked to #314"
+      ],
+      "files": []
     }
   ]
 }

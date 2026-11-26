@@ -1,0 +1,12 @@
+{
+  "eval_id": 6,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Part A: never invokes Skill(collaborating-on-a-pr) or any other skill for the linking", "passed": true, "evidence": "Line 26: \"**No skill invocation.** I do not call `Skill(collaborating-on-a-pr)` or `Skill(create-pr)`.\"; summary table line 71: \"Skill invoked: None\"."},
+    {"text": "Part A: tells the user to open the PR through collaborating-on-a-pr with a closing reference to #314", "passed": true, "evidence": "Lines 33-34: \"open it through `collaborating-on-a-pr`, for example by asking \\\"create a PR that closes #314\\\"\"."},
+    {"text": "Part B: neither invokes collaborating-on-a-pr nor directs the user to it, and does not edit PR #77 itself", "passed": true, "evidence": "Lines 45-51: \"No skill invocation, and no pointer to `collaborating-on-a-pr`\" and \"No direct edit ... I don't try `gh pr edit 77 ...`\"."},
+    {"text": "Part B: asks the user how they want PR #77 linked to #314", "passed": true, "evidence": "Lines 52-63: asks through `AskUserQuestion` with concrete options, ending \"How would you like #77 linked to #314?\"."}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0},
+  "notes": "Quick Workflow, with_skill only, plan-only, iteration 5 (2026-11-26), run against the PR 925 worktree copy of github-issue-lifecycle after Workflow 1 Step 6 stopped invoking collaborating-on-a-pr. No baseline arm."
+}

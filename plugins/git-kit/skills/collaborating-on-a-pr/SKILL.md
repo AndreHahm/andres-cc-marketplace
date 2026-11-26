@@ -81,8 +81,9 @@ other's job.
 
 1. When `$ARGUMENTS` or the surrounding conversation names a related issue while creating a new PR, invoke `Skill(create-pr)`,
    explicitly instructing it — as part of this invocation — to include `Closes #<N>` (or `Refs #<N>` if
-   the relationship is "relates to" rather than "resolves") in the PR body it drafts. The call is one-way:
-   `create-pr` checks the line itself in its step 6 and never invokes this skill back, so no skip
+   the relationship is "relates to" rather than "resolves") in the PR body it drafts. The call is
+   one-way: `create-pr` checks the line itself in its step 6 and never invokes this skill back, and
+   neither does `github-issue-lifecycle`, which `create-pr`'s Pre-flight step 3.5 can invoke, so no skip
    instruction is needed (see `create-pr`'s "Loop-Breaker Convention" section).
 2. After it returns, verify: `gh pr view --json body -q .body`. If the closing/referencing line isn't
    present in the returned body, compose the updated body (existing body, a real blank line, then the
